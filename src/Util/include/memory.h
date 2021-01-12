@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_UTIL_INCLUDE_MEMORY_H
 
 #include <cstdint>
+#include <atomic>
 
 #include <LLC/aes/aes.h>
 
@@ -214,6 +215,8 @@ namespace memory
      **/
     class mstream
     {
+        std::mutex MUTEX;
+
         /** Internal enumeration flags for mimicking fstream flags. **/
         enum STATE
         {
@@ -241,7 +244,7 @@ namespace memory
 
 
         /** Current status of stream object. **/
-        uint8_t STATUS;
+        mutable std::atomic<uint8_t> STATUS;
 
 
         /** Current input flags to set behavior. */
@@ -255,7 +258,8 @@ namespace memory
 
         /** Construct with correct flags and path to file. **/
         mstream(const std::string& strPath, const uint8_t nFlags)
-        : CTX    ( )
+        : MUTEX  ( )
+        , CTX    ( )
         , GET    (0)
         , PUT    (0)
         , STATUS (0)
@@ -271,10 +275,11 @@ namespace memory
 
         /** Move Constructor. **/
         mstream(mstream&& stream)
-        : CTX    (std::move(stream.CTX))
+        : MUTEX  ( )
+        , CTX    (std::move(stream.CTX))
         , GET    (std::move(stream.GET))
         , PUT    (std::move(stream.PUT))
-        , STATUS (std::move(stream.STATUS))
+        , STATUS (stream.STATUS.load())
         , FLAGS  (std::move(stream.FLAGS))
         {
         }
@@ -290,7 +295,7 @@ namespace memory
             CTX    = std::move(stream.CTX);
             GET    = std::move(stream.GET);
             PUT    = std::move(stream.PUT);
-            STATUS = std::move(stream.STATUS);
+            STATUS = stream.STATUS.load();
             FLAGS  = std::move(stream.FLAGS);
 
             return *this;
@@ -307,6 +312,8 @@ namespace memory
 
         void open(const std::string& strPath, const uint8_t nFlags)
         {
+            LOCK(MUTEX);
+
             /* Set the appropriate flags. */
             FLAGS = nFlags;
 
@@ -463,6 +470,8 @@ namespace memory
          **/
         mstream& seekg(const uint64_t nPos)
         {
+            //LOCK(MUTEX);
+
             /* Check our stream flags. */
             if(!(FLAGS & std::ios::in))
             {
@@ -494,6 +503,8 @@ namespace memory
          **/
         mstream& seekg(const uint64_t nPos, const uint8_t nFlag)
         {
+            //LOCK(MUTEX);
+
             /* Check our stream flags. */
             if(!(FLAGS & std::ios::in))
             {
@@ -545,6 +556,8 @@ namespace memory
          **/
         mstream& seekp(const uint64_t nPos)
         {
+            LOCK(MUTEX);
+
             /* Check our stream flags. */
             if(!(FLAGS & std::ios::out))
             {
@@ -576,6 +589,8 @@ namespace memory
          **/
         mstream& seekp(const uint64_t nPos, const uint8_t nFlag)
         {
+            LOCK(MUTEX);
+
             /* Check our stream flags. */
             if(!(FLAGS & std::ios::out))
             {
@@ -659,6 +674,8 @@ namespace memory
          **/
         mstream& write(const char* pBuffer, const uint64_t nSize)
         {
+            LOCK(MUTEX);
+
             /* Check that we are properly mapped. */
             if(!is_open())
             {
@@ -693,6 +710,49 @@ namespace memory
         }
 
 
+        /** write
+         *
+         *  Writes a series of bytes into memory mapped file
+         *
+         *  @param[in] pBuffer The starting address of buffer to write.
+         *  @param[in] nSize The size to write to memory map.
+         *
+         *  @return reference of stream
+         *
+         **/
+        bool write(const char* pBuffer, const uint64_t nSize, const uint64_t nPos) const
+        {
+            /* Check that we are properly mapped. */
+            if(!is_open())
+            {
+                STATUS |= STATE::FAIL;
+                return debug::error("stream is not opened");
+            }
+
+            /* Check our stream flags. */
+            if(!(FLAGS & std::ios::out))
+            {
+                STATUS |= (STATE::BAD);
+                return debug::error("stream not open for writing");
+            }
+
+            /* Check if we will write to the end of file. */
+            if(nPos + nSize > CTX.size())
+            {
+                STATUS |= (STATE::END);
+                return debug::error("reached end of stream");
+            }
+
+            /* Copy the input buffer into memory map. */
+            std::copy((uint8_t*)pBuffer, (uint8_t*)pBuffer + nSize, (uint8_t*)CTX.begin() + nPos);
+
+            /* Let the object know we are ready to flush. */
+            STATUS |= STATE::FULL;
+
+            return true;
+        }
+
+
         /** read
          *
          *  Reads a series of bytes from memory mapped file
@@ -705,6 +765,8 @@ namespace memory
          **/
         mstream& read(char* pBuffer, const uint64_t nSize)
         {
+            //LOCK(MUTEX);
+
             /* Check that we are properly mapped. */
             if(!is_open())
             {
@@ -734,6 +796,48 @@ namespace memory
             COUNT = nSize;
 
             return *this;
+        }
+
+
+        /** read
+         *
+         *  Reads a series of bytes from memory mapped file
+         *
+         *  @param[in] pBuffer The starting address of buffer to read.
+         *  @param[in] nSize The size to read from memory map.
+         *
+         *  @return reference of stream
+         *
+         **/
+        bool read(char* pBuffer, const uint64_t nSize, const uint64_t nPos) const
+        {
+            //LOCK(MUTEX);
+
+            /* Check that we are properly mapped. */
+            if(!is_open())
+            {
+                STATUS |= STATE::FAIL;
+                return false;
+            }
+
+            /* Check our stream flags. */
+            if(!(FLAGS & std::ios::in))
+            {
+                STATUS |= (STATE::BAD);
+                return false;
+            }
+
+            /* Check if we will write to the end of file. */
+            if(nPos + nSize > CTX.size())
+            {
+                STATUS |= (STATE::END);
+                return false;
+            }
+
+            /* Copy the memory mapped buffer into return buffer. */
+            std::copy((uint8_t*)CTX.begin() + nPos, (uint8_t*)CTX.begin() + nPos + nSize, (uint8_t*)pBuffer);
+
+            return true;
         }
 
 

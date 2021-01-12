@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <LLD/hash/xxhash.h>
 #include <LLD/config/base.h>
 
+#include <shared_mutex>
+
 namespace LLD::Config
 {
     /** Structure to contain the configuration variables for a BinaryHashMap Keychain. **/
@@ -198,10 +200,6 @@ namespace LLD::Config
             SECONDARY_BLOOM_BITS     = map.SECONDARY_BLOOM_BITS;
             HASHMAP_TOTAL_BUCKETS    = map.HASHMAP_TOTAL_BUCKETS;
 
-            /* We want to ensure our mutex lists are initialized here. */
-            INDEX_LOCKS              = std::vector<std::mutex>(MAX_INDEX_FILE_STREAMS);
-            HASHMAP_LOCKS            = std::vector<std::mutex>(MAX_HASHMAP_FILE_STREAMS);
-
             /* Refresh our configuration values. */
             auto_config();
 
@@ -232,10 +230,6 @@ namespace LLD::Config
             SECONDARY_BLOOM_HASHES   = std::move(map.SECONDARY_BLOOM_HASHES);
             SECONDARY_BLOOM_BITS     = std::move(map.SECONDARY_BLOOM_BITS);
             HASHMAP_TOTAL_BUCKETS    = std::move(map.HASHMAP_TOTAL_BUCKETS);
-
-            /* We want to ensure our mutex lists are initialized here. */
-            INDEX_LOCKS              = std::vector<std::mutex>(MAX_INDEX_FILE_STREAMS);
-            HASHMAP_LOCKS            = std::vector<std::mutex>(MAX_HASHMAP_FILE_STREAMS);
 
             /* Refresh our configuration values. */
             auto_config();

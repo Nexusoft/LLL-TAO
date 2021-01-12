@@ -108,8 +108,6 @@ namespace LLD::Templates
         /* File stream object. */
         mutable TemplateLRU<uint32_t, std::fstream*>* fileCache;
 
-
-        /* The current File Position. */
         mutable std::atomic<uint32_t> nCurrentFile;
         mutable std::atomic<uint32_t> nCurrentFileSize;
 
@@ -207,6 +205,12 @@ namespace LLD::Templates
             /* Check the cache pool. */
             if(cachePool->Has(vKey))
                 return true;
+
+            {
+                LOCK(BUFFER_MUTEX);
+                if(mapDiskBuffer.count(vKey))
+                    return true;
+            }
 
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;

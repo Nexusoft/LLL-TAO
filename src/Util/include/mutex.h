@@ -22,4 +22,7 @@ ________________________________________________________________________________
 #define LOCK2(mut) std::unique_lock<std::mutex> lk2(mut)
 #define RLOCK(mut) std::lock_guard<std::recursive_mutex> lk(mut)
 
+#define READER_LOCK(mut) std::shared_lock lk(mut)
+#define WRITER_LOCK(mut) std::unique_lock lk(mut)
+
 #endif

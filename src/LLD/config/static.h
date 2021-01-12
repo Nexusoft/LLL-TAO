@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <LLD/templates/key.h>
 #include <LLD/config/base.h>
 
+#include <shared_mutex>
+
 namespace LLD::Config
 {
     /** Structure to contain the configuration variables for the sector database object. **/

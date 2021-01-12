@@ -628,9 +628,6 @@ namespace LLD
             /* Grab our file stream. */
             #ifdef NO_MMAP
             std::fstream* pindex = get_index_stream(nFile);
-            #else
-            memory::mstream* pindex = get_index_stream(nFile);
-            #endif
             if(!pindex)
                 return debug::error(FUNCTION, "INDEX: failed to open stream: ", VARIABLE(nFile));
 
@@ -644,6 +641,19 @@ namespace LLD
 
             /* Flush the buffers to disk. */
             pindex->flush();
+            #else
+            memory::mstream* pindex = get_index_stream(nFile);
+            if(!pindex)
+                return debug::error(FUNCTION, "INDEX: failed to open stream: ", VARIABLE(nFile));
+
+            /* Write updated filters to the index position. */
+            if(!pindex->write((char*)&vBuffer[nBufferPos], INDEX_FILTER_SIZE, nFilePos))
+                return debug::error(FUNCTION, "INDEX: only ", pindex->gcount(), "/", vBuffer.size(), " bytes written");
+
+            /* Flush the buffers to disk. */
+            pindex->flush();
+            #endif
+
         }
 
         return true;
@@ -688,9 +698,6 @@ namespace LLD
                 /* Grab our file stream. */
                 #ifdef NO_MMAP
                 std::fstream* pindex = get_index_stream(nFile);
-                #else
-                memory::mstream* pindex = get_index_stream(nFile);
-                #endif
                 if(!pindex)
                     return debug::error(FUNCTION, "INDEX: failed to open index stream");
 
@@ -706,6 +713,21 @@ namespace LLD
                         " only ", pindex->gcount(), "/", vBuffer.size(), " bytes read"
                     );
                 }
+                #else
+                memory::mstream* pindex = get_index_stream(nFile);
+                if(!pindex)
+                    return debug::error(FUNCTION, "INDEX: failed to open index stream");
+
+                /* Read our index data into the buffer. */
+                if(!pindex->read((char*)&vBuffer[nBufferPos], nReadSize, nFilePos))
+                {
+                    debug::warning(FUNCTION, VARIABLE(nFilePos), " | ", VARIABLE(nFile), " | ", VARIABLE(nMaxBuckets), " | ", VARIABLE(nBufferPos), " | ", VARIABLE(nReadSize));
+                    return debug::error(FUNCTION, "INDEX: ", pindex->eof() ? "EOF" : pindex->bad() ? "BAD" : pindex->fail() ? "FAIL" : "UNKNOWN",
+                        " only ", pindex->gcount(), "/", vBuffer.size(), " bytes read"
+                    );
+                }
+                #endif
+
             }
 
             /* Track our current binary position, remaining buckets to read, and current bucket iterator. */
@@ -770,9 +792,6 @@ namespace LLD
                         /* Grab the current file stream from LRU cache. */
                         #ifdef NO_MMAP
                         std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
-                        #else
-                        memory::mstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
-                        #endif
                         if(!pstream)
                             continue;
 
@@ -786,6 +805,17 @@ namespace LLD
 
                         /* Flush the buffers to disk. */
                         pstream->flush();
+                        #else
+                        memory::mstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
+                        if(!pstream)
+                            continue;
+
+                        /* Flush the key file to disk. */
+                        if(!pstream->write((char*)&ssKey.Bytes()[0], ssKey.size(), nFilePos))
+                            return debug::error(FUNCTION, "KEYCHAIN: only ", pstream->gcount(), "/", ssKey.size(), " bytes written");
+
+                        #endif
+
                     }
 
                     /* Set our return values. */
@@ -863,9 +893,6 @@ namespace LLD
                     /* Find the file stream for LRU cache. */
                     #ifdef NO_MMAP
                     std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
-                    #else
-                    memory::mstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
-                    #endif
                     if(!pstream)
                         continue;
 
@@ -884,6 +911,24 @@ namespace LLD
                             " bytes read at cursor ", nFilePos, "/", nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION);
 
                     }
+                    #else
+                    memory::mstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
+                    if(!pstream)
+                        continue;
+
+                    /* Read the bucket binary data from file stream */
+                    if(!pstream->read((char*) &vBucket[0], vBucket.size(), nFilePos))
+                    {
+                        /* Calculate the number of bukcets per index file. */
+                        const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_HASHMAP) + 1;
+                        debug::log(0, VARIABLE(nHashmapIterator), " | ", VARIABLE(nBucket), " | ", VARIABLE(nTotalBuckets), " | ", VARIABLE(nFilePos));
+                        debug::log(0, "FILE STREAM: ", pstream->eof() ? "EOF" : pstream->bad() ? "BAD" : pstream->fail() ? "FAIL" : "UNKNOWN");
+                        return debug::error(FUNCTION, "STREAM: only ", pstream->gcount(), "/", vBucket.size(),
+                            " bytes read at cursor ", nFilePos, "/", nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION);
+
+                    }
+                    #endif
+
 
                     /* Check if this bucket has the key */
                     if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
@@ -977,9 +1022,6 @@ namespace LLD
                     /* Find the file stream for LRU cache. */
                     #ifdef NO_MMAP
                     std::fstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
-                    #else
-                    memory::mstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
-                    #endif
                     if(!pstream)
                         continue;
 
@@ -998,6 +1040,24 @@ namespace LLD
                             " bytes read at cursor ", nFilePos, "/", nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION);
 
                     }
+
+                    #else
+                    memory::mstream* pstream = get_file_stream(nHashmapIterator, nAdjustedBucket);
+                    if(!pstream)
+                        continue;
+
+                    /* Read the bucket binary data from file stream */
+                    if(!pstream->read((char*) &vBucket[0], vBucket.size(), nFilePos))
+                    {
+                        /* Calculate the number of bukcets per index file. */
+                        const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_HASHMAP) + 1;
+                        debug::log(0, VARIABLE(nHashmapIterator), " | ", VARIABLE(nBucket), " | ", VARIABLE(nTotalBuckets), " | ", VARIABLE(nFilePos));
+                        debug::log(0, "FILE STREAM: ", pstream->eof() ? "EOF" : pstream->bad() ? "BAD" : pstream->fail() ? "FAIL" : "UNKNOWN");
+                        return debug::error(FUNCTION, "STREAM: only ", pstream->gcount(), "/", vBucket.size(),
+                            " bytes read at cursor ", nFilePos, "/", nTotalBuckets * CONFIG.HASHMAP_KEY_ALLOCATION);
+
+                    }
+                    #endif
                 }
 
                 /* Check if this bucket has the key */

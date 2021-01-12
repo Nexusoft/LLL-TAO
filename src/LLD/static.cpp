@@ -566,15 +566,13 @@ namespace LLD::Templates
             {
                 debug::log(0, FUNCTION, "allocating new sector file ", nCurrentFile.load() + 1);
 
-                LOCK(CONFIG.FILE(nCurrentFile.load()));
+                /* Create a new file for next writes. */
+                std::fstream stream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
+                stream.close();
 
                 /* Iterate the current file and reset current file sie. */
                 ++nCurrentFile;
                 nCurrentFileSize = 0;
-
-                /* Create a new file for next writes. */
-                std::fstream stream(debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::out | std::ios::binary | std::ios::trunc);
-                stream.close();
             }
 
             uint32_t nRecords = 0;
