@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLC_TYPES_TYPEDEF_H
 #define NEXUS_LLC_TYPES_TYPEDEF_H
 
-#include <Util/include/allocators.h>
+#include <Util/memory/include/allocators.h>
 
 namespace LLC
 {

@@ -35,7 +35,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/walletdb.h>
 #include <Legacy/types/wallettx.h>
 
-#include <Util/include/allocators.h> /* for SecureString */
+#include <Util/memory/include/allocators.h> /* for SecureString */
 
 
 /* Global TAO namespace. */

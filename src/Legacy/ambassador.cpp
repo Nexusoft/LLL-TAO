@@ -14,7 +14,7 @@ ________________________________________________________________________________
 
 #include <Legacy/include/ambassador.h>
 #include <Legacy/types/script.h>
-#include <Util/include/args.h>
+#include <Util/system/include/args.h>
 
 namespace Legacy
 {

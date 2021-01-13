@@ -40,7 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/address.h>
 
-#include <Util/include/allocators.h>
+#include <Util/memory/include/allocators.h>
 #include <Util/include/base64.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>

@@ -29,7 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 
-#include <Util/include/allocators.h>
+#include <Util/memory/include/allocators.h>
 
 /* Global TAO namespace. */
 namespace TAO

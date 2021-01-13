@@ -14,14 +14,14 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/users.h>
-#include <Util/include/args.h>
+#include <Util/system/include/args.h>
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/tritium_minter.h>
 
-#include <Util/include/allocators.h>
+#include <Util/memory/include/allocators.h>
 
 /* Global TAO namespace. */
 namespace TAO
