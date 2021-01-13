@@ -980,13 +980,14 @@ void BatchRead(mstream &stream, runtime::stopwatch &timer)
     {
         try
         {
-            std::vector<uint8_t> vPage(filesystem::page_size(), 0);
+            uint64_t nIndex = LLC::GetRandInt(config::GetArg("-total", 0) - 2);
+            std::vector<uint8_t> vPage(filesystem::page_size() + 55, 0);
 
             timer.start();
-            stream.read((char*)&vPage[0], vPage.size(), filesystem::page_size() * n);
+            stream.read((char*)&vPage[0], vPage.size(), filesystem::page_size() * nIndex);
             timer.stop();
 
-            stream.write((char*)&vPage[0], vPage.size(), filesystem::page_size() * n);
+            stream.write((char*)&vPage[0], vPage.size(), filesystem::page_size() * nIndex);
 
             ++nStreamReads;
         }
@@ -1016,7 +1017,7 @@ int main3(int argc, char** argv)
         out.close();
     }
 
-    mstream stream(strFile, std::ios::in | std::ios::out, 5);
+    mstream stream(strFile, std::ios::in | std::ios::out, 2);
 
     std::vector<uint8_t> vData2((filesystem::page_size() * 2), 0xaa);
     stream.write((char*)&vData2[0], vData2.size(), filesystem::page_size() * 333);
@@ -1047,7 +1048,7 @@ int main(int argc, char** argv)
         out.close();
     }
 
-    mstream stream(strFile, std::ios::in | std::ios::out, 2);
+    mstream stream(strFile, std::ios::in | std::ios::out, 5);
 
 
     std::vector<runtime::stopwatch> vTimers;
