@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/types/merkle.h>
 #include <Legacy/wallet/wallet.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <Util/templates/serialize.h>
 
 #include <list>

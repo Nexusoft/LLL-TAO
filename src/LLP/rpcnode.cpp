@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/exception.h>
 
-#include <Util/include/config.h>
+#include <Util/system/include/config.h>
 #include <Util/encoding/include/base64.h>
 #include <Util/include/string.h>
 

@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/function.h>
 #include <TAO/API/types/exception.h>
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 /* Global TAO namespace. */
 namespace TAO

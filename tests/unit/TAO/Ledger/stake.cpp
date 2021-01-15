@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
 
-#include <Util/include/softfloat.h>
+#include <Util/system/types/softfloat.h>
 
 #include <unit/catch2/catch.hpp>
 

@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 
 #include <Util/encoding/include/base58.h>
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 #include <Legacy/include/constants.h>
 #include <Legacy/include/evaluate.h>

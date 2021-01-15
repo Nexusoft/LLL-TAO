@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 #include <Util/include/memory.h>
 
 #include <Util/templates/datastream.h>

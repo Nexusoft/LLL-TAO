@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <Util/memory/include/allocators.h>
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 #include <Util/include/memory.h>
 
 #include <string>

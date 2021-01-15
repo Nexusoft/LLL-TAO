@@ -26,7 +26,7 @@ ________________________________________________________________________________
 #include <Legacy/types/script.h>
 #include <Legacy/wallet/keystore.h>
 
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 
 #include <map>
 #include <set>

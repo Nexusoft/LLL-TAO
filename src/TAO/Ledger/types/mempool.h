@@ -24,7 +24,7 @@ ________________________________________________________________________________
 
 #include <Legacy/types/outpoint.h>
 
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 
 namespace LLP
 {

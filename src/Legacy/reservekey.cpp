@@ -18,7 +18,7 @@ ________________________________________________________________________________
 
 #include <Legacy/wallet/wallet.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 #include <memory>
 #include <string>

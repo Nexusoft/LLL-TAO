@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/value.h>
 #include <TAO/Register/types/exception.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 namespace TAO
 {

@@ -15,9 +15,9 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TEMPLATES_DDOS_H
 #define NEXUS_LLP_TEMPLATES_DDOS_H
 
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 #include <Util/include/runtime.h>
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <vector>
 
 namespace LLP

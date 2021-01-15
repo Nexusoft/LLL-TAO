@@ -29,9 +29,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/config.h>
-#include <Util/include/debug.h>
-#include <Util/include/convert.h>
+#include <Util/system/include/config.h>
+#include <Util/system/include/debug.h>
+#include <Util/encoding/include/convert.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/runtime.h>
 

@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <Legacy/types/coinbase.h>
 
 namespace Legacy

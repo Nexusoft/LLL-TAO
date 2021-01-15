@@ -13,8 +13,8 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lfu.h>
 #include <LLD/hash/xxhash.h>
 
-#include <Util/include/mutex.h>
-#include <Util/include/debug.h>
+#include <Util/system/types/mutex.h>
+#include <Util/system/include/debug.h>
 
 namespace LLD
 {

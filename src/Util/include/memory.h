@@ -20,8 +20,8 @@ ________________________________________________________________________________
 
 #include <LLC/aes/aes.h>
 
-#include <Util/include/mutex.h>
-#include <Util/include/debug.h>
+#include <Util/system/types/mutex.h>
+#include <Util/system/include/debug.h>
 #include <Util/memory/include/allocators.h>
 #include <Util/include/filesystem.h>
 

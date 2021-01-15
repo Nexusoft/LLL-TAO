@@ -37,8 +37,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/convert.h>
-#include <Util/include/debug.h>
+#include <Util/encoding/include/convert.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/runtime.h>
 #include <Util/templates/datastream.h>
 
@@ -492,7 +492,7 @@ namespace Legacy
         }
 
         /* Output for stake channel. */
-        std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
+        std::string strTimestamp(encoding::DateTimeStrFormat(runtime::unifiedtimestamp()));
         if(nChannel == 0)
         {
             debug::log(1, FUNCTION, "Nexus Stake Minter: new nPoS channel block found at unified time ", strTimestamp);

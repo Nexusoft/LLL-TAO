@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/system.h>
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 #include <Legacy/types/script.h>
 #include <Legacy/wallet/wallet.h>

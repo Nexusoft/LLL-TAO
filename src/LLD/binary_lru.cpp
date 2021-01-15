@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #include <LLD/templates/key.h>
 #include <LLD/hash/xxhash.h>
 
-#include <Util/include/mutex.h>
-#include <Util/include/debug.h>
+#include <Util/system/types/mutex.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/hex.h>
 
 namespace LLD

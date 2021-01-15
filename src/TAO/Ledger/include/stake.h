@@ -23,7 +23,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
-#include <Util/include/softfloat.h>
+#include <Util/system/types/softfloat.h>
 
 /**
  *  The functions defined here provide a single source for settings and calculations related to Nexus Proof of Stake.

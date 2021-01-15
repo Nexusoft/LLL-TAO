@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <Legacy/types/address.h>
 #include <Legacy/types/script.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/memory.h>
 

@@ -11,13 +11,13 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/config.h>
-#include <Util/include/convert.h>
+#include <Util/system/include/config.h>
+#include <Util/encoding/include/convert.h>
 #include <Util/include/filesystem.h>
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 #include <Util/include/runtime.h>
 #include <Util/include/version.h>
 
@@ -112,7 +112,7 @@ namespace debug
         log(0, "");
         log(0, "");
         log(0, "---------------------------------------------------");
-        log(0, "Startup time ", convert::DateTimeStrFormat(runtime::timestamp()));
+        log(0, "Startup time ", encoding::DateTimeStrFormat(runtime::timestamp()));
         log(0, version::CLIENT_VERSION_BUILD_STRING);
 
         /* Log the Operating System. */

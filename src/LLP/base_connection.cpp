@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 #include <LLP/templates/trigger.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/system/include/args.h>
 

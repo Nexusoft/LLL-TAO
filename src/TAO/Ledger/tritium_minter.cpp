@@ -43,9 +43,9 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/mempool.h>
 
-#include <Util/include/config.h>
-#include <Util/include/convert.h>
-#include <Util/include/debug.h>
+#include <Util/system/include/config.h>
+#include <Util/encoding/include/convert.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/runtime.h>
 
 #include <cmath>
@@ -881,7 +881,7 @@ namespace TAO
             /* Log block found */
             if(config::nVerbose > 0)
             {
-                std::string strTimestamp = std::string(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
+                std::string strTimestamp = std::string(encoding::DateTimeStrFormat(runtime::unifiedtimestamp()));
 
                 debug::log(1, FUNCTION, "Nexus Stake Minter: New nPoS channel block found at unified time ", strTimestamp);
                 debug::log(1, " blockHash: ", block.GetHash().SubString(30), " block height: ", block.nHeight);

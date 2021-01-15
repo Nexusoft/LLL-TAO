@@ -16,8 +16,8 @@ ________________________________________________________________________________
 #include <cctype>
 #include <locale>
 
-#include <Util/include/debug.h>
-#include <Util/include/convert.h>
+#include <Util/system/include/debug.h>
+#include <Util/encoding/include/convert.h>
 #include <Util/include/string.h>
 
 
@@ -133,7 +133,7 @@ bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE, int64_t CEN
     if(nUnits < 0 || nUnits > COIN_SIZE)
         return false;
 
-    int64_t nWhole = convert::atoi64(strWhole);
+    int64_t nWhole = encoding::atoi64(strWhole);
     int64_t nValue = nWhole* COIN_SIZE + nUnits;
 
     nRet = nValue;

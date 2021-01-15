@@ -47,7 +47,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/mempool.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/runtime.h>
 
 /* Global TAO namespace. */

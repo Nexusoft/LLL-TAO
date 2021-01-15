@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/tritium.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/runtime.h>
 
 namespace Legacy

@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <Util/include/runtime.h>
 #include <Util/system/include/args.h>
-#include <Util/include/convert.h>
+#include <Util/encoding/include/convert.h>
 
 #include <inttypes.h>
 
@@ -97,7 +97,7 @@ namespace Legacy
     {
         if(dAmount <= 0.0 || dAmount > static_cast<double>(Legacy::MaxTxOut()))
             throw std::runtime_error("Invalid amount");
-        int64_t nAmount = convert::roundint64(dAmount * COIN);
+        int64_t nAmount = encoding::roundint64(dAmount * COIN);
         if(!MoneyRange(nAmount))
             throw std::runtime_error("Invalid amount");
 

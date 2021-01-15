@@ -28,7 +28,7 @@ ________________________________________________________________________________
 
 #include <Util/templates/datastream.h>
 
-#include <Util/include/convert.h>
+#include <Util/encoding/include/convert.h>
 #include <Util/encoding/include/base64.h>
 
 /* Global TAO namespace. */

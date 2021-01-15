@@ -23,9 +23,9 @@ ________________________________________________________________________________
 #include <iomanip>
 
 #include <Util/system/include/args.h>
-#include <Util/include/config.h>
+#include <Util/system/include/config.h>
 #include <Util/include/runtime.h>
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 
 //if you don't want to see ANSI colors in the logs, build with NO_ANSI=1
 #ifdef NO_ANSI
@@ -97,7 +97,6 @@ ________________________________________________________________________________
 
 namespace debug
 {
-
     extern std::mutex DEBUG_MUTEX;
     extern std::ofstream ssFile;
     extern thread_local std::string strLastError;

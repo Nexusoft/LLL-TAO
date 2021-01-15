@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_TEMPLATES_STREAM_H
 #define NEXUS_UTIL_TEMPLATES_STREAM_H
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 #include <vector>
 #include <cstdint>

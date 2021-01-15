@@ -29,7 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/object.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 /* Global TAO namespace. */
 namespace TAO

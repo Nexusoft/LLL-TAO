@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <Legacy/include/money.h>
 
-#include <Util/include/softfloat.h>
+#include <Util/system/types/softfloat.h>
 
 /* Global TAO namespace. */
 namespace TAO

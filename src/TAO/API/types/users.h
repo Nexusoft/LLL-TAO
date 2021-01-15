@@ -24,7 +24,7 @@ ________________________________________________________________________________
 
 #include <Legacy/types/transaction.h>
 
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 #include <Util/include/memory.h>
 #include <condition_variable>
 #include <thread>

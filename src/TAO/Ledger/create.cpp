@@ -43,8 +43,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h> //for CREATE_MUTEX
 
-#include <Util/include/convert.h>
-#include <Util/include/debug.h>
+#include <Util/encoding/include/convert.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/runtime.h>
 
 /* Global TAO namespace. */

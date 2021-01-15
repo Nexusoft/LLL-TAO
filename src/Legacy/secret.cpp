@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <Legacy/include/enum.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 #include <assert.h>
 

@@ -15,8 +15,8 @@ ________________________________________________________________________________
 
 #include <openssl/rand.h>
 
-#include <Util/include/convert.h>
-#include <Util/include/debug.h>
+#include <Util/encoding/include/convert.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/runtime.h>
 
 #ifdef WIN32
@@ -86,7 +86,7 @@ namespace LLC
         {
             RAND_add(pdata, nSize, nSize/100.0);
             memset(pdata, 0, nSize);
-            debug::log(0, convert::DateTimeStrFormat(runtime::timestamp()), " RandAddSeed() ", nSize, " bytes");
+            debug::log(0, encoding::DateTimeStrFormat(runtime::timestamp()), " RandAddSeed() ", nSize, " bytes");
         }
     #endif
     }

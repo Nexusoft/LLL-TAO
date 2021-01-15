@@ -12,10 +12,10 @@
 ____________________________________________________________________________________________*/
 
 #include <Util/system/include/args.h>
-#include <Util/include/convert.h>
+#include <Util/encoding/include/convert.h>
 #include <Util/include/runtime.h>
 #include <Util/include/string.h>
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 
 #include <LLP/include/port.h>
 
@@ -61,7 +61,7 @@ namespace config
                 if(mapSettingsRet[name].empty())
                     mapSettingsRet[positive] = "0";
                 else
-                    mapSettingsRet[positive] = (convert::atoi32(mapArgs[name]) == 0) ? "1" : "0";
+                    mapSettingsRet[positive] = (encoding::atoi32(mapArgs[name]) == 0) ? "1" : "0";
             }
         }
     }
@@ -121,7 +121,7 @@ namespace config
         LOCK(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
-            return convert::atoi64(mapArgs[strArg]);
+            return encoding::atoi64(mapArgs[strArg]);
 
         return nDefault;
     }
@@ -136,7 +136,7 @@ namespace config
         {
             if(mapArgs[strArg].empty())
                 return true;
-            return (convert::atoi32(mapArgs[strArg]) != 0);
+            return (encoding::atoi32(mapArgs[strArg]) != 0);
         }
         return fDefault;
     }

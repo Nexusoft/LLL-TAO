@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/basickeystore.h>
 #include <Legacy/wallet/crypter.h>
 
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 
 #include <map>
 #include <set>

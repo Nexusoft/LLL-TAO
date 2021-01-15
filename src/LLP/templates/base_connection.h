@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <LLP/templates/trigger.h>
 #include <LLP/include/version.h>
 
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 #include <Util/templates/datastream.h>
 
 #include <vector>

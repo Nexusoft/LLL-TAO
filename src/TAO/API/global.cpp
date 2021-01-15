@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 namespace TAO
 {

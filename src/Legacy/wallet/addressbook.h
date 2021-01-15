@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_WALLET_ADDRESSBOOK_H
 #define NEXUS_LEGACY_WALLET_ADDRESSBOOK_H
 
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 
 #include <map>
 #include <string>

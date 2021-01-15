@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/db.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/config.h>
-#include <Util/include/debug.h>
+#include <Util/system/include/config.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/filesystem.h>
 
 #include <sys/stat.h>

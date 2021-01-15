@@ -63,7 +63,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * ====================================================
  */
 
-#include <Util/include/softfloat.h>
+#include <Util/system/types/softfloat.h>
 
 namespace cv
 {

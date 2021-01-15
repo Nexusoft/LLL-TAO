@@ -29,10 +29,10 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/tritium_minter.h>
 #include <TAO/Ledger/include/timelocks.h>
 
-#include <Util/include/convert.h>
+#include <Util/encoding/include/convert.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/signals.h>
-#include <Util/include/daemon.h>
+#include <Util/system/include/daemon.h>
 
 #include <Legacy/include/ambassador.h>
 #include <Legacy/wallet/wallet.h>
@@ -75,7 +75,7 @@ int main(int argc, char** argv)
     /* Handle Commandline switch */
     for(int i = 1; i < argc; ++i)
     {
-        if(!convert::IsSwitchChar(argv[i][0]))
+        if(!encoding::IsSwitchChar(argv[i][0]))
         {
             int nRet = 0;
 

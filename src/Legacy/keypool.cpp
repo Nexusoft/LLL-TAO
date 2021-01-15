@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/walletdb.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/runtime.h>
 
 #include <exception>

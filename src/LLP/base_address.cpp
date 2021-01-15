@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 #include <LLP/include/hosts.h>   //Lookup
 #include <LLC/hash/SK.h>         //LLC::SK64
-#include <Util/include/debug.h>  //debug::log
+#include <Util/system/include/debug.h>  //debug::log
 #include <Util/include/memory.h> //memory::compare
 #include <algorithm>             //std::copy
 

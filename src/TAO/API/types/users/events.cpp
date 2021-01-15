@@ -46,7 +46,7 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/trustkey.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 #include <vector>
 

@@ -15,8 +15,8 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <openssl/bn.h>
 
-#include <Util/include/debug.h>
-#include <Util/include/softfloat.h>
+#include <Util/system/include/debug.h>
+#include <Util/system/types/softfloat.h>
 
 
 /* Global TAO namespace. */

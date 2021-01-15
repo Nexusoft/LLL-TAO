@@ -39,8 +39,8 @@ ________________________________________________________________________________
 #include <TAO/Register/include/unpack.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/convert.h>
-#include <Util/include/debug.h>
+#include <Util/encoding/include/convert.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
 #include <Util/encoding/include/base64.h>
@@ -75,7 +75,7 @@ namespace TAO
             result["channel"]    = (uint32_t)block.nChannel;
             result["version"]    = (uint32_t)block.nVersion;
             result["merkleroot"] = block.hashMerkleRoot.GetHex();
-            result["time"]       = convert::DateTimeStrFormat(block.GetBlockTime());
+            result["time"]       = encoding::DateTimeStrFormat(block.GetBlockTime());
             result["nonce"]      = (uint64_t)block.nNonce;
             result["bits"]       = HexBits(block.nBits);
             result["difficulty"] = TAO::Ledger::GetDifficulty(block.nBits, block.nChannel);

@@ -12,10 +12,10 @@
 ____________________________________________________________________________________________*/
 
 #include <Util/system/include/args.h>
-#include <Util/include/config.h>
-#include <Util/include/mutex.h>
+#include <Util/system/include/config.h>
+#include <Util/system/types/mutex.h>
 #include <Util/include/filesystem.h>
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <fstream>
 #include <cstring> /* strlen */
 

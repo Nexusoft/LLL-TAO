@@ -28,7 +28,7 @@ ________________________________________________________________________________
 
 #include <unit/catch2/catch.hpp>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 TEST_CASE( "Signature Chain Generation", "[ledger]")
 {

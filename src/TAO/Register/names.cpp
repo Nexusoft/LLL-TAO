@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/names.h>
 #include <TAO/Register/types/address.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 #include <vector>
 

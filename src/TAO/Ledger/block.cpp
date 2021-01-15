@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <Util/templates/datastream.h>
 #include <Util/include/hex.h>
 #include <Util/system/include/args.h>
-#include <Util/include/convert.h>
+#include <Util/encoding/include/convert.h>
 #include <Util/include/runtime.h>
 
 #include <TAO/Ledger/types/block.h>
@@ -538,13 +538,13 @@ namespace TAO
          *  Reading and Writing Across Sockets. */
         std::vector<uint8_t> Block::Serialize() const
         {
-            std::vector<uint8_t> VERSION  = convert::uint2bytes(nVersion);
+            std::vector<uint8_t> VERSION  = encoding::uint2bytes(nVersion);
             std::vector<uint8_t> PREVIOUS = hashPrevBlock.GetBytes();
             std::vector<uint8_t> MERKLE   = hashMerkleRoot.GetBytes();
-            std::vector<uint8_t> CHANNEL  = convert::uint2bytes(nChannel);
-            std::vector<uint8_t> HEIGHT   = convert::uint2bytes(nHeight);
-            std::vector<uint8_t> BITS     = convert::uint2bytes(nBits);
-            std::vector<uint8_t> NONCE    = convert::uint2bytes64(nNonce);
+            std::vector<uint8_t> CHANNEL  = encoding::uint2bytes(nChannel);
+            std::vector<uint8_t> HEIGHT   = encoding::uint2bytes(nHeight);
+            std::vector<uint8_t> BITS     = encoding::uint2bytes(nBits);
+            std::vector<uint8_t> NONCE    = encoding::uint2bytes64(nNonce);
 
             std::vector<uint8_t> vData;
             vData.insert(vData.end(), VERSION.begin(),   VERSION.end());
@@ -562,15 +562,15 @@ namespace TAO
         /*  Convert Byte Stream into Block Header. */
         void Block::Deserialize(const std::vector<uint8_t>& vData)
         {
-            nVersion = convert::bytes2uint(std::vector<uint8_t>(vData.begin(), vData.begin() + 4));
+            nVersion = encoding::bytes2uint(std::vector<uint8_t>(vData.begin(), vData.begin() + 4));
 
             hashPrevBlock.SetBytes (std::vector<uint8_t>(vData.begin() + 4, vData.begin() + 132));
             hashMerkleRoot.SetBytes(std::vector<uint8_t>(vData.begin() + 132, vData.end() - 20));
 
-            nChannel = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 20, vData.end() - 16));
-            nHeight  = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 16, vData.end() - 12));
-            nBits    = convert::bytes2uint(std::vector<uint8_t>( vData.end() - 12, vData.end() - 8));
-            nNonce   = convert::bytes2uint64(std::vector<uint8_t>(vData.end() -  8, vData.end()));
+            nChannel = encoding::bytes2uint(std::vector<uint8_t>( vData.end() - 20, vData.end() - 16));
+            nHeight  = encoding::bytes2uint(std::vector<uint8_t>( vData.end() - 16, vData.end() - 12));
+            nBits    = encoding::bytes2uint(std::vector<uint8_t>( vData.end() - 12, vData.end() - 8));
+            nNonce   = encoding::bytes2uint64(std::vector<uint8_t>(vData.end() -  8, vData.end()));
         }
 
 

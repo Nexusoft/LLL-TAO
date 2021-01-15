@@ -19,9 +19,9 @@ ________________________________________________________________________________
 #include <LLC/include/key_error.h>
 #include <LLC/include/eckey.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/hex.h>
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 #include <openssl/ec.h> // for EC_KEY definition
 
 namespace LLC

@@ -24,7 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 
 /* Global TAO namespace. */

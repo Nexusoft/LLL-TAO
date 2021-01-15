@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <LLD/hash/xxhash.h>
 
-#include <Util/include/mutex.h>
+#include <Util/system/types/mutex.h>
 
 #include <cstdint>
 #include <vector>

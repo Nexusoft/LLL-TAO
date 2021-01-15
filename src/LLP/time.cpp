@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/timelocks.h>
 
-#include <Util/include/convert.h>
+#include <Util/encoding/include/convert.h>
 
 /* The location of the unified time seed. To enable a Unified Time System push data to this variable. */
 std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
@@ -165,13 +165,13 @@ namespace LLP
         /* Rspond with an offset. */
         if(PACKET.HEADER == GET_OFFSET)
         {
-            uint32_t nTimestamp  = convert::bytes2uint(PACKET.DATA);
+            uint32_t nTimestamp  = encoding::bytes2uint(PACKET.DATA);
             int32_t   nOffset    = (int32_t)(runtime::unifiedtimestamp() - nTimestamp);
 
             Packet RESPONSE;
             RESPONSE.HEADER = TIME_OFFSET;
             RESPONSE.LENGTH = 4;
-            RESPONSE.DATA   = convert::int2bytes(nOffset);
+            RESPONSE.DATA   = encoding::int2bytes(nOffset);
 
             debug::log(4, NODE, "Sent offset ", nOffset);
 
@@ -194,7 +194,7 @@ namespace LLP
             }
 
             /* Calculate this particular sample. */
-            int32_t nOffset = convert::bytes2int(PACKET.DATA);
+            int32_t nOffset = encoding::bytes2int(PACKET.DATA);
             nSamples.Add(nOffset);
 
             /* Verbose debug output. */
@@ -242,7 +242,7 @@ namespace LLP
         Packet REQUEST;
         REQUEST.HEADER = GET_OFFSET;
         REQUEST.LENGTH = 4;
-        REQUEST.DATA = convert::uint2bytes(static_cast<uint32_t>(runtime::timestamp()));
+        REQUEST.DATA = encoding::uint2bytes(static_cast<uint32_t>(runtime::timestamp()));
 
         /* Write the packet to socket streams. */
         WritePacket(REQUEST);

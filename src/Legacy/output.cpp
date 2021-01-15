@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <Legacy/types/output.h>
 #include <Legacy/types/wallettx.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <Util/include/string.h> /* for FormatMoney() */
 
 namespace Legacy

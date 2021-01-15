@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 
 namespace Legacy

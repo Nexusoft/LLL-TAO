@@ -39,8 +39,8 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/types/reservekey.h>
 
-#include <Util/include/config.h>
-#include <Util/include/convert.h>
+#include <Util/system/include/config.h>
+#include <Util/encoding/include/convert.h>
 #include <Util/system/include/args.h>
 
 
@@ -333,7 +333,7 @@ namespace LLP
             /* Set the Mining Channel this Connection will Serve Blocks for. */
             case SET_CHANNEL:
             {
-                nChannel = convert::bytes2uint(PACKET.DATA);
+                nChannel = encoding::bytes2uint(PACKET.DATA);
 
                 switch (nChannel.load())
                 {
@@ -379,7 +379,7 @@ namespace LLP
                 uint8_t nSize = PACKET.DATA[0];
 
                 /* Bytes 1 - 8 is the Wallet Operator Fee for that Round. */
-                uint64_t nWalletFee  = convert::bytes2uint64(PACKET.DATA, 1);
+                uint64_t nWalletFee  = encoding::bytes2uint64(PACKET.DATA, 1);
 
                 /* Iterator offset for map deserialization. */
                 uint32_t nIterator = 9;
@@ -399,7 +399,7 @@ namespace LLP
                                              PACKET.DATA.begin() + nIterator + 1 + nLength);
 
                     /* Get the value for the coinbase output. */
-                    uint64_t nValue = convert::bytes2uint64(
+                    uint64_t nValue = encoding::bytes2uint64(
                         std::vector<uint8_t>(PACKET.DATA.begin() + nIterator + 1 + nLength,
                                              PACKET.DATA.begin() + nIterator + 1 + nLength + 8));
 
@@ -411,7 +411,7 @@ namespace LLP
                     }
 
                     /* Get the string address. */
-                    std::string strAddress = convert::bytes2string(vAddress);
+                    std::string strAddress = encoding::bytes2string(vAddress);
 
                     /* Validate the address. Disconnect immediately if an invalid address is provided. */
                     uint256_t hashGenesis(strAddress);
@@ -474,7 +474,7 @@ namespace LLP
                 }
 
                 /* Create the response packet and write. */
-                respond(BLOCK_HEIGHT, convert::uint2bytes(nBestHeight + 1));
+                respond(BLOCK_HEIGHT, encoding::uint2bytes(nBestHeight + 1));
 
                 return true;
             }
@@ -513,7 +513,7 @@ namespace LLP
 
 
                 /* Respond with BLOCK_REWARD message. */
-                respond(BLOCK_REWARD, convert::uint2bytes64(nReward));
+                respond(BLOCK_REWARD, encoding::uint2bytes64(nReward));
 
                 /* Debug output. */
                 debug::log(2, FUNCTION, "Sent Coinbase Reward of ", nReward);
@@ -529,7 +529,7 @@ namespace LLP
                     return debug::error(FUNCTION, "Cannot subscribe to Stake Channel.");
 
                 /* Get the number of subscribed blocks. */
-                nSubscribed = convert::bytes2uint(PACKET.DATA);
+                nSubscribed = encoding::bytes2uint(PACKET.DATA);
 
                 /* Check for zero blocks. */
                 if(nSubscribed.load() == 0)
@@ -585,7 +585,7 @@ namespace LLP
                 hashMerkle.SetBytes(std::vector<uint8_t>(PACKET.DATA.begin(), PACKET.DATA.end() - 8));
 
                 /* Get the nonce */
-                nonce = convert::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
+                nonce = encoding::bytes2uint64(std::vector<uint8_t>(PACKET.DATA.end() - 8, PACKET.DATA.end()));
 
                 LOCK(MUTEX);
 
@@ -962,7 +962,7 @@ namespace LLP
            /* Log block found */
            if(config::nVerbose > 0)
            {
-               std::string strTimestamp(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
+               std::string strTimestamp(encoding::DateTimeStrFormat(runtime::unifiedtimestamp()));
                if(pBlock->nChannel == 1)
                    debug::log(1, FUNCTION, "new prime block found at unified time ", strTimestamp);
                else

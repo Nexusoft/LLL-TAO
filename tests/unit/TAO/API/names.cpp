@@ -32,7 +32,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/names.h>
 #include <TAO/API/include/global.h>
 
-#include <Util/include/convert.h>
+#include <Util/encoding/include/convert.h>
 #include <Util/encoding/include/base64.h>
 
 /* Declare names / hashes in global scope so that we can reuse them for the update/get */

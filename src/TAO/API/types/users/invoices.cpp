@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 
 
 /* Global TAO namespace. */

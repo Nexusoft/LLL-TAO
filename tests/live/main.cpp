@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLD/keychain/hashmap.h>
 #include <LLD/templates/static.h>
 
-#include <Util/include/debug.h>
+#include <Util/system/include/debug.h>
 #include <Util/encoding/include/base64.h>
 
 #include <openssl/rand.h>
@@ -55,7 +55,7 @@ ________________________________________________________________________________
 #include <functional>
 #include <variant>
 
-#include <Util/include/softfloat.h>
+#include <Util/system/types/softfloat.h>
 #include <Util/include/filesystem.h>
 
 #include <TAO/Ledger/include/constants.h>
