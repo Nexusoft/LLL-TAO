@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Util/include/base64.h>
+#include <Util/encoding/include/base64.h>
 #include <cstring>
 
 namespace encoding

@@ -41,7 +41,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 
 #include <Util/memory/include/allocators.h>
-#include <Util/include/base64.h>
+#include <Util/encoding/include/base64.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
 

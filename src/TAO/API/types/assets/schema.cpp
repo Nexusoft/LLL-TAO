@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 
-#include <Util/include/base64.h>
+#include <Util/encoding/include/base64.h>
 
 /* Global TAO namespace. */
 namespace TAO

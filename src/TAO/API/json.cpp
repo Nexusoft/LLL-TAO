@@ -43,7 +43,7 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
-#include <Util/include/base64.h>
+#include <Util/encoding/include/base64.h>
 
 
 

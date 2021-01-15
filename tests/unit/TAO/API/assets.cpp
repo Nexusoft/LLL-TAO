@@ -31,7 +31,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/names.h>
 
 #include <Util/include/convert.h>
-#include <Util/include/base64.h>
+#include <Util/encoding/include/base64.h>
 
 /* Declare asset names / hashes in global scope so that we can reuse them for the update/get */
 std::string strBasicAsset = "ASSET" +std::to_string(LLC::GetRand());

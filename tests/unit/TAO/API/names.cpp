@@ -33,7 +33,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 
 #include <Util/include/convert.h>
-#include <Util/include/base64.h>
+#include <Util/encoding/include/base64.h>
 
 /* Declare names / hashes in global scope so that we can reuse them for the update/get */
 std::string strName = "NAME" +std::to_string(LLC::GetRand());

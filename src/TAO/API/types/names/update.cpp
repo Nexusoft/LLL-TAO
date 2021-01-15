@@ -30,7 +30,7 @@ ________________________________________________________________________________
 #include <Util/templates/datastream.h>
 
 #include <Util/include/convert.h>
-#include <Util/include/base64.h>
+#include <Util/encoding/include/base64.h>
 
 /* Global TAO namespace. */
 namespace TAO

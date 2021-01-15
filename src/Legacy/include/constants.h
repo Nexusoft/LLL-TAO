@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LEGACY_INCLUDE_CONSTANTS_H
 
 #include <LLC/types/bignum.h>
-#include <Util/include/base58.h>
+#include <Util/encoding/include/base58.h>
 
 #include <string>
 #include <vector>

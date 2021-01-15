@@ -6,7 +6,7 @@
 
 #include <Util/include/json.h>
 #include <Util/include/config.h>
-#include <Util/include/base64.h>
+#include <Util/encoding/include/base64.h>
 
 #include <unit/catch2/catch.hpp>
 

@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLP/types/rpcnode.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/base64.h>
+#include <Util/encoding/include/base64.h>
 #include <Util/include/config.h>
 #include <Util/include/debug.h>
 #include <Util/include/json.h>
