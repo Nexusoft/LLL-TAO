@@ -105,43 +105,59 @@ namespace TAO
         {
             json::json jsonSanitizedParams = jsonParams;
 
+            /* The number of parameters */
             int n = jsonSanitizedParams.size();
+
+            /* The location of the first parameter.  This will be >0 if token/token_name has been injected into spot 1*/
+            int nFirst = 0;
+
+            /* Adjust the parameter count if a token name/address has been injected */
+            if(n > 0 && jsonSanitizedParams[0].is_string())
+            {
+                std::string strParam = jsonSanitizedParams.get<std::string>();
+                
+                if(strParam.find("token=") != strParam.npos || strParam.find("token_name=") != strParam.npos)
+                {
+                    n--;
+                    nFirst = 1;
+                }
+            }
 
             //
             // Special case non-string parameter types
             //
-            if (strMethod == "setgenerate"            && n > 0) convert::StringValueTo<bool>(jsonSanitizedParams[0]);
-            if (strMethod == "dumprichlist"           && n > 0) convert::StringValueTo<int>(jsonSanitizedParams[0]);
-            if (strMethod == "setgenerate"            && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[1]);
-            if (strMethod == "sendtoaddress"          && n > 1) convert::StringValueTo<double>(jsonSanitizedParams[1]);
-            if (strMethod == "settxfee"               && n > 0) convert::StringValueTo<double>(jsonSanitizedParams[0]);
-            if (strMethod == "getreceivedbyaddress"   && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[1]);
-            if (strMethod == "getreceivedbyaccount"   && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[1]);
-            if (strMethod == "listreceivedbyaddress"  && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[0]);
-            if (strMethod == "listreceivedbyaddress"  && n > 1) convert::StringValueTo<bool>(jsonSanitizedParams[1]);
-            if (strMethod == "listreceivedbyaccount"  && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[0]);
-            if (strMethod == "listreceivedbyaccount"  && n > 1) convert::StringValueTo<bool>(jsonSanitizedParams[1]);
-            if (strMethod == "getbalance"             && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[1]);
-            if (strMethod == "getblockhash"           && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[0]);
-            if (strMethod == "getblock"               && n > 1) convert::StringValueTo<bool>(jsonSanitizedParams[1]);
-            if (strMethod == "move"                   && n > 2) convert::StringValueTo<double>(jsonSanitizedParams[2]);
-            if (strMethod == "move"                   && n > 3) convert::StringValueTo<uint64_t>(jsonSanitizedParams[3]);
-            if (strMethod == "sendfrom"               && n > 2) convert::StringValueTo<double>(jsonSanitizedParams[2]);
-            if (strMethod == "sendfrom"               && n > 3) convert::StringValueTo<uint64_t>(jsonSanitizedParams[3]);
-            if (strMethod == "listtransactions"       && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[1]);
-            if (strMethod == "listtransactions"       && n > 2) convert::StringValueTo<uint64_t>(jsonSanitizedParams[2]);
-            if (strMethod == "totaltransactions"      && n > 0) convert::StringValueTo<bool>(jsonSanitizedParams[0]);
-            if (strMethod == "gettransactions"        && n > 1) convert::StringValueTo<int>(jsonSanitizedParams[1]);
-            if (strMethod == "gettransactions"        && n > 2) convert::StringValueTo<bool>(jsonSanitizedParams[2]);
-            if (strMethod == "listaddresses"          && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[0]);
-            if (strMethod == "listaccounts"           && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[0]);
-            if (strMethod == "listunspent"            && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[0]);
-            if (strMethod == "listunspent"            && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[1]);
-            if (strMethod == "walletpassphrase"       && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[1]);
-            if (strMethod == "walletpassphrase"       && n > 2) convert::StringValueTo<bool>(jsonSanitizedParams[2]);
-            if (strMethod == "listsinceblock"         && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[1]);
-            if (strMethod == "sendmany"                && n > 2) convert::StringValueTo<uint64_t>(jsonSanitizedParams[2]);
-            if (strMethod == "addmultisigaddress"      && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[0]);
+            if (strMethod == "setgenerate"            && n > 0) convert::StringValueTo<bool>(jsonSanitizedParams[nFirst]);
+            if (strMethod == "dumprichlist"           && n > 0) convert::StringValueTo<int>(jsonSanitizedParams[nFirst]);
+            if (strMethod == "setgenerate"            && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "sendtoaddress"          && n > 1) convert::StringValueTo<double>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "settxfee"               && n > 0) convert::StringValueTo<double>(jsonSanitizedParams[nFirst]);
+            if (strMethod == "getreceivedbyaddress"   && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "getreceivedbyaccount"   && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "listreceivedbyaddress"  && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst]);
+            if (strMethod == "listreceivedbyaddress"  && n > 1) convert::StringValueTo<bool>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "listreceivedbyaccount"  && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst]);
+            if (strMethod == "listreceivedbyaccount"  && n > 1) convert::StringValueTo<bool>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "getbalance"             && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "getblockhash"           && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst]);
+            if (strMethod == "getblock"               && n > 1) convert::StringValueTo<bool>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "move"                   && n > 2) convert::StringValueTo<double>(jsonSanitizedParams[nFirst + 2]);
+            if (strMethod == "move"                   && n > 3) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 3]);
+            if (strMethod == "sendfrom"               && n > 2) convert::StringValueTo<double>(jsonSanitizedParams[nFirst + 2]);
+            if (strMethod == "sendfrom"               && n > 3) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 3]);
+            if (strMethod == "listtransactions"       && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "listtransactions"       && n > 2) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 2]);
+            if (strMethod == "totaltransactions"      && n > 0) convert::StringValueTo<bool>(jsonSanitizedParams[nFirst]);
+            if (strMethod == "gettransactions"        && n > 1) convert::StringValueTo<int>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "gettransactions"        && n > 2) convert::StringValueTo<bool>(jsonSanitizedParams[nFirst + 2]);
+            if (strMethod == "listaddresses"          && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst]);
+            if (strMethod == "listaccounts"           && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst]);
+            if (strMethod == "listunspent"            && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst]);
+            if (strMethod == "listunspent"            && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "walletpassphrase"       && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "walletpassphrase"       && n > 2) convert::StringValueTo<bool>(jsonSanitizedParams[nFirst + 2]);
+            if (strMethod == "listsinceblock"         && n > 1) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 1]);
+            if (strMethod == "sendmany"               && n > 2) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst + 2]);
+            if (strMethod == "addmultisigaddress"     && n > 0) convert::StringValueTo<uint64_t>(jsonSanitizedParams[nFirst]);
 
 
             return jsonSanitizedParams;
@@ -207,6 +223,43 @@ namespace TAO
                 nConnections += LLP::TRITIUM_SERVER->GetConnectionCount();
 
             return nConnections;
+        }
+
+
+        /* Checks to see whether the first paramter of the parms is either token= or token_name=
+        *  If it is then this is parsed into a field : value JSON object and returned */
+        bool RPC::parse_token(const json::json& jsonParams, json::json& jsonToken)
+        {
+            /* Check to see if the caller has specified a token / token_name */
+            if(jsonParams.size() > 0 && jsonParams[0].is_string())
+            {
+                std::string strParam = jsonParams[0].get<std::string>();
+                
+                /* Check for token= */
+                size_t nPos = strParam.find("token=");
+                
+                /* If no token= then check for token_name= */
+                if(nPos == strParam.npos)
+                    nPos = strParam.find("token_name=");
+
+                /* If one of them exists then parse the value */
+                if(nPos != strParam.npos)
+                {
+                    size_t nPos2 = strParam.find("=");
+                    
+                    /* get the field name */
+                    std::string strField = strParam.substr(0, nPos2);
+
+                    /* Get the value */
+                    std::string strValue = strParam.substr(nPos2+1);
+
+                    /* Insert it into the first spot in the params */
+                    jsonToken[strField] = strValue;
+
+                }
+            }
+
+            return !jsonToken.empty();
         }
 
     }

@@ -938,6 +938,21 @@ namespace TAO
              *
              **/
             uint32_t GetTotalConnectionCount();
+
+            
+            /** parse_token
+            *
+            *  Checks to see whether the first paramter of the parms is either token= or token_name=
+            *  If it is then this is parsed into a field : value JSON object and returned
+            *
+            *  @param[in] jsonParams Parameters array passed by the caller.
+            *  @param[out] jsonToken The json containing the token name or address.
+            *
+            *  @return True if the jsonParams contains a token or token_address parameter.
+            *
+            **/
+            bool parse_token(const json::json& jsonParams, json::json& jsonToken);
+
         };
 
     }
