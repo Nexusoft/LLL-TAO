@@ -30,6 +30,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
+#include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -508,6 +509,15 @@ namespace TAO
                     "getbalance [account] [minconf=1]"
                     " - If [account] is not specified, returns the server's total available balance."
                     " If [account] is specified, returns the balance in the account.");
+
+
+            /* Check to see if the caller has specified a token / token_name */
+            json::json token;
+            if(parse_token(params, token))
+            {
+                json::json jsonBalances = TAO::API::finance->GetBalances(token, false);
+                return jsonBalances["available"];
+            }
 
             if(params.size() == 0)
                 return  Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetBalance());
@@ -1779,7 +1789,7 @@ namespace TAO
 
                         /* Read the previous transaction. This could be a legacy or tritium transaction*/
                         Legacy::Transaction txPrev;
-                        Ledger::Transaction txPrevTritium;
+                        TAO::Ledger::Transaction txPrevTritium;
                         if(LLD::Legacy->ReadTx(prevout.hash, txPrev))
                         {
                             /* Extract the address. */
