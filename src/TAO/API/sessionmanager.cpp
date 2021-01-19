@@ -32,6 +32,8 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
+        /* Single session manager pointer instead of a static reference, so that we can control destruction */
+        SessionManager* SESSION_MANAGER = nullptr;
         
         /* Helper method to simplify session manager access */
         SessionManager& GetSessionManager()
@@ -42,8 +44,11 @@ namespace TAO
         /* Singleton access */
         SessionManager& SessionManager::Instance()
         {
-            static SessionManager sessionManager;
-            return sessionManager;
+            /* Lazy instantiate the session manager instance */
+            if(SESSION_MANAGER == nullptr)
+                SESSION_MANAGER = new SessionManager();
+
+            return *SESSION_MANAGER;
         }
 
 

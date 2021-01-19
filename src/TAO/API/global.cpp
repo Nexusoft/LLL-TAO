@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
+#include <TAO/API/types/sessionmanager.h>
+
 #include <Util/include/debug.h>
 
 namespace TAO

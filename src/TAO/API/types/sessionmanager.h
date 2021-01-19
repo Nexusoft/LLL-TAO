@@ -147,6 +147,9 @@ namespace TAO
         /* Helper method to simplify session manager access */
         extern SessionManager& GetSessionManager();
 
+        /* Single session manager pointer instead of a static reference, so that we can control destruction */
+        extern SessionManager* SESSION_MANAGER;
+
 
     }// end API namespace
 

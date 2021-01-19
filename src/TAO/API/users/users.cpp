@@ -75,6 +75,9 @@ namespace TAO
             /* Clear all sessions */
             GetSessionManager().Clear();
 
+            /* Delete session */
+            delete SESSION_MANAGER;
+            SESSION_MANAGER = nullptr;
         }
 
 
