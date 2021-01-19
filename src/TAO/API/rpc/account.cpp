@@ -76,6 +76,22 @@ namespace TAO
                     "If [account] is specified (recommended), it is added to the address book "
                     "so payments received with the address will be credited to [account].");
 
+
+            /* Check to see if the caller has specified a token / token_name */
+            json::json token;
+            if(parse_token(params, token))
+            {
+                /* TODO */
+                /* Get the pin from the wallet.dat to  */
+                SecureString strPIN = "1234";
+
+                /* Add the pin to the token params */
+                token["pin"] = strPIN.c_str();
+
+                json::json jsonAccount = TAO::API::finance->Create(token, false);
+                return jsonAccount["address"];
+            }
+
             // Parse the account first so we don't generate a key if there's an error
             std::string strAccount = "default";
             if(params.size() > 0)
