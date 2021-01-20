@@ -127,7 +127,7 @@ namespace TAO
                         /* Request the genesis hash from the peer. */
                         debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::GENESIS for ", hashRecipient.SubString());
 
-                        LLP::TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::GENESIS), hashRecipient);
+                        LLP::TritiumNode::BlockingMessage(10000, pNode.load(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::GENESIS), hashRecipient);
 
                         debug::log(1, FUNCTION, "CLIENT MODE: GET::GENESIS received for ", hashRecipient.SubString());
                     }

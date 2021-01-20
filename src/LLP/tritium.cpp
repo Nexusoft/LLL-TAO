@@ -484,6 +484,11 @@ namespace LLP
                 nUnsubscribed = 0;
                 nNotifications = 0;
 
+                /* Finally, if this was the last remaining connection then reset the synchronized flag, as we do not know how long
+                   it will be until we get our next connection so have to assume that we will not be in sync. */
+                if(LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
+                    fSynchronized.store(false);
+
                 break;
             }
         }
@@ -731,27 +736,12 @@ namespace LLP
                     /* Before subscribing to sig chain transactions and notifications we first ask the node to send us any that we
                        might not alraedy have.  This could happen if we get disconnected from peers whilst logged in and new events
                        or transactions occur */
+                    SyncSigChain(this, hashGenesis, false, true);
 
                     /* Get the last txid in sigchain. */
                     uint512_t hashLast;
                     LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
 
-                    /* Request the sig chain. */
-                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
-
-                    /* Get the last event txid */
-                    LLD::Ledger->ReadLastEvent(hashGenesis, hashLast);
-
-                    /* Request notifications/events. */
-                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLast);
-
-                    /* Get the last legacy event txid*/
-                    LLD::Legacy->ReadLastEvent(hashGenesis, hashLast);
-
-                    /* Request notifications/events. */
-                    PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLast);
-                    
-                    
                     /* Subscribe to sig chain transactions */
                     Subscribe(SUBSCRIPTION::SIGCHAIN);
 
@@ -772,9 +762,6 @@ namespace LLP
                         {
                             /* Get the last event txid */
                             LLD::Ledger->ReadLastEvent(hashAddress, hashLast);
-
-                            /* Request existing notifications/events. */
-                            PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLast);
 
                             /* Subscribe to new notifications */
                             SubscribeNotification(hashAddress);
@@ -798,9 +785,6 @@ namespace LLP
                             {
                                 /* Get the last event txid */
                                 LLD::Ledger->ReadLastEvent(hashAddress, hashLast);
-
-                                /* Request existing notifications/events. */
-                                PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLast);
 
                                 /* Subscribe to new notifications */
                                 SubscribeNotification(hashAddress);
@@ -2592,6 +2576,19 @@ namespace LLP
                                             debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
                                             debug::log(0, NODE, "ACTION::NOTIFY: Synchronized ", nBlocks, " blocks in ", nElapsed, " seconds [", dRate, " blocks/s]" );
 
+
+                                            /* If in client mode and logged in, request a sig chain sync as soon as we get the blocks syncd */
+                                            if(config::fClient.load() && TAO::API::users->LoggedIn())
+                                            {
+                                                /* Get the Session */
+                                                TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
+
+                                                /* The genesis of the currently logged in user */
+                                                uint256_t hashSigchain = session.GetAccount()->Genesis();
+
+                                                /* Send the sync messages */
+                                                SyncSigChain(this, hashGenesis, false, true);
+                                            }
                                         }
                                         else
                                         {
@@ -2644,6 +2641,19 @@ namespace LLP
 
                                 /* Log that sync is complete. */
                                 debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
+
+                                /* If in client mode and logged in, request a sig chain sync as soon as we get the blocks syncd */
+                                if(config::fClient.load() && TAO::API::users->LoggedIn())
+                                {
+                                    /* Get the Session */
+                                    TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
+
+                                    /* The genesis of the currently logged in user */
+                                    uint256_t hashSigchain = session.GetAccount()->Genesis();
+
+                                    /* Send the sync messages */
+                                    SyncSigChain(this, hashGenesis, false, true);
+                                }
                             }
 
                             /* Debug output. */
@@ -4594,5 +4604,101 @@ namespace LLP
         /* Report status once complete. */
         debug::log(0, FUNCTION, "Relay for ", hashBlock.SubString(), " completed in ", swTimer.ElapsedMilliseconds(), " ms [", (nTotalEvents * 1000000) / (swTimer.ElapsedMicroseconds() + 1), " events/s]");
 
+    }
+
+
+    /* Requests missing sig chain / event transactions for the given signature chain. */
+    void TritiumNode::SyncSigChain(LLP::TritiumNode* pNode, const uint256_t& hashGenesis, bool bWait, bool bSyncEvents)
+    {
+        if(config::fClient.load())
+        {
+            /* Get the last txid in sigchain. */
+            uint512_t hashLast;
+            LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
+
+
+            /* Request the sig chain from all. */
+            if(bWait)
+                TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+            else
+                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+
+            /* Get the last event txid */
+            uint512_t hashLastEvent;
+            LLD::Ledger->ReadLastEvent(hashGenesis, hashLastEvent);
+
+            /* Sync events if requested */
+            if(bSyncEvents)
+            {
+                /* Request notifications/events. */
+                if(bWait)
+                    TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
+ 
+                else
+                    pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
+
+                /* Get the last legacy event txid*/
+                uint512_t hashLastLegacyEvent;
+                LLD::Legacy->ReadLastEvent(hashGenesis, hashLastLegacyEvent);
+
+                /* Request legacy notifications/events. */
+                if(bWait)
+                    TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
+                else 
+                    pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
+            
+
+                /* Request notifications for any tokens we own, or any tokens that we have accounts for */
+
+                /* Get the list of accounts and tokens owned by this sig chain */
+                std::vector<TAO::Register::Address> vAddresses;
+                TAO::API::ListAccounts(hashGenesis, vAddresses, true, false);
+
+                /* Now iterate through and find all tokens and token accounts */
+                for(const auto& hashAddress : vAddresses)
+                {
+                    /* For tokens just subscribe to it */
+                    if(hashAddress.IsToken())
+                    {
+                        /* Get the last event txid */
+                        LLD::Ledger->ReadLastEvent(hashAddress, hashLastEvent);
+
+                        /* Request existing notifications/events. */
+                        if(bWait)
+                            TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                        else 
+                            pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+
+                    }
+                    else if(hashAddress.IsAccount())
+                    {
+                        /* Get the token account object. */
+                        TAO::Register::Object account;
+                        if(!LLD::Register->ReadState(hashAddress, account, TAO::Ledger::FLAGS::LOOKUP))
+                            debug::error(FUNCTION, "Token/account not found");
+
+                        /* Parse the object register. */
+                        if(!account.Parse())
+                            debug::error(FUNCTION, "Object failed to parse");
+
+                        /* Get the token */
+                        uint256_t hashToken = account.get<uint256_t>("token");
+
+                        /* If it is not a NXS account, and we have not already subscribed to it, subscribe to it */
+                        if(hashToken != 0 && std::find(pNode->vNotifications.begin(), pNode->vNotifications.end(), hashAddress) == pNode->vNotifications.end())
+                        {
+                            /* Get the last event txid */
+                            LLD::Ledger->ReadLastEvent(hashAddress, hashLastEvent);
+
+                            /* Request existing notifications/events. */
+                            if(bWait)
+                                TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                            else
+                                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -515,7 +515,7 @@ namespace LLP
          *  @param[in] args variable args to be sent in the message.
          **/
         template<typename... Args>
-        static void BlockingMessage(const uint32_t nTimeout, memory::atomic_ptr<LLP::TritiumNode>& pNode, const uint16_t nMsg, Args&&... args)
+        static void BlockingMessage(const uint32_t nTimeout, LLP::TritiumNode* pNode, const uint16_t nMsg, Args&&... args)
         {
             /* Create our trigger nonce. */
             uint64_t nNonce = LLC::GetRand();
@@ -546,6 +546,19 @@ namespace LLP
          * 
          **/
         static void RelayBlock(const uint1024_t& hashBlock);
+
+
+        /** SyncSigChain
+         *
+         *  Requests missing sig chain / event transactions for the given signature chain.
+         *  
+         *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
+         *  @param[in] hashGenesis The genesis hash of the sig chain to sync.
+         *  @param[in] bWait  Flag indicating that the method should wait until the sig chain is downloaded before returning
+         *  @param[in] bSyncEvents Flag indicating whether or not to also download events for the sig chain
+         * 
+         **/
+        static void SyncSigChain(LLP::TritiumNode* pNode, const uint256_t& hashGenesis, bool bWait, bool bSyncEvents);
 
     };
 } // end namespace LLP

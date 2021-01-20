@@ -439,7 +439,7 @@ namespace TAO
                 if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
                 {
                     /* Download the users signature chain transactions, but we do not need events */
-                    TAO::API::DownloadSigChain(hashGenesis, 30000, false);  
+                    TAO::API::DownloadSigChain(hashGenesis, false);  
                 }
 
                 /* Now lookup the name in this sig chain */

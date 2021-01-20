@@ -114,7 +114,7 @@ namespace TAO
                     throw APIException(-297, "Cannot log in while synchronizing");
 
                 /* Download the users signature chain transactions. */
-                TAO::API::DownloadSigChain(hashGenesis, 30000, true);
+                TAO::API::DownloadSigChain(hashGenesis, true);
                 
             }
 
@@ -256,7 +256,7 @@ namespace TAO
                             throw APIException(-297, "Cannot log in while synchronizing");
 
                         /* Download the users signature chain transactions. */
-                        TAO::API::DownloadSigChain(hashGenesis, 30000, true);                        
+                        TAO::API::DownloadSigChain(hashGenesis, true);                        
                     }
 
                     /* See if the sig chain exists */

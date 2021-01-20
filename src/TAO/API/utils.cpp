@@ -1223,7 +1223,7 @@ namespace TAO
                             /* Request the sig chain. */
                             debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashToken.SubString());
 
-                            LLP::TritiumNode::BlockingMessage(30000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashToken, hashLast);
+                            LLP::TritiumNode::BlockingMessage(30000, pNode.load(), LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashToken, hashLast);
 
                             debug::log(1, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashToken.SubString());
                         }
@@ -1561,7 +1561,7 @@ namespace TAO
 
 
         /*Used for client mode, this method will download the signature chain transactions and events for a given genesis */
-        bool DownloadSigChain(const uint256_t& hashGenesis, uint32_t nTimeout, bool bSyncEvents)
+        bool DownloadSigChain(const uint256_t& hashGenesis, bool bSyncEvents)
         {
             if(LLP::TRITIUM_SERVER)
             {
@@ -1577,24 +1577,10 @@ namespace TAO
                     /* Request the sig chain. */
                     debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
 
-                    LLP::TritiumNode::BlockingMessage(nTimeout, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                    LLP::TritiumNode::SyncSigChain(pNode.load(), hashGenesis, true, bSyncEvents);
 
                     debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 
-                    /* Grab list of notifications. */
-                    if(bSyncEvents)
-                    {
-                        /* The transaction ID of the last event */
-                        uint512_t hashLast = 0;
-
-                        /* Get the last event txid */
-                        LLD::Ledger->ReadLastEvent(hashGenesis, hashLast);
-                        pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLast);
-                        
-                        /* Get the last legacy event txid*/
-                        LLD::Legacy->ReadLastEvent(hashGenesis, hashLast);
-                        pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLast);
-                    }
 
                     return true;
                 }

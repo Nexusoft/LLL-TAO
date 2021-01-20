@@ -451,6 +451,19 @@ namespace TAO
             json::json ProcessNotifications(const json::json& params, bool fHelp);
 
 
+            /** Sync
+             *
+             *  Synchronizes the signature chain for the currently logged in user.  Only applicable in lite / client mode
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Sync(const json::json& params, bool fHelp);
+
+
             /** LoginThread
              *
              *  Background thread to auto login user once connections are established .

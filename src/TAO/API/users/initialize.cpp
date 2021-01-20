@@ -39,6 +39,7 @@ namespace TAO
             mapFunctions["list/names"]               = Function(std::bind(&Users::Names,         this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/namespaces"]          = Function(std::bind(&Users::Namespaces,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/invoices"]            = Function(std::bind(&Users::Invoices,      this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["sync/user"]                = Function(std::bind(&Users::Sync,          this, std::placeholders::_1, std::placeholders::_2));
             
         }
 

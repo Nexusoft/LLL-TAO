@@ -278,14 +278,13 @@ namespace TAO
         *
         *  Used for client mode, this method will download the signature chain transactions and events for a given genesis  
         *
-        *  @param[in] hashGenesis The genesis hash of the sig chain to synchronize for 
-        *  @param[in] nTimeout  Length of time to wait for the download before failing
+        *  @param[in] hashGenesis The genesis hash of the sig chain to synchronize for
         *  @param[in] bSyncEvents Flag indicating whether or not to also download events for the sig chain
         * 
         *  @return Boolean indicating whether the download was successful
         *
         **/
-        bool DownloadSigChain(const uint256_t& hashGenesis, uint32_t nTimeout, bool bSyncEvents);
+        bool DownloadSigChain(const uint256_t& hashGenesis, bool bSyncEvents);
 
 
         /** GetAccountByToken
