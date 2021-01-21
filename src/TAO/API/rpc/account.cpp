@@ -1648,60 +1648,99 @@ namespace TAO
         Returns Object that has account names as keys, account balances as values */
         json::json RPC::ListAccounts(const json::json& params, bool fHelp)
         {
-            if(fHelp || params.size() > 0)
+            if(fHelp)
                 return std::string(
                     "listaccounts"
                     " - Returns Object that has account names as keys, account balances as values.");
 
-            std::map<std::string, int64_t> mapAccountBalances;
-            for(const auto& entry : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
+            /* response json */
+            json::json ret;
+
+            /* Check to see if the caller has specified a token / token_name */
+            json::json token;
+            if(parse_token(params, token))
             {
-                if(Legacy::Wallet::GetInstance().HaveKey(entry.first)) // This address belongs to me
+                /* Map of account names to balances */
+                std::map<std::string, double> mapAccountBalances;
+
+                /* Get the tritium accounts */
+                json::json jsonAccounts = TAO::API::finance->List(token, false);
+                
+                /* Iterate through all accounts and add their available balance to the map */
+                for(const auto& account : jsonAccounts)
                 {
-                    if(entry.second == "" || entry.second == "default")
+                    /* Get the name */
+                    std::string strName = account["name"].get<std::string>();
+
+                    /* If the account has no name then use the address instead */
+                    if(strName.empty())
+                        strName = account["address"].get<std::string>();
+
+                    /* Get the amount */
+                    double dAmount = account["balance"].get<double>();
+
+                    /* If this is a trust account, add on the staked amount */
+                    if(account.find("stake") != account.end())
+                        dAmount += account["stake"].get<double>();
+
+                    mapAccountBalances[strName] = dAmount;
+                }
+
+                for(const auto& accountBalance :  mapAccountBalances)
+                    ret[accountBalance.first] = accountBalance.second;
+            }
+            else
+            {
+
+                /* Map of account names to balances */
+                std::map<std::string, int64_t> mapAccountBalances;
+
+                for(const auto& entry : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
+                {
+                    if(Legacy::Wallet::GetInstance().HaveKey(entry.first)) // This address belongs to me
                     {
-                        if(config::GetBoolArg("-legacy"))
-                            mapAccountBalances[""] = 0;
+                        if(entry.second == "" || entry.second == "default")
+                        {
+                            if(config::GetBoolArg("-legacy"))
+                                mapAccountBalances[""] = 0;
+                            else
+                                mapAccountBalances["default"] = 0;
+                        }
                         else
-                            mapAccountBalances["default"] = 0;
+                            mapAccountBalances[entry.second] = 0;
+                    }
+                }
+
+                /* Get the available addresses from the wallet */
+                std::map<Legacy::NexusAddress, int64_t> mapAddresses;
+                if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
+                    throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
+
+                /* Find all the addresses in the list */
+                for(const auto& entry : mapAddresses)
+                {
+                    if(Legacy::Wallet::GetInstance().GetAddressBook().HasAddress(entry.first))
+                    {
+                        std::string strAccount = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(entry.first);
+                        if(strAccount == "")
+                            strAccount = "default";
+
+                        if(config::GetBoolArg("-legacy") && strAccount == "default")
+                            strAccount = "";
+
+                        mapAccountBalances[strAccount] += entry.second;
                     }
                     else
-                        mapAccountBalances[entry.second] = 0;
+                    {
+                        if(config::GetBoolArg("-legacy"))
+                            mapAccountBalances[""] += entry.second;
+                        else
+                            mapAccountBalances["default"] += entry.second;
+                    }
                 }
-            }
 
-            /* Get the available addresses from the wallet */
-            std::map<Legacy::NexusAddress, int64_t> mapAddresses;
-            if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
-                throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
-
-            /* Find all the addresses in the list */
-            for(const auto& entry : mapAddresses)
-            {
-                if(Legacy::Wallet::GetInstance().GetAddressBook().HasAddress(entry.first))
-                {
-                    std::string strAccount = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(entry.first);
-                    if(strAccount == "")
-                        strAccount = "default";
-
-                    if(config::GetBoolArg("-legacy") && strAccount == "default")
-                        strAccount = "";
-
-                    mapAccountBalances[strAccount] += entry.second;
-                }
-                else
-                {
-                    if(config::GetBoolArg("-legacy"))
-                        mapAccountBalances[""] += entry.second;
-                    else
-                        mapAccountBalances["default"] += entry.second;
-                }
-            }
-
-            json::json ret;
-            for(const auto& accountBalance :  mapAccountBalances)
-            {
-                ret[accountBalance.first] = Legacy::SatoshisToAmount(accountBalance.second);
+                for(const auto& accountBalance :  mapAccountBalances)
+                    ret[accountBalance.first] = Legacy::SatoshisToAmount(accountBalance.second);
             }
 
             return ret;
