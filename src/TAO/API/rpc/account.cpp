@@ -69,7 +69,7 @@ namespace TAO
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
-            if(fHelp || params.size() > 1)
+            if(fHelp)
                 return std::string(
                     "getnewaddress [account]"
                     " - Returns a new Nexus address for receiving payments.  "
@@ -520,7 +520,7 @@ namespace TAO
         *  If [account] is specified, returns the balance in the account */
         json::json RPC::GetBalance(const json::json& params, bool fHelp)
         {
-            if(fHelp || params.size() > 2)
+            if(fHelp)
                 return std::string(
                     "getbalance [account] [minconf=1]"
                     " - If [account] is not specified, returns the server's total available balance."
@@ -1585,25 +1585,61 @@ namespace TAO
         Returns list of addresses */
         json::json RPC::ListAddresses(const json::json& params, bool fHelp)
         {
-            if(fHelp || params.size() != 0)
+            if(fHelp)
                 return std::string(
-                    "listaddresses [max=100]"
+                    "listaddresses "
                     " - Returns list of addresses");
 
-            /* Limit the size. */
-            int nMax = 100;
-            if(params.size() > 0)
-                nMax = params[0];
 
-            /* Get the available addresses from the wallet */
-            std::map<Legacy::NexusAddress, int64_t> mapAddresses;
-            if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
-                throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
-
-            /* Find all the addresses in the list */
+            /* response json */
             json::json list;
-            for(std::map<Legacy::NexusAddress, int64_t>::iterator it = mapAddresses.begin(); it != mapAddresses.end() && list.size() < nMax; ++it)
-                list[it->first.ToString()] = Legacy::SatoshisToAmount(it->second);
+
+            /* Check to see if the caller has specified a token / token_name */
+            json::json token;
+            if(parse_token(params, token))
+            {
+                /* Map of account names to balances */
+                std::map<std::string, double> mapAccountBalances;
+
+                /* Get the tritium accounts */
+                json::json jsonAccounts = TAO::API::finance->List(token, false);
+                
+                /* Iterate through all accounts and add their available balance to the map */
+                for(const auto& account : jsonAccounts)
+                {
+                    /* Get the address */
+                    std::string strAddress = account["address"].get<std::string>();
+
+                    /* Get the amount */
+                    double dAmount = account["balance"].get<double>();
+
+                    /* If this is a trust account, add on the staked amount */
+                    if(account.find("stake") != account.end())
+                        dAmount += account["stake"].get<double>();
+
+                    mapAccountBalances[strAddress] = dAmount;
+                }
+
+                for(const auto& accountBalance :  mapAccountBalances)
+                    list[accountBalance.first] = accountBalance.second;
+            }
+            else
+            {
+
+                /* Limit the size. */
+                int nMax = 100;
+                if(params.size() > 0)
+                    nMax = params[0];
+
+                /* Get the available addresses from the wallet */
+                std::map<Legacy::NexusAddress, int64_t> mapAddresses;
+                if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
+                    throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
+
+                /* Find all the addresses in the list */                
+                for(std::map<Legacy::NexusAddress, int64_t>::iterator it = mapAddresses.begin(); it != mapAddresses.end() && list.size() < nMax; ++it)
+                    list[it->first.ToString()] = Legacy::SatoshisToAmount(it->second);
+            }
 
             return list;
         }

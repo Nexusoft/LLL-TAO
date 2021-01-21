@@ -76,11 +76,19 @@ namespace TAO
 
             /* Check for data parameter. */
             if(params.find("token_name") != params.end() && !params["token_name"].get<std::string>().empty())
-                /* If name is provided then use this to deduce the register address */
-                hashToken = Names::ResolveAddress(params, params["token_name"].get<std::string>());
+            {
+                std::string strName = params["token_name"].get<std::string>();
+                if(strName != "NXS")
+                    /* If name is provided then use this to deduce the register address */
+                    hashToken = Names::ResolveAddress(params, strName);
+            }
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("token") != params.end() && IsRegisterAddress(params["token"]))
-                hashToken.SetBase58(params["token"]);
+            else if(params.find("token") != params.end())
+            {
+                std::string strToken = params["token"];
+                if(strToken != "0" && IsRegisterAddress(strToken))
+                    hashToken.SetBase58(params["token"]);
+            }
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAccounts;
