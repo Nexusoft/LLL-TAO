@@ -489,9 +489,9 @@ namespace LLP
                 nUnsubscribed = 0;
                 nNotifications = 0;
 
-                /* Finally, if this was the last remaining connection then reset the synchronized flag, as we do not know how long
+                /* Finally, if this was the last remaining outgoing connection then reset the synchronized flag, as we do not know how long
                    it will be until we get our next connection so have to assume that we will not be in sync. */
-                if(LLP::TRITIUM_SERVER->GetConnectionCount() == 1)
+                if(fOUTGOING && LLP::TRITIUM_SERVER->GetConnectionCount() == 1)
                     fSynchronized.store(false);
 
                 break;
