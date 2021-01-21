@@ -228,6 +228,11 @@ namespace LLP
                 if(fOUTGOING)
                     PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
+                /* If this is the first outgoing connection then we have to assume that we are not in sync as we don't know how 
+                   long it would have been since the last connection was dropped */
+                if(fOUTGOING && LLP::TRITIUM_SERVER->GetConnectionCount() == 1)
+                    fSynchronized.store(false);
+
                 break;
             }
 
@@ -486,7 +491,7 @@ namespace LLP
 
                 /* Finally, if this was the last remaining connection then reset the synchronized flag, as we do not know how long
                    it will be until we get our next connection so have to assume that we will not be in sync. */
-                if(LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
+                if(LLP::TRITIUM_SERVER->GetConnectionCount() == 1)
                     fSynchronized.store(false);
 
                 break;
