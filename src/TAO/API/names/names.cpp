@@ -454,25 +454,27 @@ namespace TAO
             }
             else if(!config::fClient.load())
             {
-                /* If we couldn't resolve the register name from the callers local names, we next scan the register owners sig chain
-                   to see if they have a name record for it.  
-                   NOTE: we don't do this in client mode as we will not have access to the foreign sig chain to read its name records.
-                   NOTE: we only want to search global names from the register owners sig chain, so that we don't leak the 
-                   private names */
+                /* If we couldn't resolve the register name from the callers local names, we next check to see if it is a global name */
 
-                /* Read the  the object from the register DB.  We can read it as an Object and then check its nType
-                   to determine whether or not it is a Name. */
-                TAO::Register::State state;
-                if(LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
+                /* Batch read all names. */
+                std::vector<TAO::Register::Object> vNames;
+                if(LLD::Register->BatchRead("name", vNames, -1))
                 {
-                    /* Look up the Name object for the register address hash in the register owners sig chain*/
-                    name = Names::GetName(state.hashOwner, hashRegister, hashNameObject);
-
-                    /* Get the name from the register owners name record as long as it is a global name */
-                    if(!name.IsNull() && name.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
+                    /* Check through all names. */
+                    for(auto& object : vNames)
                     {
-                        /* Get the name from the Name register */
-                        strName = name.get<std::string>("name");
+                        /* Skip over invalid objects (THIS SHOULD NEVER HAPPEN). */
+                        if(!object.Parse())
+                            continue;
+
+                        /* Check that it is a global */
+                        if(object.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL
+                            && object.get<uint256_t>("address") == hashRegister)
+                        {
+                            /* Get the name from the Name register */
+                            strName = name.get<std::string>("name");
+                            break;
+                        }
                     }
                 }
             }
