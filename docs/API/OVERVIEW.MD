@@ -440,3 +440,5 @@ Error Codes
 | -303 | Missing op in where clause |
 | -304 | Missing value in where clause |
 | -305 | Unknown operand in where clause |
+| -306 | No connections available |
+| -307 | Failed to download signature chain |

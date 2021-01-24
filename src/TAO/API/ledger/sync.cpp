@@ -13,6 +13,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+#include <LLP/types/tritium.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/types/sessionmanager.h>
@@ -28,8 +31,8 @@ namespace TAO
     namespace API
     {
 
-        /* Get status information for the currently logged in user. */
-        json::json Users::Sync(const json::json& params, bool fHelp)
+        /* Synchronizes the signature chain for the currently logged in user.  Only applicable in lite / client mode. */
+        json::json Ledger::SyncSigChain(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
             json::json ret;
@@ -38,6 +41,9 @@ namespace TAO
             if(!config::fClient.load())
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
+            /* Check number of connections */
+            if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
+                throw APIException(-306, "No connections available");
 
             /* Get the session to be used for this API call */
             Session& session = users->GetSession(params, true, false);
@@ -46,12 +52,11 @@ namespace TAO
             uint256_t hashGenesis = session.GetAccount()->Genesis();
 
             /* Sync the sig chain */
-            DownloadSigChain(hashGenesis, true);
+            if(!DownloadSigChain(hashGenesis, true))
+                throw APIException(-307, "Failed to download signature chain");
 
-            /* populate response */
             /* Add the genesis */
             ret["genesis"] = hashGenesis.GetHex();
-
 
             /* sig chain transaction count */
             uint32_t nTransactions = 0;
@@ -73,14 +78,14 @@ namespace TAO
 
             /* Get the notifications so that we can return the notification count. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
-            GetOutstanding(hashGenesis, false, vContracts);
+            Users::GetOutstanding(hashGenesis, false, vContracts);
 
             /* Get any expired contracts not yet voided. */
-            GetExpired(hashGenesis, false, vContracts);
+            Users::GetExpired(hashGenesis, false, vContracts);
 
             /* Get any legacy transactions . */
             std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacyTx;
-            GetOutstanding(hashGenesis, false, vLegacyTx);
+            Users::GetOutstanding(hashGenesis, false, vLegacyTx);
             
             ret["notifications"] = vContracts.size() + vLegacyTx.size();
             

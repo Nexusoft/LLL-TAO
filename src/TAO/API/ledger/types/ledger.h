@@ -185,6 +185,19 @@ namespace TAO
             json::json VoidTransaction(const json::json& params, bool fHelp);
 
 
+            /** SyncSigChain
+             *
+             *  Synchronizes the signature chain for the currently logged in user.  Only applicable in lite / client mode
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json SyncSigChain(const json::json& params, bool fHelp);
+
+
         };
     }
 }
