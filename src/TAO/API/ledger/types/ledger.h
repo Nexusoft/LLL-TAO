@@ -198,6 +198,20 @@ namespace TAO
             json::json SyncSigChain(const json::json& params, bool fHelp);
 
 
+            /** SyncHeaders
+             *
+             *  Synchronizes the block header data from a peer. NOTE: the method call will return as soon as the synchronization 
+             *  process is initiated with a peer, NOT when synchronization is complete.  Only applicable in lite / client mode
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json SyncHeaders(const json::json& params, bool fHelp);
+
+
         };
     }
 }

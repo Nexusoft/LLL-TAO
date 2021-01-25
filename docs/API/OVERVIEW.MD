@@ -442,3 +442,4 @@ Error Codes
 | -305 | Unknown operand in where clause |
 | -306 | No connections available |
 | -307 | Failed to download signature chain |
+| -308 | API method only available in client mode |

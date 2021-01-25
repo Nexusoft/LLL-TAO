@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 #include <TAO/API/types/sessionmanager.h>
 
+#include <TAO/Ledger/include/process.h>
+
 
 #include <Util/include/hex.h>
 
@@ -88,6 +90,39 @@ namespace TAO
             Users::GetOutstanding(hashGenesis, false, vLegacyTx);
             
             ret["notifications"] = vContracts.size() + vLegacyTx.size();
+            
+            return ret;
+        }
+
+
+        /* Synchronizes the block header data from a peer. NOTE: the method call will return as soon as the synchronization 
+           process is initiated with a peer, NOT when synchronization is complete.  Only applicable in lite / client mode. */
+        json::json Ledger::SyncHeaders(const json::json& params, bool fHelp)
+        {
+            /* JSON return value. */
+            json::json ret;
+
+            /* Sync only applicable in client mode */
+            if(!config::fClient.load())
+                throw APIException(-308, "API method only available in client mode");
+
+            /* Reset the global synchronized flag */
+            LLP::TritiumNode::fSynchronized.store(false);
+
+            /* Get a peer connection to sync from */
+            memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+            if(pNode != nullptr)
+            {
+                /* Initiate a new sync */
+                pNode->Sync();
+
+                /* populate the response */
+                ret["success"] = true;
+            }
+            else
+            {
+                throw APIException(-306, "No connections available");
+            }
             
             return ret;
         }

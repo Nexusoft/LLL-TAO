@@ -601,31 +601,8 @@ namespace LLP
                     /* Start sync on startup, or override any legacy syncing currently in process. */
                     if(TAO::Ledger::nSyncSession.load() == 0 && (!Incoming() || fLocalTestnet))
                     {
-                        /* Set the sync session-id. */
-                        TAO::Ledger::nSyncSession.store(nCurrentSession);
-
-                        /* Reset last time received. */
-                        nLastTimeReceived.store(runtime::timestamp());
-
-                        debug::log(0, NODE, "New sync address set");
-
-                        /* Cache the height at the start of the sync */
-                        nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);
-
-                        /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
-                        SYNCTIMER.Stop();
-
-                        /* Subscribe to this node. */
-                        Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
-
-                        /* Ask for list of blocks if this is current sync node. */
-                        PushMessage(ACTION::LIST,
-                            config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
-                            uint8_t(TYPES::BLOCK),
-                            uint8_t(TYPES::LOCATOR),
-                            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                            uint1024_t(0)
-                        );
+                        /* Initiate the sync process */
+                        Sync();
                     }
                 }
 
@@ -4413,21 +4390,8 @@ namespace LLP
                 memory::atomic_ptr<TritiumNode>& pcurrent = TRITIUM_SERVER->GetConnection(pairSession.first, pairSession.second);
                 pcurrent->Unsubscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
 
-                /* Set the sync session-id. */
-                TAO::Ledger::nSyncSession.store(pnode->nCurrentSession);
-
-                /* Subscribe to this node. */
-                pnode->Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
-                pnode->PushMessage(ACTION::LIST,
-                    config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
-                    uint8_t(TYPES::BLOCK),
-                    uint8_t(TYPES::LOCATOR),
-                    TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
-                    uint1024_t(0)
-                );
-
-                /* Reset last time received. */
-                nLastTimeReceived.store(runtime::timestamp());
+                /* Initiate the sync */
+                pnode->Sync();
             }
             catch(const std::exception& e)
             {
@@ -4705,5 +4669,36 @@ namespace LLP
                 }
             }
         }
+    }
+
+
+    /* Initiates a chain synchronization from the peer. */
+    void TritiumNode::Sync()
+    {
+        /* Set the sync session-id. */
+        TAO::Ledger::nSyncSession.store(nCurrentSession);
+
+        /* Reset last time received. */
+        nLastTimeReceived.store(runtime::timestamp());
+
+        debug::log(0, NODE, "New sync address set");
+
+        /* Cache the height at the start of the sync */
+        nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);
+
+        /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
+        SYNCTIMER.Stop();
+
+        /* Subscribe t3o this node. */
+        Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
+
+        /* Ask for list of blocks if this is current sync node. */
+        PushMessage(ACTION::LIST,
+            config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
+            uint8_t(TYPES::BLOCK),
+            uint8_t(TYPES::LOCATOR),
+            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
+            uint1024_t(0)
+        );
     }
 }
