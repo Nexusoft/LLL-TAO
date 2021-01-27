@@ -131,13 +131,16 @@ namespace TAO
                     throw APIException(-139, "Invalid credentials");
                 }
 
-                if(!config::fTestNet.load())
+                /* Dissallow mempool login on mainnet unless this node is runing in client mode.  This is because in client mode we
+                   need to log in and authenticate with a peer in order to subscribe and receive sig chain transactions, including
+                   the confirmation merkle TX. Without doing this we would never receive confirmation. */
+                if(!config::fTestNet.load() && !config::fClient.load())
                 {
                     /* After credentials verified, disallow login while in mempool and unconfirmed */
                     throw APIException(-222, "User create pending confirmation");
                 }
 
-                /* Testnet allows mempool login. Get the memory pool tranasction. */
+                /* Testnet an client mode allows mempool login. Get the memory pool transaction. */
                 else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                 {
                     throw APIException(-137, "Couldn't get transaction");
