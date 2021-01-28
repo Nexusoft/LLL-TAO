@@ -236,7 +236,7 @@ namespace LLD
                 /* Check for genesis. */
                 if(LLP::TRITIUM_SERVER)
                 {
-                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    std::shared_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
                         /* Handle expired. */
@@ -248,7 +248,7 @@ namespace LLD
 
                         /* Request the sig chain. */
                         debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
-                        LLP::TritiumNode::BlockingMessage(5000, pNode.load(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::REGISTER), hashRegister);
+                        LLP::TritiumNode::BlockingMessage(5000, pNode.get(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::REGISTER), hashRegister);
                         debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
                     }
                     else

@@ -44,7 +44,7 @@ namespace LLP
     , TIMEOUT         (nTimeout)
     , DDOS_rSCORE     (rScore)
     , DDOS_cSCORE     (cScore)
-    , CONNECTIONS     (memory::atomic_ptr< std::vector<memory::atomic_ptr<ProtocolType>> >(new std::vector<memory::atomic_ptr<ProtocolType>>()))
+    , CONNECTIONS     (memory::atomic_ptr< std::vector<std::shared_ptr<ProtocolType>> >(new std::vector<std::shared_ptr<ProtocolType>>()))
     , RELAY           (memory::atomic_ptr< std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >(new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
     , CONDITION       ( )
     , DATA_THREAD     (std::bind(&DataThread::Thread, this))
@@ -188,7 +188,7 @@ namespace LLP
                 try
                 {
                     /* Load the atomic pointer raw data. */
-                    ProtocolType* CONNECTION = CONNECTIONS->at(nIndex).load();
+                    ProtocolType* CONNECTION = CONNECTIONS->at(nIndex).get();
 
                     /* Skip over Inactive Connections. */
                     if(!CONNECTION || !CONNECTION->Connected())
@@ -378,7 +378,7 @@ namespace LLP
                     qRelay.second.Reset();
 
                     /* Get atomic pointer to reduce locking around CONNECTIONS scope. */
-                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+                    std::shared_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
 
                     /* Relay if there are active subscriptions. */
                     const DataStream ssRelay = CONNECTION->RelayFilter(qRelay.first, qRelay.second);
@@ -437,7 +437,7 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t nIndex, uint8_t nReason)
     {
-        ProtocolType* raw = CONNECTIONS->at(nIndex).load(); //we use raw pointer here because event could contain switch node that will cause deadlocks
+        ProtocolType* raw = CONNECTIONS->at(nIndex).get(); //we use raw pointer here because event could contain switch node that will cause deadlocks
         raw->Event(EVENTS::DISCONNECT, nReason);
 
         remove(nIndex);
@@ -457,7 +457,7 @@ namespace LLP
             --nOutbound;
 
         /* Free the memory. */
-        CONNECTIONS->at(nIndex).free();
+        CONNECTIONS.load()->erase(CONNECTIONS.load()->begin() + nIndex) ;
         CONDITION.notify_all();
     }
 

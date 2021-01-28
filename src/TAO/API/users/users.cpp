@@ -415,24 +415,24 @@ namespace TAO
             if(LLP::P2P_SERVER)
             {
                 /* Get the connections from the P2P server */
-                std::vector<memory::atomic_ptr<LLP::P2PNode>*> vConnections = LLP::P2P_SERVER->GetConnections();
+                std::vector<std::shared_ptr<LLP::P2PNode>*> vConnections = LLP::P2P_SERVER->GetConnections();
 
                 /* Iterate the connections*/
                 for(const auto& connection : vConnections)
                 {
                     /* Skip over inactive connections. */
-                    if(!connection->load())
+                    if(!connection->get())
                         continue;
 
                     /* Push the active connection. */
-                    if(connection->load()->Connected())
+                    if(connection->get()->Connected())
                     {
                         /* Check that the connection is from this genesis hash  */
-                        if(connection->load()->hashGenesis != hashGenesis)
+                        if(connection->get()->hashGenesis != hashGenesis)
                             continue;
 
                         /* Send the terminate message to peer for graceful termination */
-                        connection->load()->PushMessage(LLP::P2P::ACTION::TERMINATE, connection->load()->nSession);
+                        connection->get()->PushMessage(LLP::P2P::ACTION::TERMINATE, connection->get()->nSession);
                     }
                 }
             }

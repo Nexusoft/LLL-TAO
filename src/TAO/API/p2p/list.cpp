@@ -75,34 +75,34 @@ namespace TAO
                 throw APIException(-280, "P2P server not enabled on this node");
 
             /* Get the connections from the P2P server */
-            std::vector<memory::atomic_ptr<LLP::P2PNode>*> vConnections = LLP::P2P_SERVER->GetConnections();
+            std::vector<std::shared_ptr<LLP::P2PNode>*> vConnections = LLP::P2P_SERVER->GetConnections();
 
             /* Iterate the connections*/
             uint32_t nTotal = 0;
             for(const auto& connection : vConnections)
             {
                 /* Skip over inactive connections. */
-                if(!connection->load())
+                if(!connection->get())
                     continue;
 
                 /* Push the active connection. */
-                if(connection->load()->Connected())
+                if(connection->get()->Connected())
                 {
                     /* Check the appID filter, if specified */
-                    if(!strAppID.empty() && connection->load()->strAppID != strAppID)
+                    if(!strAppID.empty() && connection->get()->strAppID != strAppID)
                         continue;
 
                     json::json jsonConnection;
 
                     /* Populate the response JSON */
-                    jsonConnection["appid"]    = connection->load()->strAppID;
-                    jsonConnection["genesis"]  = connection->load()->hashPeer.ToString();
-                    jsonConnection["session"]  = connection->load()->nSession;
-                    jsonConnection["messages"] = connection->load()->MessageCount();
-                    jsonConnection["address"]  = connection->load()->addr.ToStringIP();
-                    jsonConnection["port"]     = connection->load()->addr.ToStringPort();
-                    jsonConnection["latency"]  = connection->load()->nLatency.load() == std::numeric_limits<uint32_t>::max() ? 0 : connection->load()->nLatency.load();
-                    jsonConnection["lastseen"] = connection->load()->nLastPing.load();
+                    jsonConnection["appid"]    = connection->get()->strAppID;
+                    jsonConnection["genesis"]  = connection->get()->hashPeer.ToString();
+                    jsonConnection["session"]  = connection->get()->nSession;
+                    jsonConnection["messages"] = connection->get()->MessageCount();
+                    jsonConnection["address"]  = connection->get()->addr.ToStringIP();
+                    jsonConnection["port"]     = connection->get()->addr.ToStringPort();
+                    jsonConnection["latency"]  = connection->get()->nLatency.load() == std::numeric_limits<uint32_t>::max() ? 0 : connection->get()->nLatency.load();
+                    jsonConnection["lastseen"] = connection->get()->nLastPing.load();
 
                     /* Check to see that it matches the where clauses */
                     if(fHasFilter)

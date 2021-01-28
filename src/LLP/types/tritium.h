@@ -450,7 +450,7 @@ namespace LLP
          *  @return a pointer to connected node.
          *
          **/
-        static memory::atomic_ptr<TritiumNode>& GetNode(const uint64_t nSession);
+        static std::shared_ptr<TritiumNode>& GetNode(const uint64_t nSession);
 
 
         /** NewMessage

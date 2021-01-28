@@ -226,9 +226,9 @@ namespace LLP
 
     /* Constructs a vector of all active connections across all threads */
     template <class ProtocolType>
-    std::vector<memory::atomic_ptr<ProtocolType>*> Server<ProtocolType>::GetConnections() const
+    std::vector<std::shared_ptr<ProtocolType>*> Server<ProtocolType>::GetConnections() const
     {
-        std::vector<memory::atomic_ptr<ProtocolType>*> vConnections;
+        std::vector<std::shared_ptr<ProtocolType>*> vConnections;
 
         /* Iterate through threads */
         for(uint16_t nThread = 0; nThread < DATA_THREADS.size(); ++nThread)
@@ -238,7 +238,7 @@ namespace LLP
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 /* Get the current atomic_ptr. */
-                memory::atomic_ptr<ProtocolType>& pConnection = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                std::shared_ptr<ProtocolType>& pConnection = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
                 
                 /* Check to see if it is null */
                 if(!pConnection)
@@ -267,7 +267,7 @@ namespace LLP
 
     /*  Select a random and currently open connections. */
     template <class ProtocolType>
-    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection()
+    std::shared_ptr<ProtocolType>& Server<ProtocolType>::GetConnection()
     {
         /* List of connections to return. */
         uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
@@ -283,7 +283,7 @@ namespace LLP
                 try
                 {
                     /* Get the current atomic_ptr. */
-                    memory::atomic_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                    std::shared_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
                     if(!CONNECTION)
                         continue;
 
@@ -304,7 +304,7 @@ namespace LLP
         }
 
         /* Handle if no connections were found. */
-        static memory::atomic_ptr<ProtocolType> pNULL;
+        static std::shared_ptr<ProtocolType> pNULL;
         if(nRetThread == -1 || nRetIndex == -1)
             return pNULL;
 
@@ -314,7 +314,7 @@ namespace LLP
 
     /*  Get the best connection based on latency. */
     template <class ProtocolType>
-    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude)
+    std::shared_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude)
     {
         /* List of connections to return. */
         uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
@@ -334,7 +334,7 @@ namespace LLP
                         continue;
 
                     /* Get the current atomic_ptr. */
-                    memory::atomic_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                    std::shared_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
                     if(!CONNECTION)
                         continue;
 
@@ -355,7 +355,7 @@ namespace LLP
         }
 
         /* Handle if no connections were found. */
-        static memory::atomic_ptr<ProtocolType> pNULL;
+        static std::shared_ptr<ProtocolType> pNULL;
         if(nRetThread == -1 || nRetIndex == -1)
             return pNULL;
 
@@ -365,7 +365,7 @@ namespace LLP
 
     /* Get the best connection based on data thread index. */
     template<class ProtocolType>
-    memory::atomic_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex)
+    std::shared_ptr<ProtocolType>& Server<ProtocolType>::GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex)
     {
         return DATA_THREADS[nDataThread]->CONNECTIONS->at(nDataIndex);
     }

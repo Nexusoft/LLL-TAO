@@ -165,57 +165,57 @@ namespace TAO
             json::json jsonRet = json::json::array();
 
             /* Get the connections from the tritium server */
-            std::vector<memory::atomic_ptr<LLP::TritiumNode>*> vConnections = LLP::TRITIUM_SERVER->GetConnections();
+            std::vector<std::shared_ptr<LLP::TritiumNode>*> vConnections = LLP::TRITIUM_SERVER->GetConnections();
 
             /* Iterate the connections*/
             for(const auto& connection : vConnections)
             {
                 /* Skip over inactive connections. */
-                if(!connection->load())
+                if(!connection->get())
                     continue;
 
                 /* Push the active connection. */
-                if(connection->load()->Connected())
+                if(connection->get()->Connected())
                 {
                     json::json obj;
 
                     /* The IPV4/V6 address */
-                    obj["address"]  = connection->load()->addr.ToString();
+                    obj["address"]  = connection->get()->addr.ToString();
 
                     /* The version string of the connected peer */
-                    obj["type"]     = connection->load()->strFullVersion;
+                    obj["type"]     = connection->get()->strFullVersion;
 
                     /* The protocol version being used to communicate */
-                    obj["version"]  = connection->load()->nProtocolVersion;
+                    obj["version"]  = connection->get()->nProtocolVersion;
 
                     /* Session ID for the current connection */
-                    obj["session"]  = connection->load()->nCurrentSession;
+                    obj["session"]  = connection->get()->nCurrentSession;
 
                     /* Flag indicating whether this was an outgoing connection or incoming */
-                    obj["outgoing"] = connection->load()->fOUTGOING.load();
+                    obj["outgoing"] = connection->get()->fOUTGOING.load();
 
                     /* The current height of the peer */
-                    obj["height"]   = connection->load()->nCurrentHeight;
+                    obj["height"]   = connection->get()->nCurrentHeight;
 
                     /* block hash of the peer's best chain */
-                    obj["best"]     = connection->load()->hashBestChain.SubString();
+                    obj["best"]     = connection->get()->hashBestChain.SubString();
 
                     /* block hash of the peer's best chain */
-                    if(connection->load()->hashGenesis != 0)
-                        obj["genesis"] = connection->load()->hashGenesis.SubString();
+                    if(connection->get()->hashGenesis != 0)
+                        obj["genesis"] = connection->get()->hashGenesis.SubString();
 
                     /* The calculated network latency between this node and the peer */
-                    obj["latency"]  = connection->load()->nLatency.load();
+                    obj["latency"]  = connection->get()->nLatency.load();
 
                     /* Unix timestamp of the last time this node had any communications with the peer */
-                    obj["lastseen"] = connection->load()->nLastPing.load();
+                    obj["lastseen"] = connection->get()->nLastPing.load();
 
                     /* See if the connection is in the address manager */
                     if(LLP::TRITIUM_SERVER->GetAddressManager() != nullptr
-                    && LLP::TRITIUM_SERVER->GetAddressManager()->Has(connection->load()->addr))
+                    && LLP::TRITIUM_SERVER->GetAddressManager()->Has(connection->get()->addr))
                     {
                         /* Get the trust address from the address manager */
-                        const LLP::TrustAddress& trustAddress = LLP::TRITIUM_SERVER->GetAddressManager()->Get(connection->load()->addr);
+                        const LLP::TrustAddress& trustAddress = LLP::TRITIUM_SERVER->GetAddressManager()->Get(connection->get()->addr);
 
                         /* The number of connections successfully established with this peer since this node started */
                         obj["connects"] = trustAddress.nConnected;

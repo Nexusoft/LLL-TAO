@@ -292,7 +292,7 @@ namespace LLP
          *
          *  @return Returns a vector of active connections
          **/
-        std::vector<memory::atomic_ptr<ProtocolType>*> GetConnections() const;
+        std::vector<std::shared_ptr<ProtocolType>*> GetConnections() const;
 
 
         /** GetConnectionCount
@@ -310,7 +310,7 @@ namespace LLP
          *  Select a random and currently open connection
          *
          **/
-        memory::atomic_ptr<ProtocolType>& GetConnection();
+        std::shared_ptr<ProtocolType>& GetConnection();
 
 
         /** Get Connection
@@ -320,7 +320,7 @@ namespace LLP
          *  @param[in] pairExclude The connection that should be excluded from the search.
          *
          **/
-        memory::atomic_ptr<ProtocolType>& GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude);
+        std::shared_ptr<ProtocolType>& GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude);
 
 
         /** Get Connection
@@ -328,7 +328,7 @@ namespace LLP
          *  Get the best connection based on data thread index.
          *
          **/
-        memory::atomic_ptr<ProtocolType>& GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex);
+        std::shared_ptr<ProtocolType>& GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex);
 
 
         /** GetSpecificConnection
@@ -337,7 +337,7 @@ namespace LLP
          *
          **/
         template<typename... Args>
-        memory::atomic_ptr<ProtocolType>& GetSpecificConnection(Args&&... args)
+        std::shared_ptr<ProtocolType>& GetSpecificConnection(Args&&... args)
         {
             /* Thread ID and index of the matchingconnection */
             int16_t nRetThread = -1;
@@ -353,7 +353,7 @@ namespace LLP
                     try
                     {
                         /* Get the current atomic_ptr. */
-                        memory::atomic_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                        std::shared_ptr<ProtocolType>& CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
                         if(!CONNECTION)
                             continue;
 
@@ -381,7 +381,7 @@ namespace LLP
             }
 
             /* Handle if no connections were found. */
-            static memory::atomic_ptr<ProtocolType> pNULL;
+            static std::shared_ptr<ProtocolType> pNULL;
             if(nRetThread == -1 || nRetIndex == -1)
                 return pNULL;
 

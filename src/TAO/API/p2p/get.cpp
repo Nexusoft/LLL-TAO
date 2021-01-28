@@ -70,7 +70,7 @@ namespace TAO
                 throw APIException(-280, "P2P server not enabled on this node");
 
             /* Connection pointer  */
-            memory::atomic_ptr<LLP::P2PNode> connection;
+            std::shared_ptr<LLP::P2PNode> connection;
 
             /* Get the connection matching the criteria */
             if(get_connection(strAppID, hashGenesis, hashPeer, connection))

@@ -86,13 +86,13 @@ namespace TAO
                  /* Check tritium server enabled. */
                 if(LLP::TRITIUM_SERVER)
                 {
-                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    std::shared_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
                         /* Request the genesis hash from the peer. */
                         debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::GENESIS for ", hashPeer.SubString());
 
-                        LLP::TritiumNode::BlockingMessage(10000, pNode.load(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::GENESIS), hashPeer);
+                        LLP::TritiumNode::BlockingMessage(10000, pNode.get(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::GENESIS), hashPeer);
 
                         debug::log(1, FUNCTION, "CLIENT MODE: GET::GENESIS received for ", hashPeer.SubString());
                     }
@@ -110,7 +110,7 @@ namespace TAO
             LLP::P2P::ConnectionRequest request;
 
             /* Connection pointer  */
-            memory::atomic_ptr<LLP::P2PNode> connection;
+            std::shared_ptr<LLP::P2PNode> connection;
 
             /* Check to see if a connection already exists */
             if(get_connection(strAppID, hashGenesis, hashPeer, connection))

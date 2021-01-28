@@ -159,7 +159,7 @@ namespace TAO
                     if(LLP::TritiumNode::SessionActive(nSyncSession.load()))
                     {
                         /* Get the current connected legacy node. */
-                        memory::atomic_ptr<LLP::TritiumNode>& pnode = LLP::TritiumNode::GetNode(nSyncSession.load());
+                        std::shared_ptr<LLP::TritiumNode>& pnode = LLP::TritiumNode::GetNode(nSyncSession.load());
                         try //we want to catch exceptions thrown by atomic_ptr in the case there was a free on another thread
                         {
                             /* Check for potential overflow if current height is not set. */

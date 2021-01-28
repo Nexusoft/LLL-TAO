@@ -4350,12 +4350,12 @@ namespace LLP
 
 
     /* Get a node by connected session. */
-    memory::atomic_ptr<TritiumNode>& TritiumNode::GetNode(const uint64_t nSession)
+    std::shared_ptr<TritiumNode>& TritiumNode::GetNode(const uint64_t nSession)
     {
         LOCK(SESSIONS_MUTEX);
 
         /* Check for connected session. */
-        static memory::atomic_ptr<TritiumNode> pNULL;
+        static std::shared_ptr<TritiumNode> pNULL;
         if(!mapSessions.count(nSession))
             return pNULL;
 
@@ -4380,14 +4380,14 @@ namespace LLP
         }
 
         /* Normal case of asking for a getblocks inventory message. */
-        memory::atomic_ptr<TritiumNode>& pnode = TRITIUM_SERVER->GetConnection(pairSession);
+        std::shared_ptr<TritiumNode>& pnode = TRITIUM_SERVER->GetConnection(pairSession);
         if(pnode != nullptr)
         {
             /* Send out another getblocks request. */
             try
             {
                 /* Get the current sync node. */
-                memory::atomic_ptr<TritiumNode>& pcurrent = TRITIUM_SERVER->GetConnection(pairSession.first, pairSession.second);
+                std::shared_ptr<TritiumNode>& pcurrent = TRITIUM_SERVER->GetConnection(pairSession.first, pairSession.second);
                 pcurrent->Unsubscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
 
                 /* Initiate the sync */

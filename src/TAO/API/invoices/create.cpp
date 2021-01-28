@@ -121,13 +121,13 @@ namespace TAO
                  /* Check tritium server enabled. */
                 if(LLP::TRITIUM_SERVER)
                 {
-                    memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    std::shared_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
                         /* Request the genesis hash from the peer. */
                         debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::GENESIS for ", hashRecipient.SubString());
 
-                        LLP::TritiumNode::BlockingMessage(10000, pNode.load(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::GENESIS), hashRecipient);
+                        LLP::TritiumNode::BlockingMessage(10000, pNode.get(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::GENESIS), hashRecipient);
 
                         debug::log(1, FUNCTION, "CLIENT MODE: GET::GENESIS received for ", hashRecipient.SubString());
                     }

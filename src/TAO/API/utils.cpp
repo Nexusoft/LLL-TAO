@@ -1211,7 +1211,7 @@ namespace TAO
                 { 
                     if(LLP::TRITIUM_SERVER)
                     {
-                        memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                        std::shared_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                         if(pNode != nullptr)
                         {
                             /* The transaction ID of the last event */
@@ -1223,7 +1223,7 @@ namespace TAO
                             /* Request the sig chain. */
                             debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashToken.SubString());
 
-                            LLP::TritiumNode::BlockingMessage(30000, pNode.load(), LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashToken, hashLast);
+                            LLP::TritiumNode::BlockingMessage(30000, pNode.get(), LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashToken, hashLast);
 
                             debug::log(1, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashToken.SubString());
                         }
@@ -1565,7 +1565,7 @@ namespace TAO
         {
             if(LLP::TRITIUM_SERVER)
             {
-                memory::atomic_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                std::shared_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
                 if(pNode != nullptr)
                 {
                     debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing Signatiure Chain");
@@ -1577,7 +1577,7 @@ namespace TAO
                     /* Request the sig chain. */
                     debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
 
-                    LLP::TritiumNode::SyncSigChain(pNode.load(), hashGenesis, true, bSyncEvents);
+                    LLP::TritiumNode::SyncSigChain(pNode.get(), hashGenesis, true, bSyncEvents);
 
                     debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 

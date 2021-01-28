@@ -86,7 +86,7 @@ namespace LLP
 
 
         /* Vector to store Connections. */
-        memory::atomic_ptr< std::vector< memory::atomic_ptr<ProtocolType>> > CONNECTIONS;
+        memory::atomic_ptr< std::vector< std::shared_ptr<ProtocolType>> > CONNECTIONS;
 
 
         /** Queu to process outbound relay messages. **/
@@ -153,12 +153,12 @@ namespace LLP
 
                     /* Find a slot that is empty. */
                     if(nSlot == CONNECTIONS->size())
-                        CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
+                        CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
                     else
-                        CONNECTIONS->at(nSlot).store(pnode);
+                        CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
                     /* Fire the connected event. */
-                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+                    std::shared_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
                     CONNECTION->Event(EVENTS::CONNECT);
 
                     /* Iterate the DDOS cScore (Connection score). */
@@ -225,12 +225,12 @@ namespace LLP
 
                     /* Find a slot that is empty. */
                     if(nSlot == CONNECTIONS->size())
-                        CONNECTIONS->push_back(memory::atomic_ptr<ProtocolType>(pnode));
+                        CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
                     else
-                        CONNECTIONS->at(nSlot).store(pnode);
+                        CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
                     /* Fire the connected event. */
-                    memory::atomic_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+                    std::shared_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
                     CONNECTION->Event(EVENTS::CONNECT);
 
                     /* Check for inbound socket. */

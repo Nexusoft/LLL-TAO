@@ -34,10 +34,10 @@ namespace TAO
         bool P2P::get_connection(const std::string& strAppID, 
                                 const uint256_t& hashGenesis, 
                                 const uint256_t& hashPeer,
-                                memory::atomic_ptr<LLP::P2PNode> &connection)
+                                std::shared_ptr<LLP::P2PNode> &connection)
         {
             /* GEt the matching connection from the server */
-            memory::atomic_ptr<LLP::P2PNode>& pConnection = LLP::P2P_SERVER->GetSpecificConnection(strAppID, hashGenesis, hashPeer);
+            std::shared_ptr<LLP::P2PNode>& pConnection = LLP::P2P_SERVER->GetSpecificConnection(strAppID, hashGenesis, hashPeer);
 
             /* Check it is valid */
             if(!pConnection)
@@ -46,7 +46,7 @@ namespace TAO
             else
             {
                 /* Copy the internal pointer to the atomic to return */
-                connection.store(pConnection.load());
+                connection = pConnection;
                 return true;
             }
         }
