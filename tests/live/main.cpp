@@ -971,6 +971,49 @@ private:
 
 
 
+#include <stdio.h>
+
+class pfile
+{
+public:
+
+    FILE* hFile;
+
+    std::mutex MUTEX;
+
+    std::thread::id THREAD;
+
+    pfile(const std::string& strPath)
+    : hFile  (nullptr)
+    , MUTEX  ( )
+    , THREAD (0)
+    {
+        hFile = fopen(strPath.c_str(), "rw");
+    }
+
+    bool IsNull() const
+    {
+        return hFile == nullptr;
+    }
+
+    void Bind() const
+    {
+    }
+
+    bool Available() const
+    {
+        return true;
+        //return (THREAD == 0)
+    }
+
+    ~pfile()
+    {    
+        fclose(hFile);
+    }
+};
+
+
+
 
 std::atomic<uint32_t> nStreamReads;
 
@@ -1048,7 +1091,7 @@ int main(int argc, char** argv)
         out.close();
     }
 
-    mstream stream(strFile, std::ios::in | std::ios::out, 5);
+    mstream stream(strFile, std::ios::in | std::ios::out, 1);
 
 
     std::vector<runtime::stopwatch> vTimers;
