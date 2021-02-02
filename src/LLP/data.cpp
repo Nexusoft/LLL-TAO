@@ -187,8 +187,8 @@ namespace LLP
             {
                 try
                 {
-                    /* Load the atomic pointer raw data. */
-                    ProtocolType* CONNECTION = CONNECTIONS->at(nIndex).get();
+                    /* Access the shared pointer. */
+                    std::shared_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
 
                     /* Skip over Inactive Connections. */
                     if(!CONNECTION || !CONNECTION->Connected())
@@ -437,8 +437,9 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t nIndex, uint8_t nReason)
     {
-        ProtocolType* raw = CONNECTIONS->at(nIndex).get(); //we use raw pointer here because event could contain switch node that will cause deadlocks
-        raw->Event(EVENTS::DISCONNECT, nReason);
+        std::shared_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+
+        CONNECTION->Event(EVENTS::DISCONNECT, nReason);
 
         remove(nIndex);
     }
