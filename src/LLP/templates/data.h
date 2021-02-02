@@ -64,8 +64,8 @@ namespace LLP
     class DataThread
     {
         
-        /** Lock access to find slot to ensure no race conditions happend between threads. **/
-        std::mutex SLOT_MUTEX;
+        /** Lock access to CONNECTIONS vector to ensure no race conditions happend between threads. **/
+        std::mutex CONNECTIONS_MUTEX;
 
 
     public:
@@ -141,7 +141,7 @@ namespace LLP
                 pnode->fCONNECTED.store(true);
 
                 {
-                    LOCK(SLOT_MUTEX);
+                    LOCK(CONNECTIONS_MUTEX);
 
                     /* Find an available slot. */
                     uint32_t nSlot = find_slot();
@@ -157,20 +157,20 @@ namespace LLP
                     else
                         CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
-                    /* Fire the connected event. */
-                    std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nSlot);
-                    CONNECTION->Event(EVENTS::CONNECT);
+                } /* Close scope to unlock the CONNECTIONS_MUTEX before firing event */
 
-                    /* Iterate the DDOS cScore (Connection score). */
-                    if(DDOS)
-                        DDOS -> cSCORE += 1;
+                /* Fire the connected event. */
+                pnode->Event(EVENTS::CONNECT);
 
-                    /* Check for inbound socket. */
-                    if(CONNECTION->Incoming())
-                        ++nIncoming;
-                    else
-                        ++nOutbound;
-                }
+                /* Iterate the DDOS cScore (Connection score). */
+                if(DDOS)
+                    DDOS -> cSCORE += 1;
+
+                /* Check for inbound socket. */
+                if(pnode->Incoming())
+                    ++nIncoming;
+                else
+                    ++nOutbound;
 
                 /* Notify data thread to wake up. */
                 CONDITION.notify_all();
@@ -213,7 +213,7 @@ namespace LLP
                 }
 
                 {
-                    LOCK(SLOT_MUTEX);
+                    LOCK(CONNECTIONS_MUTEX);
 
                     /* Find an available slot. */
                     uint32_t nSlot = find_slot();
@@ -229,17 +229,17 @@ namespace LLP
                     else
                         CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
-                    /* Fire the connected event. */
-                    std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nSlot);
-                    CONNECTION->Event(EVENTS::CONNECT);
+                } /* Close scope to unlock the CONNECTIONS_MUTEX before firing event */
 
-                    /* Check for inbound socket. */
-                    if(CONNECTION->Incoming())
-                        ++nIncoming;
-                    else
-                        ++nOutbound;
-                }
+                /* Fire the connected event. */
+                pnode->Event(EVENTS::CONNECT);
 
+                /* Check for inbound socket. */
+                if(pnode->Incoming())
+                    ++nIncoming;
+                else
+                    ++nOutbound;
+                
                 /* Notify data thread to wake up. */
                 CONDITION.notify_all();
 
@@ -345,7 +345,7 @@ namespace LLP
          *  @param[in] nReason The reason why the connection is to be disconnected.
          *
          **/
-        void disconnect_remove_event(uint32_t nIndex, uint8_t nReason);
+        void disconnect_remove_event(const std::shared_ptr<ProtocolType>& CONNECTION, uint8_t nReason);
 
 
         /** remove
@@ -356,7 +356,7 @@ namespace LLP
          *  @param[in] The index of the connection to remove.
          *
          **/
-        void remove(uint32_t nIndex);
+        void remove(const std::shared_ptr<ProtocolType>& CONNECTION);
 
 
         /** find_slot

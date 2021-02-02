@@ -34,7 +34,7 @@ namespace LLP
     DataThread<ProtocolType>::DataThread(uint32_t nID, bool ffDDOSIn,
                                          uint32_t rScore, uint32_t cScore,
                                          uint32_t nTimeout, bool fMeter)
-    : SLOT_MUTEX      ( )
+    : CONNECTIONS_MUTEX      ( )
     , fDDOS           (ffDDOSIn)
     , fMETER          (fMeter)
     , fDestruct       (false)
@@ -83,9 +83,9 @@ namespace LLP
         for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
         {
             if(!fDestruct.load())
-                disconnect_remove_event(nIndex, DISCONNECT::FORCE);
+                disconnect_remove_event(CONNECTIONS->at(nIndex), DISCONNECT::FORCE);
             else
-                remove(nIndex);
+                remove(CONNECTIONS->at(nIndex));
         }
     }
 
@@ -140,8 +140,8 @@ namespace LLP
                 POLLFDS.resize(nSize);
 
             /* Initialize the revents for all connection pollfd structures.
-             * One connection must be live, so verify that and skip if none
-             */
+            * One connection must be live, so verify that and skip if none
+            */
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 try
@@ -185,11 +185,11 @@ namespace LLP
             /* Check all connections for data and packets. */
             for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
-                try
-                {
-                    /* Access the shared pointer. */
-                    std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
+                /* Access the shared pointer. */
+                std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
 
+                try
+                {                
                     /* Skip over Inactive Connections. */
                     if(!CONNECTION || !CONNECTION->Connected())
                         continue;
@@ -197,28 +197,28 @@ namespace LLP
                     /* Disconnect if there was a polling error */
                     if(POLLFDS.at(nIndex).revents & POLLERR)
                     {
-                         disconnect_remove_event(nIndex, DISCONNECT::POLL_ERROR);
+                         disconnect_remove_event(CONNECTION, DISCONNECT::POLL_ERROR);
                          continue;
                     }
 
                     /* Disconnect if the socket was disconnected by peer (need for Windows) */
                     if(POLLFDS.at(nIndex).revents & POLLHUP)
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT::PEER);
+                        disconnect_remove_event(CONNECTION, DISCONNECT::PEER);
                         continue;
                     }
 
                     /* Remove Connection if it has Timed out or had any read/write Errors. */
                     if(CONNECTION->Errors())
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT::ERRORS);
+                        disconnect_remove_event(CONNECTION, DISCONNECT::ERRORS);
                         continue;
                     }
 
                     /* Remove Connection if it has Timed out or had any Errors. */
                     if(CONNECTION->Timeout(TIMEOUT * 1000, Socket::READ))
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT::TIMEOUT);
+                        disconnect_remove_event(CONNECTION, DISCONNECT::TIMEOUT);
                         continue;
                     }
 
@@ -226,7 +226,7 @@ namespace LLP
                     if((POLLFDS.at(nIndex).revents & POLLIN)
                     && CONNECTION->Available() == 0 && !CONNECTION->IsSSL())
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT::POLL_EMPTY);
+                        disconnect_remove_event(CONNECTION, DISCONNECT::POLL_EMPTY);
                         continue;
                     }
 
@@ -234,14 +234,14 @@ namespace LLP
                     if(CONNECTION->Buffered()
                     && CONNECTION->Timeout(15000, Socket::WRITE))
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT::TIMEOUT_WRITE);
+                        disconnect_remove_event(CONNECTION, DISCONNECT::TIMEOUT_WRITE);
                         continue;
                     }
 
                     /* Check that write buffers aren't overflowed. */
                     if(CONNECTION->Buffered() > config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER))
                     {
-                        disconnect_remove_event(nIndex, DISCONNECT::BUFFER);
+                        disconnect_remove_event(CONNECTION, DISCONNECT::BUFFER);
                         continue;
                     }
 
@@ -257,7 +257,7 @@ namespace LLP
                         if(CONNECTION->DDOS->Banned())
                         {
                             debug::log(0, ProtocolType::Name(), " BANNED: ", CONNECTION->GetAddress().ToString());
-                            disconnect_remove_event(nIndex, DISCONNECT::DDOS);
+                            disconnect_remove_event(CONNECTION, DISCONNECT::DDOS);
                             continue;
                         }
                     }
@@ -290,7 +290,7 @@ namespace LLP
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
                         if(!CONNECTION->ProcessPacket())
                         {
-                            disconnect_remove_event(nIndex, DISCONNECT::FORCE);
+                            disconnect_remove_event(CONNECTION, DISCONNECT::FORCE);
                             continue;
                         }
 
@@ -302,7 +302,7 @@ namespace LLP
                 catch(const std::exception& e)
                 {
                     debug::error(FUNCTION, "Data Connection: ", e.what());
-                    disconnect_remove_event(nIndex, DISCONNECT::ERRORS);
+                    disconnect_remove_event(CONNECTION, DISCONNECT::ERRORS);
                 }
             }
         }
@@ -342,6 +342,13 @@ namespace LLP
                     {
                         try
                         {
+                            /* Get shared pointer to prevent race condition on the internal connection pointer. */
+                            std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
+
+                            /* Skip over Inactive Connections. */
+                            if(!CONNECTION || !CONNECTION->Connected())
+                                continue;
+
                             /* Check for buffered connection. */
                             if(CONNECTIONS->at(nIndex)->Buffered())
                                 return true;
@@ -377,8 +384,12 @@ namespace LLP
                     /* Reset stream read position. */
                     qRelay.second.Reset();
 
-                    /* Get atomic pointer to reduce locking around CONNECTIONS scope. */
+                    /* Get shared pointer to prevent race condition on the internal connection pointer. */
                     std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
+
+                    /* Skip over Inactive Connections. */
+                    if(!CONNECTION || !CONNECTION->Connected())
+                        continue;
 
                     /* Relay if there are active subscriptions. */
                     const DataStream ssRelay = CONNECTION->RelayFilter(qRelay.first, qRelay.second);
@@ -407,10 +418,14 @@ namespace LLP
     void DataThread<ProtocolType>::NotifyEvent()
     {
         /* Loop through each connection. */
-        uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
-        for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+        typename std::vector<std::shared_ptr<ProtocolType>>::iterator ITT = CONNECTIONS->begin();
+
+        while(ITT != CONNECTIONS->end())
         {
-            try { CONNECTIONS->at(nIndex)->NotifyEvent(); }
+            /* Access the shared pointer of the connection */
+            std::shared_ptr<ProtocolType> CONNECTION = *ITT;
+
+            try { CONNECTION->NotifyEvent(); }
             catch(const std::exception& e) { }
         }
     }
@@ -435,30 +450,36 @@ namespace LLP
 
     /* Fires off a Disconnect event with the given disconnect reason and also removes the data thread connection. */
     template <class ProtocolType>
-    void DataThread<ProtocolType>::disconnect_remove_event(uint32_t nIndex, uint8_t nReason)
+    void DataThread<ProtocolType>::disconnect_remove_event(const std::shared_ptr<ProtocolType>& CONNECTION, uint8_t nReason)
     {
-        std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
-
         CONNECTION->Event(EVENTS::DISCONNECT, nReason);
 
-        remove(nIndex);
+        remove(CONNECTION);
     }
 
 
     /* Removes given connection from current Data Thread. This happens on timeout/error, graceful close, or disconnect command. */
     template <class ProtocolType>
-    void DataThread<ProtocolType>::remove(uint32_t nIndex)
+    void DataThread<ProtocolType>::remove(const std::shared_ptr<ProtocolType>& CONNECTION)
     {
-        LOCK(SLOT_MUTEX);
+        {
+            LOCK(CONNECTIONS_MUTEX);
 
-        /* Check for inbound socket. */
-        if(CONNECTIONS->at(nIndex)->Incoming())
-            --nIncoming;
-        else
-            --nOutbound;
+            /* Check for inbound socket. */
+            if(CONNECTION->Incoming())
+                --nIncoming;
+            else
+                --nOutbound;
 
-        /* Free the memory. */
-        CONNECTIONS.load()->erase(CONNECTIONS.load()->begin() + nIndex) ;
+
+            /* Free the memory.  
+               NOTE the index of the connection in the vector is stored in the connection itself, so we use this 
+               to index into the CONNECTIONS vector. 
+               NOTE that we do not remove the shared_ptr from the vector as we need to maintain the indexes of the other connections
+               in the vector.  Instead we replace the existing shared_ptr with a new one (with a nullptr internal pointer). */
+            CONNECTIONS->at(CONNECTION->nDataIndex) = std::shared_ptr<ProtocolType>(nullptr);
+        }
+
         CONDITION.notify_all();
     }
 
