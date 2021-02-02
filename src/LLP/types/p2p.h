@@ -388,7 +388,7 @@ namespace LLP
          *  @param[in] args variable args to be sent in the message.
          **/
         template<typename... Args>
-        static void BlockingMessage(const uint32_t nTimeout, std::shared_ptr<LLP::P2PNode>& pNode, const uint16_t nMsg, Args&&... args)
+        static void BlockingMessage(const uint32_t nTimeout, std::shared_ptr<LLP::P2PNode> pNode, const uint16_t nMsg, Args&&... args)
         {
             /* Create our trigger nonce. */
             uint64_t nNonce = LLC::GetRand();

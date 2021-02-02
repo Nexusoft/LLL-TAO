@@ -131,30 +131,30 @@ namespace TAO
                         "getpeerinfo - Returns data about each connected network node.");
 
             /* Get the connections from the tritium server */
-            std::vector<std::shared_ptr<LLP::TritiumNode>*> vConnections = LLP::TRITIUM_SERVER->GetConnections();
+            std::vector<std::shared_ptr<LLP::TritiumNode>> vConnections = LLP::TRITIUM_SERVER->GetConnections();
 
             /* Iterate the connections*/
             for(const auto& connection : vConnections)
             {
                 /* Skip over inactive connections. */
-                if(!connection->get())
+                if(!connection.get())
                     continue;
 
                 /* Push the active connection. */
-                if(connection->get()->Connected())
+                if(connection.get()->Connected())
                 {
                     json::json obj;
 
-                    obj["addr"]     = connection->get()->addr.ToString();
-                    obj["type"]     = connection->get()->strFullVersion;
-                    obj["version"]  = connection->get()->nProtocolVersion;
-                    obj["session"]  = connection->get()->nCurrentSession;
-                    obj["height"]   = connection->get()->nCurrentHeight;
-                    obj["best"]     = connection->get()->hashBestChain.SubString();
-                    obj["latency"]  = connection->get()->nLatency.load();
-                    obj["lastseen"] = connection->get()->nLastPing.load();
-                    obj["session"]  = connection->get()->nCurrentSession;
-                    obj["outgoing"] = connection->get()->fOUTGOING.load();
+                    obj["addr"]     = connection.get()->addr.ToString();
+                    obj["type"]     = connection.get()->strFullVersion;
+                    obj["version"]  = connection.get()->nProtocolVersion;
+                    obj["session"]  = connection.get()->nCurrentSession;
+                    obj["height"]   = connection.get()->nCurrentHeight;
+                    obj["best"]     = connection.get()->hashBestChain.SubString();
+                    obj["latency"]  = connection.get()->nLatency.load();
+                    obj["lastseen"] = connection.get()->nLastPing.load();
+                    obj["session"]  = connection.get()->nCurrentSession;
+                    obj["outgoing"] = connection.get()->fOUTGOING.load();
 
                     response.push_back(obj);
        

@@ -236,7 +236,7 @@ namespace LLD
                 /* Check for genesis. */
                 if(LLP::TRITIUM_SERVER)
                 {
-                    std::shared_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
                         /* Handle expired. */

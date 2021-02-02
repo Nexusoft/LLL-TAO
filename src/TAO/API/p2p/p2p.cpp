@@ -37,7 +37,7 @@ namespace TAO
                                 std::shared_ptr<LLP::P2PNode> &connection)
         {
             /* GEt the matching connection from the server */
-            std::shared_ptr<LLP::P2PNode>& pConnection = LLP::P2P_SERVER->GetSpecificConnection(strAppID, hashGenesis, hashPeer);
+            std::shared_ptr<LLP::P2PNode> pConnection = LLP::P2P_SERVER->GetSpecificConnection(strAppID, hashGenesis, hashPeer);
 
             /* Check it is valid */
             if(!pConnection)
@@ -46,7 +46,7 @@ namespace TAO
             else
             {
                 /* Copy the internal pointer to the atomic to return */
-                connection = pConnection;
+                connection = std::shared_ptr<LLP::P2PNode>(pConnection);
                 return true;
             }
         }

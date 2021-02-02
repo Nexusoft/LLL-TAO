@@ -110,7 +110,7 @@ namespace TAO
             LLP::TritiumNode::fSynchronized.store(false);
 
             /* Get a peer connection to sync from */
-            std::shared_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
             if(pNode != nullptr)
             {
                 /* Initiate a new sync */

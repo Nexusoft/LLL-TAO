@@ -158,7 +158,7 @@ namespace LLP
                         CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
                     /* Fire the connected event. */
-                    std::shared_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+                    std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nSlot);
                     CONNECTION->Event(EVENTS::CONNECT);
 
                     /* Iterate the DDOS cScore (Connection score). */
@@ -230,7 +230,7 @@ namespace LLP
                         CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
                     /* Fire the connected event. */
-                    std::shared_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nSlot);
+                    std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nSlot);
                     CONNECTION->Event(EVENTS::CONNECT);
 
                     /* Check for inbound socket. */

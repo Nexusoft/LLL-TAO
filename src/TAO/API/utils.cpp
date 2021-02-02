@@ -1211,7 +1211,7 @@ namespace TAO
                 { 
                     if(LLP::TRITIUM_SERVER)
                     {
-                        std::shared_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
                         if(pNode != nullptr)
                         {
                             /* The transaction ID of the last event */
@@ -1565,7 +1565,7 @@ namespace TAO
         {
             if(LLP::TRITIUM_SERVER)
             {
-                std::shared_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
                 if(pNode != nullptr)
                 {
                     debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing Signatiure Chain");

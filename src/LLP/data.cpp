@@ -188,7 +188,7 @@ namespace LLP
                 try
                 {
                     /* Access the shared pointer. */
-                    std::shared_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+                    std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
 
                     /* Skip over Inactive Connections. */
                     if(!CONNECTION || !CONNECTION->Connected())
@@ -378,7 +378,7 @@ namespace LLP
                     qRelay.second.Reset();
 
                     /* Get atomic pointer to reduce locking around CONNECTIONS scope. */
-                    std::shared_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+                    std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
 
                     /* Relay if there are active subscriptions. */
                     const DataStream ssRelay = CONNECTION->RelayFilter(qRelay.first, qRelay.second);
@@ -437,7 +437,7 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::disconnect_remove_event(uint32_t nIndex, uint8_t nReason)
     {
-        std::shared_ptr<ProtocolType>& CONNECTION = CONNECTIONS->at(nIndex);
+        std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
 
         CONNECTION->Event(EVENTS::DISCONNECT, nReason);
 

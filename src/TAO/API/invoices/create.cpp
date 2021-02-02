@@ -121,7 +121,7 @@ namespace TAO
                  /* Check tritium server enabled. */
                 if(LLP::TRITIUM_SERVER)
                 {
-                    std::shared_ptr<LLP::TritiumNode>& pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
                         /* Request the genesis hash from the peer. */
