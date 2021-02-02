@@ -460,9 +460,26 @@ namespace LLP
                         TRITIUM_SERVER->GetAddressManager()->AddAddress(addr, nState);
                 }
 
+                /* Before we clean up this connection / session and potentially switch to a new sync node, we need to establish
+                   whether this is a duplicate connection or not.  To do this we check to see whether this session ID exists in the
+                   mapSessions, but with a different nDataThread / nDataIndex */
+                bool fDuplicate = false;
+                {
+                    LOCK(SESSIONS_MUTEX);
 
-                /* Handle if sync node is disconnected. */
-                if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                    /* Check to see if the session exists with a different data thread/index. */
+                    if(mapSessions.count(nCurrentSession))
+                    {
+                        /* Make sure that we aren't freeing our session if handling duplicate connections. */
+                        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nCurrentSession];
+                        if(pair.first != nDataThread || pair.second != nDataIndex)
+                            fDuplicate = true;
+                    }
+                }
+
+
+                /* Handle if sync node is disconnected and this is not a duplicate connection. */
+                if(nCurrentSession == TAO::Ledger::nSyncSession.load() && !fDuplicate)
                 {
                     /* Debug output for node disconnect. */
                     debug::log(0, NODE, "Sync Node Disconnected (", strReason, ")");
@@ -474,14 +491,9 @@ namespace LLP
                 {
                     LOCK(SESSIONS_MUTEX);
 
-                    /* Check for sessions to free. */
-                    if(mapSessions.count(nCurrentSession))
-                    {
-                        /* Make sure that we aren't freeing our session if handling duplicate connections. */
-                        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nCurrentSession];
-                        if(pair.first == nDataThread && pair.second == nDataIndex)
-                            mapSessions.erase(nCurrentSession);
-                    }
+                    /* Free the session as long as it is not a duplicate connection that we are closing. */
+                    if(mapSessions.count(nCurrentSession) && !fDuplicate)
+                        mapSessions.erase(nCurrentSession);
                 }
 
                 /* Reset session, notifications, subscriptions etc */
