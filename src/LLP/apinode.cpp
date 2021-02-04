@@ -108,6 +108,10 @@ namespace LLP
         /* Flag indicating that the connection should be kept alive */
         bool fKeepAlive = false;
 
+        runtime::timer TIMER;
+        TIMER.Start();
+        uint32_t nStart = TIMER.ElapsedMilliseconds();
+
         /* Extract the parameters. */
         try
         {
@@ -303,6 +307,11 @@ namespace LLP
             
         /* Write the response */
         this->WritePacket(RESPONSE);
+
+        uint32_t nStop = TIMER.ElapsedMilliseconds();
+                    
+        debug::log(3, "API Request ", strAPI +"/" +METHOD, " from ", this->addr.ToString(), " completed in ", nStop - nStart, " milliseconds");
+
 
         return fKeepAlive;
     }
