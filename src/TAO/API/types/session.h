@@ -331,8 +331,8 @@ namespace TAO
                 memory::encrypted_ptr<TAO::Ledger::PinUnlock> pActivePIN;
 
 
-                /** Cached network private key **/
-                memory::encrypted_ptr<memory::encrypted_type<uint512_t>> nNetworkKey;
+                /** Cached network private key.  NOTE this is mutable as it is lazy loaded **/
+                mutable memory::encrypted_ptr<memory::encrypted_type<uint512_t>> nNetworkKey;
 
 
                 /** Vector of P2P connection requests that have been made TO this sig chain but not yet established **/

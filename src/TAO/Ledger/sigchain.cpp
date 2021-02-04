@@ -88,6 +88,13 @@ namespace TAO
         /* This function is responsible for generating the genesis ID.*/
         uint256_t SignatureChain::Genesis(const SecureString& strUsername)
         {
+            /* The Genesis hash to return */
+            uint256_t hashGenesis;
+
+            /* Check the local DB first */
+            if(LLD::Local->ReadGenesis(strUsername, hashGenesis))
+                return hashGenesis;
+
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
 
@@ -141,11 +148,13 @@ namespace TAO
                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
 
             /* Set the bytes for the key. */
-            uint256_t hashKey;
-            hashKey.SetBytes(vHash);
-            hashKey.SetType(TAO::Ledger::GenesisType());
+            hashGenesis.SetBytes(vHash);
+            hashGenesis.SetType(TAO::Ledger::GenesisType());
 
-            return hashKey;
+            /* Cache this username-genesis pair in the local db*/
+            LLD::Local->WriteGenesis(strUsername, hashGenesis);
+
+            return hashGenesis;
         }
 
 

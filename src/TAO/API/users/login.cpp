@@ -165,7 +165,7 @@ namespace TAO
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
             tx.NextHash(user.Generate(txPrev.nSequence + 1, strPin), txPrev.nNextType);
-
+            
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
             {
@@ -208,17 +208,6 @@ namespace TAO
             ret["genesis"] = hashGenesis.ToString();
 
             ret["session"] = session.ID().ToString();
-
-            /* If not using Multiuser then send an AUTH message to our peers */
-            if(!config::fMultiuser.load())
-            {
-                /* Generate an AUTH message to send to all peers */
-                DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
-
-                /* Check whether it is valid before relaying it to all peers */
-                if(ssMessage.size() > 0)
-                    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::Tritium::ACTION::AUTH), ssMessage);
-            }
 
             return ret;
         }
@@ -335,17 +324,6 @@ namespace TAO
 
                     /* Set the flag so that we don't attempt to log in again */
                     fAutoLoggedIn = true;
-
-                    /* If not using Multiuser then send an AUTH message to our peers */
-                    if(!config::fMultiuser.load() && GetSessionManager().Get(0).GetNetworkKey() > 0)
-                    {
-                        /* Generate an AUTH message to send to all peers */
-                        DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
-
-                        /* Check whether it is valid before relaying it to all peers */
-                        if(ssMessage.size() > 0)
-                            LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::Tritium::ACTION::AUTH), ssMessage);
-                    }
 
                     /* Add the session to the notifications processor */
                     if(NOTIFICATIONS_PROCESSOR)

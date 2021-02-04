@@ -90,22 +90,25 @@ namespace TAO
         /* Initializes the session from username / password / pin */
         void Session::Initialize(const SecureString& strUsername, const SecureString& strPassword, const SecureString& strPin, const uint256_t& nSessionID)
         {
-            LOCK(MUTEX);
+            {
+                LOCK(MUTEX);
 
-            /* Set the session ID */
-            nID = nSessionID;
+                /* Set the session ID */
+                nID = nSessionID;
 
-            /* Set the initial start time */
-            nStarted = runtime::unifiedtimestamp();
+                /* Set the initial start time */
+                nStarted = runtime::unifiedtimestamp();
 
-            /* Set the last active time */
-            nLastActive = runtime::unifiedtimestamp();
+                /* Set the last active time */
+                nLastActive = runtime::unifiedtimestamp();
 
-            /* Instantiate the sig chain */
-            pSigChain = new TAO::Ledger::SignatureChain(strUsername, strPassword);
+                /* Instantiate the sig chain */
+                pSigChain = new TAO::Ledger::SignatureChain(strUsername, strPassword);
+            }
 
-            /* Generate and cache the network private key */
-            nNetworkKey = new memory::encrypted_type<uint512_t>(pSigChain->Generate("network", 0, strPin));
+            /* Cache the pin with no unlocked actions */
+            UpdatePIN(strPin, TAO::Ledger::PinUnlock::UnlockActions::NONE);
+            
         }
 
 
@@ -166,6 +169,11 @@ namespace TAO
         /* Returns the cached network private key. */
         uint512_t Session::GetNetworkKey() const
         {
+            /* Lazily generate the network key the first time it is requested */
+            if(nNetworkKey.IsNull())
+                /* Generate and cache the network private key */
+                 nNetworkKey = new memory::encrypted_type<uint512_t>(pSigChain->Generate("network", 0, pActivePIN->PIN()));
+
             return nNetworkKey->DATA;
         }
 

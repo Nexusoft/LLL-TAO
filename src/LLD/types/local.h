@@ -185,6 +185,32 @@ namespace LLD
          **/
         bool EraseSuppressNotification(const uint512_t& hashTx, const uint32_t nContract);
 
+
+        /** WriteGenesis
+         *
+         *  Writes a username - genesis hash pair to the local database.
+         *
+         *  @param[in] strUsername The username.
+         *  @param[in] hashGenesis The genesis hash corresponding to this username.
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool WriteGenesis(const SecureString& strUsername, const uint256_t& hashGenesis);
+
+
+        /** ReadGenesis
+         *
+         *  Reads a genesis hash from the local database for a given username.
+         *
+         *  @param[in] strUsername The username to read the genesis hash for.
+         *  @param[out] hashGenesis The genesis hash corresponding to this username.
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool ReadGenesis(const SecureString& strUsername, uint256_t &hashGenesis);
+
     };
 }
 

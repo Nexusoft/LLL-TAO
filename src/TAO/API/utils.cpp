@@ -1568,18 +1568,19 @@ namespace TAO
                 std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
                 if(pNode != nullptr)
                 {
+                    runtime::timer TIMER;
+                    TIMER.Start();
+                    uint32_t nStart = TIMER.ElapsedMilliseconds();
                     debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing Signatiure Chain");
-
-                    /* Get the last txid in sigchain. */
-                    uint512_t hashLast;
-                    LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
 
                     /* Request the sig chain. */
                     debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
 
                     LLP::TritiumNode::SyncSigChain(pNode.get(), hashGenesis, true, bSyncEvents);
 
-                    debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
+                    uint32_t nStop = TIMER.ElapsedMilliseconds();
+                    
+                    debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString(), " in ", nStop - nStart, " milliseconds");
 
 
                     return true;
