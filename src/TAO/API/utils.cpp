@@ -185,7 +185,13 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    break; //throw APIException(-108, "Failed to read transaction");
+                {
+                    /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                    if(config::fClient.load())
+                        break;
+                    else
+                        throw APIException(-108, "Failed to read transaction");
+                }
 
                 /* Set the next last. */
                 hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
@@ -1016,7 +1022,13 @@ namespace TAO
                     /* Get the transaction from disk. */
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                        debug::error(FUNCTION, "Failed to read transaction");
+                    {
+                        /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                        if(config::fClient.load())
+                            break;
+                        else
+                            throw APIException(-108, "Failed to read transaction");
+                    }
 
                     /* Skip this transaction if it is mature. */
                     if(LLD::Ledger->ReadMature(hashLast))
@@ -1451,7 +1463,13 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-108, "Failed to read transaction");
+                {
+                    /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                    if(config::fClient.load())
+                        break;
+                    else
+                        throw APIException(-108, "Failed to read transaction");
+                }
 
                 /* Flag indicating this transaction is trust related */
                 bool fTrustRelated = false;

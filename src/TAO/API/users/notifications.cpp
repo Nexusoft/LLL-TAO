@@ -564,7 +564,14 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    return debug::error(FUNCTION, "Failed to read transaction");
+                {
+                    /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                    if(config::fClient.load())
+                        break;
+                    else
+                        return debug::error(FUNCTION, "Failed to read transaction");
+                }
+                    
                     
                 /* Skip this transaction if it not a coinbase or is immature. */
                 if(!tx.IsCoinBase() || !LLD::Ledger->ReadMature(tx))
@@ -780,7 +787,13 @@ namespace TAO
                    until it has been at least one confirmation */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx))
-                    return debug::error(FUNCTION, "Failed to read transaction");
+                {
+                    /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                    if(config::fClient.load())
+                        break;
+                    else
+                        return debug::error(FUNCTION, "Failed to read transaction");
+                }
 
                 /* Loop through all contracts and test any debits or transfers. */
                 uint32_t nContracts = tx.Size();

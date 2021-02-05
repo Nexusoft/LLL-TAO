@@ -103,7 +103,13 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-108, "Failed to read transaction");
+                {
+                    /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                    if(config::fClient.load())
+                        break;
+                    else
+                        throw APIException(-108, "Failed to read transaction");
+                }
 
                 /* Set the next last. */
                 hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
