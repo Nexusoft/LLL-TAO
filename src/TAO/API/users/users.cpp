@@ -451,7 +451,7 @@ namespace TAO
 
             {
                 /* Lock the signature chain in case another process attempts to create a transaction . */
-                LOCK(GetSessionManager().Get(nSession).CREATE_MUTEX);
+                //LOCK(GetSessionManager().Get(nSession).CREATE_MUTEX);
 
                 /* Remove the session from the notifications processor */
                 if(NOTIFICATIONS_PROCESSOR)
