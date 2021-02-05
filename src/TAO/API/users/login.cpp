@@ -229,7 +229,7 @@ namespace TAO
             }
 
             /* Create the new session */
-            Session& session = GetSessionManager().Add(strUser, strPass, strPin);
+            Session& session = GetSessionManager().Add(user, strPin);
 
             /* Add the session to the notifications processor */
             if(NOTIFICATIONS_PROCESSOR)
@@ -274,11 +274,11 @@ namespace TAO
                     if(strUsername.empty() || strPassword.empty() || strPin.empty())
                         throw APIException(-203, "Autologin missing username/password/pin");
 
-                    /* Create the session for ID 0 */
-                    Session& session = GetSessionManager().Add(strUsername, strPassword, strPin);
+                    /* Create a temp sig chain for checking credentials */
+                    TAO::Ledger::SignatureChain user(strUsername, strPassword);
 
                     /* Get the genesis ID. */
-                    uint256_t hashGenesis = session.GetAccount()->Genesis();
+                    uint256_t hashGenesis = user.Genesis();
 
                     /* Get the last Transaction for this sig chain to authenticate with. */
                     TAO::Ledger::Transaction txPrev;
@@ -377,13 +377,16 @@ namespace TAO
 
                     /* Genesis Transaction. */
                     TAO::Ledger::Transaction tx;
-                    tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str()), txPrev.nNextType);
+                    tx.NextHash(user.Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str()), txPrev.nNextType);
 
                     /* Check the credentials match the previous tx. */
                     if(txPrev.hashNext != tx.hashNext)
                     {
                         throw APIException(-139, "Invalid credentials");
                     }
+
+                    /* Create the new session */
+                    Session& session = GetSessionManager().Add(user, strPin);
                                             
 
                     /* The unlock actions to apply for autologin.  NOTE we do NOT unlock for transactions */

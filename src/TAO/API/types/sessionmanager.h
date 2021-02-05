@@ -49,14 +49,13 @@ namespace TAO
                  *
                  *  Adds a session to the manager
                  * 
-                 *  @param[strUsername] Username of the user starting their session
-                 *  @param[strPassword] Password of the user starting their session
-                 *  @param[strPin] Pin of the user starting their session
+                 *  @param[in] pUser Signature chain of the user starting their session
+                 *  @param[in] strPin Pin of the user starting their session
                  * 
                  *  @return The newly created session instance
                  * 
                  **/
-                Session& Add(const SecureString& strUsername, const SecureString& strPassword, const SecureString& strPin);
+                Session& Add(const TAO::Ledger::SignatureChain& pUser, const SecureString& strPin);
 
 
                 /** Remove

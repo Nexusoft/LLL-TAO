@@ -74,16 +74,14 @@ namespace TAO
                  *
                  *  Initializes the session from username / password / pin
                  * 
-                 *  @param[strUsername] Username of the user starting their session
-                 *  @param[strPassword] Password of the user starting their session
-                 *  @param[strPin] Pin of the user starting their session
-                 *  @param[nSessionID] The ID for this session
+                 *  @param[in] pSigChain Signature chain of the user starting their session
+                 *  @param[in] strPin Pin of the user starting their session
+                 *  @param[in] nSessionID The ID for this session
                  * 
                  *  @return The newly created session instance
                  * 
                  **/
-                void Initialize(const SecureString& strUsername, 
-                        const SecureString& strPassword, 
+                void Initialize(const TAO::Ledger::SignatureChain& pUser, 
                         const SecureString& strPin,
                         const uint256_t& nSessionID);
 

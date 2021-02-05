@@ -88,7 +88,7 @@ namespace TAO
         }
 
         /* Initializes the session from username / password / pin */
-        void Session::Initialize(const SecureString& strUsername, const SecureString& strPassword, const SecureString& strPin, const uint256_t& nSessionID)
+        void Session::Initialize(const TAO::Ledger::SignatureChain& pUser, const SecureString& strPin, const uint256_t& nSessionID)
         {
             {
                 LOCK(MUTEX);
@@ -103,7 +103,7 @@ namespace TAO
                 nLastActive = runtime::unifiedtimestamp();
 
                 /* Instantiate the sig chain */
-                pSigChain = new TAO::Ledger::SignatureChain(strUsername, strPassword);
+                pSigChain = new TAO::Ledger::SignatureChain(pUser);
             }
 
             /* Cache the pin with no unlocked actions */

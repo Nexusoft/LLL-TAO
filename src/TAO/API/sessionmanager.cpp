@@ -82,9 +82,7 @@ namespace TAO
 
 
         /* Creates and returns a new session */
-        Session& SessionManager::Add(const SecureString& strUsername, 
-                        const SecureString& strPassword, 
-                        const SecureString& strPin)
+        Session& SessionManager::Add(const TAO::Ledger::SignatureChain& pUser, const SecureString& strPin)
         {
             LOCK(MUTEX);
 
@@ -96,7 +94,7 @@ namespace TAO
             uint256_t nSession = config::fMultiuser.load() ? LLC::GetRand256() : 0;
 
             /* Initialize the session instance */
-            mapSessions[nSession].Initialize(strUsername, strPassword, strPin, nSession);
+            mapSessions[nSession].Initialize(pUser, strPin, nSession);
 
             /* Return the session instance */
             return mapSessions[nSession];
