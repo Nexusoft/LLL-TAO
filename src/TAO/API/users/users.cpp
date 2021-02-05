@@ -447,20 +447,20 @@ namespace TAO
                 if(ssMessage.size() > 0)
                     LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::Tritium::ACTION::DEAUTH), ssMessage);
             }
-
-
-            /* Remove the session from the notifications processor */
-            if(NOTIFICATIONS_PROCESSOR)
-                NOTIFICATIONS_PROCESSOR->Remove(nSession);
-
-            /* If this is session 0 and stake minter is running when logout, stop it */
-            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
-            if(nSession == 0 && stakeMinter.IsStarted())
-                stakeMinter.Stop();
+            
 
             {
                 /* Lock the signature chain in case another process attempts to create a transaction . */
                 LOCK(GetSessionManager().Get(nSession).CREATE_MUTEX);
+
+                /* Remove the session from the notifications processor */
+                if(NOTIFICATIONS_PROCESSOR)
+                    NOTIFICATIONS_PROCESSOR->Remove(nSession);
+
+                /* If this is session 0 and stake minter is running when logout, stop it */
+                TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
+                if(nSession == 0 && stakeMinter.IsStarted())
+                    stakeMinter.Stop();
 
                 /* Finally remove the session from the session manager */
                 GetSessionManager().Remove(nSession);
