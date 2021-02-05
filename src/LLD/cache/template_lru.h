@@ -125,10 +125,13 @@ namespace LLD
         TemplateLRU(const TemplateLRU& cacheIn)
         : MAX_CACHE_ELEMENTS (cacheIn.MAX_CACHE_ELEMENTS)
         , MUTEX              ( )
-        , cache              (cacheIn.cache)
-        , pfirst             (cacheIn.pfirst)
-        , plast              (cacheIn.plast)
+        , cache              ()
+        , pfirst             ()
+        , plast              ()
         {
+            /* Loop through the incoming cache and add the data items. */
+            for(auto & item : cacheIn.cache)
+                Put(item.second->Key, item.second->Data);
         }
 
 
