@@ -94,6 +94,9 @@ namespace TAO
             /* Get the genesis ID of the user logging in. */
             uint256_t hashGenesis = user.Genesis();
 
+            /* Get the last Transaction for this sig chain to authenticate with. */
+            TAO::Ledger::Transaction txPrev;
+
             /* Check for -client mode. */
             if(config::fClient.load())
             {
@@ -112,15 +115,45 @@ namespace TAO
 
                 if(TAO::Ledger::ChainState::Synchronizing())
                     throw APIException(-297, "Cannot log in while synchronizing");
+               
+                /* In order to authenticate the user, at a minimum we need a transaction from the users sig chain containing the most
+                   up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in 
+                   the mempool).  If it is not, we can lookup the users Crypto object register (since this is updated 
+                   whenever the password/pin changes).  Reading the crypto register from the DB will force a remote lookup from a
+                   peer if it is missing or expired.  This process avoids us having to download the entire sig chain before logging
+                   in, so we can download it asynchronously after logging them in.  */
 
-                /* Download the users signature chain transactions. */
-                TAO::API::DownloadSigChain(hashGenesis, true);
-                
-            }
+                /* First check to see if this is a new sig chain and the genesis is in the mempool */
+                bool fNewSighain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
 
-            /* Check for duplicates in ledger db. */
-            TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->HasGenesis(hashGenesis))
+                /* IF this is not a new sig chain, force a lookup of the crypto register */
+                if(!fNewSighain )
+                {
+                    /* The address of the crypto object register, which is deterministic based on the genesis */
+                    TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+                    
+                    /* Read the crypto object register */
+                    TAO::Register::Object crypto;
+                    if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
+                        throw APIException(-259, "Could not read crypto object register"); 
+
+                    /* Get the last transaction. */
+                    uint512_t hashLast;
+                    if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                        throw APIException(-138, "No previous transaction found");
+
+                    /* Get previous transaction */
+                    if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                        throw APIException(-138, "No previous transaction found");
+                }
+                /* If this is a new sig chain, get the genesis tx from mempool */
+                else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
+                {
+                    throw APIException(-137, "Couldn't get transaction");
+                }                
+
+            }  
+            else if(!LLD::Ledger->HasGenesis(hashGenesis))
             {
                 /* If user genesis not in ledger, this will throw an exception. Just a matter of which one. */
 
@@ -134,32 +167,29 @@ namespace TAO
                 /* Dissallow mempool login on mainnet unless this node is runing in client mode.  This is because in client mode we
                    need to log in and authenticate with a peer in order to subscribe and receive sig chain transactions, including
                    the confirmation merkle TX. Without doing this we would never receive confirmation. */
-                if(!config::fTestNet.load() && !config::fClient.load())
+                if(!config::fTestNet.load())
                 {
                     /* After credentials verified, disallow login while in mempool and unconfirmed */
                     throw APIException(-222, "User create pending confirmation");
                 }
 
-                /* Testnet an client mode allows mempool login. Get the memory pool transaction. */
+                /* Testnet allows mempool login. Get the memory pool transaction. */
                 else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                 {
                     throw APIException(-137, "Couldn't get transaction");
                 }
             }
+            /* If we haven't looked up the txprev at this point, read the last known tx */
             else
             {
                 /* Get the last transaction. */
                 uint512_t hashLast;
                 if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                {
                     throw APIException(-138, "No previous transaction found");
-                }
 
                 /* Get previous transaction */
                 if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                {
                     throw APIException(-138, "No previous transaction found");
-                }
             }
 
             /* Genesis Transaction. */
@@ -209,6 +239,16 @@ namespace TAO
 
             ret["session"] = session.ID().ToString();
 
+
+            /* If in client mode, download the users signature chain transactions asynchronously. */
+            if(config::fClient.load())
+            {
+                std::thread([&]()
+                {
+                    TAO::API::DownloadSigChain(hashGenesis, true);
+                }).detach();
+            }
+
             return ret;
         }
 
@@ -240,6 +280,9 @@ namespace TAO
                     /* Get the genesis ID. */
                     uint256_t hashGenesis = session.GetAccount()->Genesis();
 
+                    /* Get the last Transaction for this sig chain to authenticate with. */
+                    TAO::Ledger::Transaction txPrev;
+
                     /* Check for -client mode. */
                     if(config::fClient.load())
                     {
@@ -247,56 +290,89 @@ namespace TAO
                         if(TAO::Ledger::ChainState::Synchronizing())
                             throw APIException(-297, "Cannot log in while synchronizing");
 
-                        /* Download the users signature chain transactions. */
-                        TAO::API::DownloadSigChain(hashGenesis, true);                        
+                        /* In order to authenticate the user, at a minimum we need a transaction from the users sig chain containing the most
+                        up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in 
+                        the mempool).  If it is not, we can lookup the users Crypto object register (since this is updated 
+                        whenever the password/pin changes).  Reading the crypto register from the DB will force a remote lookup from a
+                        peer if it is missing or expired.  This process avoids us having to download the entire sig chain before logging
+                        in, so we can download it asynchronously after logging them in.  */
+
+                        /* First check to see if this is a new sig chain and the genesis is in the mempool */
+                        bool fNewSighain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
+
+                        /* IF this is not a new sig chain, force a lookup of the crypto register */
+                        if(!fNewSighain )
+                        {
+                            /* The address of the crypto object register, which is deterministic based on the genesis */
+                            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+                            
+                            /* Read the crypto object register */
+                            TAO::Register::Object crypto;
+                            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
+                                throw APIException(-259, "Could not read crypto object register"); 
+
+                            /* Get the last transaction. */
+                            uint512_t hashLast;
+                            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                                throw APIException(-138, "No previous transaction found");
+
+                            /* Get previous transaction */
+                            if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                                throw APIException(-138, "No previous transaction found");
+                        }
+                        /* If this is a new sig chain, get the genesis tx from mempool */
+                        else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
+                        {
+                            throw APIException(-137, "Couldn't get transaction");
+                        }                     
                     }
 
                     /* See if the sig chain exists */
-                    if(!LLD::Ledger->HasGenesis(hashGenesis) && !TAO::Ledger::mempool.Has(hashGenesis))
+                    else 
                     {
-                        /* If it doesn't exist then create it if configured to do so */
-                        if(config::GetBoolArg("-autocreate"))
+                        if(!LLD::Ledger->HasGenesis(hashGenesis) && !TAO::Ledger::mempool.Has(hashGenesis))
                         {
-                            /* Testnet is considered local if no dns is being used or if using a private network */
-                            bool fLocalTestnet = config::fTestNet.load()
-                                && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
-
-                            /* Can only create user if synced and (if not local) have connections.
-                             * Return without create/login if cannot create, yet. It will have to try again.
-                             */
-                            if(TAO::Ledger::ChainState::Synchronizing()
-                            || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
+                            /* If it doesn't exist then create it if configured to do so */
+                            if(config::GetBoolArg("-autocreate"))
                             {
-                                return;
+                                /* Testnet is considered local if no dns is being used or if using a private network */
+                                bool fLocalTestnet = config::fTestNet.load()
+                                    && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
+
+                                /* Can only create user if synced and (if not local) have connections.
+                                * Return without create/login if cannot create, yet. It will have to try again.
+                                */
+                                if(TAO::Ledger::ChainState::Synchronizing()
+                                || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
+                                {
+                                    return;
+                                }
+
+                                /* The genesis transaction  */
+                                TAO::Ledger::Transaction tx;
+
+                                /* Create the sig chain genesis transaction */
+                                create_sig_chain(strUsername, strPassword, strPin, tx);
+
+                                /* Display that login was successful. */
+                                debug::log(0, "Auto-Create Successful");
                             }
-
-                            /* The genesis transaction  */
-                            TAO::Ledger::Transaction tx;
-
-                            /* Create the sig chain genesis transaction */
-                            create_sig_chain(strUsername, strPassword, strPin, tx);
-
-                            /* Display that login was successful. */
-                            debug::log(0, "Auto-Create Successful");
+                            else
+                                throw APIException(-203, "Autologin user not found");
                         }
-                        else
-                            throw APIException(-203, "Autologin user not found");
-                    }
 
-                    /* The last transaction in the sig chain. */
-                    TAO::Ledger::Transaction txPrev;
+                        /* Get the last transaction. */
+                        uint512_t hashLast;
+                        if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            throw APIException(-138, "No previous transaction found");
+                        }
 
-                    /* Get the last transaction. */
-                    uint512_t hashLast;
-                    if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                    {
-                        throw APIException(-138, "No previous transaction found");
-                    }
-
-                    /* Get previous transaction */
-                    if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    {
-                        throw APIException(-138, "No previous transaction found");
+                        /* Get previous transaction */
+                        if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            throw APIException(-138, "No previous transaction found");
+                        }
                     }
 
                     /* Genesis Transaction. */
@@ -324,6 +400,12 @@ namespace TAO
 
                     /* Set the flag so that we don't attempt to log in again */
                     fAutoLoggedIn = true;
+
+                    /* Download the users signature chain transactions asynchronously. */
+                    std::thread([&]()
+                    {
+                        TAO::API::DownloadSigChain(hashGenesis, true);
+                    }).detach();
 
                     /* Add the session to the notifications processor */
                     if(NOTIFICATIONS_PROCESSOR)
