@@ -4597,6 +4597,30 @@ namespace LLP
             uint512_t hashLast;
             LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
 
+            /* It is possible to have received a register TX for this sig chain without ever having logged in, or at least much 
+               later than the previous log in.  This can leave the sig chain framented for this genesis.  In order to detect and
+               resolve this, we traverse the sig chain from hashLast backwards to check if we find any missing transactions before
+               we get to hashGenesis. If so, we need to download the entire sig chain again. */
+            
+            /* The previous hash in the chain */
+            uint512_t hashPrev = hashLast;
+
+            /* Loop until genesis. */
+            while(hashPrev != 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                {
+                    /* The transaction is missing so set hashLast to 0, forcing a sync of the whole sig chain */
+                    hashLast = 0;
+                    break;
+                }
+                    
+                /* Set the next last. */
+                hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
+
+            }
 
             /* Request the sig chain from all. */
             if(bWait)
