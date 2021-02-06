@@ -143,14 +143,15 @@ namespace TAO
             /* Get the genesis ID. */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
 
-            /* Check for duplicates in ledger db. */
+            /* Get the latest sig chain transaction to authenticate with . */
             TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->HasGenesis(hashGenesis))
-            {
-                /* Check the memory pool and compare hashes. */
-                if(!TAO::Ledger::mempool.Has(hashGenesis))
-                    throw APIException(-136, "Account doesn't exist");
 
+            /* First check to see if this is a new sig chain and the genesis is in the mempool */
+            bool fNewSighain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
+
+
+            if(fNewSighain)
+            {
                 /* Get the memory pool tranasction. */
                 if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                     throw APIException(-137, "Couldn't get transaction");
