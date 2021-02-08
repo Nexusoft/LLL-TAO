@@ -642,6 +642,10 @@ namespace LLD
         if(!WriteSequence(hashAddress, nSequence - 1))
             return false;
 
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Erase(std::make_pair(hashAddress, nSequence - 1));
+
         return Erase(std::make_pair(hashAddress, nSequence - 1));
     }
 
@@ -696,6 +700,10 @@ namespace LLD
     /* Erase the last txid of sigchain to disk indexed by genesis. */
     bool LedgerDB::EraseLast(const uint256_t& hashGenesis)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Erase(std::make_pair(std::string("last"), hashGenesis));
+
         return Erase(std::make_pair(std::string("last"), hashGenesis));
     }
 
@@ -959,6 +967,10 @@ namespace LLD
     /* Erase a block from disk. */
     bool LedgerDB::EraseBlock(const uint1024_t& hashBlock)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Erase(hashBlock);
+
         return Erase(hashBlock);
     }
 
