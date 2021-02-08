@@ -523,7 +523,7 @@ namespace TAO
                     ++nGreater;
 
                 /* Handle single channel having higher weight. */
-                else if((nEquals == 2 && nGreater == 1) || nGreater > 1)
+                if((nEquals == 2 && nGreater == 1) || nGreater > 1)
                 {
                     /* Log the weights. */
                     debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
