@@ -170,6 +170,9 @@ namespace TAO
             {
                 try
                 {
+                    /* Reset the retry flag */
+                    fRetry = false;
+
                     /* Invoke the process notifications method to process all oustanding */
                     TAO::API::users->ProcessNotifications(params, false);
                 }
