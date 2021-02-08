@@ -3293,6 +3293,10 @@ namespace LLP
                         /* Cache the txid. */
                         uint512_t hashTx = tx.GetHash();
 
+                        /* Need to lock the processing mutex to synchronize the processing transactions and blocks.  This is 
+                           necessary to avoid writing the same transaction twice if it is received from two peers simultaneously. */
+                        LOCK(TAO::Ledger::PROCESSING_MUTEX);
+
                         /* Check if we have this transaction already. */
                         if(!LLD::Client->HasTx(hashTx))
                         {
