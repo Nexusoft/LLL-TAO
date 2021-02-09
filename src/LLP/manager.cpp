@@ -587,7 +587,7 @@ namespace LLP
                   break;
 
               ++pAddr->nDropped;
-              pAddr->nSession = nTimestamp - pAddr->nLastSeen;
+              pAddr->nSession = 0;
               pAddr->nLastSeen = nTimestamp;
               pAddr->nState = nState;
               break;

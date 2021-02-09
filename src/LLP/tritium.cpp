@@ -382,7 +382,7 @@ namespace LLP
             case EVENTS::DISCONNECT:
             {
                 /* Track whether to mark as failure or dropped. */
-                uint8_t nState = 0;
+                uint8_t nState = ConnectState::DROPPED;
 
                 /* Debut output. */
                 std::string strReason;
@@ -434,6 +434,7 @@ namespace LLP
 
                     default:
                         strReason = "Unknown";
+                        nState    = ConnectState::DROPPED;
                         break;
                 }
 
