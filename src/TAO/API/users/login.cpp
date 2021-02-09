@@ -404,11 +404,14 @@ namespace TAO
                     /* Set the flag so that we don't attempt to log in again */
                     fAutoLoggedIn = true;
 
-                    /* Download the users signature chain transactions asynchronously. */
-                    std::thread([&]()
+                    /* If in client mode, download the users signature chain transactions asynchronously. */
+                    if(config::fClient.load())
                     {
-                        TAO::API::DownloadSigChain(hashGenesis, true);
-                    }).detach();
+                        std::thread([&]()
+                        {
+                            TAO::API::DownloadSigChain(hashGenesis, true);
+                        }).detach();
+                    }
 
                     /* Add the session to the notifications processor */
                     if(NOTIFICATIONS_PROCESSOR)
