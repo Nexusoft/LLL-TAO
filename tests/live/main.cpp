@@ -1007,10 +1007,471 @@ public:
     }
 
     ~pfile()
-    {    
+    {
         fclose(hFile);
     }
 };
+
+
+
+#include <atomic>
+
+template<class T>
+struct node
+{
+    T data;
+    node* next;
+    node(const T& data) : data(data), next(nullptr) {}
+};
+
+template<class T>
+class stack
+{
+    std::atomic<node<T>*> head;
+ public:
+    void push(const T& data)
+    {
+        node<T>* new_node = new node<T>(data);
+
+        // put the current value of head into new_node->next
+        new_node->next = head.load(std::memory_order_relaxed);
+
+        // now make new_node the new head, but if the head
+        // is no longer what's stored in new_node->next
+        // (some other thread must have inserted a node just now)
+        // then put that new head into new_node->next and try again
+        while(!std::atomic_compare_exchange_weak_explicit(
+                                &head,
+                                &new_node->next,
+                                new_node,
+                                std::memory_order_release,
+                                std::memory_order_relaxed))
+                ; // the body of the loop is empty
+// note: the above loop is not thread-safe in at least
+// GCC prior to 4.8.3 (bug 60272), clang prior to 2014-05-05 (bug 18899)
+// MSVC prior to 2014-03-17 (bug 819819). See member function version for workaround
+    }
+};
+
+
+template<typename Type>
+class atomic_proxy
+{
+public:
+    std::shared_ptr<Type>& data;
+    std::shared_ptr<Type> modify;
+    std::shared_ptr<Type> expected;
+
+    atomic_proxy(std::shared_ptr<Type>& in)
+    : data (in)
+    , modify (nullptr)
+    {
+        //debug::log(0, std::this_thread::get_id(), ": BUILD: ", VARIABLE(data->a), " | ", VARIABLE(data->b));
+    }
+
+    ~atomic_proxy()
+    {
+        //std::atomic_compare_exchange_strong_explicit(&data, &modify, modify, std::memory_order_release, std::memory_order_relaxed);
+
+
+        std::atomic_thread_fence(std::memory_order_release);
+        //std::atomic_store_explicit(&data, modify, std::memory_order_relaxed);
+
+        //debug::log(0, "DATA: ", data.get(), " | MOD: ", modify.get());
+        std::atomic_store_explicit(&data, modify, std::memory_order_relaxed);
+        //data = modify;
+
+        //std::atomic_exchange_explicit(&data, modify, std::memory_order_release);
+
+        uint64_t i = 0;
+        while(!std::atomic_compare_exchange_weak_explicit(&data, &expected, modify, std::memory_order_seq_cst, std::memory_order_seq_cst))
+        {
+            debug::log(0, "Iterator ", ++i);
+        }
+        //debug::log(0, std::this_thread::get_id(), ": CLEAN: ",  VARIABLE(data->a), " | ", VARIABLE(data->b));
+        //debug::log(0, std::this_thread::get_id(), ": TEST : ", VARIABLE(modify->a), " | ", VARIABLE(modify->b));
+
+        //debug::log(0, "DATA: ", data.get(), " | MOD: ", modify.get());
+
+
+        //std::atomic_thread_fence(std::memory_order_release);
+    }
+
+    std::shared_ptr<Type> operator->()
+    {
+        //modify = std::atomic_load_explicit(&data, std::memory_order_seq_cst);
+        //modify = std::make_shared<Type>(*data);
+
+        modify = std::make_shared<Type>(*std::atomic_load_explicit(&data, std::memory_order_relaxed));
+        expected = std::make_shared<Type>(*std::atomic_load_explicit(&data, std::memory_order_relaxed));
+
+        std::atomic_thread_fence(std::memory_order_acquire);
+
+        //modify = std::make_shared<Type>(*std::atomic_load_explicit(&data, std::memory_order_relaxed));
+        return modify;
+    }
+};
+
+template<typename Type>
+class secure_ptr
+{
+public:
+    std::shared_ptr<Type> data;
+
+    secure_ptr(Type* in)
+    : data (in)
+    {
+    }
+
+    atomic_proxy<Type> operator->()
+    {
+        //debug::log(0, "DATA: ", data.get());
+        //debug::log(0, std::this_thread::get_id(), ": FUNCT: ", VARIABLE(data->a), " | ", VARIABLE(data->b));
+
+        std::atomic_thread_fence(std::memory_order_acquire);
+        return atomic_proxy<Type>(data);
+    }
+};
+
+struct Test
+{
+    uint64_t a;
+    uint64_t b;
+    std::atomic<uint64_t> c;
+
+    Test()
+    : a(0), b(0), c(0)
+    {
+    }
+
+    Test(const Test& b)
+    : a(b.a)
+    , b(b.b)
+    , c(b.c.load())
+    {
+    }
+};
+
+
+
+
+
+
+
+/** atomic
+ *
+ *  Protects an object inside with a mutex.
+ *
+ **/
+template<class TypeName>
+class atomic
+{
+    /* The internal data. */
+    std::shared_ptr<TypeName> data;
+
+public:
+
+    /** Default Constructor. **/
+    atomic ()
+    : data (nullptr)
+    {
+    }
+
+
+    /** Constructor for storing. **/
+    atomic(const TypeName& dataIn)
+    : data (nullptr)
+    {
+        store(dataIn);
+    }
+
+
+    /** Assignment operator.
+     *
+     *  @param[in] a The atomic to assign from.
+     *
+     **/
+    atomic& operator=(const atomic& a)
+    {
+        store(a.load());
+        return *this;
+    }
+
+
+    /** Assignment operator.
+     *
+     *  @param[in] dataIn The atomic to assign from.
+     *
+     **/
+    atomic& operator=(const TypeName& dataIn)
+    {
+        store(dataIn);
+
+        return *this;
+    }
+
+
+    /** Equivilent operator.
+     *
+     *  @param[in] a The atomic to compare to.
+     *
+     **/
+    bool operator==(const atomic& a) const
+    {
+        return load() == a.load();
+    }
+
+
+    /** Equivilent operator.
+     *
+     *  @param[in] a The data type to compare to.
+     *
+     **/
+    bool operator==(const TypeName& dataIn) const
+    {
+        return load() == dataIn;
+    }
+
+
+    /** Not equivilent operator.
+     *
+     *  @param[in] a The atomic to compare to.
+     *
+     **/
+    bool operator!=(const atomic& a) const
+    {
+        return load() != a.load();
+    }
+
+
+    /** Not equivilent operator.
+     *
+     *  @param[in] a The data type to compare to.
+     *
+     **/
+    bool operator!=(const TypeName& dataIn) const
+    {
+        return load() != dataIn;
+    }
+
+
+    /** load
+     *
+     *  Load the object from memory.
+     *
+     **/
+    TypeName load() const
+    {
+        return *std::atomic_load_explicit(&data, std::memory_order_seq_cst);
+    }
+
+
+    /** store
+     *
+     *  Stores an object into memory.
+     *
+     *  @param[in] dataIn The data to into protected memory.
+     *
+     **/
+    void store(const TypeName& dataIn)
+    {
+        /* Cleanup our memory usage on store. */
+        if(data)
+            data = nullptr;
+
+        std::atomic_store_explicit(&data, std::make_shared<TypeName>(dataIn), std::memory_order_seq_cst);
+    }
+};
+
+
+/** atomic_shared_ptr
+ *
+ *  Protects an object inside with a mutex.
+ *
+ **/
+template<class TypeName>
+class atomic_shared_ptr
+{
+    /* The internal data. */
+    std::shared_ptr<TypeName> data;
+
+public:
+
+    /** Default Constructor. **/
+    atomic_shared_ptr ()
+    : data (nullptr)
+    {
+    }
+
+
+    /** Constructor for storing. **/
+    atomic_shared_ptr(const TypeName* dataIn)
+    : data (nullptr)
+    {
+        store(*dataIn);
+    }
+
+
+    /** Assignment operator.
+     *
+     *  @param[in] a The atomic to assign from.
+     *
+     **/
+    atomic_shared_ptr& operator=(const atomic_shared_ptr& a)
+    {
+        store(*a.load());
+        return *this;
+    }
+
+
+    /** Assignment operator.
+     *
+     *  @param[in] dataIn The atomic to assign from.
+     *
+     **/
+    atomic_shared_ptr& operator=(const TypeName& dataIn)
+    {
+        store(dataIn);
+
+        return *this;
+    }
+
+
+    /** Equivilent operator.
+     *
+     *  @param[in] a The atomic to compare to.
+     *
+     **/
+    bool operator==(const atomic_shared_ptr& a) const
+    {
+        return *load() == *a.load();
+    }
+
+
+    /** Equivilent operator.
+     *
+     *  @param[in] a The data type to compare to.
+     *
+     **/
+    bool operator==(const TypeName& dataIn) const
+    {
+        return *load() == dataIn;
+    }
+
+
+    /** Not equivilent operator.
+     *
+     *  @param[in] a The atomic to compare to.
+     *
+     **/
+    bool operator!=(const atomic_shared_ptr& a) const
+    {
+        return *load() != *a.load();
+    }
+
+
+    /** Not equivilent operator.
+     *
+     *  @param[in] a The data type to compare to.
+     *
+     **/
+    bool operator!=(const TypeName& dataIn) const
+    {
+        return *load() != dataIn;
+    }
+
+
+    /** load
+     *
+     *  Load the object from memory.
+     *
+     **/
+    std::shared_ptr<TypeName> load() const
+    {
+        return std::atomic_load_explicit(&data, std::memory_order_seq_cst);
+    }
+
+
+    /** data member access
+     *
+     *  Load the object from memory.
+     *
+     **/
+    std::shared_ptr<TypeName> operator->()
+    {
+        return std::atomic_load_explicit(&data, std::memory_order_seq_cst);
+    }
+
+
+    /** store
+     *
+     *  Stores an object into memory.
+     *
+     *  @param[in] dataIn The data to into protected memory.
+     *
+     **/
+    void store(const TypeName& dataIn)
+    {
+        /* Cleanup our memory usage on store. */
+        if(data)
+            data = nullptr;
+
+        std::atomic_store_explicit(&data, std::make_shared<TypeName>(dataIn), std::memory_order_seq_cst);
+    }
+};
+
+
+void PushThread(atomic_shared_ptr<Test>& s)
+{
+    for(int i = 0; i < 4000; ++i)
+        s->a++;
+
+    for(int i = 0; i < 4000; ++i)
+        s->b++;
+
+    for(int i = 0; i < 4000; ++i)
+        s->c++;
+}
+
+
+
+int main()
+{
+    //std::atomic<std::string> ptr;
+
+    //atomic<Test> ptr;
+    //ptr.store(Test());
+
+    //Test n;
+    //n.a = 55;
+
+    //ptr.store(n);
+
+    //s.store(new Test());
+
+    atomic_shared_ptr<Test> ptr(new Test());
+
+    //ptr->a = 5;
+
+    debug::log(0, VARIABLE(ptr->a), " | ", VARIABLE(ptr->b));
+
+    std::thread t1(PushThread, std::ref(ptr));
+    std::thread t2(PushThread, std::ref(ptr));
+    std::thread t3(PushThread, std::ref(ptr));
+    std::thread t4(PushThread, std::ref(ptr));
+
+    debug::log(0, "Generated threads...");
+
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
+
+    debug::log(0, VARIABLE(ptr->a), " | ", VARIABLE(ptr->b), " | ", VARIABLE(ptr->c.load()));
+
+    return 0;
+}
+
 
 
 
@@ -1060,7 +1521,7 @@ int main3(int argc, char** argv)
         out.close();
     }
 
-    mstream stream(strFile, std::ios::in | std::ios::out, 2);
+    mstream stream(strFile, std::ios::in | std::ios::out, 1);
 
     std::vector<uint8_t> vData2((filesystem::page_size() * 2), 0xaa);
     stream.write((char*)&vData2[0], vData2.size(), filesystem::page_size() * 333);
@@ -1075,7 +1536,12 @@ int main3(int argc, char** argv)
 }
 
 
-int main(int argc, char** argv)
+
+
+
+
+
+int main4(int argc, char** argv)
 {
     config::ParseParameters(argc, argv);
 
