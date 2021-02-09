@@ -228,11 +228,6 @@ namespace LLP
                 if(fOUTGOING)
                     PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
 
-                /* If this is the first outgoing connection then we have to assume that we are not in sync as we don't know how 
-                   long it would have been since the last connection was dropped */
-                if(fOUTGOING && LLP::TRITIUM_SERVER->GetConnectionCount() == 1)
-                    fSynchronized.store(false);
-
                 break;
             }
 
@@ -502,11 +497,6 @@ namespace LLP
                 nUnsubscribed = 0;
                 nNotifications = 0;
 
-                /* Finally, if this was the last remaining outgoing connection then reset the synchronized flag, as we do not know how long
-                   it will be until we get our next connection so have to assume that we will not be in sync. */
-                if(fOUTGOING && LLP::TRITIUM_SERVER->GetConnectionCount() == 1)
-                    fSynchronized.store(false);
-
                 break;
             }
         }
@@ -583,11 +573,12 @@ namespace LLP
                         PROTOCOL_VERSION,
                         SESSION_ID,
                         version::CLIENT_VERSION_BUILD_STRING);
-
-                    /* Add to address manager. */
-                    if(TRITIUM_SERVER->GetAddressManager())
-                        TRITIUM_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::CONNECTED);
                 }
+
+                /* Add to address manager. */
+                if(TRITIUM_SERVER->GetAddressManager())
+                    TRITIUM_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::CONNECTED);
+                
 
                 /* Send Auth immediately after version and before any other messages*/
                 //Auth(true);
