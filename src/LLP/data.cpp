@@ -425,8 +425,11 @@ namespace LLP
             /* Access the shared pointer of the connection */
             std::shared_ptr<ProtocolType> CONNECTION = *ITT;
 
-            try { CONNECTION->NotifyEvent(); }
-            catch(const std::exception& e) { }
+            if(CONNECTION)
+            {
+                try { CONNECTION->NotifyEvent(); }
+                catch(const std::exception& e) { }
+            }
         }
     }
 
