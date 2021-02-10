@@ -212,8 +212,13 @@ namespace LLP
             /* Update packet count. */
             ++PACKETS;
         }
-        else //set buffer to full
+        else 
+        {
+            debug::log(4, NODE, "Socket buffer full. Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(), " bytes");
+            
+            /* set buffer to full */
             fBufferFull.store(true);
+        }
 
         /* Notify condition if available. */
         if(FLUSH_CONDITION && Buffered())
