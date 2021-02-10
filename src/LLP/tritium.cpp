@@ -224,6 +224,11 @@ namespace LLP
                 /* Set the laset ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
 
+                /* If this is the first connection then the fSynchronized flag will be false.  In which case we need to set it based
+                   on the logic in ChainState::Synchronizing() as this will vary based on testnet settings */
+                if(!fSynchronized.load())
+                    fSynchronized.store(!TAO::Ledger::ChainState::Synchronizing());
+
                 /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
                     PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
