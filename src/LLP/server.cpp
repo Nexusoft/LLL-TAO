@@ -471,12 +471,21 @@ namespace LLP
         /* Loop connections. */
         while(!config::fShutdown.load())
         {
-            /* Sleep between connection attempts. */
-            runtime::sleep(100);
+            /* Get the number of incoming and total connection counts */
+            uint32_t nConnections = GetConnectionCount(FLAGS::ALL);
+            uint32_t nIncoming = GetConnectionCount(FLAGS::INCOMING);
+
+            /* Sleep between connection attempts.  
+               If there are no connections then sleep for a minimum interval until a connection is established. */
+            if(nConnections == 0)
+                runtime::sleep(10);
+            else
+                /* Sleep in 1 second intervals for easy break on shutdown. */
+                for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown.load(); ++i)
+                    runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
-            if(GetConnectionCount(FLAGS::INCOMING) < nMaxIncoming
-            && GetConnectionCount(FLAGS::ALL) < nMaxConnections
+            if(nConnections < nMaxIncoming && nIncoming< nMaxConnections
             && pAddressManager->StochasticSelect(addr))
             {
                 /* Check for invalid address */
@@ -508,10 +517,6 @@ namespace LLP
                     std::string strDNS;
                     if(pAddressManager->GetDNSName(addr, strDNS))
                         debug::log(3, FUNCTION, "Connected to DNS Address: ", strDNS);
-
-                    /* Sleep in 1 second intervals for easy break on shutdown. */
-                    for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown.load(); ++i)
-                        runtime::sleep(1000);
                 }
             }
 
