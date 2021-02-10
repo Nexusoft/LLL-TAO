@@ -1313,9 +1313,11 @@ namespace LLP
                                 return debug::drop(NODE, "failed to read starting block");
 
                             /* Do a sequential read to obtain the list.
-                               3000 seems to be the optimal amount to overcome higher-latency connections during sync */
+                               3000 seems to be the optimal amount to overcome higher-latency connections during sync. */
+                            int32_t nBatchSize = config::GetArg("-syncbatchsize", 3000);
+
                             std::vector<TAO::Ledger::BlockState> vStates;
-                            while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
+                            while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop && LLD::Ledger->BatchRead(hashStart, "block", vStates, nBatchSize, true))
                             {
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
