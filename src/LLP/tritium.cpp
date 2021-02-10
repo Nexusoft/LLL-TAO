@@ -548,8 +548,14 @@ namespace LLP
                 /* Check if session is already connected. */
                 {
                     LOCK(SESSIONS_MUTEX);
+
                     if(mapSessions.count(nCurrentSession))
-                        return debug::drop(NODE, "duplicate connection");
+                    {
+                        /* Check that the other connection is connected */
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection(mapSessions[nCurrentSession].first, mapSessions[nCurrentSession].second);
+                        if(pNode && pNode->Connected())
+                            return debug::drop(NODE, "duplicate connection");
+                    }
 
                     /* Set this to the current session. */
                     mapSessions[nCurrentSession] = std::make_pair(nDataThread, nDataIndex);
@@ -1330,6 +1336,7 @@ namespace LLP
                                         /* Read the correct block from next index. */
                                         if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
                                         {
+                                            debug::log(3, FUNCTION, "Failed to read block ", stateLast.hashNextBlock.SubString());
                                             nLimits = 0;
                                             break;
                                         }
