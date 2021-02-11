@@ -70,6 +70,11 @@ namespace TAO
                 std::mutex CREATE_MUTEX;
 
 
+                /** The txid of the transaction that was used to authenticate them on login.  This is cached so that we can 
+                    use this for subsequent authentication of transactions, unlock etc **/
+                uint512_t hashAuth;
+
+
                 /** Initialize
                  *
                  *  Initializes the session from username / password / pin

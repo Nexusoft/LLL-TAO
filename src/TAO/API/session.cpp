@@ -28,6 +28,7 @@ namespace TAO
         /* Default Constructor. */
         Session::Session()
         : CREATE_MUTEX          ()
+        , hashAuth              ()
         , MUTEX                 ()
         , nID                   (0)
         , nStarted              (0)
@@ -44,7 +45,8 @@ namespace TAO
 
         /* Move constructor. */
         Session::Session(Session&& session) noexcept
-        : nID                   (std::move(session.nID))
+        : hashAuth              (std::move(session.hashAuth))
+        , nID                   (std::move(session.nID))
         , nStarted              (std::move(session.nStarted))
         , nLastActive           (std::move(session.nLastActive))
         , nAuthAttempts          (std::move(session.nAuthAttempts))
@@ -60,6 +62,7 @@ namespace TAO
         /** Move assignment. **/
         Session& Session::operator=(Session&& session) noexcept
         {
+            hashAuth =          (std::move(session.hashAuth));
             nID =               (std::move(session.nID));
             nStarted =          (std::move(session.nStarted));
             nLastActive =       (std::move(session.nLastActive));

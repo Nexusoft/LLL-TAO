@@ -361,14 +361,9 @@ namespace TAO
             /* The logged in sig chain genesis hash */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
 
-            /* Get the last transaction. */
-            uint512_t hashLast;
-            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-138, "No previous transaction found");
-
-            /* Get previous transaction */
+            /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
             TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-138, "No previous transaction found");
 
             /* Generate a temporary transaction with the next hash based on the current password/pin */

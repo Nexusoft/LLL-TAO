@@ -143,30 +143,10 @@ namespace TAO
             /* Get the genesis ID. */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
 
-            /* Get the latest sig chain transaction to authenticate with . */
+            /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
             TAO::Ledger::Transaction txPrev;
-
-            /* First check to see if this is a new sig chain and the genesis is in the mempool */
-            bool fNewSighain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
-
-
-            if(fNewSighain)
-            {
-                /* Get the memory pool tranasction. */
-                if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
-                    throw APIException(-137, "Couldn't get transaction");
-            }
-            else
-            {
-                /* Get the last transaction. */
-                uint512_t hashLast;
-                if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
-
-                /* Get previous transaction */
-                if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
-            }
+            if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-138, "No previous transaction found");
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;

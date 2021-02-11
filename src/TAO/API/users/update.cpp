@@ -103,32 +103,10 @@ namespace TAO
             /* Get the genesis ID. */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
 
-            /* Check for duplicates in ledger db. */
+            /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
             TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->HasGenesis(hashGenesis))
-            {
-                /* Check the memory pool and compare hashes. */
-                if(!TAO::Ledger::mempool.Has(hashGenesis))
-                {
-                    /* Account doesn't exist returns invalid credentials */
-                    throw APIException(-139, "Invalid credentials");
-                }
-
-                /* Get the memory pool tranasction. */
-                if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
-                    throw APIException(-137, "Couldn't get transaction");
-            }
-            else
-            {
-                /* Get the last transaction. */
-                uint512_t hashLast;
-                if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
-
-                /* Get previous transaction */
-                if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
-            }
+            if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-138, "No previous transaction found");
 
             /* Flag indicating that the recovery seed should be used to sign the transaction */
             bool fRecovery = false;
@@ -265,6 +243,9 @@ namespace TAO
  
                 /* Update the Password */
                 session.UpdatePassword(strNewPassword);
+
+                /* Update the cached txid used for auth */
+                session.hashAuth = tx.GetHash();
 
                 /* Update the cached pin in memory with the new pin */
                 if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->PIN().empty())

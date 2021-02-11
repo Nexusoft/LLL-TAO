@@ -231,6 +231,9 @@ namespace TAO
             /* Create the new session */
             Session& session = GetSessionManager().Add(user, strPin);
 
+            /* Cache the txid that was used to authenticate their login */
+            session.hashAuth = txPrev.GetHash();
+
             /* Add the session to the notifications processor */
             if(NOTIFICATIONS_PROCESSOR)
                 NOTIFICATIONS_PROCESSOR->Add(session.ID());
@@ -387,6 +390,9 @@ namespace TAO
 
                     /* Create the new session */
                     Session& session = GetSessionManager().Add(user, strPin);
+
+                    /* Cache the txid that was used to authenticate their login */
+                    session.hashAuth = txPrev.GetHash();
                                             
 
                     /* The unlock actions to apply for autologin.  NOTE we do NOT unlock for transactions */
