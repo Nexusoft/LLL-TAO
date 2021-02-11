@@ -69,6 +69,14 @@ namespace TAO
             /* Add the genesis */
             ret["genesis"] = hashGenesis.GetHex();
 
+            /* Work out whether the sig chain creation is confirmed.  For this we just need to check the confirmatations on the 
+               transaction that was used for login */
+            uint32_t nConfirms = 0;
+            LLD::Ledger->ReadConfirmations(session.hashAuth, nConfirms);
+
+            /* Add the genesis confirmed flag */
+            ret["confirmed"] = nConfirms > 0;
+
             /* Add the last active timestamp */
             ret["lastactive"] = session.GetLastActive();
 

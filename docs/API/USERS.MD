@@ -383,6 +383,7 @@ Return status information for the currently logged in user
 {
     "username": "bob",
     "genesis": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269ae000",
+    "confirmed": true,
     "recovery": true,
     "transactions": 272,
     "notifications": 10,
@@ -401,6 +402,8 @@ Return status information for the currently logged in user
 `username` : The username of the currently logged in user.  This is always included in single-user API mode, but is only included in multi-user mode if the caller provides the `pin` parameter. 
 
 `genesis` : The signature chain genesis hash for the currently logged in user.
+
+`confirmed` : Boolean flag indicating whether the genesis transaction for this signature chain has at least one confirmation.
 
 `recovery` : Flag indicating whether the recovery seed has been set for this user. 
 
