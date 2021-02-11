@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+
 #include <TAO/API/names/types/names.h>
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/include/utils.h>
@@ -112,6 +114,28 @@ namespace TAO
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = user->Genesis();
+
+            /* In client mode, in order to check whether the username already exists we have to do things differently as it is 
+               possible that the local db does not have the genesis as it has never been used by the node.  In which case we 
+               need to request the genesis transaction from a peer and then check again */
+            if(config::fClient.load() && !LLD::Ledger->HasGenesis(hashGenesis))
+            {
+                 /* Check tritium server enabled. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        /* Request the genesis hash from the peer. */
+                        debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::GENESIS for ", hashGenesis.SubString());
+
+                        LLP::TritiumNode::BlockingMessage(10000, pNode.get(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::GENESIS), hashGenesis);
+
+                        debug::log(1, FUNCTION, "CLIENT MODE: GET::GENESIS received for ", hashGenesis.SubString());
+                    }
+                }
+
+            }
 
             /* Check for duplicates in ledger db. */
             if(LLD::Ledger->HasGenesis(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
