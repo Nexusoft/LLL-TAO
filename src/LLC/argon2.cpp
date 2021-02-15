@@ -81,6 +81,15 @@ namespace LLC
     }
 
 
+    /* 256-bit hashing function */
+    uint256_t Argon2Fast_256(const std::vector<uint8_t>& vchData, 
+                        const std::vector<uint8_t>& vchSalt, 
+                        const std::vector<uint8_t>& vchSecret)
+    {
+        return Argon2_256(vchData, vchSalt, vchSecret, 2, (1 << 4));
+    }
+
+
     /* 512-bit hashing function */
     uint512_t Argon2_512(const std::vector<uint8_t>& vchData, 
                         const std::vector<uint8_t>& vchSalt, 
@@ -140,5 +149,14 @@ namespace LLC
         hashData.SetBytes(vHash);
 
         return hashData;
+    }
+
+
+    /* 512-bit hashing function */
+    uint512_t Argon2Fast_512(const std::vector<uint8_t>& vchData, 
+                        const std::vector<uint8_t>& vchSalt, 
+                        const std::vector<uint8_t>& vchSecret)
+    {
+        return Argon2_512(vchData, vchSalt, vchSecret, 2, (1 << 4));
     }
 }

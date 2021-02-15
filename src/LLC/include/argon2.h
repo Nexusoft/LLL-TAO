@@ -22,7 +22,7 @@ namespace LLC
 
 	/** Argon2_256
 	 *
-	 * 256-bit hashing function.
+	 * 256-bit version of argon2 hashing function.
 	 * 
 	 * @param vchData  Data to be hashed
 	 * @param vchSalt  Optional salt to use
@@ -37,6 +37,22 @@ namespace LLC
 						const std::vector<uint8_t>& vchSalt = std::vector<uint8_t>(16), 
 						const std::vector<uint8_t>& vchSecret = std::vector<uint8_t>(),
 						uint32_t nCost = 64, uint32_t nMemory = (1 << 16));
+
+
+	/** Argon2Fast_256
+	 *
+	 * 256-bit version of argon2 hashing function with lower CPU/memory requirements resulting in a faster hash.
+	 * 
+	 * @param vchData  Data to be hashed
+	 * @param vchSalt  Optional salt to use
+	 * @param vchSecret  Optional secret to use
+	 * 
+	 * @return  The hashed data
+	 *
+	 **/
+	uint256_t Argon2Fast_256(const std::vector<uint8_t>& vchData, 
+						const std::vector<uint8_t>& vchSalt = std::vector<uint8_t>(16), 
+						const std::vector<uint8_t>& vchSecret = std::vector<uint8_t>());
 
 
 
@@ -56,6 +72,21 @@ namespace LLC
 						const std::vector<uint8_t>& vchSalt = std::vector<uint8_t>(16), 
 						const std::vector<uint8_t>& vchSecret = std::vector<uint8_t>(),
 						uint32_t nCost = 64, uint32_t nMemory = (1 << 16));
+
+
+	/** Argon2Fast_512
+	 *
+	 * 512-bit version of argon2 hashing function with lower CPU/memory requirements resulting in a faster hash.
+	 *
+	 * @param vchData  Data to be hashed
+	 * @param vchSalt  Optional salt to use
+	 * @param vchSecret  Optional secret to use
+	 * 
+	 * @return  The hashed data
+	 **/
+	uint512_t Argon2Fast_512(const std::vector<uint8_t>& vchData, 
+						const std::vector<uint8_t>& vchSalt = std::vector<uint8_t>(16), 
+						const std::vector<uint8_t>& vchSecret = std::vector<uint8_t>());
 
 	
 }
