@@ -14,8 +14,8 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
-#include <LLC/hash/argon2.h>
 
+#include <LLC/include/argon2.h>
 #include <LLC/include/flkey.h>
 #include <LLC/include/eckey.h>
 
@@ -98,57 +98,16 @@ namespace TAO
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
 
-            // low-level API
-            std::vector<uint8_t> vHash(32);
-            std::vector<uint8_t> vSalt(16); //TODO: possibly make this your birthday (required in API)
+            /* Default salt */
+            std::vector<uint8_t> vSalt(16);
 
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &vHash[0],
-                32,
+            /* Empty vector used for Argon2 call */
+            std::vector<uint8_t> vEmpty;
 
-                /* Password input data. */
-                &vUsername[0],
-                static_cast<uint32_t>(vUsername.size()),
-
-                /* The salt for usernames */
-                &vSalt[0],
-                static_cast<uint32_t>(vSalt.size()),
-
-                /* Optional secret data */
-                NULL, 0,
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                12,
-
-                /* Memory Cost (64 MB). */
-                (1 << 16),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int32_t nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-            /* Set the bytes for the key. */
-            hashGenesis.SetBytes(vHash);
+            /* Argon2 hash the secret */
+            hashGenesis = LLC::Argon2_256(vUsername, vSalt, vEmpty, 12, (1 << 16));
+            
+            /* Set the genesis type byte. */
             hashGenesis.SetType(TAO::Ledger::GenesisType());
 
             /* Cache this username-genesis pair in the local db*/
@@ -209,66 +168,18 @@ namespace TAO
             std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
             vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
-            // low-level API
-            std::vector<uint8_t> hash(64);
-
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &hash[0],
-                64,
-
-                /* Password input data. */
-                &vPassword[0],
-                static_cast<uint32_t>(vPassword.size()),
-
-                /* Username and key ID as the salt. */
-                &vUsername[0],
-                static_cast<uint32_t>(vUsername.size()),
-
-                /* The secret phrase as secret data. */
-                &vSecret[0],
-                static_cast<uint32_t>(vSecret.size()),
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
-
-                /* Memory Cost (64 MB). */
-                uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
+            /* Argon2 hash the secret */
+            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret, 
+                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))), 
+                            uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
             /* Add the private key to the cache. */
             if(fCache)
             {
                 LOCK(MUTEX);
 
-                cacheKeys.Put(cacheKey, SecureString(hash.begin(), hash.end()));
+                cacheKeys.Put(cacheKey, SecureString(hashKey.begin(), hashKey.end()));
             }
-
-            /* Set the bytes for the key. */
-            uint512_t hashKey;
-            hashKey.SetBytes(hash);
 
             return hashKey;
         }
@@ -294,59 +205,12 @@ namespace TAO
             std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
             vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
-            // low-level API
-            std::vector<uint8_t> hash(64);
 
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &hash[0],
-                64,
+            /* Argon2 hash the secret */
+            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret, 
+                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))), 
+                            uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
-                /* Password input data. */
-                &vPassword[0],
-                static_cast<uint32_t>(vPassword.size()),
-
-                /* Username and key ID as the salt. */
-                &vUsername[0],
-                static_cast<uint32_t>(vUsername.size()),
-
-                /* The secret phrase as secret data. */
-                &vSecret[0],
-                static_cast<uint32_t>(vSecret.size()),
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
-
-                /* Memory Cost (64 MB). */
-                uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-
-            /* Set the bytes for the key. */
-            uint512_t hashKey;
-            hashKey.SetBytes(hash);
 
             return hashKey;
         }
@@ -377,58 +241,10 @@ namespace TAO
             /* Seed secret data with the key type. */
             vSecret.insert(vSecret.end(), strType.begin(), strType.end());
 
-            // low-level API
-            std::vector<uint8_t> hash(64);
-
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &hash[0],
-                64,
-
-                /* Password input data. */
-                &vPassword[0],
-                static_cast<uint32_t>(vPassword.size()),
-
-                /* Username and key ID as the salt. */
-                &vUsername[0],
-                static_cast<uint32_t>(vUsername.size()),
-
-                /* The secret phrase as secret data. */
-                &vSecret[0],
-                static_cast<uint32_t>(vSecret.size()),
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
-
-                /* Memory Cost (64 MB). */
-                uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-            /* Set the bytes for the key. */
-            uint512_t hashKey;
-            hashKey.SetBytes(hash);
+            /* Argon2 hash the secret */
+            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret, 
+                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))), 
+                            uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
             return hashKey;
         }
@@ -442,58 +258,10 @@ namespace TAO
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
 
-            // low-level API
-            std::vector<uint8_t> vHash(32);
-            std::vector<uint8_t> vSalt(16);
+            /* Argon2 hash the secret */
+            uint512_t hashKey = LLC::Argon2_512(vSecret);
 
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &vHash[0],
-                32,
-
-                /* Password input data. */
-                &vSecret[0],
-                static_cast<uint32_t>(vSecret.size()),
-
-                /* The salt for usernames */
-                &vSalt[0],
-                static_cast<uint32_t>(vSalt.size()),
-
-                /* Optional secret data */
-                NULL, 0,
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                64,
-
-                /* Memory Cost (64 MB). */
-                (1 << 16),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int32_t nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-            /* Set the bytes for the key. */
-            uint256_t hashKey;
-            hashKey.SetBytes(vHash);
+            /* Set the key type */
             hashKey.SetType(TAO::Ledger::GenesisType());
 
             return hashKey;

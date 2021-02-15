@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLC/hash/macro.h>
 #include <LLC/hash/argon2.h>
 
+#include <LLC/include/argon2.h>
 #include <LLC/include/flkey.h>
 #include <LLC/include/eckey.h>
 
@@ -1296,50 +1297,9 @@ namespace TAO
             DataStream ss(SER_GETHASH, nVersion);
             ss << *this;
 
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                (uint8_t*)&hashKey,
-                64,
+            /* Argon2 hash the data, using the genesis as salt */
+            hashKey = LLC::Argon2_512(ss.Bytes(), hashGenesis.GetBytes(), std::vector<uint8_t>(), 1, (1 << 8) );
 
-                /* Password input data. */
-                ss.data(),
-                static_cast<uint32_t>(ss.size()),
-
-                /* The salt for usernames */
-                (uint8_t*)&hashGenesis,
-                32,
-
-                /* Optional secret data */
-                NULL, 0,
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                1,
-
-                /* Memory Cost. */
-                (1 << 8),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int32_t nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                return ~uint512_t(0);
 
             return hashKey;
         }
