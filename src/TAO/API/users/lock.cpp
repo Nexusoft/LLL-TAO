@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/sessionmanager.h>
 #include <TAO/Ledger/types/stake_minter.h>
 
+#include <LLD/include/global.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -99,15 +101,13 @@ namespace TAO
                 }
             }
 
+            /* Cache the pin here before we clear it so that we an use it for saving the session */
+            SecureString strPin = session.GetActivePIN()->PIN();
+
             /* Clear the pin */
-
-
             /* If we have changed specific unlocked actions them set them on the pin */
             if(nUnlockedActions != session.GetActivePIN()->UnlockedActions())
             {
-                /* Extract the PIN. */
-                SecureString strPin = session.GetActivePIN()->PIN();
-
                 /* Set new unlock options */
                 session.UpdatePIN(strPin, nUnlockedActions);
             }
@@ -125,6 +125,10 @@ namespace TAO
                 if(stakeMinter.IsStarted())
                     stakeMinter.Stop();
             }
+
+            /* Update the saved session if there is one */
+            if(LLD::Local->HasSession(session.GetAccount()->Genesis()))
+                session.Save(strPin);
 
             /* populate unlocked status */
             json::json jsonUnlocked;

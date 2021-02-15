@@ -230,7 +230,7 @@ namespace TAO
         {
             LOCK(MUTEX);
 
-            if(pActivePIN.IsNull() && pActivePIN->CanTransact())
+            if(!pActivePIN.IsNull() && pActivePIN->CanTransact())
                 return true;
 
             return false;

@@ -159,6 +159,10 @@ namespace TAO
             /* update the unlocked actions */
             session.UpdatePIN(strPin, nUnlockedActions);
 
+            /* Update the saved session if there is one */
+            if(LLD::Local->HasSession(hashGenesis))
+                session.Save(strPin);
+
             /* After unlock complete, attempt to start stake minter if unlocked for staking */
             if(session.CanStake())
             {
