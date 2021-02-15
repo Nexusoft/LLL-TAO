@@ -70,7 +70,6 @@ namespace TAO
         public:
 
 
-
             /** Default constructor. **/
             SignatureChain() = delete;
 
@@ -225,6 +224,15 @@ namespace TAO
              *  @return The SecureString containing the username for this sig chain
              **/
             const SecureString& UserName() const;
+
+
+            /** Password
+             *
+             *  Returns the password for this sig chain
+             *
+             *  @return The SecureString containing the password for this sig chain
+             **/
+            const SecureString& Password() const;
 
 
             /** Encrypt

@@ -443,3 +443,4 @@ Error Codes
 | -306 | No connections available |
 | -307 | Failed to download signature chain |
 | -308 | API method only available in client mode |
+| -309 | Error loading session |

@@ -90,6 +90,13 @@ namespace TAO
                         const SecureString& strPin,
                         const uint256_t& nSessionID);
 
+                /** IsNull
+                 *
+                 *  Returns true if the session has not been initialised.
+                 *
+                 **/
+                bool IsNull() const;
+
 
                 /** ID
                  *
@@ -305,10 +312,35 @@ namespace TAO
 
 
 
+                /** Save
+                 *
+                 *  Encrypts the current session and saves it to the local database 
+                 * 
+                 *  @param[in] strPin The pin to use to save the session.
+                 * 
+                 **/
+                void Save(const SecureString& strPin) const;
+
+
+
+                /** Load
+                 *
+                 *  Decrypts and loads an existing session from disk  
+                 * 
+                 *  @param[in] nSessionID The new ID for this session
+                 *  @param[in] hashGenesis The genesis hash of the user to load the session for.
+                 *  @param[in] strPin The pin to use to load the session.
+                 * 
+                 **/
+                void Load(const uint256_t& nSessionID, const uint256_t& hashGenesis, const SecureString& strPin);
+
+
+
             private:
 
                 /** The mutex for locking. **/
                 mutable std::mutex MUTEX;
+
 
                 /** The session ID **/
                 uint256_t nID;

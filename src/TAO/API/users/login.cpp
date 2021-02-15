@@ -238,6 +238,11 @@ namespace TAO
             if(NOTIFICATIONS_PROCESSOR)
                 NOTIFICATIONS_PROCESSOR->Add(session.ID());
 
+            /* If this user has previously logged in with a different session and saved it to the local DB, then purge it as that
+               session is now no longer relevant */
+            if(LLD::Local->HasSession(hashGenesis))
+                LLD::Local->EraseSession(hashGenesis);
+
             ret["genesis"] = hashGenesis.ToString();
 
             ret["session"] = session.ID().ToString();
@@ -425,6 +430,11 @@ namespace TAO
 
                     /* Start the stake minter if successful login. */
                     TAO::Ledger::TritiumMinter::GetInstance().Start();
+
+                    /* If this user has previously logged in with a different session and saved it to the local DB, then purge it as that
+                       session is now no longer relevant */
+                    if(LLD::Local->HasSession(hashGenesis))
+                        LLD::Local->EraseSession(hashGenesis);
                 }
             }
             catch(const APIException& e)

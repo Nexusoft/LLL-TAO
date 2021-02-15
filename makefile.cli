@@ -500,6 +500,7 @@ OBJS+=  build/LLC_base_uint.o \
         build/API_types_users_initialize.o \
 		build/API_types_users_items.o \
 		build/API_types_users_invoices.o \
+		build/API_types_users_load.o \
 		build/API_types_users_lock.o \
 		build/API_types_users_login.o \
 		build/API_types_users_logout.o \
@@ -509,6 +510,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_notifications_processor.o \
 		build/API_types_users_notifications_thread.o \
 		build/API_types_users_recover.o \
+		build/API_types_users_save.o \
 		build/API_types_users_status.o \
 		build/API_types_users_tokens.o \
 		build/API_types_users_transactions.o \

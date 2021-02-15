@@ -100,6 +100,35 @@ namespace TAO
             return mapSessions[nSession];
         }
 
+        /* Decrypts and loads an existing session from disk */
+        Session& SessionManager::Load(const uint256_t& hashGenesis, const SecureString& strPin)
+        {
+            LOCK(MUTEX);
+
+            /* If not in multiuser mode check that there is not already a session with ID 0 */
+            if(!config::fMultiuser.load() && mapSessions.count(0) != 0)
+                throw APIException(-140, "User already logged in");
+
+            /* Generate a new session ID, or use ID 0 if in single user mode */
+            uint256_t nSession = config::fMultiuser.load() ? LLC::GetRand256() : 0;
+
+            /* Initialize the session instance */
+            try
+            {
+                mapSessions[nSession].Load(nSession, hashGenesis, strPin);
+
+                /* Return the session instance */
+                return mapSessions[nSession];
+            }
+            catch(std::exception& ex)
+            {
+                /* Need to remove the session from the map if it failed to load */
+                mapSessions.erase(nSession);
+                return null_session;
+            }
+            
+        }
+
 
         /* Remove a session from the manager */
         void SessionManager::Remove(const uint256_t& sessionID)

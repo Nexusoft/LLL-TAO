@@ -33,6 +33,8 @@ The following methods are currently supported by this API
 [`process/notifications`](#processnotifications)  
 [`list/tokens`](#listtokens)  
 [`list/transactions`](#listtransactions)
+[`save/session`](#savesession)
+[`load/session`](#loadsession)
 
 
 
@@ -1193,5 +1195,75 @@ This will list off all of the transactions for the requested signature chain gen
 &nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
 }
+
+****
+
+
+# `save/session`
+
+This will save the users session to the local database, allowing the session to be resumed at a later time without the need to login or unlock.  The users PIN is required as this is used (in conjunction with the genesis) to encrypt the session data before persisting it to the local database. 
+
+
+### Endpoint:
+
+`/users/save/session`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+
+### Return value JSON object:    
+```
+{
+    "success": true
+}
+
+```
+
+### Return values:
+
+`success` : Boolean flag indicating that the session was saved successfully .
+
+
+****
+
+
+# `load/session`
+
+Loads a previously saved session from the local database.  In addition to restoring the logged in status of the user, the session resumes the unlocked status that was active at the time it was saved.  The users PIN is required as this is used (in conjunction with the genesis) to decrypt the session data loaded from the local database. 
+
+
+### Endpoint:
+
+`/users/load/session`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain to load the session for (optional if username is supplied).
+
+`username` : The username identifying the signature chain to load the session for (optional if genesis is supplied).
+
+`pin` : The PIN for this signature chain.
+
+
+### Return value JSON object:    
+```
+{
+    "genesis": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "session": "0000000000000000000000000000000000000000000000000000000000000000"
+}
+
+
+```
+
+### Return values:
+
+`genesis` : The signature chain genesis hash is echoed back to confirm the session has been loaded for the correct user.
+
+`session` : The session ID for the resumed session.  NOTE: in multi-user mode this will be a NEW session ID, generated at the point the session is loaded.  The previous session ID is not persisted and restored.  When not in multi-user mode this will always be 0 
+
 
 ****

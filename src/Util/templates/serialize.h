@@ -388,6 +388,10 @@ template<typename K, typename Pred, typename A> uint64_t GetSerializeSize(const 
 template<typename Stream, typename K, typename Pred, typename A> void Serialize(Stream& os, const std::set<K, Pred, A>& m, uint32_t nSerType, uint32_t nSerVersion);
 template<typename Stream, typename K, typename Pred, typename A> void Unserialize(Stream& is, std::set<K, Pred, A>& m, uint32_t nSerType, uint32_t nSerVersion);
 
+/** SecureString **/
+uint64_t GetSerializeSize(const SecureString& str, uint32_t, uint32_t=0);
+template<typename Stream> void Serialize(Stream& os, const SecureString& str, uint32_t, uint32_t=0);
+template<typename Stream> void Unserialize(Stream& is, SecureString& str, uint32_t, uint32_t=0);
 
 /**
  *  If none of the specialized versions above matched, default to calling member function.
@@ -749,6 +753,28 @@ struct ser_streamplaceholder
     uint32_t nSerType;
     uint32_t nSerVersion;
 };
+
+
+/* Serialization functions for SecureString */
+inline uint64_t GetSerializeSize(const SecureString& str, uint32_t nSerType, uint32_t nSerVersion)
+{
+    return GetSizeOfCompactSize(str.size()) + str.size() * sizeof(str[0]);
+}
+
+template<typename Stream> inline void Serialize(Stream& os, const SecureString& str, uint32_t nSerType, uint32_t nSerVersion)
+{
+    WriteCompactSize(os, str.size());
+    if(!str.empty())
+        os.write((char*)&str[0], str.size() * sizeof(str[0]));
+}
+
+template<typename Stream> inline void Unserialize(Stream& is, SecureString& str, uint32_t nSerType, uint32_t nSerVersion)
+{
+    uint64_t nSize = ReadCompactSize(is);
+    str.resize(nSize);
+    if(nSize != 0)
+        is.read((char*)&str[0], nSize * sizeof(str[0]));
+}
 
 
 #endif

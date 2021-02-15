@@ -13,9 +13,15 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/session.h>
 #include <TAO/API/include/utils.h>
+#include <TAO/API/types/exception.h>
+
+#include <LLD/include/global.h>
+
 
 #include <TAO/Ledger/types/sigchain.h>
 
+#include <LLC/include/argon2.h>
+#include <LLC/include/encrypt.h>
 #include <LLC/include/random.h>
 
 /* Global TAO namespace. */
@@ -112,6 +118,14 @@ namespace TAO
             /* Cache the pin with no unlocked actions */
             UpdatePIN(strPin, TAO::Ledger::PinUnlock::UnlockActions::NONE);
             
+        }
+
+
+        /* Returns true if the session has not been initialised. */
+        bool Session::IsNull() const
+        {
+            /* Simply check to see whether the started timestamp has been set */
+            return nStarted == 0;
         }
 
 
@@ -379,5 +393,148 @@ namespace TAO
         }
         
 
+        /* Encrypts the current session and saves it to the local database */
+        void Session::Save(const SecureString& strPin) const
+        {
+            /* Use a data stream to help serialize */
+            DataStream ssData(SER_LLD, 1);
+
+            /* Serialize the session data */
+            
+            /* Session */
+            ssData << nStarted;
+            ssData << nAuthAttempts;
+            
+            if(!nNetworkKey.IsNull())
+                ssData << nNetworkKey->DATA;
+            else
+                ssData << uint512_t(0);
+
+            
+            ssData << hashAuth;
+
+            /* Sig Chain */
+            ssData << pSigChain->UserName();
+            ssData << pSigChain->Password();
+            
+            /* PinUnlock */
+            ssData << pActivePIN->UnlockedActions();
+
+            /* Get the session bytes */
+            std::vector<uint8_t> vchData = ssData.Bytes();
+
+            /* Generate a symmetric key to encrypt it based on the genesis and pin */
+            std::vector<uint8_t> vchKey;
+
+            /* Get the users genesis */
+            uint256_t hashGenesis = GetAccount()->Genesis();
+
+            /* Add the genesis */
+            vchKey = hashGenesis.GetBytes();
+
+            /* Add the pin */
+            vchKey.insert(vchKey.end(), strPin.begin(), strPin.end());
+
+            /* For added security we don't directly use the genesis + PIN as the symmetric key, but a hash of it instead.  
+               NOTE: the AES256 function requires a 32-byte key, so we reduce the length if necessary by using
+                the 256-bit version of the Argon2 hashing function */
+            uint256_t nKey = LLC::Argon2Fast_256(vchKey);
+            
+            /* Put the key back into the vector */
+            vchKey = nKey.GetBytes();
+
+            /* The encrypted data */
+            std::vector<uint8_t> vchCipherText;
+
+            /* Encrypt the data */
+            if(!LLC::EncryptAES256(vchKey, vchData, vchCipherText))
+                throw APIException(-270, "Failed to encrypt data.");
+
+            /* Write the session to local DB */
+            LLD::Local->WriteSession(hashGenesis, vchCipherText);
+
+        }
+
+
+        /* Decrypts and loads an existing session from disk */
+        void Session::Load(const uint256_t& nSessionID, const uint256_t& hashGenesis, const SecureString& strPin)
+        {
+            /* The encrypted session bytes */
+            std::vector<uint8_t> vchEncrypted;
+
+            /* Load the encrypted data from the local DB */
+            if(!LLD::Local->ReadSession(hashGenesis, vchEncrypted))
+                throw APIException(-309, "Error loading session.");
+            
+            /* Generate a symmetric key to encrypt it based on the session ID and pin */
+            std::vector<uint8_t> vchKey;
+
+            /* Add the genesis ID */
+            vchKey = hashGenesis.GetBytes();
+
+            /* Add the pin */
+            vchKey.insert(vchKey.end(), strPin.begin(), strPin.end());
+
+            /* For added security we don't directly use the session ID + PIN as the symmetric key, but a hash of it instead.  
+               NOTE: the AES256 function requires a 32-byte key, so we reduce the length if necessary by using
+                the 256-bit version of the Argon2 hashing function */
+            uint256_t nKey = LLC::Argon2Fast_256(vchKey);
+
+            /* Put the key back into the vector */
+            vchKey = nKey.GetBytes();
+
+            /* The decrypted session bytes */
+            std::vector<uint8_t> vchSession;
+
+            /* Encrypt the data */
+            if(!LLC::DecryptAES256(vchKey, vchEncrypted, vchSession))
+                throw APIException(-309, "Error loading session."); // generic message callers can't brute force session id's 
+
+            try
+            {
+                /* Use a data stream to help deserialize */
+                DataStream ssData(vchSession, SER_LLD, 1);
+
+                /* Deserialize the session data*/
+                ssData >> nStarted;
+                ssData >> nAuthAttempts;
+
+                /* Network key */
+                uint512_t nKey;
+                ssData >> nKey;
+                if(nKey != 0)
+                    nNetworkKey = new memory::encrypted_type<uint512_t>(nKey);
+
+                ssData >> hashAuth;
+
+                /* Sig Chain */
+                SecureString strUsername;
+                ssData >> strUsername;
+
+                SecureString strPassword;
+                ssData >> strPassword;
+
+                /* Initialise the sig chain */
+                pSigChain = new TAO::Ledger::SignatureChain(strUsername, strPassword);
+                
+                /* PinUnlock */
+                uint8_t nUnlockActions;
+                ssData >> nUnlockActions;
+
+                /* Restore the unlock actions and cache pin */
+                UpdatePIN(strPin, nUnlockActions);
+
+                /* Update the last active time */
+                nLastActive = runtime::unifiedtimestamp();
+
+                /* Finally set the new session ID */
+                nID = nSessionID;
+            }
+            catch(const std::exception& e)
+            {
+                throw APIException(-309, "Error loading session."); // generic message callers can't brute force session id's 
+            }
+        }
+        
     }
 }

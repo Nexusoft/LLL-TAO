@@ -452,6 +452,10 @@ namespace TAO
             if(nSession == 0 && stakeMinter.IsStarted())
                 stakeMinter.Stop();
 
+            /* If this user has previously saved their session to the local DB, then delete it */
+            if(LLD::Local->HasSession(hashGenesis))
+                LLD::Local->EraseSession(hashGenesis);
+
             /* Finally remove the session from the session manager */
             GetSessionManager().Remove(nSession);
         }

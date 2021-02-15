@@ -58,6 +58,18 @@ namespace TAO
                 Session& Add(const TAO::Ledger::SignatureChain& pUser, const SecureString& strPin);
 
 
+                /** Load
+                 *
+                 *  Loads an existing session from disk and adds it to the session manager
+                 * 
+                 *  @param[in] hashGenesis The genesis hash of the user to load the session for.
+                 *  @param[in] strPin The pin to use to load the session.
+                 * 
+                 *  @return The newly loaded session instance
+                 **/
+                Session& Load(const uint256_t& hashGenesis, const SecureString& strPin);
+
+
                 /** Remove
                  *
                  *  Remove a session from the manager

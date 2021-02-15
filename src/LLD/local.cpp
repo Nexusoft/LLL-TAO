@@ -117,4 +117,32 @@ namespace LLD
         return Read(std::make_pair(std::string("genesis"), vKey), hashGenesis);
     }
 
+
+    /* Writes session data to the local database. */
+    bool LocalDB::WriteSession(const uint256_t& hashGenesis, const std::vector<uint8_t>& vchData)
+    {
+        return Write(std::make_pair(std::string("session"), hashGenesis), vchData);
+    }
+
+
+    /* Reads session data from the local database */
+    bool LocalDB::ReadSession(const uint256_t& hashGenesis, std::vector<uint8_t>& vchData)
+    {
+        return Read(std::make_pair(std::string("session"), hashGenesis), vchData);
+    }
+
+
+    /* Deletes session data from the local database fort he given session ID. */
+    bool LocalDB::EraseSession(const uint256_t& hashGenesis)
+    {
+        return Erase(std::make_pair(std::string("session"), hashGenesis));
+    }
+
+
+    /* Determines whether the local DB contains session data for the given session ID */
+    bool LocalDB::HasSession(const uint256_t& hashGenesis)
+    {
+        return Exists(std::make_pair(std::string("session"), hashGenesis));
+    }
+
 }

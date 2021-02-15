@@ -86,7 +86,7 @@ namespace LLC
                         const std::vector<uint8_t>& vchSalt, 
                         const std::vector<uint8_t>& vchSecret)
     {
-        return Argon2_256(vchData, vchSalt, vchSecret, 2, (1 << 4));
+        return Argon2_256(vchData, vchSalt, vchSecret, 2, (1 << 8));
     }
 
 
@@ -157,6 +157,6 @@ namespace LLC
                         const std::vector<uint8_t>& vchSalt, 
                         const std::vector<uint8_t>& vchSecret)
     {
-        return Argon2_512(vchData, vchSalt, vchSecret, 2, (1 << 4));
+        return Argon2_512(vchData, vchSalt, vchSecret, 2, (1 << 8));
     }
 }

@@ -451,6 +451,31 @@ namespace TAO
             json::json ProcessNotifications(const json::json& params, bool fHelp);
 
 
+            /** Save
+             *
+             *  Saves the users session into the local DB so that it can be resumed later after a crash
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Save(const json::json& params, bool fHelp);
+
+
+            /** Load
+             *
+             *  Loads and resumes the users session from the local DB
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Load(const json::json& params, bool fHelp);
+
 
             /** LoginThread
              *

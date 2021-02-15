@@ -410,6 +410,13 @@ namespace TAO
         }
 
 
+        /* Returns the password for this sig chain */
+        const SecureString& SignatureChain::Password() const
+        {
+            return strPassword;
+        }
+
+
         /* Special method for encrypting specific data types inside class. */
         void SignatureChain::Encrypt()
         {
