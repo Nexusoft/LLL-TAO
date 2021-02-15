@@ -178,7 +178,8 @@ namespace TAO
             {
                 LOCK(MUTEX);
 
-                cacheKeys.Put(cacheKey, SecureString(hashKey.begin(), hashKey.end()));
+                std::vector<uint8_t> vBytes = hashKey.GetBytes();
+                cacheKeys.Put(cacheKey, SecureString(vBytes.begin(), vBytes.end()));
             }
 
             return hashKey;
