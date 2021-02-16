@@ -78,7 +78,7 @@ namespace TAO
                 {
                     /* Get the state. We only consider an address valid if the state exists in the register database*/
                     TAO::Register::Object state;
-                    if(LLD::Register->ReadState(hashAddress, state))
+                    if(LLD::Register->ReadState(hashAddress, state, TAO::Ledger::FLAGS::LOOKUP))
                     {
                         /* Set the valid flag in the response */
                         jsonRet["is_valid"] = true;
