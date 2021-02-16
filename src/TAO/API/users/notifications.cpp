@@ -1225,10 +1225,10 @@ namespace TAO
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::NOTIFICATIONS);
 
-            /* Retrieve user's default NXS account. */
+            /* Retrieve user's default NXS account. This is only relevant when not in private mode (as there is no NXS)*/
             std::string strAccount = config::GetArg("-events_account", "default");
             TAO::Register::Object defaultAccount;
-            if(!TAO::Register::GetNameRegister(hashGenesis, strAccount, defaultAccount))
+            if(!config::GetBoolArg("-private", false) && !TAO::Register::GetNameRegister(hashGenesis, strAccount, defaultAccount))
                 throw APIException(-63, "Could not retrieve default NXS account to credit");
 
             /* Check for suppressed parameter. */
