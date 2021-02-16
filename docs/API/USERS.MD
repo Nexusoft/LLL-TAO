@@ -35,7 +35,7 @@ The following methods are currently supported by this API
 [`list/transactions`](#listtransactions)
 [`save/session`](#savesession)
 [`load/session`](#loadsession)
-
+[`has/session`](#hassession)
 
 
 
@@ -1264,6 +1264,43 @@ Loads a previously saved session from the local database.  In addition to restor
 `genesis` : The signature chain genesis hash is echoed back to confirm the session has been loaded for the correct user.
 
 `session` : The session ID for the resumed session.  NOTE: in multi-user mode this will be a NEW session ID, generated at the point the session is loaded.  The previous session ID is not persisted and restored.  When not in multi-user mode this will always be 0 
+
+
+****
+
+
+# `has/session`
+
+Determines whether a previously saved session exists in the local database for the specified user.
+
+
+### Endpoint:
+
+`/users/has/session`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain to check the session for (optional if username is supplied).
+
+`username` : The username identifying the signature chain to check the session for (optional if genesis is supplied).
+
+
+### Return value JSON object:    
+```
+{
+    "genesis": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "has": true
+}
+
+
+```
+
+### Return values:
+
+`genesis` : The signature chain genesis hash is echoed back to confirm the session has been checked for the correct user.
+
+`has` : Boolean flag indicating whether the session exists in the local database or not 
 
 
 ****

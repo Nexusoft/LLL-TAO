@@ -477,6 +477,19 @@ namespace TAO
             json::json Load(const json::json& params, bool fHelp);
 
 
+            /** Has
+             *
+             *  Checks to see if a saves session exists in the local DB for the given user
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Has(const json::json& params, bool fHelp);
+
+
             /** LoginThread
              *
              *  Background thread to auto login user once connections are established .
