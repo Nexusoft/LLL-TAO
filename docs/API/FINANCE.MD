@@ -122,7 +122,7 @@ The method supports the ability to send to multiple recipients in one transactio
 
 `reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a `64-bit unsigned integer` in the range of 0 to 18446744073709551615
 
-`expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied
+`expires` : This optional field allows callers to specify an expiration for the debit transaction.  The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If expires is set to 0, the transaction will never expire, making the sender unable to ever void the transaction.  If omitted, a default expiration of 7 days (604800 seconds) is applied.
 
 `recipients` : This optional array can be provided as an alternative to the single `name_to`/`address_to`, `amount`, `reference`, and `expires` fields.  Each object in the array can have `name_to`/`address_to`, `amount`, `reference`, and `expires` fields, as described above. Up to 99 recipients can be included in the array.
 
