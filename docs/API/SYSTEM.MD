@@ -73,6 +73,7 @@ NONE
     "blocks": 380,
     "synchronizing": true,
     "synccomplete": 31,
+    "syncprogress": 3,
     "txtotal": 0,
     "connections": 1,
     "eids": [
@@ -113,7 +114,9 @@ NONE
 
 `synchronizing` : Flag indicating whether this node is currently syncrhonizing.  Not included if private=true
 
-`synccomplete` : The percentage complete when synchronizing. Not included if private=true
+`synccomplete` : The percentage of the total blocks downloaded
+
+`syncprogress` : The percentage of the current sync completed relative to when the node was started. 
 
 `txtotal` : Number of transactions in the node's mempool.
 

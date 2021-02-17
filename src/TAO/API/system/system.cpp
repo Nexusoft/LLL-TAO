@@ -125,8 +125,11 @@ namespace TAO
             /* Flag indicating whether this node is currently syncrhonizing */
             jsonRet["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
 
-            /* The percentage complete when synchronizing */
+            /* The percentage of the blocks downloaded */
             jsonRet["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
+
+            /* The percentage of the current sync completed */
+            jsonRet["syncprogress"] = (int)TAO::Ledger::ChainState::SyncProgress();
 
             /* Number of transactions in the node's mempool*/
             jsonRet["txtotal"] = TAO::Ledger::mempool.Size();

@@ -123,17 +123,55 @@ namespace TAO
         }
 
 
-        /* Flag to tell if initial blocks are downloading. */
+        /* Real value of the total synchronization percent completion. */
         double ChainState::PercentSynchronized()
         {
-            /* Keep our base timestamp to show correct syncing progress based on previous progress rather than entire process. */
-            const static uint32_t nBase = stateBest.load().GetBlockTime();
+            /* The timstamp of the genesis block.   */
+            uint32_t nGenesis = stateGenesis.GetBlockTime();
 
-            /* Find our relative ages based on the base timestamp that's created on node startup. */
-            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - (60 * 20) - nBase);
-            uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - nBase);
+            /* Find the chain age relative to the genesis */
 
+            /* Calculate the time between the last block received and now.  NOTE we calculate this to one minute in the past, 
+                to accommodate for the average block time of 50s */
+            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 60 - nGenesis);
+            uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - nGenesis);
+
+            /* Ensure that the chain age is not less than the sync age, which would happen if the 
+                last block time was within the last minute */
+            nChainAge = std::max(nChainAge, nSyncAge);
+
+            /* Calculate the sync percent. */
             return (100.0 * nSyncAge) / nChainAge;
+
+        }
+
+
+        /* Percentage of blocks synchronized since the node started. */
+        double ChainState::SyncProgress()
+        {
+            if(Synchronizing())
+            {
+                /* Keep our base timestamp to show correct syncing progress based on previous progress rather than entire process. */
+                const static uint32_t nBase = stateBest.load().GetBlockTime();
+
+                /* Find our relative ages based on the base timestamp that's created on node startup. */
+
+                /* Calculate the time between the last block received and now.  NOTE we calculate this to one minute in the past, 
+                   to accommodate for the average block time of 50s */
+                uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 60 - nBase);
+                uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - nBase);
+
+                /* Ensure that the chain age is not less than the sync age, which would happen if the 
+                   last block time was within the last minute */
+                nChainAge = std::max(nChainAge, nSyncAge);
+
+                /* Calculate the sync percent. */
+                return (100.0 * nSyncAge) / nChainAge;
+            }
+            else
+            {
+                return 100.0;
+            }
         }
 
 
