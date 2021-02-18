@@ -450,7 +450,7 @@ namespace TAO
                     const std::string strHybrid = config::GetArg("-hybrid", "");
 
                     /* Check our expected values. */
-                    uint512_t hashCheck = LLC::SK512(strHybrid.begin(), strHybrid.end());
+                    const uint512_t hashCheck = LLC::SK512(strHybrid.begin(), strHybrid.end());
                     if(hashCheck != hashPrevTx)
                         return debug::error(FUNCTION, "transaction belongs to invalid network-id (", hashPrevTx.SubString(), ")");
                 }
