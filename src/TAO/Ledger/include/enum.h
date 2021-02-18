@@ -61,16 +61,44 @@ namespace TAO
             {
                 /** A system genesis is pre-pended with byte 0x00. SYSTEM genesis cannot be made by any users, only the system. **/
                 SYSTEM      = 0x00,
-
-                /** A mainnet genesis has to be pre-pended with byte 0xa1 **/
-                MAINNET     = 0xa1,
-
-                /** a testnet genesis has to be pre-pended with byte 0xa2. **/
-                TESTNET     = 0xa2,
-
-                /** A hybrid genesis has to be pre-pended with byte 0xa3 **/
-                HYBRID      = 0xa3,
             };
+
+
+            /* Main Network Genesis types available. */
+            namespace MAINNET
+            {
+                enum
+                {
+                    /** a mainnet genesis has to be pre-pended with byte 0xa2. **/
+                    USER        = 0xa1,
+
+                    /** A hybrid genesis has to be pre-pended with byte 0xa3 **/
+                    HYBRID      = 0xa4,
+                };
+            }
+
+            /* Test Network Genesis types available. */
+            namespace TESTNET
+            {
+                enum
+                {
+                    /** a testnet genesis has to be pre-pended with byte 0xa2. **/
+                    USER        = 0xa2,
+
+                    /** A hybrid genesis has to be pre-pended with byte 0xa3 **/
+                    HYBRID      = 0xa5,
+                };
+            }
+
+            /* Hybrid Network Genesis types available. */
+            namespace HYBRID
+            {
+                enum
+                {
+                    /** a mainnet genesis has to be pre-pended with byte 0xa2. **/
+                    USER        = 0xa3,
+                };
+            }
         }
 
 
@@ -81,7 +109,7 @@ namespace TAO
          **/
         inline uint8_t GenesisType()
         {
-            return (config::fTestNet.load() ? TAO::Ledger::GENESIS::TESTNET : TAO::Ledger::GENESIS::MAINNET);
+            return (config::fTestNet.load() ? uint8_t(GENESIS::TESTNET::USER) : uint8_t(GENESIS::MAINNET::USER));
         }
 
 

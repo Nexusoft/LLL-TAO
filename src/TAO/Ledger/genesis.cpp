@@ -36,7 +36,7 @@ namespace TAO
         : uint256_t(value)
         {
             if(fSet)
-                SetType(config::fTestNet.load() ? GENESIS::TESTNET : GENESIS::MAINNET);
+                SetType(GenesisType());
         }
 
 
