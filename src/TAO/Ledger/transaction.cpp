@@ -404,7 +404,7 @@ namespace TAO
                             default:
                             {
                                 /* Contract is strict for genesis when not in private mode. */
-                                if(!config::GetBoolArg("-private"))
+                                if(!config::fPrivate.load())
                                     return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
 
                                 break;
@@ -412,7 +412,7 @@ namespace TAO
 
                         }
                     }
-                    else if(!config::GetBoolArg("-private"))
+                    else if(!config::fPrivate.load())
                         return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
 
                 }
@@ -424,7 +424,7 @@ namespace TAO
 
             /* If genesis then check that the only contracts are those for the default registers.
              * We do not make this limitation in private mode */
-            if(IsFirst() && !config::GetBoolArg("-private"))
+            if(IsFirst() && !config::fPrivate.load())
             {
                 //skip proof of work for unit tests
                 #ifndef UNIT_TESTS
@@ -837,7 +837,7 @@ namespace TAO
             #ifndef UNIT_TESTS
 
             /* Check for first. */
-            if(IsFirst() && !config::GetBoolArg("-private"))
+            if(IsFirst() && !config::fPrivate.load())
             {
                 /* Timer to track proof of work time. */
                 runtime::timer timer;

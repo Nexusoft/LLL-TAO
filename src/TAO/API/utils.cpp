@@ -1290,7 +1290,7 @@ namespace TAO
         void CheckMature(const uint256_t& hashGenesis)
         {
             /* No need to check this in private mode as there is no PoS/Pow */
-            if(!config::GetBoolArg("-private"))
+            if(!config::fPrivate.load())
             {
                 /* Get the number of blocks to maturity for this sig chain */
                 uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);

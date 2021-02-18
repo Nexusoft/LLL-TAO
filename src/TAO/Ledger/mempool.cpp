@@ -208,7 +208,7 @@ namespace TAO
             }
 
             /* Notify private to produce block if valid. */
-            if(config::GetBoolArg("-private"))
+            if(config::fPrivate.load())
                 PRIVATE_CONDITION.notify_all();
 
             return true;

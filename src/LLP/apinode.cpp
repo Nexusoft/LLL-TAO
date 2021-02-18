@@ -108,10 +108,6 @@ namespace LLP
         /* Flag indicating that the connection should be kept alive */
         bool fKeepAlive = false;
 
-        runtime::timer TIMER;
-        TIMER.Start();
-        uint32_t nStart = TIMER.ElapsedMilliseconds();
-
         /* Extract the parameters. */
         try
         {
@@ -255,7 +251,7 @@ namespace LLP
             else
                 /* Default error status code is 400. */
                 nStatus = 400;
-            
+
             int32_t nError = jsonError["code"].get<int32_t>();
 
             /* Set status by error code. */
@@ -304,14 +300,9 @@ namespace LLP
 
         /* Add content. */
         RESPONSE.strContent = ret.dump();
-            
+
         /* Write the response */
         this->WritePacket(RESPONSE);
-
-        uint32_t nStop = TIMER.ElapsedMilliseconds();
-                    
-        debug::log(3, "API Request ", strAPI +"/" +METHOD, " from ", this->addr.ToString(), " completed in ", nStop - nStart, " milliseconds");
-
 
         return fKeepAlive;
     }

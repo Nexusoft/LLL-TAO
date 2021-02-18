@@ -267,7 +267,7 @@ namespace TAO
                         {
                             /* Testnet is considered local if no dns is being used or if using a private network */
                             bool fLocalTestnet = config::fTestNet.load()
-                                && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
+                                && (!config::GetBoolArg("-dns", true) || config::fPrivate.load());
 
                             /* Can only create user if synced and (if not local) have connections.
                              * Return without create/login if cannot create, yet. It will have to try again.

@@ -46,6 +46,7 @@ namespace config
     std::atomic<bool> fPoolStaking(false);
     std::atomic<bool> fStaking(false);
     std::atomic<bool> fHybrid(false);
+    std::atomic<bool> fPrivate(false);
     std::atomic<int32_t> nVerbose(0);
 
     std::mutex ARGS_MUTEX;
@@ -185,15 +186,12 @@ namespace config
         fPoolStaking            = GetBoolArg("-poolstaking", false);
         fStaking                = GetBoolArg("-staking", false) || GetBoolArg("-stake", false); //Both supported, -stake deprecated
         fHybrid                 = (GetArg("-hybrid", "") != "");
+        fPrivate                = GetBoolArg("-private", false);
         nVerbose                = GetArg("-verbose", 0);
 
-        /* Adjust to use a testnet in hybrid mode. */
+        /* Set to use private mode when hybrid is enabled. */
         if(fHybrid.load())
-        {
-            /* Set to use private mode when hybrid is enabled. */
-            mapArgs["-private"] = "1";
-        }
-
+            fPrivate.store(true);
 
         /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
         const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];
