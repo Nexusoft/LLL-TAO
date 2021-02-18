@@ -46,6 +46,7 @@ namespace config
     extern std::atomic<bool> fStaking;
     extern std::atomic<bool> fHybrid;
     extern std::atomic<bool> fPrivate;
+    extern std::atomic<bool> fSister;
     extern std::atomic<int32_t> nVerbose;
 
 

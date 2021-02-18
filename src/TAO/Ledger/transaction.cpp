@@ -311,7 +311,7 @@ namespace TAO
                 return debug::error(FUNCTION, "transaction with empty signature");
 
             /* Check the genesis first byte. */
-            if(hashGenesis.GetType() != GenesisType())
+            if(hashGenesis.GetType() != GENESIS::UserType())
                 return debug::error(FUNCTION, "genesis using incorrect leading byte");
 
             /* Check for max contracts. */

@@ -72,44 +72,99 @@ namespace TAO
                     /** a mainnet genesis has to be pre-pended with byte 0xa2. **/
                     USER        = 0xa1,
 
-                    /** A hybrid genesis has to be pre-pended with byte 0xa3 **/
-                    HYBRID      = 0xa4,
+                    /** An owner genesis is a sigchain that owns a hybrid network. **/
+                    OWNER       = 0xa2,
                 };
+
+
+                /* Hybrid Network Genesis types available. */
+                namespace HYBRID
+                {
+                    enum
+                    {
+                        /** A mainnet genesis has to be pre-pended with byte 0xa2. **/
+                        USER        = 0xa3,
+                    };
+                }
+
+
+                /* Sister Network Genesis types available. */
+                namespace SISTER
+                {
+                    enum
+                    {
+                        /** a mainnet genesis has to be pre-pended with byte 0xa2. **/
+                        USER        = 0xa4,
+                    };
+                }
             }
+
 
             /* Test Network Genesis types available. */
             namespace TESTNET
             {
                 enum
                 {
-                    /** a testnet genesis has to be pre-pended with byte 0xa2. **/
-                    USER        = 0xa2,
+                    /** a testnet genesis has to be pre-pended with byte 0xb1. **/
+                    USER        = 0xb1,
 
-                    /** A hybrid genesis has to be pre-pended with byte 0xa3 **/
-                    HYBRID      = 0xa5,
+                    /** An owner genesis is a sigchain that owns a hybrid network. **/
+                    OWNER       = 0xb2,
                 };
-            }
 
-            /* Hybrid Network Genesis types available. */
-            namespace HYBRID
-            {
-                enum
+
+                /* Hybrid Network Genesis types available. */
+                namespace HYBRID
                 {
-                    /** a mainnet genesis has to be pre-pended with byte 0xa2. **/
-                    USER        = 0xa3,
-                };
+                    enum
+                    {
+                        /** a testnet hybrid has to be pre-pended with byte 0xb3. **/
+                        USER        = 0xb3,
+                    };
+                }
+
+
+                /* Sister Network Genesis types available. */
+                namespace SISTER
+                {
+                    enum
+                    {
+                        /** a testnet sister has to be pre-pended with byte 0xb4. **/
+                        USER        = 0xb4,
+                    };
+                }
             }
-        }
 
 
-        /** GenesisType
-         *
-         *  Method to handle switching the genesis leading byte.
-         *
-         **/
-        inline uint8_t GenesisType()
-        {
-            return (config::fTestNet.load() ? uint8_t(GENESIS::TESTNET::USER) : uint8_t(GENESIS::MAINNET::USER));
+            /** UserType
+             *
+             *  Method to handle switching the genesis leading byte for the network user sigchains.
+             *
+             **/
+            inline uint8_t UserType()
+            {
+                /* Check if we are in hybrid mode. */
+                if(config::fHybrid.load())
+                    return (config::fTestNet.load() ? uint8_t(GENESIS::TESTNET::HYBRID::USER) : uint8_t(GENESIS::MAINNET::HYBRID::USER));
+
+                /* Check if we are in sister mode. */
+                if(config::fSister.load())
+                    return (config::fTestNet.load() ? uint8_t(GENESIS::TESTNET::SISTER::USER) : uint8_t(GENESIS::MAINNET::SISTER::USER));
+
+                /* Regular users for the mother network. */
+                return (config::fTestNet.load() ? uint8_t(GENESIS::TESTNET::USER) : uint8_t(GENESIS::MAINNET::USER));
+            }
+
+
+            /** OwnerType
+             *
+             *  Method to handle switching the genesis leading byte for network owner sigchains. Only available for mother network.
+             *
+             **/
+            inline uint8_t OwnerType()
+            {
+                return (config::fTestNet.load() ? uint8_t(GENESIS::TESTNET::OWNER) : uint8_t(GENESIS::MAINNET::OWNER));
+            }
         }
 
 

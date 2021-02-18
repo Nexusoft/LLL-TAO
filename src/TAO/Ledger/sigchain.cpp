@@ -143,7 +143,7 @@ namespace TAO
             /* Set the bytes for the key. */
             uint256_t hashKey;
             hashKey.SetBytes(vHash);
-            hashKey.SetType(TAO::Ledger::GenesisType());
+            hashKey.SetType(TAO::Ledger::GENESIS::UserType());
 
             return hashKey;
         }
@@ -485,7 +485,7 @@ namespace TAO
             /* Set the bytes for the key. */
             uint256_t hashKey;
             hashKey.SetBytes(vHash);
-            hashKey.SetType(TAO::Ledger::GenesisType());
+            hashKey.SetType(TAO::Ledger::GENESIS::UserType());
 
             return hashKey;
         }

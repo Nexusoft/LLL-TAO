@@ -691,7 +691,7 @@ namespace LLP
                     SubscribeNotification(hashGenesis);
 
                     /* Subscribe to notifications for any tokens we own, or any tokens that we have accounts for */
-                    
+
                     /* Get the list of accounts and tokens owned by this sig chain */
                     std::vector<TAO::Register::Address> vAddresses;
                     TAO::API::ListAccounts(hashGenesis, vAddresses, true, false);
@@ -711,7 +711,7 @@ namespace LLP
 
                             /* Parse the object register. */
                             if(!account.Parse())
-                                return debug::drop(NODE, "Object failed to parse"); 
+                                return debug::drop(NODE, "Object failed to parse");
 
                             /* Get the token */
                             uint256_t hashToken = account.get<uint256_t>("token");
@@ -2053,7 +2053,7 @@ namespace LLP
                             /* Make adjustment to history check and detect if the register is owned by system. */
                             uint256_t hashOwner = state.hashOwner;
                             if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
-                                hashOwner.SetType(TAO::Ledger::GenesisType());
+                                hashOwner.SetType(TAO::Ledger::GENESIS::UserType());
 
                             /* Read the last hash of owner. */
                             uint512_t hashLast = 0;
@@ -2317,7 +2317,7 @@ namespace LLP
                                 uint256_t hashLogin = TAO::API::users->GetGenesis(0);
 
                                 /* If the address is a genesis hash, then make sure that it is for the currently logged in user */
-                                if(hashAddress.GetType() == TAO::Ledger::GenesisType())
+                                if(hashAddress.GetType() == TAO::Ledger::GENESIS::UserType())
                                 {
                                     /* Check for expected genesis. */
                                     if(hashAddress != hashLogin)
@@ -3448,8 +3448,8 @@ namespace LLP
                             LOCK(P2P_REQUESTS_MUTEX);
                             if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < request.nTimestamp - 5)
                             {
-                                /* Check that the source and destination genesis exists before relaying.  NOTE: We skip this 
-                                   in client mode as we will only have local scope and not know about all genesis hashes 
+                                /* Check that the source and destination genesis exists before relaying.  NOTE: We skip this
+                                   in client mode as we will only have local scope and not know about all genesis hashes
                                    on the network.  Therefore relaying is limited to full nodes only */
                                 if(!config::fClient)
                                 {
@@ -3465,7 +3465,7 @@ namespace LLP
                                 /* Verify the signature before relaying.  Again we don't do this in client mode as we only have
                                    local scope and won't be able to access the crypto object register of the hashFrom */
                                 if(!config::fClient)
-                                { 
+                                {
                                     /* Build the byte stream from the request data in order to verify the signature */
                                     DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
                                     ssCheck << hashFrom << request;
@@ -3473,7 +3473,7 @@ namespace LLP
                                     /* Verify the signature */
                                     if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
                                         return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
-                                     
+
                                     /* Reset the packet data pointer */
                                     ssPacket.Reset();
 
@@ -3584,22 +3584,22 @@ namespace LLP
             uint32_t nAvailable = Available();
             if(INCOMING.Header() && nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
             {
-                /* The maximum number of bytes to read is th number of bytes specified in the message length, 
+                /* The maximum number of bytes to read is th number of bytes specified in the message length,
                    minus any already read on previous reads*/
                 uint32_t nMaxRead = (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size());
-                
+
                 /* Vector to receve the read bytes. This should be the smaller of the number of bytes currently available or the
                    maximum amount to read */
                 std::vector<uint8_t> DATA(std::min(nAvailable, nMaxRead), 0);
 
                 /* Read up to the buffer size. */
-                int32_t nRead = Read(DATA, DATA.size()); 
-                
-                /* If something was read, insert it into the packet data.  NOTE: that due to SSL packet framing we could end up 
+                int32_t nRead = Read(DATA, DATA.size());
+
+                /* If something was read, insert it into the packet data.  NOTE: that due to SSL packet framing we could end up
                    reading less bytes than appear available.  Therefore we only copy the number of bytes actually read */
                 if(nRead > 0)
                     INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.begin() + nRead);
-                    
+
                 /* If the packet is now considered complete, fire the packet complete event */
                 if(INCOMING.Complete())
                     Event(EVENTS::PACKET, static_cast<uint32_t>(DATA.size()));
