@@ -115,6 +115,14 @@ namespace TAO
 
                 /* Set the next key type for the genesis transaction */
                 tx.nNextType = tx.nKeyType;
+
+                /* Add our network-id if applicable.*/
+                if(config::fHybrid.load())
+                {
+                    /* Grab and set our hybrid network-id. */
+                    const std::string strHybrid = config::GetArg("-hybrid", "");
+                    tx.hashPrevTx = LLC::SK512(strHybrid.begin(), strHybrid.end());
+                }
             }
             else
             {

@@ -424,20 +424,36 @@ namespace TAO
 
             /* If genesis then check that the only contracts are those for the default registers.
              * We do not make this limitation in private mode */
-            if(IsFirst() && !config::fPrivate.load())
+            if(IsFirst())
             {
-                //skip proof of work for unit tests
-                #ifndef UNIT_TESTS
+                /* Check for main-net proof of work. */
+                if(!config::fPrivate.load())
+                {
+                    //skip proof of work for unit tests
+                    #ifndef UNIT_TESTS
 
-                /* Check the difficulty of the hash. */
-                if(ProofHash() > FIRST_REQUIRED_WORK)
-                    return debug::error(FUNCTION, "first transaction not enough work");
+                    /* Check the difficulty of the hash. */
+                    if(ProofHash() > FIRST_REQUIRED_WORK)
+                        return debug::error(FUNCTION, "first transaction not enough work");
 
-                #endif
+                    #endif
 
-                /* Check that the there are not more than the allowable default contracts */
-                if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
-                    return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                    /* Check that the there are not more than the allowable default contracts */
+                    if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
+                        return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                }
+
+                /* Check our hybrid proofs. */
+                else if(config::fHybrid.load())
+                {
+                    /* Grab our hybrid network-id. */
+                    const std::string strHybrid = config::GetArg("-hybrid", "");
+
+                    /* Check our expected values. */
+                    uint512_t hashCheck = LLC::SK512(strHybrid.begin(), strHybrid.end());
+                    if(hashCheck != hashPrevTx)
+                        return debug::error(FUNCTION, "transaction belongs to invalid network-id (", hashPrevTx.SubString(), ")");
+                }
             }
 
             /* Verify the block signature (if not synchronizing) */
