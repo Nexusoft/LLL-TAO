@@ -253,7 +253,6 @@ namespace TAO
 
                 /* Set the type */
                 SetType(bytes[0]);
-
             }
         }
 
@@ -276,7 +275,7 @@ namespace TAO
         {
             if(*this == 0)
                 return "0";
-            else if(GetType() == GENESIS1 || GetType() == GENESIS2)
+            else if(GetType() == SYSTEM || (GetType() >= RESERVED1 && GetType() <= RESERVED2))
                 return GetHex();
             else
                 return ToBase58();

@@ -74,6 +74,12 @@ namespace TAO
 
                     /** An owner genesis is a sigchain that owns a hybrid network. **/
                     OWNER       = 0xa2,
+
+                    //placeholder (four new sigchain types unallocated)
+                    RESERVED1    = 0xa3,
+                    RESERVED2    = 0xa4,
+                    RESERVED3    = 0xa5,
+                    RESERVED4    = 0xa6,
                 };
 
 
@@ -83,7 +89,12 @@ namespace TAO
                     enum
                     {
                         /** A mainnet genesis has to be pre-pended with byte 0xa2. **/
-                        USER        = 0xa3,
+                        USER         = 0xa7,
+
+                        //placeholder (three new sigchain types unallocated)
+                        RESERVED1    = 0xa8,
+                        RESERVED2    = 0xa9,
+                        RESERVED3    = 0xaa,
                     };
                 }
 
@@ -94,7 +105,13 @@ namespace TAO
                     enum
                     {
                         /** a mainnet genesis has to be pre-pended with byte 0xa2. **/
-                        USER        = 0xa4,
+                        USER         = 0xab,
+
+                        //placeholder (three new sigchain types unallocated)
+                        RESERVED1    = 0xac,
+                        RESERVED2    = 0xad,
+                        RESERVED3    = 0xae,
+                        RESERVED4    = 0xaf,
                     };
                 }
             }
@@ -110,6 +127,12 @@ namespace TAO
 
                     /** An owner genesis is a sigchain that owns a hybrid network. **/
                     OWNER       = 0xb2,
+
+                    //placeholder (four new sigchain types unallocated)
+                    RESERVED1    = 0xb3,
+                    RESERVED2    = 0xb4,
+                    RESERVED3    = 0xb5,
+                    RESERVED4    = 0xb6,
                 };
 
 
@@ -119,7 +142,12 @@ namespace TAO
                     enum
                     {
                         /** a testnet hybrid has to be pre-pended with byte 0xb3. **/
-                        USER        = 0xb3,
+                        USER        = 0xb7,
+
+                        //placeholder (three new sigchain types unallocated)
+                        RESERVED1    = 0xb8,
+                        RESERVED2    = 0xb9,
+                        RESERVED3    = 0xba,
                     };
                 }
 
@@ -130,7 +158,13 @@ namespace TAO
                     enum
                     {
                         /** a testnet sister has to be pre-pended with byte 0xb4. **/
-                        USER        = 0xb4,
+                        USER         = 0xbb,
+
+                        //placeholder (three new sigchain types unallocated)
+                        RESERVED1    = 0xbc,
+                        RESERVED2    = 0xbd,
+                        RESERVED3    = 0xbe,
+                        RESERVED4    = 0xbf,
                     };
                 }
             }

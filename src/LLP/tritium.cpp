@@ -2050,7 +2050,7 @@ namespace LLP
                             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                                 break;
 
-                            /* Make adjustment to history check and detect if the register is owned by system. */
+                            /* If register is in the middle of a transfer, hashOwner will be owned by system. Detect and continue.*/
                             uint256_t hashOwner = state.hashOwner;
                             if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
                                 hashOwner.SetType(TAO::Ledger::GENESIS::UserType());
