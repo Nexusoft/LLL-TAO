@@ -81,14 +81,11 @@ namespace TAO
             if(!config::fHybrid.load())
                 throw debug::exception(FUNCTION, "cannot create hybrid genesis when not in hybrid mode");
 
-            /* Build the first transaction for genesis. */
-            const std::string pszTimestamp = config::GetArg("-hybrid", "");
-
             /* Main coinbase genesis. */
             Transaction genesis;
             genesis.nVersion = 1;
             genesis.nTimestamp = 1601484576;
-            genesis[0] <= pszTimestamp; //we seriailize the hybrid network sigchain into a conditional contract
+            genesis[0] <= config::hashNetworkOwner; //we seriailize the hybrid network sigchain into a conditional contract
 
             /* Build the hashes to calculate the merkle root. */
             std::vector<uint512_t> vHashes;

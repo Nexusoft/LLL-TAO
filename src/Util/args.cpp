@@ -19,6 +19,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/port.h>
 
+#include <TAO/Ledger/types/sigchain.h>
+
 #include <cstring>
 #include <string>
 #include <cmath>
@@ -45,10 +47,13 @@ namespace config
     std::atomic<bool> fInitialized(false);
     std::atomic<bool> fPoolStaking(false);
     std::atomic<bool> fStaking(false);
-    std::atomic<bool> fHybrid(false);
     std::atomic<bool> fPrivate(false);
+    std::atomic<bool> fHybrid(false);
     std::atomic<bool> fSister(false);
     std::atomic<int32_t> nVerbose(0);
+
+    /* Keeps track of the network owner hash. */
+    uint256_t hashNetworkOwner;
 
     std::mutex ARGS_MUTEX;
 
@@ -173,6 +178,8 @@ namespace config
     /* Caches some of the common arguments into global variables for quick/easy access */
     void CacheArgs()
     {
+        LOCK(ARGS_MUTEX);
+
         fDebug                  = GetBoolArg("-debug", false);
         fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
@@ -192,8 +199,20 @@ namespace config
         nVerbose                = GetArg("-verbose", 0);
 
         /* Set to use private mode when hybrid is enabled. */
+        if(fPrivate.load() && !fHybrid.load())
+        {
+            /* Set our hybrid value as ~PRIVATE~ in private mode. */
+            mapArgs["-hybrid"] = "~PRIVATE~";
+            fHybrid.store(true);
+        }
+
+        /* Calculate our network-id if in hybrid mode. */
         if(fHybrid.load())
-            fPrivate.store(true);
+        {
+            const SecureString strOwner = mapArgs["-hybrid"].c_str();
+            hashNetworkOwner = TAO::Ledger::SignatureChain::Genesis(strOwner);
+        }
+
 
         /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
         const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];

@@ -1161,7 +1161,7 @@ namespace TAO
 
             /* Testnet is considered local if no dns is being used or if using a private network */
             bool fLocalTestnet = config::fTestNet.load()
-                && (!config::GetBoolArg("-dns", true) || config::fPrivate.load());
+                && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
 
             /* Make sure the tritium server has a connection. (skip check if running local testnet) */
             if(!fLocalTestnet && LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)

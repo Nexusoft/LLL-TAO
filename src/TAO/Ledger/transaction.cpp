@@ -404,7 +404,7 @@ namespace TAO
                             default:
                             {
                                 /* Contract is strict for genesis when not in private mode. */
-                                if(!config::fPrivate.load())
+                                if(!config::fHybrid.load())
                                     return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
 
                                 break;
@@ -412,7 +412,7 @@ namespace TAO
 
                         }
                     }
-                    else if(!config::fPrivate.load())
+                    else if(!config::fHybrid.load())
                         return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
 
                 }
@@ -427,7 +427,7 @@ namespace TAO
             if(IsFirst())
             {
                 /* Check for main-net proof of work. */
-                if(!config::fPrivate.load())
+                if(!config::fHybrid.load())
                 {
                     //skip proof of work for unit tests
                     #ifndef UNIT_TESTS
@@ -853,7 +853,7 @@ namespace TAO
             #ifndef UNIT_TESTS
 
             /* Check for first. */
-            if(IsFirst() && !config::fPrivate.load())
+            if(IsFirst() && !config::fHybrid.load())
             {
                 /* Timer to track proof of work time. */
                 runtime::timer timer;

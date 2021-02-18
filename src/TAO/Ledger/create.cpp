@@ -858,7 +858,7 @@ namespace TAO
         /* Handles the creation of a private block chain. */
         void ThreadGenerator()
         {
-            if(!config::fPrivate.load() || !config::mapArgs.count("-generate"))
+            if(!config::fHybrid.load() || !config::mapArgs.count("-generate"))
                 return;
 
             /* Get the account. */

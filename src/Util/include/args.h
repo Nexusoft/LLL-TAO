@@ -20,13 +20,15 @@ ________________________________________________________________________________
 #include <vector>
 #include <string>
 
+#include <LLC/types/uint1024.h>
+
 namespace config
 {
 
     extern std::map<std::string, std::string> mapArgs;
     extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
     extern std::map<uint16_t, std::vector<std::string> > mapIPFilters;
-    extern std::string strMiscWarning;
+
 
     extern std::atomic<bool> fShutdown;
     extern std::atomic<bool> fDebug;
@@ -44,10 +46,13 @@ namespace config
     extern std::atomic<bool> fInitialized;
     extern std::atomic<bool> fPoolStaking;
     extern std::atomic<bool> fStaking;
-    extern std::atomic<bool> fHybrid;
     extern std::atomic<bool> fPrivate;
+    extern std::atomic<bool> fHybrid;
     extern std::atomic<bool> fSister;
     extern std::atomic<int32_t> nVerbose;
+
+    /* Hybrid/Sister specific configuration variables. */
+    extern uint256_t hashNetworkOwner;
 
 
     /** InterpretNegativeSetting

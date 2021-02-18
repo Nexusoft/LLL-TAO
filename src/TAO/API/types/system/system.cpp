@@ -102,7 +102,7 @@ namespace TAO
             jsonRet["testnet"] = config::GetArg("-testnet", 0);
 
             /* Whether this node is running in private mode */
-            jsonRet["private"] = config::fPrivate.load();
+            jsonRet["private"] = config::fHybrid.load();
 
             /* Whether this node is running in multiuser mode */
             jsonRet["multiuser"] = config::fMultiuser.load();
