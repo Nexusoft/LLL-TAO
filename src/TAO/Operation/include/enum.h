@@ -46,14 +46,9 @@ namespace TAO
                 //financial operations
                 DEBIT       = 0x10,
                 CREDIT      = 0x11,
-
                 COINBASE    = 0x12,
-
                 GENESIS     = 0x13, //for proof of stake
                 TRUST       = 0x14,
-                GENESISPOOL = 0x15,
-                TRUSTPOOL   = 0x16,
-
                 FEE         = 0x17, //to pay fees to network
 
                 //consensus operations

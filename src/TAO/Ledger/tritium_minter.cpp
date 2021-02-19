@@ -163,13 +163,6 @@ namespace TAO
             nTrust = 0;
             nBlockAge = 0;
 
-            /* Get the appropriate producer transaction to build the coinstake */
-            TAO::Ledger::Transaction txProducer;
-            if(block.nVersion < 9)
-                txProducer = block.producer;
-            else
-                txProducer = block.vProducer.back();
-
             if(!fGenesis)
             {
                 /* Staking Trust for existing trust account */
@@ -233,7 +226,7 @@ namespace TAO
                 /* Initialize Trust operation for block producer.
                  * The coinstake reward will be added based on time when block is found.
                  */
-                txProducer[0] << uint8_t(TAO::Operation::OP::TRUST) << hashLast << nTrust << nStakeChange;
+                block.producer[0] << uint8_t(TAO::Operation::OP::TRUST) << hashLast << nTrust << nStakeChange;
             }
             else
             {
@@ -267,17 +260,8 @@ namespace TAO
                 /* Initialize Genesis operation for block producer.
                  * The coinstake reward will be added based on time when block is found.
                  */
-                txProducer[0] << uint8_t(TAO::Operation::OP::GENESIS);
+                block.producer[0] << uint8_t(TAO::Operation::OP::GENESIS);
 
-            }
-
-            /* Add the producer transaction back to the block */
-            if(block.nVersion < 9)
-                block.producer = txProducer;
-            else
-            {
-                block.vProducer.clear();
-                block.vProducer.push_back(txProducer);
             }
 
             /* Do not sign producer transaction, yet. Coinstake reward must be added to operation first. */
@@ -363,15 +347,7 @@ namespace TAO
         bool TritiumMinter::CheckStale()
         {
             TAO::Ledger::Transaction tx;
-            TAO::Ledger::Transaction txProducer;
-
-            if(block.nVersion < 9)
-                txProducer = block.producer;
-
-            else
-                txProducer = block.vProducer[0]; //only one producer for solo stake
-
-            if(mempool.Get(txProducer.hashGenesis, tx) && txProducer.hashPrevTx != tx.GetHash())
+            if(mempool.Get(block.producer.hashGenesis, tx) && block.producer.hashPrevTx != tx.GetHash())
                 return true;
 
             return false;

@@ -323,30 +323,6 @@ namespace TAO
                     break;
                 }
 
-                /* Check for pooled staking Trust Coinstake. */
-                case OP::TRUSTPOOL:
-                {
-                    /* Skip over hashLast, pooled staking proofs, nScore, nStakeChange. */
-                    ssOperation.seek(128);
-
-                    /* Get stake reward for trust. */
-                    ssOperation >> nValue;
-
-                    break;
-                }
-
-                /* Check for pooled staking Genesis Coinstake. */
-                case OP::GENESISPOOL:
-                {
-                    /* Skip over pooled staking proofs. */
-                    ssOperation.seek(48);
-
-                    /* Get stake reward for genesis. */
-                    ssOperation >> nValue;
-
-                    break;
-                }
-
                 /* Check for fee. */
                 case OP::FEE:
                 {
@@ -422,7 +398,6 @@ namespace TAO
 
                 /* Check for trust coinstake. */
                 case OP::TRUST:
-                case OP::TRUSTPOOL:
                 {
                     /* Get last stake hash */
                     ssOperation >> hashPrev;

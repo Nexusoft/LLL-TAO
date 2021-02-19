@@ -27,12 +27,10 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/debit.h>
 #include <TAO/Operation/include/fee.h>
 #include <TAO/Operation/include/genesis.h>
-#include <TAO/Operation/include/genesispool.h>
 #include <TAO/Operation/include/legacy.h>
 #include <TAO/Operation/include/migrate.h>
 #include <TAO/Operation/include/transfer.h>
 #include <TAO/Operation/include/trust.h>
-#include <TAO/Operation/include/trustpool.h>
 #include <TAO/Operation/include/validate.h>
 #include <TAO/Operation/include/write.h>
 
@@ -642,138 +640,6 @@ namespace TAO
 
                         /* Commit the register to disk. */
                         if(!Genesis::Commit(object, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Coinstake operation for pooled staking. Requires an account. */
-                    case OP::TRUSTPOOL:
-                    {
-                        /* Check for validate. */
-                        if(fValidate)
-                            return debug::error(FUNCTION, "OP::TRUSTPOOL: cannot use OP::VALIDATE with trust");
-
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::TRUSTPOOL: conditions not allowed on trust");
-
-                        /* Verify the operation rules. */
-                        if(!Trustpool::Verify(contract))
-                            return false;
-
-                        /* Seek to scores. */
-                        contract.Seek(112);
-
-                        /* Get the trust score. */
-                        uint64_t nScore = 0;
-                        contract >> nScore;
-
-                        /* Get the stake change. */
-                        int64_t nStakeChange = 0;
-                        contract >> nStakeChange;
-
-                        /* Get the stake reward. */
-                        uint64_t nReward = 0;
-                        contract >> nReward;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::TRUSTPOOL: register pre-state doesn't exist");
-
-                        /* Read the register prestate. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Trustpool::Execute(object, nReward, nScore, nStakeChange, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for post-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::TRUSTPOOL: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::TRUSTPOOL: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Trustpool::Commit(object, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Coinstake operation for pooled staking. Requires an account. */
-                    case OP::GENESISPOOL:
-                    {
-                        /* Check for validate. */
-                        if(fValidate)
-                            return debug::error(FUNCTION, "OP::GENESISPOOL: cannot use OP::VALIDATE with genesis");
-
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::GENESISPOOL: conditions not allowed on genesis");
-
-                        /* Verify the operation rules. */
-                        if(!Genesispool::Verify(contract))
-                            return false;
-
-                        /* Seek to reward. */
-                        contract.Seek(48);
-
-                        /* Get the stake reward. */
-                        uint64_t nReward = 0;
-                        contract >> nReward;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::GENESISPOOL: register pre-state doesn't exist");
-
-                        /* Read the register prestate. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Genesispool::Execute(object, nReward, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for post-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::GENESISPOOL: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::GENESISPOOL: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Genesispool::Commit(object, nFlags))
                             return false;
 
                         break;

@@ -43,7 +43,7 @@ namespace TAO
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
-            
+
             /* Check to see if caller has supplied a specific genesis or username. */
             if(params.find("genesis") != params.end())
                 hashGenesis.SetHex(params["genesis"].get<std::string>());
@@ -52,7 +52,7 @@ namespace TAO
             else
                 /* If no specific genesis or username have been provided then fall back to the active sig chain */
                 hashGenesis = users->GetSession(params).GetAccount()->Genesis();
-            
+
             /* The genesis hash of the API caller, if logged in */
             uint256_t hashCaller = users->GetCallersGenesis(params);
 
@@ -126,7 +126,7 @@ namespace TAO
             /* Flag indicating there are contract level filters  */
             bool fHasContractsFilter = vWhere.count("contracts") > 0;
 
-            /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as 
+            /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as
                standard where clauses to filter the json */
             std::vector<std::string> vIgnore = {"name", "address"};
 
@@ -222,8 +222,6 @@ namespace TAO
 
                         case TAO::Operation::OP::TRUST:
                         case TAO::Operation::OP::GENESIS:
-                        case TAO::Operation::OP::TRUSTPOOL:
-                        case TAO::Operation::OP::GENESISPOOL:
                         case TAO::Operation::OP::MIGRATE:
                         {
                             fTrustRelated = true;
@@ -299,7 +297,7 @@ namespace TAO
                             if(!MatchesWhere(contractJSON, vWhere.at("contracts"), vIgnore))
                                 continue;
                         }
-                        
+
                         /* add the contract to the array */
                         jsonContracts.push_back(contractJSON);
 
@@ -329,11 +327,11 @@ namespace TAO
                 /* Check the offset. */
                 if(nTotal <= nOffset)
                     continue;
-                
+
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
                     break;
-                
+
                 ret.push_back(jsonTx);
             }
 

@@ -222,16 +222,11 @@ namespace TAO
              *  Check that the claimed trust score and stake reward are correct.
              *
              *  @param[in] pblock Pointer to the block that is connecting
-             *  @param[in,out] nPoolFeeTotal accumulates the net fees paid by non-block finder coinstakes in a pooled stake block;
-             *                               the net amount is added to the block finder reward and validated by this method
-             *  @param[in] fBlockFinder indicates that this transaction is the block finder coinstake
-             *
-             *  nPoolFeeTotal and fBlockFinder are only used with pooled coinstakes, ignored for solo coinstake
              *
              *  @return true if trust score and reward correct.
              *
              **/
-            bool CheckTrust(BlockState* pblock, uint64_t& nPoolFeeTotal, const bool fBlockFinder) const;
+            bool CheckTrust(BlockState* pblock) const;
 
 
             /** Cost
@@ -326,26 +321,6 @@ namespace TAO
              *
              **/
             bool IsGenesis() const;
-
-
-            /** IsTrustPool
-             *
-             *  Determines if the transaction is a pooled staking trust transaction.
-             *
-             *  @return true if transaction is a coinbase.
-             *
-             **/
-            bool IsTrustPool() const;
-
-
-            /** IsGenesisPool
-             *
-             *  Determines if the transaction is a pooled staking genesis transaction
-             *
-             *  @return true if transaction is genesis
-             *
-             **/
-            bool IsGenesisPool() const;
 
 
             /** IsFirst

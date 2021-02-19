@@ -218,26 +218,6 @@ namespace TAO
                         return true;
                     }
 
-                    case TAO::Operation::OP::TRUSTPOOL:
-                    {
-                        /* Seek to reward. */
-                        contract.Seek(128);
-
-                        contract >> nAmount;
-
-                        return true;
-                    }
-
-                    case TAO::Operation::OP::GENESISPOOL:
-                    {
-                        /* Seek to reward. */
-                        contract.Seek(48);
-
-                        contract >> nAmount;
-
-                        return true;
-                    }
-
                     case TAO::Operation::OP::DEBIT:
                     {
                         /* Seek to debit amount. */

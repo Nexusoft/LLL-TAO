@@ -284,9 +284,9 @@ namespace TAO
                             uint8_t nType = 0;
                             contract >> nType;
 
-                            /* IF this is not a forced transfer, we need to retrieve the object so we can see whether it has been 
-                               claimed or not.  If it has not been claimed then we ignore the transfer operation and still show 
-                               it as ours.  However we need to skip this check in light mode because we will not have the 
+                            /* IF this is not a forced transfer, we need to retrieve the object so we can see whether it has been
+                               claimed or not.  If it has not been claimed then we ignore the transfer operation and still show
+                               it as ours.  However we need to skip this check in light mode because we will not have the
                                register state available in order to determine if it has been claimed or not */
                             if(nType != TAO::Operation::TRANSFER::FORCE && !config::fClient.load())
                             {
@@ -1208,7 +1208,7 @@ namespace TAO
                through the events for the token itself to find all object transfers where the new owner is the token. */
 
 
-            /* If we are in client mode we need to first check whether we own the token or not.  If we don't then we have to 
+            /* If we are in client mode we need to first check whether we own the token or not.  If we don't then we have to
                download the sig chain of the token owner so that we have access to all of the token's events. */
             if(config::fClient)
             {
@@ -1217,10 +1217,10 @@ namespace TAO
                 if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
                     throw APIException(-125, "Token not found");
 
-                /* Now check the owner.  We should already be subscribed to events for any tokens that the caller owns, so if this 
+                /* Now check the owner.  We should already be subscribed to events for any tokens that the caller owns, so if this
                    token owner is not the caller then we need to synchronize to the events of the token */
                 if(token.hashOwner != hashGenesis)
-                { 
+                {
                     if(LLP::TRITIUM_SERVER)
                     {
                         std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
@@ -1548,8 +1548,6 @@ namespace TAO
 
                         case TAO::Operation::OP::TRUST:
                         case TAO::Operation::OP::GENESIS:
-                        case TAO::Operation::OP::TRUSTPOOL:
-                        case TAO::Operation::OP::GENESISPOOL:
                         case TAO::Operation::OP::MIGRATE:
                         {
                             fTrustRelated = true;
@@ -1597,7 +1595,7 @@ namespace TAO
                     LLP::TritiumNode::SyncSigChain(pNode.get(), hashGenesis, true, bSyncEvents);
 
                     uint32_t nStop = TIMER.ElapsedMilliseconds();
-                    
+
                     debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString(), " in ", nStop - nStart, " milliseconds");
 
 
@@ -1617,10 +1615,10 @@ namespace TAO
             /* Flag indicating if an account was found */
             bool fFound = false;
 
-            /* We search for the first account of the specified token type.  NOTE that the owner my not 
+            /* We search for the first account of the specified token type.  NOTE that the owner my not
                have an account for the token at this stage, in which case we can just skip the notification
                for now until they do have one */
-            
+
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAccounts;
             if(!ListAccounts(hashGenesis, vAccounts, false, false))

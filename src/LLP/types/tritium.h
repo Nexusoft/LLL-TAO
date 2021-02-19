@@ -106,7 +106,6 @@ namespace LLP
                 SYNC         = 0x42, //specify a sync block type
                 TRANSACTIONS = 0x43, //specify to send memory transactions first
                 CLIENT       = 0x44, //specify for blocks to be sent and received for clients
-                POOLSTAKE    = 0x45, //specify for pooled coinstake transactions
             };
         }
 
@@ -194,7 +193,7 @@ namespace LLP
 
         /** Sig chain genesis hashes / register addresses that the peer has subscribed to notifications for **/
         std::vector<uint256_t> vNotifications;
-        
+
 
 
     public:
@@ -541,9 +540,9 @@ namespace LLP
          *
          *  Handle relays of all events for LLP when processing block. The Tritium LLP subscribes to the Ledger::Notify instance
          *  to receive new block notifications via this callback method.
-         *  
+         *
          *  @param[in] hashBlock The hash of the block to relay.
-         * 
+         *
          **/
         static void RelayBlock(const uint1024_t& hashBlock);
 
@@ -551,12 +550,12 @@ namespace LLP
         /** SyncSigChain
          *
          *  Requests missing sig chain / event transactions for the given signature chain.
-         *  
+         *
          *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
          *  @param[in] hashGenesis The genesis hash of the sig chain to sync.
          *  @param[in] bWait  Flag indicating that the method should wait until the sig chain is downloaded before returning
          *  @param[in] bSyncEvents Flag indicating whether or not to also download events for the sig chain
-         * 
+         *
          **/
         static void SyncSigChain(LLP::TritiumNode* pNode, const uint256_t& hashGenesis, bool bWait, bool bSyncEvents);
 

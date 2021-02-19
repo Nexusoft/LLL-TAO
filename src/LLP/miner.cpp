@@ -904,19 +904,12 @@ namespace LLP
             if(!pSigChain)
                 return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
 
-            /* Sign the submitted block */
-            TAO::Ledger::Transaction txProducer;
-            if(pBlock->nVersion < 9)
-                txProducer = pBlock->producer;
-            else
-                txProducer = pBlock->vProducer.back();
-
-            std::vector<uint8_t> vBytes = pSigChain->Generate(txProducer.nSequence, PIN).GetBytes();
-
+            /* Generate a new sigchain key for signing. */
+            std::vector<uint8_t> vBytes = pSigChain->Generate(pBlock->producer.nSequence, PIN).GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Switch based on signature type. */
-            switch(txProducer.nKeyType)
+            switch(pBlock->producer.nKeyType)
             {
                 /* Support for the FALCON signature scheeme. */
                 case TAO::Ledger::SIGNATURE::FALCON:

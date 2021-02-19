@@ -245,8 +245,6 @@ namespace TAO
                 case OP::COINBASE:
                 case OP::TRUST:
                 case OP::GENESIS:
-                case OP::TRUSTPOOL:
-                case OP::GENESISPOOL:
                 {
                     /* This case is included for clarity as it is essentially a no-op. Claim contracts attract no
                        transaction fee as the fee is essentially paid by the transfer. Fee, coinbase, genesis, and trust

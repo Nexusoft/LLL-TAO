@@ -57,7 +57,7 @@ namespace TAO
     {
 
         /* Converts the block to formatted JSON */
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity, 
+        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
                                const std::map<std::string, std::vector<Clause>>& vWhere)
         {
             /* Decalre the response object*/
@@ -313,7 +313,7 @@ namespace TAO
 
 
         /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
-        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity, 
+        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity,
                                    const uint256_t& hashCoinbase, const std::map<std::string, std::vector<Clause>>& vWhere)
         {
             /* Declare the return JSON object*/
@@ -624,89 +624,6 @@ namespace TAO
                         ret["OP"]        = "GENESIS";
                         ret["address"]   = address.ToString();
                         ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;;
-
-                        break;
-                    }
-
-
-                    /* Trust operation for pooled staking. Builds trust and generates reward. */
-                    case TAO::Operation::OP::TRUSTPOOL:
-                    {
-                        /* Get the last stake tx hash. */
-                        uint512_t hashLastTrust = 0;
-                        contract >> hashLastTrust;
-
-                        /* Get the pooled staking proofs. */
-                        uint256_t hashProof = 0;
-                        contract >> hashProof;
-
-                        uint64_t nTimeBegin = 0;
-                        contract >> nTimeBegin;
-
-                        uint64_t nTimeEnd = 0;
-                        contract >> nTimeEnd;
-
-                        /* The total trust score. */
-                        uint64_t nScore = 0;
-                        contract >> nScore;
-
-                        /* Change to stake amount. */
-                        int64_t nStakeChange = 0;
-                        contract >> nStakeChange;
-
-                        /* The trust reward. */
-                        uint64_t nReward = 0;
-                        contract >> nReward;
-
-                        TAO::Register::Address address("trust", contract.Caller(), TAO::Register::Address::TRUST);
-
-                        /* Output the json information. */
-                        ret["OP"]        = "TRUSTPOOL";
-                        ret["address"] = address.ToString();
-                        ret["last"]      = hashLastTrust.ToString();
-                        ret["score"]     = nScore;
-                        ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;
-
-                        if(nStakeChange > 0)
-                            ret["add_stake"] = (double) nStakeChange / TAO::Ledger::NXS_COIN;
-
-                        else if (nStakeChange < 0)
-                            ret["unstake"] = (double) (0 - nStakeChange) / TAO::Ledger::NXS_COIN;
-
-                        ret["proof"]      = hashProof.ToString();
-                        ret["proofbegin"] = nTimeBegin;
-                        ret["proofend"]   = nTimeEnd;
-
-                        break;
-                    }
-
-
-                    /* Genesis operation for pooled staking. Begins trust and stakes. */
-                    case TAO::Operation::OP::GENESISPOOL:
-                    {
-                        /* Get the pooled staking proofs. */
-                        uint256_t hashProof = 0;
-                        contract >> hashProof;
-
-                        uint64_t nTimeBegin = 0;
-                        contract >> nTimeBegin;
-
-                        uint64_t nTimeEnd = 0;
-                        contract >> nTimeEnd;
-
-                        /* The genesis reward. */
-                        uint64_t nReward = 0;
-                        contract >> nReward;
-
-                        TAO::Register::Address address("trust", contract.Caller(), TAO::Register::Address::TRUST);
-
-                        /* Output the json information. */
-                        ret["OP"]         = "GENESISPOOL";
-                        ret["address"]    = address.ToString();
-                        ret["amount"]     = (double) nReward / TAO::Ledger::NXS_COIN;;
-                        ret["proof"]      = hashProof.ToString();
-                        ret["proofbegin"] = nTimeBegin;
-                        ret["proofend"]   = nTimeEnd;
 
                         break;
                     }
@@ -1462,7 +1379,7 @@ namespace TAO
 
 
         /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
-        void GetListParams(const json::json& params, std::string& strOrder, uint32_t& nLimit, 
+        void GetListParams(const json::json& params, std::string& strOrder, uint32_t& nLimit,
                            uint32_t& nOffset, std::map<std::string, std::vector<Clause>>& vWhere)
         {
             /* Check for page parameter. */
@@ -1503,10 +1420,10 @@ namespace TAO
                     /* Invalid limit */
                 }
             }
-            
+
             /* If no offset explicitly included calculate it from the limit + page */
             if(nOffset == 0 && nPage > 0)
-                nOffset = nLimit * nPage; 
+                nOffset = nLimit * nPage;
 
 
             /* Get sort order*/
@@ -1541,7 +1458,7 @@ namespace TAO
                     std::string strOP = (*it)["op"].get<std::string>();
                     std::string strValue = (*it)["value"].get<std::string>();
                     std::string strObject = "";
-                    
+
                     /* See if the field name contains an object name in the format object.field */
                     std::size_t nPos = strField.find(".");
                     if(nPos != std::string::npos)
@@ -1551,7 +1468,7 @@ namespace TAO
                     }
 
                     clause.strField = strField;
-    
+
                     /* operand */
                     if(strOP == "=" || strOP == "==")
                         clause.nOP = TAO::Operation::OP::EQUALS;
@@ -1565,7 +1482,7 @@ namespace TAO
                         clause.nOP = TAO::Operation::OP::GREATEREQUALS;
                     else if(strOP == "<=")
                         clause.nOP = TAO::Operation::OP::LESSEQUALS;
-                    else    
+                    else
                         /* Unknown operand */
                         throw APIException(-305, "Unknown operand in where clause" );
 
@@ -1664,7 +1581,7 @@ namespace TAO
                 }
                 else
                     fMatchesAll = false;
-                
+
                 if(!fMatchesAll)
                     break;
 

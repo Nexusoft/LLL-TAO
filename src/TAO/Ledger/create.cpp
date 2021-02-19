@@ -340,13 +340,7 @@ namespace TAO
                     vHashes.push_back(tx.second);
 
                 /* Producer transaction is last hash in list. */
-                if(block.nVersion < 9)
-                    vHashes.push_back(block.producer.GetHash());
-                else
-                {
-                    for(const TAO::Ledger::Transaction& txProducer : block.vProducer)
-                        vHashes.push_back(txProducer.GetHash());
-                }
+                vHashes.push_back(block.producer.GetHash());
 
                 /* Build the block's merkle root. */
                 block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
@@ -393,11 +387,7 @@ namespace TAO
             TAO::Ledger::TritiumBlock blockCached = blockCache[nChannel].load();
 
             /* Retrieve block producer from cached block */
-            if(blockCached.nVersion < 9)
-                txCached = blockCached.producer;
-
-            else if(blockCached.vProducer.size() > 0)
-                txCached = blockCached.vProducer.back(); //outside of stake pool, only one producer
+            txCached = blockCached.producer;
 
             /* Cache the best chain before processing. */
             const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
@@ -427,13 +417,7 @@ namespace TAO
                         return debug::error(FUNCTION, "Failed to create producer transactions.");
 
                     /* Update block producer to store back into cache */
-                    if(block.nVersion < 9)
-                        block.producer = txProducer;
-                    else
-                    {
-                        block.vProducer.clear();
-                        block.vProducer.push_back(txProducer);
-                    }
+                    block.producer = txProducer;
 
                     /* Store new block cache. */
                     blockCache[nChannel].store(block);
@@ -446,13 +430,7 @@ namespace TAO
                 txProducer.Sign(user->Generate(txProducer.nSequence, pin));
 
                 /* Update block producer */
-                if(block.nVersion < 9)
-                    block.producer = txProducer;
-                else
-                {
-                    block.vProducer.clear();
-                    block.vProducer.push_back(txProducer);
-                }
+                block.producer = txProducer;
 
                 /* Rebuild the merkle tree for updated block. */
                 std::vector<uint512_t> vHashes;
@@ -480,13 +458,7 @@ namespace TAO
                 txProducer.Sign(user->Generate(txProducer.nSequence, pin));
 
                 /* Add block producer to block */
-                if(block.nVersion < 9)
-                    block.producer = txProducer;
-                else
-                {
-                    block.vProducer.clear();
-                    block.vProducer.push_back(txProducer);
-                }
+                block.producer = txProducer;
 
                 /* Populate the block metadata */
                 AddBlockData(stateBest, nChannel, block);
@@ -691,13 +663,7 @@ namespace TAO
             UpdateProducerTimestamp(txProducer);
 
             /* Add block producer to block */
-            if(block.nVersion < 9)
-                block.producer = txProducer;
-            else
-            {
-                block.vProducer.clear();
-                block.vProducer.push_back(txProducer);
-            }
+            block.producer = txProducer;
 
             /* NOTE: The remainder of Coinstake producer not configured here. Stake minter must handle it. */
 
@@ -837,18 +803,12 @@ namespace TAO
                 if(!TAO::Ledger::CreateBlock(user, "1234", 3, block))
                     continue;
 
-                TAO::Ledger::Transaction txProducer;
-                if(block.nVersion < 9)
-                    txProducer = block.producer;
-                else
-                    txProducer = block.vProducer.back();
-
                 /* Get the secret from new key. */
-                std::vector<uint8_t> vBytes = user->Generate(txProducer.nSequence, "1234").GetBytes();
+                std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, "1234").GetBytes();
                 LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
                 /* Switch based on signature type. */
-                switch(txProducer.nKeyType)
+                switch(block.producer.nKeyType)
                 {
                     /* Support for the FALCON signature scheeme. */
                     case SIGNATURE::FALCON:
@@ -900,7 +860,7 @@ namespace TAO
 
 
         /* Updates the producer timestamp, making sure it is not earlier than the previous block. */
-        void UpdateProducerTimestamp(TAO::Ledger::Transaction& txProducer)
+        void UpdateProducerTimestamp(TAO::Ledger::Transaction &txProducer)
         {
             /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
             set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
@@ -923,26 +883,8 @@ namespace TAO
         /* Updates the producer timestamp, making sure it is not earlier than the previous block. */
         void UpdateProducerTimestamp(TAO::Ledger::TritiumBlock& block)
         {
-            TAO::Ledger::Transaction txProducer;
-
-            if(block.nVersion < 9)
-            {
-                txProducer = block.producer;
-
-                UpdateProducerTimestamp(txProducer);
-
-                block.producer = txProducer;
-            }
-            else
-            {
-                /* This only updates last producer (block finder) */
-                txProducer = block.vProducer.back();
-
-                UpdateProducerTimestamp(txProducer);
-
-                block.vProducer.erase(block.vProducer.begin() + (block.vProducer.size() - 1));
-                block.vProducer.push_back(txProducer);
-            }
+            /* Pass new producer transaction to update timestamp. */
+            UpdateProducerTimestamp(block.producer);
         }
     }
 }

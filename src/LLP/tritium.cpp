@@ -40,7 +40,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/locator.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/merkle.h>
-#include <TAO/Ledger/types/stakepool.h>
 #include <TAO/Ledger/types/syncblock.h>
 
 #ifndef NO_WALLET
@@ -589,7 +588,7 @@ namespace LLP
                 /* Add to address manager. */
                 if(TRITIUM_SERVER->GetAddressManager())
                     TRITIUM_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::CONNECTED);
-                
+
 
                 /* Send Auth immediately after version and before any other messages*/
                 //Auth(true);
@@ -1786,13 +1785,11 @@ namespace LLP
                     ssPacket >> nType;
 
                     /* Check for legacy or transactions specifiers. */
-                    bool fLegacy = false, fPoolstake = false, fTransactions = false, fClient = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::POOLSTAKE
-                    || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::CLIENT)
+                    bool fLegacy = false, fTransactions = false, fClient = false;
+                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::CLIENT)
                     {
                         /* Set specifiers. */
                         fLegacy       = (nType == SPECIFIER::LEGACY);
-                        fPoolstake    = (nType == SPECIFIER::POOLSTAKE);
                         fTransactions = (nType == SPECIFIER::TRANSACTIONS);
                         fClient       = (nType == SPECIFIER::CLIENT);
 
@@ -1807,7 +1804,7 @@ namespace LLP
                         case TYPES::BLOCK:
                         {
                             /* Check for valid specifier. */
-                            if(fLegacy || fPoolstake)
+                            if(fLegacy)
                                 return debug::drop(NODE, "ACTION::GET: invalid specifier for TYPES::BLOCK");
 
                             /* Check for client mode since this method should never be called except by a client. */
@@ -1921,21 +1918,6 @@ namespace LLP
                                 Legacy::Transaction tx;
                                 if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                     PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
-                            }
-                            /* Check for poolstake. */
-                            else if(fPoolstake)
-                            {
-                                /* Check for poolstake specifier active */
-                                if(nProtocolVersion < MIN_TRITIUM_VERSION)
-                                    return debug::drop(NODE, "ACTION::GET: poolstake specifier not active");
-
-                                uint8_t nTTL;
-                                ssPacket >> nTTL;
-
-                                /* Check stake pool for pooled coinstake. */
-                                TAO::Ledger::Transaction tx;
-                                if(TAO::Ledger::stakepool.Get(hashTx, tx))
-                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::POOLSTAKE), uint8_t(nTTL), tx);
                             }
                             else
                             {
@@ -2299,12 +2281,10 @@ namespace LLP
 
                     /* Check for legacy or poolstake specifier. */
                     bool fLegacy = false;
-                    bool fPoolstake = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::POOLSTAKE)
+                    if(nType == SPECIFIER::LEGACY)
                     {
                         /* Set specifiers. */
                         fLegacy    = (nType == SPECIFIER::LEGACY);
-                        fPoolstake = (nType == SPECIFIER::POOLSTAKE);
 
                         /* Go to next type in stream. */
                         ssPacket >> nType;
@@ -2446,25 +2426,6 @@ namespace LLP
                                     debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString());
 
                                     ssResponse << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
-                                }
-                            }
-                            /* Check for pool stake. */
-                            else if(fPoolstake)
-                            {
-                                /* Check for poolstake specifier active */
-                                if(nProtocolVersion < MIN_TRITIUM_VERSION)
-                                    return debug::drop(NODE, "ACTION::NOTIFY: poolstake specifier not active");
-
-                                uint8_t nTTL;
-                                ssPacket >> nTTL;
-
-                                /* Check stake pool. */
-                                if(!TAO::Ledger::stakepool.Has(hashTx))
-                                {
-                                    /* Debug output. */
-                                    debug::log(3, NODE, "ACTION::NOTIFY: POOL STAKE TRANSACTION ", hashTx.SubString());
-
-                                    ssResponse << uint8_t(SPECIFIER::POOLSTAKE) << uint8_t(TYPES::TRANSACTION) << hashTx << nTTL;
                                 }
                             }
                             else
@@ -3140,50 +3101,6 @@ namespace LLP
                         break;
                     }
 
-                    /* Handle a pooled coinstake. */
-                    case SPECIFIER::POOLSTAKE:
-                    {
-                        /* Check for poolstake specifier active */
-                        if(nProtocolVersion < MIN_TRITIUM_VERSION)
-                            return debug::drop(NODE, "TYPES::TRANSACTION: poolstake specifier not active");
-
-                        /* Get the transction from the stream. */
-                        TAO::Ledger::Transaction tx;
-                        uint8_t nTTL;
-
-                        ssPacket >> nTTL;
-                        ssPacket >> tx;
-
-                        /* Accept into stake pool. */
-                        if(TAO::Ledger::stakepool.Accept(tx, this))
-                        {
-                            /* Relay the transaction notification if more TTL count */
-                            if(nTTL > 0)
-                            {
-                                uint512_t hashTx = tx.GetHash();
-                                --nTTL;
-
-                                TRITIUM_SERVER->Relay
-                                (
-                                    ACTION::NOTIFY,
-                                    uint8_t(SPECIFIER::POOLSTAKE),
-                                    uint8_t(TYPES::TRANSACTION),
-                                    hashTx,
-                                    nTTL
-                                );
-                            }
-
-                            /* Reset consecutive failures. */
-                            nConsecutiveFails   = 0;
-                            nConsecutiveOrphans = 0;
-                        }
-                        else
-                            ++nConsecutiveFails;
-
-
-                        break;
-                    }
-
                     /* Default catch all. */
                     default:
                         return debug::drop(NODE, "invalid type specifier for transaction");
@@ -3225,7 +3142,7 @@ namespace LLP
                         Legacy::MerkleTx tx;
                         ssPacket >> tx;
 
-                        /* Need to lock the processing mutex to synchronize the processing transactions and blocks.  This is 
+                        /* Need to lock the processing mutex to synchronize the processing transactions and blocks.  This is
                            necessary to avoid writing the same transaction twice if it is received from two peers simultaneously. */
                         LOCK(TAO::Ledger::PROCESSING_MUTEX);
 
@@ -3303,7 +3220,7 @@ namespace LLP
                         /* Cache the txid. */
                         uint512_t hashTx = tx.GetHash();
 
-                        /* Need to lock the processing mutex to synchronize the processing transactions and blocks.  This is 
+                        /* Need to lock the processing mutex to synchronize the processing transactions and blocks.  This is
                            necessary to avoid writing the same transaction twice if it is received from two peers simultaneously. */
                         LOCK(TAO::Ledger::PROCESSING_MUTEX);
 
@@ -4106,12 +4023,10 @@ namespace LLP
 
                     /* Check for legacy or poolstake specifier. */
                     bool fLegacy = false;
-                    bool fPoolstake = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::POOLSTAKE)
+                    if(nType == SPECIFIER::LEGACY)
                     {
                         /* Set specifiers. */
                         fLegacy    = (nType == SPECIFIER::LEGACY);
-                        fPoolstake = (nType == SPECIFIER::POOLSTAKE);
 
                         /* Go to next type in stream. */
                         ssData >> nType;
@@ -4153,22 +4068,9 @@ namespace LLP
                                 if(fLegacy)
                                     ssRelay << uint8_t(SPECIFIER::LEGACY);
 
-                                /* Check for pool stake. */
-                                else if(fPoolstake)
-                                    ssRelay << uint8_t(SPECIFIER::POOLSTAKE);
-
                                 /* Write transaction to stream. */
                                 ssRelay << uint8_t(TYPES::TRANSACTION);
                                 ssRelay << hashTx;
-
-                                /* Add TTL for poolstake */
-                                if(fPoolstake)
-                                {
-                                    uint8_t nTTL;
-                                    ssData >> nTTL;
-
-                                    ssRelay << nTTL;
-                                }
                             }
 
                             break;
@@ -4611,11 +4513,11 @@ namespace LLP
             uint512_t hashLast;
             LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
 
-            /* It is possible to have received a register TX for this sig chain without ever having logged in, or at least much 
+            /* It is possible to have received a register TX for this sig chain without ever having logged in, or at least much
                later than the previous log in.  This can leave the sig chain framented for this genesis.  In order to detect and
                resolve this, we traverse the sig chain from hashLast backwards to check if we find any missing transactions before
                we get to hashGenesis. If so, we need to download the entire sig chain again. */
-            
+
             /* The previous hash in the chain */
             uint512_t hashPrev = hashLast;
 
@@ -4630,7 +4532,7 @@ namespace LLP
                     hashLast = 0;
                     break;
                 }
-                    
+
                 /* Set the next last. */
                 hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
 
@@ -4652,7 +4554,7 @@ namespace LLP
                 /* Request notifications/events. */
                 if(bWait)
                     TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
- 
+
                 else
                     pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
 
@@ -4663,9 +4565,9 @@ namespace LLP
                 /* Request legacy notifications/events. */
                 if(bWait)
                     TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
-                else 
+                else
                     pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
-            
+
 
                 /* Request notifications for any tokens we own, or any tokens that we have accounts for */
 
@@ -4685,7 +4587,7 @@ namespace LLP
                         /* Request existing notifications/events. */
                         if(bWait)
                             TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
-                        else 
+                        else
                             pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
 
                     }

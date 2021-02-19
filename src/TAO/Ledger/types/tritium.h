@@ -59,14 +59,6 @@ namespace TAO
             Transaction producer;
 
 
-            /** Producer Transactions.
-             *
-             *  Transaction(s) responsible for the block producer (v9+).
-             *
-             **/
-            std::vector<Transaction> vProducer;
-
-
             /** System Script
              *
              *  The critical system level pre-states and post-states.
@@ -94,12 +86,7 @@ namespace TAO
                 READWRITE(nNonce);
                 READWRITE(nTime);
                 READWRITE(vchBlockSig);
-
-                if(nVersion < 9)
-                    READWRITE(producer);
-                else
-                    READWRITE(vProducer);
-
+                READWRITE(producer);
                 READWRITE(ssSystem);
                 READWRITE(vOffsets);
                 READWRITE(vtx);

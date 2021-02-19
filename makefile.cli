@@ -1,5 +1,5 @@
 ######################################################################################################################################################################################################
-### Nexus Core 
+### Nexus Core
 ######################################################################################################################################################################################################
 
 ifeq ($(OS),Windows_NT)
@@ -540,12 +540,10 @@ OBJS+=  build/LLC_base_uint.o \
         build/Operation_execute.o \
 		build/Operation_fee.o \
 		build/Operation_genesis.o \
-		build/Operation_genesispool.o \
 		build/Operation_legacy.o \
 		build/Operation_migrate.o \
 		build/Operation_transfer.o \
 		build/Operation_trust.o \
-		build/Operation_trustpool.o \
 		build/Operation_validate.o \
 		build/Operation_write.o \
 		build/Register_address.o \
@@ -576,7 +574,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_retarget.o \
 		build/Ledger_sigchain.o \
 		build/Ledger_stake.o \
-		build/Ledger_stakepool.o \
 		build/Ledger_stake_change.o \
 		build/Ledger_stake_minter.o \
 		build/Ledger_state.o \
@@ -586,7 +583,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_transaction.o \
 		build/Ledger_tritium.o \
 		build/Ledger_tritium_minter.o \
-		build/Ledger_tritium_pool_minter.o \
 		build/Util_args.o \
 		build/Util_base58.o \
 		build/Util_base64.o \
@@ -1020,7 +1016,7 @@ endif
 ifeq ($(detected_OS),iPhone)
 
 ifeq ($(SIMULATOR),1)
-	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator$(IOS_SDK_VER).sdk 
+	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator$(IOS_SDK_VER).sdk
 else
 	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS$(IOS_SDK_VER).sdk
 	IOS_TYPE?= iphoneos
@@ -1071,7 +1067,7 @@ all: iphone.a
 
 .PHONY: buildall iphone.a
 
-buildall: 
+buildall:
 	mkdir -p build/obj
 	echo MAKING DEVICE
 	make -f makefile.cli NO_ANSI=1 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=0
@@ -1143,8 +1139,8 @@ CXXFLAGS+= -O3 \
 	-arch $(ANDROID_ARCH) \
 	-static-libstdc++ \
 	-fPIC
-	
-	
+
+
 #Set CFLAGS and Warnings
 CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
@@ -1164,12 +1160,12 @@ all: android.so
 #$(info $(OPENSSL_INCLUDE_PATH))
 #$(info $(OPENSSL_LIB_PATH))
 
- 
+
 
 .PHONY: buildall android.so
 
 #OS Specific Targets and instructions
-buildall: 
+buildall:
 	mkdir -p build/Nexus.androidframework
 	@echo Making x86_64
 	make -f makefile.cli NO_ANSI=1 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="x86_64"

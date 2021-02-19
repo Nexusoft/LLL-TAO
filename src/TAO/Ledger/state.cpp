@@ -367,25 +367,12 @@ namespace TAO
         , hashNextBlock    (0)
         , hashCheckpoint   (0)
         {
-            if(nVersion < 9)
-            {
-                /* Set producer to be last transaction. */
-                vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, block.producer.GetHash()));
+            /* Set producer to be last transaction. */
+            vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, block.producer.GetHash()));
 
-                /* Check that sizes are expected. */
-                if(vtx.size() != block.vtx.size() + 1)
-                   throw debug::exception(FUNCTION, "tritium block to state incorrect sizes");
-            }
-            else
-            {
-                /* Set producers to be last transactions. */
-                for(const Transaction& txProducer : block.vProducer)
-                    vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, txProducer.GetHash()));
-
-                /* Check that sizes are expected. */
-                if(vtx.size() != block.vtx.size() + block.vProducer.size())
-                    throw debug::exception(FUNCTION, "tritium block to state incorrect sizes");
-            }
+            /* Check that sizes are expected. */
+            if(vtx.size() != block.vtx.size() + 1)
+               throw debug::exception(FUNCTION, "tritium block to state incorrect sizes");
         }
 
 
@@ -1068,10 +1055,6 @@ namespace TAO
 
             debug::log(3, "BLOCK BEGIN-------------------------------------");
 
-            /* Pooled staking data */
-            uint64_t nPoolFeeTotal = 0;
-            uint512_t hashBlockFinder = vtx.back().second; //block finder is last in vtx
-
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
             {
@@ -1129,7 +1112,7 @@ namespace TAO
                     if(tx.IsCoinStake())
                     {
                         /* Check the coinstake trust and reward values. */
-                        if(!tx.CheckTrust(this, nPoolFeeTotal, (hash == hashBlockFinder)))
+                        if(!tx.CheckTrust(this))
                             return debug::error(FUNCTION, "trust checks failed");
 
                         /* Write the last stake value into the database. */

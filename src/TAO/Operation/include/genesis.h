@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_OPERATION_INCLUDE_GENESISPOOL_H
-#define NEXUS_TAO_OPERATION_INCLUDE_GENESISPOOL_H
+#ifndef NEXUS_TAO_OPERATION_INCLUDE_GENESIS_H
+#define NEXUS_TAO_OPERATION_INCLUDE_GENESIS_H
 
 #include <LLC/types/uint1024.h>
 

@@ -13,7 +13,6 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/stake_minter.h>
 #include <TAO/Ledger/types/tritium_minter.h>
-#include <TAO/Ledger/types/tritium_pool_minter.h>
 
 #include <LLC/hash/SK.h>
 #include <LLC/include/eckey.h>
@@ -58,39 +57,7 @@ namespace TAO
         /* Retrieves the stake minter instance to use for staking. */
         StakeMinter& StakeMinter::GetInstance()
         {
-            static bool fPool = false;
-
-            /* When set to pool stake, use the pool stake minter */
-            if(config::fPoolStaking.load())
-            {
-                if(!fPool) //checks if previously set for solo
-                {
-                    /* Switch to pool staking */
-                    StakeMinter& oldStakeMinter = TritiumMinter::GetInstance();
-                    if(oldStakeMinter.IsStarted())
-                        oldStakeMinter.Stop();
-
-                }
-
-                fPool = true;
-                return TritiumPoolMinter::GetInstance();
-            }
-
-            /* Otherwise, use the solo stake minter */
-            else
-            {
-                if(fPool) //checks if previously set for pool
-                {
-                    /* Switch to pool staking */
-                    StakeMinter& oldStakeMinter = TritiumPoolMinter::GetInstance();
-                    if(oldStakeMinter.IsStarted())
-                        oldStakeMinter.Stop();
-
-                }
-
-                fPool = false;
-                return TritiumMinter::GetInstance();
-            }
+            return TritiumMinter::GetInstance();
         }
 
 
@@ -623,10 +590,7 @@ namespace TAO
                 uint32_t nBlockTime;
 
                 /* How long working on this block */
-                if(block.nVersion < 9)
-                    nBlockTime = nTimeCurrent - block.producer.nTimestamp;
-                else
-                    nBlockTime = nTimeCurrent - block.vProducer.back().nTimestamp;
+                nBlockTime = nTimeCurrent - block.producer.nTimestamp;
 
                 /* Start the check interval on first loop iteration */
                 if(nTimeStart == 0)
@@ -694,46 +658,23 @@ namespace TAO
              */
             uint64_t nReward = CalculateCoinstakeReward(block.GetBlockTime());
 
-            TAO::Ledger::Transaction txProducer;
-            if(block.nVersion < 9)
-                txProducer = block.producer;
-            else
-                txProducer = block.vProducer.back();
-
             /* Add coinstake reward */
-            txProducer[0] << nReward;
+            block.producer[0] << nReward;
 
             /* Execute operation pre- and post-state. */
-            if(!txProducer.Build())
+            if(!block.producer.Build())
                 return debug::error(FUNCTION, "Coinstake transaction failed to build");
 
             /* Coinstake producer now complete. Sign the transaction. */
-            txProducer.Sign(user->Generate(txProducer.nSequence, strPIN));
-
-            if(block.nVersion < 9)
-                block.producer = txProducer;
-            else
-            {
-                /* Replace last producer in block with the completed & signed one */
-                block.vProducer.erase(block.vProducer.begin() + (block.vProducer.size() - 1));
-                block.vProducer.push_back(txProducer);
-            }
+            block.producer.Sign(user->Generate(block.producer.nSequence, strPIN));
 
             /* Build the Merkle Root. */
             std::vector<uint512_t> vHashes;
-
             for(const auto& item : block.vtx)
                 vHashes.push_back(item.second);
 
             /* producers are not part of vtx, add to vHashes last */
-            if(block.nVersion < 9)
-                vHashes.push_back(block.producer.GetHash());
-            else
-            {
-                for(const TAO::Ledger::Transaction& tx : block.vProducer)
-                    vHashes.push_back(tx.GetHash());
-            }
-
+            vHashes.push_back(block.producer.GetHash());
             block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
 
             /* Sign the block. */
@@ -785,15 +726,8 @@ namespace TAO
         bool StakeMinter::SignBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
         {
             /* Sign the submitted block */
-            TAO::Ledger::Transaction txProducer;
-
-            if(block.nVersion < 9)
-                txProducer = block.producer;
-            else
-                txProducer = block.vProducer.back();
-
-            std::vector<uint8_t> vBytes = user->Generate(txProducer.nSequence, strPIN).GetBytes();
-            uint8_t nKeyType = txProducer.nKeyType;
+            std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, strPIN).GetBytes();
+            uint8_t nKeyType = block.producer.nKeyType;
 
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
