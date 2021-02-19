@@ -930,16 +930,7 @@ namespace TAO
             **/
             json::json ExportKeys(const json::json& params, bool fHelp);
 
-        private:
 
-            /** GetTotalConnectionCount
-             *
-             *  Returns the total number of connections for this node
-             *
-             **/
-            uint32_t GetTotalConnectionCount();
-
-            
             /** parse_token
             *
             *  Checks to see whether the first paramter of the parms is either token= or token_name=
@@ -951,7 +942,19 @@ namespace TAO
             *  @return True if the jsonParams contains a token or token_address parameter.
             *
             **/
-            bool parse_token(const json::json& jsonParams, json::json& jsonToken);
+            static bool parse_token(const json::json& jsonParams, json::json& jsonToken);
+
+        private:
+
+            /** GetTotalConnectionCount
+             *
+             *  Returns the total number of connections for this node
+             *
+             **/
+            uint32_t GetTotalConnectionCount();
+
+            
+            
 
         };
 

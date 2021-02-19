@@ -1163,88 +1163,148 @@ namespace TAO
 
         json::json ListReceived(const json::json& params, bool fByAccounts)
         {
-            // Minimum confirmations
-            int nMinDepth = 1;
-            if(params.size() > 0)
-                nMinDepth = params[0];
+            /* The response JSON */
+            json::json ret = json::json::array();
 
-            // Whether to include empty accounts
-            bool fIncludeEmpty = false;
-            if(params.size() > 1)
-                fIncludeEmpty = params[1];
-
-            // Tally
-            std::map<Legacy::NexusAddress, tallyitem> mapTally;
-            for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+            /* Check to see if the caller has specified a token / token_name */
+            json::json token;
+            if(RPC::parse_token(params, token))
             {
-                const Legacy::WalletTx& wtx = entry.second;
+                // Minimum confirmations
+                int nMinDepth = 1;
+                if(params.size() > 1)
+                    nMinDepth = params[1];
 
-                if(wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
-                    continue;
+                // Whether to include empty accounts
+                bool fIncludeEmpty = false;
+                if(params.size() > 2)
+                    fIncludeEmpty = params[2];
 
-                int nDepth = wtx.GetDepthInMainChain();
-                if(nDepth < nMinDepth)
-                    continue;
-
-                for(const Legacy::TxOut& txout : wtx.vout)
+                /* Get the tritium accounts */
+                json::json jsonAccounts = TAO::API::finance->List(token, false);
+                
+                /* Iterate through all accounts and add their available balance to the map */
+                for(const auto& account : jsonAccounts)
                 {
-                    Legacy::NexusAddress address;
-                    if(!ExtractAddress(txout.scriptPubKey, address) || !Legacy::Wallet::GetInstance().HaveKey(address) || !address.IsValid())
-                        continue;
+                    /* Get the address */
+                    std::string strAddress = account["address"].get<std::string>();
 
-                    tallyitem& item = mapTally[address];
-                    item.nAmount += txout.nValue;
-                    item.nConf = std::min(item.nConf, nDepth);
+                    /* Get the name */
+                    std::string strName = account["name"].get<std::string>();
+
+                    /* Get the amount */
+                    double dBalance = account["balance"].get<double>();
+
+                    /* Get the unconfirmed */
+                    double dUnconfirmed = account["unconfirmed"].get<double>();
+
+                    /* Get the amount to return */
+                    double dAmount = nMinDepth > 0 ? dBalance : dBalance + dUnconfirmed;
+
+                    json::json obj;
+
+                    if(fIncludeEmpty || dAmount > 0)
+                    {
+
+                        if(!fByAccounts)
+                            obj["address"] = strAddress;
+                        
+                        obj["account"] = strName;
+
+                        obj["amount"] = dAmount;
+                        
+                        obj["confirmations"] = nMinDepth > 0 ? 1 : 0;
+
+                        ret.push_back(obj);
+                    }
                 }
             }
-
-            // Reply
-            json::json ret = json::json::array();
-            std::map<std::string, tallyitem> mapAccountTally;
-            for(const auto& item : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
+            else
             {
-                const Legacy::NexusAddress& address = item.first;
-                const std::string& strAccount = item.second;
-                std::map<Legacy::NexusAddress, tallyitem>::iterator it = mapTally.find(address);
-                if(it == mapTally.end() && !fIncludeEmpty)
-                    continue;
 
-                int64_t nAmount = 0;
-                int nConf = std::numeric_limits<int>::max();
-                if(it != mapTally.end())
+                // Minimum confirmations
+                int nMinDepth = 1;
+                if(params.size() > 0)
+                    nMinDepth = params[0];
+
+                // Whether to include empty accounts
+                bool fIncludeEmpty = false;
+                if(params.size() > 1)
+                    fIncludeEmpty = params[1];
+
+                // Tally
+                std::map<Legacy::NexusAddress, tallyitem> mapTally;
+                for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
                 {
-                    nAmount = (*it).second.nAmount;
-                    nConf = (*it).second.nConf;
+                    const Legacy::WalletTx& wtx = entry.second;
+
+                    if(wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
+                        continue;
+
+                    int nDepth = wtx.GetDepthInMainChain();
+                    if(nDepth < nMinDepth)
+                        continue;
+
+                    for(const Legacy::TxOut& txout : wtx.vout)
+                    {
+                        Legacy::NexusAddress address;
+                        if(!ExtractAddress(txout.scriptPubKey, address) || !Legacy::Wallet::GetInstance().HaveKey(address) || !address.IsValid())
+                            continue;
+
+                        tallyitem& item = mapTally[address];
+                        item.nAmount += txout.nValue;
+                        item.nConf = std::min(item.nConf, nDepth);
+                    }
+                }
+
+                // Reply
+                
+                std::map<std::string, tallyitem> mapAccountTally;
+                for(const auto& item : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
+                {
+                    const Legacy::NexusAddress& address = item.first;
+                    const std::string& strAccount = item.second;
+                    std::map<Legacy::NexusAddress, tallyitem>::iterator it = mapTally.find(address);
+                    if(it == mapTally.end() && !fIncludeEmpty)
+                        continue;
+
+                    int64_t nAmount = 0;
+                    int nConf = std::numeric_limits<int>::max();
+                    if(it != mapTally.end())
+                    {
+                        nAmount = (*it).second.nAmount;
+                        nConf = (*it).second.nConf;
+                    }
+
+                    if(fByAccounts)
+                    {
+                        tallyitem& item = mapAccountTally[strAccount];
+                        item.nAmount += nAmount;
+                        item.nConf = std::min(item.nConf, nConf);
+                    }
+                    else
+                    {
+                        json::json obj;
+                        obj["address"] =       address.ToString();
+                        obj["account"] =       strAccount;
+                        obj["amount"] =        Legacy::SatoshisToAmount(nAmount);
+                        obj["confirmations"] = (nConf == std::numeric_limits<int>::max() ? 0 : nConf);
+                        ret.push_back(obj);
+                    }
                 }
 
                 if(fByAccounts)
                 {
-                    tallyitem& item = mapAccountTally[strAccount];
-                    item.nAmount += nAmount;
-                    item.nConf = std::min(item.nConf, nConf);
-                }
-                else
-                {
-                    json::json obj;
-                    obj["address"] =       address.ToString();
-                    obj["account"] =       strAccount;
-                    obj["amount"] =        Legacy::SatoshisToAmount(nAmount);
-                    obj["confirmations"] = (nConf == std::numeric_limits<int>::max() ? 0 : nConf);
-                    ret.push_back(obj);
-                }
-            }
-
-            if(fByAccounts)
-            {
-                for(std::map<std::string, tallyitem>::iterator it = mapAccountTally.begin(); it != mapAccountTally.end(); ++it)
-                {
-                    int64_t nAmount = (*it).second.nAmount;
-                    int nConf = (*it).second.nConf;
-                    json::json obj;
-                    obj["account"] =       (*it).first;
-                    obj["amount"] =        Legacy::SatoshisToAmount(nAmount);
-                    obj["confirmations"] = (nConf == std::numeric_limits<int>::max() ? 0 : nConf);
-                    ret.push_back(obj);
+                    for(std::map<std::string, tallyitem>::iterator it = mapAccountTally.begin(); it != mapAccountTally.end(); ++it)
+                    {
+                        int64_t nAmount = (*it).second.nAmount;
+                        int nConf = (*it).second.nConf;
+                        json::json obj;
+                        obj["account"] =       (*it).first;
+                        obj["amount"] =        Legacy::SatoshisToAmount(nAmount);
+                        obj["confirmations"] = (nConf == std::numeric_limits<int>::max() ? 0 : nConf);
+                        ret.push_back(obj);
+                    }
                 }
             }
 
@@ -1261,7 +1321,7 @@ namespace TAO
         *  \"confirmations\" : number of confirmations of the most recent transaction included */
         json::json RPC::ListReceivedByAddress(const json::json& params, bool fHelp)
         {
-            if(fHelp || params.size() > 2)
+            if(fHelp)
                 return std::string(
                     "listreceivedbyaddress [minconf=1] [includeempty=false]"
                     " - [minconf] is the minimum number of confirmations before payments are included."
@@ -1286,7 +1346,7 @@ namespace TAO
         *  \"confirmations\" : number of confirmations of the most recent transaction incl*/
         json::json RPC::ListReceivedByAccount(const json::json& params, bool fHelp)
         {
-            if(fHelp || params.size() > 2)
+            if(fHelp)
                 return std::string(
                     "listreceivedbyaccount [minconf=1] [includeempty=false]"
                     " - [minconf] is the minimum number of confirmations before payments are included."
