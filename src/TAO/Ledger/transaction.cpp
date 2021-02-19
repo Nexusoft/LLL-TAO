@@ -312,7 +312,7 @@ namespace TAO
 
             /* Check the genesis first byte. */
             if(hashGenesis.GetType() != GENESIS::UserType())
-                return debug::error(FUNCTION, "genesis using incorrect leading byte");
+                return debug::error(FUNCTION, "user type [", std::hex, uint32_t(hashGenesis.GetType()), "] invalid, expected [", std::hex, uint32_t(GENESIS::UserType()), "]");
 
             /* Check for max contracts. */
             if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
@@ -444,7 +444,7 @@ namespace TAO
                 }
 
                 /* Check our hybrid proofs. */
-                else if(config::fHybrid.load())
+                else
                 {
                     /* Grab our hybrid network-id. */
                     const std::string strHybrid = config::GetArg("-hybrid", "");
@@ -452,7 +452,7 @@ namespace TAO
                     /* Check our expected values. */
                     const uint512_t hashCheck = LLC::SK512(strHybrid.begin(), strHybrid.end());
                     if(hashCheck != hashPrevTx)
-                        return debug::error(FUNCTION, "transaction belongs to invalid network-id (", hashPrevTx.SubString(), ")");
+                        return debug::error(FUNCTION, "invalid network-id (", hashPrevTx.ToString().substr(108, 128), ")");
                 }
             }
 

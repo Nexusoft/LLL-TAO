@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/port.h>
 
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/include/enum.h>
 
 #include <cstring>
 #include <string>
@@ -178,8 +179,6 @@ namespace config
     /* Caches some of the common arguments into global variables for quick/easy access */
     void CacheArgs()
     {
-        LOCK(ARGS_MUTEX);
-
         fDebug                  = GetBoolArg("-debug", false);
         fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
@@ -201,8 +200,13 @@ namespace config
         /* Set to use private mode when hybrid is enabled. */
         if(fPrivate.load() && !fHybrid.load())
         {
-            /* Set our hybrid value as ~PRIVATE~ in private mode. */
-            mapArgs["-hybrid"] = "~PRIVATE~";
+            LOCK(ARGS_MUTEX);
+
+            /* Set our hybrid value as PRIVATE in private mode. */
+            mapArgs["-hybrid"]  = "0";
+            mapArgs["-testnet"] = "1";
+
+            /* Set our expected flags. */
             fHybrid.store(true);
             fTestNet.store(true);
 
@@ -215,37 +219,48 @@ namespace config
         /* Calculate our network-id if in hybrid mode. */
         if(fHybrid.load())
         {
+            LOCK(ARGS_MUTEX);
+
             const SecureString strOwner = mapArgs["-hybrid"].c_str();
             hashNetworkOwner = TAO::Ledger::SignatureChain::Genesis(strOwner);
+            hashNetworkOwner.SetType(TAO::Ledger::GENESIS::OwnerType());
+
+            if(!fPrivate.load())
+                debug::log(0, ANSI_COLOR_FUNCTION, "Hybrid Network-id: ", ANSI_COLOR_BRIGHT_GREEN, hashNetworkOwner.ToString(), ANSI_COLOR_RESET);
         }
 
 
-        /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
-        const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];
-
-        for(const auto& entry : vIPPortFilters)
         {
-            /* ensure it has a port*/
-            std::size_t nPortPos = entry.find(":");
-            if(nPortPos == std::string::npos)
-                continue;
+            LOCK(ARGS_MUTEX);
 
-            std::string strIP = entry.substr(0, nPortPos);
-            uint16_t nPort = std::stoi(entry.substr(nPortPos + 1));
+            /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
+            const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];
+            for(const auto& entry : vIPPortFilters)
+            {
+                /* ensure it has a port*/
+                std::size_t nPortPos = entry.find(":");
+                if(nPortPos == std::string::npos)
+                    continue;
 
-            mapIPFilters[nPort].push_back(strIP);
+                std::string strIP = entry.substr(0, nPortPos);
+                uint16_t nPort = std::stoi(entry.substr(nPortPos + 1));
+
+                mapIPFilters[nPort].push_back(strIP);
+            }
+
+            /* Parse the legacy rpcallowip entries and add them to to the filters map too, so that legacy users
+               can migrate without having to change their config files*/
+            const std::vector<std::string>& vRPCFilters = config::mapMultiArgs["-rpcallowip"];
+
+            /* get the RPC port in use */
+            uint16_t nRPCPort = static_cast<uint16_t>(config::fTestNet ? TESTNET_RPC_PORT : MAINNET_RPC_PORT);
+            if(mapArgs.count("-rpcport"))
+                nRPCPort = static_cast<uint16_t>(convert::atoi64(mapArgs["-rpcport"]));
+
+            /* Add our RPC IP filters to the map. */
+            for(const auto& entry : vRPCFilters)
+                mapIPFilters[nRPCPort].push_back(entry);
         }
 
-        /* Parse the legacy rpcallowip entries and add them to to the filters map too, so that legacy users
-           can migrate without having to change their config files*/
-        const std::vector<std::string>& vRPCFilters = config::mapMultiArgs["-rpcallowip"];
-
-        /* get the RPC port in use */
-        uint16_t nRPCPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
-
-        for(const auto& entry : vRPCFilters)
-        {
-            mapIPFilters[nRPCPort].push_back(entry);
-        }
     }
 }

@@ -118,10 +118,10 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
     }
 
-    /* Startup the time server. */    
+    /* Startup the time server. */
     LLP::TIME_SERVER = LLP::CreateTimeServer();
 
-    
+
     #ifndef NO_WALLET
     /* Set up RPC server */
     if(!config::fClient.load())
@@ -195,13 +195,13 @@ int main(int argc, char** argv)
 
             /* Initialize the scripts for legacy mode. */
             Legacy::InitializeScripts();
-            
+
             #endif
         }
 
 
         /* Get the port for Tritium Server. Allow serverport or port params to be used (serverport takes preference)*/
-        uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT)); 
+        uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
         nPort = static_cast<uint16_t>(config::GetArg(std::string("-serverport"), nPort));
 
         uint16_t nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-sslport"), config::fTestNet.load() ? (TRITIUM_TESTNET_SSL_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_SSL_PORT));
@@ -262,7 +262,7 @@ int main(int argc, char** argv)
 
         /* Initialize generator thread. */
         std::thread thread;
-        if(config::GetBoolArg(std::string("-private")))
+        if(config::fHybrid.load())
             thread = std::thread(TAO::Ledger::ThreadGenerator);
 
 
@@ -288,7 +288,7 @@ int main(int argc, char** argv)
 
 
         /* Wait for the private condition. */
-        if(config::GetBoolArg(std::string("-private")))
+        if(config::fHybrid.load())
         {
             TAO::Ledger::PRIVATE_CONDITION.notify_all();
             thread.join();

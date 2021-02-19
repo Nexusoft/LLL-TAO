@@ -780,8 +780,8 @@ namespace TAO
                     hashGenesis = vProducer[0].hashGenesis;
 
                 if(hashGenesis != (config::fTestNet ?
-                    uint256_t("0xa2a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41") :
-                    uint256_t("0xa1a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41")))
+                    uint256_t("0xb7a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41") :
+                    uint256_t("0xa7a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41")))
                     return debug::error(FUNCTION, "invalid genesis generated");
             }
 
