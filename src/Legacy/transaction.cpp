@@ -872,6 +872,10 @@ namespace Legacy
         if(vout.empty())
             return debug::error(FUNCTION, "vout empty");
 
+        /* Check for hybrid mode. */
+        if(config::fHybrid.load())
+            return debug::error(FUNCTION, "no legacy tx for -hybrid mode");
+
         /* Check for size limits. */
         if(::GetSerializeSize(*this, SER_NETWORK, LLP::PROTOCOL_VERSION) > TAO::Ledger::MAX_BLOCK_SIZE)
             return debug::error(FUNCTION, "size limits failed");
