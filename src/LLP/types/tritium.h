@@ -66,31 +66,31 @@ namespace LLP
             enum
             {
                 /* Key Types. */
-                UINT256_T    = 0x20,
-                UINT512_T    = 0x21,
-                UINT1024_T   = 0x22,
-                STRING       = 0x23,
-                BYTES        = 0x24,
-                LOCATOR      = 0x25,
-                LASTINDEX    = 0x26, //sends a last index notify after list
+                UINT256_T     = 0x20,
+                UINT512_T     = 0x21,
+                UINT1024_T    = 0x22,
+                STRING        = 0x23,
+                BYTES         = 0x24,
+                LOCATOR       = 0x25,
+                LASTINDEX     = 0x26, //sends a last index notify after list
 
                 /* Object Types. */
-                BLOCK        = 0x30,
-                TRANSACTION  = 0x31,
-                TIMESEED     = 0x32,
-                BESTHEIGHT   = 0x33,
-                CHECKPOINT   = 0x34,
-                ADDRESS      = 0x35,
-                BESTCHAIN    = 0x36,
-                MEMPOOL      = 0x37,
-                SIGCHAIN     = 0x38,
-                MERKLE       = 0x39,
-                GENESIS      = 0x3a,
-                NOTIFICATION = 0x3b,
-                TRIGGER      = 0x3c,
-                REGISTER     = 0x3d,
-                P2PCONNECTION   = 0x3e,
-                PEERADDRESS  = 0x3f,
+                BLOCK         = 0x30,
+                TRANSACTION   = 0x31,
+                TIMESEED      = 0x32,
+                BESTHEIGHT    = 0x33,
+                CHECKPOINT    = 0x34,
+                ADDRESS       = 0x35,
+                BESTCHAIN     = 0x36,
+                MEMPOOL       = 0x37,
+                SIGCHAIN      = 0x38,
+                MERKLE        = 0x39,
+                GENESIS       = 0x3a,
+                NOTIFICATION  = 0x3b,
+                TRIGGER       = 0x3c,
+                REGISTER      = 0x3d,
+                P2PCONNECTION = 0x3e,
+                PEERADDRESS   = 0x3f,
             };
         }
 
