@@ -1584,59 +1584,175 @@ namespace TAO
         Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]*/
         json::json RPC::ListTransactions(const json::json& params, bool fHelp)
         {
-            if(fHelp || params.size() > 3)
+            if(fHelp)
                 return std::string(
                     "listtransactions [account] [count=10] [from=0]"
                     " - Returns up to [count] most recent transactions skipping the first [from] transactions for account [account].");
 
-            std::string strAccount = "*";
-            if(params.size() > 0)
-                strAccount = params[0].get<std::string>();
-            uint64_t nCount = 10;
-            if(params.size() > 1)
-                nCount = params[1];
-            uint64_t nFrom = 0;
-            if(params.size() > 2)
-                nFrom = params[2];
-
+            /* Response JSON */
             json::json ret = json::json::array();
 
-            // First: get all Legacy::WalletTx into a sorted-by-time multimap.
-            typedef std::multimap<uint64_t, const Legacy::WalletTx* > TxItems;
-            TxItems txByTime;
+            /* Check to see if the caller has specified a token / token_name */
+            json::json token;
+            bool fToken = parse_token(params, token);
+            
+            /* Parse the remaining params */
+            std::string strAccount = "*";
+            if(params.size() > (fToken ? 1 : 0))
+                strAccount = params[fToken ? 1 : 0].get<std::string>();
+            uint64_t nCount = 10;
+            if(params.size() > (fToken ? 2 : 1))
+                nCount = params[fToken ? 2 : 1];
+            uint64_t nFrom = 0;
+            if(params.size() > (fToken ? 3 : 2))
+                nFrom = params[fToken ? 3 : 2];
 
-            // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
-            // would make this much faster for applications that do this a lot.
-            for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+            if(fToken)
             {
-                const Legacy::WalletTx* wtx = &(entry.second);
-                txByTime.insert(std::make_pair(wtx->GetTxTime(), wtx));
-            }
+                /* Check the account filter, as this is not supported for tritium accounts because the account name is dependent
+                   upon the operation as it can be credit to or debit from */
+                if(strAccount != "*" && strAccount != "")
+                    return "Account filter is not supported for tritium transactions";
 
-            // iterate backwards until we have nCount items to return:
-            for(auto it = txByTime.crbegin(); it != txByTime.crend(); ++it)
+                /* Parameters to pass to users/list/transactions */
+                json::json jsonListParams;
+
+                /* Add verbosity as we need summary */
+                jsonListParams["verbose"] = "summary";
+
+                /* Add where array */
+                json::json jsonWhere = json::json::array();
+
+                /* Add token name / address to the where */
+                if(token.find("token") != token.end())
+                {
+                    json::json jsonClause;
+                    jsonClause["field"] = "contracts.token";
+                    jsonClause["op"] = "=";
+                    jsonClause["value"] = token["token"];
+                    jsonWhere.push_back(jsonClause);
+                }
+                else if(token.find("token_name") != token.end())
+                {
+                    json::json jsonClause;
+                    jsonClause["field"] = "contracts.token_name";
+                    jsonClause["op"] = "=";
+                    jsonClause["value"] = token["token_name"];
+                    jsonWhere.push_back(jsonClause);
+                }
+
+                if(nCount > 0)
+                    jsonListParams["limit"] = nCount;
+
+                if(nFrom > 0)
+                    jsonListParams["offset"] = nFrom;
+
+                /* Add Where */
+                jsonListParams["where"] = jsonWhere;
+
+                /* Get the transactions JSON */
+                json::json jsonTransactions = TAO::API::users->Transactions(jsonListParams, false);
+
+                /* Iterate through all transactions.  We need to write a response transaction for each contract. */
+                for(const auto& transaction : jsonTransactions)
+                {
+                    /* interate contracts */
+                    json::json jsonContracts = transaction["contracts"];
+
+                    for(const auto& contract : jsonContracts)
+                    {
+                        /* The category */
+                        std::string strCategory = "";
+
+                        /* Get the operation as we only want credit, debit, fee, legacy, genesis, and trust */
+                        std::string strOp = contract["OP"].get<std::string>();
+
+                        if(strOp == "DEBIT" || strOp == "LEGACY")
+                            strCategory = "send";
+                        else if(strOp == "FEE")
+                            strCategory = "fee";
+                        else if(strOp == "CREDIT")
+                            strCategory = "receive";
+                        else if(strOp == "GENESIS")
+                            strCategory = "genesis";
+                        else if(strOp == "TRUST")
+                            strCategory = "stake";
+                        else if(strOp == "COINBASE")
+                            strCategory = "generate";
+
+                        if(strCategory != "")
+                        {
+                            json::json jsonTransaction;
+
+                            /* Add the account */
+                            std::string strAccountName = "";
+                            if(strOp == "CREDIT" && contract.find("to_name") != contract.end())
+                                strAccountName = contract["to_name"].get<std::string>();
+                            else if((strOp == "DEBIT" || strOp == "FEE") && contract.find("from_name") != contract.end())
+                                strAccountName = contract["from_name"].get<std::string>();
+                            else if(strOp == "GENESIS" || strOp == "TRUST")
+                                strAccountName = "trust";
+
+                            jsonTransaction["account"] = strAccountName;
+                            
+                            if(strOp == "CREDIT")
+                                jsonTransaction["address"] = contract["to"].get<std::string>(); 
+                            else if(strOp == "DEBIT" || strOp == "FEE")
+                                jsonTransaction["address"] = contract["from"].get<std::string>();
+                            else if(strOp == "GENESIS" || strOp == "TRUST")
+                                jsonTransaction["address"] = contract["address"].get<std::string>();
+                            
+                            jsonTransaction["category"] = strCategory;
+                            jsonTransaction["amount"] = contract["amount"];
+                            jsonTransaction["confirmations"] = transaction["confirmations"];
+                            jsonTransaction["txid"] = transaction["txid"];
+                            jsonTransaction["time"] = transaction["timestamp"];
+                            
+                            ret.push_back(jsonTransaction);
+                        }
+                    }
+
+                }
+                
+            }
+            else
             {
-                const Legacy::WalletTx* pwtx = (*it).second;
-                if(pwtx != 0)
-                    ListTransactionsJSON(*pwtx, strAccount, 0, true, ret);
+                // First: get all Legacy::WalletTx into a sorted-by-time multimap.
+                typedef std::multimap<uint64_t, const Legacy::WalletTx* > TxItems;
+                TxItems txByTime;
 
-                if(ret.size() >= (nCount + nFrom)) break;
+                // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
+                // would make this much faster for applications that do this a lot.
+                for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+                {
+                    const Legacy::WalletTx* wtx = &(entry.second);
+                    txByTime.insert(std::make_pair(wtx->GetTxTime(), wtx));
+                }
+
+                // iterate backwards until we have nCount items to return:
+                for(auto it = txByTime.crbegin(); it != txByTime.crend(); ++it)
+                {
+                    const Legacy::WalletTx* pwtx = (*it).second;
+                    if(pwtx != 0)
+                        ListTransactionsJSON(*pwtx, strAccount, 0, true, ret);
+
+                    if(ret.size() >= (nCount + nFrom)) break;
+                }
+
+                if(nFrom > (int)ret.size())
+                    nFrom = ret.size();
+                if((nFrom + nCount) > (int)ret.size())
+                    nCount = ret.size() - nFrom;
+                auto first = ret.begin();
+                std::advance(first, nFrom);
+                auto last = ret.begin();
+                std::advance(last, nFrom+nCount);
+
+                if(last != ret.end()) ret.erase(last, ret.end());
+                if(first != ret.begin()) ret.erase(ret.begin(), first);
+
+                std::reverse(ret.begin(), ret.end()); // Return oldest to newest
             }
-
-            if(nFrom > (int)ret.size())
-                nFrom = ret.size();
-            if((nFrom + nCount) > (int)ret.size())
-                nCount = ret.size() - nFrom;
-            auto first = ret.begin();
-            std::advance(first, nFrom);
-            auto last = ret.begin();
-            std::advance(last, nFrom+nCount);
-
-            if(last != ret.end()) ret.erase(last, ret.end());
-            if(first != ret.begin()) ret.erase(ret.begin(), first);
-
-            std::reverse(ret.begin(), ret.end()); // Return oldest to newest
-
             return ret;
         }
 

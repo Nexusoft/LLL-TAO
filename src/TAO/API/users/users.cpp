@@ -90,9 +90,9 @@ namespace TAO
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
             {
-                /* retry every 5s if not logged in */
+                /* retry every 1s if not logged in */
                 std::unique_lock<std::mutex> lock(LOGIN_MUTEX);
-                LOGIN_CONDITION.wait_for(lock, std::chrono::milliseconds(5000), [this]{return fShutdown.load();});
+                LOGIN_CONDITION.wait_for(lock, std::chrono::milliseconds(1000), [this]{return fShutdown.load();});
 
                 /* Check for a shutdown event. */
                 if(fShutdown.load())
@@ -103,6 +103,8 @@ namespace TAO
                     /* Auto-login if not already logged in. */
                     if(!LoggedIn())
                         auto_login();
+                    else
+                        break; /* Once logged in, don't try and more until the next restart */
 
                 }
                 catch(const std::exception& e)

@@ -560,7 +560,9 @@ namespace TAO
                         ret["OP"]      = "COINBASE";
                         ret["genesis"] = hashGenesis.ToString();
                         ret["nonce"]   = nExtraNonce;
-                        ret["amount"]  = (double) nCredit / TAO::Ledger::NXS_COIN;;
+                        ret["amount"]  = (double) nCredit / TAO::Ledger::NXS_COIN;
+                        ret["token"] = 0;
+                        ret["token_name"] = "NXS";
 
                         if(nVerbosity > 0)
                         {
@@ -600,6 +602,8 @@ namespace TAO
                         ret["last"]   = hashLastTrust.ToString();
                         ret["score"]  = nScore;
                         ret["amount"] = (double) nReward / TAO::Ledger::NXS_COIN;
+                        ret["token"] = 0;
+                        ret["token_name"] = "NXS";
 
                         if(nStakeChange > 0)
                             ret["add_stake"] = (double) nStakeChange / TAO::Ledger::NXS_COIN;
@@ -623,7 +627,9 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]        = "GENESIS";
                         ret["address"]   = address.ToString();
-                        ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;;
+                        ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;
+                        ret["token"] = 0;
+                        ret["token_name"] = "NXS";
 
                         break;
                     }
@@ -666,6 +672,8 @@ namespace TAO
                         ret["last"]      = hashLastTrust.ToString();
                         ret["score"]     = nScore;
                         ret["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;
+                        ret["token"] = 0;
+                        ret["token_name"] = "NXS";
 
                         if(nStakeChange > 0)
                             ret["add_stake"] = (double) nStakeChange / TAO::Ledger::NXS_COIN;
@@ -703,7 +711,9 @@ namespace TAO
                         /* Output the json information. */
                         ret["OP"]         = "GENESISPOOL";
                         ret["address"]    = address.ToString();
-                        ret["amount"]     = (double) nReward / TAO::Ledger::NXS_COIN;;
+                        ret["amount"]     = (double) nReward / TAO::Ledger::NXS_COIN;
+                        ret["token"] = 0;
+                        ret["token_name"] = "NXS";
                         ret["proof"]      = hashProof.ToString();
                         ret["proofbegin"] = nTimeBegin;
                         ret["proofend"]   = nTimeEnd;
@@ -1004,6 +1014,8 @@ namespace TAO
                             ret["from_name"] = strAccount;
 
                         ret["amount"]  = (double) nFee / TAO::Ledger::NXS_COIN;
+                        ret["token"] = 0;
+                        ret["token_name"] = "NXS";
 
                         break;
                     }
@@ -1051,6 +1063,7 @@ namespace TAO
 
                         /* Add the amount to the response */
                         ret["amount"]  = (double) nAmount / pow(10, GetDecimals(object));
+                        
 
                         /* Get the object standard. */
                         uint8_t nStandard = object.Standard();
