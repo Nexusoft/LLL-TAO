@@ -183,7 +183,7 @@ namespace config
         fDebug                  = GetBoolArg("-debug", false);
         fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
-        fTestNet                = GetArg("-testnet", 0) > 0;
+        fTestNet                = (GetArg("-testnet", 0) > 0);
         fListen                 = GetBoolArg("-listen", true);
         fClient                 = GetBoolArg("-client", false);
         //fUseProxy               = GetBoolArg("-proxy")
@@ -204,6 +204,12 @@ namespace config
             /* Set our hybrid value as ~PRIVATE~ in private mode. */
             mapArgs["-hybrid"] = "~PRIVATE~";
             fHybrid.store(true);
+
+            /* Force consensus into testnet if -private is set with no network owner. */
+            fTestNet.store(true);
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!!WARNING!!! PRIVATE TESTNET", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "-private mode runs as a TESTNET.., DO NOT USE FOR PRODUCTION", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "To run a production network, you must set -hybrid=<username> to enable -hybrid mode", ANSI_COLOR_RESET);
         }
 
         /* Calculate our network-id if in hybrid mode. */
