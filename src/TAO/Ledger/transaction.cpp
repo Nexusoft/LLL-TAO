@@ -319,7 +319,7 @@ namespace TAO
                 return debug::error(FUNCTION, "transaction contract limit exceeded", vContracts.size());
 
             /* Check producer for coinstake transaction */
-            if(IsCoinStake() || IsPrivate())
+            if(IsCoinStake() || IsHybrid())
             {
                 /* Check for single contract. */
                 if(vContracts.size() != 1)
@@ -1160,7 +1160,7 @@ namespace TAO
 
 
         /* Determines if the transaction is for a private block. */
-        bool Transaction::IsPrivate() const
+        bool Transaction::IsHybrid() const
         {
             /* Check all contracts. */
             for(const auto& contract : vContracts)

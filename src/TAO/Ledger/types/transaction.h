@@ -305,7 +305,7 @@ namespace TAO
              *  @return true if transaction is a coinbase.
              *
              **/
-            bool IsPrivate() const;
+            bool IsHybrid() const;
 
 
             /** IsTrust

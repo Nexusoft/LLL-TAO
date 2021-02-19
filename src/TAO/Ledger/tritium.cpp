@@ -534,12 +534,12 @@ namespace TAO
             }
 
             /* Private specific checks. */
-            else if(IsPrivate())
+            else if(IsHybrid())
             {
                 /* Check the producer transaction. */
                 if(nVersion < 9)
                 {
-                    if(!producer.IsPrivate())
+                    if(!producer.IsHybrid())
                         return debug::error(FUNCTION, "producer transaction has to be authorize for private mode");
                 }
                 else
@@ -547,7 +547,7 @@ namespace TAO
                     if(vProducer.size() > 1)
                         return debug::error(FUNCTION, "cannot have more than one producer transaction for private mode block");
 
-                    if(!vProducer[0].IsPrivate())
+                    if(!vProducer[0].IsHybrid())
                         return debug::error(FUNCTION, "producer transaction has to be authorize for private mode");
                 }
             }
@@ -618,7 +618,7 @@ namespace TAO
                     }
 
                     /* Check for coinbase / coinstake. */
-                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsPrivate())
+                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                         return debug::error(FUNCTION, "cannot have non-producer coinbase / coinstake transaction");
 
                     /* Check the sequencing. */
@@ -770,7 +770,7 @@ namespace TAO
                 return debug::error(FUNCTION, "not descendant of last checkpoint");
 
             /* Check for private mode. */
-            if(IsPrivate())
+            if(IsHybrid())
             {
                 /* Check producer for correct genesis. */
                 uint256_t hashGenesis;

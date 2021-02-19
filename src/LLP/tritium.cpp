@@ -1862,7 +1862,7 @@ namespace LLP
                                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 {
                                     /* Check if producer is being asked for, and send block instead. */
-                                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsPrivate())
+                                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                                     {
                                         /* Read block state from disk. */
                                         TAO::Ledger::BlockState state;

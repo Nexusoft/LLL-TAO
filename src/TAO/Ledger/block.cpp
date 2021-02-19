@@ -282,7 +282,7 @@ namespace TAO
 
 
         /* Check flags for PoW block. */
-        bool Block::IsPrivate() const
+        bool Block::IsHybrid() const
         {
             return nChannel == 3;
         }
@@ -494,7 +494,7 @@ namespace TAO
             }
 
             /* Check for a private block work claims. */
-            if(IsPrivate() && !config::fHybrid.load())
+            if(IsHybrid() && !config::fHybrid.load())
                 return debug::error(FUNCTION, "Invalid channel: ", nChannel);
 
             return true;
