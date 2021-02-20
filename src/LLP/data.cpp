@@ -338,7 +338,8 @@ namespace LLP
                         return true;
 
                     /* Check for buffered connection. */
-                    for(uint32_t nIndex = 0; nIndex < CONNECTIONS->size(); ++nIndex)
+                    uint32_t nSize = CONNECTIONS->size();
+                    for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                     {
                         try
                         {
@@ -350,7 +351,7 @@ namespace LLP
                                 continue;
 
                             /* Check for buffered connection. */
-                            if(CONNECTIONS->at(nIndex)->Buffered())
+                            if(CONNECTION->Buffered())
                                 return true;
                         }
                         catch(const std::exception& e) { }
