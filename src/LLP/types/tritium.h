@@ -167,6 +167,20 @@ namespace LLP
         std::atomic<bool> fInitialized;
 
 
+        /** The current subscriptions. **/
+        std::atomic<uint16_t> nSubscriptions;
+
+
+        /** The current notifications. **/
+        std::atomic<uint16_t> nNotifications;
+
+
+        /** Sig chain genesis hashes / register addresses that the peer has subscribed to notifications for **/
+        std::vector<uint256_t> vNotifications;
+
+
+    public:
+
         /** Mutex for connected sessions. **/
         static std::mutex SESSIONS_MUTEX;
 
@@ -182,21 +196,6 @@ namespace LLP
         /** map of P2P request timestamps by source genesis hash. **/
         static std::map<uint256_t, uint64_t> mapP2PRequests;
 
-
-        /** The current subscriptions. **/
-        uint16_t nSubscriptions;
-
-
-        /** The current notifications. **/
-        uint16_t nNotifications;
-
-
-        /** Sig chain genesis hashes / register addresses that the peer has subscribed to notifications for **/
-        std::vector<uint256_t> vNotifications;
-
-
-
-    public:
 
         /** Name
          *

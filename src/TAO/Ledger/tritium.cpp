@@ -708,16 +708,11 @@ namespace TAO
             int64_t nStakeChange = 0;
             uint64_t nStake      = 0;
 
-            /* Block check verifies block finder is trust, genesis, or pooled trust. If pooled trust, it is pooled stake block */
-
             /* Reset the coinstake contract streams. */
-            producer[0].Reset();
+            producer[0].Seek(1, TAO::Operation::Contract::REGISTERS, STREAM::BEGIN);
 
             /* Deserialize from the stream. */
-            uint8_t nState = 0;
             TAO::Register::Object account;
-
-            producer[0] >>= nState;
             producer[0] >>= account;
 
             /* Parse the object. */
@@ -732,7 +727,7 @@ namespace TAO
             if(producer.IsTrust())
             {
                 /* Seek to last trust. */
-                producer[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
+                producer[0].Seek(1, TAO::Operation::Contract::OPERATIONS, STREAM::BEGIN);
 
                 /* Get last trust hash. */
                 uint512_t hashLastTrust = 0;
