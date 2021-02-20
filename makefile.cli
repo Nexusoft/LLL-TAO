@@ -350,9 +350,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_argon2_ref.o \
 		build/LLC_argon2_thread.o \
 		build/LLC_aes.o \
+		build/LLC_encrypt.o \
 		build/LLC_codec.o \
 		build/LLC_common.o \
-		build/LLC_encrypt.o \
 		build/LLC_falcon.o \
 		build/LLC_fft.o \
 		build/LLC_fpr.o \

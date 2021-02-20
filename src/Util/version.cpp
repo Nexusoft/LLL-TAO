@@ -18,11 +18,11 @@ namespace version
 {
 
     /* Major version X (X.y.z | X > 0). */
-    const uint32_t CLIENT_MAJOR = 6;
+    const uint32_t CLIENT_MAJOR = 5;
 
 
     /* Minor version Y (x.Y.z | x > 0). */
-    const uint32_t CLIENT_MINOR = 0;
+    const uint32_t CLIENT_MINOR = 1;
 
 
     /* Patch version Z (x.y.Z | x > 0). */
