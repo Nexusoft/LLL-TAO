@@ -34,7 +34,7 @@ namespace LLP
 
 
     /*  Reset the Timer and the Score Flags to be Overwritten. */
-    void DDOS_Score::Reset()
+    void DDOS_Score::reset()
     {
         for(uint32_t i = 0; i < SCORE.size(); ++i)
             SCORE[i].first = false;
@@ -49,7 +49,7 @@ namespace LLP
     {
         LOCK(MUTEX);
 
-        Reset();
+        reset();
         for(uint32_t i = 0; i < SCORE.size(); ++i)
             SCORE[i].second = 0;
     }
@@ -82,7 +82,7 @@ namespace LLP
         /* If the Time has been greater than Moving Average Timespan, Set to Add Score on Time Overlap. */
         if(nTime >= SCORE.size())
         {
-            Reset();
+            reset();
             nTime = nTime % static_cast<int32_t>(SCORE.size());
         }
 
@@ -119,37 +119,32 @@ namespace LLP
 
 
     /* Default Constructor */
-    DDOS_Filter::DDOS_Filter(uint32_t nTimespan)
-    : MUTEX()
-    , TIMER()
-    , BANTIME(0)
-    , TOTALBANS(0)
-    , rSCORE(nTimespan)
-    , cSCORE(nTimespan)
+    DDOS_Filter::DDOS_Filter(const uint32_t nTimespan)
+    : nTotalBans     (0)
+    , nBanTimestamp  (0)
+    , rSCORE (nTimespan)
+    , cSCORE (nTimespan)
     {
     }
 
 
     /* Ban a Connection, and Flush its Scores. */
-    void DDOS_Filter::Ban(std::string strViolation)
+    void DDOS_Filter::Ban(const std::string& strViolation)
     {
-        LOCK(MUTEX);
-
-        if((TIMER.Elapsed() < BANTIME))
-            return;
-
+        /* Debug output. */
         rSCORE.print();
+        ++nTotalBans;
 
-        TIMER.Start();
-
-        ++TOTALBANS;
-
-        BANTIME = std::max(TOTALBANS * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), TOTALBANS * 1200u);
+        /* Calculate penalty. */
+        uint32_t nPenalty = std::max(nTotalBans.load() * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), nTotalBans.load() * 1200u);
 
         debug::log(0, "XXXXX DDOS Filter cScore = ", cSCORE.Score(),
             " rScore = ", rSCORE.Score(),
-            " Banned for ", BANTIME,
+            " Banned for ", nPenalty,
             " Seconds. [VIOLATION: ", strViolation, "]");
+
+        /* Set new timestamp. */
+        nBanTimestamp.store(runtime::unifiedtimestamp() + nPenalty);
 
         cSCORE.Flush();
         rSCORE.Flush();
@@ -159,11 +154,7 @@ namespace LLP
     /* Check if Connection is Still Banned. */
     bool DDOS_Filter::Banned() const
     {
-        LOCK(MUTEX);
-
-        uint32_t ELAPSED = TIMER.Elapsed();
-
-        return (ELAPSED < BANTIME);
+        return runtime::unifiedtimestamp() < nBanTimestamp.load();
     }
 
 }

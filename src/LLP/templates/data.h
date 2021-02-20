@@ -149,7 +149,7 @@ namespace LLP
                 pnode->Event(EVENTS::CONNECT);
 
                 /* Iterate the DDOS cScore (Connection score). */
-                if(DDOS)
+                if(fDDOS)
                     DDOS -> cSCORE += 1;
 
                 /* Check for inbound socket. */

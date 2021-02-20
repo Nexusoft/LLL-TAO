@@ -1185,7 +1185,7 @@ namespace LLP
                         default:
                         {
                             /* Give score for bad types. */
-                            if(DDOS)
+                            if(fDDOS)
                                 DDOS->rSCORE += 50;
                         }
                     }
@@ -1552,7 +1552,7 @@ namespace LLP
                             if(nTotal > 10000)
                             {
                                 /* Give penalties for size violation. */
-                                if(DDOS)
+                                if(fDDOS)
                                     DDOS->rSCORE += 20;
 
                                 /* Set value to max range. */
@@ -2678,7 +2678,7 @@ namespace LLP
                 PushMessage(ACTION::PONG, nNonce);
 
                 /* Bump DDOS score. */
-                if(DDOS) //a ping shouldn't be sent too much
+                if(fDDOS) //a ping shouldn't be sent too much
                     DDOS->rSCORE += 10;
 
                 break;
@@ -2696,7 +2696,7 @@ namespace LLP
                 if(!mapLatencyTracker.count(nNonce))
                 {
                     /* Bump DDOS score for spammed PONG messages. */
-                    if(DDOS)
+                    if(fDDOS)
                         DDOS->rSCORE += 10;
 
                     return true;
@@ -2850,7 +2850,7 @@ namespace LLP
                             }
 
                             /* Check for repeated missing loops. */
-                            if(DDOS)
+                            if(fDDOS)
                             {
                                 /* Iterate a failure for missing transactions. */
                                 nConsecutiveFails += block.vMissing.size();
@@ -3593,7 +3593,7 @@ namespace LLP
         }
 
         /* Check for authorization. */
-        if(DDOS && !Authorized())
+        if(fDDOS && !Authorized())
             DDOS->rSCORE += 5; //untrusted nodes get less requests
 
         /* Check for a version message. */

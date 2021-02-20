@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/include/server_config.h>
 
+#include <Util/include/memory.h>
+
 #include <map>
 #include <condition_variable>
 #include <atomic>
@@ -77,7 +79,7 @@ namespace LLP
 
 
         /** The DDOS variables. **/
-        std::map<BaseAddress, DDOS_Filter *> DDOS_MAP;
+        memory::atomic_ptr< std::map<BaseAddress, DDOS_Filter *> > DDOS_MAP;
 
 
         /** DDOS flag for off or on. **/
@@ -230,13 +232,14 @@ namespace LLP
 
 
             /* Create new DDOS Filter if Needed. */
-            if(fDDOS.load())
+            DDOS_Filter* DDOS = new DDOS_Filter(DDOS_TIMESPAN);
+            if(fDDOS)
             {
-                if(!DDOS_MAP.count(addrConnect))
-                    DDOS_MAP[addrConnect] = new DDOS_Filter(DDOS_TIMESPAN);
+                if(!DDOS_MAP->count(addrConnect))
+                    DDOS_MAP->insert(std::make_pair(addrConnect, DDOS));
 
                 /* DDOS Operations: Only executed when DDOS is enabled. */
-                if(DDOS_MAP[addrConnect]->Banned())
+                if(DDOS_MAP->at(addrConnect)->Banned())
                     return false;
             }
 
@@ -249,7 +252,7 @@ namespace LLP
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
             /* Attempt the connection. */
-            if(!dt->NewConnection(addrConnect, DDOS_MAP[addrConnect], fSSL, std::forward<Args>(args)...))
+            if(!dt->NewConnection(addrConnect, DDOS, fSSL, std::forward<Args>(args)...))
             {
                 /* Add the address to the address manager if it exists. */
                 if(pAddressManager)

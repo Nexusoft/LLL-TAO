@@ -54,7 +54,7 @@ namespace LLP
     /* Send the DoS Score to DDOS Filter */
     bool HTTPNode::DoS(uint32_t nDoS, bool fReturn)
     {
-        if(DDOS)
+        if(fDDOS)
             DDOS->rSCORE += nDoS;
 
         return fReturn;

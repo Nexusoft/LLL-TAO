@@ -136,7 +136,7 @@ namespace LLP
             /* Handle for a Packet Header Read. */
             case EVENTS::HEADER:
             {
-                if(DDOS && Incoming())
+                if(fDDOS && Incoming())
                 {
                     Packet PACKET   = this->INCOMING;
                     if(PACKET.HEADER == BLOCK_DATA)

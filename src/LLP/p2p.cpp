@@ -532,7 +532,7 @@ namespace LLP
                 PushMessage(ACTION::PONG, nNonce);
 
                 /* Bump DDOS score. */
-                if(DDOS) //a ping shouldn't be sent too much
+                if(fDDOS) //a ping shouldn't be sent too much
                     DDOS->rSCORE += 10;
 
                 break;
@@ -550,7 +550,7 @@ namespace LLP
                 if(!mapLatencyTracker.count(nNonce))
                 {
                     /* Bump DDOS score for spammed PONG messages. */
-                    if(DDOS)
+                    if(fDDOS)
                         DDOS->rSCORE += 10;
 
                     return true;

@@ -104,7 +104,7 @@ namespace LLP
             OpenListening();
 
             /* Bind the listening threads */
-            if(!fSSLRequired)   
+            if(!fSSLRequired)
                 LISTEN_THREAD = std::thread(std::bind(&Server::ListeningThread, this, true, false));  //IPv4 Listener
 
             if(fSSL)
@@ -126,6 +126,8 @@ namespace LLP
         if(config.fMeter)
             METER_THREAD = std::thread(std::bind(&Server::Meter, this));
 
+        /* Configure the DDOS pointer. */
+        DDOS_MAP.store(new std::map<BaseAddress, DDOS_Filter*>());
     }
 
     /** Default Destructor **/
@@ -133,11 +135,8 @@ namespace LLP
     Server<ProtocolType>::~Server()
     {
         /* Wait for address manager. */
-        if(pAddressManager)
-        {
-            if(MANAGER_THREAD.joinable())
-                MANAGER_THREAD.join();
-        }
+        if(pAddressManager && MANAGER_THREAD.joinable())
+            MANAGER_THREAD.join();
 
         /* Wait for meter thread. */
         if(METER_THREAD.joinable())
@@ -167,13 +166,13 @@ namespace LLP
         }
 
         /* Delete the DDOS entries. */
-        auto it = DDOS_MAP.begin();
-        for(; it != DDOS_MAP.end(); ++it)
+        auto it = DDOS_MAP->begin();
+        for(; it != DDOS_MAP->end(); ++it)
         {
             if(it->second)
                 delete it->second;
         }
-        DDOS_MAP.clear();
+        DDOS_MAP.free();
 
         /* Clear the address manager. */
         if(pAddressManager)
@@ -239,7 +238,7 @@ namespace LLP
             {
                 /* Get the current atomic_ptr. */
                 std::shared_ptr<ProtocolType> pConnection = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
-                
+
                 /* Check to see if it is null */
                 if(!pConnection)
                     continue;
@@ -475,7 +474,7 @@ namespace LLP
             uint32_t nConnections = GetConnectionCount(FLAGS::ALL);
             uint32_t nIncoming = GetConnectionCount(FLAGS::INCOMING);
 
-            /* Sleep between connection attempts.  
+            /* Sleep between connection attempts.
                If there are no connections then sleep for a minimum interval until a connection is established. */
             if(nConnections == 0)
                 runtime::sleep(10);
@@ -502,7 +501,7 @@ namespace LLP
 
                 /* Flag indicating connection was successful */
                 bool fConnected = false;
-                
+
                 /* First attempt SSL if configured */
                 if(fSSL)
                    fConnected = AddConnection(addr.ToStringIP(), GetPort(true), true, false);
@@ -571,7 +570,7 @@ namespace LLP
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
-            /* Set the listing socket descriptor on the pollfd.  We do this inside the loop in case the listening socket is 
+            /* Set the listing socket descriptor on the pollfd.  We do this inside the loop in case the listening socket is
                explicitly closed and reopened whilst the app is running (used for mobile) */
             fds[0].fd = get_listening_socket(fIPv4, fSSL);
 
@@ -625,10 +624,10 @@ namespace LLP
                         continue;
                     }
 
-                    /* Create new DDOS Filter if Needed. */
-                    if(!DDOS_MAP.count(addr))
-                        DDOS_MAP[addr] = new DDOS_Filter(DDOS_TIMESPAN);
 
+                    /* Create new DDOS Filter if Needed. */
+                    if(fDDOS && !DDOS_MAP->count(addr))
+                        DDOS_MAP->insert(std::make_pair(addr, new DDOS_Filter(DDOS_TIMESPAN)));
 
                     /* Establish a new socket with SSL on or off according to server. */
                     Socket sockNew(hSocket, addr, fSSL);
@@ -643,7 +642,7 @@ namespace LLP
                     }
 
                     /* DDOS Operations: Only executed when DDOS is enabled. */
-                    if((fDDOS && DDOS_MAP[addr]->Banned()))
+                    if((fDDOS && DDOS_MAP->at(addr)->Banned()))
                     {
                         debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
                         sockNew.Close();
@@ -672,7 +671,7 @@ namespace LLP
                     DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
                     /* Accept an incoming connection. */
-                    dt->AddConnection(sockNew, DDOS_MAP[addr]);
+                    dt->AddConnection(sockNew, DDOS_MAP->at(addr));
 
                     /* Verbose output. */
                     debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? SSL_PORT : PORT);
@@ -680,9 +679,9 @@ namespace LLP
             }
             else
             {
-                /* If the listening socket is invalid then it is likely that it has been explicitly stopped.  In which case we can 
+                /* If the listening socket is invalid then it is likely that it has been explicitly stopped.  In which case we can
                    sleep for an extended period to wait for it to be explicitly restarted */
-                runtime::sleep(1000); 
+                runtime::sleep(1000);
                 continue;
             }
         }
@@ -1015,7 +1014,7 @@ namespace LLP
                 ::Shutdown();
                 return;
             }
-        } 
+        }
     }
 
 

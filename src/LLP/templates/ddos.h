@@ -31,7 +31,7 @@ namespace LLP
     template<typename NodeType>
     inline bool DoS(NodeType* pfrom, uint32_t nDoS, bool fReturn)
     {
-        if(pfrom && pfrom->DDOS)
+        if(pfrom && pfrom->fDDOS.load())
             pfrom->DDOS->rSCORE += nDoS;
 
         return fReturn;
@@ -49,12 +49,28 @@ namespace LLP
      **/
     class DDOS_Score
     {
-
-    private:
+        /** Moving Average for tracking DDOS score thresholds. **/
         std::vector< std::pair<bool, uint32_t> > SCORE;
+
+
+        /** Track time since last call for calculating overlap. **/
         runtime::timer TIMER;
+
+
+        /** Current time iterator in minutes. **/
         uint32_t nIterator;
+
+
+        /** Internal mutex for thread safety. **/
         mutable std::mutex MUTEX;
+
+
+        /** Reset
+         *
+         *  Reset the Timer and the Score Flags to be Overwritten.
+         *
+         **/
+        void reset();
 
     public:
 
@@ -67,14 +83,6 @@ namespace LLP
          *
          **/
         DDOS_Score(int nTimespan);
-
-
-        /** Reset
-         *
-         *  Reset the Timer and the Score Flags to be Overwritten.
-         *
-         **/
-        void Reset();
 
 
         /** Flush
@@ -123,18 +131,22 @@ namespace LLP
      **/
     class DDOS_Filter
     {
-    private:
+        /** Keep track of the total times banned. **/
+        std::atomic<uint32_t> nTotalBans;
 
-        mutable std::mutex MUTEX;
-        runtime::timer TIMER;
-        uint32_t BANTIME;
-        uint32_t TOTALBANS;
+
+        /** Timestamp in the future when ban is over. **/
+        std::atomic<uint64_t> nBanTimestamp;
+
 
     public:
 
+        /** R-Score or Request Score regulating packet flow. **/
         DDOS_Score rSCORE;
-        DDOS_Score cSCORE;
 
+
+        /** C-Score or Connection Score regulating connection requests. **/
+        DDOS_Score cSCORE;
 
 
         /** DDOS_Filter
@@ -144,7 +156,7 @@ namespace LLP
          * @param[in] nTimespan The timespan to initialize scores with
          *
          **/
-        DDOS_Filter(uint32_t nTimespan);
+        DDOS_Filter(const uint32_t nTimespan);
 
 
         /** Ban
@@ -154,7 +166,7 @@ namespace LLP
          *  @param[in] strViolation identifiable tag for the violation
          *
          **/
-        void Ban(std::string strViolation = "SCORE THRESHOLD");
+        void Ban(const std::string& strViolation = "SCORE THRESHOLD");
 
 
         /** Banned
