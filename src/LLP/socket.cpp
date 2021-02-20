@@ -73,7 +73,7 @@ namespace LLP
         {
             /* Assign the SSL struct and increment the reference count so that we don't destroy it twice */
             pSSL = socket.pSSL;
-            
+
             /* In OpenSSL 1.0 the reference count is accessed directly.  We use CRYPTO_add to increment it so that it is threadsafe.
                From OpenSSL 1.1.0 onwards the SSL object has been made opaque so we need to incrememt it using SSL_up_ref */
             #if OPENSSL_VERSION_NUMBER < 0x10100000L
@@ -121,7 +121,7 @@ namespace LLP
             fd_set fdReadSet;
             struct timeval tv;
 
-            do            
+            do
             {
                 FD_ZERO(&fdWriteSet);
                 FD_ZERO(&fdReadSet);
@@ -151,7 +151,7 @@ namespace LLP
                     break;
                 case SSL_ERROR_ZERO_RETURN:
                 case SSL_ERROR_SYSCALL:
-                    /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we 
+                    /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we
                        need to shutdown, too. */
                     debug::log(3, FUNCTION, "SSL handshake - Peer closed connection ");
                     nError.store(ERR_get_error());
@@ -266,6 +266,9 @@ namespace LLP
     /* Connects the socket to an external address */
     bool Socket::Attempt(const BaseAddress &addrDest, uint32_t nTimeout)
     {
+        runtime::timer nElapsed;
+        nElapsed.Start();
+
         bool fConnected = false;
 
         /* Create the Socket Object (Streaming TCP/IP). */
@@ -358,7 +361,6 @@ namespace LLP
 
                 /* The poll result */
                 int32_t nPoll = 0;
-
                 for(uint32_t nSeconds = 0; nSeconds < nIterators && !config::fShutdown.load() && nPoll <= 0; ++nSeconds)
                 {
 #ifdef WIN32
@@ -396,6 +398,10 @@ namespace LLP
 
         if(!fConnected)
         {
+            /* We want to maintain a maximum of 1 connection per second. */
+            while(nElapsed.ElapsedMilliseconds() < 1000)
+                runtime::sleep(100);
+
             /* No point sending the close notify to the peer as the connection was never established, so just clean up the SSL */
             if(pSSL)
             {
@@ -403,12 +409,13 @@ namespace LLP
                 SSL_free(pSSL);
                 pSSL = nullptr;
             }
-            
+
             /* Attempt to close the socket our side to clean up resources */
             closesocket(fd);
 
             return false;
         }
+
         /* If the socket connection is established and SSL is enabled then initiate the SSL handshake */
         else if(fConnected && pSSL)
         {
@@ -422,7 +429,7 @@ namespace LLP
             fd_set fdReadSet;
             struct timeval tv;
 
-            do            
+            do
             {
                 FD_ZERO(&fdWriteSet);
                 FD_ZERO(&fdReadSet);
@@ -446,7 +453,7 @@ namespace LLP
                     break;
                 case SSL_ERROR_ZERO_RETURN:
                 case SSL_ERROR_SYSCALL:
-                    /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we 
+                    /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we
                        need to shutdown, too. */
                     debug::log(3, FUNCTION, "SSL handshake - Peer closed connection ");
                     nError.store(ERR_get_error());
@@ -495,7 +502,7 @@ namespace LLP
 
                 /* Attempt to close the socket our side to clean up resources */
                 closesocket(fd);
-                
+
                 return false;
             }
 
@@ -513,7 +520,7 @@ namespace LLP
     {
         LOCK(SOCKET_MUTEX);
 
-    
+
     #ifdef WIN32
         long unsigned int nAvailable = 0;
         ioctlsocket(fd, FIONREAD, &nAvailable);
@@ -542,7 +549,7 @@ namespace LLP
                 /* Before we can send the SSL_shutdown message we need to determine if the socket is still connected.  If we don't
                    check this, then SSL_shutdown throws an exception when writing to the FD.  The easiest way to check that the
                    non-blocking socket is still connected is to poll it and check for POLLERR / POLLHUP errors */
-                
+
                 pollfd fds[1];
                 fds[0].events = POLLIN;
                 fds[0].fd = fd;
@@ -557,7 +564,7 @@ namespace LLP
                 if(!(fds[0].revents & POLLERR || fds[0].revents & POLLHUP) )
                     /* Shut down a TLS/SSL connection by sending the "close notify" shutdown alert to the peer. */
                     SSL_shutdown(pSSL);
-                
+
                 /* Clean up the SSL object */
                 SSL_free(pSSL);
                 pSSL = nullptr;
@@ -568,7 +575,7 @@ namespace LLP
 
         fd = INVALID_SOCKET;
 
-        
+
     }
 
 
@@ -612,24 +619,24 @@ namespace LLP
                         // peer disconnected...
                         debug::error(FUNCTION, "Peer disconnected." );
                         nError.store(ERR_get_error());
-                        break; 
-                    }   
+                        break;
+                    }
 
-                    case SSL_ERROR_ZERO_RETURN: 
+                    case SSL_ERROR_ZERO_RETURN:
                     {
                         // peer disconnected...
                         debug::error(FUNCTION, "Peer disconnected." );
                         nError.store(ERR_get_error());
                         break;
-                    }   
+                    }
 
-                    case SSL_ERROR_WANT_READ: 
+                    case SSL_ERROR_WANT_READ:
                     {
                         // no data available right now as it needs to read more from the underlying socket
                         break;
                     }
 
-                    case SSL_ERROR_WANT_WRITE: 
+                    case SSL_ERROR_WANT_WRITE:
                     {
                         // socket not writable right now, wait and try again
                         break;
@@ -641,11 +648,11 @@ namespace LLP
                         break;
                     }
                 }
-                
+
                 /* Check if an error occurred before logging */
                 if(nError.load() > 0)
                     debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
-             
+
             }
             else
             {
@@ -701,24 +708,24 @@ namespace LLP
                         // peer disconnected...
                         debug::error(FUNCTION, "Peer disconnected." );
                         nError.store(ERR_get_error());
-                        break; 
-                    }   
+                        break;
+                    }
 
-                    case SSL_ERROR_ZERO_RETURN: 
+                    case SSL_ERROR_ZERO_RETURN:
                     {
                         // peer disconnected...
                         debug::error(FUNCTION, "Peer disconnected." );
                         nError.store(ERR_get_error());
                         break;
-                    }   
+                    }
 
-                    case SSL_ERROR_WANT_READ: 
+                    case SSL_ERROR_WANT_READ:
                     {
                         // no data available right now as it needs to read more from the underlying socket
                         break;
                     }
 
-                    case SSL_ERROR_WANT_WRITE: 
+                    case SSL_ERROR_WANT_WRITE:
                     {
                         // socket not writable right now, wait and try again
                         break;
@@ -734,7 +741,7 @@ namespace LLP
                 /* Check if an error occurred before logging */
                 if(nError.load() > 0)
                     debug::log(3, FUNCTION, "SSL_read failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
-             
+
             }
             else
             {
@@ -898,7 +905,7 @@ namespace LLP
     uint64_t Socket::Buffered() const
     {
         LOCK(DATA_MUTEX);
-        
+
         return vBuffer.size();
     }
 

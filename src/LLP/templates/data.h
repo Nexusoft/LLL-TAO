@@ -63,11 +63,6 @@ namespace LLP
     template <class ProtocolType>
     class DataThread
     {
-        
-        /** Lock access to CONNECTIONS vector to ensure no race conditions happend between threads. **/
-        std::mutex CONNECTIONS_MUTEX;
-
-
     public:
 
         /* Variables to track Connection / Request Count. */
@@ -109,16 +104,12 @@ namespace LLP
         std::thread FLUSH_THREAD;
 
 
-        /** Default Constructor
-         *
-         **/
+        /** Default Constructor. **/
         DataThread<ProtocolType>(uint32_t nID, bool ffDDOSIn, uint32_t rScore, uint32_t cScore,
                                  uint32_t nTimeout, bool fMeter = false);
 
 
-        /** Default Destructor
-         *
-         **/
+        /** Default Destructor. **/
         virtual ~DataThread<ProtocolType>();
 
 
@@ -140,24 +131,19 @@ namespace LLP
                 ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS, std::forward<Args>(args)...);
                 pnode->fCONNECTED.store(true);
 
-                {
-                    LOCK(CONNECTIONS_MUTEX);
+                /* Find an available slot. */
+                uint32_t nSlot = find_slot();
 
-                    /* Find an available slot. */
-                    uint32_t nSlot = find_slot();
+                /* Update the indexes. */
+                pnode->nDataThread     = ID;
+                pnode->nDataIndex      = nSlot;
+                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
 
-                    /* Update the indexes. */
-                    pnode->nDataThread     = ID;
-                    pnode->nDataIndex      = nSlot;
-                    pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
-
-                    /* Find a slot that is empty. */
-                    if(nSlot == CONNECTIONS->size())
-                        CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
-                    else
-                        CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
-
-                } /* Close scope to unlock the CONNECTIONS_MUTEX before firing event */
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS->size())
+                    CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
+                else
+                    CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
                 /* Fire the connected event. */
                 pnode->Event(EVENTS::CONNECT);
@@ -186,7 +172,7 @@ namespace LLP
          *
          *  Establishes a new connection and adds it to current Data Thread
          *
-         *  @param[in] addr TAddress class instnace containing the IP address and port for the connection.
+         *  @param[in] addr Address class instnace containing the IP address and port for the connection.
          *  @param[in] DDOS The pointer to the DDOS filter to add to the connection.
          *  @param[in] fSSL Flag indicating if this connection should use SSL
          *  @param[in] args variadic args to forward to the LLP protocol constructor
@@ -212,24 +198,19 @@ namespace LLP
                     return false;
                 }
 
-                {
-                    LOCK(CONNECTIONS_MUTEX);
+                /* Find an available slot. */
+                uint32_t nSlot = find_slot();
 
-                    /* Find an available slot. */
-                    uint32_t nSlot = find_slot();
+                /* Update the indexes. */
+                pnode->nDataThread     = ID;
+                pnode->nDataIndex      = nSlot;
+                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
 
-                    /* Update the indexes. */
-                    pnode->nDataThread     = ID;
-                    pnode->nDataIndex      = nSlot;
-                    pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
-
-                    /* Find a slot that is empty. */
-                    if(nSlot == CONNECTIONS->size())
-                        CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
-                    else
-                        CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
-
-                } /* Close scope to unlock the CONNECTIONS_MUTEX before firing event */
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS->size())
+                    CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
+                else
+                    CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
                 /* Fire the connected event. */
                 pnode->Event(EVENTS::CONNECT);
@@ -239,7 +220,7 @@ namespace LLP
                     ++nIncoming;
                 else
                     ++nOutbound;
-                
+
                 /* Notify data thread to wake up. */
                 CONDITION.notify_all();
 
@@ -336,7 +317,7 @@ namespace LLP
       private:
 
 
-        /** disconnect_remove_event
+        /** remove_connection_with_event
          *
          *  Fires off a Disconnect event with the given disconnect reason
          *  and also removes the data thread connection.
@@ -345,7 +326,7 @@ namespace LLP
          *  @param[in] nReason The reason why the connection is to be disconnected.
          *
          **/
-        void disconnect_remove_event(const std::shared_ptr<ProtocolType>& CONNECTION, uint8_t nReason);
+        void remove_connection_with_event(const uint32_t nIndex, const uint8_t nReason);
 
 
         /** remove
@@ -353,10 +334,10 @@ namespace LLP
          *  Removes given connection from current Data Thread.
          *  This happens with a timeout/error, graceful close, or disconnect command.
          *
-         *  @param[in] The index of the connection to remove.
+         *  @param[in] nIndex The index of the connection to remove.
          *
          **/
-        void remove(const std::shared_ptr<ProtocolType>& CONNECTION);
+        void remove_connection(const uint32_t nIndex);
 
 
         /** find_slot
