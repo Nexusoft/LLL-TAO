@@ -664,7 +664,11 @@ namespace LLP
 
                 /* Check the timestamp. */
                 if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 10)
-                    return debug::drop(NODE, "ACTION::AUTH: timestamp out of rang (stale)");
+                {
+                    /* Track our difference as a signed int for (+) values indicating older message. */
+                    return debug::drop(NODE, "ACTION::AUTH: message is stale by ", int64_t(runtime::unifiedtimestamp() - nTimestamp), " seconds");
+                }
+
 
                 /* Get the nonce */
                 uint64_t nNonce;
