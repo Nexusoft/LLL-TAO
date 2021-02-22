@@ -132,10 +132,10 @@ namespace TAO
                     /* The address of the crypto object register, which is deterministic based on the genesis */
                     TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
                     
-                    /* Read the crypto object register */
+                    /* Read the crypto object register.  This will fail if the caller has provided an invalid username. */
                     TAO::Register::Object crypto;
                     if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
-                        throw APIException(-259, "Could not read crypto object register"); 
+                        throw APIException(-139, "Invalid credentials");
 
                     /* Get the last transaction. */
                     uint512_t hashLast;
