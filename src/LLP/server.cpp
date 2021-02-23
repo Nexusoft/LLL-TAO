@@ -671,7 +671,7 @@ namespace LLP
                     DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
                     /* Accept an incoming connection. */
-                    dt->AddConnection(sockNew, DDOS_MAP->at(addr));
+                    dt->AddConnection(sockNew, fDDOS ? DDOS_MAP->at(addr) : nullptr);
 
                     /* Verbose output. */
                     debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? SSL_PORT : PORT);
