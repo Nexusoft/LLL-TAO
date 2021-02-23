@@ -472,7 +472,7 @@ namespace TAO
                             && object.get<uint256_t>("address") == hashRegister)
                         {
                             /* Get the name from the Name register */
-                            strName = name.get<std::string>("name");
+                            strName = object.get<std::string>("name");
                             break;
                         }
                     }
