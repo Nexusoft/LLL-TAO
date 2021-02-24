@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/rpc.h>
-#include <Util/include/json.h>
+#include <Util/encoding/include/json.h>
 #include <Util/include/runtime.h>
 #include <LLP/include/version.h>
 

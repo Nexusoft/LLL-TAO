@@ -18,8 +18,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 #include <TAO/API/include/global.h>
 
-#include <Util/include/string.h>
-#include <Util/include/urlencode.h>
+#include <Util/encoding/include/string.h>
+#include <Util/encoding/include/urlencode.h>
 #include <Util/system/include/config.h>
 #include <Util/encoding/include/base64.h>
 

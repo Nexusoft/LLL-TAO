@@ -29,7 +29,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/create.h>
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 
 /* Global TAO namespace. */
 namespace TAO

@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/port.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/string.h>
+#include <Util/encoding/include/string.h>
 #include <Util/system/include/debug.h>
 
 

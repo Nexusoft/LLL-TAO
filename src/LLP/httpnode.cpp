@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLP/types/httpnode.h>
 #include <LLP/templates/ddos.h>
 
-#include <Util/include/string.h>
+#include <Util/encoding/include/string.h>
 
 #include <algorithm>
 

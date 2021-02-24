@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <LLD/keychain/hashtree.h>
 
 #include <Util/include/filesystem.h>
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <Util/include/runtime.h>
 
 #include <functional>

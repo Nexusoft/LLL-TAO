@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/create.h>
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <Util/system/include/debug.h>
 
 #include <cstring>

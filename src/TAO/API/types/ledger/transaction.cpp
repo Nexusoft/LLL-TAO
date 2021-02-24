@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
-#include <Util/include/string.h>
+#include <Util/encoding/include/string.h>
 
 #include <Legacy/wallet/wallet.h>
 

@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <string>
 #include <iosfwd>
 #include <Util/system/include/debug.h>
-#include <Util/include/json.h>
+#include <Util/encoding/include/json.h>
 
 
 #ifdef _WIN32

@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 
 
 namespace LLP

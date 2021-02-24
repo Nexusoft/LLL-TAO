@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <Legacy/types/address.h>
 #include <Legacy/types/txin.h>
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 
 namespace Legacy
 {

@@ -22,7 +22,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/chainstate.h>
 
-#include <Util/include/json.h>
+#include <Util/encoding/include/json.h>
 #include <Util/include/runtime.h>
 
 /* Global TAO namespace. */

@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <TAO/Register/types/address.h>
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <Util/templates/serialize.h>
 #include <Util/include/runtime.h>
 

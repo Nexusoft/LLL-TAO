@@ -18,7 +18,7 @@ ________________________________________________________________________________
 
 #include <Util/system/include/debug.h>
 #include <Util/encoding/include/convert.h>
-#include <Util/include/string.h>
+#include <Util/encoding/include/string.h>
 
 
 /*  Parses a string and tokenizes it into substrings based on the character delimiter. */

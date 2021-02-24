@@ -34,7 +34,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 
 #include <Util/templates/datastream.h>
-#include <Util/include/string.h>
+#include <Util/encoding/include/string.h>
 
 using namespace TAO::Operation;
 

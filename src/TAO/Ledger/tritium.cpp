@@ -42,7 +42,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 
 #include <cmath>
 

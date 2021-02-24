@@ -47,7 +47,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/client.h>
 
-#include <Util/include/string.h>
+#include <Util/encoding/include/string.h>
 
 
 

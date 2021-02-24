@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <Util/system/types/mutex.h>
 #include <Util/system/include/debug.h>
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 
 namespace LLD
 {

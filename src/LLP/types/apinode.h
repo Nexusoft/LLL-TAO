@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_TYPES_APINODE_H
 
 #include <LLP/types/httpnode.h>
-#include <Util/include/json.h>
+#include <Util/encoding/include/json.h>
 
 namespace LLP
 {

@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <Legacy/types/script.h>
 #include <Legacy/types/txout.h>
 
-#include <Util/include/string.h>
+#include <Util/encoding/include/string.h>
 #include <Util/templates/datastream.h>
 
 

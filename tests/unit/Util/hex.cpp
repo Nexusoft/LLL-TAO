@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <unit/catch2/catch.hpp>
 
 TEST_CASE("Util hex tests", "[hex]")

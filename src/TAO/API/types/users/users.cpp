@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <Util/system/include/args.h>
 
 #include <functional>

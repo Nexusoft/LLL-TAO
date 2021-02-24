@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
-#include <Util/include/string.h>
+#include <Util/encoding/include/string.h>
 
 using namespace TAO::Operation;
 

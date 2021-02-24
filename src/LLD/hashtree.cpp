@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Util/templates/datastream.h>
 #include <Util/include/filesystem.h>
 #include <Util/system/include/debug.h>
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 
 namespace LLD
 {

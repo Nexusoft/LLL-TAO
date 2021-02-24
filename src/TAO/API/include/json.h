@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #pragma once
 
 #include <LLC/types/uint1024.h>
-#include <Util/include/json.h>
+#include <Util/encoding/include/json.h>
 
 namespace Legacy { class Transaction; }
 

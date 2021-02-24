@@ -42,7 +42,7 @@ ________________________________________________________________________________
 #include <Legacy/include/trust.h>
 #include <Legacy/types/trustkey.h>
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <Util/system/include/debug.h>
 
 #include <Legacy/include/evaluate.h>

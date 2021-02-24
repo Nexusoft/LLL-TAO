@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLC/include/eckey.h>
 
 #include <Util/system/include/debug.h>
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <Util/system/types/mutex.h>
 #include <openssl/ec.h> // for EC_KEY definition
 

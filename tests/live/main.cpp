@@ -30,7 +30,7 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 #include <LLC/types/bignum.h>
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 
 #include <iostream>
 
@@ -1559,8 +1559,23 @@ void PushThread(atomic_shared_ptr<Test>& s)
 }
 
 
+namespace util::system
+{
+    uint64_t nTesting;
+
+    void log(uint32_t nLevel, std::string strOutput)
+    {
+        std::cout << strOutput << std::endl;
+    }
+}
+
+
 int main()
 {
+    util::system::nTesting = 0;
+
+    util::system::log(0, "Testing");
+
     //std::atomic<std::string> ptr;
 
     //atomic<Test> ptr;

@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 
 #include <Util/templates/datastream.h>
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <Util/system/include/args.h>
 #include <Util/encoding/include/convert.h>
 #include <Util/include/runtime.h>

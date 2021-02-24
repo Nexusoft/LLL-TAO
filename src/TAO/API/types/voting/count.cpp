@@ -24,7 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 
 /* Global TAO namespace. */
 namespace TAO

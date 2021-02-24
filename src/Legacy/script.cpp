@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/types/script.h>
 
 #include <Util/system/include/debug.h>
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <Util/include/memory.h>
 
 #include <algorithm>

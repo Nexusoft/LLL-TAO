@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/address.h>
 
-#include <Util/include/encoding.h>
+#include <Util/encoding/include/encoding.h>
 #include <Util/system/include/debug.h>
 
 namespace TAO

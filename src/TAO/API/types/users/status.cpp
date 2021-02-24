@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 
 /* Global TAO namespace. */
 namespace TAO

@@ -32,8 +32,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/rpc.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/hex.h>
-#include <Util/include/json.h>
+#include <Util/encoding/include/hex.h>
+#include <Util/encoding/include/json.h>
 #include <Util/system/types/softfloat.h>
 
 #include <TAO/Ledger/types/state.h>

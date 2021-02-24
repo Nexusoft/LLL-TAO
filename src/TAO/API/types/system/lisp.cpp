@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <Util/system/include/debug.h>
 #include <Util/include/runtime.h>
 
-#include <Util/include/json.h>
+#include <Util/encoding/include/json.h>
 #include <Util/system/include/config.h>
 #include <Util/encoding/include/base64.h>
 

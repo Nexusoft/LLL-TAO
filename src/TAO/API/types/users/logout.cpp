@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/tritium_minter.h>
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 
 /* Global TAO namespace. */
 namespace TAO

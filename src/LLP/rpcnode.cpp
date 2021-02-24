@@ -20,7 +20,7 @@ ________________________________________________________________________________
 
 #include <Util/system/include/config.h>
 #include <Util/encoding/include/base64.h>
-#include <Util/include/string.h>
+#include <Util/encoding/include/string.h>
 
 // using alias to simplify using APIException liberally without having to reference the TAO:API namespace
 using APIException = TAO::API::APIException ;

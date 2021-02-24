@@ -24,8 +24,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/state.h>
 
-#include <Util/include/hex.h>
-#include <Util/include/string.h>
+#include <Util/encoding/include/hex.h>
+#include <Util/encoding/include/string.h>
 
 /* Global TAO namespace. */
 namespace TAO

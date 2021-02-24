@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <LLC/hash/macro.h>
 #include <LLP/include/network.h>
 

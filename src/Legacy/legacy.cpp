@@ -37,7 +37,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/syncblock.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/hex.h>
+#include <Util/encoding/include/hex.h>
 #include <Util/include/runtime.h>
 #include <Util/system/types/softfloat.h>
 
