@@ -308,13 +308,11 @@ int main(int argc, char** argv)
     timer.Reset();
 
 
-    /* Shutdown the API. */
-    TAO::API::Shutdown();
-
-
     /* After all servers shut down, clean up underlying networking resources */
     LLP::Shutdown();
 
+    /* Shutdown the API. */
+    TAO::API::Shutdown();
 
     /* Shutdown database instances. */
     LLD::Shutdown();
