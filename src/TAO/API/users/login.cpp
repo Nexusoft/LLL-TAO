@@ -124,10 +124,10 @@ namespace TAO
                    in, so we can download it asynchronously after logging them in.  */
 
                 /* First check to see if this is a new sig chain and the genesis is in the mempool */
-                bool fNewSighain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
+                bool fNewSigchain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
 
                 /* IF this is not a new sig chain, force a lookup of the crypto register */
-                if(!fNewSighain )
+                if(!fNewSigchain )
                 {
                     /* The address of the crypto object register, which is deterministic based on the genesis */
                     TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
@@ -306,10 +306,10 @@ namespace TAO
                         in, so we can download it asynchronously after logging them in.  */
 
                         /* First check to see if this is a new sig chain and the genesis is in the mempool */
-                        bool fNewSighain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
+                        bool fNewSigchain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
 
                         /* IF this is not a new sig chain, force a lookup of the crypto register */
-                        if(!fNewSighain )
+                        if(!fNewSigchain )
                         {
                             /* The address of the crypto object register, which is deterministic based on the genesis */
                             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
