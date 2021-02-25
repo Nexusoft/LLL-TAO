@@ -23,7 +23,7 @@ namespace TAO
     {
 
          /* Reurns a summary of node and ledger information for the currently running node. */
-        json::json System::GetInfo(const json::json& params, bool fHelp)
+        json::json System::Info(const json::json& params, bool fHelp)
         {
             /* Declare return JSON object */
             json::json jsonRet;

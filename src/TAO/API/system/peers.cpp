@@ -24,7 +24,7 @@ namespace TAO
     {
 
        /* Reurns information about the peers currently connected to this node */
-        json::json System::ListPeers(const json::json& params, bool fHelp)
+        json::json System::Peers(const json::json& params, bool fHelp)
         {
             /* Declare the JSON response object*/
             json::json jsonRet = json::json::array();

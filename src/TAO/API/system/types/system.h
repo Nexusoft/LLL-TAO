@@ -83,7 +83,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json GetInfo(const json::json& params, bool fHelp);
+            json::json Info(const json::json& params, bool fHelp);
 
 
             /** GetInfo
@@ -96,7 +96,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json ListPeers(const json::json& params, bool fHelp);
+            json::json Peers(const json::json& params, bool fHelp);
 
 
             /** LispEIDs
