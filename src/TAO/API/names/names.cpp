@@ -439,7 +439,7 @@ namespace TAO
                 if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
                 {
                     /* Download the users signature chain transactions, but we do not need events */
-                    TAO::API::DownloadSigChain(hashGenesis, false);  
+                    TAO::API::DownloadSigChain(hashGenesis, false);
                 }
 
                 /* Now lookup the name in this sig chain */
@@ -475,6 +475,34 @@ namespace TAO
                             strName = object.get<std::string>("name");
                             break;
                         }
+                    }
+                }
+            }
+            else
+            {
+                /* If we couldn't resolve the register from the callers local name and we are in client mode, then the only way 
+                   we can check to see if it is a global name is to search the sig chain of the register owner. 
+                   NOTE: we only want to search global names from the register owners sig chain, so that we don't 
+                   leak their private names */
+
+                /* The register that we are trying to get the name for */
+                TAO::Register::State state;
+
+                /* Read the register from the DB.  NOTE we use the LOOKUP flag here so that we request it from the peer 
+                   if it is not in our register database. */
+                if(LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::LOOKUP))
+                {
+                    /* Download the register owners signature chain transactions, but we do not need events */
+                    TAO::API::DownloadSigChain(state.hashOwner, false);
+                    
+                    /* Look up the Name object for the register address hash in the register owners sig chain*/
+                    name = Names::GetName(state.hashOwner, hashRegister, hashNameObject);
+
+                    /* Get the name from the register owners name record as long as it is a global name */
+                    if(!name.IsNull() && name.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
+                    {
+                        /* Get the name from the Name register */
+                        strName = name.get<std::string>("name");
                     }
                 }
             }
