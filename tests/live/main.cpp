@@ -1319,223 +1319,14 @@ public:
 };
 
 
-/** atomic_shared_ptr
- *
- *  Protects an object inside with a mutex.
- *
- **/
-template<class TypeName>
-class atomic_shared_ptr
-{
-    /* The internal data. */
-    std::shared_ptr<TypeName> pData;
-
-public:
-
-    /** Default Constructor. **/
-    atomic_shared_ptr ()
-    : pData (nullptr)
-    {
-    }
+#include <atomic/types/shared_ptr.h>
 
 
-    /** Constructor for storing. **/
-    atomic_shared_ptr(const TypeName* dataIn)
-    : pData (nullptr)
-    {
-        store(*dataIn);
-    }
-
-
-    /** Assignment operator.
-     *
-     *  @param[in] a The atomic to assign from.
-     *
-     **/
-    atomic_shared_ptr& operator=(const atomic_shared_ptr& a)
-    {
-        store(*a.load());
-        return *this;
-    }
-
-
-    /** Assignment operator.
-     *
-     *  @param[in] dataIn The atomic to assign from.
-     *
-     **/
-    atomic_shared_ptr& operator=(const TypeName& in)
-    {
-        store(in);
-
-        return *this;
-    }
-
-
-    /** Equivilent operator.
-     *
-     *  @param[in] a The atomic to compare to.
-     *
-     **/
-    bool operator==(const atomic_shared_ptr& a) const
-    {
-        return *load() == *a.load();
-    }
-
-
-    /** Equivilent operator.
-     *
-     *  @param[in] a The data type to compare to.
-     *
-     **/
-    bool operator==(const TypeName& in) const
-    {
-        return *load() == in;
-    }
-
-
-    /** Not equivilent operator.
-     *
-     *  @param[in] a The atomic to compare to.
-     *
-     **/
-    bool operator!=(const atomic_shared_ptr& a) const
-    {
-        return *load() != *a.load();
-    }
-
-
-    /** Not equivilent operator.
-     *
-     *  @param[in] a The data type to compare to.
-     *
-     **/
-    bool operator!=(const TypeName& in) const
-    {
-        return *load() != in;
-    }
-
-
-    /** load
-     *
-     *  Load the object from memory.
-     *
-     **/
-    std::shared_ptr<TypeName> load(const std::memory_order mOrder = std::memory_order_seq_cst) const
-    {
-        return std::atomic_load_explicit(&pData, mOrder);
-    }
-
-
-    /** operator()
-     *
-     *  Atomically loads the value pointed to by pData.
-     *
-     **/
-    operator TypeName()
-    {
-        return std::atomic_load_explicit(&pData, std::memory_order_seq_cst);
-    }
-
-
-    /** store
-     *
-     *  Stores an object into memory.
-     *
-     *  @param[in] dataIn The data to into protected memory.
-     *
-     **/
-    void store(const TypeName& in, const std::memory_order mOrder = std::memory_order_seq_cst)
-    {
-        /* Cleanup our memory usage on store. */
-        if(pData)
-            pData = nullptr;
-
-        std::atomic_store_explicit(&pData, std::make_shared<TypeName>(in), mOrder);
-    }
-
-
-    /** compare_exchange_weak
-     *
-     *  Exchanges two shared_ptr objects if they are equal, returns false otherwise.
-     *  This can have spurious wake-ups so should be used in a loop.
-     *
-     *  @param[in] pExpected The expected pointer value
-     *  @param[in] pDesired The desired pointer value.
-     *  @param[in] mSuccess The memory ordering for successful operation
-     *  @param[in] mFailure The memory ordering for failed operation
-     *
-     *  @return true if the values are equal and operation succeeds.
-     *
-     **/
-    bool compare_exchange_weak(std::shared_ptr<TypeName> &pExpected, std::shared_ptr<TypeName> pDesired,
-        const std::memory_order mSuccess = std::memory_order_seq_cst, const std::memory_order mFailure = std::memory_order_seq_cst)
-    {
-        return std::atomic_compare_exchange_weak_explicit(&pData, &pExpected, pDesired, mSuccess, mFailure);
-    }
-
-
-    /** compare_exchange_strong
-     *
-     *  Exchanges two shared_ptr objects if they are equal, returns false otherwise.
-     *  This is guarenteed to have no spurious wake-ups, but padding bits can cause false negatives.
-     *
-     *  @param[in] pExpected The expected pointer value
-     *  @param[in] pDesired The desired pointer value.
-     *  @param[in] mSuccess The memory ordering for successful operation
-     *  @param[in] mFailure The memory ordering for failed operation
-     *
-     *  @return true if the values are equal and operation succeeds.
-     *
-     **/
-    bool compare_exchange_strong(std::shared_ptr<TypeName> &pExpected, std::shared_ptr<TypeName> pDesired,
-        const std::memory_order mSuccess = std::memory_order_seq_cst, const std::memory_order mFailure = std::memory_order_seq_cst)
-    {
-        return std::atomic_compare_exchange_strong_explicit(&pData, &pExpected, pDesired, mSuccess, mFailure);
-    }
-
-
-    /** compare_exchange_auto
-     *
-     *  Exchanges two shared_ptr objects if they are equal, returns false otherwise.
-     *  This guarentees exchange with one call, and handles spurious wake-ups automatically.
-     *
-     *  This method does not return for success or failure, it continues until it succeeds.
-     *
-     *  @param[in] pExpected The expected pointer value
-     *  @param[in] pDesired The desired pointer value
-     *  @param[in] mSuccess The memory ordering for successful operation
-     *  @param[in] mFailure The memory ordering for failed operation
-     *
-     *
-     **/
-    void compare_exchange_auto(std::shared_ptr<TypeName> &pExpected, std::shared_ptr<TypeName> pDesired,
-        const std::memory_order mSuccess = std::memory_order_seq_cst, const std::memory_order mFailure = std::memory_order_seq_cst)
-    {
-        while(!std::atomic_compare_exchange_weak_explicit(&pData, &pExpected, pDesired, mSuccess, mFailure));
-    }
-
-
-    /** exchange
-     *
-     *  Exchanges pDesired with pData and returns older value.
-     *
-     *  @param[in] pDesired The pointer to exchange.
-     *
-     *  @return The old value pointed to by p
-     **/
-    std::shared_ptr<TypeName> exchange(std::shared_ptr<TypeName> pDesired, const std::memory_order mOrder = std::memory_order_seq_cst)
-    {
-        return std::atomic_exchange_explicit(&pData, pDesired, mOrder);
-    }
-};
-
-
-void PushThread(atomic_shared_ptr<Test>& s)
+void PushThread(util::atomic::shared_ptr<Test>& s)
 {
     for(int i = 0; i < 4000; ++i)
     {
-        atomic_shared_ptr<Test> pNew;
+        util::atomic::shared_ptr<Test> pNew;
         std::shared_ptr<Test> pExpected = s.load();
         do
         {
@@ -1547,7 +1338,7 @@ void PushThread(atomic_shared_ptr<Test>& s)
 
     for(int i = 0; i < 4000; ++i)
     {
-        atomic_shared_ptr<Test> pNew;
+        util::atomic::shared_ptr<Test> pNew;
         std::shared_ptr<Test> pExpected = s.load();
         do
         {
@@ -1570,6 +1361,9 @@ namespace util::system
 }
 
 
+
+
+
 int main()
 {
     util::system::nTesting = 0;
@@ -1590,7 +1384,7 @@ int main()
 
     std::atomic<Test> term;
 
-    atomic_shared_ptr<Test> ptr(new Test());
+    util::atomic::shared_ptr<Test> ptr(new Test());
 
     //ptr->a = 5;
 

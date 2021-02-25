@@ -57,7 +57,7 @@ SOFTWARE.
 #include <string> // string
 #include <vector> // vector
 
-#include <Util/include/fifo_map.h>
+#include <Util/encoding/types/fifo_map.h>
 
 /*!
 @brief namespace for Niels Lohmann

@@ -13,5 +13,15 @@ ________________________________________________________________________________
 
 #pragma once
 
-typedef bool bool_t;
-typedef void void_t;
+#include <atomic>
+
+namespace util::atomic
+{
+	typedef std::atomic<bool>       bool_t;
+	typedef std::atomic<uint8_t>   uint8_t;
+	typedef std::atomic<uint16_t> uint16_t;
+	typedef std::atomic<uint32_t> uint32_t;
+	typedef std::atomic<uint64_t> uint64_t;
+}
+
+
