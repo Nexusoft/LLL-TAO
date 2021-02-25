@@ -73,7 +73,7 @@ namespace TAO
             json::json Stop(const json::json& params, bool fHelp);
 
 
-            /** GetInfo
+            /** Info
              *
              *  Reurns a summary of node and ledger information for the currently running node
              *
@@ -86,7 +86,7 @@ namespace TAO
             json::json Info(const json::json& params, bool fHelp);
 
 
-            /** GetInfo
+            /** Peers
              *
              *  Reurns information about the peers currently connected to this node
              *
