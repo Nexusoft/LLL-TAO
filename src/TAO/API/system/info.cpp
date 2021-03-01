@@ -22,7 +22,7 @@ namespace TAO
     namespace API
     {
 
-         /* Reurns a summary of node and ledger information for the currently running node. */
+        /* Reurns a summary of node and ledger information for the currently running node. */
         json::json System::Info(const json::json& params, bool fHelp)
         {
             /* Declare return JSON object */
@@ -97,7 +97,7 @@ namespace TAO
             jsonRet["connections"] = nConnections;
 
 
-            // The EID's of this node if using LISP
+            /* The EID's of this node if using LISP */ 
             std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
              if(mapEIDs.size() > 0)
             {

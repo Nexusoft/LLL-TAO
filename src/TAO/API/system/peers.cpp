@@ -23,7 +23,7 @@ namespace TAO
     namespace API
     {
 
-       /* Reurns information about the peers currently connected to this node */
+        /* Reurns information about the peers currently connected to this node */
         json::json System::Peers(const json::json& params, bool fHelp)
         {
             /* Declare the JSON response object*/
