@@ -185,7 +185,8 @@ namespace TAO
             }
 
             /* Check if there is an expiry set for the contract */
-            if(nExpires > 0) {
+            if(nExpires > 0)
+            {
                 /* Add conditional statements to only allow the transaction to be credited before the expiration time. */
                 contract <= uint8_t(OP::GROUP);
                 contract <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::NOTEQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashCaller;
