@@ -220,13 +220,6 @@ namespace util::atomic
 			return *data;
 		}
 
-		TypeName* load()
-		{
-			RLOCK(MUTEX);
-
-			return data;
-		}
-
 
 		/** store
 		 *

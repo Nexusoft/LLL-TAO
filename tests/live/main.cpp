@@ -1185,7 +1185,252 @@ namespace util::system
 }
 
 
+#include <atomic/include/typedef.h>
 
+/** lock_proxy
+ *
+ *  Temporary class that unlocks a mutex when outside of scope.
+ *  Useful for protecting member access to a raw pointer.
+ *
+ **/
+template <class TypeName>
+class lock_proxy
+{
+    /** Reference of the mutex. **/
+    std::recursive_mutex& MUTEX;
+
+
+    /** The pointer being locked. **/
+    TypeName* pData;
+
+
+public:
+
+    /** Basic constructor
+     *
+     *  Assign the pointer and reference to the mutex.
+     *
+     *  @param[in] pData The pointer to shallow copy
+     *  @param[in] MUTEX_IN The mutex reference
+     *
+     **/
+    lock_proxy(TypeName* pDataIn, std::recursive_mutex& MUTEX_IN)
+    : MUTEX(MUTEX_IN)
+    , pData(pData)
+    {
+    }
+
+
+    /** Destructor
+    *
+    *  Unlock the mutex.
+    *
+    **/
+    ~lock_proxy()
+    {
+       MUTEX.unlock();
+    }
+
+
+    /** Member Access Operator.
+    *
+    *  Access the memory of the raw pointer.
+    *
+    **/
+    TypeName* operator->() const
+    {
+        return pData;
+    }
+};
+
+
+/** locked_ptr
+ *
+ *  Pointer with member access protected with a mutex.
+ *
+ **/
+template<class TypeName>
+class locked_ptr
+{
+    /** The internal locking mutex. **/
+    mutable std::recursive_mutex MUTEX;
+
+
+    /** The internal raw poitner. **/
+    std::atomic<TypeName*> pData;
+
+
+    /** The internal reference counter. **/
+    util::atomic::uint32_t nCount;
+
+
+public:
+
+    /** Default Constructor. **/
+    locked_ptr()
+    : MUTEX  ( )
+    , pData  (nullptr)
+    , nCount (0)
+    {
+    }
+
+
+    /** Constructor for storing. **/
+    locked_ptr(TypeName* pDataIn)
+    : MUTEX  ( )
+    , pData   (pDataIn)
+    , nCount (1)
+    {
+    }
+
+
+    /** Copy Constructor. **/
+    locked_ptr(const locked_ptr<TypeName>& pData)
+    {
+
+    }
+
+
+    /** Move Constructor. **/
+    locked_ptr(const locked_ptr<TypeName>&& pointer)
+    : pData  (pointer.pData)
+    , nCount (pointer.nCount.load() + 1)
+    {
+    }
+
+
+    /** Destructor. **/
+    ~locked_ptr()
+    {
+        /* Adjust our reference count. */
+        if(nCount.load() > 0)
+            --nCount;
+
+        /* Delete if no more references. */
+        if(pData.load() != nullptr && nCount.load() == 0)
+            delete pData.load();
+    }
+
+
+    /** Assignment operator. **/
+    locked_ptr& operator=(const locked_ptr<TypeName>& pDataIn)
+    {
+        pData  = pDataIn.pData;
+        nCount = (pDataIn.nCount.load() + 1);
+    }
+
+
+    /** Assignment operator. **/
+    locked_ptr& operator=(TypeName* pDataIn) = delete;
+
+
+    /** Equivilent operator.
+     *
+     *  @param[in] a The data type to compare to.
+     *
+     **/
+    bool operator==(const TypeName& pDataIn) const
+    {
+        RECURSIVE(MUTEX);
+
+        /* Check for dereferencing nullptr. */
+        if(pData.load() == nullptr)
+            throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
+
+        return *pData == pDataIn;
+    }
+
+
+    /** Equivilent operator.
+     *
+     *  @param[in] a The data type to compare to.
+     *
+     **/
+    bool operator==(const TypeName* ptr) const
+    {
+        RECURSIVE(MUTEX);
+
+        return pData == ptr;
+    }
+
+
+    /** Not equivilent operator.
+     *
+     *  @param[in] a The data type to compare to.
+     *
+     **/
+    bool operator!=(const TypeName* ptr) const
+    {
+        RECURSIVE(MUTEX);
+
+        return pData != ptr;
+    }
+
+    /** Not operator
+     *
+     *  Check if the pointer is nullptr.
+     *
+     **/
+    bool operator!(void)
+    {
+        RECURSIVE(MUTEX);
+
+        return pData == nullptr;
+    }
+
+
+    /** Member access overload
+     *
+     *  Allow locked_ptr access like a normal pointer.
+     *
+     **/
+    lock_proxy<TypeName> operator->()
+    {
+        /* Lock our mutex before going forward. */
+        MUTEX.lock();
+
+        /* Check for dereferencing nullptr. */
+        if(pData == nullptr)
+            throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
+
+        return lock_proxy<TypeName>(pData.load(), MUTEX);
+    }
+
+
+    /** dereference operator overload
+     *
+     *  Load the object from memory.
+     *
+     **/
+    TypeName operator*() const
+    {
+        RECURSIVE(MUTEX);
+
+        /* Check for dereferencing nullptr. */
+        if(pData == nullptr)
+            throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
+
+        return *pData.load();
+    }
+
+
+    /** store
+     *
+     *  Stores an object into memory.
+     *
+     *  @param[in] dataIn The data into protected memory.
+     *
+     **/
+    void store(const TypeName* pDataIn)
+    {
+        RECURSIVE(MUTEX);
+
+        if(pData.load() != nullptr)
+            delete pData;
+
+        pData.store(pDataIn);
+    }
+};
 
 
 int main()
