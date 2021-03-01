@@ -1143,182 +1143,6 @@ struct Test
 
 
 
-
-
-
-/** atomic
- *
- *  Protects an object inside with a mutex.
- *
- **/
-template<class TypeName>
-class atomic
-{
-    /* The internal data. */
-    std::shared_ptr<TypeName> data;
-
-public:
-
-    /** Default Constructor. **/
-    atomic ()
-    : data (nullptr)
-    {
-    }
-
-
-    /** Constructor for storing. **/
-    atomic(const TypeName& dataIn)
-    : data (nullptr)
-    {
-        store(dataIn);
-    }
-
-
-    /** Assignment operator.
-     *
-     *  @param[in] a The atomic to assign from.
-     *
-     **/
-    atomic& operator=(const atomic& a)
-    {
-        store(a.load());
-        return *this;
-    }
-
-
-    /** Assignment operator.
-     *
-     *  @param[in] dataIn The atomic to assign from.
-     *
-     **/
-    atomic& operator=(const TypeName& dataIn)
-    {
-        store(dataIn);
-
-        return *this;
-    }
-
-
-    /** Equivilent operator.
-     *
-     *  @param[in] a The atomic to compare to.
-     *
-     **/
-    bool operator==(const atomic& a) const
-    {
-        return load() == a.load();
-    }
-
-
-    /** Equivilent operator.
-     *
-     *  @param[in] a The data type to compare to.
-     *
-     **/
-    bool operator==(const TypeName& dataIn) const
-    {
-        return load() == dataIn;
-    }
-
-
-    /** Not equivilent operator.
-     *
-     *  @param[in] a The atomic to compare to.
-     *
-     **/
-    bool operator!=(const atomic& a) const
-    {
-        return load() != a.load();
-    }
-
-
-    /** Not equivilent operator.
-     *
-     *  @param[in] a The data type to compare to.
-     *
-     **/
-    bool operator!=(const TypeName& dataIn) const
-    {
-        return load() != dataIn;
-    }
-
-
-    /** load
-     *
-     *  Load the object from memory.
-     *
-     **/
-    TypeName load() const
-    {
-        return *std::atomic_load_explicit(&data, std::memory_order_seq_cst);
-    }
-
-
-    /** store
-     *
-     *  Stores an object into memory.
-     *
-     *  @param[in] dataIn The data to into protected memory.
-     *
-     **/
-    void store(const TypeName& dataIn)
-    {
-        /* Cleanup our memory usage on store. */
-        if(data)
-            data = nullptr;
-
-        std::atomic_store_explicit(&data, std::make_shared<TypeName>(dataIn), std::memory_order_seq_cst);
-    }
-};
-
-template<typename Type>
-class atomic_fence
-{
-    std::shared_ptr<Type> release;
-
-
-    std::recursive_mutex& MUTEX;
-
-public:
-
-    atomic_fence(const std::shared_ptr<Type>& ptr, std::recursive_mutex& in)
-    : release (ptr)
-    , MUTEX   (in)
-    {
-
-        //std::atomic_thread_fence(std::memory_order_seq_cst);
-        //expected = std::atomic_load_explicit(&data, std::memory_order_acquire);
-
-        //std::atomic_thread_fence(std::memory_order_seq_cst);
-        //std::atomic_thread_fence(std::memory_order_acq_rel);
-
-        //debug::log(0, std::this_thread::get_id(), ": BUILD: ", VARIABLE(data->a), " | ", VARIABLE(data->b));
-    }
-
-    ~atomic_fence()
-    {
-        //std::atomic_thread_fence(std::memory_order_seq_cst);
-        //std::atomic_thread_fence(std::memory_order_seq_cst);
-        //std::shared_ptr<Type> current = std::atomic_load_explicit(&data, std::memory_order_acquire);
-        //std::atomic_thread_fence(std::memory_order_acquire);
-
-        //std::atomic_thread_fence(std::memory_order_release);
-        //std::atomic_store_explicit(&data, modified, std::memory_order_release);
-        //while(!std::atomic_compare_exchange_weak_explicit(&data, &current, modified, std::memory_order_acq_rel, std::memory_order_acq_rel));
-        //std::atomic_load_explicit(&data, std::memory_order_acq_rel);
-
-        MUTEX.unlock();
-    }
-
-
-    std::shared_ptr<Type> operator->()
-    {
-        MUTEX.lock();
-        return release;
-    }
-};
-
-
 #include <atomic/types/shared_ptr.h>
 
 
@@ -1411,9 +1235,13 @@ int main()
 
 
 
+#include <atomic/include/typedef.h>
 
+#include <atomic/types/type.h>
 
-std::atomic<uint32_t> nStreamReads;
+util::atomic::uint32_t nStreamReads;
+
+util::atomic::type<uint32_t> nTestReads;
 
 void BatchRead(mstream &stream, runtime::stopwatch &timer)
 {
