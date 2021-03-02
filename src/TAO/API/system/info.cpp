@@ -11,8 +11,19 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/include/money.h>
+#include <Legacy/wallet/wallet.h>
+
+#include <LLP/include/global.h>
+#include <LLP/include/lisp.h>
+#include <LLP/include/version.h>
+
 #include <TAO/API/system/types/system.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/types/sessionmanager.h>
+#include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/mempool.h>
+
+#include <Util/include/version.h>
 
 /* Global TAO namespace. */
 namespace TAO
