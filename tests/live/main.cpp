@@ -1187,6 +1187,42 @@ namespace util::system
 
 #include <atomic/include/typedef.h>
 
+
+/** lock_control
+ *
+ *  Track the current pointer references.
+ *
+ **/
+struct lock_control
+{
+    /** Recursive mutex for locking locked_ptr. **/
+    std::recursive_mutex MUTEX;
+
+
+    /** Reference counter for active copies. **/
+    util::atomic::uint32_t nCount;
+
+
+    /** Default Constructor. **/
+    lock_control( )
+    : MUTEX  ( )
+    , nCount (1)
+    {
+    }
+
+
+    /** count
+     *
+     *  Access atomic with easier syntax.
+     *
+     **/
+    uint32_t count()
+    {
+        return nCount.load();
+    }
+};
+
+
 /** lock_proxy
  *
  *  Temporary class that unlocks a mutex when outside of scope.
@@ -1215,8 +1251,8 @@ public:
      *
      **/
     lock_proxy(TypeName* pDataIn, std::recursive_mutex& MUTEX_IN)
-    : MUTEX(MUTEX_IN)
-    , pData(pData)
+    : MUTEX (MUTEX_IN)
+    , pData (pDataIn)
     {
     }
 
@@ -1253,48 +1289,46 @@ template<class TypeName>
 class locked_ptr
 {
     /** The internal locking mutex. **/
-    mutable std::recursive_mutex MUTEX;
+    mutable lock_control* pRefs;
 
 
     /** The internal raw poitner. **/
-    std::atomic<TypeName*> pData;
-
-
-    /** The internal reference counter. **/
-    util::atomic::uint32_t nCount;
+    TypeName* pData;
 
 
 public:
 
     /** Default Constructor. **/
     locked_ptr()
-    : MUTEX  ( )
+    : pRefs  (nullptr)
     , pData  (nullptr)
-    , nCount (0)
     {
     }
 
 
     /** Constructor for storing. **/
     locked_ptr(TypeName* pDataIn)
-    : MUTEX  ( )
-    , pData   (pDataIn)
-    , nCount (1)
+    : pRefs  (new lock_control())
+    , pData  (pDataIn)
     {
     }
 
 
     /** Copy Constructor. **/
-    locked_ptr(const locked_ptr<TypeName>& pData)
+    locked_ptr(const locked_ptr<TypeName>& ptrIn)
+    : pRefs (ptrIn.pRefs)
+    , pData (ptrIn.pData)
     {
+        ++pRefs->nCount;
 
+        debug::log(0, FUNCTION, "New copy for reference ", pRefs->count());
     }
 
 
     /** Move Constructor. **/
-    locked_ptr(const locked_ptr<TypeName>&& pointer)
-    : pData  (pointer.pData)
-    , nCount (pointer.nCount.load() + 1)
+    locked_ptr(const locked_ptr<TypeName>&& ptrIn)
+    : pRefs (std::move(ptrIn.pRefs))
+    , pData (std::move(ptrIn.pData))
     {
     }
 
@@ -1303,20 +1337,42 @@ public:
     ~locked_ptr()
     {
         /* Adjust our reference count. */
-        if(nCount.load() > 0)
-            --nCount;
+        if(pRefs->count() > 0)
+            --pRefs->nCount;
 
         /* Delete if no more references. */
-        if(pData.load() != nullptr && nCount.load() == 0)
-            delete pData.load();
+        if(pRefs->count() == 0)
+        {
+            debug::log(0, FUNCTION, "Deleting copy for reference ", pRefs->count());
+
+            /* Cleanup the main raw pointer. */
+            if(pData)
+            {
+                delete pData;
+                pData = nullptr;
+            }
+
+            /* Cleanup the control block. */
+            if(pRefs)
+            {
+                delete pRefs;
+                pRefs = nullptr;
+            }
+        }
     }
 
 
     /** Assignment operator. **/
-    locked_ptr& operator=(const locked_ptr<TypeName>& pDataIn)
+    locked_ptr& operator=(const locked_ptr<TypeName>& ptrIn)
     {
-        pData  = pDataIn.pData;
-        nCount = (pDataIn.nCount.load() + 1);
+        /* Shallow copy pointer and control block. */
+        pRefs  = ptrIn.pRefs;
+        pData  = ptrIn.pData;
+
+        /* Increase our reference count now. */
+        ++pRefs->nCount;
+
+        debug::log(0, FUNCTION, "New copy for reference ", pRefs->count());
     }
 
 
@@ -1331,10 +1387,10 @@ public:
      **/
     bool operator==(const TypeName& pDataIn) const
     {
-        RECURSIVE(MUTEX);
+        RECURSIVE(pRefs->MUTEX);
 
         /* Check for dereferencing nullptr. */
-        if(pData.load() == nullptr)
+        if(pData == nullptr)
             throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
 
         return *pData == pDataIn;
@@ -1346,11 +1402,11 @@ public:
      *  @param[in] a The data type to compare to.
      *
      **/
-    bool operator==(const TypeName* ptr) const
+    bool operator==(const TypeName* pDataIn) const
     {
-        RECURSIVE(MUTEX);
+        RECURSIVE(pRefs->MUTEX);
 
-        return pData == ptr;
+        return pData == pDataIn;
     }
 
 
@@ -1359,11 +1415,11 @@ public:
      *  @param[in] a The data type to compare to.
      *
      **/
-    bool operator!=(const TypeName* ptr) const
+    bool operator!=(const TypeName* pDataIn) const
     {
-        RECURSIVE(MUTEX);
+        RECURSIVE(pRefs->MUTEX);
 
-        return pData != ptr;
+        return pData != pDataIn;
     }
 
     /** Not operator
@@ -1373,7 +1429,7 @@ public:
      **/
     bool operator!(void)
     {
-        RECURSIVE(MUTEX);
+        RECURSIVE(pRefs->MUTEX);
 
         return pData == nullptr;
     }
@@ -1387,13 +1443,9 @@ public:
     lock_proxy<TypeName> operator->()
     {
         /* Lock our mutex before going forward. */
-        MUTEX.lock();
+        pRefs->MUTEX.lock();
 
-        /* Check for dereferencing nullptr. */
-        if(pData == nullptr)
-            throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
-
-        return lock_proxy<TypeName>(pData.load(), MUTEX);
+        return lock_proxy<TypeName>(pData, pRefs->MUTEX);
     }
 
 
@@ -1404,31 +1456,13 @@ public:
      **/
     TypeName operator*() const
     {
-        RECURSIVE(MUTEX);
+        RECURSIVE(pRefs->MUTEX);
 
         /* Check for dereferencing nullptr. */
         if(pData == nullptr)
             throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
 
-        return *pData.load();
-    }
-
-
-    /** store
-     *
-     *  Stores an object into memory.
-     *
-     *  @param[in] dataIn The data into protected memory.
-     *
-     **/
-    void store(const TypeName* pDataIn)
-    {
-        RECURSIVE(MUTEX);
-
-        if(pData.load() != nullptr)
-            delete pData;
-
-        pData.store(pDataIn);
+        return *pData;
     }
 };
 
@@ -1440,6 +1474,22 @@ int main()
     util::system::log(0, "Testing");
 
     //std::atomic<std::string> ptr;
+
+
+    locked_ptr<Test> ptrTest = locked_ptr<Test>(new Test());
+
+    {
+        locked_ptr<Test> ptrTest1 = ptrTest;
+        locked_ptr<Test> ptrTest2 = ptrTest1;
+
+
+        ptrTest->a = 55;
+        ptrTest2->b = 88;
+    }
+
+    debug::log(0, VARIABLE(ptrTest->a), " | ", VARIABLE(ptrTest->b));
+
+    return 0;
 
     //atomic<Test> ptr;
     //ptr.store(Test());
