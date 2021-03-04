@@ -261,6 +261,62 @@ namespace LLD
          **/
         bool HasSession(const uint256_t& hashGenesis);
 
+
+        /** WriteNameExpiration
+         *
+         *  Writes the timestamp of a cached name expiration.
+         *
+         *  @param[in] hashGenesis The genesis hash of the user that the cache belongs to.
+         *  @param[in] hashAddress The address of the register that the name is cached for.
+         *  @param[in] nTimestamp The timestamp that the cached name expires.
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool WriteNameExpiration(const uint256_t& hashGenesis, const uint256_t& hashAddress, const uint64_t nTimestamp);
+
+
+        /** ReadNameExpiration
+         *
+         *  Reads the timestamp of a cached name expiration.
+         *
+         *  @param[in] hashGenesis The genesis hash of the user that the cache belongs to.
+         *  @param[in] hashAddress The address of the register that the name is cached for.
+         *  @param[out] nTimestamp The timestamp that the cached name expires.
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool ReadNameExpiration(const uint256_t& hashGenesis, const uint256_t& hashAddress, uint64_t &nTimestamp);
+
+
+        /** WriteName
+         *
+         *  Writes a cached name to the local database.
+         *
+         *  @param[in] hashGenesis The genesis hash of the user that the cache belongs to.
+         *  @param[in] hashAddress The address of the register that the name is cached for.
+         *  @param[in] strName The cached name for the requested register address.
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool WriteName(const uint256_t& hashGenesis, const uint256_t& hashAddress, const std::string& strName);
+
+
+        /** ReadName
+         *
+         *  Reads a cached name from the local database.
+         *
+         *  @param[in] hashGenesis The genesis hash of the user that the cache belongs to.
+         *  @param[in] hashAddress The address of the register that the name is cached for.
+         *  @param[out] strName The cached name for the requested register address.
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool ReadName(const uint256_t& hashGenesis, const uint256_t& hashAddress, std::string &strName);
+
     };
 }
 

@@ -145,4 +145,64 @@ namespace LLD
         return Exists(std::make_pair(std::string("session"), hashGenesis));
     }
 
+
+    /* Writes the timestamp of a cached name expiration. */
+    bool LocalDB::WriteNameExpiration(const uint256_t& hashGenesis, const uint256_t& hashAddress, const uint64_t nTimestamp)
+    {
+        return Write(std::make_tuple(std::string("name_expires"), hashGenesis, hashAddress), nTimestamp);
+    }
+
+    /* Reads the timestamp of a cached name expiration. */
+    bool LocalDB::ReadNameExpiration(const uint256_t& hashGenesis, const uint256_t& hashAddress, uint64_t &nTimestamp)
+    {
+        return Read(std::make_tuple(std::string("name_expires"), hashGenesis, hashAddress), nTimestamp);
+    }
+
+
+    /* Writes a cached name to the local database. */
+    bool LocalDB::WriteName(const uint256_t& hashGenesis, const uint256_t& hashAddress, const std::string& strName)
+    {
+        /* Write expiration of this name. */
+        WriteNameExpiration(hashGenesis, hashAddress, runtime::unifiedtimestamp() + 600); //10 minute expiration
+
+        /* Write the name record */
+        return Write(std::make_tuple(std::string("name"), hashGenesis, hashAddress), strName);
+    }
+
+
+    /* Reads a cached name from the local database. */
+    bool LocalDB::ReadName(const uint256_t& hashGenesis, const uint256_t& hashAddress, std::string &strName)
+    {
+        /* Generate the key for the name record so we can check whether it exists and whether it has expired */
+        std::tuple<std::string, uint256_t, uint256_t> key = std::make_tuple(std::string("name"), hashGenesis, hashAddress);
+
+        /* If the name exists, check for expiry */
+        if(Exists(key))
+        {
+            /* Expiry timestamp for this name */
+            uint64_t nExpires = 0;
+
+            /* Flag indicating the cached name has expired */
+            bool fExpired = false;
+            
+            /* Read the expiration time for this name record */
+            if(ReadNameExpiration(hashGenesis, hashAddress, nExpires))
+            {
+                /* Check expiration timestamp. */
+                if(runtime::unifiedtimestamp() > nExpires)
+                    fExpired = true;
+            }
+            else
+                fExpired = true;
+
+            /* Only return the name if it hasn't expired */
+            if(!fExpired)
+                return Read(std::make_tuple(std::string("name"), hashGenesis, hashAddress), strName);           
+        }
+
+        /* If it doesn't exist or has expired then return false */
+        return false;
+        
+    }
+
 }

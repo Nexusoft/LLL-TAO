@@ -434,78 +434,88 @@ namespace TAO
             /* Look up the Name object for the register address in the specified sig chain, if one has been provided */
             if(hashGenesis != 0)
             {
-                /* If we are in client mode then if the hashGenesis is not for the logged in user we need to make sure we 
-                   have downloaded their sig chain so that we have access to it */
+                /* First check the local DB cache */
+                if(LLD::Local->ReadName(hashGenesis, hashRegister, strName))
+                    return strName;
+
+                /* If it is not in the cache and not for the current use and in client mode we need to ask a peer to 
+                   do the name lookup for us */
                 if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
                 {
-                    /* Download the users signature chain transactions, but we do not need events */
-                    TAO::API::DownloadSigChain(hashGenesis, false);
+                    /* Do lookup */
+
+                    /* Check cache again */
+                    if(LLD::Local->ReadName(hashGenesis, hashRegister, strName))
+                        return strName;
+
                 }
-
-                /* Now lookup the name in this sig chain */
-                name = Names::GetName(hashGenesis, hashRegister, hashNameObject);
-            }
-
-            /* Check to see if we resolved the name using the specified sig chain */
-            if(!name.IsNull())
-            {
-                /* Get the name from the Name register */
-                strName = name.get<std::string>("name");
-            }
-            else if(!config::fClient.load())
-            {
-                /* If we couldn't resolve the register name from the callers local names, we next check to see if it is a global name */
-
-                /* Batch read all names. */
-                std::vector<TAO::Register::Object> vNames;
-                if(LLD::Register->BatchRead("name", vNames, -1))
+                else
                 {
-                    /* Check through all names. */
-                    for(auto& object : vNames)
-                    {
-                        /* Skip over invalid objects (THIS SHOULD NEVER HAPPEN). */
-                        if(!object.Parse())
-                            continue;
+                    /* Now lookup the name in this sig chain */
+                    name = Names::GetName(hashGenesis, hashRegister, hashNameObject);
 
-                        /* Check that it is a global */
-                        if(object.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL
-                            && object.get<uint256_t>("address") == hashRegister)
+                    /* Get the name from the Name register */
+                    if(!name.IsNull())
+                    {
+                        strName = name.get<std::string>("name");
+
+                        /* Update the cache with the name */
+                        LLD::Local->WriteName(hashGenesis, hashRegister, strName);
+                    }
+                }
+            }
+
+            /* Check to see if we resolved the name using the specified sig chain.  IF not we see if it resolves to a global name */
+            if(strName.empty())
+            {
+                /* Get the global namespace address */
+                TAO::Register::Address hashGlobal = TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
+                
+                /* Check the local DB cache for the global name */
+                if(LLD::Local->ReadName(hashGlobal, hashRegister, strName))
+                    return strName;
+
+                /* If it is not in the cache, in client mode we request the look from the peer. */
+                if(config::fClient.load())
+                {
+                    /* Do lookup */
+
+                    /* Check cache again */
+                    if(LLD::Local->ReadName(hashGlobal, hashRegister, strName))
+                        return strName;
+                }
+                else
+                {
+                
+                    
+                    /* Batch read all names. */
+                    std::vector<TAO::Register::Object> vNames;
+                    if(LLD::Register->BatchRead("name", vNames, -1))
+                    {
+                        /* Check through all names. */
+                        for(auto& object : vNames)
                         {
-                            /* Get the name from the Name register */
-                            strName = object.get<std::string>("name");
-                            break;
+                            /* Skip over invalid objects (THIS SHOULD NEVER HAPPEN). */
+                            if(!object.Parse())
+                                continue;
+
+                            /* Check that it is a global */
+                            if(object.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL
+                                && object.get<uint256_t>("address") == hashRegister)
+                            {
+                                /* Get the name from the Name register */
+                                strName = object.get<std::string>("name");
+
+                                /* Update the cache with the name */
+                                LLD::Local->WriteName(hashGlobal, hashRegister, strName);
+
+                                break;
+                            }
                         }
                     }
                 }
             }
-            else
-            {
-                /* If we couldn't resolve the register from the callers local name and we are in client mode, then the only way 
-                   we can check to see if it is a global name is to search the sig chain of the register owner. 
-                   NOTE: we only want to search global names from the register owners sig chain, so that we don't 
-                   leak their private names */
-
-                /* The register that we are trying to get the name for */
-                TAO::Register::State state;
-
-                /* Read the register from the DB.  NOTE we use the LOOKUP flag here so that we request it from the peer 
-                   if it is not in our register database. */
-                if(LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::LOOKUP))
-                {
-                    /* Download the register owners signature chain transactions, but we do not need events */
-                    TAO::API::DownloadSigChain(state.hashOwner, false);
-                    
-                    /* Look up the Name object for the register address hash in the register owners sig chain*/
-                    name = Names::GetName(state.hashOwner, hashRegister, hashNameObject);
-
-                    /* Get the name from the register owners name record as long as it is a global name */
-                    if(!name.IsNull() && name.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
-                    {
-                        /* Get the name from the Name register */
-                        strName = name.get<std::string>("name");
-                    }
-                }
-            }
+            
 
             return strName;
         }
