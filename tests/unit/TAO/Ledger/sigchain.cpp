@@ -256,7 +256,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
         //create name object pointing to account address
         Object name = TAO::Register::CreateName(TAO::Register::NAMESPACE::GLOBAL, "global name", TAO::Register::Address(TAO::Register::Address::ACCOUNT));
-        TAO::Register::Address hashGlobalNamespace = TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
+        TAO::Register::Address hashGlobalNamespace = TAO::Register::GLOBAL_NAMESPACE_ADDRESS;
 
         Object name2 = TAO::Register::CreateName("", "test2", TAO::Register::Address(TAO::Register::Address::ACCOUNT));
 

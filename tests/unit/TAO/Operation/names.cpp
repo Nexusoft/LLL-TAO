@@ -77,7 +77,7 @@ TEST_CASE( "Names / Namespaces Tests", "[operation]")
             tx.nTimestamp  = runtime::timestamp();
 
             std::string strReserved = "NXS";
-            TAO::Register::Address hashNamespace = TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
+            TAO::Register::Address hashNamespace = TAO::Register::GLOBAL_NAMESPACE_ADDRESS  ;
 
             hashNameAddress = TAO::Register::Address(strReserved, hashNamespace, TAO::Register::Address::NAME);
 

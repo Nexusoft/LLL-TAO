@@ -91,6 +91,7 @@ namespace LLP
                 REGISTER      = 0x3d,
                 P2PCONNECTION = 0x3e,
                 PEERADDRESS   = 0x3f,
+                NAME          = 0x40,
             };
         }
 

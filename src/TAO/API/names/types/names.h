@@ -321,6 +321,20 @@ namespace TAO
             static std::string ResolveName(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister);
 
 
+
+            /** ResolveNameFromPeer
+             *
+             *  Makes a request to a peer node to resolve the name for the given register
+             *
+             *  @param[in] hashGenesis The sig chain genesis hash to search.  Can be 0 if searching for a global name
+             *  @param[in] hashRegister register address of the object to look up
+             *
+             *  @return the name of the object, if one is found
+             *
+             **/
+            static std::string ResolveNameFromPeer(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister);
+
+
             /** ResolveAccountTokenName
              *
              *  Retrieves the token name for the token that this account object is used for.

@@ -22,7 +22,7 @@ namespace LLP
 
     /* The current Protocol Version. */
     #define PROTOCOL_MAJOR       3
-    #define PROTOCOL_MINOR       0
+    #define PROTOCOL_MINOR       1
     #define PROTOCOL_REVISION    0
     #define PROTOCOL_BUILD       0
 
@@ -41,7 +41,7 @@ namespace LLP
 
 
     /* Used to define the baseline of Tritium Versioning. */
-    const uint32_t MIN_TRITIUM_VERSION = 3000000;
+    const uint32_t MIN_TRITIUM_VERSION = 3010000;
 
 
     /* The name that will be shared with other nodes. */

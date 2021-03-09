@@ -2251,6 +2251,90 @@ namespace LLP
                             break;
                         }
 
+                        /* Name lookup from register address */
+                        case TYPES::NAME:
+                        {
+                            /* Check for available protocol version. */
+                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                                return true;
+
+                            /* Check for valid specifier. */
+                            if(fTransactions || fClient || fLegacy)
+                                return debug::drop(NODE, "ACTION::GET::NAME: invalid specifier for TYPES::NAME");
+
+                            /* Get the genesis of the sig chain to search. */
+                            uint256_t hashGenesis;
+                            ssPacket >> hashGenesis;
+
+                            /* The register address to look up the name for */
+                            uint256_t hashRegister;
+                            ssPacket >> hashRegister;
+
+                            /* The name to return */
+                            std::string strName = "";
+
+                            /* First check the local DB cache */
+                            if(!LLD::Local->ReadName(hashGenesis, hashRegister, strName))
+                            {
+                                /* If a genesis has been specified then use this for the lookup */
+                                if(hashGenesis != TAO::Register::GLOBAL_NAMESPACE_ADDRESS)
+                                {
+                                    /* Register address of nameObject.  Not used by this method */
+                                    TAO::Register::Address hashNameObject;
+
+                                    /* Now lookup the name in this sig chain */
+                                    TAO::Register::Object name = TAO::API::Names::GetName(hashGenesis, hashRegister, hashNameObject);
+
+                                    /* Get the name from the Name register */
+                                    if(!name.IsNull())
+                                    {
+                                        strName = name.get<std::string>("name");
+
+                                        /* Update our own cache with the name */
+                                        LLD::Local->WriteName(hashGenesis, hashRegister, strName);
+                                    }
+                                }
+                                /* Otherwise search for global names */
+                                else
+                                {
+                                    /* Batch read all names. */
+                                    std::vector<TAO::Register::Object> vNames;
+                                    if(LLD::Register->BatchRead("name", vNames, -1))
+                                    {
+                                        /* Check through all names. */
+                                        for(auto& object : vNames)
+                                        {
+                                            /* Skip over invalid objects (THIS SHOULD NEVER HAPPEN). */
+                                            if(!object.Parse())
+                                                continue;
+
+                                            /* Check that it is a global */
+                                            if(object.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL
+                                                && object.get<uint256_t>("address") == hashRegister)
+                                            {
+                                                /* Get the name from the Name register */
+                                                strName = object.get<std::string>("name");
+
+                                                /* Update the cache with the name */
+                                                LLD::Local->WriteName(TAO::Register::GLOBAL_NAMESPACE_ADDRESS, hashRegister, strName);
+
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if(!strName.empty())
+                            {
+                                /* Send back the name */
+                                PushMessage(TYPES::NAME, hashGenesis, hashRegister, strName);
+                            }
+
+                            break;
+
+                        }
+
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::GET malformed binary stream");
@@ -3583,6 +3667,32 @@ namespace LLP
 
                         thisAddress = addr;
                     }
+                }
+
+                break;
+            }
+
+            case TYPES::NAME:
+            {
+                /* Get the genesis of the sig chain the name was resolved from */
+                uint256_t hashGenesis;
+                ssPacket >> hashGenesis;
+
+                /* The register address the name belongs to */
+                uint256_t hashRegister;
+                ssPacket >> hashRegister;
+
+                /* The name */
+                std::string strName = "";
+                ssPacket >> strName;
+
+                /* Check that we don't already have this name in our local DB.  This ensures that we ignore unsolicited messages. */                
+                if(!LLD::Local->HasName(hashGenesis, hashRegister))
+                {
+                    /* Add it to the local DB */
+                    LLD::Local->WriteName(hashGenesis, hashRegister, strName);
+
+                    debug::log(3, NODE, "TYPES::NAME received.  Register ", hashRegister.ToString(), " resolved to name ", strName );
                 }
 
                 break;

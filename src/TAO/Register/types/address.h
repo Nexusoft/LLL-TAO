@@ -297,7 +297,12 @@ namespace TAO
              *
              **/
             std::string ToString() const;
+
         };
+
+
+        /** Static address of the global names namespace **/
+        extern Address GLOBAL_NAMESPACE_ADDRESS;
     }
 }
 

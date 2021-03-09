@@ -205,4 +205,12 @@ namespace LLD
         
     }
 
+    /* Determines whether the local DB contains a name for the given genesis/address and that it has not expired */
+    bool LocalDB::HasName(const uint256_t& hashGenesis, const uint256_t& hashAddress)
+    {
+        /* Temp variable to read the name */
+        std::string strName = "";
+        return ReadName(hashGenesis, hashAddress, strName);
+    }
+
 }

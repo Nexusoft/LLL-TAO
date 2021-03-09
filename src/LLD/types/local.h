@@ -317,6 +317,19 @@ namespace LLD
          **/
         bool ReadName(const uint256_t& hashGenesis, const uint256_t& hashAddress, std::string &strName);
 
+
+        /** HasName
+         *
+         *  Determines whether the local DB contains a name for the given genesis/address and that it has not expired
+         *
+         *  @param[in] hashGenesis The genesis hash of the user that the cache belongs to.
+         *  @param[in] hashAddress The address of the register that the name is cached for.
+         *
+         *  @return True if the session data exists, false otherwise.
+         *
+         **/
+        bool HasName(const uint256_t& hashGenesis, const uint256_t& hashAddress);
+
     };
 }
 

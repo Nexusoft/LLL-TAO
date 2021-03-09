@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
+#include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/address.h>
 
 #include <Util/include/encoding.h>
@@ -24,6 +25,8 @@ namespace TAO
 
     namespace Register
     {
+        /* Declaration of the global namespace address */
+        Address GLOBAL_NAMESPACE_ADDRESS = TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
 
         /* Default constructor. */
         Address::Address()

@@ -253,7 +253,7 @@ namespace TAO
             if(!fFound)
             {
                 /* Get the hashNamespace for the global namespace */
-                hashNamespace = TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
+                hashNamespace = TAO::Register::GLOBAL_NAMESPACE_ADDRESS;
 
                 /* Attempt to Read the Name Object */
                 fFound = TAO::Register::GetNameRegister(hashNamespace, strName, nameObject);
@@ -442,11 +442,8 @@ namespace TAO
                    do the name lookup for us */
                 if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
                 {
-                    /* Do lookup */
-
-                    /* Check cache again */
-                    if(LLD::Local->ReadName(hashGenesis, hashRegister, strName))
-                        return strName;
+                    /* Do lookup from peer */
+                    strName = ResolveNameFromPeer(hashGenesis, hashRegister);
 
                 }
                 else
@@ -468,21 +465,15 @@ namespace TAO
             /* Check to see if we resolved the name using the specified sig chain.  IF not we see if it resolves to a global name */
             if(strName.empty())
             {
-                /* Get the global namespace address */
-                TAO::Register::Address hashGlobal = TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
-                
                 /* Check the local DB cache for the global name */
-                if(LLD::Local->ReadName(hashGlobal, hashRegister, strName))
+                if(LLD::Local->ReadName(TAO::Register::GLOBAL_NAMESPACE_ADDRESS, hashRegister, strName))
                     return strName;
 
                 /* If it is not in the cache, in client mode we request the look from the peer. */
                 if(config::fClient.load())
                 {
-                    /* Do lookup */
-
-                    /* Check cache again */
-                    if(LLD::Local->ReadName(hashGlobal, hashRegister, strName))
-                        return strName;
+                    /* Do lookup from peer */
+                    strName = ResolveNameFromPeer(TAO::Register::GLOBAL_NAMESPACE_ADDRESS, hashRegister);
                 }
                 else
                 {
@@ -507,7 +498,7 @@ namespace TAO
                                 strName = object.get<std::string>("name");
 
                                 /* Update the cache with the name */
-                                LLD::Local->WriteName(hashGlobal, hashRegister, strName);
+                                LLD::Local->WriteName(TAO::Register::GLOBAL_NAMESPACE_ADDRESS, hashRegister, strName);
 
                                 break;
                             }
@@ -518,6 +509,41 @@ namespace TAO
             
 
             return strName;
+        }
+
+
+        std::string Names::ResolveNameFromPeer(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister)
+        {
+            /* The resolved name to return */
+            std::string strName = "";
+
+            /* Check that the Tritium LLP is active */
+            if(LLP::TRITIUM_SERVER)
+            {
+                /* Ask the server for a connection */
+                std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                if(pNode != nullptr)
+                {
+                    /* Request name lookup. */
+                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::NAME for register", hashRegister.SubString());
+
+                    LLP::TritiumNode::BlockingMessage(10000, pNode.get(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::NAME), hashGenesis, hashRegister);
+
+                    debug::log(1, FUNCTION, "CLIENT MODE: GET::NAME received for ", hashRegister.SubString());
+                }
+                else
+                    debug::error(FUNCTION, "no connections available...");
+            }
+
+            /* If the peer lookup was successful the LLP would have written the name to the local DB.  Therefore we attempt to read
+               the name from the local DB here to return. */
+
+            /* attempt to read the name.  NOTE: if this fails then the peer lookup was not successful */
+            LLD::Local->ReadName(hashGenesis, hashRegister, strName);
+
+            /* Return the resolved name.  This will be empty if resolution failed */
+            return strName;
+
         }
 
 
