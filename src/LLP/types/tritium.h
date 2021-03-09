@@ -75,6 +75,7 @@ namespace LLP
                 LASTINDEX     = 0x26, //sends a last index notify after list
 
                 /* Object Types. */
+                NAME          = 0x2F,
                 BLOCK         = 0x30,
                 TRANSACTION   = 0x31,
                 TIMESEED      = 0x32,
@@ -91,7 +92,7 @@ namespace LLP
                 REGISTER      = 0x3d,
                 P2PCONNECTION = 0x3e,
                 PEERADDRESS   = 0x3f,
-                NAME          = 0x40,
+                /* Do not add any more after this as it will cross over into the SPECIFIER enum which starts at 0x40 */ 
             };
         }
 
