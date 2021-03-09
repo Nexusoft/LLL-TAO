@@ -527,7 +527,7 @@ namespace TAO
                     /* Request name lookup. */
                     debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::NAME for register", hashRegister.SubString());
 
-                    LLP::TritiumNode::BlockingMessage(10000, pNode.get(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::NAME), hashGenesis, hashRegister);
+                    LLP::TritiumNode::BlockingMessage(10000, pNode.get(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::NAME), hashGenesis, (uint256_t)hashRegister);
 
                     debug::log(1, FUNCTION, "CLIENT MODE: GET::NAME received for ", hashRegister.SubString());
                 }
