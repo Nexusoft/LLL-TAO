@@ -1902,7 +1902,7 @@ namespace TAO
                     pNode->AddTrigger(LLP::Tritium::RESPONSE::VALIDATED, nNonce, &REQUEST_TRIGGER);
 
                     /* Request the transaction validation */
-                    pNode->PushMessage(LLP::Tritium::ACTION::VALIDATE, uint8_t(LLP::Tritium::TYPES::TRIGGER), nNonce, uint8_t(LLP::Tritium::TYPES::TRANSACTION), tx);
+                    pNode->PushMessage(uint16_t(LLP::Tritium::TYPES::TRIGGER), nNonce, uint16_t(LLP::Tritium::ACTION::VALIDATE), uint8_t(LLP::Tritium::TYPES::TRANSACTION), tx);
 
                     /* Process the event. */
                     REQUEST_TRIGGER.wait_for_nonce(nNonce, 10000);
