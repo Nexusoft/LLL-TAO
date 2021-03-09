@@ -526,7 +526,7 @@ namespace LLP
             ssPacket >> nMsg; 
         }
 
-        switch(INCOMING.MESSAGE)
+        switch(nMsg)
         {
             /* Handle for the version command. */
             case ACTION::VERSION:
