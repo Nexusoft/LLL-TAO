@@ -185,6 +185,10 @@ namespace LLP
         static std::mutex SESSIONS_MUTEX;
 
 
+        /** Mutex for connected sessions. **/
+        static std::mutex CLIENT_MUTEX;
+
+
         /** Set for connected session. **/
         static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
 

@@ -74,6 +74,10 @@ namespace LLP
     std::mutex TritiumNode::SESSIONS_MUTEX;
 
 
+    /* Declaration of client mutex for synchronizing client mode transactions. */
+    std::mutex TritiumNode::CLIENT_MUTEX;
+
+
     /* Declaration of sessions sets. (private). */
     std::map<uint64_t, std::pair<uint32_t, uint32_t>> TritiumNode::mapSessions;
 
@@ -3146,20 +3150,18 @@ namespace LLP
                         Legacy::MerkleTx tx;
                         ssPacket >> tx;
 
-                        /* Need to lock the processing mutex to synchronize the processing transactions and blocks.  This is
-                           necessary to avoid writing the same transaction twice if it is received from two peers simultaneously. */
-                        LOCK(TAO::Ledger::PROCESSING_MUTEX);
+                        /* Cache the txid. */
+                        uint512_t hashTx = tx.GetHash();
 
                         /* Check if we have this transaction already. */
-                        if(!LLD::Client->HasTx(tx.GetHash()))
+                        if(!LLD::Client->HasTx(hashTx))
                         {
+                            LOCK(CLIENT_MUTEX);
+
                             /* Grab the block to check merkle path. */
                             TAO::Ledger::ClientBlock block;
                             if(LLD::Client->ReadBlock(tx.hashBlock, block))
                             {
-                                /* Cache the txid. */
-                                uint512_t hashTx = tx.GetHash();
-
                                 /* Check the merkle branch. */
                                 if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                     return debug::error(FUNCTION, "merkle transaction has invalid path");
@@ -3179,13 +3181,10 @@ namespace LLP
                                     return debug::error(FUNCTION, "failed to write block indexing entry");
                                 }
 
-                                /* UTXO to Sig Chain support - The only reason we would be receiving a legacy transaction in client
-                                   mode is if we are being sent a legacy event.  The event would normally be written to the DB in
-                                   Transaction::Connect, but we cannot connect legacy transactions in client mode as we will not
-                                   have all of the inputs.  Therefore, we need to check the outputs to see if any of them
-                                   are to a register address we know about and, if so, write an event for the account holder */
-                                for(const auto txout : tx.vout )
+                                /* UTXO to Sig Chain Client Mode Support */
+                                for(const auto txout : tx.vout)
                                 {
+                                    /* Extract the output addresses to find relevant events. */
                                     uint256_t hashTo;
                                     if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
                                     {
@@ -3204,6 +3203,7 @@ namespace LLP
                                 LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                                 TAO::Ledger::mempool.Remove(hashTx);
 
+                                /* Verbose=3 dumps transaction data. */
                                 if(config::nVerbose >= 3)
                                     tx.print();
 
@@ -3224,10 +3224,6 @@ namespace LLP
                         /* Cache the txid. */
                         uint512_t hashTx = tx.GetHash();
 
-                        /* Need to lock the processing mutex to synchronize the processing transactions and blocks.  This is
-                           necessary to avoid writing the same transaction twice if it is received from two peers simultaneously. */
-                        LOCK(TAO::Ledger::PROCESSING_MUTEX);
-
                         /* Check if we have this transaction already. */
                         if(!LLD::Client->HasTx(hashTx))
                         {
@@ -3238,6 +3234,7 @@ namespace LLP
                                 TAO::Ledger::ClientBlock block;
                                 if(LLD::Client->ReadBlock(tx.hashBlock, block))
                                 {
+                                    LOCK(CLIENT_MUTEX);
                                     /* Check the merkle branch. */
                                     if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                         return debug::error(FUNCTION, "merkle transaction has invalid path");
@@ -3274,9 +3271,7 @@ namespace LLP
                                     debug::log(0, hashTx.SubString(), " ACCEPTED");
                                 }
                                 else
-                                {
                                     debug::error(0, hashTx.SubString(), "REJECTED: missing block ", tx.hashBlock.SubString());
-                                }
                             }
                             else
                             {
