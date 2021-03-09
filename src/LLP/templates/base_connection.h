@@ -209,7 +209,7 @@ namespace LLP
         {
             LOCK(TRIGGER_MUTEX);
 
-            std::pair<message_t, uint64_t> pairKey = std::make_pair(nMsg, nNonce);
+            std::pair<uint64_t, message_t> pairKey = std::make_pair(nNonce, nMsg);
 
             /* Notify trigger if found. */
             if(TRIGGERS.count(pairKey))

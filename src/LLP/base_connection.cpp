@@ -122,7 +122,7 @@ namespace LLP
     {
         LOCK(TRIGGER_MUTEX);
 
-        TRIGGERS[std::make_pair(nMsg, nNonce)] = TRIGGER;
+        TRIGGERS[std::make_pair(nNonce, nMsg)] = TRIGGER;
     }
 
 
@@ -132,7 +132,7 @@ namespace LLP
     {
         LOCK(TRIGGER_MUTEX);
 
-        TRIGGERS.erase(std::make_pair(nMsg, nNonce));
+        TRIGGERS.erase(std::make_pair(nNonce, nMsg));
     }
 
 
