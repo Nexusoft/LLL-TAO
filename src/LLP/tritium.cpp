@@ -136,7 +136,6 @@ namespace LLP
     , nConsecutiveFails(0)
     , strFullVersion()
     , nUnsubscribed(0)
-    , nTriggerNonce(0)
     {
     }
 
@@ -165,7 +164,6 @@ namespace LLP
     , nConsecutiveFails(0)
     , strFullVersion()
     , nUnsubscribed(0)
-    , nTriggerNonce(0)
     {
     }
 
@@ -194,7 +192,6 @@ namespace LLP
     , nConsecutiveFails(0)
     , strFullVersion()
     , nUnsubscribed(0)
-    , nTriggerNonce(0)
     {
     }
 
@@ -512,6 +509,23 @@ namespace LLP
     {
         /* Deserialize the packeet from incoming packet payload. */
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
+
+        /** Current nonce trigger. **/
+        uint64_t nTriggerNonce = 0;
+
+        /* The incoming message */
+        uint16_t nMsg = INCOMING.MESSAGE;
+
+        /* Check the message to see if it is the TRIGGER identifier */
+        if(nMsg == TYPES::TRIGGER)
+        {
+            /* Deserialize the trigger nonce */
+            ssPacket >> nTriggerNonce;
+
+            /* Deserialize the actual message */
+            ssPacket >> nMsg; 
+        }
+
         switch(INCOMING.MESSAGE)
         {
             /* Handle for the version command. */
@@ -803,7 +817,7 @@ namespace LLP
             case RESPONSE::UNSUBSCRIBED:
             {
                 /* Let node know it unsubscribed successfully. */
-                if(INCOMING.MESSAGE == RESPONSE::UNSUBSCRIBED)
+                if(nMsg == RESPONSE::UNSUBSCRIBED)
                 {
                     /* Check for unsoliced messages. */
                     if(nUnsubscribed == 0)
@@ -830,7 +844,7 @@ namespace LLP
                         case TYPES::BLOCK:
                         {
                             /* Subscribe. */
-                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            if(nMsg == ACTION::SUBSCRIBE)
                             {
                                 /* Set the block flag. */
                                 nNotifications |= SUBSCRIPTION::BLOCK;
@@ -838,7 +852,7 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE: BLOCK: ", std::bitset<16>(nNotifications));
                             }
-                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            else if(nMsg == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the block flag. */
                                 nNotifications &= ~SUBSCRIPTION::BLOCK;
@@ -862,7 +876,7 @@ namespace LLP
                         case TYPES::TRANSACTION:
                         {
                             /* Subscribe. */
-                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            if(nMsg == ACTION::SUBSCRIBE)
                             {
                                 /* Set the block flag. */
                                 nNotifications |= SUBSCRIPTION::TRANSACTION;
@@ -870,7 +884,7 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::TRANSACTION: ", std::bitset<16>(nNotifications));
                             }
-                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            else if(nMsg == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the transaction flag. */
                                 nNotifications &= ~SUBSCRIPTION::TRANSACTION;
@@ -894,7 +908,7 @@ namespace LLP
                         case TYPES::BESTHEIGHT:
                         {
                             /* Subscribe. */
-                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            if(nMsg == ACTION::SUBSCRIBE)
                             {
                                 /* Set the best height flag. */
                                 nNotifications |= SUBSCRIPTION::BESTHEIGHT;
@@ -906,7 +920,7 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::BESTHEIGHT: ", std::bitset<16>(nNotifications));
                             }
-                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            else if(nMsg == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the height flag. */
                                 nNotifications &= ~SUBSCRIPTION::BESTHEIGHT;
@@ -930,7 +944,7 @@ namespace LLP
                         case TYPES::CHECKPOINT:
                         {
                             /* Subscribe. */
-                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            if(nMsg == ACTION::SUBSCRIBE)
                             {
                                 /* Set the checkpoints flag. */
                                 nNotifications |= SUBSCRIPTION::CHECKPOINT;
@@ -942,7 +956,7 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::CHECKPOINT: ", std::bitset<16>(nNotifications));
                             }
-                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            else if(nMsg == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the checkpoints flag. */
                                 nNotifications &= ~SUBSCRIPTION::CHECKPOINT;
@@ -966,7 +980,7 @@ namespace LLP
                         case TYPES::ADDRESS:
                         {
                             /* Subscribe. */
-                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            if(nMsg == ACTION::SUBSCRIBE)
                             {
                                 /* Set the address flag. */
                                 nNotifications |= SUBSCRIPTION::ADDRESS;
@@ -974,7 +988,7 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::ADDRESS: ", std::bitset<16>(nNotifications));
                             }
-                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            else if(nMsg == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the address flag. */
                                 nNotifications &= ~SUBSCRIPTION::ADDRESS;
@@ -998,7 +1012,7 @@ namespace LLP
                         case TYPES::LASTINDEX:
                         {
                             /* Subscribe. */
-                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            if(nMsg == ACTION::SUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
                                 if(config::fClient.load())
@@ -1010,7 +1024,7 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::LAST: ", std::bitset<16>(nNotifications));
                             }
-                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            else if(nMsg == ACTION::UNSUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
                                 if(config::fClient.load())
@@ -1038,7 +1052,7 @@ namespace LLP
                         case TYPES::BESTCHAIN:
                         {
                             /* Subscribe. */
-                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            if(nMsg == ACTION::SUBSCRIBE)
                             {
                                 /* Set the best chain flag. */
                                 nNotifications |= SUBSCRIPTION::BESTCHAIN;
@@ -1050,7 +1064,7 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::BESTCHAIN: ", std::bitset<16>(nNotifications));
                             }
-                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            else if(nMsg == ACTION::UNSUBSCRIBE)
                             {
                                 /* Unset the bestchain flag. */
                                 nNotifications &= ~SUBSCRIPTION::BESTCHAIN;
@@ -1083,7 +1097,7 @@ namespace LLP
                                 return debug::drop(NODE, "ACTION::SUBSCRIBE::SIGCHAIN: Access Denied");
 
                             /* Subscribe. */
-                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            if(nMsg == ACTION::SUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
                                 if(config::fClient.load())
@@ -1095,7 +1109,7 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::SIGCHAIN: ", std::bitset<16>(nNotifications));
                             }
-                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            else if(nMsg == ACTION::UNSUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
                                 if(config::fClient.load())
@@ -1135,7 +1149,7 @@ namespace LLP
                             ssPacket >> hashAddress;
 
                             /* Subscribe. */
-                            if(INCOMING.MESSAGE == ACTION::SUBSCRIBE)
+                            if(nMsg == ACTION::SUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
                                 if(config::fClient.load())
@@ -1154,7 +1168,7 @@ namespace LLP
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::NOTIFICATION: ", hashAddress.ToString());
                             }
-                            else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                            else if(nMsg == ACTION::UNSUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
                                 if(config::fClient.load())
@@ -1192,7 +1206,7 @@ namespace LLP
                 }
 
                 /* Let node know it unsubscribed successfully. */
-                if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
+                if(nMsg == ACTION::UNSUBSCRIBE)
                     WritePacket(NewMessage(RESPONSE::UNSUBSCRIBED, ssPacket));
 
                 break;
@@ -3381,17 +3395,6 @@ namespace LLP
                 break;
             }
 
-
-            /* Handle an event trigger. */
-            case TYPES::TRIGGER:
-            {
-                /* De-serialize the trigger nonce. */
-                ssPacket >> nTriggerNonce;
-
-                break;
-            }
-
-
             /* Handle an event trigger. */
             case RESPONSE::COMPLETED:
             {
@@ -3399,7 +3402,7 @@ namespace LLP
                 uint64_t nNonce = 0;
                 ssPacket >> nNonce;
 
-                TriggerEvent(INCOMING.MESSAGE, nNonce);
+                TriggerEvent(nMsg, nNonce);
 
                 break;
             }
@@ -3429,7 +3432,7 @@ namespace LLP
                         if(fValid)
                         {
                             /* Trigger event with this nonce. */
-                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx);
+                            TriggerEvent(nMsg, nNonce, fValid, hashTx);
                         }
                         else
                         {
@@ -3438,7 +3441,7 @@ namespace LLP
                             ssPacket >> nContract;
 
                             /* Trigger active events with this nonce. */
-                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx, nContract);
+                            TriggerEvent(nMsg, nNonce, fValid, hashTx, nContract);
                         }
 
                         break;
@@ -3446,7 +3449,7 @@ namespace LLP
                     default:
                     {
                         /* Trigger active events with this nonce. */
-                        TriggerEvent(INCOMING.MESSAGE, nNonce);
+                        TriggerEvent(nMsg, nNonce);
                     }
                 }
 
@@ -3699,7 +3702,7 @@ namespace LLP
             }
 
             default:
-                return debug::drop(NODE, "invalid protocol message ", INCOMING.MESSAGE);
+                return debug::drop(NODE, "invalid protocol message ", nMsg);
         }
 
         /* Check for authorization. */

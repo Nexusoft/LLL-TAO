@@ -222,11 +222,6 @@ namespace LLP
         /** timer object to keep track of ping latency. **/
         std::map<uint64_t, runtime::timer> mapLatencyTracker;
 
-
-        /** Current nonce trigger. **/
-        uint64_t nTriggerNonce;
-
-
     
         /** Event
          *
@@ -392,20 +387,19 @@ namespace LLP
         {
             /* Create our trigger nonce. */
             uint64_t nNonce = LLC::GetRand();
-            pNode->PushMessage(LLP::P2P::TYPES::TRIGGER, nNonce);
-
-            /* Request the inventory message. */
-            pNode->PushMessage(nMsg, std::forward<Args>(args)...);
-
+            
             /* Create the condition variable trigger. */
             LLP::Trigger REQUEST_TRIGGER;
-            pNode->AddTrigger(LLP::P2P::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
+            pNode->AddTrigger(LLP::P2P::RESPONSE::COMPLETED, nNonce, &REQUEST_TRIGGER);
+
+            /* Push the message, prefixed with the trigger indicator */
+            pNode->PushMessage(uint16_t(LLP::P2P::TYPES::TRIGGER), nNonce, nMsg, std::forward<Args>(args)...);
 
             /* Process the event. */
             REQUEST_TRIGGER.wait_for_nonce(nNonce, nTimeout);
 
             /* Cleanup our event trigger. */
-            pNode->Release(LLP::P2P::RESPONSE::COMPLETED);
+            pNode->Release(LLP::P2P::RESPONSE::COMPLETED, nNonce);
 
         }
 

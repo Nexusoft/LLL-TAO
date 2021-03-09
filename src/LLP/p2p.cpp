@@ -55,7 +55,6 @@ namespace LLP
     , nProtocolVersion(0)
     , nLastPing(0)
     , mapLatencyTracker()
-    , nTriggerNonce(0)
     {
     }
 
@@ -71,7 +70,6 @@ namespace LLP
     , nProtocolVersion(0)
     , nLastPing(0)
     , mapLatencyTracker()
-    , nTriggerNonce(0)
     {
     }
 
@@ -91,7 +89,6 @@ namespace LLP
     , nProtocolVersion(0)
     , nLastPing(0)
     , mapLatencyTracker()
-    , nTriggerNonce(0)
     {
     }
 
@@ -107,7 +104,6 @@ namespace LLP
     , nProtocolVersion(0)
     , nLastPing(0)
     , mapLatencyTracker()
-    , nTriggerNonce(0)
     {
         /* This constructor is not allowed as we must have the appid, source and destination genesis hashes, and sessionID 
            of the peer we are connecting to */
@@ -318,7 +314,23 @@ namespace LLP
         /* Deserialize the packeet from incoming packet payload. */
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, P2P::PROTOCOL_VERSION);
 
-        switch(INCOMING.MESSAGE)
+        /** Current nonce trigger. **/
+        uint64_t nTriggerNonce = 0;
+
+        /* The incoming message */
+        uint16_t nMsg = INCOMING.MESSAGE;
+
+        /* Check the message to see if it is the TRIGGER identifier */
+        if(nMsg == TYPES::TRIGGER)
+        {
+            /* Deserialize the trigger nonce */
+            ssPacket >> nTriggerNonce;
+
+            /* Deserialize the actual message */
+            ssPacket >> nMsg; 
+        }
+
+        switch(nMsg)
         {
             /* Handle for the version command. */
             case ACTION::INITIALIZE:
@@ -568,23 +580,13 @@ namespace LLP
             }
 
             /* Handle an event trigger. */
-            case TYPES::TRIGGER:
-            {
-                /* De-serialize the trigger nonce. */
-                ssPacket >> nTriggerNonce;
-
-                break;
-            }
-
-
-            /* Handle an event trigger. */
             case RESPONSE::COMPLETED:
             {
                 /* De-serialize the trigger nonce. */
                 uint64_t nNonce = 0;
                 ssPacket >> nNonce;
                 
-                TriggerEvent(INCOMING.MESSAGE, nNonce);
+                TriggerEvent(nMsg, nNonce);
                 
                 break;
             }
@@ -592,7 +594,7 @@ namespace LLP
 
            
             default:
-                return debug::drop(NODE, "invalid protocol message ", INCOMING.MESSAGE);
+                return debug::drop(NODE, "invalid protocol message ", nMsg);
         }
 
         

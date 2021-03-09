@@ -138,8 +138,8 @@ namespace LLP
         std::mutex TRIGGER_MUTEX;
 
 
-        /** Special foreign triggers for connection. **/
-        std::map<message_t, Trigger*> TRIGGERS;
+        /** Map of triggers for connection. Triggers are uniquely stored by nonce and message type **/
+        std::map<std::pair<uint64_t, message_t>, Trigger*> TRIGGERS;
 
 
     public:
@@ -186,33 +186,40 @@ namespace LLP
          *  Adds a new event listener to this connection to fire off condition variables on specific message types.
          *
          *  @param[in] nMsg The message type.
+         *  @param[in] nNonce The nonce for this particular trigger
          *  @param[in] EVENT_CONDITION The condition variable to set to triggers.
          *
          *  @return Returns a filled out tritium packet.
          *
          **/
-        void AddTrigger(const message_t nMsg, Trigger* TRIGGER);
+        void AddTrigger(const message_t nMsg, const uint64_t nNonce, Trigger* TRIGGER);
 
 
-        /** PushMessage
+        /** TriggerEvent
          *
-         *  Adds a tritium packet to the queue to write to the socket.
+         *  Triggers an event for the given message and nonce combination
+         * 
+         *  @param[in] nMsg The message type.
+         *  @param[in] nNonce The nonce for this particular trigger
+         *  @param[in] args Additional optional arguments to pass to the trigger 
          *
          **/
         template<typename... Args>
-        void TriggerEvent(const message_t nMsg, Args&&... args)
+        void TriggerEvent(const message_t nMsg, const uint64_t nNonce, Args&&... args)
         {
             LOCK(TRIGGER_MUTEX);
 
+            std::pair<message_t, uint64_t> pairKey = std::make_pair(nMsg, nNonce);
+
             /* Notify trigger if found. */
-            if(TRIGGERS.count(nMsg))
+            if(TRIGGERS.count(pairKey))
             {
                 /* Grab the trigger and check for nullptr. */
-                Trigger* pTrigger = TRIGGERS[nMsg];
+                Trigger* pTrigger = TRIGGERS[pairKey];
                 if(pTrigger)
                 {
                     /* Pass back the data to the trigger. */
-                    pTrigger->SetArgs(std::forward<Args>(args)...);
+                    pTrigger->SetArgs(nNonce, std::forward<Args>(args)...);
                     pTrigger->notify_all();
                 }
             }
@@ -224,10 +231,11 @@ namespace LLP
          *  Release an event listener from tirggers.
          *
          *  @param[in] nMsg The message type.
+         *  @param[in] nNonce The nonce for this particular trigger
          *
          *
          **/
-        void Release(const message_t nMsg);
+        void Release(const message_t nMsg, const uint64_t nNonce);
 
 
         /** SetNull

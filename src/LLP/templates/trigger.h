@@ -141,7 +141,7 @@ namespace LLP
                 if(ssArgs.size() == 0)
                     return false;
 
-                /* Check for genesis. */
+                /* Check the nonce that was returned. */
                 uint64_t nNonce = 0;
                 ssArgs >> nNonce;
 

@@ -1896,20 +1896,19 @@ namespace TAO
 
                     /* Create our trigger nonce. */
                     uint64_t nNonce = LLC::GetRand();
-                    pNode->PushMessage(LLP::Tritium::TYPES::TRIGGER, nNonce);
-
-                    /* Request the transaction validation */
-                    pNode->PushMessage(LLP::Tritium::ACTION::VALIDATE, uint8_t(LLP::Tritium::TYPES::TRANSACTION), tx);
-
+                    
                     /* Create the condition variable trigger. */
                     LLP::Trigger REQUEST_TRIGGER;
-                    pNode->AddTrigger(LLP::Tritium::RESPONSE::VALIDATED, &REQUEST_TRIGGER);
+                    pNode->AddTrigger(LLP::Tritium::RESPONSE::VALIDATED, nNonce, &REQUEST_TRIGGER);
+
+                    /* Request the transaction validation */
+                    pNode->PushMessage(LLP::Tritium::ACTION::VALIDATE, uint8_t(LLP::Tritium::TYPES::TRIGGER), nNonce, uint8_t(LLP::Tritium::TYPES::TRANSACTION), tx);
 
                     /* Process the event. */
                     REQUEST_TRIGGER.wait_for_nonce(nNonce, 10000);
 
                     /* Cleanup our event trigger. */
-                    pNode->Release(LLP::Tritium::RESPONSE::VALIDATED);
+                    pNode->Release(LLP::Tritium::RESPONSE::VALIDATED, nNonce);
 
                     debug::log(1, FUNCTION, "CLIENT MODE: RESPONSE::VALIDATED received");
 

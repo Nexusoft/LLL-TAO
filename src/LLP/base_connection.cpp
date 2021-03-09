@@ -118,21 +118,21 @@ namespace LLP
 
     /* Adds a new event listener to this connection to fire off condition variables on specific message types.*/
     template <class PacketType>
-    void BaseConnection<PacketType>::AddTrigger(const message_t nMsg, Trigger* TRIGGER)
+    void BaseConnection<PacketType>::AddTrigger(const message_t nMsg, const uint64_t nNonce, Trigger* TRIGGER)
     {
         LOCK(TRIGGER_MUTEX);
 
-        TRIGGERS[nMsg] = TRIGGER;
+        TRIGGERS[std::make_pair(nMsg, nNonce)] = TRIGGER;
     }
 
 
     /* Release an event listener from tirggers. */
     template <class PacketType>
-    void BaseConnection<PacketType>::Release(const message_t nMsg)
+    void BaseConnection<PacketType>::Release(const message_t nMsg, const uint64_t nNonce)
     {
         LOCK(TRIGGER_MUTEX);
 
-        TRIGGERS.erase(nMsg);
+        TRIGGERS.erase(std::make_pair(nMsg, nNonce));
     }
 
 

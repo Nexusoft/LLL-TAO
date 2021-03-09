@@ -307,10 +307,6 @@ namespace LLP
         uint64_t nUnsubscribed;
 
 
-        /** Current nonce trigger. **/
-        uint64_t nTriggerNonce;
-
-
         /** Remaining time for sync meter. **/
         static std::atomic<uint64_t> nRemainingTime;
 
@@ -519,20 +515,20 @@ namespace LLP
         {
             /* Create our trigger nonce. */
             uint64_t nNonce = LLC::GetRand();
-            pNode->PushMessage(LLP::Tritium::TYPES::TRIGGER, nNonce);
-
-            /* Request the inventory message. */
-            pNode->PushMessage(nMsg, std::forward<Args>(args)...);
-
+            
             /* Create the condition variable trigger. */
             LLP::Trigger REQUEST_TRIGGER;
-            pNode->AddTrigger(LLP::Tritium::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
+            pNode->AddTrigger(LLP::Tritium::RESPONSE::COMPLETED, nNonce, &REQUEST_TRIGGER);
+            
+            /* Request the  message, prefixed with the trigger identifier and nonce. */
+            pNode->PushMessage(uint16_t(LLP::Tritium::TYPES::TRIGGER), nNonce, nMsg, std::forward<Args>(args)...);
+
 
             /* Process the event. */
             REQUEST_TRIGGER.wait_for_nonce(nNonce, nTimeout);
 
             /* Cleanup our event trigger. */
-            pNode->Release(LLP::Tritium::RESPONSE::COMPLETED);
+            pNode->Release(LLP::Tritium::RESPONSE::COMPLETED, nNonce);
 
         }
 
