@@ -328,7 +328,7 @@ namespace LLP
                 if(!fInitialized.load() && fSynchronized.load() && nCurrentSession != 0)
                 {
                     /* Simple log to let us know we are making the subscription requests. */
-                    debug::log(1, NODE, "Initializing Subscriptions with REMOTE HOST");
+                    debug::log(1, NODE, "Initializing Subscriptions for ", std::hex, nCurrentSession);
 
                     /* Grab list of memory pool transactions. */
                     if(!config::fClient.load())
@@ -484,44 +484,30 @@ namespace LLP
                         TRITIUM_SERVER->GetAddressManager()->AddAddress(addr, nState);
                 }
 
-                /* Before we clean up this connection / session and potentially switch to a new sync node, we need to establish
-                   whether this is a duplicate connection or not.  To do this we check to see whether this session ID exists in the
-                   mapSessions, but with a different nDataThread / nDataIndex */
-                bool fDuplicate = false;
+                /* Check if we need to switch sync nodes. */
+                if(nCurrentSession != 0)
                 {
-                    LOCK(SESSIONS_MUTEX);
-
-                    /* Check to see if the session exists with a different data thread/index. */
-                    if(mapSessions.count(nCurrentSession))
+                    /* Handle if sync node is disconnected and this is not a duplicate connection. */
+                    if(nCurrentSession == TAO::Ledger::nSyncSession.load())
                     {
-                        /* Make sure that we aren't freeing our session if handling duplicate connections. */
-                        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nCurrentSession];
-                        if(pair.first != nDataThread || pair.second != nDataIndex)
-                            fDuplicate = true;
+                        /* Debug output for node disconnect. */
+                        debug::log(0, NODE, "Sync Node Disconnected (", strReason, ")");
+
+                        SwitchNode();
                     }
-                }
 
 
-                /* Handle if sync node is disconnected and this is not a duplicate connection. */
-                if(nCurrentSession == TAO::Ledger::nSyncSession.load() && !fDuplicate)
-                {
-                    /* Debug output for node disconnect. */
-                    debug::log(0, NODE, "Sync Node Disconnected (", strReason, ")");
-
-                    SwitchNode();
-                }
-
-
-                {
                     LOCK(SESSIONS_MUTEX);
 
                     /* Free the session as long as it is not a duplicate connection that we are closing. */
-                    if(mapSessions.count(nCurrentSession) && !fDuplicate)
+                    if(mapSessions.count(nCurrentSession))
                         mapSessions.erase(nCurrentSession);
+
+                    /* Reset session value. */
+                    nCurrentSession = 0;
                 }
 
                 /* Reset session, notifications, subscriptions etc */
-                nCurrentSession = 0;
                 nUnsubscribed   = 0;
                 nNotifications  = 0;
 
@@ -548,44 +534,6 @@ namespace LLP
                 /* Hard requirement for version. */
                 ssPacket >> nProtocolVersion;
 
-                /* Get the current session-id. */
-                ssPacket >> nCurrentSession;
-
-                /* Get the version string. */
-                ssPacket >> strFullVersion;
-
-                /* Check for invalid session-id. */
-                if(nCurrentSession == 0)
-                    return debug::drop(NODE, "invalid session-id");
-
-                /* Check for a connect to self. */
-                if(nCurrentSession == SESSION_ID)
-                {
-                    /* Cache self-address in the banned list of the Address Manager. */
-                    if(TRITIUM_SERVER->GetAddressManager())
-                        TRITIUM_SERVER->GetAddressManager()->Ban(GetAddress());
-
-                    return debug::drop(NODE, "connected to self");
-                }
-
-                /* Check if session is already connected. */
-                {
-                    LOCK(SESSIONS_MUTEX);
-                    if(mapSessions.count(nCurrentSession))
-                    {
-                        /* Grab a reference from the map. */
-                        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nCurrentSession];
-
-                        /* Check that the other connection is connected */
-                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection(pair.first, pair.second);
-                        if(pNode && pNode->Connected())
-                            return debug::drop(NODE, "duplicate connection");
-                    }
-
-                    /* Set this to the current session. */
-                    mapSessions[nCurrentSession] = std::make_pair(nDataThread, nDataIndex);
-                }
-
                 /* Check versions. */
                 if(nProtocolVersion < MIN_PROTO_VERSION)
                     return debug::drop(NODE, "connection using obsolete protocol version");
@@ -600,6 +548,39 @@ namespace LLP
                     return debug::drop(NODE, "-client mode requires version ", MIN_TRITIUM_VERSION);
                 }
 
+                /* Get the current session-id. */
+                uint64_t nSessionCheck = 0;
+                ssPacket >> nSessionCheck;
+
+                /* Check for invalid session-id. */
+                if(nSessionCheck == 0)
+                    return debug::drop(NODE, "invalid session-id");
+
+                /* Check for a connect to self. */
+                if(nSessionCheck == SESSION_ID)
+                {
+                    /* Cache self-address in the banned list of the Address Manager. */
+                    if(TRITIUM_SERVER->GetAddressManager())
+                        TRITIUM_SERVER->GetAddressManager()->Ban(GetAddress());
+
+                    return debug::drop(NODE, "connected to self");
+                }
+
+                /* Check if session is already connected. */
+                {
+                    LOCK(SESSIONS_MUTEX);
+                    if(mapSessions.count(nSessionCheck))
+                        return debug::drop(NODE, "duplicate connection");
+
+                    /* Set this to the current session. */
+                    mapSessions[nSessionCheck] = std::make_pair(nDataThread, nDataIndex);
+                }
+
+                /* Set our nCurrentSession after duplicate checks so we don't get false positives to switch sync nodes. */
+                nCurrentSession = nSessionCheck;
+
+                /* Get the version string. */
+                ssPacket >> strFullVersion;
 
                 /* Respond with version message if incoming connection. */
                 if(Incoming())
@@ -614,10 +595,6 @@ namespace LLP
                 /* Add to address manager. */
                 if(TRITIUM_SERVER->GetAddressManager())
                     TRITIUM_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::CONNECTED);
-
-
-                /* Send Auth immediately after version and before any other messages*/
-                //Auth(true);
 
                 /* If we dont yet know our IP address and the peer is on the newer protocol version then request the IP address */
                 if(!addrThis.load().IsValid() && nProtocolVersion >= MIN_TRITIUM_VERSION)
