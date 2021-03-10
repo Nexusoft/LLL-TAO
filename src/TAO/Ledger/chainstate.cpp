@@ -61,6 +61,10 @@ namespace TAO
         //static std::atomic<bool> fSynchronizing(true);
         bool ChainState::Synchronizing()
         {
+            /* Static values to check synchronization status. */
+            static memory::atomic<uint1024_t> hashLast;
+            static std::atomic<uint64_t> nLastTime;
+
             bool fSynchronizing = true;
             /* Persistent switch once synchronized. */
             //if(!fSynchronizing.load())
@@ -72,20 +76,20 @@ namespace TAO
             if(stateBest.load().IsNull())
                 return true;
 
-            /* Check if there's been a new block. */
-            static memory::atomic<uint1024_t> hashLast;
-            static std::atomic<uint64_t> nLastTime;
+            /* Check if there's been a new block from internal static values. */
             if(hashBestChain.load() != hashLast.load())
             {
                 hashLast = hashBestChain.load();
                 nLastTime = runtime::unifiedtimestamp();
             }
 
-            /* Special testnet rule. s*/
+            /* Special testnet rules*/
             if(config::fTestNet.load())
             {
-                bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+                /* Check for specific conditions such as local testnet or available connections. */
+                bool fLocalTestnet   = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
                 bool fHasConnections = LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() > 0;
+
                 /* Set the synchronizing flag. */
                 fSynchronizing =
                 (
@@ -131,17 +135,17 @@ namespace TAO
 
             /* Find the chain age relative to the genesis */
 
-            /* Calculate the time between the last block received and now.  NOTE we calculate this to one minute in the past, 
+            /* Calculate the time between the last block received and now.  NOTE we calculate this to one minute in the past,
                 to accommodate for the average block time of 50s */
-            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 60 - nGenesis);
+            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - (60 * 20) - nGenesis);
             uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - nGenesis);
 
-            /* Ensure that the chain age is not less than the sync age, which would happen if the 
+            /* Ensure that the chain age is not less than the sync age, which would happen if the
                 last block time was within the last minute */
             nChainAge = std::max(nChainAge, nSyncAge);
 
             /* Calculate the sync percent. */
-            return (100.0 * nSyncAge) / nChainAge;
+            return std::min(100.0, (100.0 * nSyncAge) / nChainAge);
 
         }
 
@@ -149,29 +153,16 @@ namespace TAO
         /* Percentage of blocks synchronized since the node started. */
         double ChainState::SyncProgress()
         {
-            if(Synchronizing())
-            {
-                /* Keep our base timestamp to show correct syncing progress based on previous progress rather than entire process. */
-                const static uint32_t nBase = stateBest.load().GetBlockTime();
+            /* Catch if we aren't syncing yet. */
+            if(LLP::TritiumNode::nSyncStop.load() == 0)
+                return 0.0;
 
-                /* Find our relative ages based on the base timestamp that's created on node startup. */
+            /* Total blocks synchronized */
+            const uint32_t nBlocks = stateBest.load().nHeight - LLP::TritiumNode::nSyncStart.load();
+            const uint32_t nTotals = LLP::TritiumNode::nSyncStop.load() - LLP::TritiumNode::nSyncStart.load();
 
-                /* Calculate the time between the last block received and now.  NOTE we calculate this to one minute in the past, 
-                   to accommodate for the average block time of 50s */
-                uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 60 - nBase);
-                uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - nBase);
-
-                /* Ensure that the chain age is not less than the sync age, which would happen if the 
-                   last block time was within the last minute */
-                nChainAge = std::max(nChainAge, nSyncAge);
-
-                /* Calculate the sync percent. */
-                return (100.0 * nSyncAge) / nChainAge;
-            }
-            else
-            {
-                return 100.0;
-            }
+            /* Calculate the sync percent. */
+            return std::min(100.0, (100.0 * nBlocks) / nTotals);
         }
 
 
@@ -191,9 +182,7 @@ namespace TAO
             {
                 debug::error(FUNCTION, "failed to read best block, attempting to recover database");
 
-                /* The block for hashBestChain might not exist on disk if the process was unexpectedly terminated
-                during a block commit.  In this case we can attempt to recover by iterating forward from the genesis
-                blockState until we reach the end of the chain, which is the last written block. */
+                /* If hashBestChain exists, but block doesn't attempt to recover database from invalid write.  */
                 BlockState stateBestKnown = stateGenesis;
                 while(!stateBestKnown.IsNull() && stateBestKnown.hashNextBlock != 0)
                 {
@@ -201,6 +190,7 @@ namespace TAO
                     stateBestKnown = stateBestKnown.Next();
                 }
 
+                /* Once new best chain is found, write it to disk. */
                 hashBestChain = stateBest.load().GetHash();
                 if(!LLD::Ledger->WriteBestChain(hashBestChain.load()))
                     return debug::error(FUNCTION, "failed to write best chain");
@@ -218,16 +208,14 @@ namespace TAO
             {
                 /* Rollback the chain a given number of blocks. */
                 TAO::Ledger::BlockState state = stateBest.load();
-
-                debug::log(0, FUNCTION, "forkblocks requested removal of ", nForkblocks, " blocks");
-
                 for(int i = 0; i < nForkblocks; ++i)
                 {
+                    /* Check for Genesis. */
                     if(state.hashPrevBlock == 0)
-                        break; //Stop if reach genesis
+                        break;
 
+                    /* Iterate backwards the total number of blocks requested. */
                     state = state.Prev();
-
                     if(!state)
                         return debug::error(FUNCTION, "failed to find ancestor block");
                 }
@@ -236,6 +224,9 @@ namespace TAO
                 LLD::TxnBegin();
                 state.SetBest();
                 LLD::TxnCommit();
+
+                /* Debug Output. */
+                debug::log(0, FUNCTION, "-forkblocks=XXX requested removal of ", nForkblocks, " blocks");
             }
 
             /* Fill out the best chain stats. */

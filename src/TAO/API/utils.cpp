@@ -1210,7 +1210,7 @@ namespace TAO
 
             /* If we are in client mode we need to first check whether we own the token or not.  If we don't then we have to
                download the sig chain of the token owner so that we have access to all of the token's events. */
-            if(config::fClient)
+            if(config::fClient.load())
             {
                 /* First grab the token object */
                 TAO::Register::Object token;

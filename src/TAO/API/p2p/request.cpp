@@ -33,7 +33,7 @@ namespace TAO
     namespace API
     {
 
-        /* Makes a new outgoing connection request to a peer.  
+        /* Makes a new outgoing connection request to a peer.
            This method can optionally block (for up to 30s) waiting for an answer. */
         json::json P2P::Request(const json::json& params, bool fHelp)
         {
@@ -67,14 +67,14 @@ namespace TAO
             /* Check for username. */
             else if(params.find("username") != params.end())
                 hashPeer = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            else 
+            else
                 throw APIException(-111, "Missing genesis / username");
-            
+
             /* Get the wait parameter */
             if(params.find("wait") != params.end())
                 fWait = params["wait"].get<std::string>() == "1" || params["wait"].get<std::string>() == "true";
 
-           
+
             /* Check to see if P2P is enabled */
             if(!LLP::P2P_SERVER)
                 throw APIException(-280, "P2P server not enabled on this node");
@@ -99,10 +99,10 @@ namespace TAO
                 }
 
             }
-            
+
             /* Check that the peer genesis hash exists */
             if(!LLD::Ledger->HasGenesis(hashPeer))
-            { 
+            {
                 throw APIException(-230, "Recipient user does not exist");
             }
 
@@ -126,13 +126,13 @@ namespace TAO
             request.nTimestamp = runtime::unifiedtimestamp();
 
             /* Get this nodes IP address from the tritium server as that is the most reliable way to obtain it*/
-            request.address.SetIP(LLP::TritiumNode::thisAddress);
-            
+            request.address.SetIP(LLP::TritiumNode::addrThis.load());
+
             /* Set the port to be contacted on, which is the port for the P2P server */
             /* If SSL enabled then set the SSL port */
             if(LLP::P2P_SERVER->SSLEnabled())
                 request.nSSLPort = LLP::P2P_SERVER->GetPort(true);
-            
+
             /* If the server allows non-ssl connections then set the standard port */
             if(!LLP::P2P_SERVER->SSLRequired())
                 request.nPort = LLP::P2P_SERVER->GetPort(false);
@@ -142,12 +142,12 @@ namespace TAO
 
             /* Add the request to our outgoing list */
             session.AddP2PRequest(request, false);
-            
+
             /* Now build and push the request message out to the network */
 
             /* Public key bytes*/
             std::vector<uint8_t> vchPubKey;
-        
+
             /* Signature bytes */
             std::vector<uint8_t> vchSig;
 
@@ -158,13 +158,13 @@ namespace TAO
             /* Generate signature */
             session.GetAccount()->Sign("network", ssMsgData.Bytes(), session.GetNetworkKey(), vchPubKey, vchSig);
 
-            debug::log(3, "Sending P2P connection request."); 
-            
+            debug::log(3, "Sending P2P connection request.");
+
             /* Relay the message to all peers */
             LLP::TRITIUM_SERVER->Relay(
                 uint8_t(LLP::Tritium::ACTION::REQUEST),
                 uint8_t(LLP::Tritium::TYPES::P2PCONNECTION),
-                hashGenesis,                
+                hashGenesis,
                 request,
                 vchPubKey,
                 vchSig);
@@ -175,7 +175,7 @@ namespace TAO
                 /* Indicates the peer has accepted the request and a connection has been established */
                 bool fConnected = false;
 
-                /* Calculate the timestamp when the wait should expire.  The maximum time to wait is the 5s less than the API server 
+                /* Calculate the timestamp when the wait should expire.  The maximum time to wait is the 5s less than the API server
                    timeout, so that there is time to respond before the API request times out. */
                 uint32_t nExpires = runtime::unifiedtimestamp() + (static_cast<uint32_t>(config::GetArg(std::string("-apitimeout"), 30)) - 5);
 
@@ -185,7 +185,7 @@ namespace TAO
                     /* Check to see if there is a connection */
                     if(get_connection(strAppID, hashGenesis, hashPeer, connection))
                         fConnected = true; //break out
-                    
+
                     /* Sleep for 1s */
                     runtime::sleep(1000);
                 }
@@ -194,7 +194,7 @@ namespace TAO
                     throw APIException(-286, "Timeout waiting for peer to accept connection request");
 
             }
-            
+
             /* Flag successful request */
             response["success"] = true;
 

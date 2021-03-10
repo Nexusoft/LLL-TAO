@@ -70,20 +70,33 @@ namespace LLP
 {
     using namespace LLP::Tritium;
 
-    /* Declaration of sessions mutex. (private). */
-    std::mutex TritiumNode::SESSIONS_MUTEX;
-
 
     /* Declaration of client mutex for synchronizing client mode transactions. */
     std::mutex TritiumNode::CLIENT_MUTEX;
+
+
+    /* Declaration of sessions mutex. (private). */
+    std::mutex TritiumNode::SESSIONS_MUTEX;
 
 
     /* Declaration of sessions sets. (private). */
     std::map<uint64_t, std::pair<uint32_t, uint32_t>> TritiumNode::mapSessions;
 
 
-    /* Declaration of block height at the start sync. */
+    /** Mutex for controlling access to the p2p requests map. **/
+    std::mutex TritiumNode::P2P_REQUESTS_MUTEX;
+
+
+    /** map of P2P request timestamps by source genesis hash. **/
+    std::map<uint256_t, uint64_t> TritiumNode::mapP2PRequests;
+
+
+    /* Declaration of block height at the start of last sync. */
     std::atomic<uint32_t> TritiumNode::nSyncStart(0);
+
+
+    /* Declaration of block height at the end of last sync. */
+    std::atomic<uint32_t> TritiumNode::nSyncStop(0);
 
 
     /* Declaration of timer to track sync time */
@@ -103,17 +116,11 @@ namespace LLP
 
 
     /** This node's address, as seen by the peer **/
-    LLP::BaseAddress TritiumNode::thisAddress;
+    memory::atomic<LLP::BaseAddress> TritiumNode::addrThis;
 
 
     /* The local relay inventory cache. */
     static LLD::KeyLRU cacheInventory = LLD::KeyLRU(1024 * 1024);
-
-    /** Mutex for controlling access to the p2p requests map. **/
-    std::mutex TritiumNode::P2P_REQUESTS_MUTEX;
-
-    /** map of P2P request timestamps by source genesis hash. **/
-    std::map<uint256_t, uint64_t> TritiumNode::mapP2PRequests;
 
 
     /** Default Constructor **/
@@ -598,13 +605,8 @@ namespace LLP
                 //Auth(true);
 
                 /* If we dont yet know our IP address and the peer is on the newer protocol version then request the IP address */
-                {
-                    /* Lock session mutex to prevent other sessions from accessing thisAddress */
-                    LOCK(SESSIONS_MUTEX);
-
-                    if(!thisAddress.IsValid() && nProtocolVersion >= MIN_TRITIUM_VERSION)
-                        PushMessage(ACTION::GET, uint8_t(TYPES::PEERADDRESS));
-                }
+                if(!addrThis.load().IsValid() && nProtocolVersion >= MIN_TRITIUM_VERSION)
+                    PushMessage(ACTION::GET, uint8_t(TYPES::PEERADDRESS));
 
                 #ifdef DEBUG_MISSING
                 fSynchronized.store(true);
@@ -2465,6 +2467,10 @@ namespace LLP
                             /* Keep track of current height. */
                             ssPacket >> nCurrentHeight;
 
+                            /* If this is syncing node, cache this as our stopping block. */
+                            if(nCurrentSession == TAO::Ledger::nSyncSession.load())
+                                nSyncStop.store(nCurrentHeight);
+
                             /* Debug output. */
                             debug::log(3, NODE, "ACTION::NOTIFY: BESTHEIGHT ", nCurrentHeight);
 
@@ -3227,6 +3233,8 @@ namespace LLP
                         /* Check if we have this transaction already. */
                         if(!LLD::Client->HasTx(hashTx))
                         {
+                            LOCK(CLIENT_MUTEX);
+                            
                             /* Check for empty merkle tx. */
                             if(tx.hashBlock != 0)
                             {
@@ -3234,7 +3242,7 @@ namespace LLP
                                 TAO::Ledger::ClientBlock block;
                                 if(LLD::Client->ReadBlock(tx.hashBlock, block))
                                 {
-                                    LOCK(CLIENT_MUTEX);
+
                                     /* Check the merkle branch. */
                                     if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                         return debug::error(FUNCTION, "merkle transaction has invalid path");
@@ -3460,7 +3468,6 @@ namespace LLP
                         LLP::P2P::ConnectionRequest request;
                         ssPacket >> request;
 
-
                         /* Get the public key. */
                         std::vector<uint8_t> vchPubKey;
                         ssPacket >> vchPubKey;
@@ -3476,20 +3483,15 @@ namespace LLP
                             return true;
                         }
 
-
                         /* See whether we have processed a P2P request from this user in the last 5 seconds.
-                           If so then ignore the message. If not then relay the message to our peers.
-                           NOTE: we relay the message regardless of whether the destination genesis is logged in on this node,
-                           as the user may be logged in on multiple nodes and  might want to process the request on a
-                           different node/device. */
+                           If so then ignore the message. If not then relay the message to our peers. */
                         {
                             LOCK(P2P_REQUESTS_MUTEX);
                             if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < request.nTimestamp - 5)
                             {
-                                /* Check that the source and destination genesis exists before relaying.  NOTE: We skip this
-                                   in client mode as we will only have local scope and not know about all genesis hashes
-                                   on the network.  Therefore relaying is limited to full nodes only */
-                                if(!config::fClient)
+                                /* Check that the source and destination genesis exists before relaying. We skip this
+                                   in client mode as we will only have local scope and not know about all genesis hashes */
+                                if(!config::fClient.load())
                                 {
                                     /* Check that the source genesis exists. */
                                     if(!LLD::Ledger->HasGenesis(request.hashPeer))
@@ -3502,7 +3504,7 @@ namespace LLP
 
                                 /* Verify the signature before relaying.  Again we don't do this in client mode as we only have
                                    local scope and won't be able to access the crypto object register of the hashFrom */
-                                if(!config::fClient)
+                                if(!config::fClient.load())
                                 {
                                     /* Build the byte stream from the request data in order to verify the signature */
                                     DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
@@ -3547,12 +3549,9 @@ namespace LLP
 
                             /* Log this request */
                             mapP2PRequests[hashFrom] = request.nTimestamp;
-
-
                         }
 
                         break;
-
                     }
                     default:
                     {
@@ -3565,19 +3564,15 @@ namespace LLP
 
             case TYPES::PEERADDRESS:
             {
+                /* Ignore the message if we have already obtained our IP address */
+                if(!addrThis.load().IsValid())
                 {
-                    /* Lock session mutex to prevent other sessions from accessing thisAddress */
-                    LOCK(SESSIONS_MUTEX);
+                    /* Deserialize the address */
+                    BaseAddress addr;
+                    ssPacket >> addr;
 
-                    /* Ignore the message if we have already obtained our IP address */
-                    if(!thisAddress.IsValid())
-                    {
-                        /* Deserialize the address */
-                        BaseAddress addr;
-                        ssPacket >> addr;
-
-                        thisAddress = addr;
-                    }
+                    /* Store in atomic value. */
+                    addrThis.store(addr);
                 }
 
                 break;
