@@ -571,11 +571,13 @@ namespace LLP
                 /* Check if session is already connected. */
                 {
                     LOCK(SESSIONS_MUTEX);
-
                     if(mapSessions.count(nCurrentSession))
                     {
+                        /* Grab a reference from the map. */
+                        const std::pair<uint32_t, uint32_t>& pair = mapSessions[nCurrentSession];
+
                         /* Check that the other connection is connected */
-                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection(mapSessions[nCurrentSession].first, mapSessions[nCurrentSession].second);
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection(pair.first, pair.second);
                         if(pNode && pNode->Connected())
                             return debug::drop(NODE, "duplicate connection");
                     }
