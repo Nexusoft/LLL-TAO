@@ -221,8 +221,10 @@ namespace LLP
     {
         switch(EVENT)
         {
+            /* Once a new connection is established, this event is fired off. */
             case EVENTS::CONNECT:
             {
+                /* Check for incoming connections for -client mode. */
                 if(config::fClient.load() && !fOUTGOING)
                 {
                     debug::drop(NODE, "Incoming connections disabled in -client mode");
@@ -234,8 +236,7 @@ namespace LLP
                 /* Set the laset ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
 
-                /* If this is the first connection then the fSynchronized flag will be false.  In which case we need to set it based
-                   on the logic in ChainState::Synchronizing() as this will vary based on testnet settings */
+                /* We need to set flag based on ChainState::Synchronizing() as this will vary based on testnet settings */
                 if(!fSynchronized.load())
                     fSynchronized.store(!TAO::Ledger::ChainState::Synchronizing());
 
@@ -246,6 +247,7 @@ namespace LLP
                 break;
             }
 
+            /* Once the packet header is completed, this event is fired off. */
             case EVENTS::HEADER:
             {
                 /* Check for initialization. */
@@ -255,6 +257,7 @@ namespace LLP
                 break;
             }
 
+            /* Once a chuck of data is read into the packet, this event is fired off. */
             case EVENTS::PACKET:
             {
                 /* Check a packet's validity once it is finished being read. */
@@ -265,7 +268,7 @@ namespace LLP
                         DDOS->rSCORE += 15;
                 }
 
-
+                /* Dump packet hex if it has completed reading. */
                 if(INCOMING.Complete())
                 {
                     if(config::nVerbose >= 5)
@@ -388,7 +391,7 @@ namespace LLP
                 break;
             }
 
-
+            /* Once a connection is terminated, this event will be fired off. */
             case EVENTS::DISCONNECT:
             {
                 /* Track whether to mark as failure or dropped. */
@@ -398,50 +401,60 @@ namespace LLP
                 std::string strReason;
                 switch(LENGTH)
                 {
+                    /* Casual timeout event. */
                     case DISCONNECT::TIMEOUT:
                         strReason = "Timeout";
                         nState    = ConnectState::DROPPED;
                         break;
 
+                    /* Generic errors catch all. */
                     case DISCONNECT::ERRORS:
                         strReason = "Errors";
                         nState    = ConnectState::FAILED;
                         break;
 
+                    /* Socket related for POLLERR. */
                     case DISCONNECT::POLL_ERROR:
                         strReason = "Poll Error";
                         nState    = ConnectState::FAILED;
                         break;
 
+                    /* Special condition for linux where there's presumed data that can't be read, causing large CPU usage. */
                     case DISCONNECT::POLL_EMPTY:
                         strReason = "Unavailable";
                         nState    = ConnectState::FAILED;
                         break;
 
+                    /* Distributed Denial Of Service score threshold. */
                     case DISCONNECT::DDOS:
                         strReason = "DDOS";
                         break;
 
+                    /* Forced disconnects come from returning false in ProcessPacket(). */
                     case DISCONNECT::FORCE:
                         strReason = "Force";
                         nState    = ConnectState::DROPPED;
                         break;
 
+                    /* Graceful disconnect from peer's socket. */
                     case DISCONNECT::PEER:
                         strReason = "Peer Hangup";
                         nState    = ConnectState::DROPPED;
                         break;
 
+                    /* Buffer flood control, triggered when MAX_SEND_BUFFER is exceeded. */
                     case DISCONNECT::BUFFER:
                         strReason = "Flood Control";
                         nState    = ConnectState::DROPPED;
                         break;
 
+                    /* Buffer Flood control, triggered when buffer is full but remote node isn't reading the data. */
                     case DISCONNECT::TIMEOUT_WRITE:
                         strReason = "Flood Control Timeout";
                         nState    = ConnectState::DROPPED;
                         break;
 
+                    /* Default catch-all errors. */
                     default:
                         strReason = "Unknown";
                         nState    = ConnectState::DROPPED;
@@ -509,8 +522,8 @@ namespace LLP
 
                 /* Reset session, notifications, subscriptions etc */
                 nCurrentSession = 0;
-                nUnsubscribed = 0;
-                nNotifications = 0;
+                nUnsubscribed   = 0;
+                nNotifications  = 0;
 
                 break;
             }
@@ -3234,7 +3247,7 @@ namespace LLP
                         if(!LLD::Client->HasTx(hashTx))
                         {
                             LOCK(CLIENT_MUTEX);
-                            
+
                             /* Check for empty merkle tx. */
                             if(tx.hashBlock != 0)
                             {
