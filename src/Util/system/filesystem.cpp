@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <fstream>
 
 #include <Util/system/include/debug.h>
-#include <Util/include/filesystem.h>
+#include <system/include/filesystem.h>
 #include <Util/system/types/mutex.h>
 
 #include <sys/stat.h>
@@ -200,12 +200,12 @@ namespace filesystem
 
     #elif defined(MAC_OSX)
         debug::log(2, FUNCTION, "Removing directory ", strPath);
-        if(system(debug::safe_printstr("sudo rm -rf '", strPath, "'").c_str()) == 0) //OSX requires sudo and special chars for strPath
+        if(std::system(debug::safe_printstr("sudo rm -rf '", strPath, "'").c_str()) == 0) //OSX requires sudo and special chars for strPath
             return true;
 
     #else
         debug::log(2, FUNCTION, "Removing directory ", strPath);
-        if(system(debug::safe_printstr("rm -rf '", strPath, "'").c_str()) == 0)
+        if(std::system(debug::safe_printstr("rm -rf '", strPath, "'").c_str()) == 0)
             return true;
 
     #endif
