@@ -520,63 +520,90 @@ namespace TAO
         *  If [account] is specified, returns the balance in the account */
         json::json RPC::GetBalance(const json::json& params, bool fHelp)
         {
-            if(fHelp)
-                return std::string(
-                    "getbalance [account] [minconf=1]"
-                    " - If [account] is not specified, returns the server's total available balance."
-                    " If [account] is specified, returns the balance in the account.");
-
-
             /* Check to see if the caller has specified a token / token_name */
-            json::json token;
-            if(parse_token(params, token))
+            json::json jsonRequest;
+            if(parse_token(params, jsonRequest))
             {
-                json::json jsonBalances = TAO::API::finance->GetBalances(token, false);
-                return jsonBalances["available"];
-            }
 
-            if(params.size() == 0)
-                return  Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetBalance());
+                if(fHelp || params.size() > 2)
+                    return std::string(
+                        "getbalance [token=<address> | token_name=<name>] [account] "
+                        " - If [account] is not specified, returns the server's total available balance."
+                        " If [account] is specified, returns the balance in the account.");
 
-            int nMinDepth = 1;
-            if(params.size() > 1)
-                nMinDepth = params[1];
-
-            if(params[0].get<std::string>() == "*") {
-                // Calculate total balance a different way from GetBalance()
-                // (GetBalance() sums up all unspent TxOuts)
-                // getbalance and getbalance '*' should always return the same number.
-                int64_t nBalance = 0;
-                for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+                /* Check to see if an account name or address was specified */
+                if(params.size() > 1)
                 {
-                    const Legacy::WalletTx& wtx = entry.second;
-                    if(!wtx.IsFinal())
-                        continue;
+                    std::string strNameOrAddress = params[1].get<std::string>();
 
-                    int64_t allGeneratedImmature, allGeneratedMature, allFee;
-                    allGeneratedImmature = allGeneratedMature = allFee = 0;
-                    std::string strSentAccount;
-                    std::list<std::pair<Legacy::Script, int64_t> > listReceived;
-                    std::list<std::pair<Legacy::Script, int64_t> > listSent;
-                    wtx.GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
-                    if(wtx.GetDepthInMainChain() >= nMinDepth)
-                    {
-                        for(const auto& r : listReceived)
-                            nBalance += r.second;
-                    }
-                    for(const auto& r : listSent)
-                        nBalance -= r.second;
-                    nBalance -= allFee;
-                    nBalance += allGeneratedMature;
+                    /* Determine if they provided an account name or address and populate into balance request JSON */
+                    if(IsRegisterAddress(strNameOrAddress))
+                        jsonRequest["address"] = strNameOrAddress;
+                    else
+                        jsonRequest["name"] = strNameOrAddress;
+
+                    /* Get the balance for the account */
+                    json::json jsonBalance = TAO::API::finance->Get(jsonRequest, false);
+                    return jsonBalance["balance"];
+
                 }
-                return  Legacy::SatoshisToAmount(nBalance);
+                else
+                {
+                    /* Get the balances for all accounts */
+                    json::json jsonBalances = TAO::API::finance->GetBalances(jsonRequest, false);
+                    return jsonBalances["available"];
+                }
             }
+            else
+            {
+                if(fHelp || params.size() > 2 )
+                    return std::string(
+                        "getbalance [account] [minconf=1]"
+                        " - If [account] is not specified, returns the server's total available balance."
+                        " If [account] is specified, returns the balance in the account.");
 
-            std::string strAccount = AccountFromValue(params[0]);
-            int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
+                if(params.size() == 0)
+                    return  Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetBalance());
 
-            return Legacy::SatoshisToAmount(nBalance);
+                int nMinDepth = 1;
+                if(params.size() > 1)
+                    nMinDepth = params[1];
 
+                if(params[0].get<std::string>() == "*") {
+                    // Calculate total balance a different way from GetBalance()
+                    // (GetBalance() sums up all unspent TxOuts)
+                    // getbalance and getbalance '*' should always return the same number.
+                    int64_t nBalance = 0;
+                    for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+                    {
+                        const Legacy::WalletTx& wtx = entry.second;
+                        if(!wtx.IsFinal())
+                            continue;
+
+                        int64_t allGeneratedImmature, allGeneratedMature, allFee;
+                        allGeneratedImmature = allGeneratedMature = allFee = 0;
+                        std::string strSentAccount;
+                        std::list<std::pair<Legacy::Script, int64_t> > listReceived;
+                        std::list<std::pair<Legacy::Script, int64_t> > listSent;
+                        wtx.GetAmounts(allGeneratedImmature, allGeneratedMature, listReceived, listSent, allFee, strSentAccount);
+                        if(wtx.GetDepthInMainChain() >= nMinDepth)
+                        {
+                            for(const auto& r : listReceived)
+                                nBalance += r.second;
+                        }
+                        for(const auto& r : listSent)
+                            nBalance -= r.second;
+                        nBalance -= allFee;
+                        nBalance += allGeneratedMature;
+                    }
+                    return  Legacy::SatoshisToAmount(nBalance);
+                }
+
+                std::string strAccount = AccountFromValue(params[0]);
+                int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
+
+                return Legacy::SatoshisToAmount(nBalance);
+            }
         }
 
 
