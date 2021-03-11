@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_ENCODING_H
-#define NEXUS_UTIL_INCLUDE_ENCODING_H
 
 #include <string>
 #include <vector>
@@ -110,4 +108,3 @@ namespace encoding
     bool DecodeBase58Check(const std::string& str, std::vector<uint8_t>& vchRet);
 
 }
-#endif

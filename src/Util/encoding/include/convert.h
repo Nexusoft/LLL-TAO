@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_CONVERT_H
-#define NEXUS_UTIL_INCLUDE_CONVERT_H
 
 #include <cstdlib>
 #include <cstdint>
@@ -420,5 +418,3 @@ namespace encoding
         }
     }
 }
-
-#endif

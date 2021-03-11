@@ -12,9 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_SIGNALS_H
-#define NEXUS_UTIL_INCLUDE_SIGNALS_H
-
 
 #include <condition_variable>
 
@@ -45,5 +42,3 @@ void HandleSIGTERM(int signum);
  *
  **/
 void SetupSignals();
-
-#endif

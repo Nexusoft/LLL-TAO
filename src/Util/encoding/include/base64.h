@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_BASE64_H
-#define NEXUS_UTIL_INCLUDE_BASE64_H
 
 #include <string>
 #include <vector>
@@ -70,4 +68,3 @@ namespace encoding
     std::string DecodeBase64(const std::string& str);
 
 }
-#endif

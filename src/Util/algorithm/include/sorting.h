@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_SORTING_H
-#define NEXUS_UTIL_INCLUDE_SORTING_H
 
 #include <utility>
 #include <map>
@@ -60,5 +58,3 @@ std::multimap<B, A> flip_map(std::map<A,B> & src)
 
     return dst;
 }
-
-#endif

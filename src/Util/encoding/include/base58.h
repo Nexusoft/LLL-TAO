@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_BASE58_H
-#define NEXUS_UTIL_INCLUDE_BASE58_H
 
 #include <string>
 #include <vector>
@@ -141,4 +139,3 @@ namespace encoding
     };
 
 }
-#endif

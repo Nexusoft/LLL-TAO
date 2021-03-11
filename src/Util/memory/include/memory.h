@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_MEMORY_H
-#define NEXUS_UTIL_INCLUDE_MEMORY_H
 
 #include <cstdint>
 #include <atomic>
@@ -1866,5 +1864,3 @@ namespace memory
         TypeName DATA;
     };
 }
-
-#endif

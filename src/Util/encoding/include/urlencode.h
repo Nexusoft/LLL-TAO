@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_ENCODING_H
-#define NEXUS_UTIL_INCLUDE_ENCODING_H
 
 #include <cstring>
 #include <Util/encoding/include/hex.h>
@@ -81,5 +79,3 @@ namespace encoding
     }
 
 }
-
-#endif

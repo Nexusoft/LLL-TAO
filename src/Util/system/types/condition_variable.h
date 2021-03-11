@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_CONDITION_VARIABLE_H
-#define NEXUS_UTIL_INCLUDE_CONDITION_VARIABLE_H
 
 #include <map>
 #include <functional>
@@ -157,5 +155,3 @@ public:
         MUTEX.lock();
     }
 };
-
-#endif

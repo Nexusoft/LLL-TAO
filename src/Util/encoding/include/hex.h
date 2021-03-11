@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_HEX_H
-#define NEXUS_UTIL_INCLUDE_HEX_H
 
 #include <string>
 #include <vector>
@@ -160,5 +158,3 @@ void PrintHex(const std::vector<uint8_t>& vch, bool fSpaces = true);
  * @return The newly created hex string
  **/
 std::string HexBits(uint32_t nBits);
-
-#endif

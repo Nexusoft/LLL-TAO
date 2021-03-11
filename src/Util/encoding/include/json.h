@@ -28,8 +28,6 @@ SOFTWARE.
 */
 
 #pragma once
-#ifndef NLOHMANN_JSON_H
-#define NLOHMANN_JSON_H
 
 #define NLOHMANN_JSON_VERSION_MAJOR 3
 #define NLOHMANN_JSON_VERSION_MINOR 4
@@ -20291,5 +20289,3 @@ inline json::json::json_pointer operator "" _json_pointer(const char* s, std::si
 #undef JSON_HAS_CPP_17
 #undef NLOHMANN_BASIC_JSON_TPL_DECLARATION
 #undef NLOHMANN_BASIC_JSON_TPL
-
-#endif

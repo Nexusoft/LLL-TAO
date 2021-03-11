@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_DEBUG_H
-#define NEXUS_UTIL_INCLUDE_DEBUG_H
 
 #include <string>
 #include <cstdint>
@@ -421,4 +419,3 @@ namespace debug
      **/
     std::string log_path(uint32_t nIndex);
 }
-#endif

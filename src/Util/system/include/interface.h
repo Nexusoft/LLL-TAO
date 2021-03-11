@@ -1,5 +1,4 @@
-#ifndef OPENCV_CORE_HAL_INTERFACE_H
-#define OPENCV_CORE_HAL_INTERFACE_H
+#pragma once
 
 //! @addtogroup core_hal_interface
 //! @{
@@ -186,5 +185,3 @@ typedef signed char schar;
 //! @}
 
 //! @}
-
-#endif

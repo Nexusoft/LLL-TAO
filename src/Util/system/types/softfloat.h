@@ -40,8 +40,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 =============================================================================*/
 
 #pragma once
-#ifndef softfloat_h
-#define softfloat_h 1
 
 #include <Util/system/include/cvdef.h>
 
@@ -510,5 +508,3 @@ CV_EXPORTS softdouble cos( const softdouble& a );
 //! @} core_utils_softfloat
 
 } // cv::
-
-#endif

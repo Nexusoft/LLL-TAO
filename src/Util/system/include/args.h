@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_ARGS_H
-#define NEXUS_UTIL_INCLUDE_ARGS_H
 
 #include <atomic>
 #include <map>
@@ -140,4 +138,3 @@ namespace config
     void CacheArgs();
 
 }
-#endif

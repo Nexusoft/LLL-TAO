@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_DAEMON_H
-#define NEXUS_UTIL_INCLUDE_DAEMON_H
 
 #if !defined(WIN32) && !defined(QT_GUI) && !defined(NO_DAEMON)
 #include <sys/types.h>
@@ -73,5 +71,3 @@ void Daemonize()
     }
 #endif
 }
-
-#endif

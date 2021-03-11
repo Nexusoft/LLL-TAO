@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_FILESYSTEM_H
-#define NEXUS_UTIL_INCLUDE_FILESYSTEM_H
 
 #include <string>
 
@@ -233,4 +231,3 @@ namespace filesystem
     void CreatePidFile(const std::string& strPath, pid_t pid);
 
 }
-#endif

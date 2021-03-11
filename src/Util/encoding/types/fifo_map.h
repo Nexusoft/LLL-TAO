@@ -23,8 +23,6 @@ SOFTWARE.
 */
 
 #pragma once
-#ifndef NLOHMANN_FIFO_MAP_HPP
-#define NLOHMANN_FIFO_MAP_HPP
 
 #include <algorithm>
 #include <cstdlib>
@@ -543,5 +541,3 @@ inline void swap(nlohmann::fifo_map<Key, T, Compare, Allocator>& m1,
     m1.swap(m2);
 }
 }
-
-#endif

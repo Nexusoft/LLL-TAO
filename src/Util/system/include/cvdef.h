@@ -42,8 +42,7 @@
 //
 //M*/
 
-#ifndef OPENCV_CORE_CVDEF_H
-#define OPENCV_CORE_CVDEF_H
+#pragma once
 
 //! @addtogroup core_utils
 //! @{
@@ -875,5 +874,3 @@ protected:
 #ifndef __cplusplus
 #include "opencv2/core/fast_math.hpp" // define cvRound(double)
 #endif
-
-#endif // OPENCV_CORE_CVDEF_H

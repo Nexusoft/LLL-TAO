@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_VERSION_H
-#define NEXUS_UTIL_INCLUDE_VERSION_H
 
 #include <string>
 #include <cstdint>
@@ -54,5 +52,3 @@ namespace version
 
 
 }
-
-#endif

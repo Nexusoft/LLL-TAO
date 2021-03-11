@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_RUNTIME_H
-#define NEXUS_UTIL_INCLUDE_RUNTIME_H
 
 #include <cstdint>
 #include <thread>
@@ -360,5 +358,3 @@ namespace runtime
         return 0;
     }
 }
-
-#endif
