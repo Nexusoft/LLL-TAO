@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <LLP/include/inv.h>
 #include <LLP/include/port.h>
 
-#include <Util/encoding/include/json.h>
+#include <Util/encoding/types/json.h>
 #include <system/include/signals.h>
 
 /* Global TAO namespace. */

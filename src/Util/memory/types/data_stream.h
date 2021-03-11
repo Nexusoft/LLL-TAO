@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_UTIL_TEMPLATES_DATASTREAM_H
 #define NEXUS_UTIL_TEMPLATES_DATASTREAM_H
 
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 
 #include <cstdint>
 #include <vector>

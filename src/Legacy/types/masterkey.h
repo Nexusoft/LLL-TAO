@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_MASTERKEY_H
 #define NEXUS_LEGACY_TYPES_MASTERKEY_H
 
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 
 #include <vector>
 

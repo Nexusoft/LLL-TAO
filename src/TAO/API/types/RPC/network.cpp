@@ -33,7 +33,7 @@ ________________________________________________________________________________
 
 #include <Util/system/include/args.h>
 #include <Util/encoding/include/hex.h>
-#include <Util/encoding/include/json.h>
+#include <Util/encoding/types/json.h>
 #include <Util/system/types/softfloat.h>
 
 #include <TAO/Ledger/types/state.h>

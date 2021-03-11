@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLC/types/bignum.h>
 #include <LLC/hash/SK.h>
 
-#include <Util/encoding/include/base58.h>
+#include <Util/encoding/types/base58.h>
 #include <Util/encoding/include/encoding.h>
 #include <memory/include/memory.h>
 

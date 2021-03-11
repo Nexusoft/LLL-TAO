@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <Legacy/types/outpoint.h>
 #include <Legacy/types/script.h>
 
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 
 #include <climits>
 #include <cstdint>

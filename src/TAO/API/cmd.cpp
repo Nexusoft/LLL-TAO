@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <Util/encoding/include/base64.h>
 #include <Util/system/include/config.h>
 #include <Util/system/include/debug.h>
-#include <Util/encoding/include/json.h>
+#include <Util/encoding/types/json.h>
 #include <system/include/runtime.h>
 
 

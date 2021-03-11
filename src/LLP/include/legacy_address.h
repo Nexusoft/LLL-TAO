@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_LEGACY_ADDRESS_H
 
 #include <LLP/include/base_address.h>
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 #include <cstdint>
 
 namespace LLP

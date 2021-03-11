@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <string>
 #include <iosfwd>
 #include <Util/system/include/debug.h>
-#include <Util/encoding/include/json.h>
+#include <Util/encoding/types/json.h>
 
 
 #ifdef _WIN32

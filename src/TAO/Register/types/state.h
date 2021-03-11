@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <TAO/Register/types/address.h>
 #include <Util/encoding/include/hex.h>
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 #include <system/include/runtime.h>
 
 /* Global TAO namespace. */

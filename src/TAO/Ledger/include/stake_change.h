@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_TAO_LEDGER_INCLUDE_STAKE_CHANGE_H
 
 #include <LLC/types/uint1024.h>
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 #include <vector>
 
 /* Global TAO namespace. */

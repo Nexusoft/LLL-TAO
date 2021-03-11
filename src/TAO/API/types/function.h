@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_TAO_API_TYPES_FUNCTION_H
 #define NEXUS_TAO_API_TYPES_FUNCTION_H
 
-#include <Util/encoding/include/json.h>
+#include <Util/encoding/types/json.h>
 #include <functional>
 #include <memory>
 

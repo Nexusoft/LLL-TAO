@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <Legacy/types/address.h>
 #include <Legacy/include/enum.h>
 
-#include <Util/encoding/include/base58.h>
+#include <Util/encoding/types/base58.h>
 
 #include <string>
 #include <vector>

@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 
 #include <memory/types/data_stream.h>
-#include <Util/encoding/include/base58.h>
+#include <Util/encoding/types/base58.h>
 
 #include <string>
 #include <vector>

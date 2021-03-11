@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/state.h>
 
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 
 
 namespace TAO

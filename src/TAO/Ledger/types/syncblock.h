@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/transaction.h>
 
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 
 /* Global TAO namespace. */
 namespace TAO

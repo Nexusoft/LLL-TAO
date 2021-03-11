@@ -20,7 +20,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/version.h>
 
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 #include <memory/types/base_stream.h>
 
 /* Global TAO namespace. */

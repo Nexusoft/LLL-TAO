@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLC/types/bignum.h>
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 #include <openssl/bn.h>
 #include <algorithm>
 

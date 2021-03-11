@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LEGACY_TYPES_OUTPOINT_H
 
 #include <LLC/types/uint1024.h>
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 #include <encoding/types/flat_data.h>
 
 namespace Legacy

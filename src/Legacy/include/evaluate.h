@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/basickeystore.h>
 #include <Legacy/types/script.h>
 
-#include <Util/encoding/include/base58.h>
+#include <Util/encoding/types/base58.h>
 
 #include <string>
 #include <vector>

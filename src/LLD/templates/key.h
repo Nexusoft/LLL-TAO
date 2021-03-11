@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_TEMPLATES_KEY_H
 #define NEXUS_LLD_TEMPLATES_KEY_H
 
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 
 #include <cstdint>
 #include <vector>

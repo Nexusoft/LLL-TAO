@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/block.h>
 #include <Legacy/types/transaction.h>
 
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 
 
 /* Global Legacy namespace. */

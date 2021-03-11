@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <Util/encoding/include/json.h>
+#include <Util/encoding/types/json.h>
 #include <Util/system/include/debug.h>
 
 /* Global TAO namespace. */

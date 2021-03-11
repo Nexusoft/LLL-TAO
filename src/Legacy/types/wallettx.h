@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 
 #include <Util/system/include/debug.h>
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 
 #include <list>
 #include <map>

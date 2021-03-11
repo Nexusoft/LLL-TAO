@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_BASEADDRESS_H
 
 #include <LLP/include/network.h>
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 #include <encoding/types/flat_data.h>
 
 #include <string>

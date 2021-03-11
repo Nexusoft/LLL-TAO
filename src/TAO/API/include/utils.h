@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 #pragma once
 
-#include <Util/encoding/include/json.h>
+#include <Util/encoding/types/json.h>
 
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/types/address.h>

@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <LLP/types/httpnode.h>
 #include <LLP/templates/ddos.h>
 #include <TAO/API/types/base.h>
-#include <Util/encoding/include/json.h>
+#include <Util/encoding/types/json.h>
 
 namespace LLP
 {

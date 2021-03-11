@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/rpc.h>
 
-#include <Util/encoding/include/json.h>
+#include <Util/encoding/types/json.h>
 #include <Util/encoding/include/convert.h>
 
 /* Global TAO namespace. */

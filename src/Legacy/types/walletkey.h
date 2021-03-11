@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/include/eckey.h>
 
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 
 namespace Legacy
 {

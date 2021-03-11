@@ -42,7 +42,7 @@ ________________________________________________________________________________
 #include <Util/encoding/include/convert.h>
 #include <Util/system/include/debug.h>
 #include <Util/encoding/include/hex.h>
-#include <Util/encoding/include/json.h>
+#include <Util/encoding/types/json.h>
 #include <Util/encoding/include/base64.h>
 
 

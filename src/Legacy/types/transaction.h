@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/include/enum.h>
 
-#include <Util/templates/serialize.h>
+#include <encoding/include/serialize.h>
 #include <memory/types/data_stream.h>
 
 namespace Legacy
