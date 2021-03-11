@@ -209,9 +209,9 @@ namespace LLP
          *  @param[in] strPort		Port of outgoing connection
          *  @param[in] fSSL         Flag indicating SSL should be used for this connection
          *  @param[in] fLookup		Flag indicating whether address lookup should occur
-         *  @param[in] args variadic args to forward to the data thread constructor
+         *  @param[in] args         Variadic args to forward to the data thread constructor
          *
-         *  @return	Returns 1 If successful, 0 if unsuccessful, -1 on errors.
+         *  @return	Returns true on successful, false otherwise
          *
          **/
         template<typename... Args>
