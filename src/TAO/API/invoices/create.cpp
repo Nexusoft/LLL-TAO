@@ -96,9 +96,9 @@ namespace TAO
             /* Parse the account object register. */
             if(!account.Parse())
                 throw APIException(-14, "Object failed to parse");
-                
+
             /* Get the object standard. */
-            uint8_t nStandard = object.Standard();
+            uint8_t nStandard = account.Standard();
 
             /* Check the object standard. */
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
