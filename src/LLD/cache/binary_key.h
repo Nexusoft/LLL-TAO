@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/version.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 
 //TODO: Abstract base class for all cache systems

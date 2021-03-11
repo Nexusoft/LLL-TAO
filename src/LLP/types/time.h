@@ -16,7 +16,8 @@ ________________________________________________________________________________
 
 #include <LLP/templates/connection.h>
 
-#include <Util/templates/containers.h>
+#include <container/types/majority.h>
+#include <atomic/include/typedef.h>
 
 namespace LLP
 {
@@ -46,11 +47,11 @@ namespace LLP
 
 
         /** Store the samples in a majority object. */
-        CMajority<int32_t> nSamples;
+        util::container::majority<int32_t> nSamples;
 
 
         /** Keep track of our sent requests for time data. This gives us protection against unsolicted TIME_DATA messages. **/
-        std::atomic<int32_t> nRequests;
+        util::atomic::int32_t nRequests;
 
     public:
 

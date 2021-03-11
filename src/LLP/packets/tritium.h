@@ -23,7 +23,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/version.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 #include <Util/system/include/debug.h>
 
 namespace LLP

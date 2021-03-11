@@ -23,7 +23,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/enum.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 #include <Util/encoding/include/base58.h>
 
 #include <string>

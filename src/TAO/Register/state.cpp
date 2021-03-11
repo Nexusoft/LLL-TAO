@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/state.h>
 #include <TAO/Register/include/enum.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 /* Global TAO namespace. */
 namespace TAO

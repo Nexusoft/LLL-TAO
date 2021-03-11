@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 #include <LLC/types/bignum.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 #include <Util/encoding/include/hex.h>
 #include <Util/system/include/args.h>
 #include <Util/encoding/include/convert.h>

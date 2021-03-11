@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/types/txout.h>
 
 #include <Util/encoding/include/string.h>
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 
 namespace Legacy

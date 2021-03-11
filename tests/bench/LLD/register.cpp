@@ -6,7 +6,7 @@
 
 #include <LLD/include/global.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 #include <unit/catch2/catch.hpp>
 

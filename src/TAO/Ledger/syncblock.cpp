@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/syncblock.h>
 #include <TAO/Ledger/types/state.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 /* Global TAO namespace. */
 namespace TAO

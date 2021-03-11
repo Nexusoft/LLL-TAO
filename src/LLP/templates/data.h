@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <Util/system/types/mutex.h>
 #include <memory/include/memory.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 #include <atomic>
 #include <vector>

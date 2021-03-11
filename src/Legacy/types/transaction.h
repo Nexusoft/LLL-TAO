@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 
 #include <Util/templates/serialize.h>
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 namespace Legacy
 {

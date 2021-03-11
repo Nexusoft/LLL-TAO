@@ -40,7 +40,7 @@ ________________________________________________________________________________
 #include <Util/encoding/include/convert.h>
 #include <Util/system/include/debug.h>
 #include <system/include/runtime.h>
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 #include <map>
 #include <utility>

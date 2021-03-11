@@ -26,7 +26,7 @@ ________________________________________________________________________________
 
 #include <LLD/cache/template_lru.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 #include <system/include/runtime.h>
 #include <Util/system/include/debug.h>
 

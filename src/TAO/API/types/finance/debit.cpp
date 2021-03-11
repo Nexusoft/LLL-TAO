@@ -33,7 +33,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <Legacy/wallet/wallet.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 #include <Util/encoding/include/string.h>
 
 using namespace TAO::Operation;

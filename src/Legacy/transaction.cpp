@@ -39,7 +39,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 
 #include <system/include/runtime.h>
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 namespace Legacy
 {

@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 
 #include <Util/system/types/mutex.h>
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 #include <vector>
 #include <condition_variable>

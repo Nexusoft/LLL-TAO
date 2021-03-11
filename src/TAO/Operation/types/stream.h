@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <LLD/include/version.h>
 
 #include <Util/templates/serialize.h>
-#include <Util/templates/basestream.h>
+#include <memory/types/base_stream.h>
 
 /* Global TAO namespace. */
 namespace TAO

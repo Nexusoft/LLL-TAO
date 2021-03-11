@@ -28,7 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/sigchain.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 #include <Util/encoding/include/convert.h>
 #include <Util/encoding/include/base64.h>

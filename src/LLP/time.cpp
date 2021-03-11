@@ -256,7 +256,7 @@ namespace LLP
     int32_t TimeNode::GetOffset()
     {
         /* Majority Object to check for consensus on time samples. */
-        CMajority<int32_t> UNIFIED_MAJORITY;
+        util::container::majority<int32_t> UNIFIED_MAJORITY;
 
         {
             LOCK(TIME_MUTEX);

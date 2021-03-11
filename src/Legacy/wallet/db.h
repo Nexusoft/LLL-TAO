@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/version.h>
 
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 #include <db_cxx.h> /* Berkeley DB header */
 

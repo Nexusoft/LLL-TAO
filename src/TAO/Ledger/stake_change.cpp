@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLP/include/version.h>
 #include <system/include/runtime.h>
-#include <Util/templates/datastream.h>
+#include <memory/types/data_stream.h>
 
 /* Global TAO namespace. */
 namespace TAO
