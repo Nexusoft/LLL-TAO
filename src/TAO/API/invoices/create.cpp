@@ -96,9 +96,12 @@ namespace TAO
             /* Parse the account object register. */
             if(!account.Parse())
                 throw APIException(-14, "Object failed to parse");
+                
+            /* Get the object standard. */
+            uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
-            if(account.Standard() != TAO::Register::OBJECTS::ACCOUNT )
+            if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-65, "Object is not an account");
 
             /* The token that this invoice should be transacted in */
