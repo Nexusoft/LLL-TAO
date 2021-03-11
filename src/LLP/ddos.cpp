@@ -32,6 +32,12 @@ namespace LLP
         nIterator = 0;
     }
 
+    /** Default Destructor. **/
+    DDOS_Score::~DDOS_Score()
+    {
+        SCORE.clear();
+    }
+
 
     /*  Reset the Timer and the Score Flags to be Overwritten. */
     void DDOS_Score::reset()
@@ -120,10 +126,10 @@ namespace LLP
 
     /* Default Constructor */
     DDOS_Filter::DDOS_Filter(const uint32_t nTimespan)
-    : nTotalBans     (0)
-    , nBanTimestamp  (0)
-    , rSCORE (nTimespan)
-    , cSCORE (nTimespan)
+    : nTotalBans    (0)
+    , nBanTimestamp (0)
+    , rSCORE        (nTimespan)
+    , cSCORE        (nTimespan)
     {
     }
 

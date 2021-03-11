@@ -323,7 +323,6 @@ namespace LLP
                     }
                 }
 
-
                 /* Handle subscribing to events from other nodes. */
                 if(!fInitialized.load() && fSynchronized.load() && nCurrentSession != 0)
                 {
@@ -1183,7 +1182,7 @@ namespace LLP
                         default:
                         {
                             /* Give score for bad types. */
-                            if(fDDOS)
+                            if(fDDOS.load())
                                 DDOS->rSCORE += 50;
                         }
                     }
@@ -1550,7 +1549,7 @@ namespace LLP
                             if(nTotal > 10000)
                             {
                                 /* Give penalties for size violation. */
-                                if(fDDOS)
+                                if(fDDOS.load())
                                     DDOS->rSCORE += 20;
 
                                 /* Set value to max range. */
@@ -2135,7 +2134,7 @@ namespace LLP
                                     break;
 
                                 /* Handle DDOS. */
-                                if(fDDOS && DDOS)
+                                if(fDDOS.load() && DDOS)
                                     DDOS->rSCORE += 1;
 
                                 /* Set the next last. */
@@ -2680,7 +2679,7 @@ namespace LLP
                 PushMessage(ACTION::PONG, nNonce);
 
                 /* Bump DDOS score. */
-                if(fDDOS) //a ping shouldn't be sent too much
+                if(fDDOS.load()) //a ping shouldn't be sent too much
                     DDOS->rSCORE += 10;
 
                 break;
@@ -2698,7 +2697,7 @@ namespace LLP
                 if(!mapLatencyTracker.count(nNonce))
                 {
                     /* Bump DDOS score for spammed PONG messages. */
-                    if(fDDOS)
+                    if(fDDOS.load())
                         DDOS->rSCORE += 10;
 
                     return true;
@@ -2852,7 +2851,7 @@ namespace LLP
                             }
 
                             /* Check for repeated missing loops. */
-                            if(fDDOS)
+                            if(fDDOS.load())
                             {
                                 /* Iterate a failure for missing transactions. */
                                 nConsecutiveFails += block.vMissing.size();
@@ -3575,7 +3574,7 @@ namespace LLP
         }
 
         /* Check for authorization. */
-        if(fDDOS && !Authorized())
+        if(fDDOS.load() && !Authorized())
             DDOS->rSCORE += 5; //untrusted nodes get less requests
 
         /* Check for a version message. */

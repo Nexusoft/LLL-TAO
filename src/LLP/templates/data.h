@@ -66,7 +66,7 @@ namespace LLP
     public:
 
         /* Variables to track Connection / Request Count. */
-        bool fDDOS;
+        std::atomic<bool> fDDOS;
         bool fMETER;
 
         /* Destructor flag. */
@@ -149,7 +149,7 @@ namespace LLP
                 pnode->Event(EVENTS::CONNECT);
 
                 /* Iterate the DDOS cScore (Connection score). */
-                if(fDDOS)
+                if(fDDOS.load())
                     DDOS -> cSCORE += 1;
 
                 /* Check for inbound socket. */

@@ -57,30 +57,31 @@ namespace LLP
     /** Constructor **/
     template <class ProtocolType>
     Server<ProtocolType>::Server(const ServerConfig& config)
-    : PORT            (config.nPort)
-    , SSL_PORT        (config.nSSLPort)
-    , hListenSocket   (-1, -1)
-    , hSSLListenSocket(-1, -1)
-    , fSSL            (config.fSSL)
-    , fSSLRequired    (config.fSSLRequired)
-    , DDOS_MAP        ( )
-    , fDDOS           (config.fDDOS)
-    , DDOS_TIMESPAN   (config.nDDOSTimespan)
-    , MAX_THREADS     (config.nMaxThreads)
-    , DATA_THREADS    ( )
-    , MANAGER         ( )
-    , LISTEN_THREAD   ( )
-    , SSL_LISTEN_THREAD   ( )
-    , METER_THREAD    ( )
-    , UPNP_THREAD     ( )
-    , SSL_UPNP_THREAD ( )
-    , MANAGER_THREAD  ( )
-    , pAddressManager (nullptr)
-    , nSleepTime      (config.nManagerInterval)
-    , nMaxIncoming    (config.nMaxIncoming)
-    , nMaxConnections (config.nMaxConnections)
-    , fRemote         (config.fRemote)
+    : PORT              (config.nPort)
+    , SSL_PORT          (config.nSSLPort)
+    , hListenSocket     (-1, -1)
+    , hSSLListenSocket  (-1, -1)
+    , fSSL              (config.fSSL)
+    , fSSLRequired      (config.fSSLRequired)
+    , DDOS_MAP          ( )
+    , fDDOS             (config.fDDOS)
+    , DDOS_TIMESPAN     (config.nDDOSTimespan)
+    , MAX_THREADS       (config.nMaxThreads)
+    , DATA_THREADS      ( )
+    , MANAGER           ( )
+    , LISTEN_THREAD     ( )
+    , SSL_LISTEN_THREAD ( )
+    , METER_THREAD      ( )
+    , UPNP_THREAD       ( )
+    , SSL_UPNP_THREAD   ( )
+    , MANAGER_THREAD    ( )
+    , pAddressManager   (nullptr)
+    , nSleepTime        (config.nManagerInterval)
+    , nMaxIncoming      (config.nMaxIncoming)
+    , nMaxConnections   (config.nMaxConnections)
+    , fRemote           (config.fRemote)
     {
+        /* Add the individual data threads to the vector that will be holding their state. */
         for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
         {
             DATA_THREADS.push_back(new DataThread<ProtocolType>(
@@ -166,9 +167,9 @@ namespace LLP
         }
 
         /* Delete the DDOS entries. */
-        auto it = DDOS_MAP->begin();
-        for(; it != DDOS_MAP->end(); ++it)
+        for(auto it = DDOS_MAP->begin(); it != DDOS_MAP->end(); ++it)
         {
+            /* Delete each DDOS entry if they are not set to nullptr. */
             if(it->second)
                 delete it->second;
         }
@@ -227,9 +228,8 @@ namespace LLP
     template <class ProtocolType>
     std::vector<std::shared_ptr<ProtocolType>> Server<ProtocolType>::GetConnections() const
     {
-        std::vector<std::shared_ptr<ProtocolType>> vConnections;
-
         /* Iterate through threads */
+        std::vector<std::shared_ptr<ProtocolType>> vConnections;
         for(uint16_t nThread = 0; nThread < DATA_THREADS.size(); ++nThread)
         {
             /* Loop through connections in data thread. */
@@ -256,6 +256,7 @@ namespace LLP
     template <class ProtocolType>
     uint32_t Server<ProtocolType>::GetConnectionCount(const uint8_t nFlags)
     {
+        /* Tally the total connections by aggregating the values for each data thread. */
         uint32_t nConnections = 0;
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
             nConnections += DATA_THREADS[nThread]->GetConnectionCount(nFlags);
@@ -268,11 +269,12 @@ namespace LLP
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection()
     {
-        /* List of connections to return. */
-        uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
-
+        /* Grab out initial indexes. */
         int16_t nRetThread = -1;
         int16_t nRetIndex  = -1;
+
+        /* List of connections to return. */
+        uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
             /* Loop through connections in data thread. */
@@ -626,7 +628,7 @@ namespace LLP
 
 
                     /* Create new DDOS Filter if Needed. */
-                    if(fDDOS && !DDOS_MAP->count(addr))
+                    if(fDDOS.load() && !DDOS_MAP->count(addr))
                         DDOS_MAP->insert(std::make_pair(addr, new DDOS_Filter(DDOS_TIMESPAN)));
 
                     /* Establish a new socket with SSL on or off according to server. */

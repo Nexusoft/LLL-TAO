@@ -85,6 +85,10 @@ namespace LLP
         DDOS_Score(int nTimespan);
 
 
+        /** Default Destructor. **/
+        ~DDOS_Score();
+
+
         /** Flush
          *
          * Flush the DDOS Score to 0.

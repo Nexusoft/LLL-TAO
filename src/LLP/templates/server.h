@@ -232,11 +232,11 @@ namespace LLP
 
 
             /* Create new DDOS Filter if Needed. */
-            DDOS_Filter* DDOS = new DDOS_Filter(DDOS_TIMESPAN);
-            if(fDDOS)
+            if(fDDOS.load())
             {
+                /* Add new filter to map if it doesn't exist. */
                 if(!DDOS_MAP->count(addrConnect))
-                    DDOS_MAP->insert(std::make_pair(addrConnect, DDOS));
+                    DDOS_MAP->emplace(std::make_pair(addrConnect, new DDOS_Filter(DDOS_TIMESPAN)));
 
                 /* DDOS Operations: Only executed when DDOS is enabled. */
                 if(DDOS_MAP->at(addrConnect)->Banned())
@@ -252,7 +252,7 @@ namespace LLP
             DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
 
             /* Attempt the connection. */
-            if(!dt->NewConnection(addrConnect, DDOS, fSSL, std::forward<Args>(args)...))
+            if(!dt->NewConnection(addrConnect, fDDOS.load() ? DDOS_MAP->at(addrConnect) : nullptr, fSSL, std::forward<Args>(args)...))
             {
                 /* Add the address to the address manager if it exists. */
                 if(pAddressManager)
@@ -276,7 +276,6 @@ namespace LLP
                     }
 
                 }
-
 
                 return false;
             }

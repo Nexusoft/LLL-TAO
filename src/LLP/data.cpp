@@ -246,7 +246,7 @@ namespace LLP
                     }
 
                     /* Handle any DDOS Filters. */
-                    if(fDDOS && CONNECTION->DDOS)
+                    if(fDDOS.load() && CONNECTION->DDOS)
                     {
                         /* Ban a node if it has too many Requests per Second. **/
                         if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE
@@ -284,7 +284,7 @@ namespace LLP
                             ++ProtocolType::REQUESTS;
 
                         /* Increment rScore. */
-                        if(fDDOS && CONNECTION->DDOS)
+                        if(fDDOS.load() && CONNECTION->DDOS)
                             CONNECTION->DDOS->rSCORE += 1;
 
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
