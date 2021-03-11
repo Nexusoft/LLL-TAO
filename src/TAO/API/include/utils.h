@@ -82,7 +82,7 @@ namespace TAO
 
         /** ListAccounts
          *
-         *  Scans a signature chain to work out all assets that it owns
+         *  Scans a signature chain to find the register addresses of all accounts that it owns
          *
          *  @param[in] hashGenesis The genesis hash of the signature chain to scan
          *  @param[in] fTokens If set then this will include tokens in the list
@@ -92,8 +92,24 @@ namespace TAO
          *  @return A vector of register addresses owned by the sig chain
          *
          **/
-        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, 
-                          bool fTokens, bool fTrust);
+        bool ListAccounts(const uint256_t& hashGenesis, bool fTokens, bool fTrust, std::vector<TAO::Register::Address>& vAccounts);
+
+
+        /** ListAccounts
+         *
+         *  Scans a signature chain to find all of the account registers that it owns
+         *
+         *  @param[in] hashGenesis The genesis hash of the signature chain to scan
+         *  @param[in] fTokens If set then this will include tokens in the list
+         *  @param[in] fTrust If set then this will include trust accounts in the list
+         *  @param[out] vAccounts The list of account register addresses and objects owned by the sigchain.
+         *
+         *  @return A vector of register addresses owned by the sig chain
+         *
+         **/
+        bool ListAccounts(const uint256_t& hashGenesis, 
+                          bool fTokens, bool fTrust, 
+                          std::vector<std::pair<TAO::Register::Address, TAO::Register::Object>>& vAccounts);
 
 
         /** AddFee

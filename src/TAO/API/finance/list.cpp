@@ -91,32 +91,16 @@ namespace TAO
             }
 
             /* Get the list of registers owned by this sig chain */
-            std::vector<TAO::Register::Address> vAccounts;
-            if(!ListAccounts(user->Genesis(), vAccounts, false, true))
+            std::vector<std::pair<TAO::Register::Address, TAO::Register::Object>> vAccounts;
+            if(!ListAccounts(user->Genesis(), false, true, vAccounts))
                 throw APIException(-74, "No registers found");
-
-            /* Read all the registers to that they are sorted by creation time */
-            std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vRegisters;
-            GetRegisters(vAccounts, vRegisters);
 
             /* Add the register data to the response */
             uint32_t nTotal = 0;
-            for(const auto& state : vRegisters)
+            for(const auto& account : vAccounts)
             {
-                /* Double check that it is an object before we cast it */
-                if(state.second.nType != TAO::Register::REGISTER::OBJECT)
-                    continue;
-
-                /* Cast the state to an Object register */
-                TAO::Register::Object object(state.second);
-
-                /* Check that this is a non-standard object type so that we can parse it and check the type*/
-                if(object.nType != TAO::Register::REGISTER::OBJECT)
-                    continue;
-
-                /* parse object so that the data fields can be accessed */
-                if(!object.Parse())
-                    throw APIException(-36, "Failed to parse object register");
+                /* Get the object register from the list */
+                TAO::Register::Object object = account.second;
 
                 /* Check that this is an account */
                 uint8_t nStandard = object.Standard();
@@ -127,7 +111,7 @@ namespace TAO
                 if(object.get<uint256_t>("token") != hashToken)
                     continue;
 
-                json::json obj = TAO::API::ObjectToJSON(params, object, state.first);
+                json::json obj = TAO::API::ObjectToJSON(params, object, account.first);
 
                 /* Check to see whether the transaction has had all children filtered out */
                 if(obj.empty())

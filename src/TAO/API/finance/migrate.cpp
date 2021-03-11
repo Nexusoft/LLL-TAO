@@ -171,7 +171,7 @@ namespace TAO
                 if(!hashAccount.IsValid())
                 {
                     std::vector<TAO::Register::Address> vAccounts;
-                    if(ListAccounts(session.GetAccount()->Genesis(), vAccounts, false, false))
+                    if(ListAccounts(session.GetAccount()->Genesis(), false, false, vAccounts ))
                     {
                         for(const auto& hashRegister : vAccounts)
                         {

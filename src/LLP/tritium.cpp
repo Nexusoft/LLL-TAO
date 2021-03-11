@@ -762,7 +762,7 @@ namespace LLP
 
                     /* Get the list of accounts and tokens owned by this sig chain */
                     std::vector<TAO::Register::Address> vAddresses;
-                    TAO::API::ListAccounts(hashGenesis, vAddresses, true, false);
+                    TAO::API::ListAccounts(hashGenesis, true, false, vAddresses);
 
                     /* Now iterate through and find all tokens and token accounts */
                     for(const auto& hashAddress : vAddresses)

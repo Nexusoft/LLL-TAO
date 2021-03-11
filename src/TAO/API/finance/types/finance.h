@@ -117,6 +117,20 @@ namespace TAO
             json::json Debit(const json::json& params, bool fHelp);
 
 
+            /** DebitAny
+             *
+             *  Debit tokens from any account for the given token type.  If multiple accounts exist, the selection algorithm will 
+             *  attempt to fill up the transaction with as many DEBIT contracts as possible.     
+             * 
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json DebitAny(const json::json& params, bool fHelp);
+
+
             /** Get
              *
              *  Get an account or token object register

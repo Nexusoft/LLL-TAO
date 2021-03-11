@@ -373,7 +373,7 @@ namespace TAO
 
 
         /* Scans a signature chain to work out all accounts that it owns */
-        bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, bool fTokens, bool fTrust)
+        bool ListAccounts(const uint256_t& hashGenesis, bool fTokens, bool fTrust, std::vector<TAO::Register::Address> &vAccounts)
         {
             /* Get all registers owned by the sig chain */
             std::vector<TAO::Register::Address> vRegisters;
@@ -388,6 +388,49 @@ namespace TAO
             }
 
             return true;
+        }
+
+
+        /* Scans a signature chain to find all of the account registers that it owns */
+        bool ListAccounts(const uint256_t& hashGenesis, bool fTokens, bool fTrust, std::vector<std::pair<TAO::Register::Address, TAO::Register::Object>> &vAccounts)
+        {
+            /* Get all account addresses owned by the sig chain */
+            std::vector<TAO::Register::Address> vAddresses;
+            ListAccounts(hashGenesis, fTokens, fTrust, vAddresses);
+
+            /* Iterate addresses and get the objects */
+            for(const auto& address : vAddresses)
+            {
+                /* Get the account from the register DB. */
+                TAO::Register::Object account;
+                if(!LLD::Register->ReadState(address, account, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-13, "Account not found");
+
+                /* Check that this is a non-standard object type so that we can parse it and check the type*/
+                if(account.nType != TAO::Register::REGISTER::OBJECT)
+                    continue;
+
+                /* parse object so that the data fields can be accessed */
+                if(!account.Parse())
+                    throw APIException(-36, "Failed to parse object register");
+
+                /* Double check that this is an account or token */
+                if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                    continue;
+            
+                /* Add the account object */
+                vAccounts.push_back(std::make_pair(address, account));
+            }
+
+            /* Now sort the accounts based on the creation time */
+            std::sort(vAccounts.begin(), vAccounts.end(),
+                [](const std::pair<TAO::Register::Address, TAO::Register::State> &a,
+                const std::pair<TAO::Register::Address, TAO::Register::State> &b)
+                {
+                    return ( a.second.nCreated < b.second.nCreated );
+                });
+
+            return vAccounts.size() > 0;
         }
 
 
@@ -1072,34 +1115,16 @@ namespace TAO
         double GetTokenOwnership(const TAO::Register::Address& hashToken, const uint256_t& hashGenesis)
         {
             /* Find all token accounts owned by the caller for the token */
-            std::vector<TAO::Register::Address> vAccounts;
-            ListAccounts(hashGenesis, vAccounts, true, false);
+            std::vector<std::pair<TAO::Register::Address, TAO::Register::Object>> vAccounts;
+            ListAccounts(hashGenesis, true, false, vAccounts);
 
             /* The balance of tokens owned for this asset */
             uint64_t nBalance = 0;
 
-            for(const auto& hashAccount : vAccounts)
+            for(const auto& account : vAccounts)
             {
-                /* Make sure it is an account or the token itself (in case not all supply has been distributed)*/
-                if(!hashAccount.IsAccount() && !hashAccount.IsToken())
-                    continue;
-
-                /* Get the account from the register DB. */
-                TAO::Register::Object object;
-                if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-13, "Account not found");
-
-                /* Check that this is a non-standard object type so that we can parse it and check the type*/
-                if(object.nType != TAO::Register::REGISTER::OBJECT)
-                    continue;
-
-                /* parse object so that the data fields can be accessed */
-                if(!object.Parse())
-                    throw APIException(-36, "Failed to parse object register");
-
-                /* Check that this is an account or token */
-                if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                    continue;
+                /* Get the object register from the list */
+                TAO::Register::Object object = account.second;
 
                 /* Check the token*/
                 if(object.get<uint256_t>("token") != hashToken)
@@ -1139,31 +1164,13 @@ namespace TAO
         bool ListPartial(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters)
         {
             /* Find all token accounts owned by the caller */
-            std::vector<TAO::Register::Address> vAccounts;
-            ListAccounts(hashGenesis, vAccounts, true, false);
+            std::vector<std::pair<TAO::Register::Address, TAO::Register::Object>> vAccounts;
+            ListAccounts(hashGenesis, true, false, vAccounts);
 
-            for(const auto& hashAccount : vAccounts)
+            for(const auto& account : vAccounts)
             {
-                /* Make sure it is an account or the token itself (in case not all supply has been distributed)*/
-                if(!hashAccount.IsAccount() && !hashAccount.IsToken())
-                    continue;
-
-                /* Get the account from the register DB. */
-                TAO::Register::Object object;
-                if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-13, "Account not found");
-
-                /* Check that this is a non-standard object type so that we can parse it and check the type*/
-                if(object.nType != TAO::Register::REGISTER::OBJECT)
-                    continue;
-
-                /* parse object so that the data fields can be accessed */
-                if(!object.Parse())
-                    throw APIException(-36, "Failed to parse object register");
-
-                /* Check that this is an account or token */
-                if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                    continue;
+                /* Get the object register from the list */
+                TAO::Register::Object object = account.second;
 
                 /* Get the token*/
                 TAO::Register::Address hashToken = object.get<uint256_t>("token") ;
@@ -1617,31 +1624,15 @@ namespace TAO
                for now until they do have one */
             
             /* Get the list of registers owned by this sig chain */
-            std::vector<TAO::Register::Address> vAccounts;
-            if(!ListAccounts(hashGenesis, vAccounts, false, false))
+            std::vector<std::pair<TAO::Register::Address, TAO::Register::Object>> vAccounts;
+            if(!ListAccounts(hashGenesis, false, false, vAccounts))
                 throw APIException(-74, "No registers found");
 
-            /* Read all the registers to that they are sorted by creation time */
-            std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vRegisters;
-            GetRegisters(vAccounts, vRegisters);
-
             /* Iterate all registers to find the first for the token being credited */
-            for(const auto& state : vRegisters)
+            for(const auto& account : vAccounts)
             {
-                /* Double check that it is an object before we cast it */
-                if(state.second.nType != TAO::Register::REGISTER::OBJECT)
-                    continue;
-
-                /* Cast the state to an Object register */
-                TAO::Register::Object object(state.second);
-
-                /* Check that this is a non-standard object type so that we can parse it and check the type*/
-                if(object.nType != TAO::Register::REGISTER::OBJECT)
-                    continue;
-
-                /* parse object so that the data fields can be accessed */
-                if(!object.Parse())
-                    throw APIException(-36, "Failed to parse object register");
+                /* Get the object register from the list */
+                TAO::Register::Object object = account.second;
 
                 /* Check that this is an account */
                 uint8_t nStandard = object.Standard();
@@ -1654,7 +1645,7 @@ namespace TAO
                 else
                 {
                     /* Stop on the first one we find */
-                    hashAccount = state.first;
+                    hashAccount = account.first;
                     fFound = true;
                     break;
                 }

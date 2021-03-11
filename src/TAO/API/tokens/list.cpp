@@ -70,36 +70,20 @@ namespace TAO
             bool fHasFilter = vWhere.count("") > 0;
 
             /* Get the list of registers owned by this sig chain */
-            std::vector<TAO::Register::Address> vAddresses;
-            if(!TAO::API::ListAccounts(user->Genesis(), vAddresses, false, false))
+            std::vector<std::pair<TAO::Register::Address, TAO::Register::Object>> vAccounts;
+            if(!TAO::API::ListAccounts(user->Genesis(), false, false, vAccounts))
                 throw APIException(-74, "No registers found");
-
-            /* Read all the registers to that they are sorted by creation time */
-            std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vAccounts;
-            GetRegisters(vAddresses, vAccounts);
 
             /* Add the register data to the response */
             uint32_t nTotal = 0;
-            for(const auto& state : vAccounts)
+            for(const auto& account : vAccounts)
             {
-                /* Double check that it is an object before we cast it */
-                if(state.second.nType != TAO::Register::REGISTER::OBJECT)
-                    continue;
+                /* Get the object register from the list */
+                TAO::Register::Object object = account.second;
 
-                /* Cast the state to an Object register */
-                TAO::Register::Object object(state.second);
-
-                /* Check that this is a non-standard object type so that we can parse it and check the type*/
-                if(object.nType != TAO::Register::REGISTER::OBJECT)
-                    continue;
-
-                /* parse object so that the data fields can be accessed */
-                if(!object.Parse())
-                    throw APIException(-36, "Failed to parse object register");
-
+                
                 /* Check that this is an account */
-                uint8_t nStandard = object.Standard();
-                if(nStandard != TAO::Register::OBJECTS::ACCOUNT )
+                if(object.Standard() != TAO::Register::OBJECTS::ACCOUNT )
                     continue;
 
                 /* Check the account is not a NXS account */
@@ -107,7 +91,7 @@ namespace TAO
                     continue;
 
                 /* Convert the account to JSON */
-                json::json jsonAccount = TAO::API::ObjectToJSON(params, object, state.first);
+                json::json jsonAccount = TAO::API::ObjectToJSON(params, object, account.first);
 
                 /* Check to see that it matches the where clauses */
                 if(fHasFilter)
