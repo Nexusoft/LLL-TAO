@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/network.h>
 #include <Util/templates/serialize.h>
-#include <Util/templates/flatdata.h>
+#include <encoding/types/flat_data.h>
 
 #include <string>
 #include <vector>

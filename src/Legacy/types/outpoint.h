@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 #include <Util/templates/serialize.h>
-#include <Util/templates/flatdata.h>
+#include <encoding/types/flat_data.h>
 
 namespace Legacy
 {
