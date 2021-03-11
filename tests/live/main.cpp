@@ -49,7 +49,7 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 
 #include <LLP/templates/ddos.h>
-#include <Util/include/runtime.h>
+#include <system/include/runtime.h>
 
 #include <list>
 #include <functional>
@@ -1131,7 +1131,6 @@ int main()
 
 
     util::memory::safe_shared_ptr<Test> ptrTest = util::memory::safe_shared_ptr<Test>(new Test());
-
     {
         util::memory::safe_shared_ptr<Test> ptrTest1 = ptrTest;
         util::memory::safe_shared_ptr<Test> ptrTest2 = ptrTest1;

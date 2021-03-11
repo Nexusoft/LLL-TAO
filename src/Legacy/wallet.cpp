@@ -40,8 +40,8 @@ ________________________________________________________________________________
 
 #include <Util/system/include/args.h>
 #include <Util/system/include/debug.h>
-#include <Util/include/runtime.h>
-#include <Util/include/signals.h>
+#include <system/include/runtime.h>
+#include <system/include/signals.h>
 #include <Util/encoding/include/string.h>
 
 #include <openssl/rand.h>   // For RAND_bytes

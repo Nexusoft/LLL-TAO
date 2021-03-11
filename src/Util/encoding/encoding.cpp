@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 
 #include <Util/encoding/include/encoding.h>
-#include <Util/include/memory.h>
+#include <memory/include/memory.h>
 
 #include <openssl/bn.h>
 #include <algorithm>

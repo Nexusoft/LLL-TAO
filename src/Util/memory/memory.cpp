@@ -10,7 +10,7 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
-#include <Util/include/memory.h>
+#include <memory/include/memory.h>
 
 namespace memory
 {

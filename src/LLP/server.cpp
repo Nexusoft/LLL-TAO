@@ -26,8 +26,8 @@ ________________________________________________________________________________
 #include <LLP/include/trust_address.h>
 
 #include <Util/system/include/args.h>
-#include <Util/include/signals.h>
-#include <Util/include/version.h>
+#include <system/include/signals.h>
+#include <system/include/version.h>
 
 #include <LLP/include/permissions.h>
 #include <functional>

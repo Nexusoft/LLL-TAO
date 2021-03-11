@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/rpc.h>
 #include <Util/encoding/include/json.h>
-#include <Util/include/runtime.h>
+#include <system/include/runtime.h>
 #include <LLP/include/version.h>
 
 #include <TAO/Ledger/include/chainstate.h>
@@ -28,7 +28,7 @@ ________________________________________________________________________________
 
 #include <LLP/templates/data.h>
 
-#include <Util/include/version.h>
+#include <system/include/version.h>
 
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>

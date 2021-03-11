@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/state.h>
 
-#include <Util/include/memory.h>
+#include <memory/include/memory.h>
 
 /* Global TAO namespace. */
 namespace TAO

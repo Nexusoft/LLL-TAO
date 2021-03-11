@@ -27,7 +27,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/tritium.h>
 
-#include <Util/include/memory.h>
+#include <memory/include/memory.h>
 
 namespace LLP
 {

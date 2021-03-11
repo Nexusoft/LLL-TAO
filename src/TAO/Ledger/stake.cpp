@@ -28,7 +28,7 @@ ________________________________________________________________________________
 
 #include <Util/system/include/args.h>
 #include <Util/system/include/debug.h>
-#include <Util/include/runtime.h>
+#include <system/include/runtime.h>
 
 
 /* Global TAO namespace. */

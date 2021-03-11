@@ -25,7 +25,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
-#include <Util/include/memory.h>
+#include <memory/include/memory.h>
 
 /* Global TAO namespace. */
 namespace TAO

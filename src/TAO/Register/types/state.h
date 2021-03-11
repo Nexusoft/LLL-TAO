@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 #include <Util/encoding/include/hex.h>
 #include <Util/templates/serialize.h>
-#include <Util/include/runtime.h>
+#include <system/include/runtime.h>
 
 /* Global TAO namespace. */
 namespace TAO

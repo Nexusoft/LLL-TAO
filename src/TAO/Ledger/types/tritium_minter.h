@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <Util/memory/include/allocators.h>
-#include <Util/include/memory.h>
+#include <memory/include/memory.h>
 
 #include <atomic>
 #include <thread>

@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 
 #include <Util/system/types/mutex.h>
-#include <Util/include/memory.h>
+#include <memory/include/memory.h>
 
 #include <Util/templates/datastream.h>
 
@@ -59,7 +59,7 @@ namespace LLP
     template <class ProtocolType>
     class DataThread
     {
-        
+
         /** Lock access to find slot to ensure no race conditions happend between threads. **/
         std::mutex SLOT_MUTEX;
 

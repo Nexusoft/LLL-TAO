@@ -27,11 +27,11 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/system/include/debug.h>
-#include <Util/include/runtime.h>
+#include <system/include/runtime.h>
 #include <Util/encoding/include/json.h>
 #include <Util/system/include/config.h>
-#include <Util/include/version.h>
-#include <Util/include/signals.h>
+#include <system/include/version.h>
+#include <system/include/signals.h>
 
 
 /* Global TAO namespace. */

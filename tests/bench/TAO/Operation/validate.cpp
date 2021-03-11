@@ -1,13 +1,13 @@
 #include <Util/system/include/debug.h>
 #include <Util/encoding/include/hex.h>
 
-#include <Util/include/runtime.h>
+#include <system/include/runtime.h>
 
 #include <LLC/include/flkey.h>
 
 #include <TAO/Ledger/types/sigchain.h>
 
-#include <Util/include/memory.h>
+#include <memory/include/memory.h>
 
 #include <LLC/include/random.h>
 

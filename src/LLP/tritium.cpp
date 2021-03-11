@@ -42,10 +42,10 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/include/evaluate.h>
 
-#include <Util/include/runtime.h>
+#include <system/include/runtime.h>
 #include <Util/system/include/args.h>
 #include <Util/system/include/debug.h>
-#include <Util/include/version.h>
+#include <system/include/version.h>
 
 
 #include <climits>

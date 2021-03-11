@@ -18,8 +18,8 @@ ________________________________________________________________________________
 #include <Util/encoding/include/convert.h>
 #include <system/include/filesystem.h>
 #include <Util/system/types/mutex.h>
-#include <Util/include/runtime.h>
-#include <Util/include/version.h>
+#include <system/include/runtime.h>
+#include <system/include/version.h>
 
 #include <cstdarg>
 #include <cstdio>

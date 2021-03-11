@@ -24,7 +24,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/enum.h>
 
-#include <Util/include/memory.h>
+#include <memory/include/memory.h>
 
 /** Forward declarations **/
 namespace Legacy { class MerkleTx; }

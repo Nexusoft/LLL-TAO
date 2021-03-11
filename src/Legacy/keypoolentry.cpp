@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/types/keypoolentry.h>
-#include <Util/include/runtime.h>
+#include <system/include/runtime.h>
 
 namespace Legacy
 {
