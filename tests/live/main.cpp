@@ -1054,85 +1054,6 @@ class stack
 };
 
 
-template<typename Type>
-class atomic_proxy
-{
-public:
-    std::shared_ptr<Type>& data;
-    std::shared_ptr<Type> modify;
-    std::shared_ptr<Type> expected;
-
-    atomic_proxy(std::shared_ptr<Type>& in)
-    : data (in)
-    , modify (nullptr)
-    {
-        //debug::log(0, std::this_thread::get_id(), ": BUILD: ", VARIABLE(data->a), " | ", VARIABLE(data->b));
-    }
-
-    ~atomic_proxy()
-    {
-        //std::atomic_compare_exchange_strong_explicit(&data, &modify, modify, std::memory_order_release, std::memory_order_relaxed);
-
-
-        std::atomic_thread_fence(std::memory_order_release);
-        //std::atomic_store_explicit(&data, modify, std::memory_order_relaxed);
-
-        //debug::log(0, "DATA: ", data.get(), " | MOD: ", modify.get());
-        std::atomic_store_explicit(&data, modify, std::memory_order_relaxed);
-        //data = modify;
-
-        //std::atomic_exchange_explicit(&data, modify, std::memory_order_release);
-
-        uint64_t i = 0;
-        while(!std::atomic_compare_exchange_weak_explicit(&data, &expected, modify, std::memory_order_seq_cst, std::memory_order_seq_cst))
-        {
-            debug::log(0, "Iterator ", ++i);
-        }
-        //debug::log(0, std::this_thread::get_id(), ": CLEAN: ",  VARIABLE(data->a), " | ", VARIABLE(data->b));
-        //debug::log(0, std::this_thread::get_id(), ": TEST : ", VARIABLE(modify->a), " | ", VARIABLE(modify->b));
-
-        //debug::log(0, "DATA: ", data.get(), " | MOD: ", modify.get());
-
-
-        //std::atomic_thread_fence(std::memory_order_release);
-    }
-
-    std::shared_ptr<Type> operator->()
-    {
-        //modify = std::atomic_load_explicit(&data, std::memory_order_seq_cst);
-        //modify = std::make_shared<Type>(*data);
-
-        modify = std::make_shared<Type>(*std::atomic_load_explicit(&data, std::memory_order_relaxed));
-        expected = std::make_shared<Type>(*std::atomic_load_explicit(&data, std::memory_order_relaxed));
-
-        std::atomic_thread_fence(std::memory_order_acquire);
-
-        //modify = std::make_shared<Type>(*std::atomic_load_explicit(&data, std::memory_order_relaxed));
-        return modify;
-    }
-};
-
-template<typename Type>
-class secure_ptr
-{
-public:
-    std::shared_ptr<Type> data;
-
-    secure_ptr(Type* in)
-    : data (in)
-    {
-    }
-
-    atomic_proxy<Type> operator->()
-    {
-        //debug::log(0, "DATA: ", data.get());
-        //debug::log(0, std::this_thread::get_id(), ": FUNCT: ", VARIABLE(data->a), " | ", VARIABLE(data->b));
-
-        std::atomic_thread_fence(std::memory_order_acquire);
-        return atomic_proxy<Type>(data);
-    }
-};
-
 struct Test
 {
     uint64_t a;
@@ -1185,286 +1106,19 @@ namespace util::system
 }
 
 
-#include <atomic/include/typedef.h>
+#include <atomic/types/locked_ptr.h>
 
 
-/** lock_control
- *
- *  Track the current pointer references.
- *
- **/
-struct lock_control
+
+
+
+void TestThread(util::atomic::locked_ptr<Test>& ptr)
 {
-    /** Recursive mutex for locking locked_ptr. **/
-    std::recursive_mutex MUTEX;
+    util::atomic::locked_ptr<Test> ptrNew = ptr;
 
-
-    /** Reference counter for active copies. **/
-    util::atomic::uint32_t nCount;
-
-
-    /** Default Constructor. **/
-    lock_control( )
-    : MUTEX  ( )
-    , nCount (1)
-    {
-    }
-
-
-    /** count
-     *
-     *  Access atomic with easier syntax.
-     *
-     **/
-    uint32_t count()
-    {
-        return nCount.load();
-    }
-};
-
-
-/** lock_proxy
- *
- *  Temporary class that unlocks a mutex when outside of scope.
- *  Useful for protecting member access to a raw pointer.
- *
- **/
-template <class TypeName>
-class lock_proxy
-{
-    /** Reference of the mutex. **/
-    std::recursive_mutex& MUTEX;
-
-
-    /** The pointer being locked. **/
-    TypeName* pData;
-
-
-public:
-
-    /** Basic constructor
-     *
-     *  Assign the pointer and reference to the mutex.
-     *
-     *  @param[in] pData The pointer to shallow copy
-     *  @param[in] MUTEX_IN The mutex reference
-     *
-     **/
-    lock_proxy(TypeName* pDataIn, std::recursive_mutex& MUTEX_IN)
-    : MUTEX (MUTEX_IN)
-    , pData (pDataIn)
-    {
-    }
-
-
-    /** Destructor
-    *
-    *  Unlock the mutex.
-    *
-    **/
-    ~lock_proxy()
-    {
-       MUTEX.unlock();
-    }
-
-
-    /** Member Access Operator.
-    *
-    *  Access the memory of the raw pointer.
-    *
-    **/
-    TypeName* operator->() const
-    {
-        return pData;
-    }
-};
-
-
-/** locked_ptr
- *
- *  Pointer with member access protected with a mutex.
- *
- **/
-template<class TypeName>
-class locked_ptr
-{
-    /** The internal locking mutex. **/
-    mutable lock_control* pRefs;
-
-
-    /** The internal raw poitner. **/
-    TypeName* pData;
-
-
-public:
-
-    /** Default Constructor. **/
-    locked_ptr()
-    : pRefs  (nullptr)
-    , pData  (nullptr)
-    {
-    }
-
-
-    /** Constructor for storing. **/
-    locked_ptr(TypeName* pDataIn)
-    : pRefs  (new lock_control())
-    , pData  (pDataIn)
-    {
-    }
-
-
-    /** Copy Constructor. **/
-    locked_ptr(const locked_ptr<TypeName>& ptrIn)
-    : pRefs (ptrIn.pRefs)
-    , pData (ptrIn.pData)
-    {
-        ++pRefs->nCount;
-
-        debug::log(0, FUNCTION, "New copy for reference ", pRefs->count());
-    }
-
-
-    /** Move Constructor. **/
-    locked_ptr(const locked_ptr<TypeName>&& ptrIn)
-    : pRefs (std::move(ptrIn.pRefs))
-    , pData (std::move(ptrIn.pData))
-    {
-    }
-
-
-    /** Destructor. **/
-    ~locked_ptr()
-    {
-        /* Adjust our reference count. */
-        if(pRefs->count() > 0)
-            --pRefs->nCount;
-
-        /* Delete if no more references. */
-        if(pRefs->count() == 0)
-        {
-            debug::log(0, FUNCTION, "Deleting copy for reference ", pRefs->count());
-
-            /* Cleanup the main raw pointer. */
-            if(pData)
-            {
-                delete pData;
-                pData = nullptr;
-            }
-
-            /* Cleanup the control block. */
-            if(pRefs)
-            {
-                delete pRefs;
-                pRefs = nullptr;
-            }
-        }
-    }
-
-
-    /** Assignment operator. **/
-    locked_ptr& operator=(const locked_ptr<TypeName>& ptrIn)
-    {
-        /* Shallow copy pointer and control block. */
-        pRefs  = ptrIn.pRefs;
-        pData  = ptrIn.pData;
-
-        /* Increase our reference count now. */
-        ++pRefs->nCount;
-
-        debug::log(0, FUNCTION, "New copy for reference ", pRefs->count());
-    }
-
-
-    /** Assignment operator. **/
-    locked_ptr& operator=(TypeName* pDataIn) = delete;
-
-
-    /** Equivilent operator.
-     *
-     *  @param[in] a The data type to compare to.
-     *
-     **/
-    bool operator==(const TypeName& pDataIn) const
-    {
-        RECURSIVE(pRefs->MUTEX);
-
-        /* Check for dereferencing nullptr. */
-        if(pData == nullptr)
-            throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
-
-        return *pData == pDataIn;
-    }
-
-
-    /** Equivilent operator.
-     *
-     *  @param[in] a The data type to compare to.
-     *
-     **/
-    bool operator==(const TypeName* pDataIn) const
-    {
-        RECURSIVE(pRefs->MUTEX);
-
-        return pData == pDataIn;
-    }
-
-
-    /** Not equivilent operator.
-     *
-     *  @param[in] a The data type to compare to.
-     *
-     **/
-    bool operator!=(const TypeName* pDataIn) const
-    {
-        RECURSIVE(pRefs->MUTEX);
-
-        return pData != pDataIn;
-    }
-
-    /** Not operator
-     *
-     *  Check if the pointer is nullptr.
-     *
-     **/
-    bool operator!(void)
-    {
-        RECURSIVE(pRefs->MUTEX);
-
-        return pData == nullptr;
-    }
-
-
-    /** Member access overload
-     *
-     *  Allow locked_ptr access like a normal pointer.
-     *
-     **/
-    lock_proxy<TypeName> operator->()
-    {
-        /* Lock our mutex before going forward. */
-        pRefs->MUTEX.lock();
-
-        return lock_proxy<TypeName>(pData, pRefs->MUTEX);
-    }
-
-
-    /** dereference operator overload
-     *
-     *  Load the object from memory.
-     *
-     **/
-    TypeName operator*() const
-    {
-        RECURSIVE(pRefs->MUTEX);
-
-        /* Check for dereferencing nullptr. */
-        if(pData == nullptr)
-            throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
-
-        return *pData;
-    }
-};
+    for(int i = 0; i < 10000; ++i)
+        ptr->c++;
+}
 
 
 int main()
@@ -1476,18 +1130,26 @@ int main()
     //std::atomic<std::string> ptr;
 
 
-    locked_ptr<Test> ptrTest = locked_ptr<Test>(new Test());
+    util::atomic::locked_ptr<Test> ptrTest = util::atomic::locked_ptr<Test>(new Test());
 
     {
-        locked_ptr<Test> ptrTest1 = ptrTest;
-        locked_ptr<Test> ptrTest2 = ptrTest1;
+        util::atomic::locked_ptr<Test> ptrTest1 = ptrTest;
+        util::atomic::locked_ptr<Test> ptrTest2 = ptrTest1;
 
 
         ptrTest->a = 55;
         ptrTest2->b = 88;
     }
 
-    debug::log(0, VARIABLE(ptrTest->a), " | ", VARIABLE(ptrTest->b));
+    std::thread t1(TestThread, std::ref(ptrTest));
+    std::thread t2(TestThread, std::ref(ptrTest));
+    std::thread t3(TestThread, std::ref(ptrTest));
+
+    t1.join();
+    t2.join();
+    t3.join();
+
+    debug::log(0, VARIABLE(ptrTest->a), " | ", VARIABLE(ptrTest->b), " | ", VARIABLE(ptrTest->c));
 
     return 0;
 
@@ -1501,31 +1163,35 @@ int main()
 
     //s.store(new Test());
 
-    std::atomic<Test> term;
+    {
+        std::atomic<Test> term;
 
-    util::atomic::shared_ptr<Test> ptr(new Test());
+        util::atomic::shared_ptr<Test> ptr(new Test());
 
-    //ptr->a = 5;
+        //ptr->a = 5;
 
-    //debug::log(0, VARIABLE(ptr->a), " | ", VARIABLE(ptr->b));
+        //debug::log(0, VARIABLE(ptr->a), " | ", VARIABLE(ptr->b));
 
-    std::thread t1(PushThread, std::ref(ptr));
-    std::thread t2(PushThread, std::ref(ptr));
-    std::thread t3(PushThread, std::ref(ptr));
-    std::thread t4(PushThread, std::ref(ptr));
-    //std::thread t5(PushThread, std::ref(ptr));
+        std::thread t1(PushThread, std::ref(ptr));
+        std::thread t2(PushThread, std::ref(ptr));
+        std::thread t3(PushThread, std::ref(ptr));
+        std::thread t4(PushThread, std::ref(ptr));
+        //std::thread t5(PushThread, std::ref(ptr));
 
-    debug::log(0, "Generated threads...");
+        debug::log(0, "Generated threads...");
 
-    t1.join();
-    t2.join();
-    t3.join();
-    t4.join();
-    //t5.join();
+        t1.join();
+        t2.join();
+        t3.join();
+        t4.join();
+        //t5.join();
 
-    debug::log(0, VARIABLE(ptr.load()->a), " | ", VARIABLE(ptr.load()->b), " | ", VARIABLE(ptr.load()->c));
+        debug::log(0, VARIABLE(ptr.load()->a), " | ", VARIABLE(ptr.load()->b), " | ", VARIABLE(ptr.load()->c));
 
-    return 0;
+        return 0;
+    }
+
+
 }
 
 

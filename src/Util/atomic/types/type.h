@@ -26,20 +26,20 @@ namespace util::atomic
 	class type
 	{
 	    /* The internal data. */
-	    std::shared_ptr<TypeName> data;
+	    std::shared_ptr<TypeName> pData;
 
 	public:
 
 	    /** Default Constructor. **/
 	    type ()
-	    : data (nullptr)
+	    : pData (nullptr)
 	    {
 	    }
 
 
 	    /** Constructor for storing. **/
 	    type(const TypeName& dataIn)
-	    : data (nullptr)
+	    : pData (nullptr)
 	    {
 	        store(dataIn);
 	    }
@@ -121,7 +121,7 @@ namespace util::atomic
 	     **/
 	    TypeName load() const
 	    {
-	        return *std::atomic_load_explicit(&data, std::memory_order_seq_cst);
+	        return *std::atomic_load_explicit(&pData, std::memory_order_seq_cst);
 	    }
 
 
@@ -135,10 +135,10 @@ namespace util::atomic
 	    void store(const TypeName& dataIn)
 	    {
 	        /* Cleanup our memory usage on store. */
-	        if(data)
-	            data = nullptr;
+	        if(pData)
+	            pData = nullptr;
 
-	        std::atomic_store_explicit(&data, std::make_shared<TypeName>(dataIn), std::memory_order_seq_cst);
+	        std::atomic_store_explicit(&pData, std::make_shared<TypeName>(dataIn), std::memory_order_seq_cst);
 	    }
 	};
 }

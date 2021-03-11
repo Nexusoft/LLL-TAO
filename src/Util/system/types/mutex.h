@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_MUTEX_H
-#define NEXUS_UTIL_INCLUDE_MUTEX_H
 
 #include <mutex>
 #include <atomic>
@@ -26,79 +24,84 @@ ________________________________________________________________________________
 #define LOCK2(mut) std::unique_lock<std::mutex> lk2(mut)
 #define RLOCK(mut) std::lock_guard<std::recursive_mutex> lk(mut)
 
+/* Macro to support reader/writer locks. */
 #define READER_LOCK(mut) std::shared_lock lk(mut)
 #define WRITER_LOCK(mut) std::unique_lock lk(mut)
 
+/* Variadic macro to support multiple locks in same macro. */
 #define CRITICAL(...) std::scoped_lock<std::mutex>            __LOCK(__VA_ARGS__)
 #define RECURSIVE(...) std::scoped_lock<std::recursive_mutex> __LOCK(__VA_ARGS__)
 
-/** shared_recursive_mutex
- *
- *  A wrapper around shared_mutex to reference count and allow recursive shared locks.
- *
- **/
-class shared_recursive_mutex : public std::shared_mutex
+
+namespace util::system
 {
-public:
 
-    /** lock
+    /** shared_recursive_mutex
      *
-     *  Locks the shared mutex if not increasing reference count.
-     *
-     **/
-    void lock()
-    {
-        /* Take a peek at our current thread-id. */
-        std::thread::id nThis = std::this_thread::get_id();
-
-        /* Check if we are locking for current owner. */
-        if(nOwner == nThis)
-        {
-            /* Increment reference count on same thread. */
-            ++nCount;
-        }
-        else
-        {
-            /* Lock shared mutex on unique thread. */
-            shared_mutex::lock();
-
-            /* Set our new values. */
-            nOwner = nThis;
-            nCount.store(1);
-        }
-    }
-
-    /** unlock
-     *
-     *  Unlocks the shared mutex while decreasing reference count.
+     *  A wrapper around shared_mutex to reference count and allow recursive shared locks.
      *
      **/
-    void unlock()
+    class shared_recursive_mutex : public std::shared_mutex
     {
-        /* Reduce reference count. */
-        if(nCount > 1)
+    public:
+
+        /** lock
+         *
+         *  Locks the shared mutex if not increasing reference count.
+         *
+         **/
+        void lock()
         {
-            /* Decrement reference counter on unlock sequence. */
-            --nCount;
+            /* Take a peek at our current thread-id. */
+            std::thread::id nThis = std::this_thread::get_id();
+
+            /* Check if we are locking for current owner. */
+            if(nOwner == nThis)
+            {
+                /* Increment reference count on same thread. */
+                ++nCount;
+            }
+            else
+            {
+                /* Lock shared mutex on unique thread. */
+                shared_mutex::lock();
+
+                /* Set our new values. */
+                nOwner = nThis;
+                nCount.store(1);
+            }
         }
-        else
+
+        /** unlock
+         *
+         *  Unlocks the shared mutex while decreasing reference count.
+         *
+         **/
+        void unlock()
         {
-            /* Update our new values. */
-            nOwner = std::thread::id();
-            nCount.store(0);
+            /* Reduce reference count. */
+            if(nCount > 1)
+            {
+                /* Decrement reference counter on unlock sequence. */
+                --nCount;
+            }
+            else
+            {
+                /* Update our new values. */
+                nOwner = std::thread::id();
+                nCount.store(0);
 
-            /* Unlock this thread now. */
-            shared_mutex::unlock();
+                /* Unlock this thread now. */
+                shared_mutex::unlock();
+            }
         }
-    }
 
-private:
+    private:
 
-    /** Internal atomic value to track what thread we are locked for. */
-    std::atomic<std::thread::id> nOwner;
+        /** Internal atomic value to track what thread we are locked for. */
+        std::atomic<std::thread::id> nOwner;
 
-    /** Track our internal reference counts. **/
-    std::atomic<uint32_t> nCount;
-};
-
-#endif
+        /** Track our internal reference counts. **/
+        std::atomic<uint32_t> nCount;
+    };
+}

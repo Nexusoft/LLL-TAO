@@ -13,10 +13,45 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <atomic>
+#include <atomic/include/typedef.h>
 
 namespace util::atomic
 {
+	/** lock_control
+	 *
+	 *  Track the current pointer references.
+	 *
+	 **/
+	struct lock_control
+	{
+	    /** Recursive mutex for locking locked_ptr. **/
+	    std::recursive_mutex MUTEX;
+
+
+	    /** Reference counter for active copies. **/
+	    util::atomic::uint32_t nCount;
+
+
+	    /** Default Constructor. **/
+	    lock_control( )
+	    : MUTEX  ( )
+	    , nCount (1)
+	    {
+	    }
+
+
+	    /** count
+	     *
+	     *  Access atomic with easier syntax.
+	     *
+	     **/
+	    uint32_t count()
+	    {
+	        return nCount.load();
+	    }
+	};
+
+
 	/** lock_proxy
 	 *
 	 *  Temporary class that unlocks a mutex when outside of scope.
@@ -26,54 +61,51 @@ namespace util::atomic
 	template <class TypeName>
 	class lock_proxy
 	{
-		/** Reference of the mutex. **/
-		std::recursive_mutex& MUTEX;
+	    /** Reference of the mutex. **/
+	    std::recursive_mutex& MUTEX;
 
 
-		/** The pointer being locked. **/
-		TypeName* data;
+	    /** The pointer being locked. **/
+	    TypeName* pData;
 
 
 	public:
 
-		/** Basic constructor
-		 *
-		 *  Assign the pointer and reference to the mutex.
-		 *
-		 *  @param[in] pData The pointer to shallow copy
-		 *  @param[in] MUTEX_IN The mutex reference
-		 *
-		 **/
-		lock_proxy(TypeName* pData, std::recursive_mutex& MUTEX_IN)
-		: MUTEX(MUTEX_IN)
-		, data(pData)
-		{
-		}
+	    /** Basic constructor
+	     *
+	     *  Assign the pointer and reference to the mutex.
+	     *
+	     *  @param[in] pData The pointer to shallow copy
+	     *  @param[in] MUTEX_IN The mutex reference
+	     *
+	     **/
+	    lock_proxy(TypeName* pDataIn, std::recursive_mutex& MUTEX_IN)
+	    : MUTEX (MUTEX_IN)
+	    , pData (pDataIn)
+	    {
+	    }
 
 
-		/** Destructor
-		*
-		*  Unlock the mutex.
-		*
-		**/
-		~lock_proxy()
-		{
-		   MUTEX.unlock();
-		}
+	    /** Destructor
+	    *
+	    *  Unlock the mutex.
+	    *
+	    **/
+	    ~lock_proxy()
+	    {
+	       MUTEX.unlock();
+	    }
 
 
-		/** Member Access Operator.
-		*
-		*  Access the memory of the raw pointer.
-		*
-		**/
-		TypeName* operator->() const
-		{
-			if(data == nullptr)
-				throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
-
-			return data;
-		}
+	    /** Member Access Operator.
+	    *
+	    *  Access the memory of the raw pointer.
+	    *
+	    **/
+	    TypeName* operator->() const
+	    {
+	        return pData;
+	    }
 	};
 
 
@@ -85,173 +117,181 @@ namespace util::atomic
 	template<class TypeName>
 	class locked_ptr
 	{
-		/** The internal locking mutex. **/
-		mutable std::recursive_mutex MUTEX;
+	    /** The internal locking mutex. **/
+	    mutable lock_control* pRefs;
 
 
-		/** The internal raw poitner. **/
-		TypeName* data;
+	    /** The internal raw poitner. **/
+	    TypeName* pData;
 
 
 	public:
 
-		/** Default Constructor. **/
-		locked_ptr()
-		: MUTEX()
-		, data(nullptr)
-		{
-		}
+	    /** Default Constructor. **/
+	    locked_ptr()
+	    : pRefs  (nullptr)
+	    , pData  (nullptr)
+	    {
+	    }
 
 
-		/** Constructor for storing. **/
-		locked_ptr(TypeName* dataIn)
-		: MUTEX()
-		, data(dataIn)
-		{
-		}
+	    /** Constructor for storing. **/
+	    locked_ptr(TypeName* pDataIn)
+	    : pRefs  (new lock_control())
+	    , pData  (pDataIn)
+	    {
+	    }
 
 
-		/** Copy Constructor. **/
-		locked_ptr(const locked_ptr<TypeName>& pointer) = delete;
+	    /** Copy Constructor. **/
+	    locked_ptr(const locked_ptr<TypeName>& ptrIn)
+	    : pRefs (ptrIn.pRefs)
+	    , pData (ptrIn.pData)
+	    {
+	        ++pRefs->nCount;
+
+	        debug::log(0, FUNCTION, "New copy for reference ", pRefs->count());
+	    }
 
 
-		/** Move Constructor. **/
-		locked_ptr(const locked_ptr<TypeName>&& pointer)
-		: data(pointer.data)
-		{
-		}
+	    /** Move Constructor. **/
+	    locked_ptr(const locked_ptr<TypeName>&& ptrIn)
+	    : pRefs (std::move(ptrIn.pRefs))
+	    , pData (std::move(ptrIn.pData))
+	    {
+	    }
 
 
-		/** Destructor. **/
-		~locked_ptr()
-		{
-		}
+	    /** Destructor. **/
+	    ~locked_ptr()
+	    {
+	        /* Adjust our reference count. */
+	        if(pRefs->count() > 0)
+	            --pRefs->nCount;
+
+	        /* Delete if no more references. */
+	        if(pRefs->count() == 0)
+	        {
+	            debug::log(0, FUNCTION, "Deleting copy for reference ", pRefs->count());
+
+	            /* Cleanup the main raw pointer. */
+	            if(pData)
+	            {
+	                delete pData;
+	                pData = nullptr;
+	            }
+
+	            /* Cleanup the control block. */
+	            if(pRefs)
+	            {
+	                delete pRefs;
+	                pRefs = nullptr;
+	            }
+	        }
+	    }
 
 
-		/** Assignment operator. **/
-		locked_ptr& operator=(const locked_ptr<TypeName>& dataIn) = delete;
+	    /** Assignment operator. **/
+	    locked_ptr& operator=(const locked_ptr<TypeName>& ptrIn)
+	    {
+	        /* Shallow copy pointer and control block. */
+	        pRefs  = ptrIn.pRefs;
+	        pData  = ptrIn.pData;
+
+	        /* Increase our reference count now. */
+	        ++pRefs->nCount;
+
+	        debug::log(0, FUNCTION, "New copy for reference ", pRefs->count());
+	    }
 
 
-		/** Assignment operator. **/
-		locked_ptr& operator=(TypeName* dataIn) = delete;
+	    /** Assignment operator. **/
+	    locked_ptr& operator=(TypeName* pDataIn) = delete;
 
 
-		/** Equivilent operator.
-		 *
-		 *  @param[in] a The data type to compare to.
-		 *
-		 **/
-		bool operator==(const TypeName& dataIn) const
-		{
-			RLOCK(MUTEX);
+	    /** Equivilent operator.
+	     *
+	     *  @param[in] a The data type to compare to.
+	     *
+	     **/
+	    bool operator==(const TypeName& pDataIn) const
+	    {
+	        RECURSIVE(pRefs->MUTEX);
 
-			/* Throw an exception on nullptr. */
-			if(data == nullptr)
-				return false;
+	        /* Check for dereferencing nullptr. */
+	        if(pData == nullptr)
+	            throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
 
-			return *data == dataIn;
-		}
-
-
-		/** Equivilent operator.
-		 *
-		 *  @param[in] a The data type to compare to.
-		 *
-		 **/
-		bool operator==(const TypeName* ptr) const
-		{
-			RLOCK(MUTEX);
-
-			return data == ptr;
-		}
+	        return *pData == pDataIn;
+	    }
 
 
-		/** Not equivilent operator.
-		 *
-		 *  @param[in] a The data type to compare to.
-		 *
-		 **/
-		bool operator!=(const TypeName* ptr) const
-		{
-			RLOCK(MUTEX);
+	    /** Equivilent operator.
+	     *
+	     *  @param[in] a The data type to compare to.
+	     *
+	     **/
+	    bool operator==(const TypeName* pDataIn) const
+	    {
+	        RECURSIVE(pRefs->MUTEX);
 
-			return data != ptr;
-		}
-
-		/** Not operator
-		 *
-		 *  Check if the pointer is nullptr.
-		 *
-		 **/
-		bool operator!(void)
-		{
-			RLOCK(MUTEX);
-
-			return data == nullptr;
-		}
+	        return pData == pDataIn;
+	    }
 
 
-		/** Member access overload
-		 *
-		 *  Allow locked_ptr access like a normal pointer.
-		 *
-		 **/
-		lock_proxy<TypeName> operator->()
-		{
-			MUTEX.lock();
+	    /** Not equivilent operator.
+	     *
+	     *  @param[in] a The data type to compare to.
+	     *
+	     **/
+	    bool operator!=(const TypeName* pDataIn) const
+	    {
+	        RECURSIVE(pRefs->MUTEX);
 
-			return lock_proxy<TypeName>(data, MUTEX);
-		}
+	        return pData != pDataIn;
+	    }
 
+	    /** Not operator
+	     *
+	     *  Check if the pointer is nullptr.
+	     *
+	     **/
+	    bool operator!(void)
+	    {
+	        RECURSIVE(pRefs->MUTEX, pRefs->MUTEX);
 
-		/** dereference operator overload
-		 *
-		 *  Load the object from memory.
-		 *
-		 **/
-		TypeName operator*() const
-		{
-			RLOCK(MUTEX);
-
-			/* Throw an exception on nullptr. */
-			if(data == nullptr)
-				throw std::runtime_error(debug::safe_printstr(FUNCTION, "dereferencing a nullptr"));
-
-			return *data;
-		}
+	        return pData == nullptr;
+	    }
 
 
-		/** store
-		 *
-		 *  Stores an object into memory.
-		 *
-		 *  @param[in] dataIn The data into protected memory.
-		 *
-		 **/
-		void store(TypeName* dataIn)
-		{
-			RLOCK(MUTEX);
+	    /** Member access overload
+	     *
+	     *  Allow locked_ptr access like a normal pointer.
+	     *
+	     **/
+	    lock_proxy<TypeName> operator->()
+	    {
+	        /* Lock our mutex before going forward. */
+	        pRefs->MUTEX.lock();
 
-			if(data)
-				delete data;
-
-			data = dataIn;
-		}
+	        return lock_proxy<TypeName>(pData, pRefs->MUTEX);
+	    }
 
 
-		/** free
-		 *
-		 *  Free the internal memory of the encrypted pointer.
-		 *
-		 **/
-		void free()
-		{
-			RLOCK(MUTEX);
+	    /** dereference operator overload
+	     *
+	     *  Load the object from memory.
+	     *
+	     **/
+	    TypeName operator*() const
+	    {
+	        RECURSIVE(pRefs->MUTEX);
 
-			if(data)
-				delete data;
+	        /* Check for dereferencing nullptr. */
+	        if(pData == nullptr)
+	            throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
 
-			data = nullptr;
-		}
+	        return *pData;
+	    }
 	};
 }
