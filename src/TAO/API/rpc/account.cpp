@@ -67,48 +67,56 @@ namespace TAO
         so payments received with the address will be credited to [account] */
         json::json RPC::GetNewAddress(const json::json& params, bool fHelp)
         {
-            Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+            /* Check to see if the caller has specified a token / token_name */
+            json::json jsonCreate;
+            if(parse_token(params, jsonCreate))
+            {
+                if(fHelp || params.size() > 1)
+                    return std::string(
+                        "getnewaddress [token=<address> | token_name=<name>] "
+                        " - Returns a new Nexus address for receiving payments.");
 
-            if(fHelp)
+                /* TODO */
+                /* Get the pin from the wallet.dat  */
+                SecureString strPIN = TAO::API::users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+
+                /* Add the pin to the token params */
+                jsonCreate["pin"] = strPIN.c_str();
+
+                json::json jsonAccount = TAO::API::finance->Create(jsonCreate, false);
+                return jsonAccount["address"];
+            }
+            else
+            {
+                if(fHelp || params.size() > 1)
                 return std::string(
                     "getnewaddress [account]"
                     " - Returns a new Nexus address for receiving payments.  "
                     "If [account] is specified (recommended), it is added to the address book "
                     "so payments received with the address will be credited to [account].");
+            
+
+                Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
 
-            /* Check to see if the caller has specified a token / token_name */
-            json::json token;
-            if(parse_token(params, token))
-            {
-                /* TODO */
-                /* Get the pin from the wallet.dat to  */
-                SecureString strPIN = "1234";
+                // Parse the account first so we don't generate a key if there's an error
+                std::string strAccount = "default";
+                if(params.size() > 0)
+                    strAccount = params[0];
 
-                /* Add the pin to the token params */
-                token["pin"] = strPIN.c_str();
+                if(!wallet.IsLocked())
+                    wallet.GetKeyPool().TopUpKeyPool();
 
-                json::json jsonAccount = TAO::API::finance->Create(token, false);
-                return jsonAccount["address"];
+                // Generate a new key that is added to wallet
+                std::vector<unsigned char> newKey;
+                if(!wallet.GetKeyPool().GetKeyFromPool(newKey, false))
+                    throw APIException(-12, "Error: Keypool ran out, please call keypoolrefill first");
+                    
+                Legacy::NexusAddress address(newKey);
+                wallet.GetAddressBook().SetAddressBookName(address, strAccount);
+
+                return address.ToString();
             }
-
-            // Parse the account first so we don't generate a key if there's an error
-            std::string strAccount = "default";
-            if(params.size() > 0)
-                strAccount = params[0];
-
-            if(!wallet.IsLocked())
-                wallet.GetKeyPool().TopUpKeyPool();
-
-            // Generate a new key that is added to wallet
-            std::vector<unsigned char> newKey;
-            if(!wallet.GetKeyPool().GetKeyFromPool(newKey, false))
-                throw APIException(-12, "Error: Keypool ran out, please call keypoolrefill first");
-                
-            Legacy::NexusAddress address(newKey);
-            wallet.GetAddressBook().SetAddressBookName(address, strAccount);
-
-            return address.ToString();
         }
 
 
