@@ -1106,15 +1106,15 @@ namespace util::system
 }
 
 
-#include <atomic/types/locked_ptr.h>
+#include <memory/types/safe_shared_ptr.h>
 
 
 
 
 
-void TestThread(util::atomic::locked_ptr<Test>& ptr)
+void TestThread(util::memory::safe_shared_ptr<Test>& ptr)
 {
-    util::atomic::locked_ptr<Test> ptrNew = ptr;
+    util::memory::safe_shared_ptr<Test> ptrNew = ptr;
 
     for(int i = 0; i < 10000; ++i)
         ptr->c++;
@@ -1130,11 +1130,11 @@ int main()
     //std::atomic<std::string> ptr;
 
 
-    util::atomic::locked_ptr<Test> ptrTest = util::atomic::locked_ptr<Test>(new Test());
+    util::memory::safe_shared_ptr<Test> ptrTest = util::memory::safe_shared_ptr<Test>(new Test());
 
     {
-        util::atomic::locked_ptr<Test> ptrTest1 = ptrTest;
-        util::atomic::locked_ptr<Test> ptrTest2 = ptrTest1;
+        util::memory::safe_shared_ptr<Test> ptrTest1 = ptrTest;
+        util::memory::safe_shared_ptr<Test> ptrTest2 = ptrTest1;
 
 
         ptrTest->a = 55;

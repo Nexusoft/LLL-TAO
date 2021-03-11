@@ -15,8 +15,9 @@ ________________________________________________________________________________
 
 #include <atomic/include/typedef.h>
 
-namespace util::atomic
+namespace util::memory
 {
+
 	/** lock_control
 	 *
 	 *  Track the current pointer references.
@@ -24,7 +25,7 @@ namespace util::atomic
 	 **/
 	struct lock_control
 	{
-	    /** Recursive mutex for locking locked_ptr. **/
+	    /** Recursive mutex for locking safe_shared_ptr. **/
 	    std::recursive_mutex MUTEX;
 
 
@@ -93,7 +94,7 @@ namespace util::atomic
 	    **/
 	    ~lock_proxy()
 	    {
-	       MUTEX.unlock();
+	    	MUTEX.unlock();
 	    }
 
 
@@ -104,18 +105,18 @@ namespace util::atomic
 	    **/
 	    TypeName* operator->() const
 	    {
-	        return pData;
+	    	return pData;
 	    }
 	};
 
 
-	/** locked_ptr
+	/** safe_shared_ptr
 	 *
 	 *  Pointer with member access protected with a mutex.
 	 *
 	 **/
 	template<class TypeName>
-	class locked_ptr
+	class safe_shared_ptr
 	{
 	    /** The internal locking mutex. **/
 	    mutable lock_control* pRefs;
@@ -128,7 +129,7 @@ namespace util::atomic
 	public:
 
 	    /** Default Constructor. **/
-	    locked_ptr()
+	    safe_shared_ptr()
 	    : pRefs  (nullptr)
 	    , pData  (nullptr)
 	    {
@@ -136,7 +137,7 @@ namespace util::atomic
 
 
 	    /** Constructor for storing. **/
-	    locked_ptr(TypeName* pDataIn)
+	    safe_shared_ptr(TypeName* pDataIn)
 	    : pRefs  (new lock_control())
 	    , pData  (pDataIn)
 	    {
@@ -144,7 +145,7 @@ namespace util::atomic
 
 
 	    /** Copy Constructor. **/
-	    locked_ptr(const locked_ptr<TypeName>& ptrIn)
+	    safe_shared_ptr(const safe_shared_ptr<TypeName>& ptrIn)
 	    : pRefs (ptrIn.pRefs)
 	    , pData (ptrIn.pData)
 	    {
@@ -155,7 +156,7 @@ namespace util::atomic
 
 
 	    /** Move Constructor. **/
-	    locked_ptr(const locked_ptr<TypeName>&& ptrIn)
+	    safe_shared_ptr(const safe_shared_ptr<TypeName>&& ptrIn)
 	    : pRefs (std::move(ptrIn.pRefs))
 	    , pData (std::move(ptrIn.pData))
 	    {
@@ -163,7 +164,7 @@ namespace util::atomic
 
 
 	    /** Destructor. **/
-	    ~locked_ptr()
+	    ~safe_shared_ptr()
 	    {
 	        /* Adjust our reference count. */
 	        if(pRefs->count() > 0)
@@ -192,7 +193,7 @@ namespace util::atomic
 
 
 	    /** Assignment operator. **/
-	    locked_ptr& operator=(const locked_ptr<TypeName>& ptrIn)
+	    safe_shared_ptr& operator=(const safe_shared_ptr<TypeName>& ptrIn)
 	    {
 	        /* Shallow copy pointer and control block. */
 	        pRefs  = ptrIn.pRefs;
@@ -206,7 +207,7 @@ namespace util::atomic
 
 
 	    /** Assignment operator. **/
-	    locked_ptr& operator=(TypeName* pDataIn) = delete;
+	    safe_shared_ptr& operator=(TypeName* pDataIn) = delete;
 
 
 	    /** Equivilent operator.
@@ -266,7 +267,7 @@ namespace util::atomic
 
 	    /** Member access overload
 	     *
-	     *  Allow locked_ptr access like a normal pointer.
+	     *  Allow safe_shared_ptr access like a normal pointer.
 	     *
 	     **/
 	    lock_proxy<TypeName> operator->()
