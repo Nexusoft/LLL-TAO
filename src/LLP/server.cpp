@@ -269,7 +269,7 @@ namespace LLP
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection()
     {
-        /* Grab out initial indexes. */
+        /* Set our initial return values. */
         int16_t nRetThread = -1;
         int16_t nRetIndex  = -1;
 
@@ -317,11 +317,12 @@ namespace LLP
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude)
     {
-        /* List of connections to return. */
-        uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
-
+        /* Set our initial return values. */
         int16_t nRetThread = -1;
         int16_t nRetIndex  = -1;
+
+        /* List of connections to return. */
+        uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
         for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
         {
             /* Loop through connections in data thread. */
