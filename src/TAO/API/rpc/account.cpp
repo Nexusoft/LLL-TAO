@@ -540,9 +540,10 @@ namespace TAO
 
                 if(fHelp || params.size() > 2)
                     return std::string(
-                        "getbalance [token=<address> | token_name=<name>] [account] "
+                        "getbalance <token=<address> | token_name=<name>> [account] "
                         " - If [account] is not specified, returns the server's total available balance."
-                        " If [account] is specified, returns the balance in the account.");
+                        " If [account] is specified, returns the balance in the account."
+                        "\n - <token> <token_name> the token or token name to get the balance for.");
 
                 /* Check to see if an account name or address was specified */
                 if(params.size() > 1)
@@ -776,7 +777,7 @@ namespace TAO
                 if(fHelp || params.size() < 4 || params.size() > 5)
                     return std::string(
                         "sendfrom <token=<address> or token_name=<name>> <fromaccount> <toNexusaddress> <amount> [pin]"
-                        "\n - <token> <token_name> the token or token name to create the address for"
+                        "\n - <token> <token_name> the token or token name to send "
                         "\n - <fromaccount> must be a valid tritium account name or address"
                         "\n - <toNexusaddress> the recipient address"
                         "\n - <amount> is a real and is rounded to the nearest 0.000001"
@@ -1411,17 +1412,28 @@ namespace TAO
         *  \"confirmations\" : number of confirmations of the most recent transaction included */
         json::json RPC::ListReceivedByAddress(const json::json& params, bool fHelp)
         {
-            if(fHelp)
-                return std::string(
-                    "listreceivedbyaddress [minconf=1] [includeempty=false]"
-                    " - [minconf] is the minimum number of confirmations before payments are included."
-                    " [includeempty] whether to include addresses that haven't received any payments.\n"
-                    " - Returns an array of objects containing:\n"
-                    "  \"address\" : receiving address\n"
-                    "  \"account\" : the account of the receiving address\n"
-                    "  \"amount\" : total amount received by the address\n"
-                    "  \"confirmations\" : number of confirmations of the most recent transaction included");
-
+            /* Check to see if the caller has specified a token / token_name */
+            json::json token;
+            if(RPC::parse_token(params, token))
+            {
+                if(fHelp || params.size() > 1)
+                    return std::string(
+                        "listreceivedbyaddress <token=<address> | token_name=<name>>"
+                        "\n - <token> <token_name> the token or token name to get the received amounts for.");
+            }
+            else
+            {
+                if(fHelp || params.size() > 2)
+                    return std::string(
+                        "listreceivedbyaddress [minconf=1] [includeempty=false]"
+                        " - [minconf] is the minimum number of confirmations before payments are included."
+                        " [includeempty] whether to include addresses that haven't received any payments.\n"
+                        " - Returns an array of objects containing:\n"
+                        "  \"address\" : receiving address\n"
+                        "  \"account\" : the account of the receiving address\n"
+                        "  \"amount\" : total amount received by the address\n"
+                        "  \"confirmations\" : number of confirmations of the most recent transaction included");
+            }
              return ListReceived(params, false);
 
         }
@@ -1436,16 +1448,27 @@ namespace TAO
         *  \"confirmations\" : number of confirmations of the most recent transaction incl*/
         json::json RPC::ListReceivedByAccount(const json::json& params, bool fHelp)
         {
-            if(fHelp)
-                return std::string(
-                    "listreceivedbyaccount [minconf=1] [includeempty=false]"
-                    " - [minconf] is the minimum number of confirmations before payments are included."
-                    " [includeempty] whether to include accounts that haven't received any payments.\n"
-                    " - Returns an array of objects containing:\n"
-                    "  \"account\" : the account of the receiving addresses\n"
-                    "  \"amount\" : total amount received by addresses with this account\n"
-                    "  \"confirmations\" : number of confirmations of the most recent transaction included");
-
+            /* Check to see if the caller has specified a token / token_name */
+            json::json token;
+            if(RPC::parse_token(params, token))
+            {
+                if(fHelp || params.size() > 1)
+                    return std::string(
+                        "listreceivedbyaddress <token=<address> | token_name=<name>>"
+                        "\n - <token> <token_name> the token or token name to get the received amounts for.");
+            }
+            else
+            {
+                if(fHelp || params.size() > 2)
+                    return std::string(
+                        "listreceivedbyaccount [minconf=1] [includeempty=false]"
+                        " - [minconf] is the minimum number of confirmations before payments are included."
+                        " [includeempty] whether to include accounts that haven't received any payments.\n"
+                        " - Returns an array of objects containing:\n"
+                        "  \"account\" : the account of the receiving addresses\n"
+                        "  \"amount\" : total amount received by addresses with this account\n"
+                        "  \"confirmations\" : number of confirmations of the most recent transaction included");
+            }
             return ListReceived(params, true);
         }
 
@@ -1674,17 +1697,28 @@ namespace TAO
         Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]*/
         json::json RPC::ListTransactions(const json::json& params, bool fHelp)
         {
-            if(fHelp)
-                return std::string(
-                    "listtransactions [account] [count=10] [from=0]"
-                    " - Returns up to [count] most recent transactions skipping the first [from] transactions for account [account].");
-
             /* Response JSON */
             json::json ret = json::json::array();
 
             /* Check to see if the caller has specified a token / token_name */
             json::json token;
             bool fToken = parse_token(params, token);
+
+            if(fToken )
+            {
+                if(fHelp || params.size() > 4)
+                    return std::string(
+                        "listtransactions <token=<address> | token_name=<name>> [account] [count=10] [from=0]"
+                        " - Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]."
+                        "\n - <token> <token_name> the token or token name to list transactions for.");
+            }
+            else
+            {
+                if(fHelp || params.size() > 3)
+                    return std::string(
+                        "listtransactions [account] [count=10] [from=0]"
+                        " - Returns up to [count] most recent transactions skipping the first [from] transactions for account [account].");
+            }
             
             /* Parse the remaining params */
             std::string strAccount = "*";
@@ -1851,12 +1885,6 @@ namespace TAO
         Returns list of addresses */
         json::json RPC::ListAddresses(const json::json& params, bool fHelp)
         {
-            if(fHelp)
-                return std::string(
-                    "listaddresses "
-                    " - Returns list of addresses");
-
-
             /* response json */
             json::json list;
 
@@ -1864,6 +1892,12 @@ namespace TAO
             json::json token;
             if(parse_token(params, token))
             {
+                if(fHelp || params.size() > 1)
+                    return std::string(
+                        "listaddresses <token=<address> or token_name=<name>>"
+                        " - Returns list of addresses"
+                        "\n - <token> <token_name> the token or token name to list addresses for.");
+
                 /* Map of account names to balances */
                 std::map<std::string, double> mapAccountBalances;
 
@@ -1891,6 +1925,10 @@ namespace TAO
             }
             else
             {
+                if(fHelp || params.size() > 0)
+                    return std::string(
+                        "listaddresses"
+                        " - Returns list of addresses");
 
                 /* Limit the size. */
                 int nMax = 100;
@@ -1914,11 +1952,6 @@ namespace TAO
         Returns Object that has account names as keys, account balances as values */
         json::json RPC::ListAccounts(const json::json& params, bool fHelp)
         {
-            if(fHelp)
-                return std::string(
-                    "listaccounts"
-                    " - Returns Object that has account names as keys, account balances as values.");
-
             /* response json */
             json::json ret;
 
@@ -1926,6 +1959,12 @@ namespace TAO
             json::json token;
             if(parse_token(params, token))
             {
+                if(fHelp || params.size() > 1)
+                    return std::string(
+                        "listaccounts <token=<address> or token_name=<name>>"
+                        " - Returns Object that has account names as keys, account balances as values."
+                        "\n - <token> <token_name> the token or token name to list the accounts for.");
+
                 /* Map of account names to balances */
                 std::map<std::string, double> mapAccountBalances;
 
@@ -1957,6 +1996,10 @@ namespace TAO
             }
             else
             {
+                if(fHelp || params.size() > 0)
+                    return std::string(
+                        "listaccounts"
+                        " - Returns Object that has account names as keys, account balances as values.");
 
                 /* Map of account names to balances */
                 std::map<std::string, int64_t> mapAccountBalances;
