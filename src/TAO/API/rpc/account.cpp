@@ -71,17 +71,22 @@ namespace TAO
             json::json jsonCreate;
             if(parse_token(params, jsonCreate))
             {
-                if(fHelp || params.size() > 1)
+                if(fHelp || params.size() > 2)
                     return std::string(
-                        "getnewaddress [token=<address> | token_name=<name>] "
-                        " - Returns a new Nexus address for receiving payments.");
+                        "getnewaddress <token=<address> or token_name=<name>> [pin]"
+                        " - Returns a new Nexus address for receiving payments.  "
+                        "\n - <token> <token_name> the token or token name to create the address for"
+                        "\n - [pin] the optional pin to use. ");
 
-                /* TODO */
-                /* Get the pin from the wallet.dat  */
-                SecureString strPIN = TAO::API::users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
-
-                /* Add the pin to the token params */
-                jsonCreate["pin"] = strPIN.c_str();
+                /* Add the optional pin if passed in*/
+                if(params.size() == 2)
+                    jsonCreate["pin"] = params[1];
+                else
+                {
+                    /* Otherwise attempt to get the pin from session */
+                    SecureString strPIN = TAO::API::users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+                    jsonCreate["pin"] = strPIN.c_str();
+                }
 
                 json::json jsonAccount = TAO::API::finance->Create(jsonCreate, false);
                 return jsonAccount["address"];
@@ -770,11 +775,12 @@ namespace TAO
             {
                 if(fHelp || params.size() < 4 || params.size() > 5)
                     return std::string(
-                        "sendfrom <fromaccount> <toNexusaddress> <amount> [pin]"
+                        "sendfrom <token=<address> or token_name=<name>> <fromaccount> <toNexusaddress> <amount> [pin]"
+                        "\n - <token> <token_name> the token or token name to create the address for"
                         "\n - <fromaccount> must be a valid tritium account name or address"
                         "\n - <toNexusaddress> the recipient address"
                         "\n - <amount> is a real and is rounded to the nearest 0.000001"
-                        "\n - <pin> the optional pin to use. ");
+                        "\n - [pin] the optional pin to use. ");
 
                 /* Get the From address */
                 std::string strFrom = params[1].get<std::string>();
@@ -792,7 +798,6 @@ namespace TAO
 
                 /* Add the optional pin if passed in*/
                 if(params.size() == 5)
-                    /* Add the amount */
                     jsonDebitParams["pin"] = params[4];
                 else
                 {
