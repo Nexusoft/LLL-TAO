@@ -65,7 +65,7 @@ namespace TAO
             uint256_t hashRecipient = 0;
 
             /* The account to invoice must be paid to */
-            TAO::Register::Address hashAccount ;
+            TAO::Register::Address hashAccount;
 
             /* The invoice total in fractional tokens */
             double dTotal = 0;
@@ -78,11 +78,12 @@ namespace TAO
 
             /* Check whether the caller has provided the account name parameter. */
             if(params.find("account_name") != params.end() && !params["account_name"].get<std::string>().empty())
-                /* If name is provided then use this to deduce the register address */
                 hashAccount = Names::ResolveAddress(params, params["account_name"].get<std::string>());
+
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("account") != params.end())
                 hashAccount.SetBase58(params["account"].get<std::string>());
+
             /* Fail if no required parameters supplied. */
             else
                 throw APIException(-227, "Missing payment account name / address");
@@ -109,12 +110,15 @@ namespace TAO
 
             /* The decimals for this token type */
             uint8_t nDecimals = GetDecimals(account);
-            
-            /* Check for recipient parameter. */
+
+            /* Check for recipient by username. */
             if(params.find("recipient_username") != params.end() && !params["recipient_username"].get<std::string>().empty())
                 hashRecipient = TAO::Ledger::SignatureChain::Genesis(params["recipient_username"].get<std::string>().c_str());
+
+            /* Check for recipient by genesis-id. */
             else if(params.find("recipient") != params.end())
                 hashRecipient.SetHex(params["recipient"].get<std::string>());
+
             else
                 throw APIException(-229, "Missing recipient");
 
@@ -137,12 +141,10 @@ namespace TAO
                 }
 
             }
-            
+
             /* Check that the recipient genesis hash exists */
             if(!LLD::Ledger->HasGenesis(hashRecipient))
-            { 
                 throw APIException(-230, "Recipient user does not exist");
-            }
 
             /* Check that the recipient isn't the sender */
             if(hashRecipient == session.GetAccount()->Genesis())
@@ -175,11 +177,10 @@ namespace TAO
                     invoice[it.key()] = it.value();
             }
 
-            
             /* Parse the invoice items details */
             if(params.find("items") == params.end() || !params["items"].is_array())
                 throw APIException(-232, "Missing items");
-            
+
             /* Check items is not empty */
             json::json items = params["items"];
             if(items.empty())
@@ -258,8 +259,8 @@ namespace TAO
 
             /* Calculate the amount to pay in token units */
             uint64_t nTotal = dTotal * pow(10, nDecimals);
-        
-        
+
+
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
 
@@ -271,26 +272,19 @@ namespace TAO
             /* Generate a random hash for this objects register address */
             TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::READONLY);
 
-            /* name of the object, default to blank */
-            std::string strName = "";
-
             /* DataStream to help us serialize the data. */
             DataStream ssData(SER_REGISTER, 1);
 
             /* First add the leading 2 bytes to identify the state data */
             ssData << (uint16_t) USER_TYPES::INVOICE;
-
-            /* Then the raw data */
             ssData << invoice.dump();
 
             /* Check the data size */
             if(ssData.size() > TAO::Register::MAX_REGISTER_SIZE)
                 throw APIException(-242, "Data exceeds max register size");
 
-            /* The contract ID being worked on */
-            uint32_t nContract = 0;
-
             /* Add the invoice creation contract. */
+            uint32_t nContract = 0;
             tx[nContract++] << (uint8_t)TAO::Operation::OP::CREATE << hashRegister << (uint8_t)TAO::Register::REGISTER::READONLY << ssData.Bytes();
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
@@ -299,16 +293,16 @@ namespace TAO
 
             /* Add the transfer contract */
             tx[nContract] << uint8_t(TAO::Operation::OP::CONDITION) << (uint8_t)TAO::Operation::OP::TRANSFER << hashRegister << hashRecipient << uint8_t(TAO::Operation::TRANSFER::CLAIM);
-            
+
             /* Add the payment conditions.  The condition is essentially that the claim must include a conditional debit for the
                invoice total being made to the payment account */
-            TAO::Operation::Stream compare;
-            compare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashAccount << nTotal << uint64_t(0);
+            TAO::Operation::Stream ssCompare;
+            ssCompare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashAccount << nTotal << uint64_t(0);
 
-            /* Conditions. */
+            /* The asset transfer condition requiring pay from specified token and value. */
             tx[nContract] <= uint8_t(TAO::Operation::OP::GROUP);
             tx[nContract] <= uint8_t(TAO::Operation::OP::CALLER::OPERATIONS) <= uint8_t(TAO::Operation::OP::CONTAINS);
-            tx[nContract] <= uint8_t(TAO::Operation::OP::TYPES::BYTES) <= compare.Bytes();
+            tx[nContract] <= uint8_t(TAO::Operation::OP::TYPES::BYTES) <= ssCompare.Bytes();
             tx[nContract] <= uint8_t(TAO::Operation::OP::AND);
             tx[nContract] <= uint8_t(TAO::Operation::OP::CALLER::PRESTATE::VALUE) <= std::string("token");
             tx[nContract] <= uint8_t(TAO::Operation::OP::EQUALS);
@@ -317,6 +311,7 @@ namespace TAO
 
             tx[nContract] <= uint8_t(TAO::Operation::OP::OR);
 
+            /* The clawback clause that allows sender to cancel invoice. */
             tx[nContract] <= uint8_t(TAO::Operation::OP::GROUP);
             tx[nContract] <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
             tx[nContract] <= uint8_t(TAO::Operation::OP::EQUALS);
