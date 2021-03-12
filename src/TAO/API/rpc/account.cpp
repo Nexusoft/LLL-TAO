@@ -1975,7 +1975,9 @@ namespace TAO
                 for(const auto& account : jsonAccounts)
                 {
                     /* Get the name */
-                    std::string strName = account["name"].get<std::string>();
+                    std::string strName = "";
+                    if(account.find("name") != account.end())
+                        strName = account["name"].get<std::string>();
 
                     /* If the account has no name then use the address instead */
                     if(strName.empty())
