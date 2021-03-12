@@ -768,11 +768,13 @@ namespace TAO
             json::json jsonDebitParams;
             if(RPC::parse_token(params, jsonDebitParams))
             {
-                if(fHelp || params.size() < 4)
+                if(fHelp || params.size() < 4 || params.size() > 5)
                     return std::string(
-                        "sendfrom <fromaccount> <toNexusaddress> <amount> <pin>"
+                        "sendfrom <fromaccount> <toNexusaddress> <amount> [pin]"
+                        "\n - <fromaccount> must be a valid tritium account name or address"
+                        "\n - <toNexusaddress> the recipient address"
                         "\n - <amount> is a real and is rounded to the nearest 0.000001"
-                        "\n - <fromaccount> must be a valid tritium account name or address");
+                        "\n - <pin> the optional pin to use. ");
 
                 /* Get the From address */
                 std::string strFrom = params[1].get<std::string>();
@@ -788,11 +790,16 @@ namespace TAO
                 /* Add the amount */
                 jsonDebitParams["amount"] = params[3];
 
-                /* Add the optional pin */
-                if(params.size() >= 5)
-
-                /* Add the amount */
-                jsonDebitParams["pin"] = params[4];
+                /* Add the optional pin if passed in*/
+                if(params.size() == 5)
+                    /* Add the amount */
+                    jsonDebitParams["pin"] = params[4];
+                else
+                {
+                    /* Otherwise attempt to get the pin from session */
+                    SecureString strPIN = TAO::API::users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+                    jsonDebitParams["pin"] = strPIN.c_str();
+                }
 
                 /* Invoke the debit API method */
                 json::json jsonDebitRS = TAO::API::finance->Debit(jsonDebitParams, false);
