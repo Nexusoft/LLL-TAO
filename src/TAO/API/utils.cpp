@@ -127,6 +127,27 @@ namespace TAO
         }
 
 
+        /* Retrieves the number of decimals that applies to amounts for this token or account object.
+         *  If the object register passed in is a token account then we need to look at the token definition
+         *  in order to get the decimals.  The token is obtained by looking at the identifier field,
+         *  which contains the register address of the issuing token
+         */
+        uint8_t GetDecimals(const uint256_t& hashRegister)
+        {
+            /* Get the register object. */
+            TAO::Register::Object object;
+            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::LOOKUP))
+                throw APIException(-104, "Object not found");
+
+            /* Parse the object register. */
+            if(!object.Parse())
+                throw APIException(-14, "Object failed to parse");
+
+            /* Look up the decimals for this object */
+            return GetDecimals(object);
+        }
+
+
         /* In order to work out which registers are currently owned by a particular sig chain
          * we must iterate through all of the transactions for the sig chain and track the history
          * of each register.  By iterating through the transactions from most recent backwards we

@@ -157,13 +157,7 @@ namespace TAO
                 throw APIException(-252, "Account to debit is not for the required token");
 
             /* Get the amount to pay from the invoice */
-            double dAmount = invoice["amount"].get<double>();
-
-            /* The decimals for this token type */
-            uint8_t nDecimals = GetDecimals(account);
-
-            /* The amount to pay in token units */
-            uint64_t nAmount = dAmount * pow(10, nDecimals);
+            uint64_t nAmount = invoice["amount"].get<uint64_t>();
 
             /* The transaction ID to cancel */
             uint512_t hashTx;

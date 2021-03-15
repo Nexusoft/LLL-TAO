@@ -54,6 +54,21 @@ namespace TAO
         uint8_t GetDecimals(const TAO::Register::Object& object);
 
 
+        /** GetDecimals
+         *
+         *  Retrieves the number of decimals that applies to amounts for this token or account object.
+         *  If the register address passed in for a token account then we need to look at the token definition
+         *  in order to get the decimals.  The token is obtained by looking at the token_address field,
+         *  which contains the register address of the issuing token
+         *
+         *  @param[in] hashRegister The register address of the account or token to determine the decimals for
+         *
+         *  @return the number of decimals that apply to amounts for this token or account
+         *
+         **/
+        uint8_t GetDecimals(const uint256_t& hashRegister);
+
+
         /** ListRegisters
          *
          *  Scans a signature chain to work out all registers that it owns

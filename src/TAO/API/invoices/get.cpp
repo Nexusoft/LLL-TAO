@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <TAO/API/names/types/names.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/utils.h>
 #include <TAO/API/types/user_types.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -81,6 +82,18 @@ namespace TAO
 
             /* Build the response JSON. */
             ret = InvoiceToJSON(params, state, hashRegister);
+
+            /* The invoice amount is calculated from the sum of the item amounts when the invoice is created, and converted to 
+               the integer token units amount to avoid rounding errors when creating / fulfilling the contract conditions. 
+               Therefore we need to convert this back to the fractional token amount for display. */
+            uint64_t nAmount = ret["amount"].get<uint64_t>();
+
+            /* Get the token identifier */
+            uint256_t hashToken; 
+            hashToken.SetHex(params["token"].get<std::string>());
+
+            /* Convert the amount back to decimal */
+            ret["amount"]  = (double) nAmount / pow(10, GetDecimals(hashToken));
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             FilterResponse(params, ret);

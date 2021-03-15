@@ -67,8 +67,8 @@ namespace TAO
             /* The account to invoice must be paid to */
             TAO::Register::Address hashAccount;
 
-            /* The invoice total in fractional tokens */
-            double dTotal = 0;
+            /* The invoice total in tokens units */
+            uint64_t nTotal = 0;
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -237,26 +237,25 @@ namespace TAO
                 if(nUnits == 0)
                     throw APIException(-240, "Item units must be greater than 0.");
 
-                /* work out the total for this item */
-                double dItemTotal = dUnitAmount * nUnits;
+                /* Convert the unit amount to token units */
+                uint64_t nUnitAmount = dUnitAmount * pow(10, nDecimals);
+
+                /* work out the total for this item in token units*/
+                uint64_t nItemTotal = nUnitAmount * nUnits;
 
                 /* add this to the invoice total */
-                dTotal += dItemTotal;
+                nTotal += nItemTotal;
 
                 /* Once we have validated the mandatory fields, add this item to the invoice JSON */
                 invoice["items"].push_back(*it);
             }
 
             /* Add the invoice amount and token */
-            invoice["amount"] = dTotal;
+            invoice["amount"] = nTotal;
             invoice["token"] = hashToken.ToString();
 
             /* Once validated, add the items to the invoice */
             invoice["items"] = items;
-
-            /* Calculate the amount to pay in token units */
-            uint64_t nTotal = dTotal * pow(10, nDecimals);
-
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
