@@ -21,6 +21,7 @@ The following methods are currently supported by this API
 
 [`create/account`](#createaccount)    
 [`debit/account`](#debitaccount)    
+[`debit/any`](#debitany)    
 [`credit/account`](#creditaccount)    
 [`get/account`](#getaccount)    
 [`list/accounts`](#listaccounts)    
@@ -92,9 +93,9 @@ This example creates a NXS account called "main".
 
 # `debit/account`
 
-Deduct an amount of NXS from an account and send it to another account or legacy UTXO address. The API supports an alternative endpoint that can include the account name in the URL.  For example `/finance/debit/account/savings` will resolve to `finance/debit/account?name=savings`.
+Deduct an amount of NXS or other token from an account and send it to another account or legacy address. The API supports an alternative endpoint that can include the account name in the URL.  For example `/finance/debit/account/savings` will resolve to `finance/debit/account?name=savings`.
 
-Any fee that is applicable fo this transaction is deducted from the sending account, NOT the default account.
+If the sending account is a NXS account, any fee that is applicable for this transaction is deducted from it.  If the sending account is for a non-NXS token, any applicable fee is taken from the default NXS account.
 
 The method supports the ability to send to multiple recipients in one transaction by supplying a `recipients` array instead of the single `name_to`/`address_to`/`amount`. The method allows up to 99 recipients to be supplied.  
 
@@ -149,6 +150,102 @@ The following example shows the json payload for a debit from an account called 
 {
     "pin": "1234",
     "name": "default"
+    "recipients" :
+    [
+        {
+            "name_to": "bob:savings",
+            "amount": 5,
+            "reference": 1234
+        },
+        {
+            "address_to": "8CHjS5Qe7Mghgrqb6NeEaVxjexbdp9p2QVdRTt8W4rzbWhu3fL8",
+            "amount": 5,
+            "reference": 5678
+        },
+        {
+            "address_to": "4kYv4Xft6wufMVi191nQDNprgkK6kzy6gqWRpmfMxyx9KMfEV1u",
+            "amount": 5
+        }
+    ]
+}
+```
+
+
+### Return value JSON object:
+```
+{
+    "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
+}
+```
+
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the debit.
+
+***
+
+# `debit/any`
+
+Send an amount of NXS or other token from any account(s) to one or more recipient addresses. The method will choose which accounts to debit by attempting to fill up the transaction with as many DEBIT contracts as possible (maximum 99). Therefore it will deplete smaller balance accounts first, whilst ensuring that the total to send can still be met within the 99 contract limit. 
+
+Repeated calls to the `debit/any` method can be used to consolidate dust balances into a single account.
+
+Any fee that is applicable fo this transaction is deducted from the default NXS account.
+
+The method supports the ability to send to multiple recipients in one transaction by supplying a `recipients` array instead of the single `name_to`/`address_to`/`amount`. The method allows up to 99 recipients to be supplied.  
+
+
+
+### Endpoint:
+
+`/finance/debit/any`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the account owner. For single-user API mode the session should not be supplied.
+
+`token_name` : Optional name of the token type to debit.  `token` can be supplied as an alternative to `token_name`.  Defaults to `NXS`.
+
+`token` : Optional address of the token type to debit. `token_name` can be supplied as an alternative to `token`.  Defaults to `0` (`NXS`)
+
+`amount` : The amount of NXS to debit.
+
+`name_to` : The name identifying the account to send to. This is optional if address_to is provided.  The name should be in username:name format
+
+`address_to` : The register address of the account to send to. This is optional if name_to is provided.  The address_to can also contain a legacy UTXO address if sending from a signature chain account to a legacy address.
+
+`reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a `64-bit unsigned integer` in the range of 0 to 18446744073709551615
+
+`expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied
+
+`recipients` : This optional array can be provided as an alternative to the single `name_to`/`address_to`, `amount`, `reference`, and `expires` fields.  Each object in the array can have `name_to`/`address_to`, `amount`, `reference`, and `expires` fields, as described above. Up to 99 recipients can be included in the array.
+
+
+### Example:
+
+The following example shows the json payload for a debit of 10.5 NXS being sent to an account identified by the name "bob:savings".  In the name_to field, "bob" refers to the username of the account holder and "savings" is their NXS account.  If Bob is concerned about privacy he could have provided the register address of his token account instead
+
+```
+{
+    "pin": "1234",
+    "token_name": "NXS",
+    "amount": 10.5,
+    "name_to": "bob:savings"
+}
+```
+
+### Example Multiple Recipients:
+
+The following example shows the json payload for a debit of the token ABC made to 3 separate recipients, each receiving 5 NXS, and each with a different reference  
+
+```
+{
+    "pin": "1234",
+    "token_name": "ABC"
     "recipients" :
     [
         {

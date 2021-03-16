@@ -439,6 +439,8 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_finance_migrate.o \
 		build/API_types_finance_trustaccounts.o \
 		build/API_types_finance_stake.o \
+		build/API_types_finance_recipient.o \
+		build/API_types_finance_running_balance.o \
 		build/API_types_invoices_cancel.o \
 		build/API_types_invoices_create.o \
 		build/API_types_invoices_get.o \

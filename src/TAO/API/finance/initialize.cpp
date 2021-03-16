@@ -25,18 +25,19 @@ namespace TAO
         /* Standard initialization function. */
         void Finance::Initialize()
         {
-            mapFunctions["create/account"]  = Function(std::bind(&Finance::Create, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["credit/account"]  = Function(std::bind(&Finance::Credit, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["debit/account"]   = Function(std::bind(&Finance::Debit, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/account"]     = Function(std::bind(&Finance::Get, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/balances"]   = Function(std::bind(&Finance::GetBalances, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/balances"]   = Function(std::bind(&Finance::ListBalances, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/stakeinfo"]   = Function(std::bind(&Finance::Info, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/accounts"]   = Function(std::bind(&Finance::List, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/account/transactions"]  = Function(std::bind(&Finance::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["migrate/accounts"]    = Function(std::bind(&Finance::MigrateAccounts, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["set/stake"]       = Function(std::bind(&Finance::Stake, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/trustaccounts"] = Function(std::bind(&Finance::TrustAccounts, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["create/account"]            = Function(std::bind(&Finance::Create, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["credit/account"]            = Function(std::bind(&Finance::Credit, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["debit/account"]             = Function(std::bind(&Finance::Debit, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/account"]               = Function(std::bind(&Finance::Get, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/balances"]              = Function(std::bind(&Finance::GetBalances, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/balances"]             = Function(std::bind(&Finance::ListBalances, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/stakeinfo"]             = Function(std::bind(&Finance::Info, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/accounts"]             = Function(std::bind(&Finance::List, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/account/transactions"] = Function(std::bind(&Finance::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["migrate/accounts"]          = Function(std::bind(&Finance::MigrateAccounts, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["set/stake"]                 = Function(std::bind(&Finance::Stake, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/trustaccounts"]        = Function(std::bind(&Finance::TrustAccounts, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["debit/any"]                 = Function(std::bind(&Finance::DebitAny, this, std::placeholders::_1, std::placeholders::_2));
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not

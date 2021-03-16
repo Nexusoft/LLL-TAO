@@ -351,7 +351,7 @@ Error Codes
 | -212 | Invalid token |
 | -213 | Cannot create transactions whilst synchronizing |
 | -214 | Insufficient funds to pay fee |
-| -215 | Max number of recipients (99) exceeded |
+| -215 | Max number of recipients exceeded |
 | -216 | recipients field must be an array |
 | -217 | recipients array is empty |
 | -218 | User password / pin not changed |
@@ -440,3 +440,4 @@ Error Codes
 | -303 | Missing op in where clause |
 | -304 | Missing value in where clause |
 | -305 | Unknown operand in where clause |
+| -306 | Max number of contracts exceeded.  Please try again with a smaller amount or fewer recipients |
