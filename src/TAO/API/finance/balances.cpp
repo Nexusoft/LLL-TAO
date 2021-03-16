@@ -108,7 +108,7 @@ namespace TAO
             for(const auto& hashRegister : vRegisters)
             {
                 /* Initial check that it is an account/trust/token, before we hit the DB to get the balance */
-                if(!hashRegister.IsAccount() && !hashRegister.IsTrust() && !hashRegister.IsToken())
+                if(!hashRegister.IsAccount() && !hashRegister.IsTrust())
                     continue;
 
                 /* Get the register from the register DB */
@@ -222,10 +222,10 @@ namespace TAO
             bool fHasFilter = vWhere.count("") > 0;
 
             /* token register hash */
-            uint256_t hashToken;
+            TAO::Register::Address hashToken;
 
             /* map of token types to balances */
-            std::map<uint256_t, TokenBalance> vTokenBalances;
+            std::map<TAO::Register::Address, TokenBalance> vTokenBalances;
 
             /* The trust account */
             TAO::Register::Object trust;
@@ -239,7 +239,7 @@ namespace TAO
             for(const auto& hashRegister : vRegisters)
             {
                 /* Initial check that it is an account/trust/token, before we hit the DB to get the balance */
-                if(!hashRegister.IsAccount() && !hashRegister.IsTrust() && !hashRegister.IsToken())
+                if(!hashRegister.IsAccount() && !hashRegister.IsTrust())
                     continue;
 
                 /* Get the register from the register DB */
@@ -299,7 +299,6 @@ namespace TAO
                 if(!trust.IsNull())
                     vTokenBalances[hashToken].nStake = trust.get<uint64_t>("stake");
             
-
                 /* Populate the response object */
                 json::json jsonBalances;
 
