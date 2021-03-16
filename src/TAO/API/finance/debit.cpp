@@ -46,7 +46,7 @@ namespace TAO
     namespace API
     {
 
-        /* Debit a NXS account. */
+        /* Debit tokens from an account or token object register. */
         json::json Finance::Debit(const json::json& params, bool fHelp)
         {
             json::json ret;
@@ -97,10 +97,6 @@ namespace TAO
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
                 throw APIException(-65, "Object is not an account");
 
-            /* Check the account is a NXS account */
-            //if(accountFrom.get<uint256_t>("token") != 0)
-            //    throw APIException(-66, "Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts.");
-
             /* Get current balance and significant figures. */
             uint8_t nDecimals = GetDecimals(accountFrom);
             uint64_t nCurrentBalance = accountFrom.get<uint64_t>("balance");
@@ -132,9 +128,9 @@ namespace TAO
                 vRecipients.push_back(params);
             }
 
-            /* Check that there are not too many recipients to fit into one transaction */
-            if(vRecipients.size() > 99)
-                throw APIException(-215, "Max number of recipients (99) exceeded");
+            /* Check that there are not too many recipients to fit into one transaction, leaving one slot for the fee contract */
+            if(vRecipients.size() > (TAO::Ledger::MAX_TRANSACTION_CONTRACTS - 1))
+                throw APIException(-215, debug::safe_printstr("Max number of recipients (", (TAO::Ledger::MAX_TRANSACTION_CONTRACTS - 1), ") exceeded"));
 
             /* Flag that there is at least one legacy recipient */
             bool fHasLegacy = false;
@@ -146,8 +142,8 @@ namespace TAO
             for(const auto& jsonRecipient : vRecipients)
             {
                 /* Double check that there are not too many recipients to fit into one transaction */
-                if(nContract >= 99)
-                    throw APIException(-215, "Max number of recipients (99) exceeded");
+                if(nContract >= (TAO::Ledger::MAX_TRANSACTION_CONTRACTS - 1))
+                    throw APIException(-215, debug::safe_printstr("Max number of recipients (", (TAO::Ledger::MAX_TRANSACTION_CONTRACTS - 1), ") exceeded"));
 
                 /* Check for amount parameter. */
                 if(jsonRecipient.find("amount") == jsonRecipient.end())
@@ -287,7 +283,7 @@ namespace TAO
 
                     /* Add expiration condition unless sending to self */
                     if(!fSendToSelf)
-                        AddExpires( jsonRecipient, session.GetAccount()->Genesis(), tx[nContract], fTokenizedDebit);
+                        AddExpires( params, session.GetAccount()->Genesis(), tx[nContract], fTokenizedDebit);
 
                     /* Increment the contract ID */
                     nContract++;
