@@ -75,7 +75,7 @@ namespace TAO
                     return std::string(
                         "getnewaddress <token=<address> or token_name=<name>> [pin]"
                         " - Returns a new Nexus address for receiving payments.  "
-                        "\n - <token> <token_name> the token or token name to create the address for"
+                        "\n - <token> or <token_name> the token or token name to create the address for"
                         "\n - [pin] the optional pin to use. ");
 
                 /* Add the optional pin if passed in*/
@@ -543,7 +543,7 @@ namespace TAO
                         "getbalance <token=<address> | token_name=<name>> [account] "
                         " - If [account] is not specified, returns the server's total available balance."
                         " If [account] is specified, returns the balance in the account."
-                        "\n - <token> <token_name> the token or token name to get the balance for.");
+                        "\n - <token> or <token_name> the token or token name to get the balance for.");
 
                 /* Check to see if an account name or address was specified */
                 if(params.size() > 1)
@@ -777,7 +777,7 @@ namespace TAO
                 if(fHelp || params.size() < 4 || params.size() > 5)
                     return std::string(
                         "sendfrom <token=<address> or token_name=<name>> <fromaccount> <toNexusaddress> <amount> [pin]"
-                        "\n - <token> <token_name> the token or token name to send "
+                        "\n - <token> or <token_name> the token or token name to send "
                         "\n - <fromaccount> must be a valid tritium account name or address"
                         "\n - <toNexusaddress> the recipient address"
                         "\n - <amount> is a real and is rounded to the nearest 0.000001"
@@ -1272,7 +1272,7 @@ namespace TAO
                     fIncludeEmpty = params[2];
 
                 /* Get the tritium accounts */
-                json::json jsonAccounts = TAO::API::finance->List(token, false);
+                json::json jsonAccounts = TAO::API::finance->ListFast(token, false);
                 
                 /* Iterate through all accounts and add their available balance to the map */
                 for(const auto& account : jsonAccounts)
@@ -1281,7 +1281,9 @@ namespace TAO
                     std::string strAddress = account["address"].get<std::string>();
 
                     /* Get the name */
-                    std::string strName = account["name"].get<std::string>();
+                    std::string strName = "";
+                    if(account.find("name") != account.end())
+                        strName = account["name"].get<std::string>();
 
                     /* Get the amount */
                     double dBalance = account["balance"].get<double>();
@@ -1419,7 +1421,7 @@ namespace TAO
                 if(fHelp || params.size() > 1)
                     return std::string(
                         "listreceivedbyaddress <token=<address> | token_name=<name>>"
-                        "\n - <token> <token_name> the token or token name to get the received amounts for.");
+                        "\n - <token> or <token_name> the token or token name to get the received amounts for.");
             }
             else
             {
@@ -1455,7 +1457,7 @@ namespace TAO
                 if(fHelp || params.size() > 1)
                     return std::string(
                         "listreceivedbyaddress <token=<address> | token_name=<name>>"
-                        "\n - <token> <token_name> the token or token name to get the received amounts for.");
+                        "\n - <token> or <token_name> the token or token name to get the received amounts for.");
             }
             else
             {
@@ -1710,7 +1712,7 @@ namespace TAO
                     return std::string(
                         "listtransactions <token=<address> | token_name=<name>> [account] [count=10] [from=0]"
                         " - Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]."
-                        "\n - <token> <token_name> the token or token name to list transactions for.");
+                        "\n - <token> or <token_name> the token or token name to list transactions for.");
             }
             else
             {
@@ -1810,18 +1812,18 @@ namespace TAO
 
                             /* Add the account */
                             std::string strAccountName = "";
-                            if(strOp == "CREDIT" && contract.find("to_name") != contract.end())
+                            if((strOp == "CREDIT" || strOp == "DEBIT" ) && contract.find("to_name") != contract.end())
                                 strAccountName = contract["to_name"].get<std::string>();
-                            else if((strOp == "DEBIT" || strOp == "FEE") && contract.find("from_name") != contract.end())
+                            else if(strOp == "FEE" && contract.find("from_name") != contract.end())
                                 strAccountName = contract["from_name"].get<std::string>();
                             else if(strOp == "GENESIS" || strOp == "TRUST")
                                 strAccountName = "trust";
 
                             jsonTransaction["account"] = strAccountName;
                             
-                            if(strOp == "CREDIT")
+                            if(strOp == "CREDIT" || strOp == "DEBIT")
                                 jsonTransaction["address"] = contract["to"].get<std::string>(); 
-                            else if(strOp == "DEBIT" || strOp == "FEE")
+                            else if(strOp == "FEE")
                                 jsonTransaction["address"] = contract["from"].get<std::string>();
                             else if(strOp == "GENESIS" || strOp == "TRUST")
                                 jsonTransaction["address"] = contract["address"].get<std::string>();
@@ -1896,13 +1898,13 @@ namespace TAO
                     return std::string(
                         "listaddresses <token=<address> or token_name=<name>>"
                         " - Returns list of addresses"
-                        "\n - <token> <token_name> the token or token name to list addresses for.");
+                        "\n - <token> or <token_name> the token or token name to list addresses for.");
 
                 /* Map of account names to balances */
                 std::map<std::string, double> mapAccountBalances;
 
                 /* Get the tritium accounts */
-                json::json jsonAccounts = TAO::API::finance->List(token, false);
+                json::json jsonAccounts = TAO::API::finance->ListFast(token, false);
                 
                 /* Iterate through all accounts and add their available balance to the map */
                 for(const auto& account : jsonAccounts)
@@ -1963,13 +1965,13 @@ namespace TAO
                     return std::string(
                         "listaccounts <token=<address> or token_name=<name>>"
                         " - Returns Object that has account names as keys, account balances as values."
-                        "\n - <token> <token_name> the token or token name to list the accounts for.");
+                        "\n - <token> or <token_name> the token or token name to list the accounts for.");
 
                 /* Map of account names to balances */
                 std::map<std::string, double> mapAccountBalances;
 
                 /* Get the tritium accounts */
-                json::json jsonAccounts = TAO::API::finance->List(token, false);
+                json::json jsonAccounts = TAO::API::finance->ListFast(token, false);
                 
                 /* Iterate through all accounts and add their available balance to the map */
                 for(const auto& account : jsonAccounts)

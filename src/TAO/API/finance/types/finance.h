@@ -198,6 +198,19 @@ namespace TAO
             json::json List(const json::json& params, bool fHelp);
 
 
+            /** ListFast
+             *
+             *  Optimized version to list all NXS accounts but without supporting the JSON filtering 
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json ListFast(const json::json& params, bool fHelp);
+
+
             /** ListTransactions
              *
              *  Lists all transactions for a given account

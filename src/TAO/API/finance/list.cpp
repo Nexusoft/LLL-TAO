@@ -141,6 +141,113 @@ namespace TAO
             return ret;
         }
 
+
+        /* Optimized version to list all NXS accounts but without supporting the JSON filtering . */
+        json::json Finance::ListFast(const json::json& params, bool fHelp)
+        {
+            /* JSON return value. */
+            json::json ret;;
+
+            /* Get the session to be used for this API call */
+            Session& session = users->GetSession(params);
+
+            /* Get the account. */
+            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
+            if(!user)
+                throw APIException(-10, "Invalid session ID"); 
+
+            /* The token to filter on.  Default to 0 (NXS) */
+            TAO::Register::Address hashToken;
+
+            /* Check for data parameter. */
+            if(params.find("token_name") != params.end() && !params["token_name"].get<std::string>().empty())
+            {
+                std::string strName = params["token_name"].get<std::string>();
+                if(strName != "NXS")
+                    /* If name is provided then use this to deduce the register address */
+                    hashToken = Names::ResolveAddress(params, strName);
+            }
+            /* Otherwise try to find the raw hex encoded address. */
+            else if(params.find("token") != params.end())
+            {
+                std::string strToken = params["token"];
+                if(strToken != "0" && IsRegisterAddress(strToken))
+                    hashToken.SetBase58(params["token"]);
+            }
+
+            /* Get the list of registers owned by this sig chain */
+            std::vector<std::pair<TAO::Register::Address, TAO::Register::Object>> vAccounts;
+            if(!ListAccounts(user->Genesis(), false, true, vAccounts))
+                throw APIException(-74, "No registers found");
+
+            /* Add the register data to the response */
+            for(const auto& account : vAccounts)
+            {
+                /* Get the object register from the list */
+                TAO::Register::Object object = account.second;
+
+                /* Check that this is an account */
+                uint8_t nStandard = object.Standard();
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                    continue;
+
+                /* Check the account matches the filter */
+                if(object.get<uint256_t>("token") != hashToken)
+                    continue;
+
+                /* JSON for this account */
+                json::json obj;
+
+                obj["address"] = account.first.ToString();
+
+                /* Get the token names. */
+                std::string strTokenName = Names::ResolveAccountTokenName(params, object);
+                if(!strTokenName.empty())
+                    obj["token_name"] = strTokenName;
+
+                /* Set the value to the token contract address. */
+                TAO::Register::Address hashToken = object.get<uint256_t>("token");
+                obj["token"] = hashToken.ToString();
+
+                /* Handle digit conversion. */
+                uint8_t nDecimals = GetDecimals(object);
+
+                /* In order to get the balance for this account we need to ensure that we use the state from disk, which will 
+                   have the confirmed balance.  If this is a new account then it won't be on disk so the confirmed balance is 0 */
+                uint64_t nConfirmedBalance = 0;
+                TAO::Register::Object accountConfirmed;
+                if(LLD::Register->ReadState(account.first, accountConfirmed))
+                {
+                    /* Parse the object register. */
+                    if(!accountConfirmed.Parse())
+                        throw APIException(-14, "Object failed to parse");
+
+                    nConfirmedBalance = accountConfirmed.get<uint64_t>("balance");
+                }
+
+                /* Get unconfirmed debits coming in and credits we have made */
+                uint64_t nUnconfirmed = GetUnconfirmed(object.hashOwner, hashToken, false, account.first);
+
+                /* Get all new debits that we have made */
+                uint64_t nUnconfirmedOutgoing = GetUnconfirmed(object.hashOwner, hashToken, true, account.first);
+
+                /* Calculate the available balance which is the last confirmed balance minus and mempool debits */
+                uint64_t nAvailable = nConfirmedBalance - nUnconfirmedOutgoing;
+
+                obj["balance"] = (double)nAvailable / pow(10, nDecimals);
+                obj["unconfirmed"] = (double)nUnconfirmed / pow(10, nDecimals);
+
+                /* Add stake amount if this is a trust account. */
+                if(nStandard == TAO::Register::OBJECTS::TRUST)
+                    ret["stake"] = (double)object.get<uint64_t>("stake") / pow(10, nDecimals);
+
+                ret.push_back(obj);
+            }
+
+            return ret;
+        }
+
+
         /* Lists all transactions for a given account. */
         json::json Finance::ListTransactions(const json::json& params, bool fHelp)
         {
