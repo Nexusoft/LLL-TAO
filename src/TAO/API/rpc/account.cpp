@@ -1015,185 +1015,257 @@ namespace TAO
         * requires wallet passphrase to be set with walletpassphrase first*/
         json::json RPC::SendMany(const json::json& params, bool fHelp)
         {
-            Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
-
-            if(wallet.IsCrypted() && (fHelp || params.size() < 2 || params.size() > 5))
-                return std::string(
-                    "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment] [passphrase]"
-                    "\n - amounts are real numbers and are rounded to the nearest 0.000001"
-                    "\n - requires wallet unlocked or [passphrase] provided"
-                    "\n - [passphrase] temporarily unlocks wallet for send operation only");
-
-            if(!wallet.IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
-                return std::string(
-                    "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
-                    "\n - amounts are real numbers and are rounded to the nearest 0.000001");
-
-            /* Account to SendFrom */
-            std::string strAccount = AccountFromValue(params[0]);
-
-            /* Recipient list with amounts */
-            if(!params[1].is_object())
-                throw APIException(-8, std::string("Invalid recipient list format"));
-
-            json::json sendTo = params[1];
-
-            /* Min number of confirmations for transactions to source NXS */
-            int nMinDepth = 1;
-            if(params.size() > 2)
-                nMinDepth = params[2];
-
-            /* Wallet comments (allow for empty strings as placeholders when only want to provide passphrase) */
-            Legacy::WalletTx wtx;
-            wtx.strFromAccount = strAccount;
-
-            if(params.size() > 3 && !params[3].is_null() && params[3].get<std::string>() != "")
-                wtx.mapValue["comment"] = params[3].get<std::string>();
-
-            /* Wallet passphrase */
-            SecureString strWalletPass;
-            strWalletPass.reserve(100);
-
-            if(params.size() > 4 && !params[4].is_null() && params[4].get<std::string>() != "")
-                strWalletPass = params[4].get<std::string>().c_str();
-
-            /* Process address/amount list */
-            std::set<Legacy::NexusAddress> setAddress;
-            std::vector<std::pair<Legacy::Script, int64_t> > vecSend;
-            TAO::Register::Address hashAccount;
-
-            int64_t totalAmount = 0;
-            for(json::json::iterator it = sendTo.begin(); it != sendTo.end(); ++it)
+            /* Check to see if the caller has specified a token / token_name */
+            json::json jsonDebit;
+            if(parse_token(params, jsonDebit))
             {
-                Legacy::Script scriptPubKey;
-                std::string strAddress = it.key();
+                if(fHelp || params.size() < 3 || params.size() > 4)
+                    return std::string(
+                        "sendmany <token=<address> or token_name=<name>> [fromaccount] {address:amount,...} [pin]"
+                        " - Returns a new Nexus address for receiving payments.  "
+                        "\n - <token> or <token_name> the token or token name to create the address for"
+                        "\n - [fromaccount] optional tritium account name or address to send from.  Set to blank or '*' to send from any account"
+                        "\n - <address> the address to send to"
+                        "\n - <amount> the amount to send, real and rounded to the nearest 0.000001"
+                        "\n - [pin] the optional pin to use. ");
+                
+                /* Result of the finance/debit call */
+                json::json jsonResult;
+                
+                /* Check for a from address */
+                std::string strFrom = params[1].get<std::string>();
 
-                /* Decode the address string */
-                hashAccount.SetBase58(strAddress);
+                /* Recipients JSON  */
+                json::json jsonRecipients = json::json::array();
 
-                /* handle recipient being a register address */
-                if(hashAccount.IsValid() && (hashAccount.IsAccount() || hashAccount.IsTrust()))
+                /* Parse the recipients from the command line and put them into the format expected by the finance API */
+                json::json jsonTo = params[2];
+                for(json::json::iterator itt = jsonTo.begin(); itt != jsonTo.end(); ++itt)
                 {
-                    /* Get the account object. */
-                    TAO::Register::Object account;
-                    if(!LLD::Register->ReadState(hashAccount, account))
-                        throw APIException(-5, "Invalid Nexus address");
+                    json::json jsonRecipent;
 
-                    /* Parse the object register. */
-                    if(!account.Parse())
-                        throw APIException(-5, "Invalid Nexus address");
+                    jsonRecipent["address_to"] = itt.key();
+                    jsonRecipent["amount"] = itt.value();
 
-                    /* Get the object standard. */
-                    uint8_t nStandard = account.Standard();
+                    jsonRecipients.push_back(jsonRecipent);
+                }
 
-                    /* Check the object standard. */
-                    if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
-                        throw APIException(-126, "Address is not for a NXS account");
+                /* Add the recipients array to the debit params */
+                jsonDebit["recipients"] = jsonRecipients;
 
-                    /* Check the account is a NXS account */
-                    if(account.get<uint256_t>("token") != 0)
-                        throw APIException(-126, "Address is not for a NXS account");
 
-                    scriptPubKey.SetRegisterAddress( hashAccount );
+                /* Add the optional pin if passed in*/
+                if(params.size() == 4)
+                    jsonDebit["pin"] = params[3];
+                else
+                {
+                    /* Otherwise attempt to get the pin from session */
+                    SecureString strPIN = TAO::API::users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+                    jsonDebit["pin"] = strPIN.c_str();
+                }
+
+                /* If a from address is specified then we need to use the debit/account API instead of debit/any */
+                if(!strFrom.empty() && strFrom != "*")
+                {
+                    /* Set the from name/addess */
+                    if(IsRegisterAddress(strFrom))
+                        jsonDebit["address"] = strFrom;
+                    else
+                        jsonDebit["name"] = strFrom;
+
+                    /* Pass the call on to the Debit method from the finance API */
+                    jsonResult = TAO::API::finance->Debit(jsonDebit, false);
                 }
                 else
                 {
-                    Legacy::NexusAddress address(it.key());
-                    if(!address.IsValid())
-                        throw APIException(-5, std::string("Invalid Nexus address:")+it.key());
-
-                    if(setAddress.count(address))
-                        throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
-
-                    setAddress.insert(address);
-
-                    scriptPubKey.SetNexusAddress(address);
+                    /* Pass the call on to the DebitAny method from the finance API */
+                    jsonResult = TAO::API::finance->DebitAny(jsonDebit, false);
                 }
 
-                int64_t nAmount = Legacy::AmountToSatoshis(it.value());
-
-                if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
-                    throw APIException(-101, "Send amount too small");
-
-                totalAmount += nAmount;
-
-                vecSend.push_back(make_pair(scriptPubKey, nAmount));
+                return jsonResult["txid"];
             }
-
-            /* Save the current lock state of wallet */
-            bool fLocked = wallet.IsLocked();
-            bool fMintOnly = Legacy::fWalletUnlockMintOnly;
-
-            /* Must provide passphrase to send if wallet locked or unlocked for minting only */
-            if(wallet.IsCrypted() && (fLocked || fMintOnly))
+            else
             {
-                if(strWalletPass.length() == 0)
-                    throw APIException(-13, "Error: Wallet is locked.");
+                Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
-                /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
-                if(fMintOnly)
+                if(wallet.IsCrypted() && (fHelp || params.size() < 2 || params.size() > 5))
+                    return std::string(
+                        "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment] [passphrase]"
+                        "\n - amounts are real numbers and are rounded to the nearest 0.000001"
+                        "\n - requires wallet unlocked or [passphrase] provided"
+                        "\n - [passphrase] temporarily unlocks wallet for send operation only");
+
+                if(!wallet.IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
+                    return std::string(
+                        "sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]"
+                        "\n - amounts are real numbers and are rounded to the nearest 0.000001");
+
+                /* Account to SendFrom */
+                std::string strAccount = AccountFromValue(params[0]);
+
+                /* Recipient list with amounts */
+                if(!params[1].is_object())
+                    throw APIException(-8, std::string("Invalid recipient list format"));
+
+                json::json sendTo = params[1];
+
+                /* Min number of confirmations for transactions to source NXS */
+                int nMinDepth = 1;
+                if(params.size() > 2)
+                    nMinDepth = params[2];
+
+                /* Wallet comments (allow for empty strings as placeholders when only want to provide passphrase) */
+                Legacy::WalletTx wtx;
+                wtx.strFromAccount = strAccount;
+
+                if(params.size() > 3 && !params[3].is_null() && params[3].get<std::string>() != "")
+                    wtx.mapValue["comment"] = params[3].get<std::string>();
+
+                /* Wallet passphrase */
+                SecureString strWalletPass;
+                strWalletPass.reserve(100);
+
+                if(params.size() > 4 && !params[4].is_null() && params[4].get<std::string>() != "")
+                    strWalletPass = params[4].get<std::string>().c_str();
+
+                /* Process address/amount list */
+                std::set<Legacy::NexusAddress> setAddress;
+                std::vector<std::pair<Legacy::Script, int64_t> > vecSend;
+                TAO::Register::Address hashAccount;
+
+                int64_t totalAmount = 0;
+                for(json::json::iterator it = sendTo.begin(); it != sendTo.end(); ++it)
+                {
+                    Legacy::Script scriptPubKey;
+                    std::string strAddress = it.key();
+
+                    /* Decode the address string */
+                    hashAccount.SetBase58(strAddress);
+
+                    /* handle recipient being a register address */
+                    if(hashAccount.IsValid() && (hashAccount.IsAccount() || hashAccount.IsTrust()))
+                    {
+                        /* Get the account object. */
+                        TAO::Register::Object account;
+                        if(!LLD::Register->ReadState(hashAccount, account))
+                            throw APIException(-5, "Invalid Nexus address");
+
+                        /* Parse the object register. */
+                        if(!account.Parse())
+                            throw APIException(-5, "Invalid Nexus address");
+
+                        /* Get the object standard. */
+                        uint8_t nStandard = account.Standard();
+
+                        /* Check the object standard. */
+                        if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+                            throw APIException(-126, "Address is not for a NXS account");
+
+                        /* Check the account is a NXS account */
+                        if(account.get<uint256_t>("token") != 0)
+                            throw APIException(-126, "Address is not for a NXS account");
+
+                        scriptPubKey.SetRegisterAddress( hashAccount );
+                    }
+                    else
+                    {
+                        Legacy::NexusAddress address(it.key());
+                        if(!address.IsValid())
+                            throw APIException(-5, std::string("Invalid Nexus address:")+it.key());
+
+                        if(setAddress.count(address))
+                            throw APIException(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
+
+                        setAddress.insert(address);
+
+                        scriptPubKey.SetNexusAddress(address);
+                    }
+
+                    int64_t nAmount = Legacy::AmountToSatoshis(it.value());
+
+                    if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
+                        throw APIException(-101, "Send amount too small");
+
+                    totalAmount += nAmount;
+
+                    vecSend.push_back(make_pair(scriptPubKey, nAmount));
+                }
+
+                /* Save the current lock state of wallet */
+                bool fLocked = wallet.IsLocked();
+                bool fMintOnly = Legacy::fWalletUnlockMintOnly;
+
+                /* Must provide passphrase to send if wallet locked or unlocked for minting only */
+                if(wallet.IsCrypted() && (fLocked || fMintOnly))
+                {
+                    if(strWalletPass.length() == 0)
+                        throw APIException(-13, "Error: Wallet is locked.");
+
+                    /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
+                    if(fMintOnly)
+                    {
+                        wallet.Lock();
+                        Legacy::fWalletUnlockMintOnly = false; //Assures temporary unlock is a full unlock for send
+                    }
+
+                    /* Handle temporary unlock (send false for fStartStake so stake minter does not start during send)
+                    * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
+                    */
+                    if(!wallet.Unlock(strWalletPass, 0, false))
+                        throw APIException(-14, "Error: The wallet passphrase entered was incorrect.");
+                }
+
+                bool fInsufficientBalance = false;
+                bool fCreateFailed = false;
+                bool fCommitFailed = false;
+
+                /* Check funds */
+                int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
+                if(totalAmount > nBalance)
+                    fInsufficientBalance = true;
+
+                /* Send */
+                if(!fInsufficientBalance)
+                {
+                    Legacy::ReserveKey keyChange(wallet);
+                    int64_t nFeeRequired = 0;
+
+                    if(!wallet.CreateTransaction(vecSend, wtx, keyChange, nFeeRequired))
+                    {
+                        if(totalAmount + nFeeRequired > wallet.GetBalance())
+                            fInsufficientBalance = true;
+                        else
+                            fCreateFailed = true;
+                    }
+                    else if(!wallet.CommitTransaction(wtx, keyChange))
+                        fCommitFailed = true;
+                }
+
+                /* If used walletpassphrase to temporarily unlock wallet, return to prior state. */
+                if(wallet.IsCrypted() && (fLocked || fMintOnly))
                 {
                     wallet.Lock();
-                    Legacy::fWalletUnlockMintOnly = false; //Assures temporary unlock is a full unlock for send
+
+                    if(fMintOnly)
+                    {
+                        wallet.Unlock(strWalletPass, 0); //restarts the stake minter
+
+                        Legacy::fWalletUnlockMintOnly = true;
+                    }
                 }
 
-                /* Handle temporary unlock (send false for fStartStake so stake minter does not start during send)
-                 * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
-                 */
-                if(!wallet.Unlock(strWalletPass, 0, false))
-                    throw APIException(-14, "Error: The wallet passphrase entered was incorrect.");
+                /* Only throw errors from insufficient balance or transaction creation after returning to prior lock state */
+                if(fInsufficientBalance)
+                    throw APIException(-6, "Account has insufficient funds");
+
+                if(fCreateFailed)
+                    throw APIException(-4, "Transaction creation failed");
+
+                if(fCommitFailed)
+                    throw APIException(-4, "Transaction commit failed");
+
+                return wtx.GetHash().GetHex();
             }
-
-            bool fInsufficientBalance = false;
-            bool fCreateFailed = false;
-            bool fCommitFailed = false;
-
-            /* Check funds */
-            int64_t nBalance = GetAccountBalance(strAccount, nMinDepth);
-            if(totalAmount > nBalance)
-                fInsufficientBalance = true;
-
-            /* Send */
-            if(!fInsufficientBalance)
-            {
-                Legacy::ReserveKey keyChange(wallet);
-                int64_t nFeeRequired = 0;
-
-                if(!wallet.CreateTransaction(vecSend, wtx, keyChange, nFeeRequired))
-                {
-                    if(totalAmount + nFeeRequired > wallet.GetBalance())
-                        fInsufficientBalance = true;
-                    else
-                        fCreateFailed = true;
-                }
-                else if(!wallet.CommitTransaction(wtx, keyChange))
-                    fCommitFailed = true;
-            }
-
-            /* If used walletpassphrase to temporarily unlock wallet, return to prior state. */
-            if(wallet.IsCrypted() && (fLocked || fMintOnly))
-            {
-                wallet.Lock();
-
-                if(fMintOnly)
-                {
-                    wallet.Unlock(strWalletPass, 0); //restarts the stake minter
-
-                    Legacy::fWalletUnlockMintOnly = true;
-                }
-            }
-
-            /* Only throw errors from insufficient balance or transaction creation after returning to prior lock state */
-            if(fInsufficientBalance)
-                throw APIException(-6, "Account has insufficient funds");
-
-            if(fCreateFailed)
-                throw APIException(-4, "Transaction creation failed");
-
-            if(fCommitFailed)
-                throw APIException(-4, "Transaction commit failed");
-
-            return wtx.GetHash().GetHex();
         }
 
         /* addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]
