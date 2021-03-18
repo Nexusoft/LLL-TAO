@@ -180,8 +180,8 @@ namespace TAO
             }
             else
             {
-                /* Default Expiration of 7 days (604800 seconds) */
-                nExpires = 604800;
+                /* Default Expiration of 7 days (604800 seconds), if not explicitly configured */
+                nExpires = config::GetArg("-txexpiry", 604800);
             }
 
             /* Check if there is an expiry set for the contract */
@@ -206,7 +206,7 @@ namespace TAO
                 contract <= uint8_t(OP::UNGROUP);
 
                 /* If the contract is a debit to a tokenized asset then add an additional clause to bypass the expiration if the
-                recipient is from the sending sig chain  */
+                   recipient is from the sending sig chain  */
                 if(fTokenizedDebit)
                 {
                     contract <= uint8_t(OP::OR);
@@ -231,7 +231,7 @@ namespace TAO
                 contract <= uint8_t(OP::UNGROUP);
 
                 /* If the contract is a debit to a tokenized asset then add an additional clause to bypass the expiration if the
-                recipient is from the sending sig chain  */
+                   recipient is from the sending sig chain  */
                 if(fTokenizedDebit)
                 {
                     contract <= uint8_t(OP::OR);
@@ -253,7 +253,7 @@ namespace TAO
         }
 
         /* Determines if a contract has an expiration condition.  The method searches the bytes of the conditions stream to see if
-        *  if the pattern for an expiration condition exists somewhere in the conditions */
+           if the pattern for an expiration condition exists somewhere in the conditions */
         bool HasExpires(const TAO::Operation::Contract& contract)
         {
             /* Create a contract with a dummy expiration condition that we can use for comparison */
