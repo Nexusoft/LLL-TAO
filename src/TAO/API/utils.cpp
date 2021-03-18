@@ -599,13 +599,6 @@ namespace TAO
                         if(account.Base() != TAO::Register::OBJECTS::ACCOUNT )
                             continue;
 
-                        /* Get the token address */
-                        TAO::Register::Address token = account.get<uint256_t>("token");
-
-                        /* Check the account token matches the one passed in*/
-                        if(token != hashToken)
-                            continue;
-
                         /* Check owner that we are the owner of the recipient account  */
                         if(account.hashOwner != hashGenesis)
                             continue;
@@ -619,6 +612,10 @@ namespace TAO
                             nConsecutive++;
                             continue;
                         }
+
+                        /* Check the account token matches the one passed in */
+                        if(account.get<uint256_t>("token") != hashToken)
+                            continue;
 
                         /* Check the account filter */
                         if(hashAccount != 0 && hashAccount != hashTo)
