@@ -758,11 +758,6 @@ namespace TAO
         bool Users::get_expired(const uint256_t& hashGenesis,
                 uint512_t hashLast, std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
         {
-            /* Don't process expired contracts in client mode, as we will not be able to determine whether the recipient has
-               already claimed / credited */
-            if(config::fClient.load())
-                return false;
-
             /* Cache of contracts by genesis hash for all contracts that we have already determined either do not have 
                any conditions or have already been claimed/credited.  If any contract is already in this vector then we can skip
                it for all future invocations of the get_expired method. */
