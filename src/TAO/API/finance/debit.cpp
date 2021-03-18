@@ -517,7 +517,7 @@ namespace TAO
                                     }), vRunningBalances.end());
 
             /* The total number of recipients */
-            uint8_t nRecipients = vRecipients.size();
+            size_t nRecipients = vRecipients.size();
 
             /* Check that there are not too many recipients to fit into one transaction */
             if(nRecipients > (TAO::Ledger::MAX_TRANSACTION_CONTRACTS - 1))
@@ -530,13 +530,13 @@ namespace TAO
             bool fHasLegacy = false;
 
             /* Current contract ID */
-            uint8_t nContract = 0;
+            size_t nContract = 0;
 
             /* The number of recipients processed */
-            uint8_t nProcessed = 0;
+            size_t nProcessed = 0;
 
             /* The target number of contracts to use for each recipient */
-            uint8_t nTarget = 0;
+            size_t nTarget = 0;
 
             /* Process the recipients */
             for(const auto& recipient : vRecipients)
@@ -555,19 +555,19 @@ namespace TAO
                 nTarget = std::floor(((TAO::Ledger::MAX_TRANSACTION_CONTRACTS - 1) - nContract) / (nRecipients - nProcessed)) ;
 
                 /* Reduce the max contracts if there are less accounts than contract spaces to fill */
-                nTarget = std::min(nTarget, (uint8_t)vRunningBalances.size());
+                nTarget = std::min(nTarget, vRunningBalances.size());
 
                 /* Get the total balance across all accounts */
                 nBalance = GetTotalBalance(vRunningBalances);  
 
-                debug::log(4, FUNCTION, "Total Balance: ", nBalance, " Recipient Amount: ", nAmount);              
+                debug::log(3, FUNCTION, "Total Balance: ", nBalance, " Recipient Amount: ", nAmount);              
 
                 /* Initial check of required funds by checking the total balance across all accounts */
                 if(nAmount > nBalance)
                     throw APIException(-69, "Insufficient funds");
               
                 /* The index of the last account to be used to fulfill the amount */
-                uint8_t nLast = 0;
+                size_t nLast = 0;
 
                 /* Flag indicating we found an optimal number of contracts to fulfill this recipient amount */
                 bool fFound = false;
@@ -618,9 +618,9 @@ namespace TAO
                 uint64_t nRemaining = nAmount;
 
                 /* Index of first account to add a transaction for */
-                uint8_t nStart = nLast - (nTarget -1);
+                size_t nStart = nLast - (nTarget -1);
 
-                debug::log(4, FUNCTION, "Using ", (int)nTarget, " accounts from ", (int)nStart, " to ", (int)nLast); 
+                debug::log(3, FUNCTION, "Using ", nTarget, " accounts from ", nStart, " to ", nLast); 
 
                 /* Add the contracts to the transaction. */
                 if(hashTo.IsLegacy())
@@ -748,7 +748,7 @@ namespace TAO
                 nProcessed++;
             }
 
-            debug::log(4, FUNCTION, "Final Balance: ", GetTotalBalance(vRunningBalances));
+            debug::log(3, FUNCTION, "Final Balance: ", GetTotalBalance(vRunningBalances));
 
             /* Add the fee. If the sending account is a NXS account then we take the fee from that, otherwise we will leave it 
             to the AddFee method to take the fee from the default NXS account */

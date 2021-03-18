@@ -89,16 +89,18 @@ namespace TAO
         
 
         /* Calculates the running balances for a target number of contracts */
-        void CalcRunningBalances(std::vector<RunningBalance>& vRunningBalances, const uint8_t nTarget)
-        {            
+        void CalcRunningBalances(std::vector<RunningBalance>& vRunningBalances, const size_t nTarget)
+        {          
+            debug::log(3, FUNCTION, "Calculating running balances for target: ", nTarget );     
+              
             /* For each account, sum the balance of the X accounts below it, where X is the target number of contracts to create. */
-            for(int nIndex=0; nIndex < vRunningBalances.size(); nIndex++)
+            for(size_t nIndex=0; nIndex < vRunningBalances.size(); nIndex++)
             {
                 /* The sum of the target number of balances */
                 uint64_t nSumBalances = 0;
 
                 /* Iterate backwards through nTarget accounts and sum the balances*/
-                for(int nSumIndex=nIndex; nSumIndex >= 0 && nIndex - nSumIndex < nTarget; nSumIndex--)
+                for(size_t nSumIndex=nIndex; nSumIndex != 0 && nIndex - nSumIndex < nTarget; nSumIndex--)
                     nSumBalances += vRunningBalances.at(nSumIndex).nBalance;
 
                 /* Update the sum X balance for this account */
@@ -107,13 +109,15 @@ namespace TAO
             }
 
             /* Log calculations to help debug */
-            debug::log(4, FUNCTION, "Calculating running balances for target: ", (int)nTarget );            
-            for(int nIndex=0; nIndex < vRunningBalances.size(); nIndex++)
-                debug::log(4, FUNCTION, nIndex, " - Address: ", 
-                    vRunningBalances.at(nIndex).hashAddress.ToString(), 
-                    " Balance: ", 
-                    vRunningBalances.at(nIndex).nBalance,
-                    " Sum(", nTarget,"): ", vRunningBalances.at(nIndex).nSumBalances);
+            if(config::nVerbose >= 4)
+            {       
+                for(size_t nIndex=0; nIndex < vRunningBalances.size(); nIndex++)
+                    debug::log(4, FUNCTION, nIndex, " - Address: ", 
+                        vRunningBalances.at(nIndex).hashAddress.ToString(), 
+                        " Balance: ", 
+                        vRunningBalances.at(nIndex).nBalance,
+                        " Sum(", nTarget,"): ", vRunningBalances.at(nIndex).nSumBalances);
+            }
         }
 
 

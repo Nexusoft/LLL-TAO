@@ -81,7 +81,7 @@ namespace TAO
          *  @return The total balance of all of the accounts.
          *
          **/
-        void CalcRunningBalances(std::vector<RunningBalance>& vRunningBalances, const uint8_t nTarget);
+        void CalcRunningBalances(std::vector<RunningBalance>& vRunningBalances, const size_t nTarget);
 
 
         /** GetTotalBalance
