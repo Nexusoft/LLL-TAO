@@ -139,12 +139,20 @@ namespace TAO
         {
             /* LRU register cache by genesis hash.  This caches the vector of register addresses along with the last txid of the
                sig chain, so that we can determine whether any new transactions have been added, invalidating the cache.  */
-            static LLD::TemplateLRU<uint256_t, std::pair<uint512_t, std::vector<TAO::Register::Address>>> cache(10);
+            static LLD::TemplateLRU<uint256_t, std::pair<uint512_t, std::unordered_set<uint256_t>>> cache(10);
 
-            /* Get the last transaction. */
+            /* Cache the register addresses in an unordered set as we are going to be checking them frequently to see if a hash is 
+               already in the container, and the unordered set offers us near linear search time */
+            std::unordered_set<uint256_t> setTransferred;
+            std::unordered_set<uint256_t> setOwnedRegisters;
+
+            /* The last transaction made by the sig chain. */
             uint512_t hashLast = 0;
 
-            /* Get the last transaction for this genesis.  NOTE that we include the mempool here as there may be registers that
+            /* The most recent transaction made by the sig chain at the time of the last cache */
+            uint512_t hashLastCache = 0;
+
+            /* Get the last transaction for this genesis.  We include the mempool here as there may be registers that
                have been created recently but not yet included in a block*/
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 return false;
@@ -153,207 +161,199 @@ namespace TAO
             if(cache.Has(hashGenesis))
             {
                 /* The cached register list */
-                std::pair<uint512_t, std::vector<TAO::Register::Address>> cacheEntry;
+                std::pair<uint512_t, std::unordered_set<uint256_t>> cacheEntry;
 
                 /* Retrieve the cached register list from the LRU cache */
                 cache.Get(hashGenesis, cacheEntry);
 
-                /* Check that the hashlast hasn't changed */
-                if(cacheEntry.first == hashLast)
-                {
-                    /* Poplate vector to return */
-                    vRegisters = cacheEntry.second;
+                /* Get the hashlast at the time the cache was last updated */
+                hashLastCache = cacheEntry.first;
 
-                    return true;
-                }
-
+                /* Get the last known register list fro the cache */
+                setOwnedRegisters = cacheEntry.second;
             }
 
-            /* Keep a running list of owned and transferred registers. We use a set to store these registers because
-             * we are going to be checking them frequently to see if a hash is already in the container,
-             * and a set offers us near linear search time
-             */
-            std::unordered_set<uint256_t> vTransferred;
-            std::unordered_set<uint256_t> vOwnedRegisters;
-
-            /* The previous hash in the chain */
-            uint512_t hashPrev = hashLast;
-
-            /* Loop until genesis. */
-            while(hashPrev != 0)
+            /* Check the last hash from the cache to see if the cache needs updating */
+            if(hashLastCache != hashLast)
             {
-                /* Get the transaction from disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                /* The previous hash in the chain */
+                uint512_t hashPrev = hashLast;
+
+                /* Loop until we reach the previous cache point, or genesis. */
+                while(hashPrev != hashLastCache && hashPrev != 0)
                 {
-                    /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
-                    if(config::fClient.load())
-                        break;
-                    else
-                        throw APIException(-108, "Failed to read transaction");
-                }
-
-                /* Set the next last. */
-                hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
-
-                /* Iterate through all contracts. */
-                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
-                {
-                    /* Get the contract output. */
-                    const TAO::Operation::Contract& contract = tx[nContract];
-
-                    /* Reset all streams */
-                    contract.Reset();
-
-                    /* Seek the contract operation stream to the position of the primitive. */
-                    contract.SeekToPrimitive();
-
-                    /* Deserialize the OP. */
-                    uint8_t nOP = 0;
-                    contract >> nOP;
-
-                    /* Check the current opcode. */
-                    switch(nOP)
+                    /* Get the transaction from disk. */
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
                     {
-
-                        /* These are the register-based operations that prove ownership if encountered before a transfer*/
-                        case TAO::Operation::OP::WRITE:
-                        case TAO::Operation::OP::APPEND:
-                        case TAO::Operation::OP::CREATE:
-                        case TAO::Operation::OP::DEBIT:
-                        {
-                            /* Extract the address from the contract. */
-                            TAO::Register::Address hashAddress;
-                            contract >> hashAddress;
-
-                            /* for these operations, if the address is NOT in the transferred list
-                               then we know that we must currently own this register */
-                           if(vTransferred.find(hashAddress)    == vTransferred.end()
-                           && vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end())
-                           {
-                               /* Add to owned set. */
-                               vOwnedRegisters.insert(hashAddress);
-
-                               /* Add to return vector. */
-                               vRegisters.push_back(hashAddress);
-                           }
-
+                        /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                        if(config::fClient.load())
                             break;
-                        }
+                        else
+                            throw APIException(-108, "Failed to read transaction");
+                    }
 
+                    /* Set the next last. */
+                    hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
 
-                        /* Check for credits here. */
-                        case TAO::Operation::OP::CREDIT:
+                    /* Iterate through all contracts. */
+                    for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                    {
+                        /* Get the contract output. */
+                        const TAO::Operation::Contract& contract = tx[nContract];
+
+                        /* Reset all streams */
+                        contract.Reset();
+
+                        /* Seek the contract operation stream to the position of the primitive. */
+                        contract.SeekToPrimitive();
+
+                        /* Deserialize the OP. */
+                        uint8_t nOP = 0;
+                        contract >> nOP;
+
+                        /* Check the current opcode. */
+                        switch(nOP)
                         {
-                            /* Seek past irrelevant data. */
-                            contract.Seek(68);
-
-                            /* The account that is being credited. */
-                            TAO::Register::Address hashAddress;
-                            contract >> hashAddress;
-
-                            /* If we find a credit before a transfer transaction for this register then
-                               we can know for certain that we must own it */
-                           if(vTransferred.find(hashAddress)    == vTransferred.end()
-                           && vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end())
-                           {
-                               /* Add to owned set. */
-                               vOwnedRegisters.insert(hashAddress);
-
-                               /* Add to return vector. */
-                               vRegisters.push_back(hashAddress);
-                           }
-
-                            break;
-
-                        }
-
-
-                        /* Check for a transfer here. */
-                        case TAO::Operation::OP::TRANSFER:
-                        {
-                            /* Extract the address from the contract. */
-                            TAO::Register::Address hashAddress;
-                            contract >> hashAddress;
-
-                            /* Read the register transfer recipient. */
-                            TAO::Register::Address hashTransfer;
-                            contract >> hashTransfer;
-
-                            /* Read the force transfer flag */
-                            uint8_t nType = 0;
-                            contract >> nType;
-
-                            /* IF this is not a forced transfer, we need to retrieve the object so we can see whether it has been
-                               claimed or not.  If it has not been claimed then we ignore the transfer operation and still show
-                               it as ours.  However we need to skip this check in light mode because we will not have the
-                               register state available in order to determine if it has been claimed or not */
-                            if(nType != TAO::Operation::TRANSFER::FORCE && !config::fClient.load())
+                            /* These are the register-based operations that prove ownership if encountered before a transfer*/
+                            case TAO::Operation::OP::WRITE:
+                            case TAO::Operation::OP::APPEND:
+                            case TAO::Operation::OP::CREATE:
+                            case TAO::Operation::OP::DEBIT:
                             {
-                                /* Retrieve the object so we can see whether it has been claimed or not */
-                                TAO::Register::Object object;
-                                if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
-                                    throw APIException(-104, "Object not found");
+                                /* Extract the address from the contract. */
+                                TAO::Register::Address hashAddress;
+                                contract >> hashAddress;
 
-                                /* If we are transferring to someone else but it has not yet been claimed then we ignore the
-                                   transfer and still show it as ours */
-                                if(object.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+                                /* for these operations, if the address is NOT in the transferred list
+                                then we know that we must currently own this register */
+                                if(setTransferred.find(hashAddress) == setTransferred.end()
+                                && setOwnedRegisters.find(hashAddress) == setOwnedRegisters.end())
                                 {
-                                    /* Ensure it is the caller that made the most recent transfer */
-                                    uint256_t hashPrevOwner = hashGenesis;;
+                                    /* Add to owned set. */
+                                    setOwnedRegisters.insert(hashAddress);
 
-                                    /* Set the SYSTEM byte so that we can compare the prev owner */
-                                    hashPrevOwner.SetType(TAO::Ledger::GENESIS::SYSTEM);
-
-                                    /* If we transferred it  */
-                                    if(object.hashOwner == hashPrevOwner)
-                                        break;
-
+                                    /* Add to return vector. */
+                                    vRegisters.push_back(hashAddress);
                                 }
-                                    break;
+
+                                break;
                             }
 
-
-                            /* If we find a TRANSFER then we can know for certain that we no longer own it */
-                            if(vTransferred.find(hashAddress)    == vTransferred.end())
-                                vTransferred.insert(hashAddress);
-
-                            break;
-                        }
-
-
-                        /* Check for claims here. */
-                        case TAO::Operation::OP::CLAIM:
-                        {
-                            /* Seek past irrelevant data. */
-                            contract.Seek(68);
-
-                            /* Extract the address from the contract. */
-                            TAO::Register::Address hashAddress;
-                            contract >> hashAddress;
-
-                            /* If we find a CLAIM transaction before a TRANSFER, then we know that we must currently own this register */
-                            if(vTransferred.find(hashAddress)    == vTransferred.end()
-                            && vOwnedRegisters.find(hashAddress) == vOwnedRegisters.end())
+                            /* Check for credits here. */
+                            case TAO::Operation::OP::CREDIT:
                             {
-                                /* Add to owned set. */
-                                vOwnedRegisters.insert(hashAddress);
+                                /* Seek past irrelevant data. */
+                                contract.Seek(68);
 
-                                /* Add to return vector. */
-                                vRegisters.push_back(hashAddress);
+                                /* The account that is being credited. */
+                                TAO::Register::Address hashAddress;
+                                contract >> hashAddress;
+
+                                /* If we find a credit before a transfer transaction for this register then
+                                we can know for certain that we must own it */
+                                if(setTransferred.find(hashAddress) == setTransferred.end()
+                                && setOwnedRegisters.find(hashAddress) == setOwnedRegisters.end())
+                                {
+                                    /* Add to owned set. */
+                                    setOwnedRegisters.insert(hashAddress);
+
+                                    /* Add to return vector. */
+                                    vRegisters.push_back(hashAddress);
+                                }
+
+                                break;
+
                             }
 
-                            break;
-                        }
+                            /* Check for a transfer here. */
+                            case TAO::Operation::OP::TRANSFER:
+                            {
+                                /* Extract the address from the contract. */
+                                TAO::Register::Address hashAddress;
+                                contract >> hashAddress;
 
-                        default:
-                            continue;
+                                /* Read the register transfer recipient. */
+                                TAO::Register::Address hashTransfer;
+                                contract >> hashTransfer;
+
+                                /* Read the force transfer flag */
+                                uint8_t nType = 0;
+                                contract >> nType;
+
+                                /* If this is not a forced transfer, retrieve the object to determine whether it has been
+                                   claimed or not.  If not we ignore the transfer operation and still show it as ours.  
+                                   However we need to skip this check in light mode because we will not have the
+                                   register state available in order to determine if it has been claimed or not */
+                                if(nType != TAO::Operation::TRANSFER::FORCE && !config::fClient.load())
+                                {
+                                    /* Retrieve the object so we can see whether it has been claimed or not */
+                                    TAO::Register::Object object;
+                                    if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
+                                        throw APIException(-104, "Object not found");
+
+                                    /* If we are transferring to someone else but it has not yet been claimed then we ignore the
+                                    transfer and still show it as ours */
+                                    if(object.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+                                    {
+                                        /* Ensure it is the caller that made the most recent transfer */
+                                        uint256_t hashPrevOwner = hashGenesis;
+
+                                        /* Set the SYSTEM byte so that we can compare the prev owner */
+                                        hashPrevOwner.SetType(TAO::Ledger::GENESIS::SYSTEM);
+
+                                        /* If we transferred it  */
+                                        if(object.hashOwner == hashPrevOwner)
+                                            break;
+                                    }
+                                }
+
+                                /* If we find a TRANSFER then we can know for certain that we no longer own it */
+                                if(setTransferred.find(hashAddress) == setTransferred.end())
+                                {
+                                    setTransferred.insert(hashAddress);
+                                    setOwnedRegisters.erase(hashAddress);
+                                }
+
+                                break;
+                            }
+
+                            /* Check for claims here. */
+                            case TAO::Operation::OP::CLAIM:
+                            {
+                                /* Seek past irrelevant data. */
+                                contract.Seek(68);
+
+                                /* Extract the address from the contract. */
+                                TAO::Register::Address hashAddress;
+                                contract >> hashAddress;
+
+                                /* If we find a CLAIM transaction before a TRANSFER, then we know that we must currently own this register */
+                                if(setTransferred.find(hashAddress) == setTransferred.end()
+                                && setOwnedRegisters.find(hashAddress) == setOwnedRegisters.end())
+                                {
+                                    /* Add to owned set. */
+                                    setOwnedRegisters.insert(hashAddress);
+
+                                    /* Add to return vector. */
+                                    vRegisters.push_back(hashAddress);
+                                }
+
+                                break;
+                            }
+
+                            default:
+                                continue;
+                        }
                     }
                 }
+
+                /* Add the set of owned register addresses to the LRU cache */
+                cache.Put(hashGenesis, std::make_pair(hashLast, setOwnedRegisters));
             }
 
-            /* Add the register list to the LRU cache */
-            cache.Put(hashGenesis, std::make_pair(hashLast, vRegisters));
+            /* Copy the addresses from the unordered set into the return vector */
+            vRegisters.insert(vRegisters.end(), setOwnedRegisters.begin(), setOwnedRegisters.end());
 
             return true;
         }
