@@ -58,13 +58,13 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
+            std::map<std::string, std::vector<Clause>> mapWhere;
 
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+            GetListParams(params, strOrder, nLimit, nOffset, mapWhere);
 
             /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            bool fHasFilter = mapWhere.count("") > 0;
 
             /* Fields to ignore in the where clause.  This is necessary so that the appid param is not treated as 
                standard where clauses to filter the json */
@@ -108,7 +108,7 @@ namespace TAO
                     if(fHasFilter)
                     {
                         /* Skip this top level record if not all of the filters were matched */
-                        if(!MatchesWhere(jsonConnection, vWhere[""], vIgnore))
+                        if(!MatchesWhere(jsonConnection, mapWhere[""], vIgnore))
                             continue;
                     }
 
@@ -162,13 +162,13 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
+            std::map<std::string, std::vector<Clause>> mapWhere;
 
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+            GetListParams(params, strOrder, nLimit, nOffset, mapWhere);
 
             /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            bool fHasFilter = mapWhere.count("") > 0;
 
             /* Fields to ignore in the where clause.  This is necessary so that the appid param is not treated as 
                standard where clauses to filter the json */
@@ -201,7 +201,7 @@ namespace TAO
                 if(fHasFilter)
                 {
                     /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonConnection, vWhere[""], vIgnore))
+                    if(!MatchesWhere(jsonConnection, mapWhere[""], vIgnore))
                         continue;
                 }
 

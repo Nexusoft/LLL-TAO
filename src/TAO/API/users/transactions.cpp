@@ -35,7 +35,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* Get a user's account. */
+        /* List transactions for a signature chain. */
         json::json Users::Transactions(const json::json& params, bool fHelp)
         {
             /* JSON return value. */
@@ -78,7 +78,6 @@ namespace TAO
             else if(strVerbose == "detail")
                 nVerbose = 3;
 
-
             /* Number of results to return. */
             uint32_t nLimit = 100;
 
@@ -89,10 +88,27 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
+            std::map<std::string, std::vector<Clause>> mapWhere;
 
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+            GetListParams(params, strOrder, nLimit, nOffset, mapWhere);
+
+            /* Use the fast version of the list_transactions if there is no where clause passed in */
+            if(mapWhere.empty())
+                ret = list_transactions_fast(params, hashGenesis, hashCaller, nVerbose, nLimit, nOffset);
+            else
+                ret = list_transactions(params, hashGenesis, hashCaller, nVerbose, strOrder == "asc", nLimit, nOffset, mapWhere);
+
+            return ret;
+        }
+
+        /* Output transaction list for a signature chain to JSON. */
+        json::json Users::list_transactions(const json::json& params, const uint256_t& hashGenesis, const uint256_t& hashCaller, 
+                                            uint32_t nVerbose, bool fAscending, uint32_t nLimit, uint32_t nOffset, 
+                                            const std::map<std::string, std::vector<Clause>>& mapWhere)
+        {
+            /* JSON return value. */
+            json::json jsonRet = json::json::array();
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;
@@ -122,13 +138,13 @@ namespace TAO
             }
 
             /* Transactions sorted in descending order. Reverse the order if ascending requested. */
-            if(strOrder == "asc")
+            if(fAscending)
                 std::reverse(vtx.begin(), vtx.end());
 
             uint32_t nTotal = 0;
 
             /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            bool fHasFilter = mapWhere.count("") > 0;
 
             for(auto tx : vtx)
             {
@@ -137,20 +153,17 @@ namespace TAO
                 LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
 
                 /* Get the transaction JSON. */
-                json::json obj = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis, vWhere);
+                json::json jsonTx = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis, mapWhere);
 
                 /* Check to see whether the transaction has had all children filtered out */
-                if(obj.empty())
+                if(jsonTx.empty())
                     continue;
 
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(obj, vWhere[""]))
-                        continue;
-                }
+                /* Skip this top level record if not all of the filters were matched */
+                if(fHasFilter && !MatchesWhere(jsonTx, mapWhere.at("")))
+                    continue;
 
+                /* Increment the number of transactions found */
                 ++nTotal;
 
                 /* Check the offset. */
@@ -161,10 +174,60 @@ namespace TAO
                 if(nTotal - nOffset > nLimit)
                     break;
 
-                ret.push_back(obj);
+                jsonRet.push_back(jsonTx);
             }
 
-            return ret;
+            return jsonRet;
+        }
+
+
+        /* List transactions for a signature chain.  This version is quicker to execute than the Transactions method
+           but does not support filtering the results JSON with a "where" filter. */
+        json::json Users::list_transactions_fast(const json::json& params, const uint256_t& hashGenesis, const uint256_t& hashCaller, 
+                                            uint32_t nVerbose, uint32_t nLimit, uint32_t nOffset)
+        {
+            /* JSON return value. */
+            json::json jsonRet = json::json::array();
+
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-28, "No transactions found");
+
+            /* Loop until genesis. */
+            uint32_t nTotal = 0;
+            while(hashLast != 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw APIException(-28, "Failed to read transaction");
+
+                /* Set the next last. */
+                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
+
+               /* Increment the number of transactions found */
+                ++nTotal;
+
+                /* Check the offset. */
+                if(nTotal <= nOffset)
+                    continue;
+                
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
+
+                /* Read the block state from the the ledger DB using the transaction hash index */
+                TAO::Ledger::BlockState blockState;
+                LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
+
+                /* Get the transaction JSON. */
+                json::json jsonTx = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis);
+
+                jsonRet.push_back(jsonTx);
+            }
+
+            return jsonRet;
         }
     }
 }

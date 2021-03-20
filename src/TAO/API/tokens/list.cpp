@@ -61,13 +61,13 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
+            std::map<std::string, std::vector<Clause>> mapWhere;
 
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+            GetListParams(params, strOrder, nLimit, nOffset, mapWhere);
 
             /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            bool fHasFilter = mapWhere.count("") > 0;
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;
@@ -113,7 +113,7 @@ namespace TAO
                 if(fHasFilter)
                 {
                     /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonAccount, vWhere[""]))
+                    if(!MatchesWhere(jsonAccount, mapWhere[""]))
                         continue;
                 }
 
@@ -221,13 +221,13 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
+            std::map<std::string, std::vector<Clause>> mapWhere;
 
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+            GetListParams(params, strOrder, nLimit, nOffset, mapWhere);
 
             /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            bool fHasFilter = mapWhere.count("") > 0;
 
             /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as 
                standard where clauses to filter the json */
@@ -424,7 +424,7 @@ namespace TAO
                 if(fHasFilter)
                 {
                     /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonAccount, vWhere[""], vIgnore))
+                    if(!MatchesWhere(jsonAccount, mapWhere[""], vIgnore))
                         continue;
                 }
 

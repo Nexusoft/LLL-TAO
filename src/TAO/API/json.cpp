@@ -58,7 +58,7 @@ namespace TAO
 
         /* Converts the block to formatted JSON */
         json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
-                               const std::map<std::string, std::vector<Clause>>& vWhere)
+                               const std::map<std::string, std::vector<Clause>>& mapWhere)
         {
             /* Decalre the response object*/
             json::json result;
@@ -106,7 +106,7 @@ namespace TAO
                         if(LLD::Ledger->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json ret = TransactionToJSON(0, tx, block, nVerbosity, 0, vWhere);
+                            json::json ret = TransactionToJSON(0, tx, block, nVerbosity, 0, mapWhere);
 
                             /* Only add the transaction if it has not been filtered out */
                             if(!ret.empty())
@@ -120,7 +120,7 @@ namespace TAO
                         if(LLD::Legacy->ReadTx(vtx.second, tx))
                         {
                             /* add the transaction JSON.  */
-                            json::json ret = TransactionToJSON(tx, block, nVerbosity, vWhere);
+                            json::json ret = TransactionToJSON(tx, block, nVerbosity, mapWhere);
 
                             /* Only add the transaction if it has not been filtered out */
                             if(!ret.empty())
@@ -143,7 +143,7 @@ namespace TAO
         /* Converts the transaction to formatted JSON */
         json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
                                      const TAO::Ledger::BlockState& block, uint32_t nVerbosity, const uint256_t& hashCoinbase,
-                                     const std::map<std::string, std::vector<Clause>>& vWhere)
+                                     const std::map<std::string, std::vector<Clause>>& mapWhere)
         {
             /* Declare JSON object to return */
             json::json ret;
@@ -179,7 +179,7 @@ namespace TAO
             /* Always add the contracts if level 2 and up */
             if(nVerbosity >= 2)
             {
-                json::json jsonContracts = ContractsToJSON(hashCaller, tx, nVerbosity, hashCoinbase, vWhere);
+                json::json jsonContracts = ContractsToJSON(hashCaller, tx, nVerbosity, hashCoinbase, mapWhere);
 
                 /* Check to see if any contracts were returned.  If not then return an empty transaction */
                 if(!jsonContracts.empty())
@@ -193,7 +193,7 @@ namespace TAO
 
         /* Converts the transaction to formatted JSON */
         json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
-                                     const std::map<std::string, std::vector<Clause>>& vWhere)
+                                     const std::map<std::string, std::vector<Clause>>& mapWhere)
         {
             /* Declare JSON object to return */
             json::json ret;
@@ -314,13 +314,13 @@ namespace TAO
 
         /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
         json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, uint32_t nVerbosity,
-                                   const uint256_t& hashCoinbase, const std::map<std::string, std::vector<Clause>>& vWhere)
+                                   const uint256_t& hashCoinbase, const std::map<std::string, std::vector<Clause>>& mapWhere)
         {
             /* Declare the return JSON object*/
             json::json ret = json::json::array();
 
             /* Flag indicating there are contract filters  */
-            bool fHasFilter = vWhere.count("contracts") > 0;
+            bool fHasFilter = mapWhere.count("contracts") > 0;
 
             /* Add a contract to the list of contracts. */
             uint32_t nContracts = tx.Size();
@@ -351,7 +351,7 @@ namespace TAO
                 if(fHasFilter)
                 {
                     /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(contractJSON, vWhere.at("contracts")))
+                    if(!MatchesWhere(contractJSON, mapWhere.at("contracts")))
                         continue;
                 }
 
@@ -1380,7 +1380,7 @@ namespace TAO
 
         /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
         void GetListParams(const json::json& params, std::string& strOrder, uint32_t& nLimit,
-                           uint32_t& nOffset, std::map<std::string, std::vector<Clause>>& vWhere)
+                           uint32_t& nOffset, std::map<std::string, std::vector<Clause>>& mapWhere)
         {
             /* Check for page parameter. */
             uint32_t nPage = 0;
@@ -1489,8 +1489,8 @@ namespace TAO
                     /* Get the value */
                     clause.strValue = (*it)["value"].get<std::string>();
 
-                    /* Add the clause to our vWhere vector */
-                    vWhere[strObject].push_back(clause);
+                    /* Add the clause to our mapWhere vector */
+                    mapWhere[strObject].push_back(clause);
                 }
 
             }

@@ -167,10 +167,10 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
+            std::map<std::string, std::vector<Clause>> mapWhere;
 
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+            GetListParams(params, strOrder, nLimit, nOffset, mapWhere);
 
             /* look up by height*/
             if(params.find("height") != params.end())
@@ -227,7 +227,7 @@ namespace TAO
             json::json ret = json::json::array();
 
             /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            bool fHasFilter = mapWhere.count("") > 0;
 
             /* fields to ignore in the where clause.  This is necessary so that height and hash params are not treated as 
                standard where clauses to filter the json */
@@ -244,7 +244,7 @@ namespace TAO
 
 
                 /* Convert the block to JSON data */
-                json::json jsonBlock = TAO::API::BlockToJSON(blockToAdd, nVerbose, vWhere);
+                json::json jsonBlock = TAO::API::BlockToJSON(blockToAdd, nVerbose, mapWhere);
 
                 /* Check to see whether the block has had all children filtered out */
                 if(jsonBlock.empty())
@@ -254,7 +254,7 @@ namespace TAO
                 if(fHasFilter)
                 {
                     /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonBlock, vWhere[""], vIgnore))
+                    if(!MatchesWhere(jsonBlock, mapWhere[""], vIgnore))
                         continue;
                 }
 

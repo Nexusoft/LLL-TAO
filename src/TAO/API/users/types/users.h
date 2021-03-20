@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #pragma once
 
 #include <TAO/API/types/base.h>
+#include <TAO/API/types/clause.h>
 #include <TAO/API/users/types/notifications_processor.h>
 #include <TAO/API/types/session.h>
 
@@ -308,9 +309,9 @@ namespace TAO
             json::json Recover(const json::json& params, bool fHelp);
 
 
-            /** GetTransactions
+            /** Transactions
              *
-             *  Get transactions for an account
+             *  List transactions for a signature chain
              *
              *  @param[in] params The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
@@ -742,6 +743,45 @@ namespace TAO
             **/
             void update_crypto_keys(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPin, TAO::Ledger::Transaction& tx );
 
+
+            /** list_transactions
+             *
+             *  Output transaction list for a signature chain to JSON. 
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] hashGenesis The genesis of the sig chain to list the transactions for.
+             *  @param[in] hashCaller the genesis of the sig chain of the caller of the API method
+             *  @param[in] nVerbose The verbosity to apply to the output
+             *  @param[in] fAscending Flag indicating the transactions should be sorted ascending
+             *  @param[in] nLimit Maximum number of records to return
+             *  @param[in] nOffset Offset into the result set to return data from
+             *  @param[in] mapWhere Map of where clauses to apply to each level of the hierarchical JSON response 
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json list_transactions(const json::json& params, const uint256_t& hashGenesis, const uint256_t& hashCaller, 
+                                            uint32_t nVerbose, bool fAsc, uint32_t nLimit, uint32_t nOffset, 
+                                            const std::map<std::string, std::vector<Clause>>& mapWhere);
+
+
+            /** list_transactions_fast
+             *
+             *  Output transaction list for a signature chain to JSON.  This version is quicker to execute than list_transactions
+             *  but does not support ordering or filtering the results JSON with a "where" filter. 
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] hashGenesis The genesis of the sig chain to list the transactions for.
+             *  @param[in] hashCaller the genesis of the sig chain of the caller of the API method
+             *  @param[in] nVerbose The verbosity to apply to the output
+             *  @param[in] nLimit Maximum number of records to return
+             *  @param[in] nOffset Offset into the result set to return data from
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json list_transactions_fast(const json::json& params, const uint256_t& hashGenesis, const uint256_t& hashCaller, 
+                                            uint32_t nVerbose, uint32_t nLimit, uint32_t nOffset);
 
         };
     }

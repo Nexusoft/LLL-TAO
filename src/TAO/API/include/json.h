@@ -49,7 +49,7 @@ namespace TAO
          *
          **/
         json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
-                               const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
+                               const std::map<std::string, std::vector<Clause>>& mapWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** TransactionToJSON
@@ -68,7 +68,7 @@ namespace TAO
         json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
                                      const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
                                      const uint256_t& hashCoinbase = 0,
-                                     const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
+                                     const std::map<std::string, std::vector<Clause>>& mapWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** TransactionToJSON
@@ -83,7 +83,7 @@ namespace TAO
          *
          **/
         json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
-                                     const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
+                                     const std::map<std::string, std::vector<Clause>>& mapWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** ContractsToJSON
@@ -100,7 +100,7 @@ namespace TAO
          **/
         json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
                                    uint32_t nVerbosity = 0, const uint256_t& hashCoinbase = 0,
-                                   const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
+                                   const std::map<std::string, std::vector<Clause>>& mapWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** ContractToJSON
@@ -158,12 +158,12 @@ namespace TAO
         *  @param[out] strOrder The sort order to apply
         *  @param[out] nLimit The number of results to return
         *  @param[out] nOffset The offset to apply to the results
-        *  @param[out] vWhere Vector of clauses to apply to filter the results 
+        *  @param[out] mapWhere Vector of clauses to apply to filter the results 
         *
         *  @return The filtered response
         *
         **/
-        void GetListParams(const json::json& params, std::string& strOrder, uint32_t& nLimit, uint32_t& nOffset, std::map<std::string, std::vector<Clause>>& vWhere);
+        void GetListParams(const json::json& params, std::string& strOrder, uint32_t& nLimit, uint32_t& nOffset, std::map<std::string, std::vector<Clause>>& mapWhere);
 
 
         /** MatchesWhere
@@ -172,7 +172,7 @@ namespace TAO
         *
         *  @param[in] obj The JSON to be filtered
         *  @param[in] vWhere Vector of clauses to apply to filter the results
-        *  @param[in] vIgnore Vector of fieldnames to ignore in the vWhere list.  This is useful for those /list/xxx methods that 
+        *  @param[in] vIgnore Vector of fieldnames to ignore in the mapWhere list.  This is useful for those /list/xxx methods that 
         *             require non-standard params but do not want them interpreted as a where clause.  
         *
         *  @return True if the json response meets all of the clauses
