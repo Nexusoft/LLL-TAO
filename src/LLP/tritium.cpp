@@ -659,15 +659,12 @@ namespace LLP
                 uint64_t nTimestamp;
                 ssPacket >> nTimestamp;
 
-                /* Check the timestamp. */
+                /* Track our difference as a signed int for (+) values indicating older message. */
                 if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 10)
-                {
-                    /* Track our difference as a signed int for (+) values indicating older message. */
                     return debug::drop(NODE, "ACTION::AUTH: message is stale by ", int64_t(runtime::unifiedtimestamp() - nTimestamp), " seconds");
-                }
 
                 /* Get the nonce */
-                uint64_t nNonce;
+                uint64_t nNonce = 0;
                 ssPacket >> nNonce;
 
                 /* Check the nNonce for expected values. */
@@ -693,25 +690,39 @@ namespace LLP
                 if(!TAO::Ledger::SignatureChain::Verify(hashGenesis, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
                     return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
-                /* Get the crypto register. */
-                TAO::Register::Object trust;
-                if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
-                    hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
-                    return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
-
-                /* Parse the object. */
-                if(!trust.Parse())
-                    return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
-
-                /* Set the node's current trust score. */
-                nTrust = trust.get<uint64_t>("trust");
-
                 /* Set to authorized node if passed all cryptographic checks. */
-                fAuthorized = true;
-                debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
+                if(INCOMING.MESSAGE == ACTION::AUTH)
+                {
+                    /* Get the trust object register. */
+                    TAO::Register::Object trust;
+                    if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
+                        hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
+                        return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
 
-                PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
+                    /* Parse the object. */
+                    if(!trust.Parse())
+                        return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
 
+                    /* Set as authorized and respond with acknowledgement. */
+                    fAuthorized = true;
+                    PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
+
+                    /* Set the node's current trust score. */
+                    nTrust = trust.get<uint64_t>("trust");
+
+                    debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
+                }
+                else if(INCOMING.MESSAGE == ACTION::DEAUTH)
+                {
+                    /* Set deauthorization flag. */
+                    fAuthorized = false;
+
+                    /* Reset sigchain specific values. */
+                    hashGenesis = 0;
+                    nTrust = 0;
+
+                    debug::log(0, NODE, "ACTION::DEAUTH: ", hashGenesis.SubString(), " DE-AUTHORIZATION ACCEPTED");
+                }
 
                 break;
             }
