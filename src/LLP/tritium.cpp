@@ -666,7 +666,6 @@ namespace LLP
                     return debug::drop(NODE, "ACTION::AUTH: message is stale by ", int64_t(runtime::unifiedtimestamp() - nTimestamp), " seconds");
                 }
 
-
                 /* Get the nonce */
                 uint64_t nNonce;
                 ssPacket >> nNonce;
@@ -678,7 +677,6 @@ namespace LLP
                 /* Get the public key. */
                 std::vector<uint8_t> vchPubKey;
                 ssPacket >> vchPubKey;
-
 
                 /* Build the byte stream from genesis+nonce in order to verify the signature */
                 DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
@@ -4489,7 +4487,7 @@ namespace LLP
 
 
     /* Requests missing sig chain / event transactions for the given signature chain. */
-    void TritiumNode::SyncSigChain(LLP::TritiumNode* pNode, const uint256_t& hashGenesis, bool bWait, bool bSyncEvents)
+    void TritiumNode::SyncSigChain(LLP::TritiumNode* pNode, const uint256_t& hashGenesis, bool fWait, bool fSyncEvents)
     {
         if(config::fClient.load())
         {
@@ -4523,7 +4521,7 @@ namespace LLP
             }
 
             /* Request the sig chain from all. */
-            if(bWait)
+            if(fWait)
                 TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
             else
                 pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
@@ -4533,10 +4531,10 @@ namespace LLP
             LLD::Ledger->ReadLastEvent(hashGenesis, hashLastEvent);
 
             /* Sync events if requested */
-            if(bSyncEvents)
+            if(fSyncEvents)
             {
                 /* Request notifications/events. */
-                if(bWait)
+                if(fWait)
                     TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
 
                 else
@@ -4547,7 +4545,7 @@ namespace LLP
                 LLD::Legacy->ReadLastEvent(hashGenesis, hashLastLegacyEvent);
 
                 /* Request legacy notifications/events. */
-                if(bWait)
+                if(fWait)
                     TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
                 else
                     pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
@@ -4569,7 +4567,7 @@ namespace LLP
                         LLD::Ledger->ReadLastEvent(hashAddress, hashLastEvent);
 
                         /* Request existing notifications/events. */
-                        if(bWait)
+                        if(fWait)
                             TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
                         else
                             pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
@@ -4596,7 +4594,7 @@ namespace LLP
                             LLD::Ledger->ReadLastEvent(hashAddress, hashLastEvent);
 
                             /* Request existing notifications/events. */
-                            if(bWait)
+                            if(fWait)
                                 TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
                             else
                                 pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
@@ -4611,13 +4609,13 @@ namespace LLP
     /* Initiates a chain synchronization from the peer. */
     void TritiumNode::Sync()
     {
+        debug::log(0, NODE, "New sync address set");
+
         /* Set the sync session-id. */
         TAO::Ledger::nSyncSession.store(nCurrentSession);
 
         /* Reset last time received. */
         nLastTimeReceived.store(runtime::timestamp());
-
-        debug::log(0, NODE, "New sync address set");
 
         /* Cache the height at the start of the sync */
         nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);

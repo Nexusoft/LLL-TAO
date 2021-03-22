@@ -65,19 +65,19 @@ namespace TAO
             GetListParams(params, strOrder, nLimit, nOffset, vWhere);
 
             /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            bool fHasFilter = (vWhere.count("") > 0);
 
-            /* Fields to ignore in the where clause.  This is necessary so that the count param is not treated as 
+            /* Fields to ignore in the where clause.  This is necessary so that the count param is not treated as
                standard where clauses to filter the json */
             std::vector<std::string> vIgnore = {"count"};
 
             /* The token to filter on.  Default to 0 (NXS) */
             TAO::Register::Address hashToken;
 
-            /* Check for data parameter. */
+            /* If name is provided then use this to deduce the register address */
             if(params.find("token_name") != params.end() && !params["token_name"].get<std::string>().empty())
-                /* If name is provided then use this to deduce the register address */
                 hashToken = Names::ResolveAddress(params, params["token_name"].get<std::string>());
+
             /* Otherwise try to find the raw hex encoded address. */
             else if(params.find("token") != params.end() && IsRegisterAddress(params["token"]))
                 hashToken.SetBase58(params["token"]);
@@ -138,7 +138,7 @@ namespace TAO
                 /* Check the offset. */
                 if(nTotal <= nOffset)
                     continue;
-                
+
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
                     break;
