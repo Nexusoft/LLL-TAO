@@ -27,20 +27,20 @@ namespace util::atomic
 	class shared_ptr
 	{
 	    /* The internal data. */
-	    std::shared_ptr<TypeName> pData;
+	    std::shared_ptr<TypeName> pdata;
 
 	public:
 
 	    /** Default Constructor. **/
 	    shared_ptr ()
-	    : pData (nullptr)
+	    : pdata (nullptr)
 	    {
 	    }
 
 
 	    /** Constructor for storing. **/
 	    shared_ptr(const TypeName* dataIn)
-	    : pData (nullptr)
+	    : pdata (nullptr)
 	    {
 	        store(*dataIn);
 	    }
@@ -122,18 +122,18 @@ namespace util::atomic
 	     **/
 	    std::shared_ptr<TypeName> load(const std::memory_order mOrder = std::memory_order_seq_cst) const
 	    {
-	        return std::atomic_load_explicit(&pData, mOrder);
+	        return std::atomic_load_explicit(&pdata, mOrder);
 	    }
 
 
 	    /** operator()
 	     *
-	     *  Atomically loads the value pointed to by pData.
+	     *  Atomically loads the value pointed to by pdata.
 	     *
 	     **/
 	    operator TypeName()
 	    {
-	        return std::atomic_load_explicit(&pData, std::memory_order_seq_cst);
+	        return std::atomic_load_explicit(&pdata, std::memory_order_seq_cst);
 	    }
 
 
@@ -147,10 +147,10 @@ namespace util::atomic
 	    void store(const TypeName& in, const std::memory_order mOrder = std::memory_order_seq_cst)
 	    {
 	        /* Cleanup our memory usage on store. */
-	        if(pData)
-	            pData = nullptr;
+	        if(pdata)
+	            pdata = nullptr;
 
-	        std::atomic_store_explicit(&pData, std::make_shared<TypeName>(in), mOrder);
+	        std::atomic_store_explicit(&pdata, std::make_shared<TypeName>(in), mOrder);
 	    }
 
 
@@ -170,7 +170,7 @@ namespace util::atomic
 	    bool compare_exchange_weak(std::shared_ptr<TypeName> &pExpected, std::shared_ptr<TypeName> pDesired,
 	        const std::memory_order mSuccess = std::memory_order_seq_cst, const std::memory_order mFailure = std::memory_order_seq_cst)
 	    {
-	        return std::atomic_compare_exchange_weak_explicit(&pData, &pExpected, pDesired, mSuccess, mFailure);
+	        return std::atomic_compare_exchange_weak_explicit(&pdata, &pExpected, pDesired, mSuccess, mFailure);
 	    }
 
 
@@ -190,7 +190,7 @@ namespace util::atomic
 	    bool compare_exchange_strong(std::shared_ptr<TypeName> &pExpected, std::shared_ptr<TypeName> pDesired,
 	        const std::memory_order mSuccess = std::memory_order_seq_cst, const std::memory_order mFailure = std::memory_order_seq_cst)
 	    {
-	        return std::atomic_compare_exchange_strong_explicit(&pData, &pExpected, pDesired, mSuccess, mFailure);
+	        return std::atomic_compare_exchange_strong_explicit(&pdata, &pExpected, pDesired, mSuccess, mFailure);
 	    }
 
 
@@ -211,13 +211,13 @@ namespace util::atomic
 	    void compare_exchange_auto(std::shared_ptr<TypeName> &pExpected, std::shared_ptr<TypeName> pDesired,
 	        const std::memory_order mSuccess = std::memory_order_seq_cst, const std::memory_order mFailure = std::memory_order_seq_cst)
 	    {
-	        while(!std::atomic_compare_exchange_weak_explicit(&pData, &pExpected, pDesired, mSuccess, mFailure));
+	        while(!std::atomic_compare_exchange_weak_explicit(&pdata, &pExpected, pDesired, mSuccess, mFailure));
 	    }
 
 
 	    /** exchange
 	     *
-	     *  Exchanges pDesired with pData and returns older value.
+	     *  Exchanges pDesired with pdata and returns older value.
 	     *
 	     *  @param[in] pDesired The pointer to exchange.
 	     *
@@ -225,7 +225,7 @@ namespace util::atomic
 	     **/
 	    std::shared_ptr<TypeName> exchange(std::shared_ptr<TypeName> pDesired, const std::memory_order mOrder = std::memory_order_seq_cst)
 	    {
-	        return std::atomic_exchange_explicit(&pData, pDesired, mOrder);
+	        return std::atomic_exchange_explicit(&pdata, pDesired, mOrder);
 	    }
 	};
 }

@@ -128,77 +128,6 @@ const uint256_t hashSeed = 55;
 
 #include <LLD/cache/template_lru.h>
 
-
-/* Read an index entry at given bucket crossing file boundaries. */
-bool read_index(const uint32_t nBucket, const uint32_t nTotal, const LLD::Config::Hashmap& CONFIG)
-{
-    const uint32_t INDEX_FILTER_SIZE = 10;
-
-    /* Check we are flushing within range of the hashmap indexes. */
-    if(nBucket >= CONFIG.HASHMAP_TOTAL_BUCKETS)
-        return debug::error(FUNCTION, "out of range ", VARIABLE(nBucket));
-
-    /* Keep track of how many buckets and bytes we have remaining in this read cycle. */
-    uint32_t nRemaining = nTotal;
-    uint32_t nIterator  = nBucket;
-
-    /* Calculate the number of bukcets per index file. */
-    const uint32_t nTotalBuckets = (CONFIG.HASHMAP_TOTAL_BUCKETS / CONFIG.MAX_FILES_PER_INDEX) + 1;
-    const uint32_t nMaxSize = nTotalBuckets * INDEX_FILTER_SIZE;
-
-    /* Adjust our buffer size to fit the total buckets. */
-    do
-    {
-        /* Calculate the file and boundaries we are on with current bucket. */
-        const uint32_t nFile = (nIterator * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-        const uint32_t nEnd  = (((nFile + 1) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX);
-
-        //const uint32_t nEnd2  = (((nFile + 2) * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX);
-        //const uint64_t nCommon = (nEnd * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-
-        const uint32_t nBegin = (nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX;
-        const uint32_t nCheck = (nBegin * CONFIG.MAX_FILES_PER_INDEX) / CONFIG.HASHMAP_TOTAL_BUCKETS;
-
-        const bool fAdjust = (nCheck != nFile);
-
-        /* Find our new file position from current bucket and offset. */
-        const uint64_t nFilePos      = (INDEX_FILTER_SIZE * (nIterator - (fAdjust ? 1 : 0) -
-            ((nFile * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
-
-        /* Find our new file position from current bucket and offset. */
-        //const uint64_t nFilePos2      = (INDEX_FILTER_SIZE * (//(nFile == 0 ? 0 : 1) -
-        //    ((nEnd * CONFIG.HASHMAP_TOTAL_BUCKETS) / CONFIG.MAX_FILES_PER_INDEX)));
-
-        /* Find the range (in bytes) we want to read for this index range. */
-        const uint32_t nMaxBuckets = std::min(nRemaining, std::max(1u, (nEnd - nIterator)));
-
-
-        if(nFilePos + INDEX_FILTER_SIZE > nMaxSize)
-        {
-            debug::warning(fAdjust ? ANSI_COLOR_BRIGHT_YELLOW : "",
-                          VARIABLE(nRemaining),  " | ",
-                          VARIABLE(nMaxBuckets), " | ",
-                          VARIABLE(nFilePos),    " | ",
-                          VARIABLE(nFile),       " | ",
-                          VARIABLE(nEnd),        " | ",
-                          VARIABLE(nBegin),      " | ",
-                          VARIABLE(nCheck),      " | ",
-                          VARIABLE(nBucket),     " | ",
-                          fAdjust ? ANSI_COLOR_RESET : ""
-                      );
-
-            return false;
-        }
-
-        /* Track our current binary position, remaining buckets to read, and current bucket iterator. */
-        nRemaining -= nMaxBuckets;
-        nIterator  += nMaxBuckets;
-    }
-    while(nRemaining > 0); //continue reading into the buffer, with one loop per file adjusting to each boundary
-
-    return true;
-}
-
 #include <leveldb/c.h>
 
 TestDB* bloom;
@@ -1109,7 +1038,356 @@ namespace util::system
 #include <memory/types/safe_shared_ptr.h>
 
 
+namespace live::atomic
+{
+    static util::atomic::uint32_t nErrors;
 
+    static std::mutex MUTEX;
+
+    /** Internal node structure to hold queue level data. **/
+    template<typename TypeName>
+    struct node
+    {
+        /** Pointer to the previous item in the queue. **/
+        std::shared_ptr<node<TypeName>> pprev;
+
+        /** Pointer to next item in list, needs to be atomic to re-link correctly. **/
+        std::shared_ptr<node<TypeName>> pnext;
+
+        /** Node bulk data. **/
+        TypeName* data;
+
+        /** Default constructor. **/
+        node(const TypeName& dataIn)
+        : pprev   (nullptr)
+        , pnext   (nullptr)
+        , data    (new TypeName(dataIn))
+        {
+        }
+
+        ~node()
+        {
+            delete data;
+        }
+    };
+
+
+    template<typename TypeName>
+    class queue
+    {
+        /** Pointer to the back of the queue. **/
+        std::shared_ptr<node<TypeName>> pbegin;
+
+
+        /** Pointer to the front of the queue. **/
+        std::shared_ptr<node<TypeName>> pend;
+
+
+        /** Container size counter. **/
+        util::atomic::uint64_t nSize;
+
+
+    public:
+
+        queue()
+        : pbegin  (nullptr)
+        , pend    (nullptr)
+        , nSize   (0)
+        {
+            debug::log(0, "creating");
+        }
+
+        ~queue()
+        {
+            std::shared_ptr<node<TypeName>> pnode = std::atomic_load_explicit(&pend, std::memory_order_seq_cst);
+            while(pnode)
+            {
+                std::shared_ptr<node<TypeName>> pdelete = pnode;
+
+                pnode = std::atomic_load_explicit(&pnode->pnext, std::memory_order_seq_cst);
+                //delete pdelete;
+            }
+        }
+
+        bool empty() const
+        {
+            return (nSize.load() == 0);
+        }
+
+        uint64_t size() const
+        {
+            return nSize.load();
+        }
+
+
+        bool check_ranges(const TypeName& data)
+        {
+            if(std::atomic_load_explicit(&pbegin, std::memory_order_seq_cst) == nullptr)
+            {
+                std::shared_ptr<node<TypeName>> pnode = std::make_shared<node<TypeName>>(data);
+
+                //pbegin.store(pnode);
+                std::atomic_store_explicit(&pbegin, pnode, std::memory_order_seq_cst);
+
+                debug::warning(FUNCTION, "setting pbegin ptr");
+
+                return true;
+            }
+
+            if(std::atomic_load_explicit(&pend, std::memory_order_seq_cst) == nullptr)
+            {
+                std::shared_ptr<node<TypeName>> pnode = std::make_shared<node<TypeName>>(data);
+                pnode->pprev = std::atomic_load_explicit(&pbegin, std::memory_order_seq_cst);
+
+
+                std::atomic_store_explicit(&pend, pnode, std::memory_order_seq_cst);
+                std::atomic_store_explicit(&pbegin->pnext, pnode, std::memory_order_seq_cst);
+
+                //pbegin.load()->pnext.store(pend.load());
+
+                debug::warning(FUNCTION, "setting pend ptr ", VARIABLE(nSize.load()));
+
+                return true;
+            }
+
+            return false;
+        }
+
+
+        void push_back(const TypeName& data)
+        {
+            ++nSize;
+            //LOCK(MUTEX);
+
+            if(check_ranges(data))
+                return;
+
+
+            //std::shared_ptr<node> pnode = std::make_shared<node>(data);
+
+            std::shared_ptr<node<TypeName>> pnode = std::make_shared<node<TypeName>>(data);
+            pnode->pprev = std::atomic_load_explicit(&pend, std::memory_order_seq_cst);
+            //node<TypeName>* pnode = new node(data);
+            //node<TypeName>* pprev = std::atomic_load_explicit(&pend, std::memory_order_acquire);//pend.load();
+
+            do
+            {
+                //std::shared_ptr<node<TypeName>> pprev = std::atomic_load_explicit(&pnode->pprev, std::memory_order_seq_cst);
+                //std::atomic_store_explicit(&pprev->pnext, pnode, std::memory_order_seq_cst);
+                //std::atomic_store_explicit(&pnode->pprev, pprev, std::memory_order_seq_cst);
+                //pprev->pnext.store(pnode);
+                //pnode->pprev.store(pprev);
+
+                //pnode->nRefs = ++pprev->nRefs;
+            }
+            while(!std::atomic_compare_exchange_weak_explicit(&pend, &pnode->pprev, pnode,
+                std::memory_order_seq_cst, std::memory_order_seq_cst));
+            //while(!pend.compare_exchange_weak(pprev, pnode));
+
+
+            //node<TypeName>* plast = pend.load();
+            //while(!std::atomic_compare_exchange_weak(&plast->pnext, pnode->pprev, pnode));
+
+            //while(!plast->pnext.compare_exchange_weak(pnode->pprev, pnode));pop_back
+            //while(!pbegin.compare_exchange_weak(pstart->pnext, pstart));
+
+            //while(!std::atomic_compare_exchange_weak(&pend, &pnode->pprev, pnode));
+
+            //debug::log(0, FUNCTION, VARIABLE(data));
+        }
+
+
+        void push_front(const TypeName& data)
+        {
+            ++nSize;
+
+            if(check_ranges(data))
+                return;
+
+
+
+
+
+            std::shared_ptr<node<TypeName>> pnode = std::make_shared<node<TypeName>>(data);
+            pnode->pnext = std::atomic_load_explicit(&pbegin, std::memory_order_seq_cst);
+            //LOCK(MUTEX);
+
+
+            bool fAdjust = false;
+            do
+            {
+                std::shared_ptr<node<TypeName>> pnext = std::atomic_load_explicit(&pbegin, std::memory_order_seq_cst);
+                std::atomic_store_explicit(&pnext->pprev, pnode, std::memory_order_seq_cst);
+
+                //std::atomic_store_explicit(&pnext->pprev, pnode, std::memory_order_seq_cst);
+                //std::atomic_store_explicit(&pnode->pprev, pprev, std::memory_order_seq_cst);
+                //pprev->pnext.store(pnode);
+                //pnode->pprev.store(pprev);
+
+                std::shared_ptr<node<TypeName>> pprev = std::atomic_load_explicit(&pnext->pprev, std::memory_order_seq_cst);
+                //while(!std::atomic_compare_exchange_weak_explicit(&pbegin->pprev, &pbegin->pprev, pnode,
+                //    std::memory_order_seq_cst, std::memory_order_seq_cst));
+                if(pprev != pnode)
+                {
+                    debug::warning(FUNCTION, std::this_thread::get_id(), " [RESOLVE] pnode->pprev ");
+
+                    while(!std::atomic_compare_exchange_weak_explicit(&pnext, &pbegin, pnode,
+                        std::memory_order_seq_cst, std::memory_order_seq_cst));
+
+                    //std::atomic_store_explicit(&pnext->pprev, pnode, std::memory_order_seq_cst);
+                    fAdjust = true;
+
+                    continue;
+                }
+
+                //pnode->nRefs = ++pprev->nRefs;
+                //debug::log(0, FUNCTION, VARIABLE(nSize.load()));
+            }
+            while(!std::atomic_compare_exchange_weak_explicit(&pbegin, &pnode->pnext, pnode,
+                std::memory_order_seq_cst, std::memory_order_seq_cst));
+
+            if(fAdjust)
+                debug::warning(FUNCTION, std::this_thread::get_id(), " [ADJUSTED] pnode->pprev ");
+
+            //std::atomic_thread_fence(std::memory_order_seq_cst);
+        }
+
+
+        void pop_back(uint32_t n)
+        {
+
+
+            //LOCK(MUTEX);
+
+            //std::atomic_thread_fence(std::memory_order_acquire);
+
+            std::shared_ptr<node<TypeName>> pnode = std::atomic_load_explicit(&pend, std::memory_order_seq_cst);
+            do
+            {
+                if(!pnode)
+                {
+                    debug::error(FUNCTION, "pnode is nullptr");
+                    return;
+                }
+
+                if(!std::atomic_load_explicit(&pnode->pprev, std::memory_order_seq_cst))
+                {
+                    debug::error(FUNCTION, "pnode->pprev is nullptr ", VARIABLE(nSize.load()));
+                    return;
+                }
+
+
+
+                //std::atomic_thread_fence(std::memory_order_acquire);
+
+                //std::atomic_thread_fence(std::memory_order_release);
+
+                //std::shared_ptr<node<TypeName>> pprev = std::atomic_load_explicit(&pnode->pprev, std::memory_order_seq_cst);
+                //std::atomic_store_explicit(&pprev->pnext, std::shared_ptr<node<TypeName>>(nullptr), std::memory_order_seq_cst);
+                //pnode->pprev.load()->pnext.store(nullptr);
+
+                //++pnode->nRefs;
+                //pnode->nRefs = pnode->pprev.load()->nRefs + 1;
+                //debug::log(0, FUNCTION, VARIABLE(n));
+            }
+            while(!std::atomic_compare_exchange_weak_explicit(&pend, &pnode, pnode->pprev,
+                std::memory_order_seq_cst, std::memory_order_seq_cst));
+
+            //std::atomic_thread_fence(std::memory_order_seq_cst);
+            //while(!pend.compare_exchange_weak(pnode, pnode->pprev));
+
+            //pend.load()->pnext.store(nullptr);
+
+            --nSize;
+        }
+
+
+        void pop_front(uint32_t n)
+        {
+            std::shared_ptr<node<TypeName>> pnode = std::atomic_load_explicit(&pbegin, std::memory_order_seq_cst);
+            //std::shared_ptr<node<TypeName>> pnext = std::atomic_load_explicit(&pnode->pnext, std::memory_order_seq_cst);
+            //node<TypeName>* pnext = pnode->pnext.load();
+
+            do
+            {
+                //std::atomic_store_explicit(&pnode->pprev, std::shared_ptr<node<TypeName>>(nullptr), std::memory_order_seq_cst);
+                //pnext = std::atomic_load_explicit(&pnode->pnext, std::memory_order_seq_cst);
+            }
+            while(!std::atomic_compare_exchange_weak_explicit(&pbegin, &pnode, pnode->pnext,
+                         std::memory_order_seq_cst, std::memory_order_seq_cst));
+
+
+            //debug::log(0, FUNCTION, VARIABLE(n));
+
+            --nSize;
+        }
+
+
+        TypeName back() const
+        {
+            std::shared_ptr<node<TypeName>> pnode = std::atomic_load_explicit(&pend, std::memory_order_seq_cst);
+            if(pnode == nullptr)
+                throw std::range_error("can't dereference nullptr");
+
+            return *pnode->data;
+        }
+
+
+        TypeName front() const
+        {
+            std::shared_ptr<node<TypeName>> pnode = std::atomic_load_explicit(&pbegin, std::memory_order_seq_cst);
+            if(pnode == nullptr)
+                throw std::range_error("can't dereference nullptr");
+
+            return *pnode->data;
+        }
+
+
+        void print() const
+        {
+            //debug::log(0, VARIABLE(pbegin.load()->data), " | ", VARIABLE(nErrors.load()));
+            {
+                uint32_t n = 0;
+
+                debug::warning("FORWARD ITERATION");
+                std::shared_ptr<node<TypeName>> pnode = std::atomic_load_explicit(&pbegin, std::memory_order_seq_cst);
+                std::shared_ptr<node<TypeName>> plast = std::atomic_load_explicit(&pend->pnext, std::memory_order_seq_cst);
+                do
+                {
+                    if(!pnode)
+                        break;
+
+                    debug::log(0, n++, ": ", VARIABLE(*pnode->data));
+                    pnode = std::atomic_load_explicit(&pnode->pnext, std::memory_order_seq_cst);
+                }
+                while(pnode != plast);
+
+                debug::log(0, "Size of container is ", nSize.load());
+            }
+            //debug::log(0, VARIABLE(pend.load()->data));
+
+
+            //debug::log(0, VARIABLE(pbegin.load()->data));
+            {
+                uint32_t n = 0;
+
+                debug::warning("REVERSE ITERATION");
+                std::shared_ptr<node<TypeName>> pnode  = std::atomic_load_explicit(&pend, std::memory_order_seq_cst);
+                std::shared_ptr<node<TypeName>> pfirst = std::atomic_load_explicit(&pbegin->pprev, std::memory_order_seq_cst);
+                do
+                {
+                    debug::log(0, n++, ": ", VARIABLE(*pnode->data));
+                    pnode = std::atomic_load_explicit(&pnode->pprev, std::memory_order_seq_cst);
+                }
+                while(pnode != pfirst);
+
+                debug::log(0, "Size of container is ", nSize.load());
+            }
+            //debug::log(0, VARIABLE(pend.load()->data));
+
+        }
+    };
+}
 
 
 void TestThread(util::memory::safe_shared_ptr<Test>& ptr)
@@ -1121,11 +1399,45 @@ void TestThread(util::memory::safe_shared_ptr<Test>& ptr)
 }
 
 
+void ListThread(live::atomic::queue<uint32_t>& ptr)
+{
+    for(int i = 0; i < 100; ++i)
+        ptr.push_front(i);
+
+    debug::log(0, "[PUSH]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
+
+    for(int i = 0; i < 90; ++i)
+        ptr.pop_back(i);
+
+    debug::log(0, "[POP]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
+}
+
+
 int main()
 {
     util::system::nTesting = 0;
 
     util::system::log(0, "Testing");
+
+    {
+        live::atomic::queue<uint32_t> listTest;
+
+        std::thread t1(ListThread, std::ref(listTest));
+        std::thread t2(ListThread, std::ref(listTest));
+        std::thread t3(ListThread, std::ref(listTest));
+
+        t1.join();
+        t2.join();
+        t3.join();
+
+
+        listTest.print();
+    }
+
+
+
+    return 0;
+
 
     //std::atomic<std::string> ptr;
 
@@ -1140,13 +1452,17 @@ int main()
         ptrTest2->b = 88;
     }
 
-    std::thread t1(TestThread, std::ref(ptrTest));
-    std::thread t2(TestThread, std::ref(ptrTest));
-    std::thread t3(TestThread, std::ref(ptrTest));
+    {
 
-    t1.join();
-    t2.join();
-    t3.join();
+            std::thread t1(TestThread, std::ref(ptrTest));
+            std::thread t2(TestThread, std::ref(ptrTest));
+            std::thread t3(TestThread, std::ref(ptrTest));
+
+            t1.join();
+            t2.join();
+            t3.join();
+    }
+
 
     debug::log(0, VARIABLE(ptrTest->a), " | ", VARIABLE(ptrTest->b), " | ", VARIABLE(ptrTest->c));
 
