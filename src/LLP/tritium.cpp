@@ -595,10 +595,6 @@ namespace LLP
                 if(TRITIUM_SERVER->GetAddressManager())
                     TRITIUM_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::CONNECTED);
 
-                /* If we dont yet know our IP address and the peer is on the newer protocol version then request the IP address */
-                if(!addrThis.load().IsValid() && nProtocolVersion >= MIN_TRITIUM_VERSION)
-                    PushMessage(ACTION::GET, uint8_t(TYPES::PEERADDRESS));
-
                 #ifdef DEBUG_MISSING
                 fSynchronized.store(true);
                 #endif
@@ -2188,13 +2184,6 @@ namespace LLP
                             break;
                         }
 
-                        case TYPES::PEERADDRESS:
-                        {
-                            /* Send back the peer's own address from our connection */
-                            PushMessage(TYPES::PEERADDRESS, addr);
-                            break;
-                        }
-
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::GET malformed binary stream");
@@ -3357,135 +3346,6 @@ namespace LLP
                 break;
             }
 
-            case ACTION::REQUEST:
-            {
-                /* deserialize the type */
-                uint8_t nType;
-                ssPacket >> nType;
-
-                switch(nType)
-                {
-                    /* Caller is requesting a peer to peer connection to communicate via the messaging LLP*/
-                    case TYPES::P2PCONNECTION:
-                    {
-                        /* get the source genesis hash */
-                        uint256_t hashFrom;
-                        ssPacket >> hashFrom;
-
-                        /* Get the connection request */
-                        LLP::P2P::ConnectionRequest request;
-                        ssPacket >> request;
-
-                        /* Get the public key. */
-                        std::vector<uint8_t> vchPubKey;
-                        ssPacket >> vchPubKey;
-
-                        /* Get the signature. */
-                        std::vector<uint8_t> vchSig;
-                        ssPacket >> vchSig;
-
-                        /* Check the timestamp. If the request is older than 30s then it is stale so ignore the message */
-                        if(request.nTimestamp > runtime::unifiedtimestamp() || request.nTimestamp < runtime::unifiedtimestamp() - 30)
-                        {
-                            debug::log(3, NODE, "ACTION::REQUEST::P2P: timestamp out of range (stale)");
-                            return true;
-                        }
-
-                        /* See whether we have processed a P2P request from this user in the last 5 seconds.
-                           If so then ignore the message. If not then relay the message to our peers. */
-                        {
-                            LOCK(P2P_REQUESTS_MUTEX);
-                            if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < request.nTimestamp - 5)
-                            {
-                                /* Check that the source and destination genesis exists before relaying. We skip this
-                                   in client mode as we will only have local scope and not know about all genesis hashes */
-                                if(!config::fClient.load())
-                                {
-                                    /* Check that the source genesis exists. */
-                                    if(!LLD::Ledger->HasGenesis(request.hashPeer))
-                                        return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid destination genesis hash");
-
-                                    /* Check that the source genesis exists. */
-                                    if(!LLD::Ledger->HasGenesis(hashFrom))
-                                        return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid source genesis hash");
-                                }
-
-                                /* Verify the signature before relaying.  Again we don't do this in client mode as we only have
-                                   local scope and won't be able to access the crypto object register of the hashFrom */
-                                if(!config::fClient.load())
-                                {
-                                    /* Build the byte stream from the request data in order to verify the signature */
-                                    DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                                    ssCheck << hashFrom << request;
-
-                                    /* Verify the signature */
-                                    if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
-                                        return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
-
-                                    /* Reset the packet data pointer */
-                                    ssPacket.Reset();
-
-                                    /* Relay the P2P request */
-                                    TRITIUM_SERVER->Relay
-                                    (
-                                        uint8_t(ACTION::REQUEST),
-                                        uint8_t(TYPES::P2PCONNECTION),
-                                        hashFrom,
-                                        request,
-                                        vchPubKey,
-                                        vchSig
-                                    );
-                                }
-
-                                /* Check to see whether the destination genesis is logged in on this node */
-                                if(TAO::API::users->LoggedIn(request.hashPeer))
-                                {
-                                    /* Get the users session */
-                                    TAO::API::Session& session = TAO::API::users->GetSession(request.hashPeer);
-
-                                    /* If an incoming request already exists from this peer then remove it */
-                                    if(session.HasP2PRequest(request.strAppID, hashFrom, true))
-                                        session.DeleteP2PRequest(request.strAppID, hashFrom, true);
-
-                                    /* Add this incoming request to the P2P requests queue for this user */
-                                    LLP::P2P::ConnectionRequest requestIncoming = { runtime::unifiedtimestamp(), request.strAppID, hashFrom, request.nSession, request.address, request.nPort, request.nSSLPort };
-                                    session.AddP2PRequest(requestIncoming, true);
-
-                                    debug::log(3, NODE, "P2P Request received from " , hashFrom.ToString(), " for appID ", request.strAppID );
-                                }
-                            }
-
-                            /* Log this request */
-                            mapP2PRequests[hashFrom] = request.nTimestamp;
-                        }
-
-                        break;
-                    }
-                    default:
-                    {
-                        return debug::drop(NODE, "ACTION::REQUEST invalid type specified");
-                    }
-                }
-
-                break;
-            }
-
-            case TYPES::PEERADDRESS:
-            {
-                /* Ignore the message if we have already obtained our IP address */
-                if(!addrThis.load().IsValid())
-                {
-                    /* Deserialize the address */
-                    BaseAddress addr;
-                    ssPacket >> addr;
-
-                    /* Store in atomic value. */
-                    addrThis.store(addr);
-                }
-
-                break;
-            }
-
             default:
                 return debug::drop(NODE, "invalid protocol message ", INCOMING.MESSAGE);
         }
@@ -3885,34 +3745,6 @@ namespace LLP
         /* Switch based on message type */
         switch(nMsg)
         {
-            /* Filter out request messages so that we don't send them to peers on older protocol versions */
-            case ACTION::REQUEST :
-            {
-                /* Get the request type */
-                uint8_t nType = 0;
-                ssData >> nType;
-
-                /* Switch based on type. */
-                switch(nType)
-                {
-                    case TYPES::P2PCONNECTION:
-                    {
-                        /* Ensure the peer is on a high enough version to receive the P2PCONNECTION message */
-                        if(nProtocolVersion >= MIN_TRITIUM_VERSION)
-                            ssRelay = ssData;
-                        break;
-                    }
-                    default:
-                    {
-                        /* Default to letting the message be relayed */
-                        ssRelay = ssData;
-                        break;
-                    }
-                }
-
-                break;
-            }
-
             /* Filter notifications. */
             case ACTION::NOTIFY:
             {

@@ -50,7 +50,6 @@ namespace LLP
                 SUBSCRIBE    = 0x16,
                 UNSUBSCRIBE  = 0x17,
                 VALIDATE     = 0x18,
-                REQUEST      = 0x19,
 
                 /* Protocol. */
                 PING         = 0x1a,
@@ -90,7 +89,6 @@ namespace LLP
                 TRIGGER       = 0x3c,
                 REGISTER      = 0x3d,
                 P2PCONNECTION = 0x3e,
-                PEERADDRESS   = 0x3f,
             };
         }
 
