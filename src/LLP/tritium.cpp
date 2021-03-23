@@ -2480,28 +2480,11 @@ namespace LLP
 
                                             /* Calculate the time to sync*/
                                             uint32_t nElapsed = SYNCTIMER.Elapsed();
-                                            if(nElapsed == 0)
-                                                nElapsed = 1;
-
-                                            double dRate = nBlocks / nElapsed;
 
                                             /* Log that sync is complete. */
                                             debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
-                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchronized ", nBlocks, " blocks in ", nElapsed, " seconds [", dRate, " blocks/s]" );
-
-
-                                            /* If in client mode and logged in, request a sig chain sync as soon as we get the blocks syncd */
-                                            if(config::fClient.load() && TAO::API::users->LoggedIn())
-                                            {
-                                                /* Get the Session */
-                                                TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
-
-                                                /* The genesis of the currently logged in user */
-                                                uint256_t hashSigchain = session.GetAccount()->Genesis();
-
-                                                /* Send the sync messages */
-                                                SyncSigChain(this, hashGenesis, false, true);
-                                            }
+                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchronized ", nBlocks, " blocks in ", nElapsed,
+                                                " seconds [", double(nBlocks / (nElapsed + 1.0)), " blocks/s]" );
                                         }
                                         else
                                         {
@@ -2554,19 +2537,6 @@ namespace LLP
 
                                 /* Log that sync is complete. */
                                 debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
-
-                                /* If in client mode and logged in, request a sig chain sync as soon as we get the blocks syncd */
-                                if(config::fClient.load() && TAO::API::users->LoggedIn())
-                                {
-                                    /* Get the Session */
-                                    TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
-
-                                    /* The genesis of the currently logged in user */
-                                    uint256_t hashSigchain = session.GetAccount()->Genesis();
-
-                                    /* Send the sync messages */
-                                    SyncSigChain(this, hashGenesis, false, true);
-                                }
                             }
 
                             /* Debug output. */
