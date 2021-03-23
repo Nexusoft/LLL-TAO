@@ -3778,18 +3778,18 @@ namespace LLP
 
 
     /* Unsubscribe from another node for notifications. */
-    void TritiumNode::UnsubscribeNotification(const uint256_t& hashAddress)
+    void TritiumNode::UnsubscribeAddress(const uint256_t& hashAddress)
     {
         /* Set the timestamp that we unsubscribed at. */
         nUnsubscribed = runtime::timestamp();
 
         /* Unsubscribe over the network. */
-        SubscribeNotification(hashAddress, false);
+        SubscribeAddress(hashAddress, false);
     }
 
 
     /* Subscribe to another node for notifications. */
-    void TritiumNode::SubscribeNotification(const uint256_t& hashAddress, bool fSubscribe)
+    void TritiumNode::SubscribeAddress(const uint256_t& hashAddress, bool fSubscribe)
     {
         /* Build subscription message. */
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);

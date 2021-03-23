@@ -391,7 +391,7 @@ namespace LLP
          *  @param[in] hashAddress The address to unsubscribe notifications for.
          *
          **/
-        void UnsubscribeNotification(const uint256_t& hashAddress);
+        void UnsubscribeAddress(const uint256_t& hashAddress);
 
 
         /** Subscribe
@@ -402,7 +402,7 @@ namespace LLP
          *  @param[in] fSubscribe Flag to determine whether subscibing or unsubscribing
          *
          **/
-        void SubscribeNotification(const uint256_t& hashAddress, bool fSubscribe = true);
+        void SubscribeAddress(const uint256_t& hashAddress, bool fSubscribe = true);
 
 
         /** RelayFilter
