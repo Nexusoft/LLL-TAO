@@ -737,68 +737,6 @@ namespace LLP
 
                 debug::log(0, NODE, "RESPONSE::AUTHORIZED: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
 
-                if(config::fClient.load())
-                {
-                    /* Before subscribing to sig chain transactions and notifications we first ask the node to send us any that we
-                       might not alraedy have.  This could happen if we get disconnected from peers whilst logged in and new events
-                       or transactions occur */
-                    SyncSigChain(this, hashGenesis, false, true);
-
-                    /* Get the last txid in sigchain. */
-                    uint512_t hashLast;
-                    LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
-
-                    /* Subscribe to sig chain transactions */
-                    Subscribe(SUBSCRIPTION::SIGCHAIN);
-
-                    /* Subscribe to notifications for this genesis */
-                    SubscribeNotification(hashGenesis);
-
-                    /* Subscribe to notifications for any tokens we own, or any tokens that we have accounts for */
-
-                    /* Get the list of accounts and tokens owned by this sig chain */
-                    std::vector<TAO::Register::Address> vAddresses;
-                    TAO::API::ListAccounts(hashGenesis, vAddresses, true, false);
-
-                    /* Now iterate through and find all tokens and token accounts */
-                    for(const auto& hashAddress : vAddresses)
-                    {
-                        /* For tokens just subscribe to it */
-                        if(hashAddress.IsToken())
-                        {
-                            /* Get the last event txid */
-                            LLD::Ledger->ReadLastEvent(hashAddress, hashLast);
-
-                            /* Subscribe to new notifications */
-                            SubscribeNotification(hashAddress);
-                        }
-                        else if(hashAddress.IsAccount())
-                        {
-                           /* Get the token account object. */
-                            TAO::Register::Object account;
-                            if(!LLD::Register->ReadState(hashAddress, account, TAO::Ledger::FLAGS::LOOKUP))
-                                return debug::drop(NODE, "Token/account not found");
-
-                            /* Parse the object register. */
-                            if(!account.Parse())
-                                return debug::drop(NODE, "Object failed to parse");
-
-                            /* Get the token */
-                            uint256_t hashToken = account.get<uint256_t>("token");
-
-                            /* If it is not a NXS account, and we have not already subscribed to it, subscribe to it */
-                            if(hashToken != 0 && std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
-                            {
-                                /* Get the last event txid */
-                                LLD::Ledger->ReadLastEvent(hashAddress, hashLast);
-
-                                /* Subscribe to new notifications */
-                                SubscribeNotification(hashAddress);
-                            }
-                        }
-                    }
-                }
-
                 break;
             }
 
