@@ -152,7 +152,7 @@ namespace LLP
                 {
                     /* Parse the querystring */
                     std::string strQuerystring = METHOD.substr(pos + 1);
-                    
+
                     /* Parse the method. */
                     METHOD = METHOD.substr(0, pos);
 
@@ -210,10 +210,6 @@ namespace LLP
                 ret = { {"result", TAO::API::voting->Execute(METHOD, params) } };
             else if(strAPI == "invoices")
                 ret = { {"result", TAO::API::invoices->Execute(METHOD, params) } };
-            else if(strAPI == "crypto")
-                ret = { {"result", TAO::API::crypto->Execute(METHOD, params) } };
-            else if(strAPI == "p2p")
-                ret = { {"result", TAO::API::p2p->Execute(METHOD, params) } };
             else
                 throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }
@@ -230,7 +226,7 @@ namespace LLP
             else
                 /* Default error status code is 400. */
                 nStatus = 400;
-            
+
             int32_t nError = jsonError["code"].get<int32_t>();
 
             /* Set status by error code. */
@@ -279,12 +275,12 @@ namespace LLP
 
         /* Add content. */
         RESPONSE.strContent = ret.dump();
-            
+
         /* Write the response */
         this->WritePacket(RESPONSE);
 
         uint32_t nStop = TIMER.ElapsedMilliseconds();
-                    
+
         debug::log(3, "API Request ", strAPI +"/" +METHOD, " from ", this->addr.ToString(), " completed in ", nStop - nStart, " milliseconds");
 
 
@@ -335,7 +331,7 @@ namespace LLP
         /* Parse out the form entries by char '&' */
         std::vector<std::string> vParams;
         ParseString(strQuerystring, '&', vParams);
-        
+
         /* Check each form entry. */
         for(std::string strParam : vParams)
         {
@@ -348,7 +344,7 @@ namespace LLP
 
             if(pos2 == strParam.npos)
                 break;
-            
+
             /* Get the parameter key */
             std::string key = strParam.substr(0, pos2);
 
@@ -378,13 +374,13 @@ namespace LLP
                 /* Add it to the where params*/
                 params["where"].push_back(jsonClause);
             }
-            
+
             /* Add the parameter as a JSON parameter regardless of whether it is has been added as where clause as it might be a
                keyword required by a list method such as name or address */
             params[key] =  strParam.substr(pos2 + 1);
         }
 
         return params;
-    } 
+    }
 
 }
