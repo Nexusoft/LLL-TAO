@@ -208,11 +208,7 @@ namespace TAO
                 {
                     dUnitAmount = std::stod(strUnitAmount) ;
                 }
-                catch(const std::invalid_argument& e)
-                {
-                    throw APIException(-236, "Invalid item unit amount.");
-                }
-                catch(const std::out_of_range& e)
+                catch(const std::exception& e)
                 {
                     throw APIException(-236, "Invalid item unit amount.");
                 }
@@ -225,11 +221,7 @@ namespace TAO
                 {
                     nUnits = std::stoull(strUnits);
                 }
-                catch(const std::invalid_argument& e)
-                {
-                    throw APIException(-239, "Invalid item number of units.");
-                }
-                catch(const std::out_of_range& e)
+                catch(const std::exception& e)
                 {
                     throw APIException(-239, "Invalid item number of units.");
                 }
