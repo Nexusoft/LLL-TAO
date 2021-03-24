@@ -148,7 +148,7 @@ namespace TAO
                 throw APIException(-244, "Cannot send invoice to self");
 
             /* Add the mandatroy invoice fields to the invoice JSON */
-            invoice["account"] = hashAccount.ToString();
+            invoice["account"]   = hashAccount.ToString();
             invoice["recipient"] = hashRecipient.ToString();
 
             /* Add all other non-mandatory fields that the caller has provided */
@@ -206,7 +206,7 @@ namespace TAO
                 /* Attempt to convert the supplied value to a double, catching argument/range exceptions */
                 try
                 {
-                    dUnitAmount = std::stod(strUnitAmount) ;
+                    dUnitAmount = std::stod(strUnitAmount);
                 }
                 catch(const std::exception& e)
                 {
