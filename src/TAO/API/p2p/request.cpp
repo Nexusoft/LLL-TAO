@@ -160,7 +160,7 @@ namespace TAO
 
             debug::log(3, "Sending P2P connection request.");
 
-            /* Relay the message to all peers */
+            /* Relay the message to all peers
             LLP::TRITIUM_SERVER->Relay(
                 uint8_t(LLP::Tritium::ACTION::REQUEST),
                 uint8_t(LLP::Tritium::TYPES::P2PCONNECTION),
@@ -168,6 +168,7 @@ namespace TAO
                 request,
                 vchPubKey,
                 vchSig);
+            */
 
             /* Optionally wait for a response */
             if(fWait)

@@ -242,7 +242,31 @@ namespace LLP
 
                 /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
-                    PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
+                {
+                    /* If we are on version 3.1, we want to send their address on connect. */
+                    if(MinorVersion(LLP::PROTOCOL_VERSION, 3) >= 1) //3 is major version, 1 is minor (3.1)
+                    {
+                        /* Respond with version message. */
+                        PushMessage(
+                            ACTION::VERSION,
+                            PROTOCOL_VERSION,
+                            SESSION_ID,
+                            version::CLIENT_VERSION_BUILD_STRING,
+                            BaseAddress(GetAddress())
+                        );
+                    }
+                    else
+                    {
+                        /* Respond with version message. */
+                        PushMessage(
+                            ACTION::VERSION,
+                            PROTOCOL_VERSION,
+                            SESSION_ID,
+                            version::CLIENT_VERSION_BUILD_STRING
+                        );
+                    }
+                }
+
 
                 break;
             }
@@ -581,15 +605,52 @@ namespace LLP
                 /* Get the version string. */
                 ssPacket >> strFullVersion;
 
-                /* Respond with version message if incoming connection. */
-                if(Incoming())
+                /* Handle augmenting Tritium Protocol with new minor version 3.1. */
+                if(MinorVersion(nProtocolVersion, 3) >= 1) //NOTE: 3 is for major version 3, we want to check against minor (0.1)
                 {
-                    /* Respond with version message. */
-                    PushMessage(ACTION::VERSION,
-                        PROTOCOL_VERSION,
-                        SESSION_ID,
-                        version::CLIENT_VERSION_BUILD_STRING);
+                    /* Deserialize the address. */
+                    BaseAddress addr;
+                    ssPacket >> addr;
+
+                    /* Set our internal address value if possible. */
+                    BaseAddress addrCurrent = addrThis.load();
+                    if(!addrCurrent.IsValid())
+                    {
+                        addrThis.store(addr);
+                        debug::log(0, NODE, "ACTION::VERSION set current address as ", addr.ToStringIP());
+                    }
+                    else if(addrCurrent != addr)
+                        debug::warning(NODE, "ACTION::VERSION conflicting address ",
+                            addr.ToStringIP(), " != ", addrCurrent.ToStringIP()); //TODO: vAddrThis: can have multiple addr (IPv4/6, LTE, Wifi, etc.)
+
+                    /* Respond with version message if incoming connection. */
+                    if(Incoming())
+                    {
+                        /* Respond with version message. */
+                        PushMessage(
+                            ACTION::VERSION,
+                            PROTOCOL_VERSION,
+                            SESSION_ID,
+                            version::CLIENT_VERSION_BUILD_STRING,
+                            BaseAddress(GetAddress())
+                        );
+                    }
                 }
+                else
+                {
+                    /* Respond with version message if incoming connection. */
+                    if(Incoming())
+                    {
+                        /* Respond with version message. */
+                        PushMessage(
+                            ACTION::VERSION,
+                            PROTOCOL_VERSION,
+                            SESSION_ID,
+                            version::CLIENT_VERSION_BUILD_STRING
+                        );
+                    }
+                }
+
 
                 /* Add to address manager. */
                 if(TRITIUM_SERVER->GetAddressManager())

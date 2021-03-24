@@ -66,8 +66,18 @@ ________________________________________________________________________________
 #define ANSI_COLOR_FUNCTION "\u001b[1m"
 #endif
 
+//this macro is for creating nice formatting on console logs
 #define VALUE(data) data
 
+//this macro will dump a variable name to a string for use in debugging
+#define VAR_NAME(a) \
+    debug::safe_printstr(#a)
+
+//this macro is used for dumping data structures
+#define VARIABLE(a) \
+    ANSI_COLOR_FUNCTION, VAR_NAME(a), ANSI_COLOR_RESET, " = ", a
+
+//this macro will dump node related information to the console
 #define NODE debug::print_node(this)
 
 //ANSI_COLOR_FUNCTION, " Node", ANSI_COLOR_RESET " : ", "\u001b[1m", GetAddress().ToStringIP(), ANSI_COLOR_RESET, " "
@@ -86,7 +96,7 @@ namespace debug
     extern std::ofstream ssFile;
     extern thread_local std::string strLastError;
 
-    /* Flag indicating that errors should be logged for this thread (defaults to true). This allows calling code to temporarily 
+    /* Flag indicating that errors should be logged for this thread (defaults to true). This allows calling code to temporarily
        disable error logging for a given thread. */
     extern thread_local bool fLogError;
 
@@ -236,9 +246,26 @@ namespace debug
         {
             strLastError = safe_printstr(args...);
 
-            log(0, ANSI_COLOR_BRIGHT_RED, "ERROR: ", ANSI_COLOR_RESET, args...);
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "ERROR: ", ANSI_COLOR_RESET, args...);
         }
         return false;
+    }
+
+
+    /** warning
+     *
+     *  Safe constant format debugging warning logs.
+     *  Dumps to console or to log file.
+     *
+     *  @param[in] args The variadic template arguments in.
+     *
+     *  @return Returns false always. (Assumed to return an error.)
+     *
+     **/
+    template<class... Args>
+    void warning(Args&&... args)
+    {
+        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "WARNING: ", ANSI_COLOR_RESET, args...);
     }
 
 

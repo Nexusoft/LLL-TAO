@@ -114,14 +114,6 @@ namespace LLP
          *
          **/
         static int32_t GetOffset();
-
-
-        /** AdjustmentThread
-         *
-         *  This thread is responsible for unified time offset adjustments. This will be deleted on post v8 updates.
-         *
-         **/
-        static void AdjustmentThread();
     };
 }
 
