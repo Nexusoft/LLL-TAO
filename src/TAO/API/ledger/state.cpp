@@ -170,7 +170,7 @@ namespace TAO
 
             if(config::GetBoolArg("-mining", false))
             {
-                obj["totalConnections"] = LLP::MINING_SERVER.load()->GetConnectionCount();
+                obj["totalConnections"] = LLP::MINING_SERVER->GetConnectionCount();
             }
 
             return obj;

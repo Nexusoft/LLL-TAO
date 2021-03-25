@@ -31,7 +31,7 @@ namespace LLP
     extern Server<TimeNode>*     TIME_SERVER;
     extern Server<APINode>*      API_SERVER;
     extern Server<RPCNode>*      RPC_SERVER;
-    extern std::atomic<Server<Miner>*>        MINING_SERVER;
+    extern Server<Miner>*        MINING_SERVER;
     extern Server<P2PNode>*      P2P_SERVER;
 
 
@@ -53,21 +53,6 @@ namespace LLP
      *
      **/
     void Shutdown();
-
-    /** CloseListening
-     *
-     *  Closes the listening sockets on all running servers.
-     *
-     **/
-    void CloseListening();
-
-
-    /** OpenListening
-     *
-     *  Restarts the listening sockets on all running servers.
-     *
-     **/
-    void OpenListening();
 
 
     /** CreateMiningServer
@@ -126,7 +111,7 @@ namespace LLP
             {
                 /* Flag indicating connection was successful */
                 bool fConnected = false;
-                
+
                 /* First attempt SSL if configured */
                 if(pServer->SSLEnabled())
                    fConnected = pServer->AddConnection(address, pServer->GetPort(true), true, true);
@@ -200,10 +185,10 @@ namespace LLP
 
         /* Flag to determine if the connection manager should try new connections. */
         config.fManager = config::GetBoolArg(std::string("-manager"), true);
-        
+
         /* Default sleep */
         config.nManagerInterval = 1000;
-        
+
         /* Enable SSL if configured */
         config.fSSL = config::GetBoolArg(std::string("-ssl"), false) || config::GetBoolArg(std::string("-sslrequired"), false);
 
@@ -271,7 +256,7 @@ namespace LLP
 
         /* Never use connection manager */
         config.fManager = false;
-        
+
         /* Enable SSL if configured */
         config.fSSL = config::GetBoolArg(std::string("-p2pssl"), false) || config::GetBoolArg(std::string("-p2psslrequired"), false);
 

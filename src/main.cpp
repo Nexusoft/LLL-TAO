@@ -249,7 +249,7 @@ int main(int argc, char** argv)
 
         /* Set up Mining Server */
         if(!config::fClient.load() && config::GetBoolArg(std::string("-mining")))
-              LLP::MINING_SERVER.store(LLP::CreateMiningServer());
+              LLP::MINING_SERVER = LLP::CreateMiningServer();
 
 
         /* Elapsed Milliseconds from timer. */
@@ -308,8 +308,10 @@ int main(int argc, char** argv)
     /* After all servers shut down, clean up underlying networking resources */
     LLP::Shutdown();
 
+
     /* Shutdown the API. */
     TAO::API::Shutdown();
+
 
     /* Shutdown database instances. */
     LLD::Shutdown();
@@ -340,6 +342,7 @@ int main(int argc, char** argv)
 
     /* Close the debug log file once and for all. */
     debug::Shutdown();
+
 
     return 0;
 }

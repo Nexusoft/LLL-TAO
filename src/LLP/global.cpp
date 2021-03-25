@@ -20,11 +20,11 @@ namespace LLP
 {
     /* Declare the Global LLP Instances. */
     Server<TritiumNode>* TRITIUM_SERVER;
-    Server<TimeNode>   * TIME_SERVER;
+    Server<TimeNode>*    TIME_SERVER;
     Server<APINode>*     API_SERVER;
     Server<RPCNode>*     RPC_SERVER;
-    std::atomic<Server<Miner>*>        MINING_SERVER;
-    Server<P2PNode>*  P2P_SERVER;
+    Server<Miner>*       MINING_SERVER;
+    Server<P2PNode>*     P2P_SERVER;
 
 
     /* Current session identifier. */
@@ -65,50 +65,6 @@ namespace LLP
 
         /* After all servers shut down, clean up underlying network resources. */
         NetworkShutdown();
-    }
-
-    /* Closes the listening sockets on all running servers. */
-    void CloseListening()
-    {
-        if(TIME_SERVER)
-            TIME_SERVER->CloseListening();
-
-        if(TRITIUM_SERVER)
-            TRITIUM_SERVER->CloseListening();
-
-        if(API_SERVER)
-            API_SERVER->CloseListening();
-
-        if(RPC_SERVER)
-            RPC_SERVER->CloseListening();
-
-        if(MINING_SERVER)
-            MINING_SERVER.load()->CloseListening();
-
-        if(P2P_SERVER)
-            P2P_SERVER->CloseListening();
-    }
-
-    /* Restarts the listening sockets on all running servers. */
-    void OpenListening()
-    {
-        if(TIME_SERVER)
-            TIME_SERVER->OpenListening();
-
-        if(TRITIUM_SERVER)
-            TRITIUM_SERVER->OpenListening();
-
-        if(API_SERVER)
-            API_SERVER->OpenListening();
-
-        if(RPC_SERVER)
-            RPC_SERVER->OpenListening();
-
-        if(MINING_SERVER)
-            MINING_SERVER.load()->OpenListening();
-
-        if(P2P_SERVER)
-            P2P_SERVER->OpenListening();
     }
 
 
@@ -160,40 +116,40 @@ namespace LLP
     {
         /* Startup the time server. */
         LLP::ServerConfig config;
-        
+
         /* Time server port */
         config.nPort = GetTimePort();
-        
+
         /* Always use 10 threads */
         config.nMaxThreads = 10;
-        
+
         /* Timeout of 10s */
         config.nTimeout = 10;
-        
+
         /* Always use DDOS for time server */
         config.fDDOS = true;
-        
+
         /* The connection score, total connections per second. */
         config.nDDOSCScore = 1;
-        
+
         /* The request score, total requests per second. */
         config.nDDOSRScore = 10;
-        
+
         /* Calculate the rscore and cscore over a 10s moving average */
         config.nDDOSTimespan = 10;
-        
+
         /* Listen for incoming connections if unified is specified in config */
         config.fListen = config::fClient.load() ? false : config::GetBoolArg(std::string("-unified"), false);
-        
+
         /* Always allow remote connections */
         config.fRemote = true;
-        
+
         /* Turn on meters */
         config.fMeter = config::GetBoolArg(std::string("-meters"), false);
-        
+
         /* Always use address manager */
         config.fManager = true;
-        
+
         /* Make new connections every 60s */
         config.nManagerInterval = 60000;
 
@@ -211,16 +167,16 @@ namespace LLP
     Server<RPCNode>* CreateRPCServer()
     {
         LLP::ServerConfig config;
-        
+
         /* Port for the RPC server */
         config.nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
 
         /* SSL port for RPC server */
         config.nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcsslport"), config::fTestNet.load() ? TESTNET_RPC_SSL_PORT : MAINNET_RPC_SSL_PORT));
-        
+
         /* Max threads based on config */
         config.nMaxThreads = static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4));
-        
+
         /* 30s timeout */
         config.nTimeout = 30;
 
@@ -247,7 +203,7 @@ namespace LLP
 
         /* no manager */
         config.fManager = false;
-        
+
         /* Enable SSL if configured */
         config.fSSL = config::GetBoolArg(std::string("-rpcssl")) || config::GetBoolArg(std::string("-rpcsslrequired"), false);
 
@@ -263,16 +219,16 @@ namespace LLP
     Server<APINode>* CreateAPIServer()
     {
         LLP::ServerConfig config;
-        
+
         /* Port for the API server */
         config.nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
-        
+
         /* SSL port for API server */
         config.nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-apisslport"), config::fTestNet.load() ? TESTNET_API_SSL_PORT : MAINNET_API_SSL_PORT));
-        
+
         /* Max threads based on config */
         config.nMaxThreads = static_cast<uint16_t>(config::GetArg(std::string("-apithreads"), 10));
-        
+
         /* Timeout based on config, 30s default */
         config.nTimeout = static_cast<uint32_t>(config::GetArg(std::string("-apitimeout"), 30));
 
@@ -299,7 +255,7 @@ namespace LLP
 
         /* No manager , not required for API as connections are ephemeral*/
         config.fManager = false;
-        
+
         /* Enable SSL if configured */
         config.fSSL = config::GetBoolArg(std::string("-apissl")) || config::GetBoolArg(std::string("-apisslrequired"), false);
 
