@@ -98,8 +98,8 @@ namespace TAO
             debug::log(3, "END ACCEPT -----------------------------------");
 
             /* Runtime calculations. */
-            runtime::timer time;
-            time.Start();
+            runtime::timer timer;
+            timer.Start();
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsCoinBase())
@@ -122,7 +122,7 @@ namespace TAO
                     /* Debug output. */
                     debug::log(0, FUNCTION, "tx ", hashTx.SubString(), " ",
                         tx.nSequence, " prev ", tx.hashPrevTx.SubString(),
-                        " ORPHAN in ", std::dec, time.ElapsedMilliseconds(), " ms");
+                        " ORPHAN in ", std::dec, timer.ElapsedMilliseconds(), " ms");
 
                     /* Push to orphan queue. */
                     mapOrphans[tx.hashPrevTx] = tx;
@@ -190,7 +190,7 @@ namespace TAO
                 mapClaimed[tx.hashPrevTx] = hashTx;
 
             /* Debug output. */
-            debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, time.ElapsedMilliseconds(), " ms");
+            debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, timer.ElapsedMilliseconds(), " ms");
 
             /* Process orphan queue. */
             ProcessOrphans(hashTx);

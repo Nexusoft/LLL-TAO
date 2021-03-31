@@ -475,7 +475,7 @@ namespace TAO
 
         /* Create a producer transaction object from signature chain. */
         bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                               TAO::Ledger::Transaction& txProducer,
+                               TAO::Ledger::Transaction &txProducer,
                                const TAO::Ledger::BlockState& stateBest,
                                const uint32_t nBlockVersion,
                                const uint32_t nChannel,
