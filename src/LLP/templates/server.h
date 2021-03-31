@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <LLP/templates/data.h>
 #include <LLP/include/legacy_address.h>
 #include <LLP/include/manager.h>
-#include <LLP/include/server_config.h>
+#include <LLP/include/config.h>
 
 #include <Util/include/memory.h>
 

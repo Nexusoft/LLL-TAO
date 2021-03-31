@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/include/server_config.h>
+#include <LLP/include/config.h>
 
 #include <limits>
 
