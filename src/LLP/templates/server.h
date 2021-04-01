@@ -54,99 +54,52 @@ namespace LLP
     {
     private:
 
-        /** Server's listenting port. **/
-        uint16_t PORT;
 
-
-        /** Server's listenting port for SSL connections. **/
-        uint16_t SSL_PORT;
-
-
-        /** The listener socket instance. **/
-        std::pair<int32_t, int32_t> hListenSocket;
-
-
-        /** The SSL listener socket instance. **/
-        std::pair<int32_t, int32_t> hSSLListenSocket;
-
-
-        /** Determine if Server should make / accept SSL connections. **/
-        std::atomic<bool> fSSL;
-
-
-        /** Determine if Server should only make / accept SSL connections. **/
-        std::atomic<bool> fSSLRequired;
+        /** The internal server configuration variables. **/
+        const Config CONFIG;
 
 
         /** The DDOS variables. **/
         memory::atomic_ptr< std::map<BaseAddress, DDOS_Filter *> > DDOS_MAP;
 
 
-        /** DDOS flag for off or on. **/
-        std::atomic<bool> fDDOS;
-
-
-        /** The moving average timespan for DDOS throttling. **/
-        uint32_t DDOS_TIMESPAN;
-
-
-        /** Maximum number of data threads for this server. **/
-        uint16_t MAX_THREADS;
-
-
         /** The data type to keep track of current running threads. **/
-        std::vector<DataThread<ProtocolType> *> DATA_THREADS;
-
-
-        /** condition variable for manager thread. **/
-        std::condition_variable MANAGER;
+        std::vector<DataThread<ProtocolType> *> THREADS_DATA;
 
 
         /** Listener Thread for accepting incoming connections. **/
-        std::thread LISTEN_THREAD;
-
-
-        /** Listener Thread for accepting incoming SSL connections. **/
-        std::thread SSL_LISTEN_THREAD;
+        std::thread THREAD_LISTEN;
 
 
         /** Meter Thread for tracking incoming and outgoing packet counts. **/
-        std::thread METER_THREAD;
-
-
-        /** Port mapping thread for opening port in router. **/
-        std::thread UPNP_THREAD;
-
-
-        /** Port mapping thread for opening the SSL port in router. **/
-        std::thread SSL_UPNP_THREAD;
+        std::thread THREAD_METER;
 
 
         /** Connection Manager thread. **/
-        std::thread MANAGER_THREAD;
+        std::thread THREAD_MANAGER;
+
+
+        /** The listener socket instance. **/
+        std::pair<int32_t, int32_t> hListenBase;
+
+
+        /** The listener socket instance. **/
+        std::pair<int32_t, int32_t> hListenSSL;
 
 
         /** Address for handling outgoing connections **/
-        AddressManager *pAddressManager;
-
-
-        /** The sleep time of address manager. **/
-        uint32_t nSleepTime;
-
-
-        /** Max number of incoming connections this server can make. **/
-        uint32_t nMaxIncoming;
-
-
-        /** Maximum number connections in total that this server can handle.  Must be greater than nMaxIncoming **/
-        uint32_t nMaxConnections;
-
-        /** Flag indicating that the server should listen for remote connections **/
-        bool fRemote;
+        AddressManager* pAddressManager;
 
 
     public:
 
+
+        /** Constructor **/
+        Server<ProtocolType>(const Config& config);
+
+
+        /** Default Destructor **/
+        virtual ~Server<ProtocolType>();
 
 
         /** Name
@@ -155,14 +108,6 @@ namespace LLP
          *
          **/
         std::string Name();
-
-
-        /** Constructor **/
-        Server<ProtocolType>(const ServerConfig& config);
-
-
-        /** Default Destructor **/
-        virtual ~Server<ProtocolType>();
 
 
         /** GetPort
@@ -181,14 +126,6 @@ namespace LLP
          *
          **/
         AddressManager* GetAddressManager() const;
-
-
-        /** Shutdown
-         *
-         *  Cleanup and shutdown subsystems
-         *
-         **/
-        void Shutdown();
 
 
         /** AddNode
@@ -232,11 +169,11 @@ namespace LLP
 
 
             /* Create new DDOS Filter if Needed. */
-            if(fDDOS.load())
+            if(CONFIG.ENABLE_DDOS)
             {
                 /* Add new filter to map if it doesn't exist. */
                 if(!DDOS_MAP->count(addrConnect))
-                    DDOS_MAP->emplace(std::make_pair(addrConnect, new DDOS_Filter(DDOS_TIMESPAN)));
+                    DDOS_MAP->emplace(std::make_pair(addrConnect, new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
 
                 /* DDOS Operations: Only executed when DDOS is enabled. */
                 if(DDOS_MAP->at(addrConnect)->Banned())
@@ -249,10 +186,10 @@ namespace LLP
                 return false;
 
             /* Select the proper data thread. */
-            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+            DataThread<ProtocolType> *dt = THREADS_DATA[nThread];
 
             /* Attempt the connection. */
-            if(!dt->NewConnection(addrConnect, fDDOS.load() ? DDOS_MAP->at(addrConnect) : nullptr, fSSL, std::forward<Args>(args)...))
+            if(!dt->NewConnection(addrConnect, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addrConnect) : nullptr, fSSL, std::forward<Args>(args)...))
             {
                 /* Add the address to the address manager if it exists. */
                 if(pAddressManager)
@@ -333,64 +270,6 @@ namespace LLP
         std::shared_ptr<ProtocolType> GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex);
 
 
-        /** GetSpecificConnection
-         *
-         *  Get connection matching variable args, which are passed on to the ProtocolType instance.
-         *
-         **/
-        template<typename... Args>
-        std::shared_ptr<ProtocolType> GetSpecificConnection(Args&&... args)
-        {
-            /* Thread ID and index of the matchingconnection */
-            int16_t nRetThread = -1;
-            int16_t nRetIndex  = -1;
-
-            /* Loop through all threads */
-            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-            {
-                /* Loop through connections in data thread. */
-                uint16_t nSize = static_cast<uint16_t>(DATA_THREADS[nThread]->CONNECTIONS->size());
-                for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
-                {
-                    try
-                    {
-                        /* Get the current atomic_ptr. */
-                        std::shared_ptr<ProtocolType> CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
-                        if(!CONNECTION)
-                            continue;
-
-                        /* check the details */
-                        if(CONNECTION->Matches(std::forward<Args>(args)...))
-                        {
-
-                            nRetThread = nThread;
-                            nRetIndex  = nIndex;
-
-                            /* Break out as we have found a match */
-                            break;
-                        }
-                    }
-                    catch(const std::exception& e)
-                    {
-                        //debug::error(FUNCTION, e.what());
-                    }
-                }
-
-                /* break if we have a match */
-                if(nRetThread != -1 && nRetIndex != -1)
-                    break;
-
-            }
-
-            /* Handle if no connections were found. */
-            static std::shared_ptr<ProtocolType> pNULL;
-            if(nRetThread == -1 || nRetIndex == -1)
-                return pNULL;
-
-            return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
-        }
-
-
         /** Relay
          *
          *  Relays data to all nodes on the network.
@@ -400,8 +279,8 @@ namespace LLP
         void Relay(const MessageType& message, Args&&... args)
         {
             /* Relay message to each data thread, which will relay message to each connection of each data thread */
-            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-                DATA_THREADS[nThread]->Relay(message, args...);
+            for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
+                THREADS_DATA[nThread]->Relay(message, args...);
         }
 
 
@@ -414,8 +293,8 @@ namespace LLP
         void _Relay(const MessageType& message, const DataStream& ssData)
         {
             /* Relay message to each data thread, which will relay message to each connection of each data thread */
-            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-                DATA_THREADS[nThread]->_Relay(message, ssData);
+            for(uint16_t nThread = 0; nThread <CONFIG.MAX_THREADS; ++nThread)
+                THREADS_DATA[nThread]->_Relay(message, ssData);
         }
 
 
@@ -516,7 +395,7 @@ namespace LLP
          *
          *  Bind connection to a listening port.
          *
-         *  @param[in] hListenSocket The socket to bind to
+         *  @param[in] hListenBase The socket to bind to
          *  @param[in] nPort The port to listen on
          *  @param[in] fIPv4 Flag indicating the connection is IPv4
          *  @param[in] fRemote Flag indicating that the socket should listen on all interfaced (true) or local only (false)
@@ -524,7 +403,7 @@ namespace LLP
          *  @return
          *
          **/
-        bool BindListenPort(int32_t & hListenSocket, uint16_t nPort, bool fIPv4, bool fRemote);
+        bool BindListenPort(int32_t & hListenBase, uint16_t nPort, bool fIPv4, bool fRemote);
 
 
         /** Meter
@@ -533,16 +412,6 @@ namespace LLP
          *
          **/
         void Meter();
-
-
-        /** UPnP
-         *
-         *  UPnP Thread. If UPnP is enabled then this thread will set up the required port forwarding.
-         *
-         *  @param[in] nPort The port to forward
-         *
-         **/
-        void UPnP(uint16_t nPort);
 
 
         /** get_listening_socket
@@ -558,7 +427,6 @@ namespace LLP
         SOCKET get_listening_socket(bool fIPv4, bool fSSL);
 
     };
-
 }
 
 #endif

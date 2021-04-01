@@ -72,10 +72,6 @@ int main(int argc, char** argv)
     debug::Initialize();
 
 
-    /* Initialize network resources. (Need before RPC/API for WSAStartup call in Windows) */
-    LLP::Initialize();
-
-
     /* Handle Commandline switch */
     for(int i = 1; i < argc; ++i)
     {
@@ -113,25 +109,13 @@ int main(int argc, char** argv)
         Daemonize();
     }
 
+
     /* Create directories if they don't exist yet. */
     if(!filesystem::exists(config::GetDataDir()) &&
         filesystem::create_directory(config::GetDataDir()))
     {
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
     }
-
-    /* Startup the time server. */
-    LLP::TIME_SERVER = LLP::CreateTimeServer();
-
-
-    #ifndef NO_WALLET
-    /* Set up RPC server */
-    if(!config::fClient.load())
-    {
-        /* Instantiate the RPC server */
-        LLP::RPC_SERVER = LLP::CreateRPCServer();
-    }
-    #endif
 
 
     /* Startup timer stats. */
@@ -148,6 +132,7 @@ int main(int argc, char** argv)
 
         /* Initialize ChainState. */
         TAO::Ledger::ChainState::Initialize();
+
 
         /* Register the user-configurable blocknotify function with the Ledger Dispatcher so that it is notififed whenever there is a new block*/
         TAO::Ledger::Dispatch::GetInstance().SubscribeBlock(BlockNotify);
@@ -205,51 +190,8 @@ int main(int argc, char** argv)
         }
 
 
-        /* Get the port for Tritium Server. Allow serverport or port params to be used (serverport takes preference)*/
-        uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-serverport"), nPort));
-
-        uint16_t nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-sslport"), config::fTestNet.load() ? (TRITIUM_TESTNET_SSL_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_SSL_PORT));
-
-        /* Initialize the Tritium Server. */
-        LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort, nSSLPort);
-
-        /* Register the tritium server with the ledger dispatcher so that it is notififed whenever there is a new block*/
-        TAO::Ledger::Dispatch::GetInstance().SubscribeBlock(LLP::TritiumNode::RelayBlock);
-
-
-        /* Get the port for the P2P server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), config::fTestNet.load() ? TESTNET_P2P_PORT : MAINNET_P2P_PORT));
-        nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-p2psslport"), config::fTestNet.load() ? TESTNET_P2P_SSL_PORT : MAINNET_P2P_SSL_PORT));
-
-        /* Initialize API Pointers. */
-        TAO::API::Initialize();
-
-
-        /* ensure that apiuser / apipassword has been configured */
-        if((config::mapArgs.find("-apiuser") == config::mapArgs.end()
-        || config::mapArgs.find("-apipassword") == config::mapArgs.end())
-        && config::GetBoolArg("-apiauth", true))
-        {
-            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!!WARNING!!! API DISABLED", ANSI_COLOR_RESET);
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> in nexus.conf", ANSI_COLOR_RESET);
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "or commandline arguments.  If you intend to run the API server without", ANSI_COLOR_RESET);
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "authenticating requests (not recommended), please start with set apiauth=0", ANSI_COLOR_RESET);
-        }
-        else
-        {
-            /* Create the Core API Server. */
-            LLP::API_SERVER = LLP::CreateAPIServer();
-        }
-
-
-        /* Hnalde manual connections for tritium server. */
-        LLP::MakeConnections<LLP::TritiumNode>(LLP::TRITIUM_SERVER);
-
-
-        /* Set up Mining Server */
-        if(!config::fClient.load() && config::GetBoolArg(std::string("-mining")))
-              LLP::MINING_SERVER = LLP::CreateMiningServer();
+        /* Initialize the Lower Level Protocol. */
+        LLP::Initialize();
 
 
         /* Elapsed Milliseconds from timer. */

@@ -27,7 +27,7 @@ namespace TAO
         Register*   reg;
 
         #ifndef NO_WALLET
-        RPC*        RPCCommands;
+        RPC*        legacy;
         #endif
 
         Supply*     supply;
@@ -40,7 +40,6 @@ namespace TAO
         Voting*     voting;
         Invoices*   invoices;
         Crypto*     crypto;
-        P2P*        p2p;
 
 
         /*  Instantiate global instances of the API. */
@@ -54,7 +53,7 @@ namespace TAO
             reg         = new Register();
 
             #ifndef NO_WALLET
-            RPCCommands = new RPC();
+            legacy = new RPC();
             #endif
 
             supply      = new Supply();
@@ -67,7 +66,6 @@ namespace TAO
             voting      = new Voting();
             invoices    = new Invoices();
             crypto      = new Crypto();
-            p2p         = new P2P();
         }
 
 
@@ -86,8 +84,8 @@ namespace TAO
                 delete reg;
 
             #ifndef NO_WALLET
-            if(RPCCommands)
-                delete RPCCommands;
+            if(legacy)
+                delete legacy;
             #endif
 
             if(supply)
@@ -119,9 +117,6 @@ namespace TAO
 
             if(crypto)
                 delete crypto;
-
-            if(p2p)
-                delete p2p;
         }
     }
 }

@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/include/network.h>
 
+#include <TAO/API/include/global.h>
+
 namespace LLP
 {
     /* Declare the Global LLP Instances. */
@@ -24,7 +26,6 @@ namespace LLP
     Server<APINode>*     API_SERVER;
     Server<RPCNode>*     RPC_SERVER;
     Server<Miner>*       MINING_SERVER;
-    Server<P2PNode>*     P2P_SERVER;
 
 
     /* Current session identifier. */
@@ -38,6 +39,155 @@ namespace LLP
         if(!NetworkInitialize())
             return debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
 
+
+        /* TRITIUM_SERVER instance */
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetDefaultPort());
+            CONFIG.ENABLE_LISTEN   = config::GetBoolArg(std::string("-listen"), (config::fClient.load() ? false : true));
+            CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-meters"), false);
+            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-ddos"), false);
+            CONFIG.ENABLE_MANAGER  = config::GetBoolArg(std::string("-manager"), true);
+            CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-ssl"), false);
+            CONFIG.ENABLE_REMOTE   = true;
+            CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-sslrequired"), false);
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = config::GetArg(std::string("-maxincoming"), 84);
+            CONFIG.MAX_CONNECTIONS = config::GetArg(std::string("-maxconnections"), 100);
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-threads"), 8);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-cscore"), 1);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-rscore"), 2000);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-timespan"), 20);
+            CONFIG.MANAGER_SLEEP   = 1000; //default: 1 second connection attempts
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-timeout"), 120);
+
+            /* Create the server instance. */
+            TRITIUM_SERVER = new Server<TritiumNode>(CONFIG);
+
+            /* Add our connections from commandline. */
+            MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
+        }
+
+
+        /* TIME_SERVER instance */
+        if(config::GetBoolArg(std::string("-unified"), false))
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetTimePort());
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_METERS   = false;
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = true;
+            CONFIG.ENABLE_SSL      = false;
+            CONFIG.ENABLE_REMOTE   = true;
+            CONFIG.REQUIRE_SSL     = false;
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = static_cast<uint32_t>(config::GetArg(std::string("-maxincoming"), 84));
+            CONFIG.MAX_CONNECTIONS = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100));
+            CONFIG.MAX_THREADS     = 8;
+            CONFIG.DDOS_CSCORE     = 1;
+            CONFIG.DDOS_RSCORE     = 10;
+            CONFIG.DDOS_TIMESPAN   = 10;
+            CONFIG.MANAGER_SLEEP   = 60000; //default: 60 second connection attempts
+            CONFIG.SOCKET_TIMEOUT  = 10;
+
+            /* Create the server instance. */
+            TIME_SERVER = new Server<TimeNode>(CONFIG);
+        }
+
+
+        /* API_SERVER instance */
+        if((config::mapArgs.count("-apiuser") && config::mapArgs.count("-apipassword")) || !config::GetBoolArg("-apiauth", true))
+        {
+            /* Initialize API Pointers. */
+            TAO::API::Initialize();
+
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetAPIPort());
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-apimeters"), false);
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-apissl"));
+            CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-apiremote"), false);
+            CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-apisslrequired"), false);
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-apithreads"), 8);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-apicscore"), 5);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-apirscore"), 5);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-apitimespan"), 60);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-apitimeout"), 30);
+
+            /* Create the server instance. */
+            LLP::API_SERVER = new Server<APINode>(CONFIG);
+        }
+        else
+        {
+            /* Output our new warning message if the API was disabled. */
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!! WARNING !!! API DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
+        }
+
+
+        /* RPC_SERVER instance */
+        #ifndef NO_WALLET
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetRPCPort());
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-rpcmeters"), false);
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-rpcssl"));
+            CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-rpcremote"), false);
+            CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-rpcsslrequired"), false);
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-rpcthreads"), 4);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-rpccscore"), 5);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-rpcrscore"), 5);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-rpctimespan"), 60);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = 30;
+
+            /* Create the server instance. */
+            RPC_SERVER = new Server<RPCNode>(CONFIG);
+        }
+        #endif
+
+
+        /* MINING_SERVER instance */
+        if(config::GetBoolArg(std::string("-mining", false)) && !config::fClient.load())
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetMiningPort());
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_METERS   = false;
+            CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-miningddos"), false);
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = false;
+            CONFIG.ENABLE_REMOTE   = true;
+            CONFIG.REQUIRE_SSL     = false;
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-miningthreads"), 4);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-miningcscore"), 1);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-miningrscore"), 50);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-miningtimespan"), 60);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-miningtimeout"), 30);
+
+            /* Create the server instance. */
+            MINING_SERVER = new Server<Miner>(CONFIG);
+        }
+
+
         return true;
     }
 
@@ -45,11 +195,11 @@ namespace LLP
     /*  Shutdown the LLP. */
     void Shutdown()
     {
-        /* Shutdown the time server and its subsystems. */
-        Shutdown<TimeNode>(TIME_SERVER);
-
         /* Shutdown the tritium server and its subsystems. */
         Shutdown<TritiumNode>(TRITIUM_SERVER);
+
+        /* Shutdown the time server and its subsystems. */
+        Shutdown<TimeNode>(TIME_SERVER);
 
         /* Shutdown the core API server and its subsystems. */
         Shutdown<APINode>(API_SERVER);
@@ -60,211 +210,7 @@ namespace LLP
         /* Shutdown the mining server and its subsystems. */
         Shutdown<Miner>(MINING_SERVER);
 
-        /* Shutdown the P2P server and its subsystems. */
-        Shutdown<P2PNode>(P2P_SERVER);
-
         /* After all servers shut down, clean up underlying network resources. */
         NetworkShutdown();
     }
-
-
-    /*  Creates and returns the mining server. */
-    Server<Miner>* CreateMiningServer()
-    {
-        LLP::ServerConfig config;
-
-        /* The port this server listens on. */
-        config.nPort = static_cast<uint16_t>(GetMiningPort());
-
-        /* The total data I/O threads. */
-        config.nMaxThreads = static_cast<uint16_t>(config::GetArg(std::string("-miningthreads"), 4));
-
-        /* The timeout value (default: 30 seconds). */
-        config.nTimeout = static_cast<uint32_t>(config::GetArg(std::string("-miningtimeout"), 30));
-
-        /* The DDOS if enabled. */
-        config.fDDOS = config::GetBoolArg(std::string("-miningddos"), false);
-
-        /* The connection score (total connections per second). */
-        config.nDDOSCScore = static_cast<uint32_t>(config::GetArg(std::string("-miningcscore"), 1));
-
-        /* The request score (total packets per second.) */
-        config.nDDOSRScore = static_cast<uint32_t>(config::GetArg(std::string("-miningrscore"), 50));
-
-        /* The DDOS moving average timespan (default: 60 seconds). */
-        config.nDDOSTimespan = static_cast<uint32_t>(config::GetArg(std::string("-miningtimespan"), 60));
-
-        /* Mining server should always listen */
-        config.fListen = true;
-
-        /* Mining server should always allow remote connections */
-        config.fRemote = true;
-
-        /* Flag to determine if meters should be active. */
-        config.fMeter = config::GetBoolArg(std::string("-meters"), false);
-
-        /* Mining server should never make outgoing connections. */
-        config.fMeter = false;
-
-        /* Create the mining server object. */
-        return new Server<Miner>(config);
-    }
-
-
-    /* Helper for creating the Time server. */
-    Server<TimeNode>* CreateTimeServer()
-    {
-        /* Startup the time server. */
-        LLP::ServerConfig config;
-
-        /* Time server port */
-        config.nPort = GetTimePort();
-
-        /* Always use 10 threads */
-        config.nMaxThreads = 10;
-
-        /* Timeout of 10s */
-        config.nTimeout = 10;
-
-        /* Always use DDOS for time server */
-        config.fDDOS = true;
-
-        /* The connection score, total connections per second. */
-        config.nDDOSCScore = 1;
-
-        /* The request score, total requests per second. */
-        config.nDDOSRScore = 10;
-
-        /* Calculate the rscore and cscore over a 10s moving average */
-        config.nDDOSTimespan = 10;
-
-        /* Listen for incoming connections if unified is specified in config */
-        config.fListen = config::fClient.load() ? false : config::GetBoolArg(std::string("-unified"), false);
-
-        /* Always allow remote connections */
-        config.fRemote = true;
-
-        /* Turn on meters */
-        config.fMeter = config::GetBoolArg(std::string("-meters"), false);
-
-        /* Always use address manager */
-        config.fManager = true;
-
-        /* Make new connections every 60s */
-        config.nManagerInterval = 60000;
-
-        /* Max incoming connections */
-        config.nMaxIncoming = static_cast<uint32_t>(config::GetArg(std::string("-maxincoming"), 84));
-
-        /* Max connections */
-        config.nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100));
-
-        /* Instantiate the time server */
-        return new LLP::Server<LLP::TimeNode>(config);
-    }
-
-    /* Helper for creating the RPC server. */
-    Server<RPCNode>* CreateRPCServer()
-    {
-        LLP::ServerConfig config;
-
-        /* Port for the RPC server */
-        config.nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
-
-        /* SSL port for RPC server */
-        config.nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcsslport"), config::fTestNet.load() ? TESTNET_RPC_SSL_PORT : MAINNET_RPC_SSL_PORT));
-
-        /* Max threads based on config */
-        config.nMaxThreads = static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4));
-
-        /* 30s timeout */
-        config.nTimeout = 30;
-
-        /* Always use DDOS for RPC server */
-        config.fDDOS = true;
-
-        /* The connection score, total connections per second. Default to 5*/
-        config.nDDOSCScore = static_cast<uint32_t>(config::GetArg(std::string("-rpccscore"), 5));
-
-        /* The request score, total requests per second. Default is 5*/
-        config.nDDOSRScore = static_cast<uint32_t>(config::GetArg(std::string("-rpcrscore"), 5));
-
-        /* Calculate the rscore and cscore over a 60s moving average or as configured */
-        config.nDDOSTimespan = static_cast<uint32_t>(config::GetArg(std::string("-rpctimespan"), 60));
-
-        /* Always listen for incoming connections */
-        config.fListen = true;
-
-        /* Allow remote connections based on config */
-        config.fRemote = config::GetBoolArg(std::string("-rpcremote"), false);
-
-        /* No meters */
-        config.fMeter = false;
-
-        /* no manager */
-        config.fManager = false;
-
-        /* Enable SSL if configured */
-        config.fSSL = config::GetBoolArg(std::string("-rpcssl")) || config::GetBoolArg(std::string("-rpcsslrequired"), false);
-
-        /* Require SSL if configured */
-        config.fSSLRequired = config::GetBoolArg(std::string("-rpcsslrequired"), false);
-
-        /* Instantiate the RPC server */
-        return new LLP::Server<LLP::RPCNode>(config);
-    }
-
-
-    /* Helper for creating the API server. */
-    Server<APINode>* CreateAPIServer()
-    {
-        LLP::ServerConfig config;
-
-        /* Port for the API server */
-        config.nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
-
-        /* SSL port for API server */
-        config.nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-apisslport"), config::fTestNet.load() ? TESTNET_API_SSL_PORT : MAINNET_API_SSL_PORT));
-
-        /* Max threads based on config */
-        config.nMaxThreads = static_cast<uint16_t>(config::GetArg(std::string("-apithreads"), 10));
-
-        /* Timeout based on config, 30s default */
-        config.nTimeout = static_cast<uint32_t>(config::GetArg(std::string("-apitimeout"), 30));
-
-        /* Always use DDOS for API server */
-        config.fDDOS = true;
-
-        /* The connection score, total connections per second. Default to 5*/
-        config.nDDOSCScore = static_cast<uint32_t>(config::GetArg(std::string("-apicscore"), 5));
-
-        /* The request score, total requests per second. Default is 5*/
-        config.nDDOSRScore = static_cast<uint32_t>(config::GetArg(std::string("-apirscore"), 5));
-
-        /* Calculate the rscore and cscore over a 60s moving average or as configured */
-        config.nDDOSTimespan = static_cast<uint32_t>(config::GetArg(std::string("-apitimespan"), 60));
-
-        /* Always listen for incoming connections */
-        config.fListen = true;
-
-        /* Allow remote connections based on config */
-        config.fRemote = config::GetBoolArg(std::string("-apiremote"), false);
-
-        /* No meters */
-        config.fMeter = false;
-
-        /* No manager , not required for API as connections are ephemeral*/
-        config.fManager = false;
-
-        /* Enable SSL if configured */
-        config.fSSL = config::GetBoolArg(std::string("-apissl")) || config::GetBoolArg(std::string("-apisslrequired"), false);
-
-        /* Require SSL if configured */
-        config.fSSLRequired = config::GetBoolArg(std::string("-apisslrequired"), false);
-
-        /* Instantiate the API server */
-        return new LLP::Server<LLP::APINode>(config);
-    }
-
-
 }

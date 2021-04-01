@@ -95,7 +95,7 @@ TEST_CASE("Arguments Tests", "[args]")
     TAO::API::Initialize();
 
     /* Create the Core API Server. */
-    LLP::ServerConfig config;
+    LLP::Config config;
     
     config.nPort = TESTNET_API_PORT;
     config.nSSLPort = TESTNET_API_SSL_PORT;

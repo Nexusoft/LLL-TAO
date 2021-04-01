@@ -30,7 +30,6 @@ ________________________________________________________________________________
 #include <TAO/API/voting/types/voting.h>
 #include <TAO/API/invoices/types/invoices.h>
 #include <TAO/API/crypto/types/crypto.h>
-#include <TAO/API/p2p/types/p2p.h>
 
 namespace TAO
 {
@@ -39,7 +38,7 @@ namespace TAO
         extern Assets*      assets;
         extern Ledger*      ledger;
         extern Register*    reg;
-        extern RPC*         RPCCommands;
+        extern RPC*         legacy;
         extern Supply*      supply;
         extern System*      system;
         extern Tokens*      tokens;
@@ -50,7 +49,6 @@ namespace TAO
         extern Voting*      voting;
         extern Invoices*    invoices;
         extern Crypto*      crypto;
-        extern P2P*      p2p;
 
         /** Initialize
          *

@@ -180,7 +180,7 @@ namespace LLP
 
             /* Execute the RPC method. */
             #ifndef NO_WALLET
-            json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
+            json::json jsonResult = TAO::API::legacy->Execute(strMethod, jsonParams, false);
 
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
