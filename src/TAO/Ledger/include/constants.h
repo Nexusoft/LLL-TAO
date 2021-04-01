@@ -219,39 +219,12 @@ namespace TAO
 
 
         /* The cost per byte to create registers */
-        const uint64_t DATA_FEE_V1 = 0.01 * NXS_COIN;
-        const uint64_t DATA_FEE = 0.001 * NXS_COIN;
+        const uint64_t DATA_FEE_V1 =  0.01 * NXS_COIN;
+        const uint64_t DATA_FEE    = 0.001 * NXS_COIN;
 
 
         /* The cost per contract when creating transactions faster than the fee-free threshold */
         const uint64_t TX_FEE = 0.01 * NXS_COIN;
-
-
-        /* Stake pool settings */
-
-        /* Percentage of stake reward paid to block finder by coinstakes in the stake pool */
-        const uint64_t POOL_FEE_PCT = 16;
-
-        /* Initial maximum number of coinstakes in a pool stake block (this can be increased based on block age) */
-        const uint64_t POOL_MAX_TX_BASE = 20;
-        const uint64_t POOL_MAX_TX_BASE_TESTNET = 3;
-
-        /* Hard maximum for number of coinstakes in a pool block */
-        const uint64_t POOL_MAX_TX = 200;
-
-        /* Minimum trust account balance to participate in the stake pool */
-        const uint64_t POOL_MIN_STAKE_BALANCE = 1 * NXS_COIN;
-
-        /* Maximum number of times a pool coinstake will be relayed */
-        const uint64_t POOL_MAX_TTL_COUNT = 3;
-
-        /* Starting maximum number of transactions accepted into the stake pool */
-        const uint64_t POOL_MAX_SIZE_BASE = 50;
-        const uint64_t POOL_MAX_SIZE_BASE_TESTNET = 8;
-
-        /* Amount the maximum pool size is incremented if more transactions are needed */
-        const uint64_t POOL_MAX_SIZE_INCREMENT = 50;
-        const uint64_t POOL_MAX_SIZE_INCREMENT_TESTNET = 10;
 
 
 
