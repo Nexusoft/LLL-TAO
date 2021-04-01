@@ -226,7 +226,7 @@ NONE
 
 &nbsp;&nbsp;&nbsp;`stake` : Total amount of NXS currently being staked network-wide).
 
-&nbsp;&nbsp;&nbsp;`total` : Total trust score of all trust accounts being staked.   
+&nbsp;&nbsp;&nbsp;`trust` : Total trust score of all trust accounts being staked.
 }
 
 `supply` : Metrics on NXS supply rates.   
