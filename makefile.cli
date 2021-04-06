@@ -275,6 +275,7 @@ ifdef UNIT_TESTS
 		   build/Tests_Legacy_utxo.o \
 		   build/Tests_Legacy_mempool.o \
 		   build/Tests_LLC_aes.o \
+		   build/Tests_LLP_base_address.o \
 		   build/Tests_TAO_API_assets.o \
 		   build/Tests_TAO_API_crypto.o \
 		   build/Tests_TAO_API_finance.o \
