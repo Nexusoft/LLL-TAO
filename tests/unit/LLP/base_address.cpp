@@ -63,7 +63,7 @@ const TestIpInput ipInputLocalV6 = {"::1", {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 
 TEST_CASE( "LLP::BaseAddress", "[base_address]")
 {
-    LLP::BaseAddress a1{};
+    LLP::BaseAddress a1;
 
     a1.SetIP(std::string("192.168.0.1"));
     a1.SetPort(9325);
@@ -75,20 +75,20 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
 
     SECTION( "copy constructor" ) 
     {
-        LLP::BaseAddress copyTest{a1};
+        LLP::BaseAddress copyTest(a1);
         REQUIRE(copyTest == a1);
     }
 
     SECTION( "operator=" ) 
     {
-        LLP::BaseAddress copyTest{};
+        LLP::BaseAddress copyTest;
         copyTest = a1;
         REQUIRE(copyTest == a1);
     }
 
     SECTION( "operator!=" ) 
     {
-        LLP::BaseAddress a2{};
+        LLP::BaseAddress a2;
         a2.SetIP(std::string("192.168.0.2"));
         a2.SetPort(8325);
 
@@ -99,8 +99,8 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& nPort : portInput) 
         {
-            LLP::BaseAddress defaultBaseAddress{};
-            LLP::BaseAddress portTest{defaultBaseAddress, nPort};
+            LLP::BaseAddress defaultBaseAddress;
+            LLP::BaseAddress portTest(defaultBaseAddress, nPort);
             REQUIRE(portTest.GetPort() == nPort);
         }
     }
@@ -109,7 +109,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& nPort : portInput) 
         {
-            LLP::BaseAddress portTest{};
+            LLP::BaseAddress portTest;
             portTest.SetPort(nPort);
             REQUIRE(portTest.GetPort() == nPort);
         }
@@ -119,7 +119,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& nPort : portInput) 
         {
-            LLP::BaseAddress portTest{};
+            LLP::BaseAddress portTest;
             portTest.SetPort(nPort);
             REQUIRE(portTest.ToStringPort() == std::to_string(nPort));
         }
@@ -129,7 +129,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV4)
         {
-            LLP::BaseAddress ipString{ip.str};
+            LLP::BaseAddress ipString(ip.str);
             REQUIRE(ipString.ToStringIP() == ip.str);
         }
     }
@@ -138,7 +138,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV4)
         {
-            LLP::BaseAddress ipString{ip.str, portInput.front()};
+            LLP::BaseAddress ipString(ip.str, portInput.front());
             REQUIRE(ipString.ToString() == ip.str + ":" + std::to_string(portInput.front()));
         }
     }
@@ -147,20 +147,20 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV4)
         {
-            LLP::BaseAddress ipV4{ip.str};
+            LLP::BaseAddress ipV4(ip.str);
             REQUIRE(ipV4.IsIPv4() == true);
         }
 
         for (auto const& ip : ipInputInvalidV4)
         {
-            LLP::BaseAddress ipV4{ip.str};
+            LLP::BaseAddress ipV4(ip.str);
             REQUIRE(ipV4.IsIPv4() == false);
         }
     }
 
     SECTION( "GetByte runtime_exception" ) 
     {
-        LLP::BaseAddress address{};
+        LLP::BaseAddress address;
         REQUIRE_THROWS_AS(address.GetByte(16), std::runtime_error);
     }
 
@@ -169,7 +169,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
         for (auto const& ip : ipInputV4)
         {
             in_addr resultIpv4Addr, compareIpv4Addr;
-            LLP::BaseAddress address{ip.str};
+            LLP::BaseAddress address(ip.str);
             REQUIRE(address.GetInAddr(&resultIpv4Addr) == true);
 
             inet_aton(ip.str.c_str(), &compareIpv4Addr);
@@ -182,7 +182,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
         for (auto const& ip : ipInputInvalidV4)
         {
             in_addr resultIpv4Addr;
-            LLP::BaseAddress address{ip.str};
+            LLP::BaseAddress address(ip.str);
 
             REQUIRE(address.GetInAddr(&resultIpv4Addr) == false);      
         }
@@ -193,7 +193,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
         for (auto const& ip : ipInputV6)
         {
             in6_addr resultIpv6Addr, compareIpv6Addr;
-            LLP::BaseAddress address{ip.str};
+            LLP::BaseAddress address(ip.str);
             REQUIRE(address.GetIn6Addr(&resultIpv6Addr) == true);
 
             inet_pton(AF_INET6, ip.str.c_str(), &compareIpv6Addr);
@@ -206,9 +206,9 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV4)
         {
-            sockaddr_in* pSockAddr = new sockaddr_in{};
+            sockaddr_in* pSockAddr = new sockaddr_in();
             in_addr compareIpv4Addr;
-            LLP::BaseAddress address{ip.str};
+            LLP::BaseAddress address(ip.str);
 
             REQUIRE(address.GetSockAddr(pSockAddr) == true); 
             REQUIRE(pSockAddr->sin_family == AF_INET);  
@@ -224,8 +224,8 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV4)
         {
-            sockaddr_in* pSockAddr{};
-            LLP::BaseAddress address{};
+            sockaddr_in* pSockAddr;
+            LLP::BaseAddress address;
 
             REQUIRE(address.GetSockAddr(pSockAddr) == false);  
         }
@@ -235,8 +235,8 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputInvalidV4)
         {
-            sockaddr_in* pSockAddr = new sockaddr_in{};
-            LLP::BaseAddress address{ip.str};
+            sockaddr_in* pSockAddr = new sockaddr_in();
+            LLP::BaseAddress address(ip.str);
 
             REQUIRE(address.GetSockAddr(pSockAddr) == false);    
 
@@ -248,9 +248,9 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV6)
         {
-            auto* pSockAddr = new sockaddr_in6{};
+            auto* pSockAddr = new sockaddr_in6();
             in6_addr compareIpv6Addr;
-            LLP::BaseAddress address{ip.str};
+            LLP::BaseAddress address(ip.str);
 
             REQUIRE(address.GetSockAddr6(pSockAddr) == true); 
             REQUIRE(pSockAddr->sin6_family == AF_INET6);  
@@ -266,8 +266,8 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipInputV6)
         {
-            sockaddr_in6* pSockAddr{};
-            LLP::BaseAddress address{};
+            sockaddr_in6* pSockAddr;
+            LLP::BaseAddress address;
 
             REQUIRE(address.GetSockAddr6(pSockAddr) == false);  
         }
@@ -280,7 +280,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
             in_addr inputIpv4Addr, resultIpv4Addr;
             inet_aton(ip.str.c_str(), &inputIpv4Addr);
 
-            LLP::BaseAddress address{inputIpv4Addr};
+            LLP::BaseAddress address(inputIpv4Addr);
 
             REQUIRE(address.GetInAddr(&resultIpv4Addr) == true);            
             REQUIRE(inputIpv4Addr.s_addr == resultIpv4Addr.s_addr);           
@@ -294,7 +294,7 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
             in6_addr inputIpv6Addr, resultIpv6Addr;
             inet_pton(AF_INET6, ip.str.c_str(), &inputIpv6Addr);
 
-            LLP::BaseAddress address{inputIpv6Addr};
+            LLP::BaseAddress address(inputIpv6Addr);
 
             REQUIRE(address.GetIn6Addr(&resultIpv6Addr) == true);            
             REQUIRE(memcmp(&inputIpv6Addr, &resultIpv6Addr, sizeof(struct in6_addr)) == 0);         
@@ -305,14 +305,14 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
     {
         for (auto const& ip : ipMulticastInputV4)
         {
-            LLP::BaseAddress address{ip.str};
+            LLP::BaseAddress address(ip.str);
 
             REQUIRE(address.IsMulticast() == true);              
         }
 
         for (auto const& ip : ipInputV4)
         {
-            LLP::BaseAddress address{ip.str};
+            LLP::BaseAddress address(ip.str);
 
             REQUIRE(address.IsMulticast() == false);              
         }
@@ -320,22 +320,22 @@ TEST_CASE( "LLP::BaseAddress", "[base_address]")
 
     SECTION( "IsLocal" ) 
     {
-        LLP::BaseAddress address{ipInputLocalV4.str};
+        LLP::BaseAddress address(ipInputLocalV4.str);
         REQUIRE(address.IsLocal() == true);              
 
-        LLP::BaseAddress addressV6{ipInputLocalV6.str};
+        LLP::BaseAddress addressV6(ipInputLocalV6.str);
         REQUIRE(address.IsLocal() == true);    
 
         for (auto const& ip : ipInputV4)
         {
             // fails because isLocal() delivers true for "0.0.0.0"
-            LLP::BaseAddress addressV4{ip.str};
+            LLP::BaseAddress addressV4(ip.str);
             REQUIRE(addressV4.IsLocal() == false);    
         }       
 
         for (auto const& ip : ipInputV6)
         {
-            LLP::BaseAddress addressV6{ip.str};
+            LLP::BaseAddress addressV6(ip.str);
             REQUIRE(addressV6.IsLocal() == false);    
         }      
     }
