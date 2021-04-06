@@ -115,7 +115,7 @@ namespace TAO
             if(n > 0 && jsonSanitizedParams[0].is_string())
             {
                 std::string strParam = jsonSanitizedParams.get<std::string>();
-                
+
                 if(strParam.find("token=") != strParam.npos || strParam.find("token_name=") != strParam.npos)
                 {
                     n--;
@@ -234,10 +234,10 @@ namespace TAO
             if(jsonParams.size() > 0 && jsonParams[0].is_string())
             {
                 std::string strParam = jsonParams[0].get<std::string>();
-                
+
                 /* Check for token= */
                 size_t nPos = strParam.find("token=");
-                
+
                 /* If no token= then check for token_name= */
                 if(nPos == strParam.npos)
                     nPos = strParam.find("token_name=");
@@ -246,12 +246,10 @@ namespace TAO
                 if(nPos != strParam.npos)
                 {
                     size_t nPos2 = strParam.find("=");
-                    
-                    /* get the field name */
-                    std::string strField = strParam.substr(0, nPos2);
 
-                    /* Get the value */
-                    std::string strValue = strParam.substr(nPos2+1);
+                    /* Grab the substrings from root string. */
+                    std::string strField = strParam.substr(0, nPos2);
+                    std::string strValue = strParam.substr(nPos2 + 1);
 
                     /* Insert it into the first spot in the params */
                     jsonToken[strField] = strValue;
