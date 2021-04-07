@@ -119,7 +119,7 @@ namespace TAO
                                             [&](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& unclaimed) { return std::get<2>(unclaimed) == hashInvoice; });
 
             /* If found set the txid from the contract */
-            if( itt != vUnclaimed.end())
+            if(itt != vUnclaimed.end())
             {
                 txid = std::get<0>(*itt).Hash();
                 contractID = std::get<1>(*itt);

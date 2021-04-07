@@ -1264,7 +1264,7 @@ namespace Legacy
         uint8_t nSize = scriptPubKey.at(0);
 
         /* Ensure the data size is 32 */
-        if( nSize != 32)
+        if(nSize != 32)
             return false;    
 
         std::vector<uint8_t> vBytes;
@@ -1274,7 +1274,7 @@ namespace Legacy
         uint8_t nOP = scriptPubKey.at(nSize +1);
 
         /* Ensure that it is OP_RETURN */
-        if( nOP != Legacy::OP_RETURN)
+        if(nOP != Legacy::OP_RETURN)
             return false;
 
         /* Set the register address hash to return */

@@ -104,10 +104,8 @@ namespace TAO
                     /* Check for uint8_t type. */
                     case TAO::Register::TYPES::UINT8_T:
                     {
-                        /* Add the type */
-                        field["type"] = "uint8";
-
                         /* Set the return value from object register data. */
+                        field["type"]  = "uint8";
                         field["value"] = object.get<uint8_t>(strName);
 
                         break;
@@ -116,10 +114,8 @@ namespace TAO
                     /* Check for uint16_t type. */
                     case TAO::Register::TYPES::UINT16_T:
                     {
-                        /* Add the type */
-                        field["type"] = "uint16";
-
                         /* Set the return value from object register data. */
+                        field["type"]  = "uint16";
                         field["value"] = object.get<uint16_t>(strName);
 
                         break;
@@ -128,10 +124,8 @@ namespace TAO
                     /* Check for uint32_t type. */
                     case TAO::Register::TYPES::UINT32_T:
                     {
-                        /* Add the type */
-                        field["type"] = "uint32";
-
                         /* Set the return value from object register data. */
+                        field["type"]  = "uint32";
                         field["value"] = object.get<uint32_t>(strName);
 
                         break;
@@ -140,10 +134,8 @@ namespace TAO
                     /* Check for uint64_t type. */
                     case TAO::Register::TYPES::UINT64_T:
                     {
-                        /* Add the type */
-                        field["type"] = "uint64";
-
                         /* Set the return value from object register data. */
+                        field["type"]  = "uint64";
                         field["value"] = object.get<uint64_t>(strName);
 
                         break;
@@ -152,10 +144,8 @@ namespace TAO
                     /* Check for uint256_t type. */
                     case TAO::Register::TYPES::UINT256_T:
                     {
-                        /* Add the type */
-                        field["type"] = "uint256";
-
                         /* Set the return value from object register data. */
+                        field["type"]  = "uint256";
                         field["value"] = object.get<uint256_t>(strName).GetHex();
 
                         break;
@@ -164,10 +154,8 @@ namespace TAO
                     /* Check for uint512_t type. */
                     case TAO::Register::TYPES::UINT512_T:
                     {
-                        /* Add the type */
-                        field["type"] = "uint512";
-
                         /* Set the return value from object register data. */
+                        field["type"]  = "uint512";
                         field["value"] = object.get<uint512_t>(strName).GetHex();
 
                         break;
@@ -176,10 +164,8 @@ namespace TAO
                     /* Check for uint1024_t type. */
                     case TAO::Register::TYPES::UINT1024_T:
                     {
-                        /* Add the type */
-                        field["type"] = "uint1024";
-
                         /* Set the return value from object register data. */
+                        field["type"]  = "uint1024";
                         field["value"] = object.get<uint1024_t>(strName).GetHex();
 
                         break;

@@ -4030,11 +4030,11 @@ static float32_t f32_powi( float32_t x, int y)
     {
         float32_t a = float32_t::one(), b = x;
         int p = std::abs(y);
-        if( y < 0 )
+        if(y < 0 )
             b = float32_t::one()/b;
         while( p > 1 )
         {
-            if( p & 1 )
+            if(p & 1 )
                 a *= b;
             b *= b;
             p >>= 1;
@@ -4056,11 +4056,11 @@ static float64_t f64_powi( float64_t x, int y)
     {
         float64_t a = float64_t::one(), b = x;
         int p = std::abs(y);
-        if( y < 0 )
+        if(y < 0 )
             b = float64_t::one()/b;
         while( p > 1 )
         {
-            if( p & 1 )
+            if(p & 1 )
                 a *= b;
             b *= b;
             p >>= 1;

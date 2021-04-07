@@ -387,7 +387,7 @@ namespace TAO
 
             /* Sort the list */
             bool fDesc = strOrder == "desc";
-            if( strSort == "balance" || strSort == "created" || strSort == "modified")
+            if(strSort == "balance" || strSort == "created" || strSort == "modified")
                 std::sort(vTokenAccounts.begin(), vTokenAccounts.end(), [strSort, fDesc]
                         (const std::pair<TAO::Register::Address, TAO::Register::Object> &a, const std::pair<TAO::Register::Address, TAO::Register::Object> &b)
                 {

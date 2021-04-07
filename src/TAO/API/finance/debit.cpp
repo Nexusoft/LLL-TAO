@@ -109,7 +109,7 @@ namespace TAO
             std::vector<json::json> vRecipients;
 
             /* Check for the existence of recipients array */
-            if( params.find("recipients") != params.end() && !params["recipients"].is_null())
+            if(params.find("recipients") != params.end() && !params["recipients"].is_null())
             {
                 if(!params["recipients"].is_array())
                     throw APIException(-216, "recipients field must be an array.");

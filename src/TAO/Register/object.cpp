@@ -219,7 +219,7 @@ namespace TAO
                 case TAO::Register::OBJECTS::NAME:
                 {
                     /* Global names cost 2000 NXS */
-                    if( get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
+                    if(get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
                         return TAO::Ledger::GLOBAL_NAME_FEE;
 
                     /* Local names cost 1 NXS. */

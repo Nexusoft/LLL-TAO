@@ -133,7 +133,7 @@ namespace TAO
                     continue;
                 
                 /* Cache this if it is the trust account */
-                if( object.Standard() == TAO::Register::OBJECTS::TRUST)
+                if(object.Standard() == TAO::Register::OBJECTS::TRUST)
                     trust = object;
 
                 /* Increment the balance */

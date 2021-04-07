@@ -80,7 +80,7 @@ namespace TAO
             if(LLD::Ledger->ReadTx(hashTx, txVoid))
             { 
                 /* Check that the transaction belongs to the caller */
-                if( txVoid.hashGenesis != session.GetAccount()->Genesis())
+                if(txVoid.hashGenesis != session.GetAccount()->Genesis())
                     throw APIException(-172, "Cannot void a transaction that does not belong to you.");
 
                 /* Loop through all transactions. */

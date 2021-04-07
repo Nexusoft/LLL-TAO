@@ -251,6 +251,7 @@ namespace TAO
         {
             return !config::fMultiuser.load() && GetSessionManager().Has(0);
         }
+        
 
         /* Determine if a particular genesis is logged in on this node. */
         bool Users::LoggedIn(const uint256_t& hashGenesis) const
