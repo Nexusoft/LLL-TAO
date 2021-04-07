@@ -85,6 +85,10 @@ namespace LLP
 
         /* Configure the DDOS pointer. */
         DDOS_MAP.store(new std::map<BaseAddress, DDOS_Filter*>());
+
+        /* Open listeners if enabled. */
+        if(CONFIG.ENABLE_LISTEN)
+            OpenListening();
     }
 
 
