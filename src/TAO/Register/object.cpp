@@ -271,7 +271,7 @@ namespace TAO
             /* Ensure that object register is of proper type. */
             if(this->nType != REGISTER::OBJECT
             && this->nType != REGISTER::SYSTEM)
-                return false;
+                return debug::error(FUNCTION, "register has invalid type ", uint32_t(this->nType));
 
             /* Reset the read position. */
             nReadPos   = 0;

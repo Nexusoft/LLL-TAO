@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 
 
-TEST_CASE( "Test Finance API - create acccount", "[finance/create/account]")
+TEST_CASE("Test Finance API - create acccount", "[finance/create/account]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -84,7 +84,7 @@ TEST_CASE( "Test Finance API - create acccount", "[finance/create/account]")
 }
 
 
-TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
+TEST_CASE("Test Finance API - get acccount", "[finance/get/account]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -205,7 +205,7 @@ TEST_CASE( "Test Finance API - get acccount", "[finance/get/account]")
 }
 
 
-TEST_CASE( "Test Finance API - list acccounts", "[finance/list/accounts]")
+TEST_CASE("Test Finance API - list acccounts", "[finance/list/accounts]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -268,7 +268,7 @@ TEST_CASE( "Test Finance API - list acccounts", "[finance/list/accounts]")
 }
 
 
-TEST_CASE( "Test Finance API - get stakeinfo", "[finance/get/stakeinfo]")
+TEST_CASE("Test Finance API - get stakeinfo", "[finance/get/stakeinfo]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -310,7 +310,8 @@ TEST_CASE( "Test Finance API - get stakeinfo", "[finance/get/stakeinfo]")
     }
 }
 
-TEST_CASE( "Test Finance API - set stake", "[finance/set/stake]")
+
+TEST_CASE("Test Finance API - set stake", "[finance/set/stake]")
 {
     /* NOTE: We can only test failure cases here because you cannot set the stake until after genesis */
     /* Declare variables shared across test cases */

@@ -398,7 +398,7 @@ namespace LLD
         uint256_t hashRegister =
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
-        return Erase(std::make_pair(std::string("genesis"), hashGenesis));
+        return Erase(std::make_pair(std::string("genesis"), hashGenesis), true); //true for keychain only erase
     }
 
 
