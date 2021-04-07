@@ -150,6 +150,7 @@ namespace TAO
                 POSTSTATE  = 0x02
             };
         }
+        
 
         /** NAMESPACE
          *

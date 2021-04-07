@@ -32,6 +32,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/condition.h>
 
 #include <TAO/Register/include/rollback.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/build.h>
 #include <TAO/Register/include/unpack.h>
@@ -947,9 +948,9 @@ namespace TAO
                 if(IsFirst())
                 {
                     /* For the genesis transaction we allow a fixed amount of default registers to be created for free. */
-                    nFees = 2 * TAO::Ledger::ACCOUNT_FEE    // 2 accounts
-                          + 2 * TAO::Ledger::NAME_FEE       // 2 names
-                          + 1 * TAO::Ledger::CRYPTO_FEE;    // 1 crypto register
+                    nFees = 2 * TAO::Register::ACCOUNT_FEE    // 2 accounts
+                          + 2 * TAO::Register::NAME_FEE       // 2 names
+                          + 1 * TAO::Register::CRYPTO_FEE;    // 1 crypto register
                 }
                 else
                     /* For all other transactions we check the actual fee contracts included in the transaction */

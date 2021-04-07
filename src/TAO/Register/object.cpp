@@ -13,8 +13,8 @@ ________________________________________________________________________________
 
 
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/include/constants.h>
 
-#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/timelocks.h>
 
 
@@ -122,15 +122,15 @@ namespace TAO
 
             }
             else if(mapData.size() == 9
-            && Check("auth", TYPES::UINT256_T, true)
-            && Check("lisp", TYPES::UINT256_T, true)
+            && Check("auth",    TYPES::UINT256_T, true)
+            && Check("lisp",    TYPES::UINT256_T, true)
             && Check("network", TYPES::UINT256_T, true)
-            && Check("sign", TYPES::UINT256_T, true)
-            && Check("verify", TYPES::UINT256_T, true)
-            && Check("cert", TYPES::UINT256_T, true)
-            && Check("app1", TYPES::UINT256_T, true)
-            && Check("app2", TYPES::UINT256_T, true)
-            && Check("app3", TYPES::UINT256_T, true))
+            && Check("sign",    TYPES::UINT256_T, true)
+            && Check("verify",  TYPES::UINT256_T, true)
+            && Check("cert",    TYPES::UINT256_T, true)
+            && Check("app1",    TYPES::UINT256_T, true)
+            && Check("app2",    TYPES::UINT256_T, true)
+            && Check("app3",    TYPES::UINT256_T, true))
             {
                 /* Set the return value. */
                 nType = OBJECTS::CRYPTO;
@@ -204,7 +204,7 @@ namespace TAO
             switch(nStandard)
             {
                 /* Token fees are based on the total tokens created. */
-                case TAO::Register::OBJECTS::TOKEN:
+                case OBJECTS::TOKEN:
                 {
                     /* Get the supply from the token object */
                     uint64_t nSupply = get<uint64_t>("supply");
@@ -212,52 +212,52 @@ namespace TAO
                     /* Fee = (log10(nSupply) - 2) * 100 NXS
                        which equates to 100 NXS for each significant figure, with the first 2sf (100 supply) being 1 NXS*/
                     uint64_t nBase = (std::log10(nSupply));
-                    return std::max(int64_t(TAO::Ledger::MIN_TOKEN_FEE),  int64_t(std::max(int64_t(0), int64_t(nBase - 2)) * TAO::Ledger::TOKEN_FEE));
+                    return std::max(int64_t(MIN_TOKEN_FEE),  int64_t(std::max(int64_t(0), int64_t(nBase - 2)) * TOKEN_FEE));
                 }
 
                 /* Name objects have specific fees. */
-                case TAO::Register::OBJECTS::NAME:
+                case OBJECTS::NAME:
                 {
                     /* Global names cost 2000 NXS */
-                    if(get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
-                        return TAO::Ledger::GLOBAL_NAME_FEE;
+                    if(get<std::string>("namespace") == NAMESPACE::GLOBAL)
+                        return GLOBAL_NAME_FEE;
 
                     /* Local names cost 1 NXS. */
                     else
-                        return TAO::Ledger::NAME_FEE;
+                        return NAME_FEE;
                 }
 
                 /* Namespaces cost 1000 NXS. */
-                case TAO::Register::OBJECTS::NAMESPACE:
-                    return TAO::Ledger::NAMESPACE_FEE;
+                case OBJECTS::NAMESPACE:
+                    return NAMESPACE_FEE;
 
                 /* Handle for Account Fees. */
-                case TAO::Register::OBJECTS::ACCOUNT:
-                case TAO::Register::OBJECTS::TRUST:
-                    return TAO::Ledger::ACCOUNT_FEE;
+                case OBJECTS::ACCOUNT:
+                case OBJECTS::TRUST:
+                    return ACCOUNT_FEE;
 
                 /* Crypto object registers have special fees. */
-                case TAO::Register::OBJECTS::CRYPTO:
-                    return TAO::Ledger::CRYPTO_FEE;
+                case OBJECTS::CRYPTO:
+                    return CRYPTO_FEE;
 
                 /* non standard object cost is dependant on the data size. */
-                case TAO::Register::OBJECTS::NONSTANDARD:
+                case OBJECTS::NONSTANDARD:
                 {
                     /* The fee changed with transaction version 2 so need to apply version-dependent fee. NOTE we can use the
                        nCreated time to determine the transaction version, as this is set to the transaction time when it is
                        first created.  */
                     const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
                     if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(nCreated, 2)))
-                        return std::max(TAO::Ledger::MIN_DATA_FEE, vchState.size() * TAO::Ledger::DATA_FEE_V1);
+                        return std::max(MIN_DATA_FEE, vchState.size() * DATA_FEE_V1);
                     else
-                        return std::max(TAO::Ledger::MIN_DATA_FEE, vchState.size() * TAO::Ledger::DATA_FEE);
+                        return std::max(MIN_DATA_FEE, vchState.size() * DATA_FEE);
                 }
 
                 default:
-                    return TAO::Ledger::MIN_DATA_FEE;
+                    return MIN_DATA_FEE;
             }
 
-            return TAO::Ledger::MIN_DATA_FEE;
+            return MIN_DATA_FEE;
         }
 
 

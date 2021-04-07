@@ -95,17 +95,15 @@ TEST_CASE("Arguments Tests", "[args]")
     TAO::API::Initialize();
 
     /* Create the Core API Server. */
-    LLP::Config config;
-    
-    config.nPort = TESTNET_API_PORT;
-    config.nSSLPort = TESTNET_API_SSL_PORT;
-    config.nMaxThreads = 10;
-    config.nTimeout = 30;
-    config.fDDOS = false;
-    config.fRemote = true;
-    config.fMeter = false;
-    config.fManager = false;
-    config.fSSL = false;
+    LLP::Config CONFIG    = LLP::Config(TESTNET_API_PORT);
+    CONFIG.PORT_SSL       = TESTNET_API_SSL_PORT;
+    CONFIG.MAX_THREADS    = 10;
+    CONFIG.SOCKET_TIMEOUT = 30;
+    CONFIG.ENABLE_DDOS    = false;
+    CONFIG.ENABLE_REMOTE  = true;
+    CONFIG.ENABLE_METERS  = false;
+    CONFIG.ENABLE_MANAGER = false;
+    CONFIG.ENABLE_SSL     = false;
 
-    LLP::API_SERVER = new LLP::Server<LLP::APINode>(config);
+    LLP::API_SERVER = new LLP::Server<LLP::APINode>(CONFIG);
 }
