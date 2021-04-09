@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
-#include <LLP/types/p2p.h>
 
 #include <Util/include/hex.h>
 
@@ -499,5 +498,4 @@ namespace LLP
     template class DataThread<APINode>;
     template class DataThread<RPCNode>;
     template class DataThread<Miner>;
-    template class DataThread<P2PNode>;
 }

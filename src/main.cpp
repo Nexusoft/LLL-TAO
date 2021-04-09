@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
-#include <LLP/types/p2p.h>
 #include <LLP/include/lisp.h>
 #include <LLP/include/port.h>
 

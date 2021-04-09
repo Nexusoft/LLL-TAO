@@ -23,7 +23,6 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
-#include <LLP/types/p2p.h>
 
 namespace LLP
 {
@@ -32,7 +31,6 @@ namespace LLP
     extern Server<APINode>*      API_SERVER;
     extern Server<RPCNode>*      RPC_SERVER;
     extern Server<Miner>*        MINING_SERVER;
-    extern Server<P2PNode>*      P2P_SERVER;
 
 
     /** Current session identifier. **/
