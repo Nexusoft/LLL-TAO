@@ -115,8 +115,8 @@ namespace TAO
             /* Get the Genesis ID. */
             uint256_t hashGenesis = user->Genesis();
 
-            /* In client mode, in order to check whether the username already exists we have to do things differently as it is 
-               possible that the local db does not have the genesis as it has never been used by the node.  In which case we 
+            /* In client mode, in order to check whether the username already exists we have to do things differently as it is
+               possible that the local db does not have the genesis as it has never been used by the node.  In which case we
                need to request the genesis transaction from a peer and then check again */
             if(config::fClient.load() && !LLD::Ledger->HasGenesis(hashGenesis))
             {
@@ -154,29 +154,31 @@ namespace TAO
             TAO::Register::Address hashRegister;
 
             /* Don't create trust/default accounts in private mode */
+            #ifndef UNIT_TESTS //API unit tests use -private flag, so we must disable this check
             if(!config::GetBoolArg("-private", false))
+            #endif
             {
                 /* Generate register address for the trust account deterministically so that we can retrieve it easily later. */
                 hashRegister = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
                 /* Add a Name record for the trust account */
-                tx[tx.Size()] = Names::CreateName(user->Genesis(), "trust", "", hashRegister);
+                tx[0] = Names::CreateName(user->Genesis(), "trust", "", hashRegister);
 
                 /* Set up tx operation to create the trust account register at the same time as sig chain genesis. */
-                tx[tx.Size()] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
+                tx[1] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
                     << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
 
                 /* Generate a random hash for the default account register address */
                 hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
                 /* Add a Name record for the default account */
-                tx[tx.Size()] = Names::CreateName(user->Genesis(), "default", "", hashRegister);
+                tx[2] = Names::CreateName(user->Genesis(), "default", "", hashRegister);
 
                 /* Add the default account register operation to the transaction */
-                tx[tx.Size()] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
+                tx[3] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
                     << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
             }
-            
+
             /* Generate register address for crypto register deterministically */
             hashRegister = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
 
@@ -196,7 +198,7 @@ namespace TAO
                                                 0);//app3 disabled for now
 
             /* Add the crypto register operation to the transaction */
-            tx[tx.Size()] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
+            tx[4] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
                   << uint8_t(TAO::Register::REGISTER::OBJECT) << crypto.GetState();
 
             /* Add the fee */

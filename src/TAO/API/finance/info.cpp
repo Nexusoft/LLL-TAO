@@ -52,14 +52,12 @@ namespace TAO
                 throw APIException(-10, "Invalid session ID");
 
             /* Retrieve the trust register address, which is based on the users genesis */
-            TAO::Register::Address hashRegister = TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
+            TAO::Register::Address hashRegister =
+                TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
 
-            /* Get trust account. Any trust account that has completed Genesis will be indexed. */
+            /* Attempt to read our trust register. */
             TAO::Register::Object trust;
-
-            /* Check for trust index. */
-            if(!LLD::Register->ReadTrust(user->Genesis(), trust)
-            && !LLD::Register->ReadState(hashRegister, trust, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadState(hashRegister, trust, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-70, "Trust account not found");
 
             /* Parse the object. */

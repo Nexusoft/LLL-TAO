@@ -95,6 +95,7 @@ namespace debug
     extern std::mutex DEBUG_MUTEX;
     extern std::ofstream ssFile;
     extern thread_local std::string strLastError;
+    extern thread_local std::string strLastException;
 
     /* Flag indicating that errors should be logged for this thread (defaults to true). This allows calling code to temporarily
        disable error logging for a given thread. */
@@ -197,7 +198,7 @@ namespace debug
      *  Encapsulated log for improved compile time. Not thread safe.
      *
      **/
-     void log_(time_t &timestamp, std::string &debug_str);
+     void log_(const time_t& nTimestamp, const std::string& strDebug);
 
 
     /** log
@@ -210,7 +211,7 @@ namespace debug
      *
      **/
     template<class... Args>
-    void log(uint32_t nLevel, Args&&... args)
+    void log(const uint32_t nLevel, Args&&... args)
     {
         /* Don't write if log level is below set level. */
         if(config::nVerbose < nLevel)
@@ -220,12 +221,11 @@ namespace debug
         LOCK(DEBUG_MUTEX);
 
         /* Get the debug string and log file. */
-        std::string debug = safe_printstr(args...);
+        std::string strDebug = safe_printstr(args...);
 
         /* Get the timestamp. */
-        time_t timestamp = std::time(nullptr);
-
-        log_(timestamp, debug);
+        time_t nTimestamp = std::time(nullptr);
+        log_(nTimestamp, strDebug);
     }
 
 
@@ -378,13 +378,9 @@ namespace debug
     void InitializeLog(int argc, char** argv);
 
 
-    /** GetFilesize
+    /** GetLastError
      *
-     *  Gets the size of the file in bytes.
-     *
-     *  Gets the last error string logged via debug::error and clears the last error
-     *
-     *  @return The last error string logged via debug::error
+     *  Get the last error denoted by the thread local variable strLastError
      *
      **/
     std::string GetLastError();

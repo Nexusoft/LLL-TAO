@@ -276,7 +276,7 @@ TEST_CASE("Test Finance API - get stakeinfo", "[finance/get/stakeinfo]")
     json::json result;
     json::json error;
 
-    std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
+    std::string strAccount = "ACCOUNT" + std::to_string(LLC::GetRand());
     TAO::Register::Address hashAccount ;
 
     /* Ensure user is created and logged in for testing */

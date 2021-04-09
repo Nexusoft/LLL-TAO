@@ -95,7 +95,7 @@ namespace TAO
                 throw APIException(-34, "Asset not found");
 
             /* Check that this is an updatable object, i.e. not a raw / append obejct */
-            if(asset.nType != TAO::Register::REGISTER::OBJECT)
+            if(asset.nType != TAO::Register::REGISTER::OBJECT) //NOTE: this is incorrect, only readonly registers cannot be updated
                 throw APIException(-155, "Raw assets can not be updated");
 
             /* Ensure that the object is an asset */
