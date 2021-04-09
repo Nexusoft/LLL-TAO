@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_ENUM_H
-#define NEXUS_TAO_LEDGER_INCLUDE_ENUM_H
 
 #include <Util/include/args.h>
 
@@ -26,7 +24,7 @@ namespace TAO
     {
 
         /** Enumeration for transaction types. **/
-        enum
+        enum : uint8_t
         {
             /** Reserved. **/
             RESERVED = 0x00,
@@ -40,9 +38,9 @@ namespace TAO
 
 
         /** State values for a transaction. **/
-        namespace STATE
+        struct STATE
         {
-            enum
+            enum : uint8_t
             {
                 /** A transaction is unconfirmed if not connected to chain. **/
                 UNCONFIRMED = 0x00,
@@ -51,13 +49,13 @@ namespace TAO
                 HEAD        = 0x01
 
             };
-        }
+        };
 
 
         /** Type values for a genesis. These are very important for security to tell the difference from register hashes. **/
-        namespace GENESIS
+        struct GENESIS
         {
-            enum
+            enum : uint8_t
             {
                 /** A system genesis is pre-pended with byte 0x00. SYSTEM genesis cannot be made by any users, only the system. **/
                 SYSTEM      = 0x00,
@@ -68,7 +66,7 @@ namespace TAO
                 /** a testnet genesis has to be pre-pended with byte 0xa2. **/
                 TESTNET     = 0xa2,
             };
-        }
+        };
 
 
         /** GenesisType
@@ -83,9 +81,9 @@ namespace TAO
 
 
         /** Signature types for sigchain. **/
-        namespace SIGNATURE
+        struct SIGNATURE
         {
-            enum
+            enum : uint8_t
             {
                 /** Reserved. **/
                 RESERVED    = 0x00,
@@ -99,13 +97,13 @@ namespace TAO
                 /** SECP256K1 ECDSA curve. **/
                 SECP256K1   = 0x03
             };
-        }
+        };
 
 
         /** State values for a transaction. **/
-        namespace CHANNEL
+        struct CHANNEL
         {
-            enum
+            enum : uint8_t
             {
                 /** Proof of stake channel. **/
                 STAKE   = 0x00,
@@ -119,7 +117,7 @@ namespace TAO
                 /** Private channel. **/
                 PRIVATE = 0x03,
             };
-        }
+        };
 
 
         /** FLAGS
@@ -127,9 +125,9 @@ namespace TAO
          *  The flags on what to do to registers when executing operations.
          *
          **/
-        namespace FLAGS
+        struct FLAGS
         {
-            enum
+            enum : uint8_t
             {
                 /** Reserved. **/
                 RESERVED    = 0x00,
@@ -152,7 +150,7 @@ namespace TAO
                 /* Trigger remote lookups for -client mode. */
                 LOOKUP      = 0x06,
             };
-        }
+        };
 
 
 
@@ -161,9 +159,9 @@ namespace TAO
          *  The type of transaction being put into the block's vtx
          *
          **/
-        namespace TRANSACTION
+        struct TRANSACTION
         {
-            enum
+            enum : uint8_t
             {
                 /* Legacy transaction. */
                 LEGACY     = 0x00,
@@ -174,8 +172,6 @@ namespace TAO
                 /* Private hybrid hash. */
                 CHECKPOINT = 0x02, //for private chain checkpointing into mainnet blocks.
             };
-        }
+        };
     }
 }
-
-#endif
