@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_OPERATION_INCLUDE_ENUM_H
-#define NEXUS_TAO_OPERATION_INCLUDE_ENUM_H
+
+#include <inttypes.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -27,10 +27,10 @@ namespace TAO
         //NETF - NOS - Nexus Operation Standard - Document to define operation needs, formal design, and byte slot, and NETF engineers to develop the CASE statement
         //NETF - ORS - Object Register Standard - Document to define a specific object register for purpose of ADS standards, with NOS standards being capable of supporting methods
 
-        namespace OP
+        struct OP
         {
             /** Primitive Operations. **/
-            enum
+            enum : uint8_t
             {
                 //used for pattern matching
                 WILDCARD    = 0x00,
@@ -71,9 +71,9 @@ namespace TAO
 
 
             /** Core validation types. **/
-            namespace TYPES
+            struct TYPES
             {
-                enum
+                enum : uint8_t
                 {
                     //RESERVED to 0x7f
                     UINT8_T     = 0x70,
@@ -86,11 +86,11 @@ namespace TAO
                     STRING      = 0x77,
                     BYTES       = 0x78,
                 };
-            }
+            };
 
 
             /** Core validation operations. **/
-            enum
+            enum : uint8_t
             {
                 //RESERVED to 0x8f
                 EQUALS        = 0x80,
@@ -125,9 +125,9 @@ namespace TAO
 
 
             /** Register layer state values. **/
-            namespace REGISTER
+            struct REGISTER
             {
-                enum
+                enum : uint8_t
                 {
                     CREATED       = 0xb0,
                     MODIFIED      = 0xb1,
@@ -138,13 +138,13 @@ namespace TAO
                     //object registers
                     VALUE         = 0xb5
                 };
-            }
+            };
 
 
             /** Caller Values (The conditional script caller). **/
-            namespace CALLER
+            struct CALLER
             {
-                enum
+                enum : uint8_t
                 {
                     GENESIS      = 0xc0,
                     TIMESTAMP    = 0xc1,
@@ -153,9 +153,9 @@ namespace TAO
                 };
 
                 /** Register pre-state values. **/
-                namespace PRESTATE
+                struct PRESTATE
                 {
-                    enum
+                    enum : uint8_t
                     {
                         CREATED       = 0xc4,
                         MODIFIED      = 0xc5,
@@ -166,53 +166,51 @@ namespace TAO
                         //object registers
                         VALUE         = 0xc9
                     };
-                }
-            }
+                };
+            };
 
 
             /** Source contract values. **/
-            namespace CONTRACT
+            struct CONTRACT
             {
-                enum
+                enum : uint8_t
                 {
                     GENESIS      = 0xca,
                     TIMESTAMP    = 0xcb,
                     OPERATIONS   = 0xcc,
                     CONDITIONS   = 0xcd,
                 };
-            }
+            };
 
 
             /* Ledger Layer State Values. */
-            namespace LEDGER
+            struct LEDGER
             {
-                enum
+                enum : uint8_t
                 {
                     HEIGHT        = 0xd0,
                     SUPPLY        = 0xd1,
                     TIMESTAMP     = 0xd2
                 };
-            }
-
+            };
 
 
             /* Cryptographic operations. */
-            namespace CRYPTO
+            struct CRYPTO
             {
-                enum
+                enum : uint8_t
                 {
                     SK256        = 0xe0,
                     SK512        = 0xe1
                 };
-            }
-
-        }
+            };
+        };
 
 
         /** Transfer operation enumeration. **/
-        namespace TRANSFER
+        struct TRANSFER
         {
-            enum
+            enum : uint8_t
             {
                 /* Transfer requiring claim. */
                 CLAIM = 0xfa,
@@ -222,12 +220,13 @@ namespace TAO
 
                 //TODO: possibly sanitize transfer to USER or ASSET
             };
-        }
+        };
+
 
         /* Warnings namespace */
-        namespace WARNINGS
+        struct WARNINGS
         {
-            enum
+            enum : uint16_t
             {
                 /* No warning */
                 NONE   = 0x00,
@@ -246,8 +245,6 @@ namespace TAO
                 /* allocation failures. */
                 BAD_ALLOC       = (1 << 10),
             };
-        }
+        };
     }
 }
-
-#endif
