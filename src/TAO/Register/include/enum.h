@@ -28,9 +28,9 @@ namespace TAO
          *  State registers that are available for use.
          *
          **/
-        namespace REGISTER
+        struct REGISTER
         {
-            enum
+            enum : uint8_t
             {
                 /* RESERVED can't be used as an object. */
                 RESERVED   = 0x00,
@@ -50,7 +50,7 @@ namespace TAO
                 /* This type of register is special and for system update only. */
                 SYSTEM     = 0x05,
             };
-        }
+        };
 
 
         /** SYSTEM
@@ -58,9 +58,9 @@ namespace TAO
          *  System registers with reserved indexes.
          *
          **/
-        namespace SYSTEM
+        struct SYSTEM
         {
-            enum
+            enum : uint8_t
             {
                 /* RESERVED can't be used as system register. */
                 RESERVED  = 0x00,
@@ -71,7 +71,7 @@ namespace TAO
                 /* LIMIT is defined as 256 values. */
                 LIMIT     = 0xff
             };
-        }
+        };
 
 
         /** OBJECT
@@ -79,38 +79,38 @@ namespace TAO
          *  Object registers that are available and standardized.
          *
          **/
-        namespace OBJECTS
+        struct OBJECTS
         {
-            enum
+            enum : uint8_t
             {
                 /* Non-Standard Object (User Defined Type). */
-                NONSTANDARD  = 1,
+                NONSTANDARD  = 0x01,
 
                 /* Account Object Register. */
-                ACCOUNT      = 2,
+                ACCOUNT      = 0x02,
 
                 /* Token Object Register. */
-                TOKEN        = 4,
+                TOKEN        = 0x03,
 
                 /* Trust Object Register. */
-                TRUST        = 8,
+                TRUST        = 0x04,
 
                 /* Name Object Register. */
-                NAME         = 16,
+                NAME         = 0x05,
 
                 /* Namespace Object Register. */
-                NAMESPACE    = 32,
+                NAMESPACE    = 0x06,
 
                 /* Crypto Object Register. */
-                CRYPTO       = 64
+                CRYPTO       = 0x07
             };
-        }
+        };
 
 
         /** Object register data types. **/
-        namespace TYPES
+        struct TYPES
         {
-            enum
+            enum : uint8_t
             {
                 UNSUPPORTED = 0x00,
 
@@ -128,7 +128,7 @@ namespace TAO
                 //by default everything is read-only
                 MUTABLE     = 0xff
             };
-        }
+        };
 
 
         /** STATES
@@ -136,9 +136,9 @@ namespace TAO
          *  The states for the register script in transaction.
          *
          **/
-        namespace STATES
+        struct STATES
         {
-            enum
+            enum : uint8_t
             {
                 /* RESERVED can't be used as a state. */
                 RESERVED   = 0x00,
@@ -149,15 +149,15 @@ namespace TAO
                 /* Post-State - for recording the checksum of register post-state. */
                 POSTSTATE  = 0x02
             };
-        }
-        
+        };
+
 
         /** NAMESPACE
          *
          *  The NAMESPACE namespace to hold constants for Namespace Object registers
          *
          **/
-        namespace NAMESPACE
+        namespace NAMESPACE //XXX: because of previous code formats, we want this to be in a struct.
         {
             /* Constant used to indicate a global namespace */
             const std::string GLOBAL = "~GLOBAL~";

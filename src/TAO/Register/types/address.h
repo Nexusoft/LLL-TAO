@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_ADDRESS_H
-#define NEXUS_TAO_REGISTER_INCLUDE_ADDRESS_H
 
 #include <LLC/types/uint1024.h>
 
@@ -33,7 +31,7 @@ namespace TAO
         public:
 
             /** Different bytes that are prepended to addresses. */
-            enum
+            enum : uint8_t
             {
                 /* These are here to prevent you from making the mistake of using these three 'genesis' enum values. */
                 RESERVED        = 0x00, //this is system reserved value
@@ -300,5 +298,3 @@ namespace TAO
         };
     }
 }
-
-#endif
