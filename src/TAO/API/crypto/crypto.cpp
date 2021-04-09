@@ -97,7 +97,7 @@ namespace TAO
                 uint256_t hashKey = 0;
                 
                 /* Check to see if the key name exists */
-                if(crypto.CheckName(strName))
+                if(crypto.Check(strName))
                 {
                     /* Get the hashkey from the register */
                     hashKey = crypto.get<uint256_t>(strName);

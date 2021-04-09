@@ -186,7 +186,7 @@ namespace TAO
 
                             /* Check to see if it is a NXS account the data matches the account name */
                             if(object.get<uint256_t>("token") == 0
-                                && object.CheckName("data") && object.get<std::string>("data") == strAccount)
+                                && object.Check("data") && object.get<std::string>("data") == strAccount)
                             {
                                 hashAccount = hashRegister;
                                 break;

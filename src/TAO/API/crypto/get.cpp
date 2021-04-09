@@ -92,11 +92,11 @@ namespace TAO
                 throw APIException(-36, "Failed to parse object register");
             
             /* Check the key exists */
-            if(!crypto.CheckName(strName))
+            if(!crypto.Check(strName))
                 throw APIException(-260, "Invalid key name");
 
             /* Get List of key names in the crypto object */
-            std::vector<std::string> vKeys = crypto.GetFieldNames();        
+            std::vector<std::string> vKeys = crypto.ListFields();        
 
             /* Get the public key */
             uint256_t hashPublic = crypto.get<uint256_t>(strName);

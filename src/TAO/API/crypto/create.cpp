@@ -87,7 +87,7 @@ namespace TAO
                 throw APIException(-36, "Failed to parse object register");
             
             /* Check to see if the key name is valid */
-            if(!crypto.CheckName(strName))
+            if(!crypto.Check(strName))
                 throw APIException(-260, "Invalid key name");
 
             /* Check to see if the the key already exists */

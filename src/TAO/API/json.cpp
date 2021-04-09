@@ -1077,7 +1077,7 @@ namespace TAO
                         ret["token"] = hashToken.ToString();
 
                         /* If the register has extra data included then output that in the JSON */
-                        if(object.CheckName("data"))
+                        if(object.Check("data"))
                             ret["data"] = object.get<std::string>("data");
 
                         /* Handle digit conversion. */
@@ -1247,7 +1247,7 @@ namespace TAO
                             ret["ownership"] = GetTokenOwnership(hashOwner, hashGenesis);
 
                         /* Get List of field names in this asset object */
-                        std::vector<std::string> vFieldNames = object.GetFieldNames();
+                        std::vector<std::string> vFieldNames = object.ListFields();
 
                         /* Declare type and data variables for unpacking the Object fields */
                         for(const auto& strName : vFieldNames)

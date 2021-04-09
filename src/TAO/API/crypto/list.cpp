@@ -75,7 +75,7 @@ namespace TAO
                 throw APIException(-36, "Failed to parse object register");
             
             /* Get List of key names in the crypto object */
-            std::vector<std::string> vKeys = crypto.GetFieldNames();
+            std::vector<std::string> vKeys = crypto.ListFields();
 
             /* Iterate through keys */
             for(const auto& strName : vKeys)

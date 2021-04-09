@@ -137,8 +137,8 @@ namespace TAO
             }
             else if(mapData.size() == 3
             && Check("namespace", TYPES::STRING, false)
-            && Check("name", TYPES::STRING, false)
-            && CheckName("address")) /* Name registers can store different types in the address so don't check the field type */
+            && Check("name",      TYPES::STRING, false)
+            && Check("address")) /* Name registers can store different types in the address so don't check the field type */
             {
                 /* Set the return value. */
                 nType = OBJECTS::NAME;
@@ -151,7 +151,7 @@ namespace TAO
                 nType = OBJECTS::ACCOUNT;
 
                 /* Make the supply immutable for now (add continued distribution later). */
-                if(Check("supply", TYPES::UINT64_T, false)
+                if(Check("supply",   TYPES::UINT64_T, false)
                 && Check("decimals", TYPES::UINT8_T, false))
                 {
                     /* Set the return value. */
@@ -250,7 +250,7 @@ namespace TAO
                     if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(nCreated, 2)))
                         return std::max(MIN_DATA_FEE, vchState.size() * DATA_FEE_V1);
                     else
-                        return std::max(MIN_DATA_FEE, vchState.size() * DATA_FEE);
+                        return std::max(MIN_DATA_FEE, vchState.size() * DATA_FEE); //TODO: this is redundant, MIN_DATA_FEE wasn't lowered
                 }
 
                 default:
@@ -448,13 +448,13 @@ namespace TAO
 
 
         /* Get a list of field names for this Object. */
-        std::vector<std::string> Object::GetFieldNames() const
+        std::vector<std::string> Object::ListFields() const
         {
             /* Declare the vector of field names to return */
             std::vector<std::string> vFieldNames;
 
             /* Check the map for empty. */
-            if(mapData.empty())
+            if(mapData.empty()) //TODO: this should either throw, or this method should return by reference
                 debug::error(FUNCTION, "object is not parsed");
 
             /* Iterate data map and pull field names out into return vector */
@@ -516,8 +516,8 @@ namespace TAO
         }
 
 
-        /* Check the name exists in the object register without checking type. */
-        bool Object::CheckName(const std::string& strName) const
+        /* Check that given field name exists in the object. */
+        bool Object::Check(const std::string& strName) const
         {
             /* Check the map for empty. */
             if(mapData.empty())

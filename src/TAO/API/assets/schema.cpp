@@ -80,7 +80,7 @@ namespace TAO
 
             /* Populate the response JSON */
             /* Get List of field names in this asset object */
-            std::vector<std::string> vFieldNames = object.GetFieldNames();
+            std::vector<std::string> vFieldNames = object.ListFields();
 
             /* Declare type and data variables for unpacking the Object fields */
             for(const auto& strName : vFieldNames)

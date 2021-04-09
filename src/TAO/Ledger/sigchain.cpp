@@ -444,7 +444,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to parse crypto register");
 
             /* Check that the requested key is in the crypto register */
-            if(!crypto.CheckName(strKey))
+            if(!crypto.Check(strKey))
                 return debug::error(FUNCTION, "Key type not found in crypto register: ", strKey);
 
             /* Get the encryption key type from the hash of the public key */
@@ -537,7 +537,7 @@ namespace TAO
                 return debug::drop(FUNCTION, "failed to parse crypto register");
 
             /* Check that the requested key is in the crypto register */
-            if(!crypto.CheckName(strKey))
+            if(!crypto.Check(strKey))
                 return debug::error(FUNCTION, "Key type not found in crypto register: ", strKey);
 
             /* Check the authorization hash. */

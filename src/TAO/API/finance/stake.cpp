@@ -221,7 +221,7 @@ namespace TAO
                     throw debug::exception(FUNCTION, "failed to parse crypto register");
 
                 /* Check that the requested key is in the crypto register */
-                if(!crypto.CheckName("auth"))
+                if(!crypto.Check("auth"))
                     throw debug::exception(FUNCTION, "Key type not found in crypto register: ", "auth");
 
                 /* Get the encryption key type from the hash of the public key */
