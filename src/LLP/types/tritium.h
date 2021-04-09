@@ -31,12 +31,19 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    namespace Tritium
+    /** TritiumNode
+     *
+     *  A Node that processes packets and messages for the Tritium Server
+     *
+     **/
+    class TritiumNode : public BaseConnection<MessagePacket>
     {
+    public: //encapsulate protocol messages inside node class
+
         /** Actions invoke behavior in remote node. **/
-        namespace ACTION
+        struct ACTION
         {
-            enum
+            enum : MessagePacket::message_t
             {
                 RESERVED     = 0,
 
@@ -56,13 +63,13 @@ namespace LLP
                 PONG         = 0x1b
 
             };
-        }
+        };
 
 
         /** Types are objects that can be sent in packets. **/
-        namespace TYPES
+        struct TYPES
         {
-            enum
+            enum : MessagePacket::message_t
             {
                 /* Key Types. */
                 UINT256_T     = 0x20,
@@ -90,13 +97,13 @@ namespace LLP
                 REGISTER      = 0x3d,
                 P2PCONNECTION = 0x3e,
             };
-        }
+        };
 
 
         /** Specifiers describe object type in greater detail. **/
-        namespace SPECIFIER
+        struct SPECIFIER
         {
-            enum
+            enum : MessagePacket::message_t
             {
                 /* Specifier. */
                 LEGACY       = 0x40, //specify for legacy data types
@@ -105,13 +112,13 @@ namespace LLP
                 TRANSACTIONS = 0x43, //specify to send memory transactions first
                 CLIENT       = 0x44, //specify for blocks to be sent and received for clients
             };
-        }
+        };
 
 
         /** Status returns available states. **/
-        namespace RESPONSE
+        struct RESPONSE
         {
-            enum
+            enum : MessagePacket::message_t
             {
                 ACCEPTED     = 0x50,
                 REJECTED     = 0x51,
@@ -121,13 +128,13 @@ namespace LLP
                 COMPLETED    = 0x55, //let node know an event was completed
                 VALIDATED    = 0x56,
             };
-        }
+        };
 
 
         /** Subscription flags. */
-        namespace SUBSCRIPTION
+        struct SUBSCRIPTION
         {
-            enum
+            enum : MessagePacket::message_t
             {
                 BLOCK           = (1 << 1),
                 TRANSACTION     = (1 << 2),
@@ -140,18 +147,11 @@ namespace LLP
                 SIGCHAIN        = (1 << 9),
                 NOTIFICATION    = (1 << 10),
             };
-        }
-
-    } // end namespace Tritium
+        };
 
 
-    /** TritiumNode
-     *
-     *  A Node that processes packets and messages for the Tritium Server
-     *
-     **/
-    class TritiumNode : public BaseConnection<MessagePacket>
-    {
+    private:
+
 
         /** State of if this node has logged in to remote node. **/
         std::atomic<bool> fLoggedIn;
@@ -523,20 +523,20 @@ namespace LLP
         {
             /* Create our trigger nonce. */
             uint64_t nNonce = LLC::GetRand();
-            pNode->PushMessage(LLP::Tritium::TYPES::TRIGGER, nNonce);
+            pNode->PushMessage(LLP::TritiumNode::TYPES::TRIGGER, nNonce);
 
             /* Request the inventory message. */
             pNode->PushMessage(nMsg, std::forward<Args>(args)...);
 
             /* Create the condition variable trigger. */
             LLP::Trigger REQUEST_TRIGGER;
-            pNode->AddTrigger(LLP::Tritium::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
+            pNode->AddTrigger(LLP::TritiumNode::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
 
             /* Process the event. */
             REQUEST_TRIGGER.wait_for_nonce(nNonce, nTimeout);
 
             /* Cleanup our event trigger. */
-            pNode->Release(LLP::Tritium::RESPONSE::COMPLETED);
+            pNode->Release(LLP::TritiumNode::RESPONSE::COMPLETED);
 
         }
 

@@ -68,9 +68,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    using namespace LLP::Tritium;
-
-
     /* Declaration of client mutex for synchronizing client mode transactions. */
     std::mutex TritiumNode::CLIENT_MUTEX;
 
@@ -4157,18 +4154,18 @@ namespace LLP
         /* Relay the block and bestchain. */
         LLP::TRITIUM_SERVER->Relay
         (
-            LLP::Tritium::ACTION::NOTIFY,
+            LLP::TritiumNode::ACTION::NOTIFY,
 
             /* Relay BLOCK notification. */
-            uint8_t(LLP::Tritium::TYPES::BLOCK),
+            uint8_t(LLP::TritiumNode::TYPES::BLOCK),
             hashBlock,
 
             /* Relay BESTCHAIN notification. */
-            uint8_t(LLP::Tritium::TYPES::BESTCHAIN),
+            uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN),
             hashBlock,
 
             /* Relay BESTHEIGHT notification. */
-            uint8_t(LLP::Tritium::TYPES::BESTHEIGHT),
+            uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT),
             block.nHeight
         );
 
@@ -4290,7 +4287,7 @@ namespace LLP
         }
 
         /* Relay all of our SIGCHAIN events. */
-        LLP::TRITIUM_SERVER->_Relay(LLP::Tritium::ACTION::NOTIFY, ssRelay);
+        LLP::TRITIUM_SERVER->_Relay(LLP::TritiumNode::ACTION::NOTIFY, ssRelay);
 
         /* Report status once complete. */
         debug::log(0, FUNCTION, "Relay for ", hashBlock.SubString(), " completed in ", swTimer.ElapsedMilliseconds(), " ms [", (nTotalEvents * 1000000) / (swTimer.ElapsedMicroseconds() + 1), " events/s]");
@@ -4334,9 +4331,9 @@ namespace LLP
 
             /* Request the sig chain from all. */
             if(fWait)
-                TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast);
             else
-                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast);
 
             /* Get the last event txid */
             uint512_t hashLastEvent;
@@ -4347,10 +4344,10 @@ namespace LLP
             {
                 /* Request notifications/events. */
                 if(fWait)
-                    TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
+                    TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
 
                 else
-                    pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
+                    pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
 
                 /* Get the last legacy event txid*/
                 uint512_t hashLastLegacyEvent;
@@ -4358,9 +4355,9 @@ namespace LLP
 
                 /* Request legacy notifications/events. */
                 if(fWait)
-                    TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
+                    TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
                 else
-                    pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
+                    pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
 
 
                 /* Request notifications for any tokens we own, or any tokens that we have accounts for */
@@ -4380,9 +4377,9 @@ namespace LLP
 
                         /* Request existing notifications/events. */
                         if(fWait)
-                            TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                            TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
                         else
-                            pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                            pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
 
                     }
                     else if(hashAddress.IsAccount())
@@ -4407,9 +4404,9 @@ namespace LLP
 
                             /* Request existing notifications/events. */
                             if(fWait)
-                                TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                                TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
                             else
-                                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                                pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
                         }
                     }
                 }

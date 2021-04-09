@@ -23,7 +23,8 @@ namespace LLP
 
     class TimeNode : public Connection
     {
-        enum
+        /* Protocol messages based on Default Packet. */
+        enum : Packet::message_t
         {
             /** DATA PACKETS **/
             TIME_DATA     = 0,
