@@ -293,14 +293,14 @@ namespace TAO
             bool IsCoinStake() const;
 
 
-            /** IsPrivate
+            /** IsHybrid
              *
              *  Determines if the transaction is for a private block.
              *
              *  @return true if transaction is a coinbase.
              *
              **/
-            bool IsPrivate() const;
+            bool IsHybrid() const;
 
 
             /** IsTrust

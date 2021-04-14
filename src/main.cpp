@@ -208,7 +208,7 @@ int main(int argc, char** argv)
 
         /* Initialize generator thread. */
         std::thread thread;
-        if(config::GetBoolArg(std::string("-private")))
+        if(config::fHybrid.load())
             thread = std::thread(TAO::Ledger::ThreadGenerator);
 
 
@@ -234,7 +234,7 @@ int main(int argc, char** argv)
 
 
         /* Wait for the private condition. */
-        if(config::GetBoolArg(std::string("-private")))
+        if(config::fHybrid.load())
         {
             TAO::Ledger::PRIVATE_CONDITION.notify_all();
             thread.join();

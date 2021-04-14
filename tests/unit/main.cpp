@@ -32,6 +32,7 @@ ________________________________________________________________________________
 TEST_CASE("Arguments Tests", "[args]")
 {
     config::fTestNet = true;
+    config::mapArgs["-private"] = "1";
     config::mapArgs["-testnet"] = "92349234";
     config::mapArgs["-flushwallet"] = "false";
 
@@ -39,10 +40,13 @@ TEST_CASE("Arguments Tests", "[args]")
     config::fMultiuser = true;
     config::mapArgs["-private"] = "1";
     config::mapArgs["-verbose"] = "3";
+    config::fHybrid    = true;
+
 
     REQUIRE(config::fTestNet.load() == true);
     REQUIRE(config::GetArg("-testnet", 0) == 92349234);
     REQUIRE(config::fMultiuser.load() == true);
+    REQUIRE(config::fHybrid.load() == true);
 
     //get the data directory
     std::string strPath = config::GetDataDir();

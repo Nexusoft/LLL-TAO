@@ -70,6 +70,10 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
+            //hybrid data
+            const std::string strHybrid = config::GetArg("-hybrid", "");
+            tx.hashPrevTx = LLC::SK512(strHybrid.begin(), strHybrid.end());
+
             //create object
             Object token = CreateToken(hashToken, 1000, 100);
 
@@ -92,8 +96,6 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
         //set address
         TAO::Register::Address hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
         {
-
-
             //set private keys
             hashPrivKey1 = hashPrivKey2;
             hashPrivKey2 = LLC::GetRand512();
@@ -564,6 +566,10 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
 
+            //hybrid data
+            const std::string strHybrid = config::GetArg("-hybrid", "");
+            tx.hashPrevTx = LLC::SK512(strHybrid.begin(), strHybrid.end());
+
             //create object
             Object token = CreateToken(hashToken, 1000, 100);
 
@@ -1009,6 +1015,10 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+
+            //hybrid data
+            const std::string strHybrid = config::GetArg("-hybrid", "");
+            tx.hashPrevTx = LLC::SK512(strHybrid.begin(), strHybrid.end());
 
             //create object
             Object token = CreateToken(hashToken, 1000, 100);

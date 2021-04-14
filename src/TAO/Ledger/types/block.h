@@ -258,7 +258,7 @@ namespace TAO
              *  @return True if the block is private block.
              *
              **/
-            bool IsPrivate() const;
+            bool IsHybrid() const;
 
 
             /** BuildMerkleTree

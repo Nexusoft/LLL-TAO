@@ -127,6 +127,30 @@ namespace LLD
         bool ReadBestChain(uint1024_t &hashBest);
 
 
+        /** WriteHybridGenesis
+         *
+         *  Writes the hybrid chain pointer to the ledger DB.
+         *
+         *  @param[in] hashBest The best chain hash to write.
+         *
+         *  @return True if the write was successful, false otherwise.
+         *
+         **/
+        bool WriteHybridGenesis(const uint1024_t& hashBest);
+
+
+        /** ReadHybridGenesis
+         *
+         *  Reads the hybrid chain pointer from the ledger DB.
+         *
+         *  @param[out] hashBest The best chain hash to read.
+         *
+         *  @return True if the read was successful, false otherwise.
+         *
+         **/
+        bool ReadHybridGenesis(uint1024_t &hashBest);
+
+
         /** ReadBestChain
          *
          *  Reads the best chain pointer from the ledger DB.

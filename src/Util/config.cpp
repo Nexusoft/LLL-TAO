@@ -121,9 +121,10 @@ namespace config
     {
         /* Windows: C:\Documents and Settings\username\Application Data\Nexus
          * Mac: ~/Library/Application Support/Nexus
-         * Unix: ~/.Nexus 
+         * Unix: ~/.Nexus
          * iPhone: ~{App}/Documents/Nexus
-         * Android: ~{App}Files/Nexus */
+         * Android: ~{App}Files/Nexus
+         */
     std::string pathRet;
     #ifdef WIN32
         // Windows
@@ -211,6 +212,11 @@ namespace config
         uint32_t nTestnet = GetArg("-testnet", 0);
         if(fNetSpecific && nTestnet > 0)
             path.append(debug::safe_printstr("testnet", nTestnet, "/"));
+
+        /* Check for hybrid mode. */
+        std::string strHybrid = GetArg("-hybrid", "");
+        if(fNetSpecific && !strHybrid.empty())
+            path.append(strHybrid + "/");
 
         /* Check for client mode. */
         if(config::GetBoolArg("-client", false))

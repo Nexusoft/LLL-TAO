@@ -239,6 +239,8 @@ namespace debug
      *  Encapsulated log for improved compile time. Not thread safe. */
     void log_(const time_t& nTimestamp, const std::string& strDebug)
     {
+        #ifndef UNIT_TESTS
+
         /* Build the timestamp */
         std::string strFinal = safe_printstr(
             "[",
@@ -256,6 +258,8 @@ namespace debug
 
         /* Check if the current file should be archived and take action. */
         check_log_archive(ssFile);
+
+        #endif
     }
 
 

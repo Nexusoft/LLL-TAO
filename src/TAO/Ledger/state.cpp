@@ -743,7 +743,7 @@ namespace TAO
             }
 
             /* Add new weights for this channel. */
-            if(!IsPrivate())
+            if(!IsHybrid())
                 nChannelWeight[nChannel] += Weight();
 
             /* Compute the chain trust. */
@@ -754,7 +754,7 @@ namespace TAO
                 return debug::error(FUNCTION, "block state failed to write");
 
             /* Signal to set the best chain. */
-            if(nVersion >= 7 && !IsPrivate())
+            if(nVersion >= 7 && !IsHybrid())
             {
                 /* Set the chain trust. */
                 uint8_t nEquals  = 0;

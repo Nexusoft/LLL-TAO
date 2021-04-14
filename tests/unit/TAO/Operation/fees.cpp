@@ -29,6 +29,9 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     SecureString strPassword = "password";
     SecureString strPin = "1234";
 
+    /* Temporarily disable private mode so that fees are applicable */
+    config::fHybrid = false;
+
     /* Create a sig chain to use for these tests */
     memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername, strPassword);
 
@@ -37,10 +40,6 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
 
     /* Generate a random hash for default account register address */
     TAO::Register::Address hashDefaultAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-
-
-    /* Temporarily disable private mode so that fees are applicable */
-    config::mapArgs["-private"] = "0";
 
     /* Keep a track of the transaction timestamps so that we can avoid paying tx fees for this test */
     uint64_t nTimestamp = runtime::unifiedtimestamp();
@@ -381,10 +380,6 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
 
     }
 
-
-
-
     /* Finally reinstate private mode so the rest of the tests can continue */
-    config::mapArgs["-private"] = "1";
-
+    config::fHybrid = true;
 }

@@ -314,15 +314,15 @@ namespace TAO
                 return debug::error(FUNCTION, "transaction with empty signature");
 
             /* Check the genesis first byte. */
-            if(hashGenesis.GetType() != GenesisType())
-                return debug::error(FUNCTION, "genesis using incorrect leading byte");
+            if(hashGenesis.GetType() != GENESIS::UserType())
+                return debug::error(FUNCTION, "user type [", std::hex, uint32_t(hashGenesis.GetType()), "] invalid, expected [", std::hex, uint32_t(GENESIS::UserType()), "]");
 
             /* Check for max contracts. */
             if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
                 return debug::error(FUNCTION, "transaction contract limit exceeded", vContracts.size());
 
             /* Check producer for coinstake transaction */
-            if(IsCoinStake() || IsPrivate())
+            if(IsCoinStake() || IsHybrid())
             {
                 /* Check for single contract. */
                 if(vContracts.size() != 1)
@@ -407,15 +407,14 @@ namespace TAO
                             default:
                             {
                                 /* Contract is strict for genesis when not in private mode. */
-                                if(!config::GetBoolArg("-private"))
+                                if(!config::fHybrid.load())
                                     return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
 
                                 break;
                             }
-
                         }
                     }
-                    else if(!config::GetBoolArg("-private"))
+                    else if(!config::fHybrid.load())
                         return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
 
                 }
@@ -427,20 +426,36 @@ namespace TAO
 
             /* If genesis then check that the only contracts are those for the default registers.
              * We do not make this limitation in private mode */
-            if(IsFirst() && !config::GetBoolArg("-private"))
+            if(IsFirst())
             {
-                //skip proof of work for unit tests
-                #ifndef UNIT_TESTS
+                /* Check for main-net proof of work. */
+                if(!config::fHybrid.load())
+                {
+                    //skip proof of work for unit tests
+                    #ifndef UNIT_TESTS
 
-                /* Check the difficulty of the hash. */
-                if(ProofHash() > FIRST_REQUIRED_WORK)
-                    return debug::error(FUNCTION, "first transaction not enough work");
+                    /* Check the difficulty of the hash. */
+                    if(ProofHash() > FIRST_REQUIRED_WORK)
+                        return debug::error(FUNCTION, "first transaction not enough work");
 
-                #endif
+                    #endif
 
-                /* Check that the there are not more than the allowable default contracts */
-                if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
-                    return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                    /* Check that the there are not more than the allowable default contracts */
+                    if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
+                        return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                }
+
+                /* Check our hybrid proofs. */
+                else
+                {
+                    /* Grab our hybrid network-id. */
+                    const std::string strHybrid = config::GetArg("-hybrid", "");
+
+                    /* Check our expected values. */
+                    const uint512_t hashCheck = LLC::SK512(strHybrid.begin(), strHybrid.end());
+                    if(hashCheck != hashPrevTx)
+                        return debug::error(FUNCTION, "invalid network-id (", hashPrevTx.ToString().substr(108, 128), ")");
+                }
             }
 
             /* Verify the block signature (if not synchronizing) */
@@ -676,7 +691,7 @@ namespace TAO
             uint64_t nRet = 0;
 
             /* There are no transaction costs in private mode */
-            if(config::GetBoolArg("-private", false))
+            if(config::fHybrid.load())
                 return 0;
 
             /* No transaction cost in the first transaction as this is where we set up default accounts */
@@ -748,7 +763,7 @@ namespace TAO
             #ifndef UNIT_TESTS
 
             /* Check for first. */
-            if(IsFirst() && !config::GetBoolArg("-private"))
+            if(IsFirst() && !config::fHybrid.load())
             {
                 /* Timer to track proof of work time. */
                 runtime::timer timer;
@@ -941,7 +956,7 @@ namespace TAO
             /* Once we have executed the contracts we need to check the fees.
                NOTE there are fixed fees on the genesis transaction to allow for the default registers to be created.
                NOTE: There are no fees required in private mode.  */
-            if(!config::GetBoolArg("-private", false))
+            if(!config::fHybrid.load())
             {
                 /* The fee applied to this transaction */
                 uint64_t nFees = 0;
@@ -1061,7 +1076,7 @@ namespace TAO
 
 
         /* Determines if the transaction is for a private block. */
-        bool Transaction::IsPrivate() const
+        bool Transaction::IsHybrid() const
         {
             /* Check all contracts. */
             for(const auto& contract : vContracts)

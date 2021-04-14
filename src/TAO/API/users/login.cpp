@@ -115,10 +115,10 @@ namespace TAO
 
                 if(TAO::Ledger::ChainState::Synchronizing())
                     throw APIException(-297, "Cannot log in while synchronizing");
-               
+
                 /* In order to authenticate the user, at a minimum we need a transaction from the users sig chain containing the most
-                   up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in 
-                   the mempool).  If it is not, we can lookup the users Crypto object register (since this is updated 
+                   up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in
+                   the mempool).  If it is not, we can lookup the users Crypto object register (since this is updated
                    whenever the password/pin changes).  Reading the crypto register from the DB will force a remote lookup from a
                    peer if it is missing or expired.  This process avoids us having to download the entire sig chain before logging
                    in, so we can download it asynchronously after logging them in.  */
@@ -131,7 +131,7 @@ namespace TAO
                 {
                     /* The address of the crypto object register, which is deterministic based on the genesis */
                     TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-                    
+
                     /* Read the crypto object register.  This will fail if the caller has provided an invalid username. */
                     TAO::Register::Object crypto;
                     if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
@@ -150,9 +150,9 @@ namespace TAO
                 else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                 {
                     throw APIException(-137, "Couldn't get transaction");
-                }                
+                }
 
-            }  
+            }
             else if(!LLD::Ledger->HasGenesis(hashGenesis))
             {
                 /* If user genesis not in ledger, this will throw an exception. Just a matter of which one. */
@@ -195,7 +195,7 @@ namespace TAO
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
             tx.NextHash(user.Generate(txPrev.nSequence + 1, strPin), txPrev.nNextType);
-            
+
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
             {
@@ -218,7 +218,7 @@ namespace TAO
                     /* increment iterator */
                     ++session;
                 }
-                    
+
 
             }
 
@@ -299,8 +299,8 @@ namespace TAO
                             throw APIException(-297, "Cannot log in while synchronizing");
 
                         /* In order to authenticate the user, at a minimum we need a transaction from the users sig chain containing the most
-                        up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in 
-                        the mempool).  If it is not, we can lookup the users Crypto object register (since this is updated 
+                        up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in
+                        the mempool).  If it is not, we can lookup the users Crypto object register (since this is updated
                         whenever the password/pin changes).  Reading the crypto register from the DB will force a remote lookup from a
                         peer if it is missing or expired.  This process avoids us having to download the entire sig chain before logging
                         in, so we can download it asynchronously after logging them in.  */
@@ -313,11 +313,11 @@ namespace TAO
                         {
                             /* The address of the crypto object register, which is deterministic based on the genesis */
                             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-                            
+
                             /* Read the crypto object register */
                             TAO::Register::Object crypto;
                             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
-                                throw APIException(-259, "Could not read crypto object register"); 
+                                throw APIException(-259, "Could not read crypto object register");
 
                             /* Get the last transaction. */
                             uint512_t hashLast;
@@ -332,11 +332,11 @@ namespace TAO
                         else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                         {
                             throw APIException(-137, "Couldn't get transaction");
-                        }                     
+                        }
                     }
 
                     /* See if the sig chain exists */
-                    else 
+                    else
                     {
                         if(!LLD::Ledger->HasGenesis(hashGenesis) && !TAO::Ledger::mempool.Has(hashGenesis))
                         {
@@ -345,7 +345,7 @@ namespace TAO
                             {
                                 /* Testnet is considered local if no dns is being used or if using a private network */
                                 bool fLocalTestnet = config::fTestNet.load()
-                                    && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
+                                    && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
 
                                 /* Can only create user if synced and (if not local) have connections.
                                 * Return without create/login if cannot create, yet. It will have to try again.
@@ -398,7 +398,7 @@ namespace TAO
 
                     /* Cache the txid that was used to authenticate their login */
                     session.hashAuth = txPrev.GetHash();
-                                            
+
 
                     /* The unlock actions to apply for autologin.  NOTE we do NOT unlock for transactions */
                     uint8_t nUnlockActions = TAO::Ledger::PinUnlock::UnlockActions::MINING
@@ -408,7 +408,7 @@ namespace TAO
                     /* Set account to unlocked. */
                     session.UpdatePIN(config::GetArg("-pin", "").c_str(), nUnlockActions);
 
-                    
+
                     /* Display that login was successful. */
                     debug::log(0, "Auto-Login Successful");
 

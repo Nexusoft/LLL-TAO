@@ -115,6 +115,14 @@ namespace TAO
 
                 /* Set the next key type for the genesis transaction */
                 tx.nNextType = tx.nKeyType;
+
+                /* Add our network-id if applicable.*/
+                if(config::fHybrid.load())
+                {
+                    /* Grab and set our hybrid network-id. */
+                    const std::string strHybrid = config::GetArg("-hybrid", "");
+                    tx.hashPrevTx = LLC::SK512(strHybrid.begin(), strHybrid.end());
+                }
             }
             else
             {
@@ -615,8 +623,6 @@ namespace TAO
 
                 /* Get the sigchain txid. */
                 txProducer[0] << txProducer.hashPrevTx;
-
-                /* Set the genesis operation. */
                 txProducer[0] << txProducer.hashGenesis;
             }
 
@@ -678,7 +684,13 @@ namespace TAO
         bool CreateGenesis()
         {
             /* Get the genesis hash. */
-            uint1024_t hashGenesis = TAO::Ledger::ChainState::Genesis();
+            uint1024_t hashGenesis = 0;
+
+            /* Check the ledger database for hybrid genesis. */
+            if(config::fHybrid.load())
+                LLD::Ledger->ReadHybridGenesis(hashGenesis);
+            else
+                hashGenesis = TAO::Ledger::ChainState::Genesis();
 
             /* Check for genesis from disk. */
             if(!LLD::Ledger->ReadBlock(hashGenesis, ChainState::stateGenesis))
@@ -705,7 +717,16 @@ namespace TAO
                 else
                 {
                     /* Create the genesis block. */
-                    state = LegacyGenesis();
+                    if(config::fHybrid.load())
+                    {
+                        /* Create the new block state. */
+                        state = HybridGenesis();
+
+                        /* Assign current genesis hash to newly minted block. */
+                        hashGenesis = hashGenesisHybrid;
+                    }
+                    else
+                        state = LegacyGenesis();
 
                     /* Write the block to disk. */
                     if(!LLD::Ledger->WriteBlock(hashGenesis, state))
@@ -727,6 +748,8 @@ namespace TAO
                 ChainState::hashBestChain = hashGenesis;
                 ChainState::stateBest     = ChainState::stateGenesis;
             }
+            else if(config::fHybrid.load())
+                hashGenesisHybrid = hashGenesis; //we need to set our new genesis hash here
 
             return true;
         }
@@ -735,7 +758,7 @@ namespace TAO
         /* Handles the creation of a private block chain. */
         void ThreadGenerator()
         {
-            if(!config::GetBoolArg("-private") || !config::mapArgs.count("-generate"))
+            if(!config::fHybrid.load() || !config::mapArgs.count("-generate"))
                 return;
 
             /* Get the account. */

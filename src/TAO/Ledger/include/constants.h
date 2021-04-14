@@ -40,6 +40,10 @@ namespace TAO
         const uint1024_t hashGenesisTestnet("0x00002a0ccd35f2e1e9e1c08f5a2109a82834606b121aca891d5862ba12c6987d55d1e789024fcd5b9adaf07f5445d24e78604ea136a0654497ed3db0958d63e72f146fae2794e86323126b8c3d8037b193ce531c909e5222d090099b4d574782d15c135ddd99d183ec14288437563e8a6392f70259e761e62d2ea228977dd2f7");
 
 
+        /** Hash to start a hybrid Blockchain. **/
+        extern uint1024_t hashGenesisHybrid;
+
+
         /** Minimum channels difficulty. **/
         const LLC::CBigNum bnProofOfWorkLimit[] =
         {

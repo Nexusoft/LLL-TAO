@@ -87,7 +87,7 @@ namespace TAO
 
             /* Make adjustment to history check and detect if the register is owned by system. */
             if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
-                hashOwner.SetType(TAO::Ledger::GenesisType());
+                hashOwner.SetType(TAO::Ledger::GENESIS::UserType());
 
             if(config::fClient.load() && hashOwner != users->GetCallersGenesis(params))
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");

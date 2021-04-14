@@ -1928,7 +1928,7 @@ namespace LLP
                                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 {
                                     /* Check if producer is being asked for, and send block instead. */
-                                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsPrivate())
+                                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                                     {
                                         /* Read block state from disk. */
                                         TAO::Ledger::BlockState state;
@@ -2116,10 +2116,10 @@ namespace LLP
                             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                                 break;
 
-                            /* Make adjustment to history check and detect if the register is owned by system. */
+                            /* If register is in the middle of a transfer, hashOwner will be owned by system. Detect and continue.*/
                             uint256_t hashOwner = state.hashOwner;
                             if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
-                                hashOwner.SetType(TAO::Ledger::GenesisType());
+                                hashOwner.SetType(TAO::Ledger::GENESIS::UserType());
 
                             /* Read the last hash of owner. */
                             uint512_t hashLast = 0;
@@ -2374,7 +2374,7 @@ namespace LLP
                                 uint256_t hashLogin = TAO::API::users->GetGenesis(0);
 
                                 /* If the address is a genesis hash, then make sure that it is for the currently logged in user */
-                                if(hashAddress.GetType() == TAO::Ledger::GenesisType())
+                                if(hashAddress.GetType() == TAO::Ledger::GENESIS::UserType())
                                 {
                                     /* Check for expected genesis. */
                                     if(hashAddress != hashLogin)

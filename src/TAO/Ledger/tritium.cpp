@@ -321,7 +321,7 @@ namespace TAO
                 return debug::error(FUNCTION, "size limits failed ", MAX_BLOCK_SIZE);
 
             /* Make sure the Block was Created within Active Channel. */
-            if(GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
+            if(GetChannel() > (config::fHybrid.load() ? 3 : 2))
                 return debug::error(FUNCTION, "channel out of range");
 
             /* Check that the time was within range. */
@@ -401,11 +401,17 @@ namespace TAO
             }
 
             /* Private specific checks. */
-            else if(IsPrivate())
+            else if(IsHybrid())
             {
                 /* Check the producer transaction. */
-                if(!producer.IsPrivate())
-                    return debug::error(FUNCTION, "producer transaction has to be authorize for private mode");
+                if(!producer.IsHybrid())
+                    return debug::error(FUNCTION, "producer transaction needs to use correct channel");
+
+                /* Check producer for correct genesis. */
+                if(producer.hashGenesis != (config::fTestNet ?
+                    uint256_t("0xb7a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41") :
+                    uint256_t("0xa7a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41")))
+                    return debug::error(FUNCTION, "producer transaction has to be authorized for hybrid mode");
             }
 
             /* Default catch. */
@@ -474,7 +480,7 @@ namespace TAO
                     }
 
                     /* Check for coinbase / coinstake. */
-                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsPrivate())
+                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                         return debug::error(FUNCTION, "cannot have non-producer coinbase / coinstake transaction");
 
                     /* Check the sequencing. */
@@ -592,19 +598,6 @@ namespace TAO
             /* Check that Block is Descendant of Hardened Checkpoints. */
             if(!ChainState::Synchronizing() && !IsDescendant(statePrev))
                 return debug::error(FUNCTION, "not descendant of last checkpoint");
-
-            /* Check for private mode. */
-            if(IsPrivate())
-            {
-                /* Check producer for correct genesis. */
-                uint256_t hashGenesis;
-                hashGenesis = producer.hashGenesis;
-
-                if(hashGenesis != (config::fTestNet ?
-                    uint256_t("0xa2a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41") :
-                    uint256_t("0xa1a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41")))
-                    return debug::error(FUNCTION, "invalid genesis generated");
-            }
 
             /* Validate proof of stake. */
             if(IsProofOfStake() && !CheckStake())

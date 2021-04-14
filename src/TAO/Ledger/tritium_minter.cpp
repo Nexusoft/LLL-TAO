@@ -84,7 +84,7 @@ namespace TAO
             }
 
             /* Stake minter does not run in private or hybrid mode (at least for now) */
-            if(config::GetBoolArg("-private") || config::GetBoolArg("-hybrid"))
+            if(config::fHybrid.load())
             {
                 debug::log(0, "Stake Minter does not run in private/hybrid mode. Startup cancelled.");
                 return false;

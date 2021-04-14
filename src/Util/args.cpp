@@ -19,6 +19,9 @@ ________________________________________________________________________________
 
 #include <LLP/include/port.h>
 
+#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/include/enum.h>
+
 #include <cstring>
 #include <string>
 #include <cmath>
@@ -45,7 +48,12 @@ namespace config
     std::atomic<bool> fInitialized(false);
     std::atomic<bool> fPoolStaking(false);
     std::atomic<bool> fStaking(false);
+    std::atomic<bool> fHybrid(false);
+    std::atomic<bool> fSister(false);
     std::atomic<int32_t> nVerbose(0);
+
+    /* Keeps track of the network owner hash. */
+    uint256_t hashNetworkOwner;
 
     std::mutex ARGS_MUTEX;
 
@@ -173,7 +181,7 @@ namespace config
         fDebug                  = GetBoolArg("-debug", false);
         fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
-        fTestNet                = GetArg("-testnet", 0) > 0;
+        fTestNet                = (GetArg("-testnet", 0) > 0);
         fListen                 = GetBoolArg("-listen", true);
         fClient                 = GetBoolArg("-client", false);
         //fUseProxy               = GetBoolArg("-proxy")
@@ -183,35 +191,81 @@ namespace config
         fProcessNotifications   = GetBoolArg("-processnotifications", true);
         fPoolStaking            = GetBoolArg("-poolstaking", false);
         fStaking                = GetBoolArg("-staking", false) || GetBoolArg("-stake", false); //Both supported, -stake deprecated
+        fHybrid                 = (GetArg("-hybrid", "") != ""); //-hybrid=<username> where username is the owner.
+        //fSister                 = (GetArg("-sister", "") != ""); NOTE: disabled for now, -sister=<token> for sister network.
         nVerbose                = GetArg("-verbose", 0);
 
-
-        /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
-        const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];
-
-        for(const auto& entry : vIPPortFilters)
+        /* Private Mode: Sub-Network Testnet. DO NOT USE FOR PRODUCTION. */
+        if(GetBoolArg("-private", false))
         {
-            /* ensure it has a port*/
-            std::size_t nPortPos = entry.find(":");
-            if(nPortPos == std::string::npos)
-                continue;
+            {
+                LOCK(ARGS_MUTEX);
 
-            std::string strIP = entry.substr(0, nPortPos);
-            uint16_t nPort = std::stoi(entry.substr(nPortPos + 1));
+                /* Set our hybrid value as PRIVATE in private mode. */
+                mapArgs["-hybrid"]  = ""; //delete hybrid parameters if supplied for testnet
 
-            mapIPFilters[nPort].push_back(strIP);
+                /* Automatically set testnet if not enabled, otherwise let user argument be used. */
+                if(!mapArgs.count("-testnet"))
+                    mapArgs["-testnet"] = "1";
+            }
+
+            /* Set our expected flags. */
+            fHybrid.store(true);
+            fTestNet.store(true);
+
+            /* Force consensus into testnet if -private is set with no network owner. */
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!!WARNING!!! PRIVATE TESTNET", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "-private mode runs as a TESTNET.., DO NOT USE FOR PRODUCTION", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "To run a production network, you must set hybrid=<username> in nexus.conf", ANSI_COLOR_RESET);
         }
 
-        /* Parse the legacy rpcallowip entries and add them to to the filters map too, so that legacy users
-           can migrate without having to change their config files*/
-        const std::vector<std::string>& vRPCFilters = config::mapMultiArgs["-rpcallowip"];
-
-        /* get the RPC port in use */
-        uint16_t nRPCPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
-
-        for(const auto& entry : vRPCFilters)
+        /* Hybrid Mode: Sub-Network MainNet. USE FOR PRODUCTION. */
+        else if(fHybrid.load())
         {
-            mapIPFilters[nRPCPort].push_back(entry);
+            LOCK(ARGS_MUTEX);
+
+            /* Grab our network owner. */
+            const SecureString strOwner = mapArgs["-hybrid"].c_str();
+
+            /* Calculate their genesis-id. */
+            hashNetworkOwner = TAO::Ledger::SignatureChain::Genesis(strOwner);
+            hashNetworkOwner.SetType(TAO::Ledger::GENESIS::OwnerType());
+
+            debug::log(0, ANSI_COLOR_FUNCTION, "Hybrid Network-id: ", ANSI_COLOR_BRIGHT_GREEN, hashNetworkOwner.ToString(), ANSI_COLOR_RESET);
         }
+
+
+        {
+            LOCK(ARGS_MUTEX);
+
+            /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
+            const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];
+            for(const auto& entry : vIPPortFilters)
+            {
+                /* ensure it has a port*/
+                std::size_t nPortPos = entry.find(":");
+                if(nPortPos == std::string::npos)
+                    continue;
+
+                std::string strIP = entry.substr(0, nPortPos);
+                uint16_t nPort = std::stoi(entry.substr(nPortPos + 1));
+
+                mapIPFilters[nPort].push_back(strIP);
+            }
+
+            /* Parse the legacy rpcallowip entries and add them to to the filters map too, so that legacy users
+               can migrate without having to change their config files*/
+            const std::vector<std::string>& vRPCFilters = config::mapMultiArgs["-rpcallowip"];
+
+            /* get the RPC port in use */
+            uint16_t nRPCPort = static_cast<uint16_t>(config::fTestNet ? TESTNET_RPC_PORT : MAINNET_RPC_PORT);
+            if(mapArgs.count("-rpcport"))
+                nRPCPort = static_cast<uint16_t>(convert::atoi64(mapArgs["-rpcport"]));
+
+            /* Add our RPC IP filters to the map. */
+            for(const auto& entry : vRPCFilters)
+                mapIPFilters[nRPCPort].push_back(entry);
+        }
+
     }
 }

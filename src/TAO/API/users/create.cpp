@@ -155,7 +155,7 @@ namespace TAO
 
             /* Don't create trust/default accounts in private mode */
             #ifndef UNIT_TESTS //API unit tests use -private flag, so we must disable this check
-            if(!config::GetBoolArg("-private", false))
+            if(!config::fHybrid.load())
             #endif
             {
                 /* Generate register address for the trust account deterministically so that we can retrieve it easily later. */

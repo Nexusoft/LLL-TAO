@@ -251,7 +251,7 @@ namespace TAO
         {
             return !config::fMultiuser.load() && GetSessionManager().Has(0);
         }
-        
+
 
         /* Determine if a particular genesis is logged in on this node. */
         bool Users::LoggedIn(const uint256_t& hashGenesis) const
@@ -327,12 +327,11 @@ namespace TAO
                             TAO::Ledger::Transaction& tx)
         {
             /* No need to check connections or maturity in private mode as there is no PoS/Pow */
-            if(!config::GetBoolArg("-private"))
+            if(!config::fHybrid.load())
             {
                 /* If not on local-only testnet then we need to ensure we are connected to the network and
                 synchronized before allowing any sig chain transactions to be created */
                 bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
-
                 if(TAO::Ledger::ChainState::Synchronizing() || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
                     throw APIException(-213, "Cannot create transactions whilst synchronizing");
 

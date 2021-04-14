@@ -59,25 +59,145 @@ namespace TAO
             {
                 /** A system genesis is pre-pended with byte 0x00. SYSTEM genesis cannot be made by any users, only the system. **/
                 SYSTEM      = 0x00,
-
-                /** A mainnet genesis has to be pre-pended with byte 0xa1 **/
-                MAINNET     = 0xa1,
-
-                /** a testnet genesis has to be pre-pended with byte 0xa2. **/
-                TESTNET     = 0xa2,
             };
+
+
+            /* Main Network Genesis types available. */
+            struct MAINNET
+            {
+                enum : uint8_t
+                {
+                    /** a mainnet genesis has to be pre-pended with byte 0xa2. **/
+                    USER        = 0xa1,
+
+                    /** An owner genesis is a sigchain that owns a hybrid network. **/
+                    OWNER       = 0xa2,
+
+                    //placeholder (four new sigchain types unallocated)
+                    RESERVED1    = 0xa3,
+                    RESERVED2    = 0xa4,
+                    RESERVED3    = 0xa5,
+                    RESERVED4    = 0xa6,
+                };
+
+
+                /* Hybrid Network Genesis types available. */
+                struct HYBRID
+                {
+                    enum : uint8_t
+                    {
+                        /** A hybrid genesis has to be pre-pended with byte 0xa7. **/
+                        USER         = 0xa7,
+
+                        //placeholder (three new sigchain types unallocated)
+                        RESERVED1    = 0xa8,
+                        RESERVED2    = 0xa9,
+                        RESERVED3    = 0xaa,
+                    };
+                };
+
+
+                /* Sister Network Genesis types available. */
+                struct SISTER
+                {
+                    enum : uint8_t
+                    {
+                        /** a sister genesis has to be pre-pended with byte 0xab. **/
+                        USER         = 0xab,
+
+                        //placeholder (three new sigchain types unallocated)
+                        RESERVED1    = 0xac,
+                        RESERVED2    = 0xad,
+                        RESERVED3    = 0xae,
+                        RESERVED4    = 0xaf,
+                    };
+                };
+            };
+
+
+            /* Test Network Genesis types available. */
+            struct TESTNET
+            {
+                enum : uint8_t
+                {
+                    /** a testnet genesis has to be pre-pended with byte 0xb1. **/
+                    USER        = 0xb1,
+
+                    /** An owner genesis is a sigchain that owns a hybrid network. **/
+                    OWNER       = 0xb2,
+
+                    //placeholder (four new sigchain types unallocated)
+                    RESERVED1    = 0xb3,
+                    RESERVED2    = 0xb4,
+                    RESERVED3    = 0xb5,
+                    RESERVED4    = 0xb6,
+                };
+
+
+                /* Hybrid Network Genesis types available. */
+                struct HYBRID
+                {
+                    enum : uint8_t
+                    {
+                        /** a testnet hybrid has to be pre-pended with byte 0xb3. **/
+                        USER        = 0xb7,
+
+                        //placeholder (three new sigchain types unallocated)
+                        RESERVED1    = 0xb8,
+                        RESERVED2    = 0xb9,
+                        RESERVED3    = 0xba,
+                    };
+                };
+
+
+                /* Sister Network Genesis types available. */
+                struct SISTER
+                {
+                    enum : uint8_t
+                    {
+                        /** a testnet sister has to be pre-pended with byte 0xb4. **/
+                        USER         = 0xbb,
+
+                        //placeholder (three new sigchain types unallocated)
+                        RESERVED1    = 0xbc,
+                        RESERVED2    = 0xbd,
+                        RESERVED3    = 0xbe,
+                        RESERVED4    = 0xbf,
+                    };
+                };
+            };
+
+
+            /** UserType
+             *
+             *  Method to handle switching the genesis leading byte for the network user sigchains.
+             *
+             **/
+            static inline uint8_t UserType()
+            {
+                /* Check if we are in hybrid mode. */
+                if(config::fHybrid.load())
+                    return (config::fTestNet.load() ? uint8_t(GENESIS::TESTNET::HYBRID::USER) : uint8_t(GENESIS::MAINNET::HYBRID::USER));
+
+                /* Check if we are in sister mode. */
+                if(config::fSister.load())
+                    return (config::fTestNet.load() ? uint8_t(GENESIS::TESTNET::SISTER::USER) : uint8_t(GENESIS::MAINNET::SISTER::USER));
+
+                /* Regular users for the mother network. */
+                return (config::fTestNet.load() ? uint8_t(GENESIS::TESTNET::USER) : uint8_t(GENESIS::MAINNET::USER));
+            }
+
+
+            /** OwnerType
+             *
+             *  Method to handle switching the genesis leading byte for network owner sigchains. Only available for mother network.
+             *
+             **/
+            static inline uint8_t OwnerType()
+            {
+                return (config::fTestNet.load() ? uint8_t(GENESIS::TESTNET::OWNER) : uint8_t(GENESIS::MAINNET::OWNER));
+            }
         };
-
-
-        /** GenesisType
-         *
-         *  Method to handle switching the genesis leading byte.
-         *
-         **/
-        inline uint8_t GenesisType()
-        {
-            return (config::fTestNet.load() ? TAO::Ledger::GENESIS::TESTNET : TAO::Ledger::GENESIS::MAINNET);
-        }
 
 
         /** Signature types for sigchain. **/
@@ -148,10 +268,9 @@ namespace TAO
                 ERASE       = 0x05,
 
                 /* Trigger remote lookups for -client mode. */
-                LOOKUP      = 0x06,
+                LOOKUP      = 0x06, //XXX: we may want to automatically handle this
             };
         };
-
 
 
         /** TRANSACTION

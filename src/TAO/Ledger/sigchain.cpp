@@ -98,17 +98,9 @@ namespace TAO
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
 
-            /* Default salt */
-            std::vector<uint8_t> vSalt(16);
-
-            /* Empty vector used for Argon2 call */
-            std::vector<uint8_t> vEmpty;
-
             /* Argon2 hash the secret */
-            hashGenesis = LLC::Argon2_256(vUsername, vSalt, vEmpty, 12, (1 << 16));
-            
-            /* Set the genesis type byte. */
-            hashGenesis.SetType(TAO::Ledger::GenesisType());
+            hashGenesis = LLC::Argon2_256(vUsername, std::vector<uint8_t>(16), std::vector<uint8_t>(), 12, (1 << 16));
+            hashGenesis.SetType(TAO::Ledger::GENESIS::UserType());
 
             /* Cache this username-genesis pair in the local db*/
             LLD::Local->WriteGenesis(strUsername, hashGenesis);
@@ -126,12 +118,12 @@ namespace TAO
             /* key used to identify this private key in the key cache */
             std::tuple<SecureString, SecureString, uint32_t> cacheKey = std::make_tuple(strPassword, strSecret, nKeyID);
 
-            /* If caching is requested, check to see if we have already cached this private key, to stop exhaustive 
+            /* If caching is requested, check to see if we have already cached this private key, to stop exhaustive
                hash key generation */
             if(fCache)
             {
                 LOCK(MUTEX);
-                
+
                 /* Check the cache */
                 if(cacheKeys.Has(cacheKey))
                 {
@@ -169,8 +161,8 @@ namespace TAO
             vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
             /* Argon2 hash the secret */
-            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret, 
-                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))), 
+            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret,
+                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
                             uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
             /* Add the private key to the cache. */
@@ -208,8 +200,8 @@ namespace TAO
 
 
             /* Argon2 hash the secret */
-            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret, 
-                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))), 
+            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret,
+                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
                             uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
 
@@ -243,8 +235,8 @@ namespace TAO
             vSecret.insert(vSecret.end(), strType.begin(), strType.end());
 
             /* Argon2 hash the secret */
-            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret, 
-                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))), 
+            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret,
+                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
                             uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
             return hashKey;
@@ -263,7 +255,7 @@ namespace TAO
             uint512_t hashKey = LLC::Argon2_512(vSecret);
 
             /* Set the key type */
-            hashKey.SetType(TAO::Ledger::GenesisType());
+            hashKey.SetType(TAO::Ledger::GENESIS::UserType());
 
             return hashKey;
         }
@@ -328,7 +320,7 @@ namespace TAO
         {
             /* Generate the public key */
             std::vector<uint8_t> vchPubKey = Key(strType, nKeyID, strSecret, nType);
-            
+
             /* Calculate the key hash. */
             uint256_t hashRet = LLC::SK256(vchPubKey);
 
@@ -454,7 +446,7 @@ namespace TAO
             return Sign(nType, vchData, hashSecret, vchPubKey, vchSig);
 
         }
-        
+
         /* Generates a signature for the data, using the specified crypto key type. */
         bool SignatureChain::Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
                                   std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const
@@ -518,9 +510,9 @@ namespace TAO
         }
 
 
-        /* Verifies a signature for the data, as well as verifying that the hashed public key matches the 
+        /* Verifies a signature for the data, as well as verifying that the hashed public key matches the
         *  specified key from the crypto object register */
-        bool SignatureChain::Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData, 
+        bool SignatureChain::Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData,
                     const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchSig)
         {
             /* Derive the object register address. */
