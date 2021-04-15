@@ -131,45 +131,45 @@ namespace TAO
 
 
         /* Remove a session from the manager */
-        void SessionManager::Remove(const uint256_t& sessionID)
+        void SessionManager::Remove(const uint256_t& hashSession)
         {
             LOCK(MUTEX);
 
-            if(mapSessions.count(sessionID) == 0)
+            if(mapSessions.count(hashSession) == 0)
                 throw APIException(-11, "User not logged in");
 
-            mapSessions.erase(sessionID);
+            mapSessions.erase(hashSession);
         }
 
 
         /* Returns a session instance by session id */
-        Session& SessionManager::Get(const uint256_t& sessionID, bool fLogActivity)
+        Session& SessionManager::Get(const uint256_t& hashSession, bool fLogActivity)
         {
             /* Lock the mutex before checking that it exists and then updating the last active time  */
             {
                 LOCK(MUTEX);
 
-                if(mapSessions.count(sessionID) == 0)
+                if(mapSessions.count(hashSession) == 0)
                     throw APIException(-11, "User not logged in");
 
                 /* Update the activity if requested */
                 if(fLogActivity)
-                    mapSessions[sessionID].SetLastActive();
+                    mapSessions[hashSession].SetLastActive();
             }
 
             /* Return the session.  NOTE: we do this outside of the braces where the mutex is locked as we need to guarantee that
                the lock is released before returning.  Failure to do this can lead to deadlocks if subsequent methods are called on
                the returned session instance all in one line, as the mutex would remain locked until the stack unwinds from the
                additional method calls. */
-            return mapSessions[sessionID];
+            return mapSessions[hashSession];
         }
 
 
         /* Checks to see if the session ID exists in session map */
-        bool SessionManager::Has(const uint256_t& sessionID)
+        bool SessionManager::Has(const uint256_t& hashSession)
         {
             LOCK(MUTEX);
-            return mapSessions.count(sessionID) > 0;
+            return mapSessions.count(hashSession) > 0;
         }
 
 

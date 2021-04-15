@@ -74,37 +74,37 @@ namespace TAO
                  *
                  *  Remove a session from the manager
                  *
-                 *  @param[in] sessionID The session id to remove
+                 *  @param[in] hashSession The session id to remove
                  *
                  *  @return The newly created session instance
                  *
                  **/
-                void Remove(const uint256_t& sessionID);
+                void Remove(const uint256_t& hashSession);
 
 
                 /** Get
                  *
                  *  Returns a session instance by session id
                  *
-                 *  @param[in] sessionID The session id to search for
+                 *  @param[in] hashSession The session id to search for
                  *  @param[in] fLogActivity Flag indicating that this call should update the session activity timestamp
                  *
                  *  @return The session instance
                  *
                  **/
-                Session& Get(const uint256_t& sessionID, bool fLogActivity = true);
+                Session& Get(const uint256_t& hashSession, bool fLogActivity = true);
 
 
                 /** Has
                  *
                  *  Checks to see if the session ID exists in session map
                  *
-                 *  @param[in] sessionID The session id to search for
+                 *  @param[in] hashSession The session id to search for
                  *
                  *  @return True if the session ID exists
                  *
                  **/
-                bool Has(const uint256_t& sessionID);
+                bool Has(const uint256_t& hashSession);
 
 
                 /** Size
