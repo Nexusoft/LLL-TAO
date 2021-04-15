@@ -31,128 +31,126 @@ namespace TAO
          **/
         class SessionManager
         {
-            public:
+        public:
 
-                /* Singleton access */
-                static SessionManager& Instance();
-
-
-                /** Destructor. **/
-                ~SessionManager();
-
-                /* Delete copy constructor and assignment to guarantee only one session */
-                SessionManager(const SessionManager&)  = delete;
-                void operator=(const SessionManager&)  = delete;
+            /* Singleton access */
+            static SessionManager& Instance();
 
 
-                /** Add
-                 *
-                 *  Adds a session to the manager
-                 *
-                 *  @param[in] pUser Signature chain of the user starting their session
-                 *  @param[in] strPin Pin of the user starting their session
-                 *
-                 *  @return The newly created session instance
-                 *
-                 **/
-                Session& Add(const TAO::Ledger::SignatureChain& pUser, const SecureString& strPin);
+            /** Destructor. **/
+            ~SessionManager();
+
+            /* Delete copy constructor and assignment to guarantee only one session */
+            SessionManager(const SessionManager& session)             = delete;
+            SessionManager& operator=(const SessionManager& session)  = delete;
 
 
-                /** Load
-                 *
-                 *  Loads an existing session from disk and adds it to the session manager
-                 *
-                 *  @param[in] hashGenesis The genesis hash of the user to load the session for.
-                 *  @param[in] strPin The pin to use to load the session.
-                 *
-                 *  @return The newly loaded session instance
-                 **/
-                Session& Load(const uint256_t& hashGenesis, const SecureString& strPin);
+            /** Add
+             *
+             *  Adds a session to the manager
+             *
+             *  @param[in] pUser Signature chain of the user starting their session
+             *  @param[in] strPin Pin of the user starting their session
+             *
+             *  @return The newly created session instance
+             *
+             **/
+            Session& Add(const TAO::Ledger::SignatureChain& pUser, const SecureString& strPin);
 
 
-                /** Remove
-                 *
-                 *  Remove a session from the manager
-                 *
-                 *  @param[in] hashSession The session id to remove
-                 *
-                 *  @return The newly created session instance
-                 *
-                 **/
-                void Remove(const uint256_t& hashSession);
+            /** Load
+             *
+             *  Loads an existing session from disk and adds it to the session manager
+             *
+             *  @param[in] hashGenesis The genesis hash of the user to load the session for.
+             *  @param[in] strPin The pin to use to load the session.
+             *
+             *  @return The newly loaded session instance
+             **/
+            Session& Load(const uint256_t& hashGenesis, const SecureString& strPin);
 
 
-                /** Get
-                 *
-                 *  Returns a session instance by session id
-                 *
-                 *  @param[in] hashSession The session id to search for
-                 *  @param[in] fLogActivity Flag indicating that this call should update the session activity timestamp
-                 *
-                 *  @return The session instance
-                 *
-                 **/
-                Session& Get(const uint256_t& hashSession, bool fLogActivity = true);
+            /** Remove
+             *
+             *  Remove a session from the manager
+             *
+             *  @param[in] hashSession The session id to remove
+             *
+             *  @return The newly created session instance
+             *
+             **/
+            void Remove(const uint256_t& hashSession);
 
 
-                /** Has
-                 *
-                 *  Checks to see if the session ID exists in session map
-                 *
-                 *  @param[in] hashSession The session id to search for
-                 *
-                 *  @return True if the session ID exists
-                 *
-                 **/
-                bool Has(const uint256_t& hashSession);
+            /** Get
+             *
+             *  Returns a session instance by session id
+             *
+             *  @param[in] hashSession The session id to search for
+             *  @param[in] fLogActivity Flag indicating that this call should update the session activity timestamp
+             *
+             *  @return The session instance
+             *
+             **/
+            Session& Get(const uint256_t& hashSession, bool fLogActivity = true);
 
 
-                /** Size
-                 *
-                 *  Returns the number of active sessions in the session map
-                 *
-                 *  @return True if the session ID exists
-                 *
-                 **/
-                uint32_t Size();
+            /** Has
+             *
+             *  Checks to see if the session ID exists in session map
+             *
+             *  @param[in] hashSession The session id to search for
+             *
+             *  @return True if the session ID exists
+             *
+             **/
+            bool Has(const uint256_t& hashSession);
 
 
-                /** Clear
-                 *
-                 *  Destroys all sessions and removes them
-                 *
-                 **/
-                void Clear();
+            /** Size
+             *
+             *  Returns the number of active sessions in the session map
+             *
+             *  @return True if the session ID exists
+             *
+             **/
+            uint32_t Size();
 
 
-                /* Map of session objects to session ID */
-                std::map<uint256_t, Session> mapSessions;
+            /** Clear
+             *
+             *  Destroys all sessions and removes them
+             *
+             **/
+            void Clear();
 
 
-                /* Mutex to control access to the session map */
-                std::mutex MUTEX;
+            /* Map of session objects to session ID */
+            std::map<uint256_t, Session> mapSessions;
 
 
-            private:
-
-                /** Default Constructor made private as access should be via singleton. **/
-                SessionManager();
+            /* Mutex to control access to the session map */
+            std::mutex MUTEX;
 
 
-                /** PurgeInactive
-                 *
-                 *  Removes any sessions that have been inactive for longer than the session timeout.
-                 *
-                 *  @param[in] nTimeout The timeout in minutes to determine if sessions are inactive
-                 *
-                 **/
-                void PurgeInactive(const uint32_t nTimeout);
+        private:
+
+            /** Default Constructor made private as access should be via singleton. **/
+            SessionManager();
 
 
-                /* Thread to purge inactive sessions */
-                std::thread PURGE_THREAD;
+            /** PurgeInactive
+             *
+             *  Removes any sessions that have been inactive for longer than the session timeout.
+             *
+             *  @param[in] nTimeout The timeout in minutes to determine if sessions are inactive
+             *
+             **/
+            void PurgeInactive(const uint32_t nTimeout);
 
 
+            /* Thread to purge inactive sessions */
+            std::thread PURGE_THREAD;
         };
 
         /* Helper method to simplify session manager access */
