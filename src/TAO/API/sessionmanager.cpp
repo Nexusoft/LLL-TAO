@@ -120,13 +120,12 @@ namespace TAO
                 /* Return the session instance */
                 return mapSessions[nSession];
             }
-            catch(std::exception& ex)
+            catch(const std::exception& ex)
             {
                 /* Need to remove the session from the map if it failed to load */
                 mapSessions.erase(nSession);
                 return null_session;
             }
-
         }
 
 
