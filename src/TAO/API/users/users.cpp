@@ -342,6 +342,7 @@ namespace TAO
             /* Create the transaction and return */
             return TAO::Ledger::CreateTransaction(user, pin, tx);
         }
+        
 
         /* Checks that the session/password/pin parameters have been provided (where necessary) and then verifies that the
         *  password and pin are correct.

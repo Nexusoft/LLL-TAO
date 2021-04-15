@@ -34,7 +34,7 @@ namespace TAO
     {
         /* Single session manager pointer instead of a static reference, so that we can control destruction */
         SessionManager* SESSION_MANAGER = nullptr;
-        
+
         /* Helper method to simplify session manager access */
         SessionManager& GetSessionManager()
         {
@@ -126,7 +126,7 @@ namespace TAO
                 mapSessions.erase(nSession);
                 return null_session;
             }
-            
+
         }
 
 
@@ -140,6 +140,7 @@ namespace TAO
 
             mapSessions.erase(sessionID);
         }
+
 
         /* Returns a session instance by session id */
         Session& SessionManager::Get(const uint256_t& sessionID, bool fLogActivity)
@@ -158,10 +159,11 @@ namespace TAO
 
             /* Return the session.  NOTE: we do this outside of the braces where the mutex is locked as we need to guarantee that
                the lock is released before returning.  Failure to do this can lead to deadlocks if subsequent methods are called on
-               the returned session instance all in one line, as the mutex would remain locked until the stack unwinds from the 
+               the returned session instance all in one line, as the mutex would remain locked until the stack unwinds from the
                additional method calls. */
             return mapSessions[sessionID];
         }
+
 
         /* Checks to see if the session ID exists in session map */
         bool SessionManager::Has(const uint256_t& sessionID)
@@ -188,28 +190,17 @@ namespace TAO
 
 
         /* Destroys all sessions and removes them */
-        void SessionManager::PurgeInactive(uint32_t nTimeout)
+        void SessionManager::PurgeInactive(const uint32_t nTimeout)
         {
-            /* mutex and condition variable for the thread loop */
-            std::mutex PURGE_MUTEX;
-            std::condition_variable PURGE_CONDITION;
-
+            /* Run in background to purge inactive sessions. */
             while(!config::fShutdown.load())
             {
-                std::unique_lock<std::mutex> lock(PURGE_MUTEX);
-                
-                /* Check the sessions every 10 seconds */
-                PURGE_CONDITION.wait_for(lock, std::chrono::seconds(10), [this]{ return config::fShutdown.load();});
-
-                /* Check for shutdown. */
-                if(config::fShutdown.load())
-                    return;
+                runtime::sleep(10000); //check sessions every 10 seconds
 
                 /* Timestamp to determine if the session should be purged.  This is nTimeout minutes in the past from current time */
                 uint64_t nPurgeTime = runtime::unifiedtimestamp() - nTimeout * 60;
 
-                /* Vector of session ID's to purge.  First we identify those that are inactive and add them to this list, then we
-                   gracefully log out each of the sessions */
+                /* Vector of session ID's to purge. */
                 std::vector<uint256_t> vPurge;
 
                 {
@@ -217,16 +208,14 @@ namespace TAO
                     LOCK(MUTEX);
 
                     /* Delete any sessions where the last activity time is earlier than nTimeout minutes ago */
-                    auto session = mapSessions.begin();
-                    while(session != mapSessions.end())
+                    auto it = mapSessions.begin();
+                    while(it != mapSessions.end())
                     {
                         /* Check to see if the session last active timestamp is earlier than the purge time */
-                        if(session->second.GetLastActive() < nPurgeTime)
-                            /* Add the session ID to the purge list */
-                            vPurge.push_back(session->first);
-                        
-                        /* increment iterator */
-                        ++session;
+                        if(it->second.GetLastActive() < nPurgeTime)
+                            vPurge.push_back(it->first);
+
+                        ++it;
                     }
                 }
 
