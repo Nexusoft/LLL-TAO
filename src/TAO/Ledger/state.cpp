@@ -46,9 +46,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/client.h>
 
-#include <Util/include/string.h>
-
-
 
 /* Global TAO namespace. */
 namespace TAO
@@ -1001,13 +998,12 @@ namespace TAO
                 for(const auto& proof : vDelete)
                     mempool.Remove(proof.second);
 
-
-
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
                 uint64_t nContractTime = swContract.ElapsedMicroseconds();
                 uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
 
+                /* Only output best chain data when not syncing. */
                 if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
                     debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
                         "New Best Block hash=", hash.SubString(),
@@ -1035,12 +1031,7 @@ namespace TAO
 
                 /* Broadcast the block to nodes if not synchronizing. */
                 if(!ChainState::Synchronizing())
-                {
-                    /* Notify subscribers of new block. */
-                    Dispatch::GetInstance().DispatchBlock(hash);
-                }
-                else
-                    debug::log(3, FUNCTION, "Skipping relay until chain is done synchronizing");
+                    Dispatch::GetInstance().PushRelay(ChainState::hashBestChain.load());
             }
 
             return true;

@@ -541,17 +541,6 @@ namespace LLP
         }
 
 
-        /** RelayBlock
-         *
-         *  Handle relays of all events for LLP when processing block. The Tritium LLP subscribes to the Ledger::Notify instance
-         *  to receive new block notifications via this callback method.
-         *
-         *  @param[in] hashBlock The hash of the block to relay.
-         *
-         **/
-        static void RelayBlock(const uint1024_t& hashBlock);
-
-
         /** SyncSigChain
          *
          *  Requests missing sig chain / event transactions for the given signature chain.

@@ -30,7 +30,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/stake_minter.h>
 #include <TAO/Ledger/include/timelocks.h>
 
-#include <Util/include/block_notify.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/signals.h>
@@ -131,10 +130,6 @@ int main(int argc, char** argv)
 
         /* Initialize ChainState. */
         TAO::Ledger::ChainState::Initialize();
-
-
-        /* Register the user-configurable blocknotify function with the Ledger Dispatcher so that it is notififed whenever there is a new block*/
-        TAO::Ledger::Dispatch::GetInstance().SubscribeBlock(BlockNotify);
 
 
         /* We don't need the wallet in client mode. */

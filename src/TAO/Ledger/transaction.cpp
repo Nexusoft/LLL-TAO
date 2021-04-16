@@ -980,9 +980,6 @@ namespace TAO
             if(nFlags == FLAGS::BLOCK && !LLD::Ledger->WriteLast(hashGenesis, hash))
                 return debug::error(FUNCTION, "failed to write last hash");
 
-            /* Notify subscribers of new transaction. */
-            Dispatch::GetInstance().DispatchTransaction(hash, true);
-
             return true;
         }
 
@@ -1045,9 +1042,6 @@ namespace TAO
                 if(!TAO::Register::Rollback(*contract, nFlags))
                     return false;
             }
-
-            /* Notify subscribers of transaction disconnect. */
-            Dispatch::GetInstance().DispatchTransaction(GetHash(), false);
 
             return true;
         }

@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <Util/include/mutex.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
+#include <Util/include/string.h>
 
 #include <Legacy/include/evaluate.h>
 
@@ -38,20 +39,21 @@ namespace TAO
 
         /* Default Constructor. */
         Dispatch::Dispatch()
-        : DISPATCH_MUTEX ( )
-        , vBlockDispatch ( )
-        , vTransactionDispatch ( )
+        : DISPATCH_MUTEX  ( )
+        , queueDispatch   ( )
+        , DISPATCH_THREAD (std::bind(&Dispatch::Relay, this))
+        , CONDITION       ( )
         {
-
         }
 
 
         /* Default destructor. */
         Dispatch::~Dispatch()
         {
-            LOCK(DISPATCH_MUTEX);
-            vBlockDispatch.clear();
-            vTransactionDispatch.clear();
+            /* Cleanup our dispatch thread. */
+            CONDITION.notify_all();
+            if(DISPATCH_THREAD.joinable())
+                DISPATCH_THREAD.join();
         }
 
 
@@ -63,64 +65,197 @@ namespace TAO
         }
 
 
-        /* Adds a subscripton for new blocks. */
-        void Dispatch::SubscribeBlock(const BlockDispatchFunction& function)
+        /*  Dispatch a new block hash to relay thread.*/
+        void Dispatch::PushRelay(const uint1024_t& hashBlock)
         {
-            /* Lock the mutex  */
             LOCK(DISPATCH_MUTEX);
 
-            /* Add the function callback to our internal list */
-            vBlockDispatch.push_back(function);
+            queueDispatch.push(hashBlock);
+            CONDITION.notify_one();
         }
 
 
-        /* Adds a subscripton for new transactions. */
-        void Dispatch::SubscribeTransaction(const TransactionDispatchFunction& function)
+        /* Handle relays of all events for LLP when processing block. */
+        void Dispatch::Relay()
         {
-            /* Lock the mutex  */
-            LOCK(DISPATCH_MUTEX);
-
-            /* Add the function callback to our internal list */
-            vTransactionDispatch.push_back(function);
-        }
-
-
-        /* Notify all subscribers of a new block.*/
-        void Dispatch::DispatchBlock(const uint1024_t& hashBlock)
-        {
-            /* Lock the mutex to synchronize access to the function pointer list */
-            LOCK(DISPATCH_MUTEX);
-
-            /* Call each one in turn in their own ephemeral thread */
-            for(const auto& pBlockDispatch : vBlockDispatch)
+            std::mutex CONDITION_MUTEX;
+            while(!config::fShutdown.load())
             {
-                std::thread([&]()
+                /* Wait for entries in the queue. */
+                std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+                CONDITION.wait(CONDITION_LOCK,
+                [this]
                 {
-                    pBlockDispatch(hashBlock);
+                    /* Check for shutdown. */
+                    if(config::fShutdown.load())
+                        return true;
 
-                }).detach();
-            }
+                    //LOCK(DISPATCH_MUTEX); XXX: run with RACE_CHECK=1 to make sure this is thread-safe
+                    return queueDispatch.size() != 0;
+                });
 
-        }
+                /* Check for shutdown. */
+                if(config::fShutdown.load())
+                    return;
 
+                /* Start a stopwatch. */
+                runtime::stopwatch swTimer;
+                swTimer.start();
 
-        /* Notify all subscribers of a new transaction.*/
-        void Dispatch::DispatchTransaction(const uint512_t& hashTx, bool fConnect)
-        {
-            /* Lock the mutex to synchronize access to the function pointer list */
-            LOCK(DISPATCH_MUTEX);
+                /* Grab the next entry in the queue. */
+                uint1024_t hashBlock = queueDispatch.front();
+                queueDispatch.pop();
 
-            /* Call each one in turn in their own ephemeral thread */
-            for(const auto& pTransactionDispatch : vTransactionDispatch)
-            {
-                std::thread([&]()
+                /* Read the block from disk. */
+                BlockState block;
+                if(!LLD::Ledger->ReadBlock(hashBlock, block))
                 {
-                    pTransactionDispatch(hashTx, fConnect);
+                    /* Debug output. */
+                    debug::log(0, FUNCTION, "Relay ",
+                        ANSI_COLOR_BRIGHT_RED, "FAILED ", ANSI_COLOR_RESET,
+                        " for ", hashBlock.SubString(), ": block not on disk"
+                    );
 
-                }).detach();
+                    continue;
+                }
+
+                /* Relay the block and bestchain. */
+                LLP::TRITIUM_SERVER->Relay
+                (
+                    LLP::TritiumNode::ACTION::NOTIFY,
+
+                    /* Relay BLOCK notification. */
+                    uint8_t(LLP::TritiumNode::TYPES::BLOCK),
+                    hashBlock,
+
+                    /* Relay BESTCHAIN notification. */
+                    uint8_t(LLP::TritiumNode::TYPES::BESTCHAIN),
+                    hashBlock,
+
+                    /* Relay BESTHEIGHT notification. */
+                    uint8_t(LLP::TritiumNode::TYPES::BESTHEIGHT),
+                    block.nHeight
+                );
+
+                #ifndef IPHONE //block notify disabled for IOS, missing system command
+
+                /* Check for block notify command if applicable. */
+                std::string strCmd = config::GetArg("-blocknotify", "");
+                if(!strCmd.empty())
+                {
+                    /* %s is replaced with block hash in command. */
+                    ReplaceAll(strCmd, "%s", hashBlock.GetHex());
+
+                    /* Track our return value and log block notify success. */
+                    int32_t nRet = std::system(strCmd.c_str());
+                    debug::log(0, FUNCTION, "Block Notify Executed with code ", nRet);
+                }
+                #endif
+
+                /* Let's process all the transactios now. */
+                DataStream ssRelay(SER_NETWORK, LLP::PROTOCOL_VERSION);
+                for(const auto& proof : block.vtx)
+                {
+                    /* Only work on tritium transactions for now. */
+                    if(proof.first == TRANSACTION::TRITIUM)
+                    {
+                        /* Get the transaction hash. */
+                        const uint512_t& hash = proof.second;
+
+                        /* Make sure the transaction is on disk. */
+                        TAO::Ledger::Transaction tx;
+                        if(!LLD::Ledger->ReadTx(hash, tx))
+                            continue;
+
+                        /* Check all the tx contracts. */
+                        for(uint32_t n = 0; n < tx.Size(); ++n)
+                        {
+                            const TAO::Operation::Contract& contract = tx[n];
+
+                            /* Check the contract's primitive. */
+                            uint8_t nOP = 0;
+                            contract >> nOP;
+                            switch(nOP)
+                            {
+                                case TAO::Operation::OP::TRANSFER:
+                                case TAO::Operation::OP::DEBIT:
+                                {
+                                    /* Seek to recipient. */
+                                    uint256_t hashTo;
+                                    contract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
+                                    contract >> hashTo;
+
+                                    /* Read the owner of register. (check this for MEMPOOL, too) */
+                                    TAO::Register::State state;
+                                    if(!LLD::Register->ReadState(hashTo, state))
+                                        continue;
+
+                                    /* Fire off our event. */
+                                    ssRelay << uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN) << state.hashOwner << hash;
+
+                                    debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                                        hash.SubString(), " for genesis ", state.hashOwner.SubString());
+
+                                    break;
+                                }
+
+                                case TAO::Operation::OP::COINBASE:
+                                {
+                                    /* Get the genesis. */
+                                    uint256_t hashGenesis;
+                                    contract >> hashGenesis;
+
+                                    /* Commit to disk. */
+                                    if(tx[n].Caller() != hashGenesis)
+                                    {
+                                        /* Fire off our event. */
+                                        ssRelay << uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN) << hashGenesis << hash;
+
+                                        debug::log(2, FUNCTION, "COINBASE: ", hash.SubString(), " for genesis ", hashGenesis.SubString());
+                                    }
+
+                                    break;
+                                }
+                            }
+                        }
+
+                        /* Notify the sender as well. */
+                        ssRelay << uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN) << tx.hashGenesis << hash;
+                    }
+                    else if(proof.first == TRANSACTION::LEGACY)
+                    {
+                        /* Get the transaction hash. */
+                        const uint512_t& hash = proof.second;
+
+                        /* Make sure the transaction isn't on disk. */
+                        Legacy::Transaction tx;
+                        if(!LLD::Legacy->ReadTx(hash, tx))
+                            continue;
+
+                        /* Check the outputs for send to register. */
+                        for(const auto& out : tx.vout)
+                        {
+                            /* Check outputs for possible events. */
+                            uint256_t hashTo;
+                            if(Legacy::ExtractRegister(out.scriptPubKey, hashTo))
+                            {
+                                /* Read the owner of register. (check this for MEMPOOL, too) */
+                                TAO::Register::State state;
+                                if(!LLD::Register->ReadState(hashTo, state))
+                                    continue;
+
+                                /* Fire off our event. */
+                                ssRelay << uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY) << uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN) << state.hashOwner << hash;
+
+                                debug::log(2, FUNCTION, "LEGACY: ", hash.SubString(), " for genesis ", state.hashOwner.SubString());
+                            }
+                        }
+                    }
+                }
+
+                /* Relay all of our SIGCHAIN events. */
+                LLP::TRITIUM_SERVER->_Relay(LLP::TritiumNode::ACTION::NOTIFY, ssRelay);
             }
-
         }
-
     }
 }

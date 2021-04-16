@@ -38,7 +38,6 @@ namespace TAO
     {
         typedef struct
         {
-
             /* The confirmed balance from the state at the last block*/
             uint64_t nBalance = 0;
 
@@ -64,6 +63,7 @@ namespace TAO
             uint8_t nDecimals = 0;
 
         } TokenBalance;
+        
 
         /* Get a summary of balance information across all accounts belonging to the currently logged in signature chain
            for a particular token type */
@@ -131,7 +131,7 @@ namespace TAO
                 /* Check that it is for the correct token */
                 if(object.get<uint256_t>("token") != hashToken)
                     continue;
-                
+
                 /* Cache this if it is the trust account */
                 if(object.Standard() == TAO::Register::OBJECTS::TRUST)
                     trust = object;
@@ -160,7 +160,7 @@ namespace TAO
 
             /* Get the stake amount */
             if(!trust.IsNull())
-                balance.nStake = trust.get<uint64_t>("stake");            
+                balance.nStake = trust.get<uint64_t>("stake");
 
             /* Populate the response object */
 
@@ -261,7 +261,7 @@ namespace TAO
 
                 /* Get the token */
                 hashToken = object.get<uint256_t>("token");
-                
+
                 /* Cache this if it is the trust account */
                 if(object.Standard() == TAO::Register::OBJECTS::TRUST)
                     trust = object;
@@ -298,7 +298,7 @@ namespace TAO
                 /* Get the stake amount */
                 if(!trust.IsNull())
                     vTokenBalances[hashToken].nStake = trust.get<uint64_t>("stake");
-            
+
 
                 /* Populate the response object */
                 json::json jsonBalances;
@@ -310,11 +310,11 @@ namespace TAO
 
                 /* Add the token identifier */
                 jsonBalances["token"] = hashToken.ToString();
-                
+
                 jsonBalances["available"] = (double)(vTokenBalances[hashToken].nAvailable / pow(10, vTokenBalances[hashToken].nDecimals));
                 jsonBalances["pending"] = (double)(vTokenBalances[hashToken].nPending / pow(10, vTokenBalances[hashToken].nDecimals));
                 jsonBalances["unconfirmed"] = (double)(vTokenBalances[hashToken].nUnconfirmed / pow(10, vTokenBalances[hashToken].nDecimals));
-                
+
                 /* Add stake/immature for NXS only */
                 if(hashToken == 0)
                 {
@@ -335,7 +335,7 @@ namespace TAO
                 /* Check the offset. */
                 if(nTotal <= nOffset)
                     continue;
-                
+
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
                     break;

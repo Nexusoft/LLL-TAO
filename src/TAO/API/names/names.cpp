@@ -434,12 +434,12 @@ namespace TAO
             /* Look up the Name object for the register address in the specified sig chain, if one has been provided */
             if(hashGenesis != 0)
             {
-                /* If we are in client mode then if the hashGenesis is not for the logged in user we need to make sure we 
+                /* If we are in client mode then if the hashGenesis is not for the logged in user we need to make sure we
                    have downloaded their sig chain so that we have access to it */
                 if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
                 {
                     /* Download the users signature chain transactions, but we do not need events */
-                    TAO::API::DownloadSigChain(hashGenesis, false);  
+                    TAO::API::DownloadSigChain(hashGenesis, false);
                 }
 
                 /* Now lookup the name in this sig chain */
