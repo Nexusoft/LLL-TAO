@@ -1347,7 +1347,7 @@ namespace TAO
         bool VoidContract(const TAO::Operation::Contract& contract, const uint32_t nContract, TAO::Operation::Contract &voidContract)
         {
             /* The return flag indicating the contract was voided */
-            bool bVoided = false;
+            bool fVoided = false;
 
             /* Get the transaction hash */
             uint512_t hashTx = contract.Hash();
@@ -1406,7 +1406,7 @@ namespace TAO
                 /* Create the credit contract  */
                 voidContract<< uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashFrom <<  hashFrom << nAmount;
 
-                bVoided = true;
+                fVoided = true;
             }
             /* Process voiding a transfer */
             else if(nType == TAO::Operation::OP::TRANSFER)
@@ -1430,10 +1430,10 @@ namespace TAO
                 /* Create the claim contract  */
                 voidContract << (uint8_t)TAO::Operation::OP::CLAIM << hashTx << uint32_t(nContract) << hashAddress;
 
-                bVoided = true;
+                fVoided = true;
             }
 
-            return bVoided;
+            return fVoided;
         }
 
 

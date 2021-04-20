@@ -42,7 +42,7 @@ ________________________________________________________________________________
 #endif
 
 #ifndef MAINNET_API_SSL_PORT
-#define MAINNET_API_SSL_PORT 7080
+#define MAINNET_API_SSL_PORT 8443
 #endif
 
 #ifndef MAINNET_RPC_PORT
@@ -82,11 +82,11 @@ ________________________________________________________________________________
 #endif
 
 #ifndef TESTNET_API_PORT
-#define TESTNET_API_PORT 8080
+#define TESTNET_API_PORT 7080
 #endif
 
 #ifndef TESTNET_API_SSL_PORT
-#define TESTNET_API_SSL_PORT 7080
+#define TESTNET_API_SSL_PORT 7443
 #endif
 
 #ifndef TESTNET_RPC_PORT
