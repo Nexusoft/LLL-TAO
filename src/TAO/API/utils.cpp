@@ -1081,6 +1081,7 @@ namespace TAO
 
 
         /* Calculates the percentage of tokens owned from the total supply. */
+        //XXX: good god, more O(n^2) algorithms, delete and/or refactor this code
         double GetTokenOwnership(const TAO::Register::Address& hashToken, const uint256_t& hashGenesis)
         {
             /* Find all token accounts owned by the caller for the token */
@@ -1089,7 +1090,6 @@ namespace TAO
 
             /* The balance of tokens owned for this asset */
             uint64_t nBalance = 0;
-
             for(const auto& hashAccount : vAccounts)
             {
                 /* Make sure it is an account or the token itself (in case not all supply has been distributed)*/
