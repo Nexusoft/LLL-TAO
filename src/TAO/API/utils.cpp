@@ -1007,6 +1007,7 @@ namespace TAO
 
 
         /*  Get the outstanding coinbases. */
+        //XXX: we are iterating the entire sigchain for each of these items, this needs to be optimized
         uint64_t GetImmature(const uint256_t& hashGenesis)
         {
             /* Return amount */
