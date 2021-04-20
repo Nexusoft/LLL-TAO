@@ -1227,8 +1227,8 @@ namespace TAO
 
             /* Retrieve user's default NXS account. This is only relevant when not in private mode (as there is no NXS)*/
             std::string strAccount = config::GetArg("-events_account", "default");
-            TAO::Register::Object defaultAccount;
-            if(!config::fHybrid.load() && !TAO::Register::GetNameRegister(hashGenesis, strAccount, defaultAccount))
+            TAO::Register::Object objectDefault;
+            if(!config::fHybrid.load() && !TAO::Register::GetNameRegister(hashGenesis, strAccount, objectDefault))
                 throw APIException(-63, "Could not retrieve default NXS account to credit");
 
             /* Check for suppressed parameter. */
@@ -1335,7 +1335,7 @@ namespace TAO
                                 /* If this is a NXS debit then process the credit to the default account */
                                 if(hashToken == 0)
                                 {
-                                    hashTo = defaultAccount.get<uint256_t>("address");
+                                    hashTo = objectDefault.get<uint256_t>("address");
                                 }
                                 else
                                 {
@@ -1447,7 +1447,7 @@ namespace TAO
                             refContract >> nAmount;
 
                             /* Get the address that this name register for default account is pointing to. */
-                            hashTo = defaultAccount.get<uint256_t>("address");
+                            hashTo = objectDefault.get<uint256_t>("address");
 
                             /* Submit the payload object. */
                             TAO::Operation::Contract credit;

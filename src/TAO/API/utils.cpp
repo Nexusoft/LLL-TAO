@@ -1468,6 +1468,7 @@ namespace TAO
         }
 
 
+        //XXX: this method is only used once, and is O(n^2) complexity (scans sigchain twice), sheesh. We need to delete this and work on O(1) version
         /* Searches the sig chain for the first account for the given token type */
         bool GetAccountByToken(const uint256_t& hashGenesis, const uint256_t& hashToken, TAO::Register::Address& hashAccount)
         {
