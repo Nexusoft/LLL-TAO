@@ -289,7 +289,7 @@ namespace TAO
 
 
                 /** Number of incorrect authentication attempts recorded for this session **/
-                uint8_t nAuthAttempts;
+                uint16_t nAuthAttempts;
 
 
                 /** Encrypted pointer of signature chain **/

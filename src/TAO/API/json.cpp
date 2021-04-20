@@ -741,10 +741,10 @@ namespace TAO
 
                         ret["for"]      = strInput;
 
-                        ret["txid"]    = hashTx.ToString();
-                        ret["contract"]  = nID;
-                        ret["proof"]   = hashProof.ToString();
-                        ret["to"] = hashAddress.ToString();
+                        ret["txid"]     = hashTx.ToString();
+                        ret["contract"] = nID;
+                        ret["proof"]    = hashProof.ToString();
+                        ret["to"]       = hashAddress.ToString();
 
                         /* Resolve the name of the account that the credit is to */
                         std::string strAccount = Names::ResolveName(hashCaller, hashAddress);

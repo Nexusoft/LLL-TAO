@@ -197,7 +197,7 @@ namespace TAO
                 runtime::sleep(10000); //check sessions every 10 seconds
 
                 /* Timestamp to determine if the session should be purged.  This is nTimeout minutes in the past from current time */
-                uint64_t nPurgeTime = runtime::unifiedtimestamp() - nTimeout * 60;
+                uint64_t nPurgeTime = runtime::unifiedtimestamp() - (nTimeout * 60);
 
                 /* Vector of session ID's to purge. */
                 std::vector<uint256_t> vPurge;
