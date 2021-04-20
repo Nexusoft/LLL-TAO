@@ -1472,9 +1472,6 @@ namespace TAO
         /* Searches the sig chain for the first account for the given token type */
         bool GetAccountByToken(const uint256_t& hashGenesis, const uint256_t& hashToken, TAO::Register::Address& hashAccount)
         {
-            /* Flag indicating if an account was found */
-            bool fFound = false;
-
             /* We search for the first account of the specified token type.  NOTE that the owner my not
                have an account for the token at this stage, in which case we can just skip the notification
                for now until they do have one */
@@ -1518,12 +1515,11 @@ namespace TAO
                 {
                     /* Stop on the first one we find */
                     hashAccount = state.first;
-                    fFound = true;
-                    break;
+                    return true;
                 }
             }
 
-            return fFound;
+            return false;
         }
 
 
