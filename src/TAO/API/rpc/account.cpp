@@ -24,13 +24,6 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 #include <Legacy/wallet/walletdb.h>
 
-#include <LLC/hash/SK.h>
-
-#include <LLD/include/global.h>
-
-#include <LLP/include/version.h>
-
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -39,11 +32,16 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/address.h>
+#include <TAO/Register/types/object.h>
 
 #include <Util/include/allocators.h>
 #include <Util/include/base64.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
+
+#include <LLC/hash/SK.h>
+#include <LLD/include/global.h>
+#include <LLP/include/version.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -87,7 +85,7 @@ namespace TAO
             std::vector<unsigned char> newKey;
             if(!wallet.GetKeyPool().GetKeyFromPool(newKey, false))
                 throw APIException(-12, "Error: Keypool ran out, please call keypoolrefill first");
-                
+
             Legacy::NexusAddress address(newKey);
             wallet.GetAddressBook().SetAddressBookName(address, strAccount);
 

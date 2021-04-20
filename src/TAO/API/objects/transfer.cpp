@@ -11,8 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/API/include/build.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/conditions.h>
 
 #include <TAO/Operation/include/enum.h>

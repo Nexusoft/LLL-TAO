@@ -20,7 +20,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/names/types/names.h>
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/include/utils.h>
+
+#include <TAO/API/include/build.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>

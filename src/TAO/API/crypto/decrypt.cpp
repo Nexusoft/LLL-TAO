@@ -17,8 +17,8 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 
 #include <TAO/API/objects/types/objects.h>
+
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/types/mempool.h>
@@ -78,11 +78,11 @@ namespace TAO
                 /* Check the caller included the key name */
                 if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
                     throw APIException(-88, "Missing name.");
-                
+
                 /* Get the requested key name */
                 std::string strName = params["name"].get<std::string>();
 
-                /* Ensure the user has not requested to encrypt using one of the default keys 
+                /* Ensure the user has not requested to encrypt using one of the default keys
                    as these are for signature verification only */
                 std::set<std::string> setDefaults{"auth", "lisp", "network", "sign", "verify", "cert", "app1", "app2", "app3"};
                 if(setDefaults.find(strName) != setDefaults.end())
@@ -98,13 +98,13 @@ namespace TAO
                 /* Get the session to be used for this API call */
                 Session& session = users->GetSession(params);
 
-                
+
                 /* Get the private key. */
                 uint512_t hashSecret = session.GetAccount()->Generate(strName, 0, strPIN);
-                
+
                 /* If a peer key has been provided then generate a shared key */
                 if(params.find("peerkey") != params.end() && !params["peerkey"].get<std::string>().empty())
-                {       
+                {
                     /* Decode the public key into a vector of bytes */
                     std::vector<uint8_t> vchPubKey;
                     if(!encoding::DecodeBase58(params["peerkey"].get<std::string>(), vchPubKey))
@@ -135,7 +135,7 @@ namespace TAO
                 {
                     /* Get the scheme */
                     uint8_t nScheme = get_scheme(params);
-                    
+
                     /* Otherwise we use the private key as the symmetric key */
                     vchKey = hashSecret.GetBytes();
 
@@ -180,7 +180,7 @@ namespace TAO
             /* Encrypt the data */
             if(!LLC::DecryptAES256(vchKey, vchData, vchPlainText))
                 throw APIException(-271, "Failed to decrypt data.");
-            
+
             /* Add the decrypted data to the response */
             ret["data"] = std::string(vchPlainText.begin(), vchPlainText.end());
 

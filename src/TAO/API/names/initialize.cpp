@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/names/types/names.h>
-#include <TAO/API/include/utils.h>
-#include <TAO/API/include/json.h>
+
+#include <TAO/API/include/check.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -48,7 +48,7 @@ namespace TAO
                     strMethodRewritten = "list/name/history";
 
                     /* Get the name or address that comes after the list/name/history part */
-                    strNameOrAddress = strMethod.substr(18); 
+                    strNameOrAddress = strMethod.substr(18);
                 }
                 else
                 {
@@ -72,7 +72,7 @@ namespace TAO
                     strMethodRewritten = "list/namespace/history";
 
                     /* Get the name or address that comes after the list/name/history part */
-                    strNameOrAddress = strMethod.substr(23); 
+                    strNameOrAddress = strMethod.substr(23);
                 }
                 else
                 {
@@ -91,13 +91,13 @@ namespace TAO
                 if(strMethodRewritten == "claim/name" || strMethodRewritten == "claim/namespace")
                     jsonParams["txid"] = strNameOrAddress;
                 /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                else if(IsRegisterAddress(strNameOrAddress) && strMethodRewritten == "get/name")
+                else if(CheckAddress(strNameOrAddress) && strMethodRewritten == "get/name")
                     jsonParams["register_address"] = strNameOrAddress;
-                else if(IsRegisterAddress(strNameOrAddress))
+                else if(CheckAddress(strNameOrAddress))
                     jsonParams["address"] = strNameOrAddress;
                 else
                     jsonParams["name"] = strNameOrAddress;
-            }       
+            }
 
             return strMethodRewritten;
         }

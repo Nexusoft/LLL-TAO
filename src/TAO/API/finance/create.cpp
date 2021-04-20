@@ -15,8 +15,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -77,7 +78,7 @@ namespace TAO
                 /* If name is provided then use this to deduce the register address */
                 hashToken = Names::ResolveAddress(params, params["token_name"].get<std::string>());
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("token") != params.end() && IsRegisterAddress(params["token"]))
+            else if(params.find("token") != params.end() && CheckAddress(params["token"]))
                 hashToken.SetBase58(params["token"]);
 
             /* If this is not a NXS token account, verify that the token identifier is for a valid token */

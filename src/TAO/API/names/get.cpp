@@ -15,8 +15,9 @@ ________________________________________________________________________________
 
 #include <TAO/API/names/types/names.h>
 #include <TAO/API/users/types/users.h>
+
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/types/sigchain.h>
@@ -49,7 +50,7 @@ namespace TAO
             else if(params.find("register_address") != params.end())
             {
                 /* Check that the caller has passed a valid register address */
-                if(!IsRegisterAddress(params["register_address"].get<std::string>()))
+                if(!CheckAddress(params["register_address"].get<std::string>()))
                     throw APIException(-89, "Invalid register_address");
 
                 /* Get the session to be used for this API call. */

@@ -18,8 +18,8 @@ ________________________________________________________________________________
 #include <LLC/include/x509_cert.h>
 
 #include <TAO/API/objects/types/objects.h>
+
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Register/types/object.h>
@@ -71,8 +71,8 @@ namespace TAO
                 nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL;
             else
                 throw APIException(-262, "Invalid scheme.");
-            
-     
+
+
             /* Check the caller included the signature */
             if(params.find("signature") == params.end() || params["signature"].get<std::string>().empty())
                 throw APIException(-274, "Missing signature");
@@ -98,7 +98,7 @@ namespace TAO
 
             /* flag indicating the signature is verified */
             bool fVerified = false;
-            
+
             /* Switch based on signature type. */
             switch(nScheme)
             {
@@ -178,7 +178,7 @@ namespace TAO
 
                 /* The address of the crypto object register, which is deterministic based on the genesis */
                 TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-                
+
                 /* Read the crypto object register */
                 TAO::Register::Object crypto;
                 if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))

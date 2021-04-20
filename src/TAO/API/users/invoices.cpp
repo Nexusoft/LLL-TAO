@@ -15,7 +15,10 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/user_types.h>
-#include <TAO/API/include/utils.h>
+
+#include <TAO/API/include/get.h>
+#include <TAO/API/include/list.h>
+
 #include <TAO/API/include/json.h>
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/invoices/types/invoices.h>
@@ -53,7 +56,7 @@ namespace TAO
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
 
             /* Check for logged in user.  NOTE: we rely on the GetSession method to check for the existence of a valid session ID
-               in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession 
+               in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession
                method will throw an appropriate error. */
             else
                 hashGenesis = users->GetSession(params).GetAccount()->Genesis();
@@ -92,8 +95,8 @@ namespace TAO
                 vAddresses.push_back(std::get<2>(unclaimed));
 
             /* For efficiency we can remove any addresses that are not read only registers */
-            vAddresses.erase(std::remove_if(vAddresses.begin(), vAddresses.end(), 
-                                            [](const TAO::Register::Address& address){return !address.IsReadonly();}), 
+            vAddresses.erase(std::remove_if(vAddresses.begin(), vAddresses.end(),
+                                            [](const TAO::Register::Address& address){return !address.IsReadonly();}),
                                             vAddresses.end());
 
             /* Read all the registers to that they are sorted by creation time */
@@ -104,7 +107,7 @@ namespace TAO
             uint32_t nTotal = 0;
             for(const auto& state : vRegisters)
             {
-                
+
                 /* Only include read only register type */
                 if(state.second.nType != TAO::Register::REGISTER::READONLY)
                     continue;
@@ -115,7 +118,7 @@ namespace TAO
 
                 if(type != TAO::API::USER_TYPES::INVOICE)
                     continue;
-                
+
                 /* The invoice JSON data */
                 json::json invoice = Invoices::InvoiceToJSON(params, state.second, state.first);
 
@@ -132,11 +135,11 @@ namespace TAO
                 /* Check the offset. */
                 if(nTotal <= nOffset)
                     continue;
-                
+
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
                     break;
-            
+
                 /* Add the invoice json to the response */
                 ret.push_back(invoice);
 

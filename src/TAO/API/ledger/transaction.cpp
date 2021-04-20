@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 #include <LLP/include/global.h>
 
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <Util/include/string.h>

@@ -15,7 +15,6 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/types/mempool.h>
@@ -95,7 +94,7 @@ namespace TAO
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
-                    
+
                     /* Retrieve the contract from the transaction for easier processing */
                     const TAO::Operation::Contract& contract = tx[nContract];
 
@@ -121,7 +120,7 @@ namespace TAO
                     /* The register address that this contract relates to, if any  */
                     TAO::Register::Address hashAddress;
                     contract >> hashAddress;
-                    
+
                     /* Check that the credit was made to the requested vote account */
                     if(hashAddress != hashAccount)
                         continue;
@@ -172,7 +171,7 @@ namespace TAO
                         /* Cap the amount of NXS used in the vote to 10k NXS so that large accounts cannot dominate */
                         uint64_t nStakeCapped = std::min(nStake, 10000 * TAO::Ledger::NXS_COIN);
 
-                        nVote = TAO::Ledger::NXS_COIN + ((nStakeCapped / 10000) * dTrustScore);  
+                        nVote = TAO::Ledger::NXS_COIN + ((nStakeCapped / 10000) * dTrustScore);
 
                         // 1,000 NXS    @ 0.6%      = 1.06 votes
                         // 10,000 NXS   @ 0.6%      = 1.6 votes
@@ -185,7 +184,7 @@ namespace TAO
 
                     /* Increment the weighted vote score */
                     dWeightedVotes += (double) nVote / TAO::Ledger::NXS_COIN;
-                    
+
                     /* Increment the vote counter */
                     nVotes++;
                 }

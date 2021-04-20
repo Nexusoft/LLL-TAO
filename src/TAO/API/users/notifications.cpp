@@ -18,10 +18,15 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <TAO/API/users/types/users.h>
+
+#include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/conditions.h>
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/list.h>
+
 #include <TAO/API/types/sessionmanager.h>
 
 #include <TAO/Ledger/include/constants.h>
@@ -1715,7 +1720,7 @@ namespace TAO
 
                     /* Attempt to add the void contract */
                     TAO::Operation::Contract voidContract;
-                    if(VoidContract(refContract, nContract, voidContract))
+                    if(AddVoid(refContract, nContract, voidContract))
                     {
                         /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
                         voidContract.Bind(nTimestamp, hashGenesis);

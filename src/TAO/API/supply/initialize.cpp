@@ -12,7 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/supply/types/supply.h>
-#include <TAO/API/include/utils.h>
+
+#include <TAO/API/include/check.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -21,7 +22,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        
+
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
          *  map directly to a function in the target API.  Insted this method can be overriden to
          *  parse the incoming URL and route to a different/generic method handler, adding parameter
@@ -47,7 +48,7 @@ namespace TAO
                     strMethodRewritten = "list/item/history";
 
                     /* Get the name or address that comes after the list/item/history part */
-                    strNameOrAddress = strMethod.substr(18); 
+                    strNameOrAddress = strMethod.substr(18);
                 }
                 else
                 {
@@ -63,7 +64,7 @@ namespace TAO
 
                 if(nPos != std::string::npos)
                 {
-                    /* Passing in the fieldname is only supported for the /get/  so if the user has 
+                    /* Passing in the fieldname is only supported for the /get/  so if the user has
                         requested a different method then just return the requested URL, which will in turn error */
                     if(strMethodRewritten != "get/item")
                         return strMethod;
@@ -73,16 +74,16 @@ namespace TAO
                     jsonParams["fieldname"] = strFieldName;
                 }
 
-                
+
                 /* Edge case for claim/item/txid */
                 if(strMethodRewritten == "claim/item")
                     jsonParams["txid"] = strNameOrAddress;
                 /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                else if(IsRegisterAddress(strNameOrAddress))
+                else if(CheckAddress(strNameOrAddress))
                     jsonParams["address"] = strNameOrAddress;
                 else
                     jsonParams["name"] = strNameOrAddress;
-                    
+
             }
 
             return strMethodRewritten;

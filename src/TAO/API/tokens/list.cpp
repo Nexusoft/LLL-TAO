@@ -17,10 +17,12 @@ ________________________________________________________________________________
 #include <TAO/API/objects/types/objects.h>
 #include <TAO/API/include/global.h>
 
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/get.h>
+#include <TAO/API/include/list.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -122,7 +124,7 @@ namespace TAO
                 /* Check the offset. */
                 if(nTotal <= nOffset)
                     continue;
-                
+
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
                     break;
@@ -168,7 +170,7 @@ namespace TAO
             {
                 throw APIException(-124, "Unknown token / account.");
             }
-            
+
             return Objects::ListTransactions(params, fHelp);
         }
 
@@ -229,12 +231,12 @@ namespace TAO
             /* Flag indicating there are top level filters  */
             bool fHasFilter = vWhere.count("") > 0;
 
-            /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as 
+            /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as
                standard where clauses to filter the json */
             std::vector<std::string> vIgnore = {"name", "address"};
 
 
-            /* The process below for building up the list of token accounts might seem convoluted but there is a reason for the 
+            /* The process below for building up the list of token accounts might seem convoluted but there is a reason for the
                long-winded process.  We can batch read accounts from the register database to obtain all accounts and then filter
                them by the token being filtered on, but unfortunately this by itself does not give us the register address of each
                account.  To get that, we instead use this initial list of accounts to build up a list of the account owners sig
@@ -271,7 +273,7 @@ namespace TAO
             /* Now we need to iterate the list of owners and find all of their registers */
             for(const auto& accountsByGenesis : vAccountsByGenesis)
             {
-                /* Number of accounts found for this sig chain.  We track this so that once we have found this many, 
+                /* Number of accounts found for this sig chain.  We track this so that once we have found this many,
                    we can break out rather than searching the entire sig chain history */
                 uint16_t nFound = 0;
 
@@ -316,7 +318,7 @@ namespace TAO
                         /* The address of the register we are searching for */
                         TAO::Register::Address hashAddress;
 
-                        /* To get th address we check the opcode and then deserialize it from the op stream. Since we are searching 
+                        /* To get th address we check the opcode and then deserialize it from the op stream. Since we are searching
                            for token accounts, we know that the last operation must be a create, debit, or credit */
                         switch(nOP)
                         {
@@ -349,8 +351,8 @@ namespace TAO
 
                         }
 
-                        /* Get the register checksum hash from the end of the register stream (last 8 bytes as it is a uint64_t).  
-                           This is hash of post-state register which we can then check against the register hashes we are 
+                        /* Get the register checksum hash from the end of the register stream (last 8 bytes as it is a uint64_t).
+                           This is hash of post-state register which we can then check against the register hashes we are
                            searching for, for this genesis */
                         contract.Seek(8, TAO::Operation::Contract::REGISTERS, STREAM::END);
 
@@ -377,7 +379,7 @@ namespace TAO
                     if(nFound >= accountsByGenesis.second.size())
                         break;
 
-                }  
+                }
             }
 
             /* Sort order to apply */
@@ -433,7 +435,7 @@ namespace TAO
                 /* Check the offset. */
                 if(nTotal <= nOffset)
                     continue;
-                
+
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
                     break;

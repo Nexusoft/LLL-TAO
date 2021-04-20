@@ -12,17 +12,15 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/session.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/types/exception.h>
-
-#include <LLD/include/global.h>
-
 
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <LLC/include/argon2.h>
 #include <LLC/include/encrypt.h>
 #include <LLC/include/random.h>
+
+#include <LLD/include/global.h>
 
 /* Global TAO namespace. */
 namespace TAO

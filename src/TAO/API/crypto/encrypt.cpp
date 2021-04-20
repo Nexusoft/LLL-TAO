@@ -17,8 +17,8 @@ ________________________________________________________________________________
 #include <LLC/include/flkey.h>
 
 #include <TAO/API/objects/types/objects.h>
+
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/types/mempool.h>
@@ -76,7 +76,7 @@ namespace TAO
                 /* Get the requested key name */
                 std::string strName = params["name"].get<std::string>();
 
-                /* Ensure the user has not requested to encrypt using one of the default keys 
+                /* Ensure the user has not requested to encrypt using one of the default keys
                     as these are for signature verification only */
                 std::set<std::string> setDefaults{"auth", "lisp", "network", "sign", "verify", "cert", "app1", "app2", "app3"};
                 if(setDefaults.find(strName) != setDefaults.end())
@@ -103,7 +103,7 @@ namespace TAO
 
                 /* If a peer key has been provided then generate a shared key */
                 if(params.find("peerkey") != params.end() && !params["peerkey"].get<std::string>().empty())
-                {   
+                {
                     /* Decode the public key into a vector of bytes */
                     std::vector<uint8_t> vchPeerKey;
                     if(!encoding::DecodeBase58(params["peerkey"].get<std::string>(), vchPeerKey))
@@ -187,7 +187,7 @@ namespace TAO
                         ret["scheme"] = "";
 
                 }
-                
+
                 /* add the hash key */
                 ret["hashkey"] = LLC::SK256(vchPubKey).ToString();
 

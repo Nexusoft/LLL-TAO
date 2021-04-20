@@ -16,8 +16,8 @@ ________________________________________________________________________________
 #include <LLC/hash/argon2.h>
 
 #include <TAO/API/objects/types/objects.h>
+
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -58,7 +58,7 @@ namespace TAO
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
                 throw APIException(-88, "Missing name.");
-            
+
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
 
@@ -69,7 +69,7 @@ namespace TAO
             /* Check the caller included a specific scheme */
             if(params.find("scheme") != params.end() )
             {
-                std::string strScheme = ToLower(params["scheme"].get<std::string>()); 
+                std::string strScheme = ToLower(params["scheme"].get<std::string>());
 
                 if(strScheme == "falcon")
                     nKeyType = TAO::Ledger::SIGNATURE::FALCON;
@@ -84,7 +84,7 @@ namespace TAO
 
                 /* The address of the crypto object register, which is deterministic based on the genesis */
                 TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-                
+
                 /* Read the crypto object register */
                 TAO::Register::Object crypto;
                 if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
@@ -95,7 +95,7 @@ namespace TAO
                     throw APIException(-36, "Failed to parse object register");
 
                 uint256_t hashKey = 0;
-                
+
                 /* Check to see if the key name exists */
                 if(crypto.Check(strName))
                 {

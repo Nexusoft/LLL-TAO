@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/sessionmanager.h>
-#include <TAO/API/include/utils.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -253,7 +252,7 @@ namespace TAO
             {
                 std::thread([&]()
                 {
-                    TAO::API::DownloadSigChain(hashGenesis, true);
+                    DownloadSigChain(hashGenesis, true);
                 }).detach();
             }
 
@@ -420,7 +419,7 @@ namespace TAO
                     {
                         std::thread([&]()
                         {
-                            TAO::API::DownloadSigChain(hashGenesis, true);
+                            DownloadSigChain(hashGenesis, true);
                         }).detach();
                     }
 

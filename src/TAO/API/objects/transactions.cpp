@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/users/types/users.h>
+
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/include/chainstate.h>

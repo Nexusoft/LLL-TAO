@@ -23,10 +23,8 @@ namespace TAO
     namespace API
     {
         /* Simple class to encapsulate a filter clause */
-        class Clause
+        struct Clause
         {
-        public:
-
             /* The field to filter on */
             std::string strField;
 
@@ -35,7 +33,6 @@ namespace TAO
 
             /* The value to filter on */
             std::string strValue;
-
         };
 
 

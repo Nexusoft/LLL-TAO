@@ -16,8 +16,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/build.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -69,7 +69,7 @@ namespace TAO
             /* name of the object, default to blank */
             std::string strName = "";
 
-            
+
             /* Create the proper register format. */
             hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
 
@@ -122,7 +122,7 @@ namespace TAO
 
                 if(!fValid)
                     throw APIException(-177, "Invalid decimals amount.  Decimals must be whole number value between 0 and 8");
-                
+
             }
 
             /* Sanitize the supply/decimals combination for uint64 overflow */
@@ -131,7 +131,7 @@ namespace TAO
 
             /* Multiply the supply by 10^Decimals to give the supply in the divisible units */
             nSupply = nSupply * pow(10, nDecimals);
-                
+
             /* Create a token object register. */
             TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
                                                                         nSupply,

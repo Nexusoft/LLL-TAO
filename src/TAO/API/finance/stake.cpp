@@ -15,8 +15,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake_change.h>
@@ -201,7 +201,7 @@ namespace TAO
 
                 /* Retrieve the private "auth" key for use in signing */
                 uint512_t hashSecret = user->Generate("auth", 0, strPin);
-                
+
                 /* The public key for the "auth" key*/
                 std::vector<uint8_t> vchPubKey;
 

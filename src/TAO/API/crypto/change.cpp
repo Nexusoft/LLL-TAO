@@ -14,8 +14,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/objects/types/objects.h>
+
+#include <TAO/API/include/build.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/types/mempool.h>
@@ -37,7 +38,7 @@ namespace TAO
     namespace API
     {
 
-        /* Change the signature scheme used to generate the public-private keys for the users signature chain as well 
+        /* Change the signature scheme used to generate the public-private keys for the users signature chain as well
            as keys stored in the crypto object register. */
         json::json Crypto::ChangeScheme(const json::json& params, bool fHelp)
         {
@@ -76,13 +77,13 @@ namespace TAO
                 nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL;
             else
                 throw APIException(-262, "Invalid scheme.");
-            
+
             /* The logged in sig chain genesis hash */
             uint256_t hashGenesis = user->Genesis();
 
             /* The address of the crypto object register, which is deterministic based on the genesis */
             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-            
+
             /* Read the crypto object register */
             TAO::Register::Object crypto;
             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
@@ -91,7 +92,7 @@ namespace TAO
             /* Parse the object. */
             if(!crypto.Parse())
                 throw APIException(-36, "Failed to parse object register");
-            
+
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
 
@@ -116,7 +117,7 @@ namespace TAO
             /* Regenerate any keys in the crypto object register */
             if(crypto.get<uint256_t>("auth") != 0)
                 ssOperationStream << std::string("auth") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("auth", 0, strPIN, tx.nNextType);
-            
+
             if(crypto.get<uint256_t>("lisp") != 0)
                 ssOperationStream << std::string("lisp") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("lisp", 0, strPIN, tx.nNextType);
 
@@ -131,7 +132,7 @@ namespace TAO
 
             /* Add the crypto update contract. */
             tx[tx.Size()] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();
-        
+
             /* Add the fee */
             AddFee(tx);
 

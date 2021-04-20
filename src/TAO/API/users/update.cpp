@@ -13,11 +13,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/utils.h>
-
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/types/sessionmanager.h>
+
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -44,7 +43,7 @@ namespace TAO
             /* Check for password parameter. */
             if(params.find("password") == params.end())
                 throw APIException(-128, "Missing password");
-            
+
             /* Check for pin parameter. Extract the pin. */
             if(params.find("pin") == params.end())
                 throw APIException(-129, "Missing PIN");
@@ -97,7 +96,7 @@ namespace TAO
             /* Check something is being changed */
             if(strNewRecovery.empty() && strNewPassword == strPassword && strNewPin == strPin)
                 throw APIException(-218, "User password / pin not changed");
-            
+
 
             /* Validate the existing credentials again */
             /* Get the genesis ID. */
@@ -125,13 +124,13 @@ namespace TAO
 
                 fRecovery = true;
             }
-            
+
 
             /* Lock the signature chain in case another process attempts to create a transaction . */
             LOCK(session.CREATE_MUTEX);
 
             /* Create a temp sig chain to check the credentials again */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> userUpdated = new TAO::Ledger::SignatureChain(session.GetAccount()->UserName(), strPassword); 
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> userUpdated = new TAO::Ledger::SignatureChain(session.GetAccount()->UserName(), strPassword);
 
             /* Create temp Transaction to check credentials. */
             TAO::Ledger::Transaction tx;
@@ -147,8 +146,8 @@ namespace TAO
                 if(session.GetAuthAttempts() >= config::GetArg("-authattempts", 3))
                 {
                     debug::log(0, FUNCTION, "Too many invalid password / pin attempts. Logging out user session:", session.ID().ToString() );
-                    
-                    /* Log the user out.  NOTE this also closes down the stake minter, removes this session from the notifications 
+
+                    /* Log the user out.  NOTE this also closes down the stake minter, removes this session from the notifications
                        processor, terminates any P2P connections, and removes the session from the session manager */
                     TerminateSession(session.ID());
 
@@ -173,7 +172,7 @@ namespace TAO
             if(strNewPassword != strPassword)
             {
                 userUpdated.free();
-                userUpdated = new TAO::Ledger::SignatureChain(session.GetAccount()->UserName(), strNewPassword); 
+                userUpdated = new TAO::Ledger::SignatureChain(session.GetAccount()->UserName(), strNewPassword);
             }
 
             /* Update the Crypto keys with the new pin */
@@ -188,7 +187,7 @@ namespace TAO
 
             /* The private key to sign with.  This will either be a key based on the previous pin, OR if the recovery is being changed
                it will be the previous hashRecovery */
-            uint512_t hashSecret = 0;            
+            uint512_t hashSecret = 0;
 
             /* If the recovery seed should be used */
             if(fRecovery)
@@ -196,10 +195,10 @@ namespace TAO
                 /* Generate the recovery private key from the recovery seed  */
                 hashSecret = userUpdated->Generate(strRecovery);
 
-                /* When signing with the recovery seed we need to set the transaction key type to be the same type that was used 
+                /* When signing with the recovery seed we need to set the transaction key type to be the same type that was used
                    to generate the current recovery hash.  To obtain this we iterate back through the sig chain until we find where
                    the hashRecovery was first set, and use the nKeyType from that transaction */
-                
+
                 /* The key type to set */
                 uint8_t nKeyType = 0;
 
@@ -212,7 +211,7 @@ namespace TAO
                     nKeyType = txPrev.nKeyType;
 
                     if(!LLD::Ledger->ReadTx(txPrev.hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-138, "No previous transaction found");  
+                        throw APIException(-138, "No previous transaction found");
                 }
 
                 /* Set the key type */
@@ -230,7 +229,7 @@ namespace TAO
                 userUpdated.free();
                 throw APIException(-31, "Ledger failed to sign transaction");
             }
-            
+
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
@@ -240,7 +239,7 @@ namespace TAO
             }
 
             {
- 
+
                 /* Update the Password */
                 session.UpdatePassword(strNewPassword);
 
@@ -263,7 +262,7 @@ namespace TAO
 
             /* Add the transaction ID to the response */
             jsonRet["txid"]  = tx.GetHash().ToString();
-            
+
             return jsonRet;
         }
 
@@ -292,7 +291,7 @@ namespace TAO
             /* Update the keys */
             if(crypto.get<uint256_t>("auth") != 0)
                 ssOperationStream << std::string("auth") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("auth", 0, strPin, tx.nKeyType);
-            
+
             if(crypto.get<uint256_t>("lisp") != 0)
                 ssOperationStream << std::string("lisp") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("lisp", 0, strPin, tx.nKeyType);
 
@@ -308,6 +307,6 @@ namespace TAO
             /* Add the crypto update contract. */
             tx[tx.Size()] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();
         }
-    
+
     }
 }

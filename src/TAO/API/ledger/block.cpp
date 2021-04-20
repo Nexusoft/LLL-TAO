@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/include/chainstate.h>
@@ -229,7 +228,7 @@ namespace TAO
             /* Flag indicating there are top level filters  */
             bool fHasFilter = vWhere.count("") > 0;
 
-            /* fields to ignore in the where clause.  This is necessary so that height and hash params are not treated as 
+            /* fields to ignore in the where clause.  This is necessary so that height and hash params are not treated as
                standard where clauses to filter the json */
             std::vector<std::string> vIgnore = {"height", "hash"};
 
@@ -263,7 +262,7 @@ namespace TAO
                 /* Check the offset. */
                 if(nTotal <= nOffset)
                     continue;
-                
+
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
                     break;

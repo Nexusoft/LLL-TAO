@@ -23,7 +23,6 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/sessionmanager.h>
-#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -2068,7 +2067,7 @@ namespace LLP
                         }
 
 
-                        /* Standard type for last sigchain transaction. */
+                        /* Standard type for register in form of merkle transaction. */
                         case TYPES::REGISTER:
                         {
                             /* Check for available protocol version. */
@@ -2380,12 +2379,6 @@ namespace LLP
                                     if(hashAddress != hashLogin)
                                         return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected genesis-id ", hashAddress.SubString());
                                 }
-                                /* Otherwise check that it is for a register that the logged in user has subscribed to */
-                                else if(std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
-                                {
-                                    return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected register address ", hashAddress.SubString());
-                                }
-
                             }
 
                             /* Get the index of transaction. */
@@ -3740,6 +3733,7 @@ namespace LLP
         WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage));
     }
 
+
     /* Builds an Auth message for this node.*/
     DataStream TritiumNode::GetAuth(bool fAuth)
     {
@@ -4194,58 +4188,6 @@ namespace LLP
                     TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
                 else
                     pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
-
-
-                /* Request notifications for any tokens we own, or any tokens that we have accounts for */
-
-                /* Get the list of accounts and tokens owned by this sig chain */
-                std::vector<TAO::Register::Address> vAddresses;
-                TAO::API::ListAccounts(hashGenesis, vAddresses, true, false);
-
-                /* Now iterate through and find all tokens and token accounts */
-                for(const auto& hashAddress : vAddresses)
-                {
-                    /* For tokens just subscribe to it */
-                    if(hashAddress.IsToken())
-                    {
-                        /* Get the last event txid */
-                        LLD::Ledger->ReadLastEvent(hashAddress, hashLastEvent);
-
-                        /* Request existing notifications/events. */
-                        if(fWait)
-                            TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
-                        else
-                            pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
-
-                    }
-                    else if(hashAddress.IsAccount())
-                    {
-                        /* Get the token account object. */
-                        TAO::Register::Object account;
-                        if(!LLD::Register->ReadState(hashAddress, account, TAO::Ledger::FLAGS::LOOKUP))
-                            debug::error(FUNCTION, "Token/account not found");
-
-                        /* Parse the object register. */
-                        if(!account.Parse())
-                            debug::error(FUNCTION, "Object failed to parse");
-
-                        /* Get the token */
-                        uint256_t hashToken = account.get<uint256_t>("token");
-
-                        /* If it is not a NXS account, and we have not already subscribed to it, subscribe to it */
-                        if(hashToken != 0 && std::find(pNode->vNotifications.begin(), pNode->vNotifications.end(), hashAddress) == pNode->vNotifications.end())
-                        {
-                            /* Get the last event txid */
-                            LLD::Ledger->ReadLastEvent(hashAddress, hashLastEvent);
-
-                            /* Request existing notifications/events. */
-                            if(fWait)
-                                TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
-                            else
-                                pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
-                        }
-                    }
-                }
             }
         }
     }

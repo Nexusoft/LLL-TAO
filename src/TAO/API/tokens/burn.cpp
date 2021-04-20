@@ -13,8 +13,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/build.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/get.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -99,7 +100,7 @@ namespace TAO
             else
             {
                 throw APIException(-65, "Object is not an account");
-            }  
+            }
 
             /* Check for amount parameter. */
             if(params.find("amount") == params.end())
@@ -125,12 +126,12 @@ namespace TAO
             /* Submit the payload object. */
             tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashToken << nAmount << nReference;
 
-            
+
             /* Add the burn conditions.  This is a simple condition that will never evaluate to true */
             tx[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT16_T) <= uint16_t(108+105+102+101);
             tx[0] <= uint8_t(TAO::Operation::OP::EQUALS);
             tx[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT16_T) <= uint16_t(42);
-            
+
             /* Add the fee */
             AddFee(tx);
 

@@ -15,8 +15,11 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/get.h>
+
 #include <TAO/API/include/conditions.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -113,7 +116,7 @@ namespace TAO
                     throw APIException(-216, "recipients field must be an array.");
 
                 /* Get the recipients json array */
-                json::json jsonRecipients = params["recipients"];                    
+                json::json jsonRecipients = params["recipients"];
 
                 /* Check that there are recipient objects in the array */
                 if(jsonRecipients.size() == 0)
@@ -169,7 +172,7 @@ namespace TAO
                     std::string strAddressTo = jsonRecipient["address_to"].get<std::string>();
 
                     /* Decode the base58 register address */
-                    if(IsRegisterAddress(strAddressTo))
+                    if(CheckAddress(strAddressTo))
                         hashTo.SetBase58(strAddressTo);
 
                     /* Check that it is valid */

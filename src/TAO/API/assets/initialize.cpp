@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/assets/types/assets.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/check.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -42,7 +42,7 @@ namespace TAO
                 strMethodRewritten = "get/schema";
 
                 /* Get the name or address that comes after the assets/get/schema part */
-                strNameOrAddress = strMethod.substr(11); 
+                strNameOrAddress = strMethod.substr(11);
             }
 
             /* support passing the asset name after the method e.g. get/asset/myasset */
@@ -57,7 +57,7 @@ namespace TAO
                     strMethodRewritten = "list/asset/history";
 
                     /* Get the name or address that comes after the list/asset/history part */
-                    strNameOrAddress = strMethod.substr(19); 
+                    strNameOrAddress = strMethod.substr(19);
                 }
                 else
                 {
@@ -73,7 +73,7 @@ namespace TAO
 
                 if(nPos != std::string::npos)
                 {
-                    /* Passing in the fieldname is only supported for the /get/  so if the user has 
+                    /* Passing in the fieldname is only supported for the /get/  so if the user has
                         requested a different method then just return the requested URL, which will in turn error */
                     if(strMethodRewritten != "get/asset")
                         return strMethod;
@@ -84,17 +84,17 @@ namespace TAO
                 }
             }
 
-                
+
             /* Edge case for claim/asset/txid */
             if(strMethodRewritten == "claim/asset")
                 jsonParams["txid"] = strNameOrAddress;
             /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-            else if(IsRegisterAddress(strNameOrAddress))
+            else if(CheckAddress(strNameOrAddress))
                 jsonParams["address"] = strNameOrAddress;
             else
                 jsonParams["name"] = strNameOrAddress;
-                
-        
+
+
 
             return strMethodRewritten;
         }

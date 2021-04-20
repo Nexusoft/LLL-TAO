@@ -13,8 +13,9 @@ ________________________________________________________________________________
 
 #include <TAO/API/tokens/types/tokens.h>
 #include <TAO/API/finance/types/finance.h>
+
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -35,7 +36,7 @@ namespace TAO
             mapFunctions["list/token/transactions"]  = Function(std::bind(&Tokens::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["burn/token"]  = Function(std::bind(&Tokens::Burn,  this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/token/accounts"]   = Function(std::bind(&Tokens::ListTokenAccounts, this, std::placeholders::_1, std::placeholders::_2));
-        
+
             /* Temporary reroute of the account methods to the finance API equivalents */
             mapFunctions["create/account"] = Function(std::bind(&Finance::Create, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["credit/account"] = Function(std::bind(&Finance::Credit, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
@@ -65,7 +66,7 @@ namespace TAO
 
             //     return strMethodRewritten;
             // }
-            
+
 
             // /* Edge case for list/account/transactions and list/token/transactions */
             // if(strMethod.find("/transactions") != std::string::npos )
@@ -82,7 +83,7 @@ namespace TAO
             //         std::string strNameOrAddress = strMethod.substr(nPos +14);
 
             //         /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-            //         if(IsRegisterAddress(strNameOrAddress))
+            //         if(CheckAddress(strNameOrAddress))
             //             jsonParams["address"] = strNameOrAddress;
             //         else
             //             jsonParams["name"] = strNameOrAddress;
@@ -111,7 +112,7 @@ namespace TAO
                     std::string strNameOrAddress = strMethod.substr(nPos +10);
 
                     /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                    if(IsRegisterAddress(strNameOrAddress))
+                    if(CheckAddress(strNameOrAddress))
                         jsonParams["address"] = strNameOrAddress;
                     else
                         jsonParams["name"] = strNameOrAddress;
@@ -151,7 +152,7 @@ namespace TAO
                     }
 
                     /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                    if(IsRegisterAddress(strNameOrAddress))
+                    if(CheckAddress(strNameOrAddress))
                         jsonParams["address"] = strNameOrAddress;
                     else
                         jsonParams["name"] = strNameOrAddress;
@@ -194,7 +195,7 @@ namespace TAO
                     }
 
                     /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                    if(IsRegisterAddress(strNameOrAddress))
+                    if(CheckAddress(strNameOrAddress))
                         jsonParams["address"] = strNameOrAddress;
                     else
                         jsonParams["name"] = strNameOrAddress;

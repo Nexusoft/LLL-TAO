@@ -55,10 +55,10 @@ namespace TAO
             /** the shutdown flag for gracefully shutting down events thread. **/
             std::atomic<bool> fShutdown;
 
-            
+
             /** The auto login thread. **/
             std::thread LOGIN_THREAD;
-            
+
 
         public:
 
@@ -81,7 +81,7 @@ namespace TAO
              *
              **/
             void Initialize() final;
-            
+
 
 
             /** GetCallersGenesis
@@ -151,7 +151,7 @@ namespace TAO
              *
              *  @param[in] hashGenesis The genesis hash to search for.
              *  @param[in] fLogActivity Flag indicating that this call should update the session activity timestamp
-             * 
+             *
              *  @return The session if the genesis is logged in, otherwise throws an exception
              **/
             Session& GetSession(const uint256_t& hashGenesis, bool fLogActivity = true) const;
@@ -170,7 +170,7 @@ namespace TAO
              *  Determine if a particular genesis is logged in on this node.
              *
              *  @param[in] hashGenesis The genesis hash to search for.
-             * 
+             *
              *  @return True if the hashGenesis is logged in on this node
              **/
             bool LoggedIn(const uint256_t& hashGenesis) const;
@@ -503,7 +503,7 @@ namespace TAO
              *  Gets the currently outstanding transactions that have not been matched with a credit or claim.
              *
              *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-             *  @param[in] fIncludeSuppressed Flag indicating whether suppresed notifications should be included 
+             *  @param[in] fIncludeSuppressed Flag indicating whether suppresed notifications should be included
              *  @param[out] vContracts The array of outstanding contracts.
              *
              **/
@@ -517,7 +517,7 @@ namespace TAO
              *  Gets the currently outstanding legacy UTXO to register transactions that have not been matched with a credit.
              *
              *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-             *  @param[in] fIncludeSuppressed Flag indicating whether suppresed notifications should be included 
+             *  @param[in] fIncludeSuppressed Flag indicating whether suppresed notifications should be included
              *  @param[out] vContracts The array of outstanding contracts.
              *
              **/
@@ -531,7 +531,7 @@ namespace TAO
              *  Gets the any debit or transfer transactions that have expired and can be voided.
              *
              *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-             *  @param[in] fIncludeSuppressed Flag indicating whether suppresed notifications should be included 
+             *  @param[in] fIncludeSuppressed Flag indicating whether suppresed notifications should be included
              *  @param[out] vContracts The array of expired contracts.
              *
              **/
@@ -589,7 +589,7 @@ namespace TAO
             static bool get_unclaimed(const uint256_t& hashGenesis,
                 std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
-                
+
             /** BlocksToMaturity
             *
             *  Determines whether the signature chain has reached desired maturity after the last coinbase/coinstake transaction
@@ -619,13 +619,13 @@ namespace TAO
 
             /** Authenticate
             *
-            *  Checks that the session/password/pin parameters have been provided (where necessary) and then verifies that the 
-            *  password and pin are correct.  
+            *  Checks that the session/password/pin parameters have been provided (where necessary) and then verifies that the
+            *  password and pin are correct.
             *  If authentication fails then the AuthAttempts counter in the callers session is incremented
             *
             *  @param[in] params The JSON request parameters
             *
-            *  @return True if the request contains the required authentication parameters and that they are correct 
+            *  @return True if the request contains the required authentication parameters and that they are correct
             *
             **/
             bool Authenticate(const json::json& params);
@@ -636,10 +636,24 @@ namespace TAO
              *  Gracefully closes down a users session
              *
              *  @param[in] nSession The parameters from the API call.
-             *  
+             *
              *
              **/
             void TerminateSession(const uint256_t& nSession);
+
+
+            /** DownloadSigChain
+             *
+             *  Used for client mode, this method will download the signature chain transactions and events for a given genesis
+             *
+             *  @param[in] hashGenesis The genesis hash of the sig chain to synchronize for
+             *  @param[in] fSyncEvents Flag indicating whether or not to also download events for the sig chain
+             *
+             *  @return Boolean indicating whether the download was successful
+             *
+             **/
+            static bool DownloadSigChain(const uint256_t& hashGenesis, bool fSyncEvents); //XXX: this should be encapsulated, use static for now
+
 
           private:
 
@@ -684,11 +698,11 @@ namespace TAO
 
             /** sanitize_contract
             *
-            *  Checks that the contract passes both Build() and Execute() 
+            *  Checks that the contract passes both Build() and Execute()
             *
-            *  @param[in] contract The contract to sanitize 
+            *  @param[in] contract The contract to sanitize
             *  @param[in] mapStates map of register states used by Build()
-            * 
+            *
             *  @return True if the contract was sanitized without errors.
             *
             **/
@@ -698,13 +712,13 @@ namespace TAO
 
             /** validate_transaction
             *
-            *  Used when in client mode, this method will send the transaction to a peer to validate it.  This will in turn check 
+            *  Used when in client mode, this method will send the transaction to a peer to validate it.  This will in turn check
             *  each contract in the transaction to verify that the conditions are met, the contract can be built, and executed.
             *  If any of the contracts in the transaction fail then the method will return the index of the failed contract.
             *
-            *  @param[in] tx The transaction to validate 
+            *  @param[in] tx The transaction to validate
             *  @param[out] nContract ID of the first failed contract
-            * 
+            *
             *  @return True if the transaction was validated without errors, false if an error was encountered.
             *
             **/
@@ -714,7 +728,7 @@ namespace TAO
             /** auto_login
             *
             *  Automatically logs in the sig chain using the credentials configured in the config file.  Will also create the sig
-            *  chain if it doesn't exist and configured with autocreate=1  
+            *  chain if it doesn't exist and configured with autocreate=1
             *
             **/
             void auto_login();
@@ -735,7 +749,7 @@ namespace TAO
             *
             *  @param[in] user The signature chain to update
             *  @param[in] strPin The secret value to use to generate the new private keys.
-            *  @param[out] tx The transaction reference to add the update contract to 
+            *  @param[out] tx The transaction reference to add the update contract to
             *
             *  @return void.
             *

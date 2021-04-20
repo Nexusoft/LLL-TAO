@@ -13,8 +13,6 @@ ________________________________________________________________________________
 
 #include <TAO/API/dex/types/dex.h>
 
-#include <TAO/API/include/utils.h>
-
 /* Global TAO namespace. */
 namespace TAO
 {

@@ -12,7 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/include/utils.h>
+
+#include <TAO/API/include/check.h>
 
 namespace TAO
 {
@@ -41,7 +42,7 @@ namespace TAO
             mapFunctions["list/invoices"]            = Function(std::bind(&Users::Invoices,      this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["load/session"]             = Function(std::bind(&Users::Load,         this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["save/session"]             = Function(std::bind(&Users::Save,         this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["has/session"]             = Function(std::bind(&Users::Has,         this, std::placeholders::_1, std::placeholders::_2));            
+            mapFunctions["has/session"]             = Function(std::bind(&Users::Has,         this, std::placeholders::_1, std::placeholders::_2));
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
@@ -80,7 +81,7 @@ namespace TAO
                     strNameOrAddress = strMethod.substr(nPos + 1);
 
                     /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                    if(IsRegisterAddress(strNameOrAddress))
+                    if(CheckAddress(strNameOrAddress))
                         jsonParams["genesis"] = strNameOrAddress;
                     else
                         jsonParams["username"] = strNameOrAddress;

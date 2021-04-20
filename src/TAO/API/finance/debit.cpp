@@ -15,8 +15,11 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/get.h>
+
 #include <TAO/API/include/conditions.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -176,7 +179,7 @@ namespace TAO
                     strAddressTo = jsonRecipient["address_to"].get<std::string>();
 
                     /* Decode the base58 register address */
-                    if(IsRegisterAddress(strAddressTo))
+                    if(CheckAddress(strAddressTo))
                         hashTo.SetBase58(strAddressTo);
 
                     /* Check that it is valid */
@@ -297,7 +300,7 @@ namespace TAO
                 }
             }
 
-            /* Add the fee. If the sending account is a NXS account then we take the fee from that, otherwise we will leave it 
+            /* Add the fee. If the sending account is a NXS account then we take the fee from that, otherwise we will leave it
             to the AddFee method to take the fee from the default NXS account */
             if(accountFrom.get<uint256_t>("token") == 0)
                 AddFee(tx, hashFrom);

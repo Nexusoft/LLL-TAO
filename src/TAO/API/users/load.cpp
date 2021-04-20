@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/sessionmanager.h>
-#include <TAO/API/include/utils.h>
+
 
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/stake_minter.h>
@@ -82,13 +82,13 @@ namespace TAO
 
             ret["session"] = session.ID().ToString();
 
-            
+
             /* If in client mode, download the users signature chain transactions asynchronously. */
-            if(config::fClient.load())
+            if(config::fClient.load()) //XXX: so hacky, NEVER spawn a new thread, always use a thread pool
             {
                 std::thread([&]()
                 {
-                    TAO::API::DownloadSigChain(hashGenesis, true);
+                    DownloadSigChain(hashGenesis, true);
                 }).detach();
             }
 

@@ -7,8 +7,9 @@
 #include <LLP/templates/trigger.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/list.h>
+
 #include <TAO/API/types/sessionmanager.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Ledger/include/constants.h>
@@ -439,7 +440,7 @@ namespace TAO
                 if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
                 {
                     /* Download the users signature chain transactions, but we do not need events */
-                    TAO::API::DownloadSigChain(hashGenesis, false);
+                    //TAO::API::DownloadSigChain(hashGenesis, false);
                 }
 
                 /* Now lookup the name in this sig chain */

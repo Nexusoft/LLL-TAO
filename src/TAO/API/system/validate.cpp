@@ -20,7 +20,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/json.h>
+
 #include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
 

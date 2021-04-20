@@ -17,7 +17,9 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/user_types.h>
-#include <TAO/API/include/utils.h>
+
+#include <TAO/API/include/build.h>
+#include <TAO/API/include/get.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -182,7 +184,7 @@ namespace TAO
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
-        
+
             /* Add the DEBIT contract with the OP::VALIDATE */
             tx[0] << uint8_t(TAO::Operation::OP::VALIDATE) << hashTx << nContract;
             tx[0] << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << hashTo << nAmount << uint64_t(0);
@@ -192,7 +194,7 @@ namespace TAO
 
             /* Add the fee */
             AddFee(tx);
-            
+
             /* Execute the operations layer. */
             if(!tx.Build())
                 throw APIException(-44, "Transaction failed to build");

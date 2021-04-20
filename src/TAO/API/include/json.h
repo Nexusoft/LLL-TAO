@@ -37,7 +37,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        
+
         /** BlockToJSON
          *
          *  Converts the block to formatted JSON
@@ -139,7 +139,7 @@ namespace TAO
 
         /** FilterResponse
         *
-        *  If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field 
+        *  If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field
         *
         *  @param[in] params The parameters passed into the request
         *  @param[in] response The reponse JSON to be filtered
@@ -152,13 +152,13 @@ namespace TAO
 
         /** GetListParams
         *
-        *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result 
+        *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result
         *
         *  @param[in] params The parameters passed into the request
         *  @param[out] strOrder The sort order to apply
         *  @param[out] nLimit The number of results to return
         *  @param[out] nOffset The offset to apply to the results
-        *  @param[out] vWhere Vector of clauses to apply to filter the results 
+        *  @param[out] vWhere Vector of clauses to apply to filter the results
         *
         *  @return The filtered response
         *
@@ -168,16 +168,41 @@ namespace TAO
 
         /** MatchesWhere
         *
-        *  Checks to see if the json response matches the where clauses 
+        *  Checks to see if the json response matches the where clauses
         *
         *  @param[in] obj The JSON to be filtered
         *  @param[in] vWhere Vector of clauses to apply to filter the results
-        *  @param[in] vIgnore Vector of fieldnames to ignore in the vWhere list.  This is useful for those /list/xxx methods that 
-        *             require non-standard params but do not want them interpreted as a where clause.  
+        *  @param[in] vIgnore Vector of fieldnames to ignore in the vWhere list.  This is useful for those /list/xxx methods that
+        *             require non-standard params but do not want them interpreted as a where clause.
         *
         *  @return True if the json response meets all of the clauses
         *
         **/
         bool MatchesWhere(const json::json& obj, const std::vector<Clause>& vWhere, const std::vector<std::string>& vIgnore = std::vector<std::string>());
+
+
+        /** RegisterType
+         *
+         *  Returns a type string for the register type
+         *
+         *  @param[in] nType The register type enum
+         *
+         *  @return A string representation of the register type
+         *
+         **/
+        std::string RegisterType(const uint8_t nType);
+
+
+        /** ObjectType
+         *
+         *  Returns a type string for the register object type
+         *
+         *  @param[in] nType The object type enum
+         *
+         *  @return A string representation of the object register type
+         *
+         **/
+        std::string ObjectType(const uint8_t nType);
+
     }
 }

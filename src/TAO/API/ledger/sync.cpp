@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/types/sessionmanager.h>
 
 #include <TAO/Ledger/include/process.h>
@@ -54,7 +53,7 @@ namespace TAO
             uint256_t hashGenesis = session.GetAccount()->Genesis();
 
             /* Sync the sig chain */
-            if(!DownloadSigChain(hashGenesis, true))
+            if(!Users::DownloadSigChain(hashGenesis, true))
                 throw APIException(-307, "Failed to download signature chain");
 
             /* Add the genesis */
@@ -88,14 +87,14 @@ namespace TAO
             /* Get any legacy transactions . */
             std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacyTx;
             Users::GetOutstanding(hashGenesis, false, vLegacyTx);
-            
+
             ret["notifications"] = vContracts.size() + vLegacyTx.size();
-            
+
             return ret;
         }
 
 
-        /* Synchronizes the block header data from a peer. NOTE: the method call will return as soon as the synchronization 
+        /* Synchronizes the block header data from a peer. NOTE: the method call will return as soon as the synchronization
            process is initiated with a peer, NOT when synchronization is complete.  Only applicable in lite / client mode. */
         json::json Ledger::SyncHeaders(const json::json& params, bool fHelp)
         {
@@ -123,7 +122,7 @@ namespace TAO
             {
                 throw APIException(-306, "No connections available");
             }
-            
+
             return ret;
         }
     }

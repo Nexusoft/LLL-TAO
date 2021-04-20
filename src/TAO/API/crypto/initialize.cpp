@@ -12,7 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/crypto/types/crypto.h>
-#include <TAO/API/include/utils.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -21,8 +20,8 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        
-        
+
+
 
         /* Standard initialization function. */
         void Crypto::Initialize()
@@ -64,7 +63,7 @@ namespace TAO
 
                 /* Get the name or address that comes after the /key/ part */
                 strName = strMethod.substr(nPos +5);
-            
+
                 /* Check to see whether there is a fieldname after the key name, i.e.  get/key/auth/scheme */
                 nPos = strName.find("/");
 

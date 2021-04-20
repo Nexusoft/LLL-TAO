@@ -14,8 +14,9 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
+#include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -74,7 +75,7 @@ namespace TAO
 
             /* The name */
             std::string strName = "";
-            
+
             /* The namespace to create the name in */
             std::string strNamespace = "";
 
@@ -91,7 +92,7 @@ namespace TAO
             if(params.find("register_address") != params.end() )
             {
                 /* Check that the register address is a valid address */
-                if(!IsRegisterAddress(params["register_address"].get<std::string>()))
+                if(!CheckAddress(params["register_address"].get<std::string>()))
                     throw APIException(-89, "Invalid register_address");
 
 
@@ -101,7 +102,7 @@ namespace TAO
             /* Check to see caller has provided the namespace parameter */
             if(params.find("namespace") != params.end())
                 strNamespace = params["namespace"].get<std::string>();
-            
+
             /* Check to see caller has provided the global flag parameter */
             if(params.find("global") != params.end())
                 fGlobal = params["global"].get<std::string>() == "1" || params["global"].get<std::string>() == "true";
@@ -186,13 +187,13 @@ namespace TAO
             std::string strNamespace = params["name"].get<std::string>();
 
             /* Check namespace for case/allowed characters */
-            if (!std::all_of(strNamespace.cbegin(), strNamespace.cend(), 
+            if (!std::all_of(strNamespace.cbegin(), strNamespace.cend(),
                 [](char c)
-                { 
+                {
                     /* Check for lower case or numeric or allowed characters */
-                    return std::islower(c) || std::isdigit(c) || c == '.'; 
+                    return std::islower(c) || std::isdigit(c) || c == '.';
                 }
-                )) 
+                ))
             {
                 throw APIException(-162, "Namespace can only contain lowercase letters, numbers, periods (.)");
             }
@@ -207,7 +208,7 @@ namespace TAO
 
             /* check that the namespace object doesn't already exist*/
             TAO::Register::Object namespaceObject;
-            
+
             /* Read the Name Object */
             if(LLD::Register->ReadState(hashRegister, namespaceObject, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-90, "Namespace already exists");
@@ -217,10 +218,10 @@ namespace TAO
 
             /* Submit the payload object. */
             tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << namespaceObject.GetState();
-            
+
             /* Add the fee */
             AddFee(tx);
-            
+
             /* Execute the operations layer. */
             if(!tx.Build())
                 throw APIException(-30, "Operations failed to execute");

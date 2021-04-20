@@ -14,8 +14,10 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/objects/types/objects.h>
+
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/list.h>
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -55,7 +57,7 @@ namespace TAO
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
 
             /* Check for logged in user.  NOTE: we rely on the GetSession method to check for the existence of a valid session ID
-               in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession 
+               in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession
                method will throw an appropriate error. */
             else
                 hashGenesis = users->GetSession(params).GetAccount()->Genesis();
@@ -148,7 +150,7 @@ namespace TAO
                 /* Check the offset. */
                 if(nTotal <= nOffset)
                     continue;
-                
+
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
                     break;

@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/objects/types/objects.h>
+
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Register/types/object.h>
@@ -49,11 +49,11 @@ namespace TAO
             /* Check for username. */
             else if(params.find("username") != params.end())
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            
+
             /* use logged in session. */
-            else 
+            else
                 hashGenesis = users->GetSession(params).GetAccount()->Genesis();
-           
+
             /* Prevent foreign data lookup in client mode */
             if(config::fClient.load() && hashGenesis != users->GetCallersGenesis(params))
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
@@ -64,7 +64,7 @@ namespace TAO
 
             /* The address of the crypto object register, which is deterministic based on the genesis */
             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-            
+
             /* Read the crypto object register */
             TAO::Register::Object crypto;
             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
@@ -73,7 +73,7 @@ namespace TAO
             /* Parse the object. */
             if(!crypto.Parse())
                 throw APIException(-36, "Failed to parse object register");
-            
+
             /* Get List of key names in the crypto object */
             std::vector<std::string> vKeys = crypto.ListFields();
 
@@ -102,7 +102,7 @@ namespace TAO
                         jsonKey["scheme"] = "";
 
                 }
-                
+
                 /* Populate the key, base58 encoded */
                 jsonKey["hashkey"] = hashPublic == 0 ? "" : hashPublic.ToString();
 

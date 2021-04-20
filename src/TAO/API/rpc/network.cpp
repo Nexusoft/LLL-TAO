@@ -12,12 +12,12 @@
 ____________________________________________________________________________________________*/
 
 
+#include <TAO/API/include/json.h>
+#include <TAO/API/rpc/types/rpc.h>
 
 #include <Legacy/include/money.h>
 #include <Legacy/types/address.h>
 #include <Legacy/types/trustkey.h>
-
-#include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -26,17 +26,15 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/types/tritium.h>
-
-#include <TAO/API/include/utils.h>
-#include <TAO/API/include/json.h>
-#include <TAO/API/rpc/types/rpc.h>
+#include <TAO/Ledger/types/state.h>
 
 #include <Util/include/args.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
 #include <Util/include/softfloat.h>
 
-#include <TAO/Ledger/types/state.h>
+#include <LLD/include/global.h>
+
 
 /* Global TAO namespace. */
 namespace TAO

@@ -14,7 +14,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/check.h>
+#include <TAO/API/include/build.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -60,7 +61,7 @@ namespace TAO
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("token") != params.end() && IsRegisterAddress(params["token"]))
+            else if(params.find("token") != params.end() && CheckAddress(params["token"]))
                 hashToken.SetBase58(params["token"]);
 
             /* Fail if no required parameters supplied. */

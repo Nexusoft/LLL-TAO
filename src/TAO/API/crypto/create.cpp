@@ -19,8 +19,9 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 
 #include <TAO/API/objects/types/objects.h>
+
+#include <TAO/API/include/build.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/types/mempool.h>
@@ -63,7 +64,7 @@ namespace TAO
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
                 throw APIException(-88, "Missing name.");
-            
+
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
 
@@ -76,7 +77,7 @@ namespace TAO
 
             /* The address of the crypto object register, which is deterministic based on the genesis */
             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-            
+
             /* Read the crypto object register */
             TAO::Register::Object crypto;
             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
@@ -85,7 +86,7 @@ namespace TAO
             /* Parse the object. */
             if(!crypto.Parse())
                 throw APIException(-36, "Failed to parse object register");
-            
+
             /* Check to see if the key name is valid */
             if(!crypto.Check(strName))
                 throw APIException(-260, "Invalid key name");
@@ -102,13 +103,13 @@ namespace TAO
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
 
-            /* The scheme to use to generate the key. If no specific scheme paramater has been passed in then this defaults to 
+            /* The scheme to use to generate the key. If no specific scheme paramater has been passed in then this defaults to
                the key type set on the previous transaction */
             uint8_t nKeyType = tx.nKeyType;
 
             if(params.find("scheme") != params.end() )
             {
-                std::string strScheme = ToLower(params["scheme"].get<std::string>()); 
+                std::string strScheme = ToLower(params["scheme"].get<std::string>());
 
                 if(strScheme == "falcon")
                     nKeyType = TAO::Ledger::SIGNATURE::FALCON;
@@ -118,7 +119,7 @@ namespace TAO
                     throw APIException(-262, "Invalid scheme");
 
             }
-            
+
             /* Generate the new public key */
             uint256_t hashPublic = session.GetAccount()->KeyHash(strName, 0, strPIN, nKeyType);
 
@@ -127,10 +128,10 @@ namespace TAO
 
             /* Generate the new key */
             ssOperationStream << std::string(strName) << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << hashPublic;
-             
+
             /* Add the crypto update contract. */
             tx[0] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();
-        
+
             /* Add the fee */
             AddFee(tx);
 
@@ -165,7 +166,7 @@ namespace TAO
                     ret["scheme"] = "";
 
             }
-            
+
             /* Populate the key, base58 encoded */
             ret["hashkey"] = hashPublic.ToString();
 
@@ -194,7 +195,7 @@ namespace TAO
 
             /* The address of the crypto object register, which is deterministic based on the genesis */
             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-            
+
             /* Read the crypto object register */
             TAO::Register::Object crypto;
             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
@@ -203,14 +204,14 @@ namespace TAO
             /* Parse the object. */
             if(!crypto.Parse())
                 throw APIException(-36, "Failed to parse object register");
-            
+
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");            
+                throw APIException(-17, "Failed to create transaction");
 
             /* X509 certificate instance*/
             LLC::X509Cert cert;
@@ -218,8 +219,8 @@ namespace TAO
             /* Generate private key for the  */
             uint256_t hashSecret = session.GetAccount()->Generate("cert", 0, strPIN);
 
-            /* Generate a new certificate using the sig chains genesis hash as the common name (CN) and the transaction timestamp 
-               as the valid from.  By using the transaction timestamp as the valid from time, we can reconstruct this exact 
+            /* Generate a new certificate using the sig chains genesis hash as the common name (CN) and the transaction timestamp
+               as the valid from.  By using the transaction timestamp as the valid from time, we can reconstruct this exact
                certificate with identical hash at any time */
             cert.GenerateEC(hashSecret, hashGenesis.ToString(), tx.nTimestamp);
 
@@ -233,17 +234,17 @@ namespace TAO
             cert.GetPEM(vchCertificate);
 
             /* Obtain a 256-bit hash of this certificate data to store in the crypto register */
-            uint256_t hashCert = cert.Hash();  
+            uint256_t hashCert = cert.Hash();
 
             /* Declare operation stream to serialize all of the field updates*/
             TAO::Operation::Stream ssOperationStream;
 
             /* Generate the new key */
             ssOperationStream << std::string("cert") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << hashCert;
-             
+
             /* Add the crypto update contract. */
             tx[0] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();
-        
+
             /* Add the fee */
             AddFee(tx);
 
@@ -265,7 +266,7 @@ namespace TAO
             /* Include the certificate data. This is a multiline string containing base64-encoded data, therefore we must base64
                encode it again in order to write it into a single JSON field*/
             ret["certificate"] = encoding::EncodeBase64(&vchCertificate[0], vchCertificate.size());
-            
+
             /* Return the hash of the certificate*/
             ret["hashcert"] = hashCert.ToString();
 

@@ -16,8 +16,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/build.h>
+#include <TAO/API/include/conditions.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -68,17 +69,17 @@ namespace TAO
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw APIException(-17, "Failed to create transaction");
-            
+
             /* Get the transaction id. */
             uint512_t hashTx;
             hashTx.SetHex(params["txid"].get<std::string>());
 
             /* The transaction to be voided */
             TAO::Ledger::Transaction txVoid;
-            
+
             /* Read the debit transaction. */
             if(LLD::Ledger->ReadTx(hashTx, txVoid))
-            { 
+            {
                 /* Check that the transaction belongs to the caller */
                 if(txVoid.hashGenesis != session.GetAccount()->Genesis())
                     throw APIException(-172, "Cannot void a transaction that does not belong to you.");
@@ -89,7 +90,7 @@ namespace TAO
                     /* Process the contract and attempt to void it */
                     TAO::Operation::Contract voidContract;
 
-                    if(VoidContract(txVoid[nContract], nContract, voidContract))
+                    if(AddVoid(txVoid[nContract], nContract, voidContract))
                         tx[tx.Size()] = voidContract;
                 }
             }
@@ -97,7 +98,7 @@ namespace TAO
             {
                 throw APIException(-40, "Previous transaction not found.");
             }
-                
+
 
             /* Check that output was found. */
             if(tx.Size() == 0)
@@ -105,7 +106,7 @@ namespace TAO
 
             /* Add the fee */
             AddFee(tx);
-            
+
             /* Execute the operations layer. */
             if(!tx.Build())
                 throw APIException(-44, "Transaction failed to build");

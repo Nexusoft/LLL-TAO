@@ -12,7 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/finance/types/finance.h>
-#include <TAO/API/include/utils.h>
+
+#include <TAO/API/include/check.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -94,7 +95,7 @@ namespace TAO
 
 
                 /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                if(IsRegisterAddress(strNameOrAddress))
+                if(CheckAddress(strNameOrAddress))
                     jsonParams["address"] = strNameOrAddress;
                 else
                     jsonParams["name"] = strNameOrAddress;

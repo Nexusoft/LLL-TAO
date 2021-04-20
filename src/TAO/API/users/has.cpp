@@ -15,9 +15,6 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/sessionmanager.h>
-#include <TAO/API/include/utils.h>
-
-
 
 
 /* Global TAO namespace. */
@@ -34,7 +31,7 @@ namespace TAO
             /* JSON return value. */
             json::json ret;
 
-            
+
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
 

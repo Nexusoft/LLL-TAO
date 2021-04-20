@@ -18,7 +18,9 @@ ________________________________________________________________________________
 #include <TAO/API/objects/types/objects.h>
 #include <TAO/API/include/global.h>
 
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/check.h>
+#include <TAO/API/include/list.h>
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/include/constants.h>
@@ -63,7 +65,7 @@ namespace TAO
             uint8_t nDecimals = 0;
 
         } TokenBalance;
-        
+
 
         /* Get a summary of balance information across all accounts belonging to the currently logged in signature chain
            for a particular token type */
@@ -89,8 +91,9 @@ namespace TAO
             if(params.find("token_name") != params.end() && !params["token_name"].get<std::string>().empty() && params["token_name"].get<std::string>() != "NXS")
                 /* If name is provided then use this to deduce the register address */
                 hashToken = Names::ResolveAddress(params, params["token_name"].get<std::string>());
+
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("token") != params.end() && IsRegisterAddress(params["token"]))
+            else if(params.find("token") != params.end() && CheckAddress(params["token"]))
                 hashToken.SetBase58(params["token"]);
 
             /* The balances for this token type*/

@@ -17,7 +17,9 @@ ________________________________________________________________________________
 #include <TAO/API/objects/types/objects.h>
 #include <TAO/API/include/global.h>
 
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/check.h>
+#include <TAO/API/include/list.h>
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/types/sigchain.h>
@@ -79,7 +81,7 @@ namespace TAO
                 hashToken = Names::ResolveAddress(params, params["token_name"].get<std::string>());
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("token") != params.end() && IsRegisterAddress(params["token"]))
+            else if(params.find("token") != params.end() && CheckAddress(params["token"]))
                 hashToken.SetBase58(params["token"]);
 
             /* Get the list of registers owned by this sig chain */

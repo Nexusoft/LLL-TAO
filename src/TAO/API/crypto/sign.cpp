@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/objects/types/objects.h>
+
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Register/types/object.h>
@@ -53,14 +53,14 @@ namespace TAO
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
                 throw APIException(-88, "Missing name.");
-            
+
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
 
             /* Check they have not requested cert, as this is a TLS certificate and not intended for signature verification  */
             if(strName == "cert")
                 throw APIException(-292, "The cert key cannot be used to sign data as it is reserved for a TLS certificate.");
-            
+
             /* Check the caller included the data */
             if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
                 throw APIException(-18, "Missing data.");
@@ -68,7 +68,7 @@ namespace TAO
             /* Decode the data into a vector of bytes */
             std::string strData = params["data"].get<std::string>();
             std::vector<uint8_t> vchData(strData.begin(), strData.end());
-            
+
             /* Get the private key. */
             uint512_t hashSecret = session.GetAccount()->Generate(strName, 0, strPIN);
 
