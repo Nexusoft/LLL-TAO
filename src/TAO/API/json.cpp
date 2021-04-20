@@ -1120,11 +1120,6 @@ namespace TAO
                             ret["stake"]    = (double)object.get<uint64_t>("stake") / pow(10, nDecimals);
                         }
 
-                        /* Add tx count if requested by the caller*/
-                        if(params.find("count") != params.end()
-                        && (params["count"].get<std::string>() == "1" ||  params["count"].get<std::string>() == "true"))
-                            ret["count"] = GetTxCount(object.hashOwner, object, hashRegister);
-
 
                         break;
                     }
@@ -1171,11 +1166,6 @@ namespace TAO
                         ret["currentsupply"]    = (double) (object.get<uint64_t>("supply")
                                                 - object.get<uint64_t>("balance") - nPending) / pow(10, nDecimals); // current supply is based on unconfirmed balance
                         ret["decimals"]         = nDecimals;
-
-                        /* Add tx count if requested by the caller*/
-                        if(params.find("count") != params.end()
-                        && (params["count"].get<std::string>() == "1" ||  params["count"].get<std::string>() == "true"))
-                            ret["count"] = GetTxCount(object.hashOwner, object, hashRegister);
 
                         break;
                     }
