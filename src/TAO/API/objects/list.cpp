@@ -47,6 +47,11 @@ namespace TAO
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
 
+            /* Check for txid. */
+            uint512_t hashLast = 0;
+            if(params.find("txid") != params.end())
+                hashLast.SetHex(params["txid"]);
+
             /* Watch for destination genesis. If no specific genesis or username
              * have been provided then fall back to the active sigchain. */
             if(params.find("genesis") != params.end() && !params["genesis"].get<std::string>().empty())
@@ -85,7 +90,7 @@ namespace TAO
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;
-            ListRegisters(hashGenesis, vAddresses);
+            ListRegisters(hashGenesis, vAddresses, hashLast);
 
             /* Get list of tokenized assets owned by this sig chain */
             ListPartial(hashGenesis, vAddresses);

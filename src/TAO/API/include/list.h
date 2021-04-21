@@ -32,11 +32,13 @@ namespace TAO
          *
          *  @param[in] hashGenesis The genesis hash of the signature chain to scan
          *  @param[out] vRegisters The list of register addresses from sigchain.
+         *  @param[in] hashLast The txid to list registers from.
          *
          *  @return A vector of register addresses owned by the sig chain
          *
          **/
-        bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters);
+        bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters,
+            uint512_t hashLast = 0); //this isn't const& because we need to read into it and thus would need to copy it anyway
 
 
         /** ListObjects
