@@ -727,13 +727,14 @@ namespace TAO::API
             vStates.push_back(std::make_pair(hashRegister, state));
         }
 
-        /* Now sort the states based on the creation time */
+        /* Now sort the states based on the creation time
         std::sort(vStates.begin(), vStates.end(),
             [](const std::pair<TAO::Register::Address, TAO::Register::State> &a,
             const std::pair<TAO::Register::Address, TAO::Register::State> &b)
             {
                 return ( a.second.nCreated < b.second.nCreated );
             });
+        */
 
         return vStates.size() > 0;
     }

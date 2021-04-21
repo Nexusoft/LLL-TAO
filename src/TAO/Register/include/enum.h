@@ -84,25 +84,25 @@ namespace TAO
             enum : uint8_t
             {
                 /* Non-Standard Object (User Defined Type). */
-                NONSTANDARD  = 0x01,
+                NONSTANDARD  = (1 << 1),
 
                 /* Account Object Register. */
-                ACCOUNT      = 0x02,
+                ACCOUNT      = (1 << 2),
 
                 /* Token Object Register. */
-                TOKEN        = 0x03,
+                TOKEN        = (1 << 3),
 
                 /* Trust Object Register. */
-                TRUST        = 0x04,
+                TRUST        = (1 << 4),
 
                 /* Name Object Register. */
-                NAME         = 0x05,
+                NAME         = (1 << 5),
 
                 /* Namespace Object Register. */
-                NAMESPACE    = 0x06,
+                NAMESPACE    = (1 << 6),
 
                 /* Crypto Object Register. */
-                CRYPTO       = 0x07
+                CRYPTO       = (1 << 7)
             };
         };
 

@@ -103,7 +103,7 @@ namespace TAO
 
             /* We pass false for fLookupName if the requested type is a name of namesace object,
                as those are the edge case that do not have a Name object themselves */
-            bool fLookupName = nObjectType != TAO::Register::OBJECTS::NAME && nObjectType != TAO::Register::OBJECTS::NAMESPACE;
+            bool fLookupName = false;//nObjectType != TAO::Register::OBJECTS::NAME && nObjectType != TAO::Register::OBJECTS::NAMESPACE;
 
             /* Add the register data to the response */
             uint32_t nTotal = 0;
@@ -124,7 +124,7 @@ namespace TAO
                         throw APIException(-36, "Failed to parse object register");
 
                     /* Only included requested object types. */
-                    if((object.Standard() & nObjectType) == 0)
+                    if(!(object.Standard() & nObjectType))
                         continue;
                 }
 
@@ -133,7 +133,7 @@ namespace TAO
                 json["created"]  = state.second.nCreated;
                 json["modified"] = state.second.nModified;
 
-                json::json data  =TAO::API::ObjectToJSON(params, object, state.first, fLookupName);
+                json::json data  = TAO::API::ObjectToJSON(params, object, state.first, fLookupName);
 
                 /* Copy the data in to the response after the  */
                 json.insert(data.begin(), data.end());
