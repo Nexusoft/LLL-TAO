@@ -165,11 +165,8 @@ namespace TAO
             /* Sort order to apply */
             std::string strOrder = "desc";
 
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+            GetListParams(params, strOrder, nLimit, nOffset);
 
             /* look up by height*/
             if(params.find("height") != params.end())
@@ -225,9 +222,6 @@ namespace TAO
             /* Declare the JSON array to return */
             json::json ret = json::json::array();
 
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
-
             /* fields to ignore in the where clause.  This is necessary so that height and hash params are not treated as
                standard where clauses to filter the json */
             std::vector<std::string> vIgnore = {"height", "hash"};
@@ -241,26 +235,15 @@ namespace TAO
                 /* Move on to the next block in the sequence*/
                 blockState = blockState.Next();
 
-
                 /* Convert the block to JSON data */
-                json::json jsonBlock = TAO::API::BlockToJSON(blockToAdd, nVerbose, vWhere);
+                json::json jsonBlock = TAO::API::BlockToJSON(blockToAdd, nVerbose);
 
                 /* Check to see whether the block has had all children filtered out */
                 if(jsonBlock.empty())
                     continue;
 
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonBlock, vWhere[""], vIgnore))
-                        continue;
-                }
-
-                ++nTotal;
-
                 /* Check the offset. */
-                if(nTotal <= nOffset)
+                if(++nTotal <= nOffset)
                     continue;
 
                 /* Check the limit */

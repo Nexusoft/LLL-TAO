@@ -96,11 +96,8 @@ namespace TAO
             /* Sort order to apply */
             std::string strOrder = "desc";
 
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+            GetListParams(params, strOrder, nLimit, nOffset);
 
             /* Get verbose levels. */
             std::string strVerbose = "default";
@@ -119,12 +116,6 @@ namespace TAO
             uint512_t hashLast = 0;
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-144, "No transactions found");
-
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
-
-            /* Flag indicating there are contract level filters  */
-            bool fHasContractsFilter = vWhere.count("contracts") > 0;
 
             /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as
                standard where clauses to filter the json */
@@ -290,14 +281,6 @@ namespace TAO
                         /* JSONify the contract */
                         json::json contractJSON = ContractToJSON(hashCaller, contract.first, contract.second, nVerbose);
 
-                        /* Check to see that it matches the where clauses */
-                        if(fHasContractsFilter)
-                        {
-                            /* Skip this top level record if not all of the filters were matched */
-                            if(!MatchesWhere(contractJSON, vWhere.at("contracts"), vIgnore))
-                                continue;
-                        }
-
                         /* add the contract to the array */
                         jsonContracts.push_back(contractJSON);
 
@@ -313,14 +296,6 @@ namespace TAO
                 /* Check to see whether the contracts were filtered out */
                 if(jsonTx.empty())
                     continue;
-
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonTx, vWhere[""], vIgnore))
-                        continue;
-                }
 
                 ++nTotal;
 

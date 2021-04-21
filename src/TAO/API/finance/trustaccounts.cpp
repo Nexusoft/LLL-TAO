@@ -47,11 +47,8 @@ namespace TAO
             /* Order to apply */
             std::string strOrder = "desc";
 
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+            GetListParams(params, strOrder, nLimit, nOffset);
 
             /* Sort order to apply */
             std::string strSort = "trust";
@@ -102,9 +99,6 @@ namespace TAO
                         return ( a.get<uint64_t>(strSort) < b.get<uint64_t>(strSort) );
                 });
 
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
-
             /* Iterate the list and build the response */
             uint32_t nTotal = 0;
             for(auto& account : vActive)
@@ -127,14 +121,6 @@ namespace TAO
                 uint64_t nTrust = account.get<uint64_t>("trust");
                 jsonAccount["trust"] = nTrust;
                 jsonAccount["stakerate"] = TAO::Ledger::StakeRate(nTrust, (nTrust == 0)) * 100.0;
-
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonAccount, vWhere[""]))
-                        continue;
-                }
 
                 ++nTotal;
 

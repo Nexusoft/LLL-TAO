@@ -987,14 +987,8 @@ namespace TAO
             /* Sort order to apply */
             std::string strOrder = "desc";
 
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
-
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            GetListParams(params, strOrder, nLimit, nOffset);
 
             /* fields to ignore in the where clause.  This is necessary so that the suppressed param is not treated as
                standard where clauses to filter the json */
@@ -1107,18 +1101,8 @@ namespace TAO
 
                 }
 
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(obj, vWhere[""], vIgnore))
-                        continue;
-                }
-
-                ++nTotal;
-
                 /* Check the offset. */
-                if(nTotal <= nOffset)
+                if(++nTotal <= nOffset)
                     continue;
 
                 /* Check the limit */
@@ -1157,19 +1141,8 @@ namespace TAO
                 obj["txid"]     = tx.first->GetHash().GetHex();
                 obj["time"]     = tx.first->nTime;
 
-
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(obj, vWhere[""], vIgnore))
-                        continue;
-                }
-
-                ++nTotal;
-
                 /* Check the offset. */
-                if(nTotal <= nOffset)
+                if(++nTotal <= nOffset)
                     continue;
 
                 /* Check the limit */

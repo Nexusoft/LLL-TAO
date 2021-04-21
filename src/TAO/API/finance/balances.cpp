@@ -215,14 +215,8 @@ namespace TAO
             /* Sort order to apply */
             std::string strOrder = "desc";
 
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
-
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            GetListParams(params, strOrder, nLimit, nOffset);
 
             /* token register hash */
             uint256_t hashToken;
@@ -325,18 +319,8 @@ namespace TAO
                     jsonBalances["immature"] = (double)(vTokenBalances[hashToken].nImmature / pow(10, vTokenBalances[hashToken].nDecimals));
                 }
 
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonBalances, vWhere[""]))
-                        continue;
-                }
-
-                ++nTotal;
-
                 /* Check the offset. */
-                if(nTotal <= nOffset)
+                if(++nTotal <= nOffset)
                     continue;
 
                 /* Check the limit */

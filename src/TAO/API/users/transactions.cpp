@@ -88,11 +88,8 @@ namespace TAO
             /* Sort order to apply */
             std::string strOrder = "desc";
 
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
+            GetListParams(params, strOrder, nLimit, nOffset);
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;
@@ -126,10 +123,6 @@ namespace TAO
                 std::reverse(vtx.begin(), vtx.end());
 
             uint32_t nTotal = 0;
-
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
-
             for(auto tx : vtx)
             {
                 /* Read the block state from the the ledger DB using the transaction hash index */
@@ -137,24 +130,14 @@ namespace TAO
                 LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
 
                 /* Get the transaction JSON. */
-                json::json obj = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis, vWhere);
+                json::json obj = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis);
 
                 /* Check to see whether the transaction has had all children filtered out */
                 if(obj.empty())
                     continue;
 
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(obj, vWhere[""]))
-                        continue;
-                }
-
-                ++nTotal;
-
                 /* Check the offset. */
-                if(nTotal <= nOffset)
+                if(++nTotal <= nOffset)
                     continue;
 
                 /* Check the limit */

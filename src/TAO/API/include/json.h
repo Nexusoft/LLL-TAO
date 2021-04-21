@@ -142,9 +142,7 @@ namespace TAO
         *  If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field
         *
         *  @param[in] params The parameters passed into the request
-        *  @param[in] response The reponse JSON to be filtered
-        *
-        *  @return The filtered response
+        *  @param[in] response The reponse JSON to be filtered.
         *
         **/
         void FilterResponse(const json::json& params, json::json& response);
@@ -158,12 +156,9 @@ namespace TAO
         *  @param[out] strOrder The sort order to apply
         *  @param[out] nLimit The number of results to return
         *  @param[out] nOffset The offset to apply to the results
-        *  @param[out] vWhere Vector of clauses to apply to filter the results
-        *
-        *  @return The filtered response
         *
         **/
-        void GetListParams(const json::json& params, std::string& strOrder, uint32_t& nLimit, uint32_t& nOffset, std::map<std::string, std::vector<Clause>>& vWhere);
+        void GetListParams(const json::json& params, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset);
 
 
         /** MatchesWhere

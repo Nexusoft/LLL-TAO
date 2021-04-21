@@ -62,14 +62,8 @@ namespace TAO
             /* Sort order to apply */
             std::string strOrder = "desc";
 
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
-
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            GetListParams(params, strOrder, nLimit, nOffset);
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;
@@ -111,18 +105,8 @@ namespace TAO
                 /* Convert the account to JSON */
                 json::json jsonAccount = TAO::API::ObjectToJSON(params, object, state.first);
 
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonAccount, vWhere[""]))
-                        continue;
-                }
-
-                ++nTotal;
-
                 /* Check the offset. */
-                if(nTotal <= nOffset)
+                if(++nTotal <= nOffset)
                     continue;
 
                 /* Check the limit */
@@ -222,14 +206,8 @@ namespace TAO
             /* Sort order to apply */
             std::string strOrder = "desc";
 
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
-
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            GetListParams(params, strOrder, nLimit, nOffset);
 
             /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as
                standard where clauses to filter the json */
@@ -422,18 +400,8 @@ namespace TAO
                    unconfirmed outgoing debits. */
                 jsonAccount["balance"] = account.second.get<uint64_t>("balance") / pow(10, nDecimals);
 
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(jsonAccount, vWhere[""], vIgnore))
-                        continue;
-                }
-
-                ++nTotal;
-
                 /* Check the offset. */
-                if(nTotal <= nOffset)
+                if(++nTotal <= nOffset)
                     continue;
 
                 /* Check the limit */

@@ -1363,8 +1363,7 @@ namespace TAO::API
 
 
     /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
-    void GetListParams(const json::json& params, std::string& strOrder, uint32_t& nLimit,
-                       uint32_t& nOffset, std::map<std::string, std::vector<Clause>>& vWhere)
+    void GetListParams(const json::json& params, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
     {
         /* Check for page parameter. */
         uint32_t nPage = 0;
@@ -1409,75 +1408,9 @@ namespace TAO::API
         if(nOffset == 0 && nPage > 0)
             nOffset = nLimit * nPage;
 
-
         /* Get sort order*/
         if(params.find("order") != params.end())
             strOrder = params["order"].get<std::string>();
-
-        /* Get where clauses */
-        if(params.find("where") != params.end())
-        {
-            if(!params["where"].is_array())
-                throw APIException(-301, "where field must be an array.");
-
-            json::json jsonWhere = params["where"];
-
-            /* Iterate through each field definition */
-            for(auto it = jsonWhere.begin(); it != jsonWhere.end(); ++it)
-            {
-                /* Check that the required fields have been provided*/
-                if(it->find("field") == it->end())
-                    throw APIException(-302, "Missing field in where clause.");
-
-                if(it->find("op") == it->end())
-                    throw APIException(-303, "Missing op in where clause.");
-
-                if(it->find("value") == it->end())
-                    throw APIException(-304, "Missing value in where clause.");
-
-                /* Parse the values out of the where clause json and add to Filter object*/
-                Clause clause;
-
-                std::string strField =  (*it)["field"].get<std::string>();
-                std::string strOP = (*it)["op"].get<std::string>();
-                std::string strValue = (*it)["value"].get<std::string>();
-                std::string strObject = "";
-
-                /* See if the field name contains an object name in the format object.field */
-                std::size_t nPos = strField.find(".");
-                if(nPos != std::string::npos)
-                {
-                    strObject = strField.substr(0, nPos);
-                    strField = strField.substr(nPos+1);
-                }
-
-                clause.strField = strField;
-
-                /* operand */
-                if(strOP == "=" || strOP == "==")
-                    clause.nOP = TAO::Operation::OP::EQUALS;
-                else if(strOP == ">")
-                    clause.nOP = TAO::Operation::OP::GREATERTHAN;
-                else if(strOP == "<")
-                    clause.nOP = TAO::Operation::OP::LESSTHAN;
-                else if(strOP == "<>")
-                    clause.nOP = TAO::Operation::OP::NOTEQUALS;
-                else if(strOP == ">=")
-                    clause.nOP = TAO::Operation::OP::GREATEREQUALS;
-                else if(strOP == "<=")
-                    clause.nOP = TAO::Operation::OP::LESSEQUALS;
-                else
-                    /* Unknown operand */
-                    throw APIException(-305, "Unknown operand in where clause" );
-
-                /* Get the value */
-                clause.strValue = (*it)["value"].get<std::string>();
-
-                /* Add the clause to our vWhere vector */
-                vWhere[strObject].push_back(clause);
-            }
-
-        }
     }
 
 

@@ -73,14 +73,8 @@ namespace TAO
             /* Sort order to apply */
             std::string strOrder = "desc";
 
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
-
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
+            GetListParams(params, strOrder, nLimit, nOffset);
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;
@@ -107,33 +101,23 @@ namespace TAO
             uint32_t nTotal = 0;
             for(const auto& state : vRegisters)
             {
-
                 /* Only include read only register type */
                 if(state.second.nType != TAO::Register::REGISTER::READONLY)
                     continue;
 
                 /* Deserialize the leading byte of the state data to check that it is an invoice */
-                uint16_t type;
-                state.second >> type;
+                uint16_t nType = 0;
+                state.second >> nType;
 
-                if(type != TAO::API::USER_TYPES::INVOICE)
+                /* Check that we are filtering the correct registers denoted by type value. */
+                if(nType != TAO::API::USER_TYPES::INVOICE)
                     continue;
 
                 /* The invoice JSON data */
                 json::json invoice = Invoices::InvoiceToJSON(params, state.second, state.first);
 
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(invoice, vWhere[""]))
-                        continue;
-                }
-
-                ++nTotal;
-
                 /* Check the offset. */
-                if(nTotal <= nOffset)
+                if(++nTotal <= nOffset)
                     continue;
 
                 /* Check the limit */
