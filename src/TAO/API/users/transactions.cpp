@@ -60,16 +60,15 @@ namespace TAO
 
             /* The genesis hash of the API caller, if logged in */
             uint256_t hashCaller = users->GetCallersGenesis(params);
-
             if(config::fClient.load() && hashGenesis != hashCaller)
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
-
 
             /* Get verbose levels. */
             std::string strVerbose = "default";
             if(params.find("verbose") != params.end())
                 strVerbose = params["verbose"].get<std::string>();
 
+            /* Check the verbosity levels. */
             uint32_t nVerbose = 1;
             if(strVerbose == "default")
                 nVerbose = 1;
@@ -78,17 +77,11 @@ namespace TAO
             else if(strVerbose == "detail")
                 nVerbose = 3;
 
-
             /* Number of results to return. */
-            uint32_t nLimit = 100;
-
-            /* Offset into the result set to return results from */
-            uint32_t nOffset = 0;
-
-            /* Sort order to apply */
-            std::string strOrder = "desc";
+            uint32_t nLimit = 100, nOffset = 0;
 
             /* Get the params to apply to the response. */
+            std::string strOrder = "desc";
             GetListParams(params, strOrder, nLimit, nOffset);
 
             /* Get the last transaction. */
@@ -98,7 +91,6 @@ namespace TAO
 
             /* Loop until genesis, storing all tx into a vector (these will be in descending order). */
             std::vector<TAO::Ledger::Transaction> vtx;
-
             while(hashLast != 0)
             {
                 /* Get the transaction from disk. */
