@@ -133,10 +133,17 @@ _name.shard.file
 
 const uint256_t hashSeed = 55;
 
+#include <Util/include/math.h>
+
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    uint64_t n1 = 1000;
+    debug::log(0, VARIABLE(math::log(5, n1)));
+
+    return 0;
+
     config::mapArgs["-datadir"] = "/public/SYNC";
 
     /* Initialize LLD. */

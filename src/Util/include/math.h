@@ -37,4 +37,30 @@ namespace math
 
         return nRet;
     }
+
+
+    /** log
+     *
+     *  Find's the power of a given base, given its size. Opposite of pow
+     *  Uses integer instructions, rather than floating point instructions.
+     *
+     *  @param[in] nBase The log base value
+     *  @param[in] nValue The value to perform logarithm on
+     *
+     *  @return the integer value of log on value
+     *
+     **/
+    inline uint64_t log(const uint64_t nBase, const uint64_t nValue)
+    {
+        /* We just do a simple for loop here for repeated multiplication. */
+        uint64_t nRet = 0, nCurrent = nValue;
+        while(nCurrent >= nBase)
+        {
+            nCurrent /= nBase;
+            ++nRet;
+        }
+
+        return nRet;
+    }
+    //XXX: UNIT TESTS, UNIT TESTS!!!!
 }
