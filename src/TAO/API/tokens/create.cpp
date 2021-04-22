@@ -43,35 +43,8 @@ namespace TAO
         /* Create an asset or digital item. */
         json::json Tokens::Create(const json::json& params, bool fHelp)
         {
-            json::json ret;
-
-            /* Authenticate the users credentials */
-            if(!users->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
-
-            /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
-
-            /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
-
-            /* Lock the signature chain. */
-            LOCK(session.CREATE_MUTEX);
-
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
-
             /* Generate a random hash for this objects register address */
-            TAO::Register::Address hashRegister ;
-
-            /* name of the object, default to blank */
-            std::string strName = "";
-
-
-            /* Create the proper register format. */
-            hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
+            TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
 
             /* Check for supply parameter. */
             if(params.find("supply") == params.end())
@@ -104,64 +77,51 @@ namespace TAO
             uint8_t nDecimals = 0;
             if(params.find("decimals") != params.end())
             {
-                bool fValid = false;
                 /* Attempt to convert the supplied value to a 8-bit unsigned integer, catching argument/range exceptions */
+                bool fValid = false;
                 try
                 {
                     nDecimals = std::stoul(params["decimals"].get<std::string>());
-                    fValid = nDecimals <= 8;
+                    fValid = (nDecimals <= 8);
                 }
-                catch(const std::invalid_argument& e)
-                {
-                    fValid = false;
-                }
-                catch(const std::out_of_range& e)
+                catch(const std::exception& e)
                 {
                     fValid = false;
                 }
 
+                /* Check for errors. */
                 if(!fValid)
                     throw APIException(-177, "Invalid decimals amount.  Decimals must be whole number value between 0 and 8");
-
             }
 
             /* Sanitize the supply/decimals combination for uint64 overflow */
             if(nDecimals > 0 && nSupply > std::numeric_limits<uint64_t>::max() / pow(10, nDecimals))
+             //XXX: we really want an integer version of pow, not double this will get ugly fast if we are not careful
                 throw APIException(-178, "Invalid supply / decimals.  The maximum combination of supply and decimals (supply * 10^decimals) cannot exceed 18446744073709551615");
 
             /* Multiply the supply by 10^Decimals to give the supply in the divisible units */
             nSupply = nSupply * pow(10, nDecimals);
 
             /* Create a token object register. */
-            TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier,
-                                                                        nSupply,
-                                                                        nDecimals);
+            TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier, nSupply, nDecimals);
 
             /* Submit the payload object. */
-            tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
-
+            std::vector<TAO::Operation::Contract> vContracts(1);
+            vContracts[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << token.GetState();
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end() && !params["name"].is_null() && !params["name"].get<std::string>().empty())
-                tx[1] = Names::CreateName(session.GetAccount()->Genesis(), params["name"].get<std::string>(), "", hashRegister);
-
-            /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+            {
+                /* Add an optional name if supplied. */
+                vContracts.push_back(
+                    Names::CreateName(users->GetSession(params).GetAccount()->Genesis(),
+                    params["name"].get<std::string>(), "", hashRegister)
+                );
+            }
 
             /* Build a JSON response object. */
-            ret["txid"]  = tx.GetHash().ToString();
+            json::json ret;
+            ret["txid"]    = BuildAndAccept(params, vContracts).ToString();
             ret["address"] = hashRegister.ToString();
 
             return ret;

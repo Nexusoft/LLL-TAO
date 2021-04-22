@@ -35,28 +35,6 @@ namespace TAO
            that always evaluates to false.  Hence the debit can never be credited, burning the tokens. */
         json::json Tokens::Burn(const json::json& params, bool fHelp)
         {
-            json::json ret;
-
-            /* Authenticate the users credentials */
-            if(!users->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
-
-            /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
-
-            /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
-
-
-            /* Lock the signature chain. */
-            LOCK(session.CREATE_MUTEX);
-
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
-
-
             /* The sending account or token. */
             TAO::Register::Address hashFrom;
 
@@ -79,18 +57,13 @@ namespace TAO
                 throw APIException(-14, "Object failed to parse");
 
             /* Get the object standard. */
-            uint8_t nStandard = object.Standard();
-
-            /* Number of decimals used by the token */
-            uint8_t nDecimals = 0;
+            uint8_t nStandard = object.Standard(), nDecimals = 0; //XXX: maybe we want a short for decimals? are we limited to 8 bits?
 
             /* Balance of account/token being debited */
             uint64_t nCurrentBalance = 0;
 
-            /* the token address to send to */
-            uint256_t hashToken = 0;
-
             /* Check the object standard. */
+            uint256_t hashToken = 0;
             if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
             {
                 nCurrentBalance = object.get<uint64_t>("balance");
@@ -117,38 +90,23 @@ namespace TAO
             if(nAmount > nCurrentBalance)
                 throw APIException(-69, "Insufficient funds");
 
-
             /* The optional payment reference */
             uint64_t nReference = 0;
             if(params.find("reference") != params.end())
                 nReference = stoull(params["reference"].get<std::string>());
 
             /* Submit the payload object. */
-            tx[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashToken << nAmount << nReference;
-
+            std::vector<TAO::Operation::Contract> vContracts(1);
+            vContracts[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashToken << nAmount << nReference;
 
             /* Add the burn conditions.  This is a simple condition that will never evaluate to true */
-            tx[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT16_T) <= uint16_t(108+105+102+101);
-            tx[0] <= uint8_t(TAO::Operation::OP::EQUALS);
-            tx[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT16_T) <= uint16_t(42);
-
-            /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+            vContracts[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT16_T) <= uint16_t(108+105+102+101);
+            vContracts[0] <= uint8_t(TAO::Operation::OP::EQUALS);
+            vContracts[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT16_T) <= uint16_t(42);
 
             /* Build a JSON response object. */
-            ret["txid"] = tx.GetHash().ToString();
+            json::json ret;
+            ret["txid"] = BuildAndAccept(params, vContracts).ToString();
 
             return ret;
         }

@@ -25,6 +25,7 @@ namespace TAO::Ledger    { class Transaction; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
     /** Build And Accept
      *
      *  Builds a transaction based on a list of contracts, to be deployed as a single tx or batched.
@@ -32,8 +33,10 @@ namespace TAO::API
      *  @param[in] params The json parameters to build the transaction with.
      *  @param[in] vContracts The list of contracts to build tx for.
      *
+     *  @return the txid of the transaction that was just built.
+     *
      **/
-    void BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts);
+    uint512_t BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts);
 
 
     /** AddFee

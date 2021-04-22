@@ -32,22 +32,18 @@ ________________________________________________________________________________
 namespace TAO::API
 {
 
-    /** Build And Accept
-     *
-     *  Builds a transaction based on a list of contracts, to be deployed as a single tx or batched.
-     *
-     *  @param[in] vContracts The list of contracts to build tx for.
-     *
-     **/
-    void BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts)
+    /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
+    uint512_t BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts)
     {
+        /* Authenticate the users credentials */
+        if(!users->Authenticate(params))
+            throw APIException(-139, "Invalid credentials");
+
         /* Get the PIN to be used for this API call */
         SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
         /* Get the session to be used for this API call */
         Session& session = users->GetSession(params);
-
-        /* Lock the signature chain. */
         LOCK(session.CREATE_MUTEX);
 
         /* Create the transaction. */
@@ -74,6 +70,9 @@ namespace TAO::API
         /* Execute the operations layer. */
         if(!TAO::Ledger::mempool.Accept(tx))
             throw APIException(-32, "Failed to accept");
+
+        //TODO: we want to add a localdb index here, so it can be re-broadcast on restart
+        return tx.GetHash();
     }
 
 
