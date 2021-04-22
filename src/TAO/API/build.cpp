@@ -12,16 +12,18 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/build.h>
-
+#include <TAO/API/include/global.h>
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/names.h>
 
 #include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <LLD/include/global.h>
@@ -29,6 +31,52 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
+    /** Build And Accept
+     *
+     *  Builds a transaction based on a list of contracts, to be deployed as a single tx or batched.
+     *
+     *  @param[in] vContracts The list of contracts to build tx for.
+     *
+     **/
+    void BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts)
+    {
+        /* Get the PIN to be used for this API call */
+        SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+
+        /* Get the session to be used for this API call */
+        Session& session = users->GetSession(params);
+
+        /* Lock the signature chain. */
+        LOCK(session.CREATE_MUTEX);
+
+        /* Create the transaction. */
+        TAO::Ledger::Transaction tx;
+        if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
+            throw APIException(-17, "Failed to create transaction");
+
+        /* Add the contracts. */
+        for(const auto& contract : vContracts)
+            tx << contract;
+
+        /* Add the contract fees. */
+        if(!AddFee(tx))
+            throw APIException(-44, "Transaction failed to build");
+
+        /* Execute the operations layer. */
+        if(!tx.Build())
+            throw APIException(-44, "Transaction failed to build");
+
+        /* Sign the transaction. */
+        if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
+            throw APIException(-31, "Ledger failed to sign transaction");
+
+        /* Execute the operations layer. */
+        if(!TAO::Ledger::mempool.Accept(tx))
+            throw APIException(-32, "Failed to accept");
+    }
+
+
     /* Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
      *  If a specified fee account is not specified, the method will lookup the "default" NXS account and use this account
      *  to pay the fees.  An exception will be thrownIf there are insufficient funds to pay the fee. */

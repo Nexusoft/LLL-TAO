@@ -14,14 +14,28 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/address.h>
 
+#include <Util/include/json.h>
+
 /* Forward Declarations. */
-namespace TAO::Ledger   { class Transaction; }
+namespace TAO::Operation { class Contract;    }
+namespace TAO::Ledger    { class Transaction; }
 //namespace TAO::Register { class Address;     }
 
 
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /** Build And Accept
+     *
+     *  Builds a transaction based on a list of contracts, to be deployed as a single tx or batched.
+     *
+     *  @param[in] params The json parameters to build the transaction with.
+     *  @param[in] vContracts The list of contracts to build tx for.
+     *
+     **/
+    void BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts);
+
+
     /** AddFee
      *
      *  Calculates the required fee for the transaction and adds the OP::FEE contract to the transaction if necessary.
@@ -36,5 +50,4 @@ namespace TAO::API
      **/
     bool AddFee(TAO::Ledger::Transaction &tx, const TAO::Register::Address& hashFeeAccount = TAO::Register::Address());
     //XXX: this is hacky to use an empty address for default parameter
-
 }

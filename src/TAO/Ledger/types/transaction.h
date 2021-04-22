@@ -42,6 +42,9 @@ namespace TAO
          **/
         class Transaction
         {
+            /** Class friends. **/
+            friend class MerkleTx;
+
         protected:
 
             /** For disk indexing on contract. **/
@@ -93,7 +96,7 @@ namespace TAO
             /* serialization macros */
             IMPLEMENT_SERIALIZE
             (
-                /* Contracts layers. */
+                /* Operations layers. */
                 READWRITE(vContracts);
 
                 /* Ledger layer */
@@ -155,6 +158,14 @@ namespace TAO
 
             /** Default Destructor. **/
             ~Transaction();
+
+
+            /** Operator Overload <<
+             *
+             *  Add contracts to the internal vector.
+             *
+             **/
+            Transaction& operator<<(const TAO::Operation::Contract& contract);
 
 
             /** Operator Overload >
@@ -445,10 +456,6 @@ namespace TAO
             *
             **/
             uint64_t Fees() const;
-
-
-            /** Class friends. **/
-            friend class MerkleTx;
 
         };
     }

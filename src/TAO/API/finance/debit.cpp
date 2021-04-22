@@ -329,6 +329,7 @@ namespace TAO
 
                 #endif
             }
+
             /* Build a JSON response object. */
             ret["txid"] = tx.GetHash().ToString();
 

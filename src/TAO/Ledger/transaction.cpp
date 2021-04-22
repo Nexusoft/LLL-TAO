@@ -237,6 +237,16 @@ namespace TAO
         }
 
 
+        /* Add contracts to the internal vector. */
+        Transaction& Transaction::operator<<(const TAO::Operation::Contract& contract)
+        {
+            /* We just push to internal vector here. */
+            vContracts.push_back(contract);
+
+            return *this;
+        }
+
+
         /* Used for sorting transactions by sequence. */
         bool Transaction::operator>(const Transaction& tx) const
         {
