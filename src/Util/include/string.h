@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_UTIL_INCLUDE_STRING_H
-#define NEXUS_UTIL_INCLUDE_STRING_H
 
 #include <vector>
 #include <string>
@@ -201,6 +199,3 @@ bool IsAllDigit(const std::string& strIn);
 *
 **/
 bool IsUINT64(const std::string& strIn);
-
-
-#endif

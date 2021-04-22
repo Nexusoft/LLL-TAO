@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/templates/datastream.h>
+#include <Util/include/math.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -95,12 +96,11 @@ namespace TAO
             }
 
             /* Sanitize the supply/decimals combination for uint64 overflow */
-            if(nDecimals > 0 && nSupply > std::numeric_limits<uint64_t>::max() / pow(10, nDecimals))
-             //XXX: we really want an integer version of pow, not double this will get ugly fast if we are not careful
+            if(nDecimals > 0 && nSupply > std::numeric_limits<uint64_t>::max() / math::pow(10, nDecimals))
                 throw APIException(-178, "Invalid supply / decimals.  The maximum combination of supply and decimals (supply * 10^decimals) cannot exceed 18446744073709551615");
 
             /* Multiply the supply by 10^Decimals to give the supply in the divisible units */
-            nSupply = nSupply * pow(10, nDecimals);
+            nSupply = nSupply * math::pow(10, nDecimals);
 
             /* Create a token object register. */
             TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier, nSupply, nDecimals);
