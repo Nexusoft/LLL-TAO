@@ -30,12 +30,12 @@ namespace math
      *  @return the integer value of nBase^nExp
      *
      **/
-    inline uint64_t pow(const uint64_t nBase, const uint64_t nExp)
+    inline uint64_t pow(const uint64_t nBase, const uint64_t nExp) //XXX: maybe use uint8_t for nExp? 64 is maximum size
     {
         /* We just do a simple for loop here for repeated multiplication. */
         uint64_t nRet = 1;
         for(uint32_t n = 0; n < nExp; ++n)
-            nRet *= nBase;
+            nRet *= nBase; //XXX: maybe check for overflows and throw exception here?
 
         return nRet;
     }

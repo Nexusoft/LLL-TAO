@@ -59,8 +59,21 @@ namespace TAO
         *  Stop Nexus server */
         json::json System::Stop(const json::json& params, bool fHelp)
         {
-            if(fHelp || params.size() != 0)
-                return std::string("stop - Stop Nexus server.");
+            if(fHelp || params.size() > 1)
+                return std::string("stop password=<password> - Stop server, if -system/stop set require password");
+
+            /* Check for password argument. */
+            const std::string strPassword = config::GetArg("-system/stop", "");
+            if(!strPassword.empty())
+            {
+                /* Check that we have a password. */
+                if(params.find("password") == params.end())
+                    throw APIException(-128, "Missing password");
+
+                /* Check our shutdown credentials. */
+                if(params["password"] != strPassword)
+                    throw APIException(-139, "Invalid credentials");
+            }
 
             // Shutdown will take long enough that the response should get back
             Shutdown();
