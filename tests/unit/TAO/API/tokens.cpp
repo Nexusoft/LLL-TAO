@@ -53,6 +53,8 @@ TEST_CASE( "Test Tokens API - create token", "[tokens/create/token]")
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
 
+        debug::log(0, ret.dump(4));
+
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
         REQUIRE(ret["error"]["code"].get<int32_t>() == -129);
@@ -1104,7 +1106,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
 
     }
 
-    /* Test success case with multiple recipients */ 
+    /* Test success case with multiple recipients */
     {
         /* Build the parameters to pass to the API */
         params.clear();
@@ -1118,7 +1120,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
         for(int i=0; i<50; i++)
         {
             json::json jsonRecipient;
-            jsonRecipient["amount"] = (double)(i+1)/10.0; // vary the amount in each contract 
+            jsonRecipient["amount"] = (double)(i+1)/10.0; // vary the amount in each contract
             jsonRecipient["address_to"] = hashToken.ToString();
             jsonRecipients.push_back(jsonRecipient);
         }

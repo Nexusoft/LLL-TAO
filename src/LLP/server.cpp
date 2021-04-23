@@ -832,8 +832,6 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::OpenListening()
     {
-        debug::log(0, "Opening ", ProtocolType::Name(), " listening sockets");
-
         /* If SSL is required then don't listen on the standard port */
         if(!CONFIG.REQUIRE_SSL)
         {
@@ -843,6 +841,8 @@ namespace LLP
                 ::Shutdown();
                 return;
             }
+
+            debug::log(0, "Opening ", ProtocolType::Name(), " listening sockets on port ", CONFIG.PORT_BASE);
         }
 
         if(CONFIG.ENABLE_SSL)
@@ -852,6 +852,8 @@ namespace LLP
                 ::Shutdown();
                 return;
             }
+
+            debug::log(0, "Opening ", ProtocolType::Name(), " SSL listening sockets on port ", CONFIG.PORT_SSL);
         }
     }
 

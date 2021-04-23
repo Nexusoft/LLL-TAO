@@ -142,7 +142,6 @@ void InitializeUser(const std::string& strUsername, const std::string& strPasswo
         /* Invoke the API */
         ret = APICall("users/unlock/user", params);
     }
-
 }
 
 

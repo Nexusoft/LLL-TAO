@@ -35,6 +35,7 @@ TEST_CASE("Arguments Tests", "[args]")
     config::mapArgs["-private"] = "1";
     config::mapArgs["-testnet"] = "92349234";
     config::mapArgs["-flushwallet"] = "false";
+    config::mapArgs["-apiauth"]     = "0";
 
     /* To simplify the API testing we will always use multiuser mode */
     config::fMultiuser = true;
@@ -99,12 +100,13 @@ TEST_CASE("Arguments Tests", "[args]")
     TAO::API::Initialize();
 
     /* Create the Core API Server. */
-    LLP::Config CONFIG    = LLP::Config(TESTNET_API_PORT);
+    LLP::Config CONFIG    = LLP::Config(8080);
     CONFIG.PORT_SSL       = TESTNET_API_SSL_PORT;
     CONFIG.MAX_THREADS    = 10;
     CONFIG.SOCKET_TIMEOUT = 30;
     CONFIG.ENABLE_DDOS    = false;
     CONFIG.ENABLE_REMOTE  = true;
+    CONFIG.ENABLE_LISTEN  = true;
     CONFIG.ENABLE_METERS  = false;
     CONFIG.ENABLE_MANAGER = false;
     CONFIG.ENABLE_SSL     = false;

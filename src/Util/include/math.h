@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <stdint.h>
 
+#include <Util/include/debug.h>
+
 namespace math
 {
     /** pow
@@ -62,5 +64,4 @@ namespace math
 
         return nRet;
     }
-    //XXX: UNIT TESTS, UNIT TESTS!!!!
 }
