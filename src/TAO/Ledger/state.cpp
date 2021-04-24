@@ -1016,7 +1016,7 @@ namespace TAO
                         " [", std::setw(3), (::GetSerializeSize(*this, SER_LLD, nVersion) / 1024.0), " kb]");
 
                 /* Set the best chain variables. */
-                ChainState::stateBest          = *this;
+                ChainState::stateBest          = *this; //XXX: we are not getting all the data from connect, consider using pointer
                 ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;

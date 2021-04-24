@@ -152,11 +152,10 @@ namespace TAO
                 jsonRet["connections"] = LLP::TRITIUM_SERVER->GetConnectionCount();
 
             return jsonRet;
-
         }
 
 
-        /* Reurns information about the peers currently connected to this node */
+        /* Returns information about the peers currently connected to this node */
         json::json System::ListPeers(const json::json& params, bool fHelp)
         {
             /* Declare the JSON response object*/
