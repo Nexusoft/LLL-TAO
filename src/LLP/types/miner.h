@@ -19,11 +19,8 @@ ________________________________________________________________________________
 #include <Legacy/types/coinbase.h>
 #include <atomic>
 
-namespace Legacy
-{
-    class ReserveKey;
-}
-
+//forward declarations
+namespace Legacy { class ReserveKey; }
 
 namespace LLP
 {
