@@ -16,98 +16,6 @@ ________________________________________________________________________________
 namespace memory
 {
 
-	/** lock_control
-	 *
-	 *  Track the current pointer references.
-	 *
-	 **/
-	struct lock_control
-	{
-	    /** Recursive mutex for locking lock_shared_ptr. **/
-	    std::recursive_mutex MUTEX;
-
-
-	    /** Reference counter for active copies. **/
-	   std::atomic<uint32_t> nCount;
-
-
-	    /** Default Constructor. **/
-	    lock_control( )
-	    : MUTEX  ( )
-	    , nCount (1)
-	    {
-	    }
-
-
-	    /** count
-	     *
-	     *  Access atomic with easier syntax.
-	     *
-	     **/
-	    uint32_t count()
-	    {
-	        return nCount.load();
-	    }
-	};
-
-
-	/** lock_proxy
-	 *
-	 *  Temporary class that unlocks a mutex when outside of scope.
-	 *  Useful for protecting member access to a raw pointer.
-	 *
-	 **/
-	template <class TypeName>
-	class lock_proxy
-	{
-	    /** Reference of the mutex. **/
-	    std::recursive_mutex& MUTEX;
-
-
-	    /** The pointer being locked. **/
-	    TypeName* pData;
-
-
-	public:
-
-	    /** Basic constructor
-	     *
-	     *  Assign the pointer and reference to the mutex.
-	     *
-	     *  @param[in] pData The pointer to shallow copy
-	     *  @param[in] MUTEX_IN The mutex reference
-	     *
-	     **/
-	    lock_proxy(TypeName* pDataIn, std::recursive_mutex& MUTEX_IN)
-	    : MUTEX (MUTEX_IN)
-	    , pData (pDataIn)
-	    {
-	    }
-
-
-	    /** Destructor
-	    *
-	    *  Unlock the mutex.
-	    *
-	    **/
-	    ~lock_proxy()
-	    {
-	    	MUTEX.unlock();
-	    }
-
-
-	    /** Member Access Operator.
-	    *
-	    *  Access the memory of the raw pointer.
-	    *
-	    **/
-	    TypeName* operator->() const
-	    {
-	    	return pData;
-	    }
-	};
-
-
 	/** lock_shared_ptr
 	 *
 	 *  Pointer with member access protected with a mutex.
@@ -116,6 +24,97 @@ namespace memory
 	template<class TypeName>
 	class lock_shared_ptr
 	{
+		/** lock_control
+		 *
+		 *  Track the current pointer references.
+		 *
+		 **/
+		struct lock_control
+		{
+			/** Recursive mutex for locking lock_shared_ptr. **/
+			std::recursive_mutex MUTEX;
+
+
+			/** Reference counter for active copies. **/
+		   std::atomic<uint32_t> nCount;
+
+
+			/** Default Constructor. **/
+			lock_control( )
+			: MUTEX  ( )
+			, nCount (1)
+			{
+			}
+
+
+			/** count
+			 *
+			 *  Access atomic with easier syntax.
+			 *
+			 **/
+			uint32_t count()
+			{
+				return nCount.load();
+			}
+		};
+
+
+		/** lock_proxy
+		 *
+		 *  Temporary class that unlocks a mutex when outside of scope.
+		 *  Useful for protecting member access to a raw pointer.
+		 *
+		 **/
+		class lock_proxy
+		{
+			/** Reference of the mutex. **/
+			std::recursive_mutex& MUTEX;
+
+
+			/** The pointer being locked. **/
+			TypeName* pData;
+
+
+		public:
+
+			/** Basic constructor
+			 *
+			 *  Assign the pointer and reference to the mutex.
+			 *
+			 *  @param[in] pData The pointer to shallow copy
+			 *  @param[in] MUTEX_IN The mutex reference
+			 *
+			 **/
+			lock_proxy(TypeName* pDataIn, std::recursive_mutex& MUTEX_IN)
+			: MUTEX (MUTEX_IN)
+			, pData (pDataIn)
+			{
+			}
+
+
+			/** Destructor
+			*
+			*  Unlock the mutex.
+			*
+			**/
+			~lock_proxy()
+			{
+				MUTEX.unlock();
+			}
+
+
+			/** Member Access Operator.
+			*
+			*  Access the memory of the raw pointer.
+			*
+			**/
+			TypeName* operator->() const
+			{
+				return pData;
+			}
+		};
+
+
 	    /** The internal locking mutex. **/
 	    mutable lock_control* pRefs;
 
@@ -262,12 +261,12 @@ namespace memory
 	     *  Allow lock_shared_ptr access like a normal pointer.
 	     *
 	     **/
-	    lock_proxy<TypeName> operator->()
+	    lock_proxy operator->()
 	    {
 	        /* Lock our mutex before going forward. */
 	        pRefs->MUTEX.lock();
 
-	        return lock_proxy<TypeName>(pData, pRefs->MUTEX);
+	        return lock_proxy(pData, pRefs->MUTEX);
 	    }
 
 

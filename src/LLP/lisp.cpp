@@ -178,6 +178,4 @@ namespace LLP
         return mapEIDs;
 #endif
     }
-
-
 }
