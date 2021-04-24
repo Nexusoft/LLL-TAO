@@ -20,6 +20,10 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /* Track our hostname so we don't have to call system every request. */
+    std::string strHostname;
+
+
     /* Declare the Global LLP Instances. */
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<TimeNode>*    TIME_SERVER;
@@ -39,6 +43,10 @@ namespace LLP
         if(!NetworkInitialize())
             return debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
 
+        /* Get our current hostname. */
+        char chHostname[128];
+        gethostname(chHostname, sizeof(chHostname));
+        strHostname = std::string(chHostname);
 
         /* TRITIUM_SERVER instance */
         {

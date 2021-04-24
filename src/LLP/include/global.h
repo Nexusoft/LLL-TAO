@@ -26,6 +26,11 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /** Track our hostname so we don't have to call system every request. **/
+    extern std::string strHostname;
+
+
+    /** List of LLP Server Instances. **/
     extern Server<TritiumNode>*  TRITIUM_SERVER;
     extern Server<TimeNode>*     TIME_SERVER;
     extern Server<APINode>*      API_SERVER;

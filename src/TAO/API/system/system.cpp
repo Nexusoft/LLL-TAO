@@ -103,19 +103,19 @@ namespace TAO
             jsonRet["timestamp"] =  (int)runtime::unifiedtimestamp();
 
             /* The hostname of this machine */
-            char hostname[128];
-            gethostname(hostname, sizeof(hostname));
-            jsonRet["hostname"] = std::string(hostname);
+            jsonRet["hostname"]  = LLP::strHostname;
 
             /* The IP address, if known */
             if(LLP::TritiumNode::addrThis.load().IsValid())
                 jsonRet["ipaddress"] = LLP::TritiumNode::addrThis.load().ToStringIP();
 
             /* If this node is running on the testnet then this shows the testnet number*/
-            jsonRet["testnet"] = config::GetArg("-testnet", 0);
+            if(config::fTestNet.load())
+                jsonRet["testnet"] = config::GetArg("-testnet", 0); //we don't need to show this value if in production mode
 
-            /* Whether this node is running in private mode */
-            jsonRet["private"] = config::fHybrid.load();
+            /* Whether this node is running in hybrid or private mode */
+            jsonRet["private"] = (config::fHybrid.load() && config::fTestNet.load());
+            jsonRet["hybrid"]  = (config::fHybrid.load() && !config::fTestNet.load());
 
             /* Whether this node is running in multiuser mode */
             jsonRet["multiuser"] = config::fMultiuser.load();

@@ -276,6 +276,10 @@ namespace LLP
             {"latency",   debug::safe_printstr(nLatency, " ns") }
         };
 
+        /* Log our response if argument is specified. */
+        if(config::GetBoolArg("-httpresponse", false))
+            debug::log(0, ret.dump(4));
+
         /* Add content. */
         RESPONSE.strContent = ret.dump();
 
