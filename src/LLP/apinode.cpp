@@ -300,9 +300,9 @@ namespace LLP
         if(!mapHeaders.count("authorization"))
             return debug::error(FUNCTION, "no authorization in header");
 
-
+        /* Get the authorization encoding from the header. */
         std::string strAuth = mapHeaders["authorization"];
-        if(strAuth.substr(0,6) != "Basic ")
+        if(strAuth.substr(0, 5) != "Basic")
             return debug::error(FUNCTION, "incorrect authorization type");
 
         /* Get the encoded content */
@@ -310,10 +310,8 @@ namespace LLP
         trim(strUserPass64);
 
         /* Decode from base64 */
-        std::string strUserPass = encoding::DecodeBase64(strUserPass64);
-        std::string strAPIUserColonPass = config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", "");
-
-        return strUserPass == strAPIUserColonPass;
+        std::string strUserPass = (config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", ""));
+        return encoding::DecodeBase64(strUserPass64) == strUserPass;
     }
 
 
