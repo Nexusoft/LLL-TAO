@@ -45,7 +45,7 @@ namespace TAO
         json::json Tokens::Create(const json::json& params, bool fHelp)
         {
             /* Generate a random hash for this objects register address */
-            TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
+            const TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
 
             /* Check for supply parameter. */
             if(params.find("supply") == params.end())
@@ -72,7 +72,7 @@ namespace TAO
             }
 
             /* For tokens being created without a global namespaced name, the identifier is equal to the register address */
-            TAO::Register::Address hashIdentifier = hashRegister;
+            const TAO::Register::Address hashIdentifier = hashRegister;
 
             /* Check for nDecimals parameter. */
             uint8_t nDecimals = 0;
@@ -103,7 +103,7 @@ namespace TAO
             nSupply = nSupply * math::pow(10, nDecimals);
 
             /* Create a token object register. */
-            TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier, nSupply, nDecimals);
+            const TAO::Register::Object token = TAO::Register::CreateToken(hashIdentifier, nSupply, nDecimals);
 
             /* Submit the payload object. */
             std::vector<TAO::Operation::Contract> vContracts(1);

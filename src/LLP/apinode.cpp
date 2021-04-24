@@ -56,7 +56,7 @@ namespace LLP
     /* Custom Events for Core API */
     void APINode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
-
+        /* Reset this thread's errors on new connection. */
         if(EVENT == EVENTS::CONNECT)
         {
             /* Reset the error log for this thread */
@@ -74,17 +74,19 @@ namespace LLP
     /** Main message handler once a packet is recieved. **/
     bool APINode::ProcessPacket()
     {
-
+        /* Check our http-basic authentication for the API. */
         if(!Authorized(INCOMING.mapHeaders))
         {
-            debug::error(FUNCTION, "API incorrect password attempt from ", this->addr.ToString());
+            /* Log a warning to the console. */
+            debug::warning(FUNCTION, "API incorrect password attempt from ", this->addr.ToString());
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
              * shouldn't have their RPC port exposed. */
             if(config::GetArg("-apipassword", "").size() < 20)
-                runtime::sleep(250);
+                runtime::sleep(250); //XXX: lets add better DoS handling here, we want to throttle failed attempts for all passwords
 
+            /* Use code 401 for unauthorized as response. */
             PushResponse(401, "");
 
             return false;
@@ -94,10 +96,8 @@ namespace LLP
         std::string::size_type npos = INCOMING.strRequest.find('/', 1);
 
         /* Extract the API requested. */
-        std::string strAPI = INCOMING.strRequest.substr(1, npos - 1);
-
-        /* Extract the method to invoke. */
-        std::string METHOD = INCOMING.strRequest.substr(npos + 1);
+        std::string strAPI    = INCOMING.strRequest.substr(1, npos - 1);
+        std::string strMethod = INCOMING.strRequest.substr(npos + 1);
 
         /* The JSON response */
         json::json ret;
@@ -105,14 +105,11 @@ namespace LLP
         /* The HTTP response status code, default to 200 unless an error is encountered */
         uint16_t nStatus = 200;
 
-        /* Flag indicating that the connection should be kept alive */
-        bool fKeepAlive = false;
+        /* Log the starting time for this command. */
+        runtime::timer tLatency;
+        tLatency.Start();
 
-        runtime::timer TIMER;
-        TIMER.Start();
-        uint32_t nStart = TIMER.ElapsedMilliseconds();
-
-        /* Extract the parameters. */
+        /* Handle basic HTTP logic here. */
         try
         {
             json::json params;
@@ -131,7 +128,7 @@ namespace LLP
                             INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
 
                             /* parse the querystring */
-                            params = QuerystringToJSON(INCOMING.strContent, METHOD);
+                            params = QuerystringToJSON(INCOMING.strContent, strMethod);
                         }
 
                         /* JSON encoding. */
@@ -147,17 +144,17 @@ namespace LLP
             else if(INCOMING.strType == "GET")
             {
                 /* Detect if it is url form encoding. */
-                std::string::size_type pos = METHOD.find("?");
-                if(pos != METHOD.npos)
+                std::string::size_type pos = strMethod.find("?");
+                if(pos != strMethod.npos)
                 {
                     /* Parse the querystring */
-                    std::string strQuerystring = METHOD.substr(pos + 1);
+                    std::string strQuerystring = strMethod.substr(pos + 1);
 
                     /* Parse the method. */
-                    METHOD = METHOD.substr(0, pos);
+                    strMethod = strMethod.substr(0, pos);
 
                     /* parse the querystring */
-                    params = QuerystringToJSON(encoding::urldecode(strQuerystring), METHOD);
+                    params = QuerystringToJSON(encoding::urldecode(strQuerystring), strMethod);
                 }
             }
             else if(INCOMING.strType == "OPTIONS")
@@ -189,27 +186,27 @@ namespace LLP
 
             /* Execute the api and methods. */
             if(strAPI == "supply")
-                ret = { {"result", TAO::API::supply->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::supply->Execute(strMethod, params) } };
             else if(strAPI == "users")
-                ret = { {"result", TAO::API::users->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::users->Execute(strMethod, params) } };
             else if(strAPI == "assets")
-                ret = { {"result", TAO::API::assets->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::assets->Execute(strMethod, params) } };
             else if(strAPI == "ledger")
-                ret = { {"result", TAO::API::ledger->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::ledger->Execute(strMethod, params) } };
             else if(strAPI == "tokens")
-                ret = { {"result", TAO::API::tokens->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::tokens->Execute(strMethod, params) } };
             else if(strAPI == "system")
-                ret = { {"result", TAO::API::system->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::system->Execute(strMethod, params) } };
             else if(strAPI == "finance")
-                ret = { {"result", TAO::API::finance->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::finance->Execute(strMethod, params) } };
             else if(strAPI == "names")
-                ret = { {"result", TAO::API::names->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::names->Execute(strMethod, params) } };
             else if(strAPI == "dex")
-                ret = { {"result", TAO::API::dex->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::dex->Execute(strMethod, params) } };
             else if(strAPI == "voting")
-                ret = { {"result", TAO::API::voting->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::voting->Execute(strMethod, params) } };
             else if(strAPI == "invoices")
-                ret = { {"result", TAO::API::invoices->Execute(METHOD, params) } };
+                ret = { {"result", TAO::API::invoices->Execute(strMethod, params) } };
             else
                 throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }
@@ -263,15 +260,21 @@ namespace LLP
 
         /* Add the connection header */
         if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "keep-alive")
-        {
             RESPONSE.mapHeaders["Connection"] = "keep-alive";
-            fKeepAlive = true;
-        }
         else
-        {
             RESPONSE.mapHeaders["Connection"] = "close";
-            fKeepAlive = true;
-        }
+
+        /* Track the stopping time of this command. */
+        const uint64_t nLatency = tLatency.ElapsedNanoseconds();
+
+        /* Add some micro-benchamrks to response data. */
+        ret["stats"] =
+        {
+            {"method",    strAPI + "/" + strMethod},
+            {"timestamp", debug::rfc1123Time() },
+            {"address",   this->addr.ToString()},
+            {"latency",   debug::safe_printstr(nLatency, " ns") }
+        };
 
         /* Add content. */
         RESPONSE.strContent = ret.dump();
@@ -279,12 +282,7 @@ namespace LLP
         /* Write the response */
         this->WritePacket(RESPONSE);
 
-        uint32_t nStop = TIMER.ElapsedMilliseconds();
-
-        debug::log(3, "API Request ", strAPI +"/" +METHOD, " from ", this->addr.ToString(), " completed in ", nStop - nStart, " milliseconds");
-
-
-        return fKeepAlive;
+        return true; //XXX: assess if we can return false here, if my memory serves we had issues here a couple years ago
     }
 
 

@@ -47,11 +47,11 @@ namespace TAO
         void System::Initialize()
         {
             mapFunctions["get/info"]         = Function(std::bind(&System::GetInfo,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/metrics"]    = Function(std::bind(&System::Metrics,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["stop"]             = Function(std::bind(&System::Stop,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/peers"]       = Function(std::bind(&System::ListPeers,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/lisp-eids"]   = Function(std::bind(&System::LispEIDs, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["validate/address"] = Function(std::bind(&System::Validate,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["get/metrics"]      = Function(std::bind(&System::Metrics,    this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["stop"]             = Function(std::bind(&System::Stop,       this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/peers"]       = Function(std::bind(&System::ListPeers,  this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["list/lisp-eids"]   = Function(std::bind(&System::LispEIDs,   this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["validate/address"] = Function(std::bind(&System::Validate,   this, std::placeholders::_1, std::placeholders::_2));
         }
 
 
@@ -128,9 +128,9 @@ namespace TAO
             jsonRet["clientmode"] = config::fClient.load();
 
             /* Whether this node is running the legacy wallet */
-#ifdef NO_WALLET
+            #ifdef NO_WALLET
             jsonRet["legacy_unsupported"] = true;
-#endif
+            #endif
 
             /* The current block height of this node */
             jsonRet["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
@@ -147,27 +147,9 @@ namespace TAO
             /* Number of transactions in the node's mempool*/
             jsonRet["txtotal"] = TAO::Ledger::mempool.Size();
 
-            /* Number of peer connections*/
-            uint16_t nConnections = 0;
-
             /* Then check connections to the tritium server */
             if(LLP::TRITIUM_SERVER)
-                nConnections += LLP::TRITIUM_SERVER->GetConnectionCount();
-
-            jsonRet["connections"] = nConnections;
-
-
-            // The EID's of this node if using LISP
-            std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
-             if(mapEIDs.size() > 0)
-            {
-                json::json jsonEIDs = json::json::array();
-                for(const auto& eid :mapEIDs)
-                {
-                    jsonEIDs.push_back(eid.first);
-                }
-                jsonRet["eids"] = jsonEIDs;
-            }
+                jsonRet["connections"] = LLP::TRITIUM_SERVER->GetConnectionCount();
 
             return jsonRet;
 
