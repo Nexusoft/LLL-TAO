@@ -18,7 +18,7 @@ If you have already completed `Part 1: Compiling the Dependencies`, please skip 
 
 Download and install MSYS2 with default settings.
 
-http://repo.msys2.org/distrib/x86_64/msys2-x86_64-20161025.exe
+https://repo.msys2.org/distrib/x86_64/msys2-x86_64-20210419.exe
 
 When it is finished, ensure "Run MSYS2 64bit now" is checked and press Finish.
 In the MSYS command prompt that opens, enter:
