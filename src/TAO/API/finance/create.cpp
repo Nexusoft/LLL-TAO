@@ -90,8 +90,12 @@ namespace TAO
 
             /* Build a JSON response object. */
             json::json jRet;
-            jRet["txid"]    = BuildAndAccept(params, vContracts).ToString();
             jRet["address"] = hashRegister.ToString();
+
+            /* Handle passing txid if not in -autotx mode. */
+            const uint512_t hashTx = BuildAndAccept(params, vContracts);
+            if(hashTx != 0)
+                jRet["txid"] = hashTx.ToString();
 
             return jRet;
         }
