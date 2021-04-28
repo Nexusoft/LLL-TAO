@@ -65,10 +65,8 @@ namespace TAO
             if(params.find("amount") == params.end())
                 throw APIException(-46, "Missing amount");
 
-            /* Get the amount to debit. */
-            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * math::pow(10, nDecimals);
-
             /* Check the amount is not too small once converted by the token Decimals */
+            const uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * math::pow(10, nDecimals);
             if(nAmount == 0)
                 throw APIException(-68, "Amount too small");
 
