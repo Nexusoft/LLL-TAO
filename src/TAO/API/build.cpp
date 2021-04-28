@@ -82,6 +82,37 @@ namespace TAO::API
     }
 
 
+    /* Extract an address from incoming parameters to derive from name or address field. */
+    uint256_t ExtractToken(const json::json& params)
+    {
+        /* If name is provided then use this to deduce the register address, */
+        if(params.find("token_name") != params.end())
+        {
+            /* Check for default NXS token or empty name fields. */
+            if(params["token_name"] == "NXS" || params["token_name"].empty())
+                return 0;
+
+            return Names::ResolveAddress(params, params["token_name"].get<std::string>());
+        }
+
+        /* Otherwise let's check for the raw address format. */
+        else if(params.find("token") != params.end())
+        {
+            /* Declare our return value. */
+            const TAO::Register::Address hashRet =
+                TAO::Register::Address(params["token"].get<std::string>());
+
+            /* Check that it is valid */
+            if(!hashRet.IsValid())
+                throw APIException(-165, "Invalid token");
+
+            return hashRet;
+        }
+
+        return 0;
+    }
+
+
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
     uint512_t BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts)
     {
@@ -151,7 +182,6 @@ namespace TAO::API
             {
                 /* Otherwise we need to look up the default fee account */
                 TAO::Register::Object objectDefaultName;
-
                 if(!TAO::Register::GetNameRegister(tx.hashGenesis, std::string("default"), objectDefaultName))
                     throw TAO::API::APIException(-163, "Could not retrieve default NXS account to debit fees.");
 

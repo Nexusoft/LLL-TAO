@@ -38,6 +38,18 @@ namespace TAO::API
     uint256_t ExtractAddress(const json::json& params, const std::string strSuffix = "");
 
 
+    /** ExtractToken
+     *
+     *  Extract a token address from incoming parameters to derive from name or address field.
+     *
+     *  @param[in] params The parameters to find address in.
+     *
+     *  @return The register address if valid.
+     *
+     **/
+    uint256_t ExtractToken(const json::json& params);
+
+
     /** Build And Accept
      *
      *  Builds a transaction based on a list of contracts, to be deployed as a single tx or batched.
