@@ -23,20 +23,20 @@ namespace TAO::API
     /* Standard initialization function. */
     void Tokens::Initialize()
     {
-        mapFunctions["create/token"]              = Function(std::bind(&Tokens::Create, this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["credit/token"]              = Function(std::bind(&Tokens::Credit, this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["debit/token"]               = Function(std::bind(&Tokens::Debit,  this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["get/token"]                 = Function(std::bind(&Tokens::Get,    this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["list/token/transactions"]   = Function(std::bind(&Tokens::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["burn/token"]                = Function(std::bind(&Tokens::Burn,  this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["create/token"]              = Function(std::bind(&Tokens::Create,            this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["credit/token"]              = Function(std::bind(&Tokens::Credit,            this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["debit/token"]               = Function(std::bind(&Tokens::Debit,             this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["get/token"]                 = Function(std::bind(&Tokens::Get,               this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["list/token/transactions"]   = Function(std::bind(&Tokens::ListTransactions,  this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["burn/token"]                = Function(std::bind(&Tokens::Burn,              this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/token/accounts"]       = Function(std::bind(&Tokens::ListTokenAccounts, this, std::placeholders::_1, std::placeholders::_2));
 
         /* Temporary reroute of the account methods to the finance API equivalents XXX: this is really hacky */
-        mapFunctions["create/account"]            = Function(std::bind(&Finance::Create, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["credit/account"]            = Function(std::bind(&Finance::Credit, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["debit/account"]             = Function(std::bind(&Finance::Debit,  TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["get/account"]               = Function(std::bind(&Finance::Get,    TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["list/accounts"]             = Function(std::bind(&Finance::List, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["create/account"]            = Function(std::bind(&Finance::Create,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["credit/account"]            = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["debit/account"]             = Function(std::bind(&Finance::Debit,            TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["get/account"]               = Function(std::bind(&Finance::Get,              TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["list/accounts"]             = Function(std::bind(&Finance::List,             TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/account/transactions"] = Function(std::bind(&Finance::ListTransactions, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
     }
 
