@@ -287,6 +287,7 @@ namespace LLP
         this->WritePacket(RESPONSE);
 
         return true; //XXX: assess if we can return false here, if my memory serves we had issues here a couple years ago
+        //because if we disconnect immediately, we break the pipe. We need to wait for buffer to clear before disconnect
     }
 
 

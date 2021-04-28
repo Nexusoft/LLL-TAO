@@ -237,7 +237,7 @@ namespace TAO
 
                 /* Add expiration condition unless sending to self */
                 if(!fSendToSelf)
-                    AddExpires( jsonRecipient, session.GetAccount()->Genesis(), tx[nContract], fTokenizedDebit);
+                    AddExpires(jsonRecipient, session.GetAccount()->Genesis(), tx[nContract], fTokenizedDebit);
 
                 /* Increment the contract ID */
                 nContract++;

@@ -18,10 +18,6 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
-#include <condition_variable>
-#include <thread>
-#include <atomic>
-#include <vector>
 
 #include <LLC/include/random.h>
 
@@ -242,7 +238,7 @@ namespace TAO
                  *  Increments the number of incorrect authentication attempts made in this session
                  *
                  **/
-                void IncrementAuthAttempts() ;
+                void IncrementAuthAttempts();
 
 
 
@@ -277,7 +273,7 @@ namespace TAO
 
 
                 /** The session ID **/
-                uint256_t nID;
+                uint256_t nID; //XXX: this needs to be hashSession rather than nID
 
 
                 /** Timstamp when the session started **/

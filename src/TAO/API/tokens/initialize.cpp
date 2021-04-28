@@ -59,7 +59,7 @@ namespace TAO
             /* route the /token and /account endpoints to the generic ones e.g. create/token to create?type=token */
 
             // /* Edge case for list/accounts */
-            // if(strMethod.find("list/accounts") != std::string::npos )
+            // if(strMethod.find("list/accounts") != std::string::npos)
             // {
             //     /* set the method name */
             //     strMethodRewritten = "list/accounts";
@@ -69,7 +69,7 @@ namespace TAO
 
 
             // /* Edge case for list/account/transactions and list/token/transactions */
-            // if(strMethod.find("/transactions") != std::string::npos )
+            // if(strMethod.find("/transactions") != std::string::npos)
             // {
             //     /* set the method name */
             //     strMethodRewritten = "list";
@@ -98,7 +98,7 @@ namespace TAO
 
 
             /* Edge case for list/token/accounts  */
-            if(strMethod.find("list/token/accounts") != std::string::npos )
+            if(strMethod.find("list/token/accounts") != std::string::npos)
             {
                 /* set the method name */
                 strMethodRewritten = "list/token/accounts";

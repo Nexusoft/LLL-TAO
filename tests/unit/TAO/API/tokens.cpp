@@ -55,8 +55,6 @@ TEST_CASE( "Test Tokens API - create token", "[tokens]")
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
 
-        debug::log(0, ret.dump(4));
-
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
         REQUIRE(ret["error"]["code"].get<int32_t>() == -129);

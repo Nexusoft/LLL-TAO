@@ -96,7 +96,7 @@ namespace TAO
 
                 /* Check that this is an account */
                 uint8_t nStandard = object.Standard();
-                if(nStandard != TAO::Register::OBJECTS::ACCOUNT )
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT)
                     continue;
 
                 /* Check the account is not a NXS account */
@@ -167,7 +167,7 @@ namespace TAO
             json::json jsonRet = json::json::array();
 
             /* Check they are not using client mode */
-            if(config::fClient.load() )
+            if(config::fClient.load())
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* The token to list accounts for. */
@@ -374,11 +374,11 @@ namespace TAO
                 {
                     /* Sort in decending/ascending order based on order param */
                     if(strSort == "balance")
-                        return ( a.second.get<uint64_t>(strSort) > b.second.get<uint64_t>(strSort) ) ? fDesc : !fDesc;
+                        return (a.second.get<uint64_t>(strSort) > b.second.get<uint64_t>(strSort)) ? fDesc : !fDesc;
                     else if(strSort == "created")
-                        return ( a.second.nCreated > b.second.nCreated ) ? fDesc : !fDesc;
+                        return (a.second.nCreated > b.second.nCreated) ? fDesc : !fDesc;
                     else if(strSort == "modified")
-                        return ( a.second.nModified > b.second.nModified ) ? fDesc : !fDesc;
+                        return (a.second.nModified > b.second.nModified) ? fDesc : !fDesc;
                     else
                         return false;
                 });

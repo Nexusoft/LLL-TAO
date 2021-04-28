@@ -113,7 +113,8 @@ namespace TAO
             if(params.find("name") != params.end() && !params["name"].is_null() && !params["name"].get<std::string>().empty())
             {
                 /* Add an optional name if supplied. */
-                vContracts.push_back(
+                vContracts.push_back
+                (
                     Names::CreateName(users->GetSession(params).GetAccount()->Genesis(),
                     params["name"].get<std::string>(), "", hashRegister)
                 );
