@@ -149,39 +149,16 @@ namespace TAO::API
     /* Get a summary of nBalances information across all accounts belonging to the currently logged in signature chain */
     json::json Finance::ListBalances(const json::json& params, bool fHelp)
     {
-        json::json ret = json::json::array();
-
-        /* Get the session to be used for this API call */
-        Session& session = users->GetSession(params);
-
-        /* Get the account. */
-        const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-        if(!user)
-            throw APIException(-10, "Invalid session ID");
-
         /* The user genesis hash */
-        uint256_t hashGenesis = user->Genesis();
+        const uint256_t hashGenesis =
+            users->GetSession(params).GetAccount()->Genesis();
 
         /* Number of results to return. */
-        uint32_t nLimit = 100;
-
-        /* Offset into the result set to return results from */
-        uint32_t nOffset = 0;
-
-        /* Sort order to apply */
-        std::string strOrder = "desc";
+        uint32_t nLimit = 100, nOffset = 0, nTotal = 0;
 
         /* Get the params to apply to the response. */
+        std::string strOrder = "desc";
         GetListParams(params, strOrder, nLimit, nOffset);
-
-        /* token register hash */
-        uint256_t hashToken;
-
-        /* map of token types to balances */
-        std::map<uint256_t, balances_t> mapBalances;
-
-        /* The trust account */
-        TAO::Register::Object trust;
 
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
         std::vector<TAO::Register::Address> vRegisters;
@@ -189,6 +166,7 @@ namespace TAO::API
             throw APIException(-74, "No registers found");
 
         /* Iterate through each register we own */
+        json::json jRet = json::json::array();
         for(const auto& hashRegister : vRegisters)
         {
             /* Initial check that it is an account/trust/token, before we hit the DB to get the nBalances */
@@ -197,82 +175,46 @@ namespace TAO::API
 
             /* Get the register from the register DB */
             TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashRegister, object)) // note we don't include mempool state here as we want the confirmed
-                continue;
-
-            /* Check that this is a non-standard object type so that we can parse it and check the type*/
-            if(object.nType != TAO::Register::REGISTER::OBJECT)
-                continue;
-
-            /* parse object so that the data fields can be accessed */
-            if(!object.Parse())
+            if(!LLD::Register->ReadObject(hashRegister, object)) // note we don't include mempool state here as we want the confirmed
                 continue;
 
             /* Check that this is an account */
-            if(object.Base() != TAO::Register::OBJECTS::ACCOUNT )
+            if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
                 continue;
 
             /* Get the token */
-            hashToken = object.get<uint256_t>("token");
-
-            /* Cache this if it is the trust account */
-            if(object.Standard() == TAO::Register::OBJECTS::TRUST)
-                trust = object;
-
-            /* Increment the nBalances */
-            mapBalances[hashToken].nBalance += object.get<uint64_t>("nBalances");
-
-            /* Cache the decimals for this token to use for display */
-            mapBalances[hashToken].nDecimals = GetDecimals(object);
-        }
-
-        /* Iterate through each token and get the pending/unconfirmed etc  */
-        uint32_t nTotal = 0;
-        for(const auto& token : mapBalances)
-        {
-            /* Get the token hash for this token */
-            hashToken = token.first;
-
-            /* Find all pending debits to NXS accounts */
-            mapBalances[hashToken].nUnclaimed = GetPending(hashGenesis, hashToken);
-
-            /* Get unconfirmed debits coming in and credits we have made */
-            mapBalances[hashToken].nUnconfirmed = GetUnconfirmed(hashGenesis, hashToken, false);
-
-            /* Get all new debits that we have made */
-            mapBalances[hashToken].nUnconfirmedOutgoing = GetUnconfirmed(hashGenesis, hashToken, true);
-
-            /* Calculate the available nBalances which is the last confirmed nBalances minus and mempool debits */
-            mapBalances[hashToken].nAvailable = mapBalances[hashToken].nBalance - mapBalances[hashToken].nUnconfirmedOutgoing;
-
-            /* Get immature mined / staked */
-            mapBalances[hashToken].nImmature = GetImmature(hashGenesis);
-
-            /* Get the stake amount */
-            if(!trust.IsNull())
-                mapBalances[hashToken].nStake = trust.get<uint64_t>("stake");
-
+            const uint256_t hashToken = object.get<uint256_t>("token");
 
             /* Populate the response object */
-            json::json jsonBalances;
+            balances_t nBalances;
+            nBalances.nBalance            += object.get<uint64_t>("nBalances");
+            nBalances.nDecimals            = GetDecimals(object);
+            nBalances.nUnclaimed           = GetPending(hashGenesis, hashToken);
+            nBalances.nUnconfirmed         = GetUnconfirmed(hashGenesis, hashToken, false);
+            nBalances.nUnconfirmedOutgoing = GetUnconfirmed(hashGenesis, hashToken, true); //XXX: hacky names and unneeded
+            nBalances.nAvailable           = nBalances.nBalance - nBalances.nUnconfirmedOutgoing;
+            nBalances.nImmature            = GetImmature(hashGenesis);
 
             /* Resolve the name of the token name */
-            std::string strToken = hashToken != 0 ? Names::ResolveName(hashGenesis, hashToken) : "NXS";
-            if(!strToken.empty())
-                jsonBalances["token_name"] = strToken;
+            const std::string strToken =
+                (hashToken != 0 ? Names::ResolveName(hashGenesis, hashToken) : "NXS");
+
+            /* Poplate the json response object. */
+            json::json jBalances;
+            jBalances["token"]        = hashToken.ToString();
+            jBalances["available"]    = (double)nBalances.nAvailable   / math::pow(10, nBalances.nDecimals);
+            jBalances["pending"]      = (double)nBalances.nUnclaimed   / math::pow(10, nBalances.nDecimals);
+            jBalances["unconfirmed"]  = (double)nBalances.nUnconfirmed / math::pow(10, nBalances.nDecimals);
 
             /* Add the token identifier */
-            jsonBalances["token"] = hashToken.ToString();
-
-            jsonBalances["available"] = (double)(mapBalances[hashToken].nAvailable / pow(10, mapBalances[hashToken].nDecimals));
-            jsonBalances["pending"] = (double)(mapBalances[hashToken].nUnclaimed / pow(10, mapBalances[hashToken].nDecimals));
-            jsonBalances["unconfirmed"] = (double)(mapBalances[hashToken].nUnconfirmed / pow(10, mapBalances[hashToken].nDecimals));
+            if(!strToken.empty())
+                jBalances["token_name"] = strToken;
 
             /* Add stake/immature for NXS only */
             if(hashToken == 0)
             {
-                jsonBalances["stake"] = (double)(mapBalances[hashToken].nStake / pow(10, mapBalances[hashToken].nDecimals));
-                jsonBalances["immature"] = (double)(mapBalances[hashToken].nImmature / pow(10, mapBalances[hashToken].nDecimals));
+                jBalances["stake"]    = (double)nBalances.nStake    / math::pow(10, nBalances.nDecimals);
+                jBalances["immature"] = (double)nBalances.nImmature / math::pow(10, nBalances.nDecimals);
             }
 
             /* Check the offset. */
@@ -283,9 +225,9 @@ namespace TAO::API
             if(nTotal - nOffset > nLimit)
                 break;
 
-            ret.push_back(jsonBalances);
+            jRet.push_back(jBalances);
         }
 
-        return ret;
+        return jRet;
     }
 }
