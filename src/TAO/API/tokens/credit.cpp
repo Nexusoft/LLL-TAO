@@ -41,87 +41,41 @@ namespace TAO
         /* Create an asset or digital item. */
         json::json Tokens::Credit(const json::json& params, bool fHelp)
         {
-            json::json ret;
-
-            /* Authenticate the users credentials */
-            if(!users->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
-
-            /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
-
-            /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
-
             /* Check for txid parameter. */
             if(params.find("txid") == params.end())
                 throw APIException(-50, "Missing txid.");
 
-
-            /* Lock the signature chain. */
-            LOCK(session.CREATE_MUTEX);
-
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
-
-            /* Submit the transaction payload. */
-            TAO::Register::Address hashAccountTo;
-
-            /* Check for data parameter. */
-            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
-            {
-                /* If name_to is provided then use this to deduce the register address */
-                hashAccountTo = Names::ResolveAddress(params, params["name"].get<std::string>());
-            }
-
-            /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("address") != params.end())
-                hashAccountTo.SetBase58(params["address"].get<std::string>());
+            /* Extract some parameters from input data. */
+            const TAO::Register::Address hashCredit = ExtractAddress(params, "to");
+            const TAO::Register::Address hashProof  = ExtractAddress(params, "proof");
 
             /* Get the transaction id. */
-            uint512_t hashTx;
-            hashTx.SetHex(params["txid"].get<std::string>());
-
-            /* Check for the proof parameter parameter. */
-            TAO::Register::Address hashProof;
-            if(params.find("name_proof") != params.end())
-            {
-                /* If name_proof is provided then use this to deduce the register address */
-                hashProof = Names::ResolveAddress(params, params["name_proof"].get<std::string>());
-            }
-            else if(params.find("address_proof") != params.end())
-                hashProof.SetBase58(params["address_proof"].get<std::string>());
+            const uint512_t hashTx = uint512_t(params["txid"].get<std::string>());
 
             /* Read the debit transaction that is being credited. */
-            TAO::Ledger::Transaction txDebit;
-            if(!LLD::Ledger->ReadTx(hashTx, txDebit, TAO::Ledger::FLAGS::MEMPOOL))
+            TAO::Ledger::Transaction tx;
+            if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-40, "Previous transaction not found.");
 
             /* Loop through all transactions. */
-            int32_t nCurrent = -1;
-            for(uint32_t nContract = 0; nContract < txDebit.Size(); ++nContract)
+            std::vector<TAO::Operation::Contract> vContracts(0);
+            for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
             {
                 /* Get the contract. */
-                const TAO::Operation::Contract& contract = txDebit[nContract];
+                const TAO::Operation::Contract& contract = tx[nContract];
 
                 /* Reset the contract to the position of the primitive. */
-                contract.SeekToPrimitive();
+                if(contract.Primitive() != TAO::Operation::OP::DEBIT)
+                    continue;
 
                 /* Get the operation byte. */
-                uint8_t nType = 0;
-                contract >> nType;
-
-                /* Check type. */
-                if(nType != TAO::Operation::OP::DEBIT)
-                    continue;
+                contract.SeekToPrimitive(true); //skip our primitive
 
                 /* Get the hashFrom from the debit transaction. */
                 TAO::Register::Address hashFrom;
                 contract >> hashFrom;
 
-                /* Get the hashTo from the debit transaction. */
+                /* Get the hashCredit from the debit transaction. */
                 TAO::Register::Address hashTo;
                 contract >> hashTo;
 
@@ -132,146 +86,102 @@ namespace TAO
                 /* Check for wildcard. */
                 if(hashTo == TAO::Register::WILDCARD_ADDRESS)
                 {
-                    /* if we passed these checks then insert the credit contract into the tx */
-                    tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccountTo << hashFrom << nAmount;
+                    /* If we passed these checks then insert the credit contract into the tx */
+                    TAO::Operation::Contract contract;
+                    contract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
+                    contract << hashCredit << hashFrom << nAmount;
+
+                    /* Push to our contract queue. */
+                    vContracts.push_back(contract);
 
                     continue;
                 }
 
                 /* Get the token / account object that the debit was made to. */
-                TAO::Register::Object objectTo;
-                if(!LLD::Register->ReadState(hashTo, objectTo, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object objTo;
+                if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::MEMPOOL))
                     continue;
 
-                /* Parse the object register. */
-                if(!objectTo.Parse())
-                    throw APIException(-41, "Failed to parse object from debit transaction");
-
-                /* Get the object standard. */
-                uint8_t nStandard = objectTo.Base();
-
-                /* In order to know how to process the credit we need to know whether it is a split payment or not.
-                   for split payments the hashTo object will be an Asset, and the owner of that asset must be a token.
-                   If this is the case, then the caller must supply both an account to receive their payment, and the
-                   token account that proves their entitlement to the split of the debit payment. */
-
                 /* Check to see whether this is a simple debit to a token */
-                if(objectTo.Base() == TAO::Register::OBJECTS::TOKEN)
+                const uint8_t nParent = objTo.Base();
+                if(nParent == TAO::Register::OBJECTS::ACCOUNT)
                 {
                     /* Check that the debit was made to an account that we own */
-                    if(objectTo.hashOwner == session.GetAccount()->Genesis())
+                    if(objTo.hashOwner == users->GetSession(params).GetAccount()->Genesis())
                     {
-                        /* if we passed these checks then insert the credit contract into the tx */
-                        tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashTo <<  hashFrom << nAmount;
+                        /* Create our new contract now. */
+                        TAO::Operation::Contract contract;
+                        contract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
+                        contract << hashCredit << hashFrom << nAmount;
+
+                        /* Push to our contract queue. */
+                        vContracts.push_back(contract);
                     }
                     else
                         continue;
                 }
-                else
+
+                /* If addressed to non-standard object, this could be a tokenized debit, so do some checks to find out. */
+                else if(nParent == TAO::Register::OBJECTS::NONSTANDARD)
                 {
-                    /* If the debit has not been made to an account that we own then we need to see whether it is a split payment.
-                       This can be identified by the objectTo being an asset AND the owner being a token.  If this is the case
-                       then the hashProof provided by the caller must be an account for the same token as the asset holder,
-                       and hashAccountTo must be an account for the same token as the hashFrom account.*/
-                    if(nStandard == TAO::Register::OBJECTS::NONSTANDARD)
-                    {
-                        /* retrieve the owner and check that it is a token */
-                        TAO::Register::Object assetOwner;
-                        if(!LLD::Register->ReadState(objectTo.hashOwner, assetOwner, TAO::Ledger::FLAGS::MEMPOOL))
-                            continue;
-
-                        /* Parse the object register. */
-                        if(!assetOwner.Parse())
-                            throw APIException(-52, "Failed to parse asset owner object");
-
-                        if(assetOwner.Standard() == TAO::Register::OBJECTS::TOKEN)
-                        {
-                            /* This is definitely a split payment so we now need to verify the token account and proof that
-                               were passed in as parameters */
-                            if(hashAccountTo == 0)
-                                throw APIException(-53, "Missing name / address of account to credit.");
-
-                            if(hashProof == 0)
-                                throw APIException(-54, "Missing name_proof / address_proof of token account that proves your credit share.");
-
-                            /* Retrieve the account that the user has specified to make the payment to and ensure that it is for
-                               the same token as the debit hashFrom */
-                            TAO::Register::Object accountToCredit;
-                            if(!LLD::Register->ReadState(hashAccountTo, accountToCredit, TAO::Ledger::FLAGS::MEMPOOL))
-                                throw APIException(-55, "Invalid name / address of account to credit. ");
-
-                            /* Parse the object register. */
-                            if(!accountToCredit.Parse())
-                                throw APIException(-56, "Failed to parse account to credit.");
-
-                            /* Retrieve the account to debit from. */
-                            TAO::Register::Object debitFromObject;
-                            if(!LLD::Register->ReadState(hashFrom, debitFromObject, TAO::Ledger::FLAGS::MEMPOOL))
-                                continue;
-
-                            /* Parse the object register. */
-                            if(!debitFromObject.Parse())
-                                throw APIException(-57, "Failed to parse object to debit from.");
-
-                            /* Check that the account being debited from is the same token type as as the account being
-                               credited to*/
-                            if(debitFromObject.get<uint256_t>("token") != accountToCredit.get<uint256_t>("token"))
-                                throw APIException(-121, "Account to credit is not for the same token as the debit.");
-
-
-                            /* Retrieve the hash proof account and check that it is the same token type as the asset owner */
-                            TAO::Register::Object proofObject;
-                            if(!LLD::Register->ReadState(hashProof, proofObject, TAO::Ledger::FLAGS::MEMPOOL))
-                                continue;
-
-                            /* Parse the object register. */
-                            if(!proofObject.Parse())
-                                throw APIException(-60, "Failed to parse proof object.");
-
-                            /* Check that the proof is an account for the same token as the asset owner */
-                            if(proofObject.get<uint256_t>("token") != assetOwner.get<uint256_t>("token"))
-                                throw APIException(-61, "Proof account is for a different token than the asset token.");
-
-                            /* Calculate the partial amount we want to claim based on our share of the proof tokens */
-                            uint64_t nPartial = (proofObject.get<uint64_t>("balance") * nAmount) / assetOwner.get<uint64_t>("supply");
-
-                            /* if we passed all of these checks then insert the credit contract into the tx */
-                            tx[++nCurrent] << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract) << hashAccountTo <<  hashProof << nPartial;
-
-                        }
-                        else
-                            continue;
-
-                    }
-                    else
+                    /* Check that the owner is a token. */
+                    if(objTo.hashOwner.GetType() == TAO::Register::Address::TOKEN)
                         continue;
-                }
 
+                    /* Read our token contract now since we now know it's correct. */
+                    TAO::Register::Object objOwner;
+                    if(!LLD::Register->ReadObject(objTo.hashOwner, objOwner, TAO::Ledger::FLAGS::MEMPOOL))
+                        continue;
+
+                    /* We shouldn't ever evaluate to true here, but if we do let's not make things worse for ourselves. */
+                    if(objOwner.Standard() != TAO::Register::OBJECTS::TOKEN)
+                        continue;
+
+                    /* Retrieve the hash proof account and check that it is the same token type as the asset owner */
+                    TAO::Register::Object objProof;
+                    if(!LLD::Register->ReadObject(hashProof, objProof, TAO::Ledger::FLAGS::MEMPOOL))
+                        continue;
+
+                    /* Check that the proof is an account for the same token as the asset owner */
+                    if(objProof.get<uint256_t>("token") != objOwner.get<uint256_t>("token"))
+                        throw APIException(-61, "Proof account is for a different token than the asset token.");
+
+                    /* Read our crediting account. */
+                    TAO::Register::Object objCredit;
+                    if(!LLD::Register->ReadObject(hashCredit, objCredit, TAO::Ledger::FLAGS::MEMPOOL))
+                        continue;
+
+                    /* Retrieve the account to debit from. */
+                    TAO::Register::Object objFrom;
+                    if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
+                        continue;
+
+                    /* Check that the account being debited from is the same token type as credit. */
+                    if(objFrom.get<uint256_t>("token") != objCredit.get<uint256_t>("token"))
+                        throw APIException(-121, "Account to credit is not for the same token as the debit.");
+
+                    /* Calculate the partial amount we want to claim based on our share of the proof tokens */
+                    const uint64_t nPartial = (objProof.get<uint64_t>("balance") * nAmount) / objOwner.get<uint64_t>("supply");
+
+                    /* Create our new contract now. */
+                    TAO::Operation::Contract contract;
+                    contract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
+                    contract << hashCredit << hashProof << nPartial;
+
+                    /* Push to our contract queue. */
+                    vContracts.push_back(contract);
+                }
             }
 
             /* Check that output was found. */
-            if(nCurrent == -1)
+            if(vContracts.empty())
                 throw APIException(-43, "No valid contracts in debit tx.");
 
-            /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction.");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept.");
-
             /* Build a JSON response object. */
-            ret["txid"]  = tx.GetHash().ToString();
+            json::json jRet;
+            jRet["txid"] = BuildAndAccept(params, vContracts).ToString();
 
-            return ret;
+            return jRet;
         }
     }
 }

@@ -72,6 +72,10 @@ namespace TAO::API
         else if(strPostfix == "to")
             throw APIException(-64, "Missing recipient account name_to / address_to");
 
+        /* This exception is for name_proof/address_proof */
+        else if(strPostfix == "proof")
+            throw APIException(-54, "Missing name_proof / address_proof to credit");
+
         /* This exception is for name/address */
         throw APIException(-33, "Missing name / address");
     }

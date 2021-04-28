@@ -393,6 +393,11 @@ TEST_CASE( "Test Tokens API - credit token", "[tokens]")
         params["session"] = SESSION1;
         params["txid"] = LLC::GetRand256().GetHex();
 
+        //dummy values to pass tests
+        params["name"]          = "default";
+        params["name_to"]       = "default";
+        params["address_proof"] = "8BfQEws91PMVaNG44DxYfr9B825W2MVdvdynyhtTYr6z5JQ2SPC";
+
         /* Invoke the API */
         ret = APICall("tokens/credit/token", params);
 

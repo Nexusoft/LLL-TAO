@@ -148,47 +148,6 @@ namespace TAO
         }
 
 
-        /* Move the internal operation stream pointer to the position of the primitive operation byte.
-        *  If the stream starts with a CONDITION or VALIDATE byte then the pointer is moved forward to skip these bytes */
-        void Contract::SeekToPrimitive() const
-        {
-            /* Sanity checks. */
-            if(ssOperation.size() == 0)
-                throw debug::exception(FUNCTION, "cannot get primitive when empty");
-
-            /* Reset the operations stream to the beginning */
-            ssOperation.seek(0, STREAM::BEGIN);
-
-            /* Get the operation code.*/
-            uint8_t nOP = ssOperation.get(0);
-
-            /* Switch for validate or condition. */
-            switch(nOP)
-            {
-                /* Check for condition. */
-                case OP::CONDITION:
-                {
-                    /* Seek forward to the next byte, which will contain the primitive op. */
-                    ssOperation.seek(1);
-                    break;
-                }
-
-                /* Check for validate. */
-                case OP::VALIDATE:
-                {
-                    /* Skip over the validate byte, 64 bytes for the transaction hash and 4 bytes for the contract ID . */
-                    ssOperation.seek(69);
-                    break;
-                }
-                default :
-                {
-                    /* Nothing to do as the stream is already in the correct position (0) */
-                    break;
-                }
-            }
-
-        }
-
         /* Get the primitive operation. */
         uint8_t Contract::Primitive() const
         {
@@ -642,6 +601,45 @@ namespace TAO
             }
 
             return 0;
+        }
+
+
+        /* Move the internal operation stream pointer to the position of the primitive operation byte. */
+        void Contract::SeekToPrimitive(bool fInclude) const
+        {
+            /* Sanity checks. */
+            if(ssOperation.size() == 0)
+                throw debug::exception(FUNCTION, "cannot get primitive when empty");
+
+            /* Reset the operations stream to the beginning */
+            ssOperation.seek(0, STREAM::BEGIN);
+
+            /* Get the operation code.*/
+            uint8_t nOP = ssOperation.get(0);
+
+            /* Switch for validate or condition. */
+            switch(nOP)
+            {
+                /* Check for condition. */
+                case OP::CONDITION:
+                {
+                    /* Seek forward to the next byte, which will contain the primitive op. */
+                    ssOperation.seek(1 + (fInclude ? 0 : 1));
+                    break;
+                }
+
+                /* Check for validate. */
+                case OP::VALIDATE:
+                {
+                    /* Skip over the validate byte, 64 bytes for the transaction hash and 4 bytes for the contract ID . */
+                    ssOperation.seek(69 + (fInclude ? 0 : 1));
+                    break;
+                }
+
+                /* Nothing to do as the stream is already in the correct position (0) */
+                default:
+                    break;
+            }
         }
     }
 }

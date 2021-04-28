@@ -114,11 +114,11 @@ namespace TAO
             }
 
             /* Build a JSON response object. */
-            json::json ret;
-            ret["txid"]    = BuildAndAccept(params, vContracts).ToString();
-            ret["address"] = hashRegister.ToString();
+            json::json jRet;
+            jRet["txid"]    = BuildAndAccept(params, vContracts).ToString();
+            jRet["address"] = hashRegister.ToString();
 
-            return ret;
+            return jRet;
         }
     }
 }

@@ -360,10 +360,9 @@ namespace TAO
             /** SeekToPrimitive
              *
              *  Move the internal operation stream pointer to the position of the primitive operation byte.
-             *  If the stream starts with a CONDITION or VALIDATE byte then the pointer is moved forward to skip these bytes
              *
              **/
-            void SeekToPrimitive() const;
+            void SeekToPrimitive(bool fInclude = true) const;
 
 
             /** Operator Overload <<
