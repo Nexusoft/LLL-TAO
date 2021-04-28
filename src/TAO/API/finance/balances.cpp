@@ -36,7 +36,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    typedef struct
+    typedef struct //XXX: this should be in its own header file
     {
         /* The confirmed nBalances from the state at the last block*/
         uint64_t nBalance = 0;
@@ -51,7 +51,7 @@ namespace TAO::API
         uint64_t nUnconfirmed = 0;
 
         /* The sum of all unconfirmed outcoing debits */
-        uint64_t nUnconfirmedOutgoing = 0;
+        uint64_t nUnconfirmedOutgoing = 0; //XXX: this is superfluous, consider removing
 
         /* The amount currently being staked */
         uint64_t nStake = 0;
