@@ -31,70 +31,65 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <Util/include/math.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /** GetFigures
+     *
+     *  Converts the decimals from an object into raw figures using power function
+     *
+     *  @param[in] object The Object Register to derive the figures from
+     *
+     *  @return the whole 64-bit value with figures expanded
+     *
+     **/
+    uint64_t GetFigures(const TAO::Register::Object& object)
+    {
+        return math::pow(10, GetDecimals(object));
+    }
+
 
     /* Retrieves the number of decimals that applies to amounts for this token or account object.
-     *  If the object register passed in is a token account then we need to look at the token definition
-     *  in order to get the decimals.  The token is obtained by looking at the identifier field,
-     *  which contains the register address of the issuing token
+     * If the object register passed in is a token account then we need to look at the token definition
      */
     uint8_t GetDecimals(const TAO::Register::Object& object)
     {
-        /* Declare the nDecimals to return */
-        uint8_t nDecimals = 0;
-
-        /* Get the object standard. */
-        uint8_t nStandard = object.Standard();
-
         /* Check the object standard. */
-        switch(nStandard)
+        switch(object.Standard())
         {
+            /* Standard token contracts we can grab right from the object. */
             case TAO::Register::OBJECTS::TOKEN:
-            {
-                nDecimals = object.get<uint8_t>("decimals");
-                break;
-            }
+                return object.get<uint8_t>("decimals");
 
+            /* Trust standards use NXS default values. */
             case TAO::Register::OBJECTS::TRUST:
-            {
-                nDecimals = TAO::Ledger::NXS_DIGITS; // NXS token default digits
-                break;
-            }
+                return TAO::Ledger::NXS_DIGITS;
 
+            /* Account standards need to do a little looking up. */
             case TAO::Register::OBJECTS::ACCOUNT:
             {
-                /* If debiting an account we need to look at the token definition in order to get the digits. */
-                TAO::Register::Address nIdentifier = object.get<uint256_t>("token");
+                /* Cache our identifier. */
+                const uint256_t hashIdentifier = object.get<uint256_t>("token");
 
-                /* Edge case for NXS token which has identifier 0, so no look up needed */
-                if(nIdentifier == 0)
-                    nDecimals = TAO::Ledger::NXS_DIGITS;
-                else
-                {
-                    /* Read the token register from the DB. */
-                    TAO::Register::Object token;
-                    if(!LLD::Register->ReadState(nIdentifier, token, TAO::Ledger::FLAGS::LOOKUP))
-                        throw APIException(-125, "Token not found");
+                /* NXS has identifier 0, so no look up needed */
+                if(hashIdentifier == 0)
+                    return TAO::Ledger::NXS_DIGITS;
 
-                    /* Parse the object register. */
-                    if(!token.Parse())
-                        throw APIException(-14, "Object failed to parse");
+                /* Read the token register from the DB. */
+                TAO::Register::Object object;
+                if(!LLD::Register->ReadObject(hashIdentifier, object, TAO::Ledger::FLAGS::LOOKUP))
+                    throw APIException(-125, "Token not found");
 
-                    nDecimals = token.get<uint8_t>("decimals");
-                }
-                break;
+                return object.get<uint8_t>("decimals");
             }
 
             default:
-            {
                 throw APIException(-124, "Unknown token / account.");
-            }
-
         }
 
-        return nDecimals;
+        return 0;
     }
 
 

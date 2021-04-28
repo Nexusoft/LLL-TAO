@@ -22,12 +22,22 @@ namespace TAO::Register { class Object; class State; }
 namespace TAO::API
 {
 
+    /** GetFigures
+     *
+     *  Converts the decimals from an object into raw figures using power function
+     *
+     *  @param[in] object The Object Register to derive the figures from
+     *
+     *  @return the whole 64-bit value with figures expanded
+     *
+     **/
+    uint64_t GetFigures(const TAO::Register::Object& object);
+
+
     /** GetDecimals
      *
      *  Retrieves the number of decimals that applies to amounts for this token or account object.
      *  If the object register passed in is a token account then we need to look at the token definition
-     *  in order to get the decimals.  The token is obtained by looking at the token_address field,
-     *  which contains the register address of the issuing token
      *
      *  @param[in] object The Object Register to determine the decimals for
      *

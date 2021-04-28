@@ -25,8 +25,9 @@ The variable names have a prefix that defines the type. This helps us not lose t
 * (set)Variable ex. setVar - (set) denotes the type is a std::set
 
 ### TAO Types
-* (obj)Variable ex. objVar - (obj) denotes the type is TAO::Register::Object
-
+* (obj)Variable ex. objVar - (obj) denotes the type is TAO::Register::Object, if single word use full typename i.e. object
+* (ste)Variable ex. steVar - (ste) denotes the type is TAO::Register::State, if single word use full typename i.e. state
+* (txn)Variable ex. txnVar - (txn) denotes the type is TAO::Ledger::Transaction, if single word reduced typename i.e. tx 
 
 ## Namespaces
 
