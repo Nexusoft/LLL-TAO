@@ -44,11 +44,11 @@ The following list of verbs are used throughout the Nexus APIs.  While the actio
 
 * `list`
    - Retrieves a sorted list of objects or data
-   - Sorting is based on transaction/object age, by default is always newest to oldest.  Some list methods support additional sort fields. 
+   - Sorting is based on transaction/object age, by default is always newest to oldest.  Some list methods support additional sort fields.
    - Supported parameters:
      - `order` : The order of the results.  Values can be `desc` (default) or `asc`
      - `limit` : The number of records to return, default 100.  
-     - `page`: Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied. 
+     - `page`: Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
      - `offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
      - `verbose` : to indicate the verbosity of the data returned.  Values can be `default`, `summary`, or `detail`   
 
@@ -301,7 +301,7 @@ Error Codes
 | -162 | Namespace can only contain lowercase letters, numbers, periods (.) |
 | -163 | Could not retrieve default NXS account to debit fees |
 | -164 | Fee account is not a NXS account |
-| -165 | Invalid address_to |
+| -165 | Invalid address/name_to |
 | -166 | Account is a NXS account.  Please use the finance API for accessing NXS accounts. |
 | -167 | Invalid reference |
 | -168 | Invalid expiration time |
@@ -366,7 +366,7 @@ Error Codes
 | -227 | Missing payment account name / address |
 | -228 | Missing sender detail |
 | -229 | Missing recipient |
-| -230 | Recipient user does not exist | 
+| -230 | Recipient user does not exist |
 | -231 | Missing recipient detail |
 | -232 | Missing items |
 | -233 | Invoice must include at least one item |
@@ -444,3 +444,4 @@ Error Codes
 | -307 | Failed to download signature chain |
 | -308 | API method only available in client mode |
 | -309 | Error loading session |
+| -310 | Cannot sent to ALL accounts

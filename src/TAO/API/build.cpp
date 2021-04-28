@@ -32,18 +32,24 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractAddress(const json::json& params, bool fTo)
+    uint256_t ExtractAddress(const json::json& params, const std::string strPostfix)
     {
         /* Cache a couple keys we will be using. */
-        const std::string strName = (fTo ? "name_to"    : "name");
-        const std::string strAddr = (fTo ? "address_to" : "address");
+        const std::string strName = "name"    + (strPostfix.empty() ? ("") : ("_" + strPostfix));
+        const std::string strAddr = "address" + (strPostfix.empty() ? ("") : ("_" + strPostfix));;
 
         /* If name is provided then use this to deduce the register address, */
         if(params.find(strName) != params.end())
         {
             /* Check for the ALL name, that debits from all relevant accounts. */
             if(params[strName] == "ALL")
-                debug::log(0, "DEBIT FROM ALL ACCOUNTS"); //placeholder for ALL functionality
+            {
+                /* Check for send to all */
+                if(strPostfix == "to")
+                    throw APIException(-310, "Cannot sent to ALL accounts");
+
+                return ~uint256_t(0); //placeholder for ALL functionality 0xffffff.....ffffff
+            }
 
             return Names::ResolveAddress(params, params[strName].get<std::string>());
         }
@@ -63,7 +69,7 @@ namespace TAO::API
         }
 
         /* This exception is for name_to/address_to */
-        else if(fTo)
+        else if(strPostfix == "to")
             throw APIException(-64, "Missing recipient account name_to / address_to");
 
         /* This exception is for name/address */

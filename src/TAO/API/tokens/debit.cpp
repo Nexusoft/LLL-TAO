@@ -50,8 +50,8 @@ namespace TAO
             const TAO::Register::Address hashFrom = ExtractAddress(params);
 
             /* Get the token / account object. */
-            TAO::Register::Object objectFrom;
-            if(!LLD::Register->ReadObject(hashFrom, objectFrom, TAO::Ledger::FLAGS::MEMPOOL))
+            TAO::Register::Object objFrom;
+            if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-122, "Token/account not found");
 
             /* Get the object standard. */
@@ -59,11 +59,10 @@ namespace TAO
             uint64_t nBalance = 0;
 
             /* Check the object standard. */
-            const uint8_t nStandard = objectFrom.Standard();
-            if(nStandard == TAO::Register::OBJECTS::TOKEN)
+            if(objFrom.Standard() == TAO::Register::OBJECTS::TOKEN)
             {
-                nBalance = objectFrom.get<uint64_t>("balance");
-                nDecimals = GetDecimals(objectFrom);
+                nBalance = objFrom.get<uint64_t>("balance");
+                nDecimals = GetDecimals(objFrom);
             }
             else
                 throw APIException(-124, "Unknown token / account.");
@@ -118,28 +117,28 @@ namespace TAO
                     throw APIException(-69, "Insufficient funds");
 
                 /* The register address of the recipient acccount. */
-                const TAO::Register::Address hashTo = ExtractAddress(jRecipient, true); //true for sending to
+                const TAO::Register::Address hashTo = ExtractAddress(jRecipient, "to"); //true for sending to
 
                 /* Get the recipent token / account object. */
-                TAO::Register::Object objectTo;
-                if(!LLD::Register->ReadObject(hashTo, objectTo, TAO::Ledger::FLAGS::LOOKUP))
+                TAO::Register::Object objTo;
+                if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::LOOKUP))
                     throw APIException(-209, "Recipient is not a valid account");
 
                 /* Flags to track for final adjustments in our expiration contract.  */
                 bool fTokenizedDebit = false, fSendToSelf = false;
 
                 /* Check recipient account type */
-                switch(objectTo.Base())
+                switch(objTo.Base())
                 {
                     /* Case if sending to an account. */
                     case TAO::Register::OBJECTS::ACCOUNT:
                     {
                         /* Check for a valid token type compared to where we are debiting from. */
-                        if(objectTo.get<uint256_t>("token") != objectFrom.get<uint256_t>("token"))
+                        if(objTo.get<uint256_t>("token") != objFrom.get<uint256_t>("token"))
                             throw APIException(-209, "Recipient account is for a different token.");
 
                         /* Check if this is a send to self. */
-                        fSendToSelf = (objectTo.hashOwner == objectFrom.hashOwner);
+                        fSendToSelf = (objTo.hashOwner == objFrom.hashOwner);
 
                         break;
                     }
@@ -148,7 +147,7 @@ namespace TAO
                     case TAO::Register::OBJECTS::NONSTANDARD :
                     {
                         /* For payments to objects, they must be owned by a token */
-                        if(objectTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
+                        if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
                             throw APIException(-211, "Recipient object has not been tokenized.");
 
                         /* Set the flag for this debit. */
@@ -182,10 +181,10 @@ namespace TAO
             }
 
             /* Build a JSON response object. */
-            json::json ret;
-            ret["txid"] = BuildAndAccept(params, vContracts).ToString();
+            json::json jRet;
+            jRet["txid"] = BuildAndAccept(params, vContracts).ToString();
 
-            return ret;
+            return jRet;
         }
     }
 }

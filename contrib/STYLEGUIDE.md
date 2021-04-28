@@ -15,13 +15,17 @@ The variable names have a prefix that defines the type. This helps us not lose t
 * (f)Variable ex. fVar - (f) denotes a boolean flag.
 * (p)Variable ex. pVar - (p) denotes the variable is a pointer.
 * (s)Variable ex. sVar - (s) denotes the variable is static.
+* {j}Variable ex. jVar - (j) denotes the variable is a json container.
 
 ### STL Types
 
 * (str)Variable ex. strVar - (str) denotes the type is a std::string.
-* (v)Variable ex. vArr     - (v)   denotes the type is a std::vector.
+* (v)Variable   ex. vArr     - (v)   denotes the type is a std::vector.
 * (map)Variable ex. mapVar - (map) denotes the type is a std::map
 * (set)Variable ex. setVar - (set) denotes the type is a std::set
+
+### TAO Types
+* (obj)Variable ex. objVar - (obj) denotes the type is TAO::Register::Object
 
 
 ## Namespaces

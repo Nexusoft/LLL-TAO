@@ -34,7 +34,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractAddress(const json::json& params, bool fTo = false);
+    uint256_t ExtractAddress(const json::json& params, const std::string strPostfix = "");
 
 
     /** Build And Accept
