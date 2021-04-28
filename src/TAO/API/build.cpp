@@ -40,10 +40,10 @@ namespace TAO::API
             throw APIException(-139, "Invalid credentials");
 
         /* Get the PIN to be used for this API call */
-        SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        const SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
         /* Get the session to be used for this API call */
-        Session& session = users->GetSession(params);
+        const Session& session = users->GetSession(params);
         LOCK(session.CREATE_MUTEX);
 
         /* Create the transaction. */
@@ -56,8 +56,7 @@ namespace TAO::API
             tx << contract;
 
         /* Add the contract fees. */
-        if(!AddFee(tx))
-            throw APIException(-44, "Transaction failed to build");
+        AddFee(tx); //XXX: this returns true/false if fee was added, don't think we need this since it doesn't appear to be used
 
         /* Execute the operations layer. */
         if(!tx.Build())

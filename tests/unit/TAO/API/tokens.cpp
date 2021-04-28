@@ -29,7 +29,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/names/types/names.h>
 
-TEST_CASE( "Test Tokens API - create token", "[tokens/create/token]")
+TEST_CASE( "Test Tokens API - create token", "[tokens]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -48,7 +48,9 @@ TEST_CASE( "Test Tokens API - create token", "[tokens/create/token]")
     {
         /* Build the parameters to pass to the API */
         params.clear();
-        params["session"] = SESSION1;
+        params["session"]  = SESSION1;
+        params["supply"]   = "100";
+        params["decimals"] = "2";
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
@@ -66,6 +68,8 @@ TEST_CASE( "Test Tokens API - create token", "[tokens/create/token]")
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"] = PIN;
+        params["supply"]   = "100";
+        params["decimals"] = "2";
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
@@ -80,6 +84,7 @@ TEST_CASE( "Test Tokens API - create token", "[tokens/create/token]")
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"] = PIN;
+        params["decimals"] = "2";
         params["session"] = SESSION1;
         params["name"] = strToken;
 
@@ -114,7 +119,8 @@ TEST_CASE( "Test Tokens API - create token", "[tokens/create/token]")
     }
 }
 
-TEST_CASE( "Test Tokens API - debit token", "[tokens/debit/token]")
+
+TEST_CASE( "Test Tokens API - debit token", "[tokens]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -312,7 +318,7 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens/debit/token]")
 }
 
 
-TEST_CASE( "Test Tokens API - credit token", "[tokens/credit/token]")
+TEST_CASE( "Test Tokens API - credit token", "[tokens]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -414,7 +420,7 @@ TEST_CASE( "Test Tokens API - credit token", "[tokens/credit/token]")
 }
 
 
-TEST_CASE( "Test Tokens API - get token", "[tokens/get/token]")
+TEST_CASE( "Test Tokens API - get token", "[tokens]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -552,7 +558,7 @@ TEST_CASE( "Test Tokens API - get token", "[tokens/get/token]")
     }
 }
 
-TEST_CASE( "Test Tokens API - create account", "[tokens/create/account]")
+TEST_CASE( "Test Tokens API - create account", "[tokens]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -662,7 +668,7 @@ TEST_CASE( "Test Tokens API - create account", "[tokens/create/account]")
 }
 
 
-TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
+TEST_CASE( "Test Tokens API - debit account", "[tokens]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -1136,7 +1142,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
     }
 }
 
-TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
+TEST_CASE( "Test Tokens API - credit account", "[tokens]")
 {
     /* Declare variables shared across test cases */
     json::json params;
@@ -1298,7 +1304,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens/credit/account]")
 
 }
 
-TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
+TEST_CASE( "Test Tokens API - get account", "[tokens]")
 {
     /* Declare variables shared across test cases */
     json::json params;

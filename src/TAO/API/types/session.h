@@ -65,7 +65,7 @@ namespace TAO
 
 
                 /** Public mutex for creating transactions on signature chain. **/
-                std::mutex CREATE_MUTEX;
+                mutable std::mutex CREATE_MUTEX;
 
 
                 /** The txid of the transaction that was used to authenticate them on login.  This is cached so that we can

@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <Util/include/debug.h>
+#include <Util/include/math.h>
 
 
 /* Global TAO namespace. */
@@ -398,7 +399,7 @@ namespace TAO
 
                 /* Add the balance.  This is the last known confirmed balance, and for this API method does not include any
                    unconfirmed outgoing debits. */
-                jsonAccount["balance"] = account.second.get<uint64_t>("balance") / pow(10, nDecimals);
+                jsonAccount["balance"] = account.second.get<uint64_t>("balance") / math::pow(10, nDecimals);
 
                 /* Check the offset. */
                 if(++nTotal <= nOffset)

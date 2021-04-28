@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 
+#include <Util/include/math.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -80,7 +81,7 @@ namespace TAO
                 throw APIException(-46, "Missing amount");
 
             /* Get the amount to debit. */
-            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * pow(10, nDecimals);
+            uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * math::pow(10, nDecimals);
 
             /* Check the amount is not too small once converted by the token Decimals */
             if(nAmount == 0)
