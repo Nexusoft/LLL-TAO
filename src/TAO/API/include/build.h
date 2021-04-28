@@ -30,11 +30,12 @@ namespace TAO::API
      *  Extract an address from incoming parameters to derive from name or address field.
      *
      *  @param[in] params The parameters to find address in.
+     *  @param[in] strSuffix The suffix to append to end of parameter we are extracting.
      *
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractAddress(const json::json& params, const std::string strPostfix = "");
+    uint256_t ExtractAddress(const json::json& params, const std::string strSuffix = "");
 
 
     /** Build And Accept

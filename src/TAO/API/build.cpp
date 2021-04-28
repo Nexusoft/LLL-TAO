@@ -33,11 +33,11 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractAddress(const json::json& params, const std::string strPostfix)
+    uint256_t ExtractAddress(const json::json& params, const std::string strSuffix)
     {
         /* Cache a couple keys we will be using. */
-        const std::string strName = "name"    + (strPostfix.empty() ? ("") : ("_" + strPostfix));
-        const std::string strAddr = "address" + (strPostfix.empty() ? ("") : ("_" + strPostfix));;
+        const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
+        const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));;
 
         /* If name is provided then use this to deduce the register address, */
         if(params.find(strName) != params.end())
@@ -46,7 +46,7 @@ namespace TAO::API
             if(params[strName] == "ALL")
             {
                 /* Check for send to all */
-                if(strPostfix == "to")
+                if(strSuffix == "to")
                     throw APIException(-310, "Cannot sent to ALL accounts");
 
                 return TAO::Register::WILDCARD_ADDRESS; //placeholder for ALL functionality 0xffffff.....ffffff
@@ -59,8 +59,8 @@ namespace TAO::API
         else if(params.find(strAddr) != params.end())
         {
             /* Declare our return value. */
-            TAO::Register::Address hashRet;
-            hashRet.SetBase58(params[strAddr].get<std::string>());
+            const TAO::Register::Address hashRet =
+                TAO::Register::Address(params[strAddr].get<std::string>());
 
             /* Check that it is valid */
             if(!hashRet.IsValid())
@@ -70,11 +70,11 @@ namespace TAO::API
         }
 
         /* This exception is for name_to/address_to */
-        else if(strPostfix == "to")
+        else if(strSuffix == "to")
             throw APIException(-64, "Missing recipient account name_to / address_to");
 
         /* This exception is for name_proof/address_proof */
-        else if(strPostfix == "proof")
+        else if(strSuffix == "proof")
             throw APIException(-54, "Missing name_proof / address_proof to credit");
 
         /* This exception is for name/address */
