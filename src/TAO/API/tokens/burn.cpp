@@ -37,44 +37,29 @@ namespace TAO
         json::json Tokens::Burn(const json::json& params, bool fHelp)
         {
             /* The sending account or token. */
-            TAO::Register::Address hashFrom;
-
-            /* If name is provided then use this to deduce the register address,
-             * otherwise try to find the raw hex encoded address. */
-            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
-                hashFrom = Names::ResolveAddress(params, params["name"].get<std::string>());
-            else if(params.find("address") != params.end())
-                hashFrom.SetBase58(params["address"].get<std::string>());
-            else
-                throw APIException(-33, "Missing name / address");
+            const TAO::Register::Address hashFrom = ExtractAddress(params);
 
             /* Get the token / account object. */
             TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashFrom, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadObject(hashFrom, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-122, "Token/account not found");
 
-            /* Parse the object register. */
-            if(!object.Parse())
-                throw APIException(-14, "Object failed to parse");
-
             /* Get the object standard. */
-            uint8_t nStandard = object.Standard(), nDecimals = 0; //XXX: maybe we want a short for decimals? are we limited to 8 bits?
+            uint8_t nDecimals = 0;
 
             /* Balance of account/token being debited */
-            uint64_t nCurrentBalance = 0;
+            uint64_t nBalance = 0;
 
             /* Check the object standard. */
             uint256_t hashToken = 0;
-            if(nStandard == TAO::Register::OBJECTS::ACCOUNT)
+            if(object.Standard() == TAO::Register::OBJECTS::ACCOUNT)
             {
-                nCurrentBalance = object.get<uint64_t>("balance");
+                nBalance  = object.get<uint64_t>("balance");
                 nDecimals = GetDecimals(object);
                 hashToken = object.get<uint256_t>("token");
             }
             else
-            {
                 throw APIException(-65, "Object is not an account");
-            }
 
             /* Check for amount parameter. */
             if(params.find("amount") == params.end())
@@ -88,7 +73,7 @@ namespace TAO
                 throw APIException(-68, "Amount too small");
 
             /* Check they have the required funds */
-            if(nAmount > nCurrentBalance)
+            if(nAmount > nBalance)
                 throw APIException(-69, "Insufficient funds");
 
             /* The optional payment reference */
