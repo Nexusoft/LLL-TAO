@@ -172,10 +172,7 @@ namespace TAO::API
         if(vContracts.empty())
             throw APIException(-43, "No valid contracts in debit tx.");
 
-        /* Build a JSON response object. */
-        json::json jRet;
-        jRet["txid"] = BuildAndAccept(params, vContracts).ToString();
-
-        return jRet;
+        /* Build response JSON boilerplate. */
+        return BuildResponse(params, hashCredit, vContracts);
     }
 }

@@ -31,11 +31,11 @@ namespace TAO::API
     json::json Tokens::Burn(const json::json& params, bool fHelp)
     {
         /* The sending account or token. */
-        const TAO::Register::Address hashBurn = ExtractAddress(params);
+        const TAO::Register::Address hashRegister = ExtractAddress(params);
 
         /* Get the token / account object. */
         TAO::Register::Object object;
-        if(!LLD::Register->ReadObject(hashBurn, object, TAO::Ledger::FLAGS::MEMPOOL))
+        if(!LLD::Register->ReadObject(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
             throw APIException(-122, "Token/account not found");
 
         /* Check that we are operating on an account. */
@@ -62,17 +62,14 @@ namespace TAO::API
 
         /* Submit the payload object. */
         std::vector<TAO::Operation::Contract> vContracts(1);
-        vContracts[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashBurn << object.get<uint256_t>("token") << nAmount << nReference;
+        vContracts[0] << (uint8_t)TAO::Operation::OP::DEBIT << hashRegister << object.get<uint256_t>("token") << nAmount << nReference;
 
         /* Add the burn conditions.  This is a simple condition that will never evaluate to true */
         vContracts[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT16_T) <= uint16_t(108+105+102+101);
         vContracts[0] <= uint8_t(TAO::Operation::OP::EQUALS);
         vContracts[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT16_T) <= uint16_t(42);
 
-        /* Build a JSON response object. */
-        json::json ret;
-        ret["txid"] = BuildAndAccept(params, vContracts).ToString();
-
-        return ret;
+        /* Build response JSON boilerplate. */
+        return BuildResponse(params, hashRegister, vContracts);
     }
 }

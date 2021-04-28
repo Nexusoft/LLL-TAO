@@ -88,14 +88,15 @@ namespace TAO::API
             throw APIException(-178, "Invalid supply / decimals.  The maximum combination of supply and decimals (supply * 10^decimals) cannot exceed 18446744073709551615");
 
         /* Multiply the supply by 10^Decimals to give the supply in the divisible units */
-        nSupply = nSupply * math::pow(10, nDecimals);
+        nSupply *= math::pow(10, nDecimals);
 
         /* Create a token object register. */
         const TAO::Register::Object objToken = TAO::Register::CreateToken(hashRegister, nSupply, nDecimals);
 
         /* Submit the payload object. */
         std::vector<TAO::Operation::Contract> vContracts(1);
-        vContracts[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << objToken.GetState();
+        vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister;
+        vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << objToken.GetState();
 
         /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
         if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
@@ -108,11 +109,7 @@ namespace TAO::API
             );
         }
 
-        /* Build a JSON response object. */
-        json::json jRet;
-        jRet["txid"]    = BuildAndAccept(params, vContracts).ToString();
-        jRet["address"] = hashRegister.ToString();
-
-        return jRet;
+        /* Build response JSON boilerplate. */
+        return BuildResponse(params, hashRegister, vContracts);
     }
 }

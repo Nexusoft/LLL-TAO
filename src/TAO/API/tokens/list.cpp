@@ -75,6 +75,7 @@ namespace TAO::API
 
 
     /* Lists all accounts that have been created for a particular token. */
+    //XXX: this command will experience combinatoral explosion, to be deprecated in T++
     json::json Tokens::ListTokenAccounts(const json::json& params, bool fHelp)
     {
         /* The return json array */

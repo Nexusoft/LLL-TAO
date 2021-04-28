@@ -49,7 +49,6 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-
     /* Converts the block to formatted JSON */
     json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
                            const std::map<std::string, std::vector<Clause>>& vWhere)

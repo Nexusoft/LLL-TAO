@@ -32,6 +32,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
     /* Extract an address from incoming parameters to derive from name or address field. */
     uint256_t ExtractAddress(const json::json& params, const std::string strSuffix)
     {
@@ -99,8 +100,8 @@ namespace TAO::API
         else if(params.find("token") != params.end())
         {
             /* Declare our return value. */
-            const TAO::Register::Address hashRet =
-                TAO::Register::Address(params["token"].get<std::string>());
+            TAO::Register::Address hashRet;// =
+            hashRet.SetBase58(params["token"].get<std::string>());
 
             /* Check that it is valid */
             if(!hashRet.IsValid())
@@ -113,6 +114,24 @@ namespace TAO::API
     }
 
 
+    /* Build a response object for a transaction that was built. */
+    json::json BuildResponse(const json::json& params, const TAO::Register::Address& hashRegister,
+                             const std::vector<TAO::Operation::Contract>& vContracts)
+    {
+        /* Build a JSON response object. */
+        json::json jRet;
+        jRet["success"] = true; //just a little response for if using -autotx
+        jRet["address"] = hashRegister.ToString();
+
+        /* Handle passing txid if not in -autotx mode. */
+        const uint512_t hashTx = BuildAndAccept(params, vContracts);
+        if(hashTx != 0)
+            jRet["txid"] = hashTx.ToString();
+
+        return jRet;
+    }
+
+
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
     uint512_t BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts)
     {
@@ -121,7 +140,8 @@ namespace TAO::API
             throw APIException(-139, "Invalid credentials");
 
         /* Get the PIN to be used for this API call */
-        const SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        const SecureString strPIN =
+            users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
         /* Get the session to be used for this API call */
         const Session& session = users->GetSession(params);

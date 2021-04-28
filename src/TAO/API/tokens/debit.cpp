@@ -182,10 +182,7 @@ namespace TAO::API
             vContracts.push_back(contract);
         }
 
-        /* Build a JSON response object. */
-        json::json jRet;
-        jRet["txid"] = BuildAndAccept(params, vContracts).ToString();
-
-        return jRet;
+        /* Build response JSON boilerplate. */
+        return BuildResponse(params, hashFrom, vContracts);
     }
 }

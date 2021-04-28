@@ -37,7 +37,6 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-
         /** BlockToJSON
          *
          *  Converts the block to formatted JSON
