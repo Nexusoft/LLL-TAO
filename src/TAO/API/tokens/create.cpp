@@ -98,7 +98,7 @@ namespace TAO::API
         vContracts[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << objToken.GetState();
 
         /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
-        if(params.find("name") != params.end() && !params["name"].is_null() && !params["name"].get<std::string>().empty())
+        if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
         {
             /* Add an optional name if supplied. */
             vContracts.push_back

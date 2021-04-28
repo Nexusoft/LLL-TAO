@@ -44,59 +44,25 @@ namespace TAO
         /* Create a NXS account. */
         json::json Finance::Create(const json::json& params, bool fHelp)
         {
-            json::json ret;
-
-            /* Authenticate the users credentials */
-            if(!users->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
-
-            /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
-
-            /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
-
-            /* Lock the signature chain. */
-            LOCK(session.CREATE_MUTEX);
-
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
-
             /* Generate a random hash for this objects register address */
-            TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-
-            /* name of the object, default to blank */
-            std::string strName = "";
-
-            /* The token to create the account for. Default to 0 (NXS) */
-            TAO::Register::Address hashToken;
-
-            /* See if the caller has requested a particular token type */
-            if(params.find("token_name") != params.end() && !params["token_name"].get<std::string>().empty() && params["token_name"].get<std::string>() != "NXS")
-                /* If name is provided then use this to deduce the register address */
-                hashToken = Names::ResolveAddress(params, params["token_name"].get<std::string>());
-            /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("token") != params.end() && CheckAddress(params["token"]))
-                hashToken.SetBase58(params["token"]);
+            const TAO::Register::Address hashRegister =
+                TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
             /* If this is not a NXS token account, verify that the token identifier is for a valid token */
+            const TAO::Register::Address hashToken = ExtractToken(params);
             if(hashToken != 0)
             {
+                /* Check our address before hitting the database. */
                 if(hashToken.GetType() != TAO::Register::Address::TOKEN)
                     throw APIException(-212, "Invalid token");
 
-                TAO::Register::Object token;
-                if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::MEMPOOL))
+                /* Get the register off the disk. */
+                TAO::Register::Object object;
+                if(!LLD::Register->ReadObject(hashToken, object, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-125, "Token not found");
 
-                /* Parse the object register. */
-                if(!token.Parse())
-                    throw APIException(-14, "Object failed to parse");
-
                 /* Check the standard */
-                if(token.Standard() != TAO::Register::OBJECTS::TOKEN)
+                if(object.Standard() != TAO::Register::OBJECTS::TOKEN)
                     throw APIException(-212, "Invalid token");
             }
 
@@ -108,32 +74,26 @@ namespace TAO
                 account << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << params["data"].get<std::string>();
 
             /* Submit the payload object. */
-            tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
+            std::vector<TAO::Operation::Contract> vContracts(1);
+            vContracts[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
-            if(params.find("name") != params.end() && !params["name"].is_null() && !params["name"].get<std::string>().empty())
-                tx[1] = Names::CreateName(session.GetAccount()->Genesis(), params["name"].get<std::string>(), "", hashRegister);
-
-            /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
+            {
+                /* Add an optional name if supplied. */
+                vContracts.push_back
+                (
+                    Names::CreateName(users->GetSession(params).GetAccount()->Genesis(),
+                    params["name"].get<std::string>(), "", hashRegister)
+                );
+            }
 
             /* Build a JSON response object. */
-            ret["txid"]  = tx.GetHash().ToString();
-            ret["address"] = hashRegister.ToString();
+            json::json jRet;
+            jRet["txid"]    = BuildAndAccept(params, vContracts).ToString();
+            jRet["address"] = hashRegister.ToString();
 
-            return ret;
+            return jRet;
         }
     }
 }
