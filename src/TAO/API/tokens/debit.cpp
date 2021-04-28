@@ -37,161 +37,155 @@ ________________________________________________________________________________
 #include <Util/include/math.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Create an asset or digital item. */
+    json::json Tokens::Debit(const json::json& params, bool fHelp)
     {
+        /* Declare some values that we will be using. */
+        uint8_t nDecimals = 0;
+        uint64_t nBalance = 0;
 
-        /* Create an asset or digital item. */
-        json::json Tokens::Debit(const json::json& params, bool fHelp)
+        /* The sending account or token. */
+        const TAO::Register::Address hashFrom = ExtractAddress(params);
+        if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
         {
-            /* Declare some values that we will be using. */
-            uint8_t nDecimals = 0;
-            uint64_t nBalance = 0;
+            //XXX: send from ALL here
+            //populate nBalance from ALL
+            //populate decimals from first object
+        }
 
-            /* The sending account or token. */
-            const TAO::Register::Address hashFrom = ExtractAddress(params);
-            if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
-            {
-                //XXX: send from ALL here
-                //populate nBalance from ALL
-                //populate decimals from first object
-            }
+        /* Get the token / account object. */
+        TAO::Register::Object objFrom;
+        if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
+            throw APIException(-122, "Token/account not found");
 
-            /* Get the token / account object. */
-            TAO::Register::Object objFrom;
-            if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-122, "Token/account not found");
+        /* Check the object standard. */
+        if(objFrom.Standard() == TAO::Register::OBJECTS::TOKEN)
+        {
+            nBalance = objFrom.get<uint64_t>("balance");
+            nDecimals = GetDecimals(objFrom);
+        }
+        else
+            throw APIException(-124, "Unknown token / account.");
 
-            /* Check the object standard. */
-            if(objFrom.Standard() == TAO::Register::OBJECTS::TOKEN)
-            {
-                nBalance = objFrom.get<uint64_t>("balance");
-                nDecimals = GetDecimals(objFrom);
-            }
-            else
-                throw APIException(-124, "Unknown token / account.");
+        /* Check for the existence of recipients array */
+        std::vector<json::json> vRecipients;
+        if(params.find("recipients") != params.end() && !params["recipients"].is_null())
+        {
+            /* Grab a reference to work on. */
+            const json::json& jRecipients = params["recipients"];
 
-            /* Check for the existence of recipients array */
-            std::vector<json::json> vRecipients;
-            if(params.find("recipients") != params.end() && !params["recipients"].is_null())
-            {
-                /* Grab a reference to work on. */
-                const json::json& jRecipients = params["recipients"];
+            /* Check for correct JSON types. */
+            if(!jRecipients.is_array())
+                throw APIException(-216, "recipients field must be an array.");
 
-                /* Check for correct JSON types. */
-                if(!jRecipients.is_array())
-                    throw APIException(-216, "recipients field must be an array.");
+            /* Check that there are recipient objects in the array */
+            if(jRecipients.size() == 0)
+                throw APIException(-217, "recipients array is empty");
 
-                /* Check that there are recipient objects in the array */
-                if(jRecipients.size() == 0)
-                    throw APIException(-217, "recipients array is empty");
+            /* Add them to to the vector for processing */
+            for(const auto& jRecipient : jRecipients)
+                vRecipients.push_back(jRecipient);
+        }
 
-                /* Add them to to the vector for processing */
-                for(const auto& jRecipient : jRecipients)
-                    vRecipients.push_back(jRecipient);
-            }
+        /* Sending to only one recipient */
+        else
+            vRecipients.push_back(params); //XXX: this is hacky to push the entire json here
 
-            /* Sending to only one recipient */
-            else
-                vRecipients.push_back(params); //XXX: this is hacky to push the entire json here
+        /* Check that there are not too many recipients to fit into one transaction */
+        if(vRecipients.size() > 99)
+            throw APIException(-215, "Max number of recipients (99) exceeded");
 
-            /* Check that there are not too many recipients to fit into one transaction */
-            if(vRecipients.size() > 99)
+        /* Build our list of contracts. */
+        std::vector<TAO::Operation::Contract> vContracts;
+        for(const auto& jRecipient : vRecipients)
+        {
+            /* Double check that there are not too many recipients to fit into one transaction */
+            if(vContracts.size() == 99)
                 throw APIException(-215, "Max number of recipients (99) exceeded");
 
-            /* Build our list of contracts. */
-            std::vector<TAO::Operation::Contract> vContracts;
-            for(const auto& jRecipient : vRecipients)
+            /* Check for amount parameter. */
+            if(jRecipient.find("amount") == jRecipient.end())
+                throw APIException(-46, "Missing amount");
+
+            /* Check the amount is not too small once converted by the token Decimals */
+            const uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, nDecimals);
+            if(nAmount == 0)
+                throw APIException(-68, "Amount too small");
+
+            /* Check they have the required funds */
+            if(nAmount > nBalance)
+                throw APIException(-69, "Insufficient funds");
+
+            /* The register address of the recipient acccount. */
+            const TAO::Register::Address hashTo = ExtractAddress(jRecipient, "to"); //true for sending to
+
+            /* Get the recipent token / account object. */
+            TAO::Register::Object objTo;
+            if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::LOOKUP))
+                throw APIException(-209, "Recipient is not a valid account");
+
+            /* Flags to track for final adjustments in our expiration contract.  */
+            bool fTokenizedDebit = false, fSendToSelf = false;
+
+            /* Check recipient account type */
+            switch(objTo.Base())
             {
-                /* Double check that there are not too many recipients to fit into one transaction */
-                if(vContracts.size() == 99)
-                    throw APIException(-215, "Max number of recipients (99) exceeded");
-
-                /* Check for amount parameter. */
-                if(jRecipient.find("amount") == jRecipient.end())
-                    throw APIException(-46, "Missing amount");
-
-                /* Check the amount is not too small once converted by the token Decimals */
-                const uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, nDecimals);
-                if(nAmount == 0)
-                    throw APIException(-68, "Amount too small");
-
-                /* Check they have the required funds */
-                if(nAmount > nBalance)
-                    throw APIException(-69, "Insufficient funds");
-
-                /* The register address of the recipient acccount. */
-                const TAO::Register::Address hashTo = ExtractAddress(jRecipient, "to"); //true for sending to
-
-                /* Get the recipent token / account object. */
-                TAO::Register::Object objTo;
-                if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::LOOKUP))
-                    throw APIException(-209, "Recipient is not a valid account");
-
-                /* Flags to track for final adjustments in our expiration contract.  */
-                bool fTokenizedDebit = false, fSendToSelf = false;
-
-                /* Check recipient account type */
-                switch(objTo.Base())
+                /* Case if sending to an account. */
+                case TAO::Register::OBJECTS::ACCOUNT:
                 {
-                    /* Case if sending to an account. */
-                    case TAO::Register::OBJECTS::ACCOUNT:
-                    {
-                        /* Check for a valid token type compared to where we are debiting from. */
-                        if(objTo.get<uint256_t>("token") != objFrom.get<uint256_t>("token"))
-                            throw APIException(-209, "Recipient account is for a different token.");
+                    /* Check for a valid token type compared to where we are debiting from. */
+                    if(objTo.get<uint256_t>("token") != objFrom.get<uint256_t>("token"))
+                        throw APIException(-209, "Recipient account is for a different token.");
 
-                        /* Check if this is a send to self. */
-                        fSendToSelf = (objTo.hashOwner == objFrom.hashOwner);
+                    /* Check if this is a send to self. */
+                    fSendToSelf = (objTo.hashOwner == objFrom.hashOwner);
 
-                        break;
-                    }
-
-                    /* Case if sending to an asset (this is a tokenized debit) */
-                    case TAO::Register::OBJECTS::NONSTANDARD :
-                    {
-                        /* For payments to objects, they must be owned by a token */
-                        if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
-                            throw APIException(-211, "Recipient object has not been tokenized.");
-
-                        /* Set the flag for this debit. */
-                        fTokenizedDebit = true;
-
-                        break;
-                    }
-
-                    default :
-                        throw APIException(-209, "Recipient is not a valid account.");
+                    break;
                 }
 
-                /* The optional payment reference */
-                uint64_t nReference = 0;
-                if(jRecipient.find("reference") != jRecipient.end())
-                    nReference = stoull(jRecipient["reference"].get<std::string>());
+                /* Case if sending to an asset (this is a tokenized debit) */
+                case TAO::Register::OBJECTS::NONSTANDARD :
+                {
+                    /* For payments to objects, they must be owned by a token */
+                    if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
+                        throw APIException(-211, "Recipient object has not been tokenized.");
 
-                /* Submit the payload object. */
-                TAO::Operation::Contract contract;
-                contract << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
+                    /* Set the flag for this debit. */
+                    fTokenizedDebit = true;
 
-                /* Add expiration condition unless sending to self */
-                if(!fSendToSelf)
-                    AddExpires(jRecipient, users->GetSession(params).GetAccount()->Genesis(), contract, fTokenizedDebit);
+                    break;
+                }
 
-                /* Reduce the current balance by the amount for this recipient */
-                nBalance -= nAmount;
-
-                /* Add this contract to our processing queue. */
-                vContracts.push_back(contract);
+                default :
+                    throw APIException(-209, "Recipient is not a valid account.");
             }
 
-            /* Build a JSON response object. */
-            json::json jRet;
-            jRet["txid"] = BuildAndAccept(params, vContracts).ToString();
+            /* The optional payment reference */
+            uint64_t nReference = 0;
+            if(jRecipient.find("reference") != jRecipient.end())
+                nReference = stoull(jRecipient["reference"].get<std::string>());
 
-            return jRet;
+            /* Submit the payload object. */
+            TAO::Operation::Contract contract;
+            contract << (uint8_t)TAO::Operation::OP::DEBIT << hashFrom << hashTo << nAmount << nReference;
+
+            /* Add expiration condition unless sending to self */
+            if(!fSendToSelf)
+                AddExpires(jRecipient, users->GetSession(params).GetAccount()->Genesis(), contract, fTokenizedDebit);
+
+            /* Reduce the current balance by the amount for this recipient */
+            nBalance -= nAmount;
+
+            /* Add this contract to our processing queue. */
+            vContracts.push_back(contract);
         }
+
+        /* Build a JSON response object. */
+        json::json jRet;
+        jRet["txid"] = BuildAndAccept(params, vContracts).ToString();
+
+        return jRet;
     }
 }

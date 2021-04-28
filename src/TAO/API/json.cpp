@@ -1026,7 +1026,6 @@ namespace TAO::API
         || object.nType == TAO::Register::REGISTER::READONLY)
         {
             /* Raw state assets only have one data member containing the raw hex-encoded data*/
-
             ret["address"]    = hashRegister.ToString();
             ret["created"]    = object.nCreated;
             ret["modified"]   = object.nModified;

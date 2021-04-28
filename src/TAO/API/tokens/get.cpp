@@ -14,78 +14,39 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/tokens/types/tokens.h>
-#include <TAO/API/names/types/names.h>
-#include <TAO/API/include/global.h>
+
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/build.h>
 
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Get the data from a digital asset */
+    json::json Tokens::Get(const json::json& params, bool fHelp)
     {
+        /* Get the Register address. */
+        const TAO::Register::Address hashRegister = ExtractAddress(params);
 
-        /* Get the data from a digital asset */
-        json::json Tokens::Get(const json::json& params, bool fHelp)
-        {
-            json::json ret;
+        /* Get the token / account object. */
+        TAO::Register::Object object;
+        if(!LLD::Register->ReadObject(hashRegister, object, TAO::Ledger::FLAGS::LOOKUP))
+            throw APIException(-122, "Token/account not found");
 
-            /* Get the Register ID. */
-            TAO::Register::Address hashRegister ;
+        /* Check the object standard. */
+        if(object.Standard() != TAO::Register::OBJECTS::TOKEN)
+            throw APIException(-122, "Token/account not found");
 
-            /* If name is provided then use this to deduce the register address,
-             * otherwise try to find the raw hex encoded address.
-             * Fail if no required parameters supplied. */
-            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
-                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
-            else if(params.find("address") != params.end())
-                hashRegister.SetBase58(params["address"].get<std::string>());
-            else
-                throw APIException(-33, "Missing name / address");
+        /* If the user requested a particular object type then check it is that type */
+        if(params.find("type") != params.end() && params["type"].get<std::string>() == "account")
+            throw APIException(-65, "Object is not an account");
 
-            /* Get the token / account object. */
-            TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::LOOKUP))
-                throw APIException(-122, "Token/account not found");
+        /* Build our response object. */
+        json::json jRet  = ObjectToJSON(params, object, hashRegister);
+        jRet["owner"]    = TAO::Register::Address(object.hashOwner).ToString();
+        jRet["created"]  = object.nCreated;
+        jRet["modified"] = object.nModified;
 
-            /* Parse the object register. */
-            if(!object.Parse())
-                throw APIException(-14, "Object failed to parse");
-
-            /* Get the object standard. */
-            uint8_t nStandard = object.Standard();
-
-            /* Check the object standard. */
-            if(nStandard == TAO::Register::OBJECTS::TOKEN)
-            {
-                /* If the user requested a particular object type then check it is that type */
-                if(params.find("type") != params.end() && params["type"].get<std::string>() == "account")
-                    throw APIException(-65, "Object is not an account");
-
-                /* Convert the token object to JSON */
-                ret = ObjectToJSON(params, object, hashRegister);
-            }
-            else
-                throw APIException(-122, "Token/account not found");
-
-            /* Populate the response JSON */
-            ret["owner"]    = TAO::Register::Address(object.hashOwner).ToString();
-            ret["created"]  = object.nCreated;
-            ret["modified"] = object.nModified;
-
-            json::json data  =TAO::API::ObjectToJSON(params, object, hashRegister);
-
-            /* Copy the asset data in to the response after the type/checksum */
-            ret.insert(data.begin(), data.end());
-
-
-            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            FilterResponse(params, ret);
-
-            return ret;
-        }
+        return jRet;
     }
 }

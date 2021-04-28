@@ -215,7 +215,7 @@ namespace TAO
             /* Check that there is something in the register to deallocate */
             if(nPointer == 0 || value.nEnd == 0)
                 throw BaseVMException("Missing register value");
-                
+
             /* Check for that this is last object */
             if(value.nEnd != nPointer)
                 throw BaseVMException("Cannot deallocate when not last");
@@ -245,7 +245,7 @@ namespace TAO
             /* Check that there is something in the register to deallocate */
             if(nPointer == 0 || value.nEnd == 0)
                 throw BaseVMException("Missing register value");
-            
+
             /* Check for that this is last object */
             if(value.nEnd != nPointer)
                 throw BaseVMException("Cannot deallocate when not last");
@@ -275,7 +275,7 @@ namespace TAO
             /* Check that there is something in the register to deallocate */
             if(nPointer == 0 || value.nEnd == 0)
                 throw BaseVMException("Missing register value");
-            
+
             /* Check for that this is last object */
             if(value.nEnd != nPointer)
                 throw BaseVMException("Cannot deallocate when not last");
@@ -305,7 +305,7 @@ namespace TAO
             /* Check that there is something in the register to deallocate */
             if(nPointer == 0 || value.nEnd == 0)
                 throw BaseVMException("Missing register value");
-            
+
             /* Check for that this is last object */
             if(value.nEnd != nPointer)
                 throw BaseVMException("Cannot deallocate when not last");
@@ -335,8 +335,8 @@ namespace TAO
             /* Check that there is something in the register to deallocate */
             if(nPointer == 0 || value.nEnd == 0)
                 throw BaseVMException("Missing register value");
-            
-            /* Check for that this is last object (TODO: handle defragmenting). */
+
+            /* Check for that this is last object. */
             if(value.nEnd != nPointer)
                 throw BaseVMException("Cannot deallocate when not last");
 
@@ -369,7 +369,7 @@ namespace TAO
             /* Check that there is something in the register to deallocate */
             if(nPointer == 0 || value.nEnd == 0)
                 throw BaseVMException("Missing register value");
-            
+
             /* Check for that this is last object (TODO: handle defragmenting). */
             if(value.nEnd != nPointer)
                 throw BaseVMException("Cannot deallocate when not last");
@@ -403,7 +403,7 @@ namespace TAO
             /* Check that there is something in the register to deallocate */
             if(nPointer == 0 || value.nEnd == 0)
                 throw BaseVMException("Missing register value");
-            
+
             /* Check for that this is last object (TODO: handle defragmenting). */
             if(value.nEnd != nPointer)
                 throw BaseVMException("Cannot deallocate when not last");
