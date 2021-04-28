@@ -44,52 +44,12 @@ namespace TAO::API
     *  map directly to a function in the target API.  Insted this method can be overriden to
     *  parse the incoming URL and route to a different/generic method handler, adding parameter
     *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-    *  added to the jsonParams
+    *  added to the jParams
     *  The return json contains the modifed method URL to be called.
     */
-    std::string Tokens::RewriteURL(const std::string& strMethod, json::json& jsonParams)
+    std::string Tokens::RewriteURL(const std::string& strMethod, json::json& jParams)
     {
         std::string strMethodRewritten = strMethod;
-        /* route the /token and /account endpoints to the generic ones e.g. create/token to create?type=token */
-
-        // /* Edge case for list/accounts */
-        // if(strMethod.find("list/accounts") != std::string::npos)
-        // {
-        //     /* set the method name */
-        //     strMethodRewritten = "list/accounts";
-
-        //     return strMethodRewritten;
-        // }
-
-
-        // /* Edge case for list/account/transactions and list/token/transactions */
-        // if(strMethod.find("/transactions") != std::string::npos)
-        // {
-        //     /* set the method name */
-        //     strMethodRewritten = "list";
-
-        //     /* Check to see whether there is a name after the /transactions/ name, i.e. tokens/list/transactions/mytoken */
-        //     std::size_t nPos = strMethod.find("/transactions/");
-
-        //     if(nPos != std::string::npos)
-        //     {
-        //         /* Get the name or address that comes after the /transactions/ part */
-        //         std::string strNameOrAddress = strMethod.substr(nPos +14);
-
-        //         /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-        //         if(CheckAddress(strNameOrAddress))
-        //             jsonParams["address"] = strNameOrAddress;
-        //         else
-        //             jsonParams["name"] = strNameOrAddress;
-
-        //     }
-
-        //     /* Set the type parameter to token or account*/
-        //     jsonParams["type"] = strMethod.find("token") != std::string::npos ? "token" : "account";
-
-        //     return strMethodRewritten;
-        // }
-
 
         /* Edge case for list/token/accounts  */
         if(strMethod.find("list/token/accounts") != std::string::npos)
@@ -107,9 +67,9 @@ namespace TAO::API
 
                 /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
                 if(CheckAddress(strNameOrAddress))
-                    jsonParams["address"] = strNameOrAddress;
+                    jParams["address"] = strNameOrAddress;
                 else
-                    jsonParams["name"] = strNameOrAddress;
+                    jParams["name"] = strNameOrAddress;
 
             }
 
@@ -142,19 +102,19 @@ namespace TAO::API
 
                     std::string strFieldName = strNameOrAddress.substr(nPos +1);
                     strNameOrAddress = strNameOrAddress.substr(0, nPos);
-                    jsonParams["fieldname"] = strFieldName;
+                    jParams["fieldname"] = strFieldName;
                 }
 
                 /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
                 if(CheckAddress(strNameOrAddress))
-                    jsonParams["address"] = strNameOrAddress;
+                    jParams["address"] = strNameOrAddress;
                 else
-                    jsonParams["name"] = strNameOrAddress;
+                    jParams["name"] = strNameOrAddress;
 
             }
 
             /* Set the type parameter to token */
-            jsonParams["type"] = "token";
+            jParams["type"] = "token";
 
             return strMethodRewritten;
         }
@@ -185,19 +145,19 @@ namespace TAO::API
 
                     std::string strFieldName = strNameOrAddress.substr(nPos +1);
                     strNameOrAddress = strNameOrAddress.substr(0, nPos);
-                    jsonParams["fieldname"] = strFieldName;
+                    jParams["fieldname"] = strFieldName;
                 }
 
                 /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
                 if(CheckAddress(strNameOrAddress))
-                    jsonParams["address"] = strNameOrAddress;
+                    jParams["address"] = strNameOrAddress;
                 else
-                    jsonParams["name"] = strNameOrAddress;
+                    jParams["name"] = strNameOrAddress;
 
             }
 
             /* Set the type parameter to account */
-            jsonParams["type"] = "account";
+            jParams["type"] = "account";
 
             return strMethodRewritten;
         }
