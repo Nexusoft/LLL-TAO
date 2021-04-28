@@ -70,11 +70,11 @@ namespace TAO::API
         }
 
         /* This exception is for name_to/address_to */
-        else if(strSuffix == "to")
+        if(strSuffix == "to")
             throw APIException(-64, "Missing recipient account name_to / address_to");
 
         /* This exception is for name_proof/address_proof */
-        else if(strSuffix == "proof")
+        if(strSuffix == "proof")
             throw APIException(-54, "Missing name_proof / address_proof to credit");
 
         /* This exception is for name/address */
