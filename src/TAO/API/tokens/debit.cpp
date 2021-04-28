@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -46,17 +47,23 @@ namespace TAO
         /* Create an asset or digital item. */
         json::json Tokens::Debit(const json::json& params, bool fHelp)
         {
+            /* Declare some values that we will be using. */
+            uint8_t nDecimals = 0;
+            uint64_t nBalance = 0;
+
             /* The sending account or token. */
             const TAO::Register::Address hashFrom = ExtractAddress(params);
+            if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
+            {
+                //XXX: send from ALL here
+                //populate nBalance from ALL
+                //populate decimals from first object
+            }
 
             /* Get the token / account object. */
             TAO::Register::Object objFrom;
             if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-122, "Token/account not found");
-
-            /* Get the object standard. */
-            uint8_t nDecimals = 0;
-            uint64_t nBalance = 0;
 
             /* Check the object standard. */
             if(objFrom.Standard() == TAO::Register::OBJECTS::TOKEN)

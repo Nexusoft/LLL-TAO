@@ -20,6 +20,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/names.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
 
@@ -48,7 +49,7 @@ namespace TAO::API
                 if(strPostfix == "to")
                     throw APIException(-310, "Cannot sent to ALL accounts");
 
-                return ~uint256_t(0); //placeholder for ALL functionality 0xffffff.....ffffff
+                return TAO::Register::WILDCARD_ADDRESS; //placeholder for ALL functionality 0xffffff.....ffffff
             }
 
             return Names::ResolveAddress(params, params[strName].get<std::string>());
