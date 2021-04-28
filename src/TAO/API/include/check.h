@@ -28,15 +28,13 @@ namespace TAO
 
         /** CheckAddress
          *
-         *  Determines whether a string value is a valid base58 encoded register address.
-         *  This only checks to see if the value an be decoded into a valid Register::Address with a valid Type.
-         *  It does not check to see whether the register address exists in the database
+         *  Determines whether a Base58 encoded value is a valid register address by checking type.
          *
-         *  @param[in] strValueToCheck The value to check
+         *  @param[in] strValue The value to check
          *
          *  @return True if the value can be decoded into a valid Register::Address with a valid Type.
          **/
-        bool CheckAddress(const std::string& strValueToCheck);
+        bool CheckAddress(const std::string& strValue);
 
 
         /** CheckMature

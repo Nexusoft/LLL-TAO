@@ -21,6 +21,7 @@ namespace TAO::Register { class Object; class State; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
     /** GetDecimals
      *
      *  Retrieves the number of decimals that applies to amounts for this token or account object.

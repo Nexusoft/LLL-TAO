@@ -309,6 +309,21 @@ namespace LLD
     }
 
 
+    /* Read an object register from the register database. */
+    bool RegisterDB::ReadObject(const uint256_t& hashRegister, TAO::Register::Object& object, const uint8_t nFlags)
+    {
+        /* Try to read the state here. */
+        if(!ReadState(hashRegister, object, nFlags))
+            return false;
+
+        /* Attempt to parse the object. */
+        if(!object.Parse())
+            return false;
+
+        return true;
+    }
+
+
     /* Index a genesis to a register address. */
     bool RegisterDB::IndexTrust(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {

@@ -21,11 +21,11 @@ namespace TAO::API
      *  This only checks to see if the value an be decoded into a valid Register::Address with a valid Type.
      *  It does not check to see whether the register address exists in the database
      */
-    bool CheckAddress(const std::string& strValueToCheck)
+    bool CheckAddress(const std::string& strValue)
     {
         /* Decode the incoming string into a register address */
         TAO::Register::Address address;
-        address.SetBase58(strValueToCheck);
+        address.SetBase58(strValue);
 
         /* Check to see whether it is valid */
         return address.IsValid();

@@ -31,6 +31,45 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /* Extract an address from incoming parameters to derive from name or address field. */
+    uint256_t ExtractAddress(const json::json& params, bool fTo)
+    {
+        /* Cache a couple keys we will be using. */
+        const std::string strName = (fTo ? "name_to"    : "name");
+        const std::string strAddr = (fTo ? "address_to" : "address");
+
+        /* If name is provided then use this to deduce the register address, */
+        if(params.find(strName) != params.end())
+        {
+            /* Check for the ALL name, that debits from all relevant accounts. */
+            if(params[strName] == "ALL")
+                debug::log(0, "DEBIT FROM ALL ACCOUNTS"); //placeholder for ALL functionality
+
+            return Names::ResolveAddress(params, params[strName].get<std::string>());
+        }
+
+        /* Otherwise let's check for the raw address format. */
+        else if(params.find(strAddr) != params.end())
+        {
+            /* Declare our return value. */
+            TAO::Register::Address hashRet;
+            hashRet.SetBase58(params[strAddr].get<std::string>());
+
+            /* Check that it is valid */
+            if(!hashRet.IsValid())
+                throw APIException(-165, "Invalid " + strAddr);
+
+            return hashRet;
+        }
+
+        /* This exception is for name_to/address_to */
+        else if(fTo)
+            throw APIException(-64, "Missing recipient account name_to / address_to");
+
+        /* This exception is for name/address */
+        throw APIException(-33, "Missing name / address");
+    }
+
 
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
     uint512_t BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts)

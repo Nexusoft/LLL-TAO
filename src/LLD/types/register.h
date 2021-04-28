@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
-#include <TAO/Register/types/state.h>
+#include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/enum.h>
 
@@ -54,7 +54,7 @@ namespace LLD
      **/
     class RegisterDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
-        
+
         /** Memory mutex to lock when accessing internal memory states. **/
         std::mutex MEMORY_MUTEX;
 
@@ -126,6 +126,19 @@ namespace LLD
          *
          **/
         bool EraseState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** ReadObject
+         *
+         *  Read an object register from the register database.
+         *
+         *  @param[in] hashRegister The register address.
+         *  @param[out] object The object register to read.
+         *
+         *  @return True if read was successful, false otherwise.
+         *
+         **/
+        bool ReadObject(const uint256_t& hashRegister, TAO::Register::Object& object, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** IndexTrust

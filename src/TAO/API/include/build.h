@@ -25,6 +25,17 @@ namespace TAO::Ledger    { class Transaction; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /** ExtractAddress
+     *
+     *  Extract an address from incoming parameters to derive from name or address field.
+     *
+     *  @param[in] params The parameters to find address in.
+     *
+     *  @return The register address if valid.
+     *
+     **/
+    uint256_t ExtractAddress(const json::json& params, bool fTo = false);
+
 
     /** Build And Accept
      *
