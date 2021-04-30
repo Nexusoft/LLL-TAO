@@ -23,6 +23,7 @@ namespace TAO::API
     /* Standard initialization function. */
     void Tokens::Initialize()
     {
+        //XXX: we should format this better, we can't go over 132 characters in a line based on formatting guidelines.
         mapFunctions["create/token"]              = Function(std::bind(&Tokens::Create,            this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["credit/token"]              = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["debit/token"]               = Function(std::bind(&Tokens::Debit,             this, std::placeholders::_1, std::placeholders::_2));
@@ -49,6 +50,7 @@ namespace TAO::API
     */
     std::string Tokens::RewriteURL(const std::string& strMethod, json::json& jParams)
     {
+        //XXX: this is a lot of copy/paste code that could very easily be put into a helper function
         std::string strMethodRewritten = strMethod;
 
         /* Edge case for list/token/accounts  */

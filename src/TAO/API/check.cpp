@@ -11,13 +11,17 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/check.h>
+
+#include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Determines whether a string value is a valid base58 encoded register address.
+    /*  Determines whether a string value is a valid base58 encoded register address.
      *  This only checks to see if the value an be decoded into a valid Register::Address with a valid Type.
      *  It does not check to see whether the register address exists in the database
      */
@@ -33,8 +37,9 @@ namespace TAO::API
     }
 
 
-    /* Utilty method that checks that the signature chain is mature and can therefore create new transactions.
-    *  Throws an appropriate APIException if it is not mature. */
+    /*  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
+     *  Throws an appropriate APIException if it is not mature.
+     */
     void CheckMature(const uint256_t& hashGenesis)
     {
         /* No need to check this in private mode as there is no PoS/Pow */
@@ -44,6 +49,40 @@ namespace TAO::API
             const uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
             if(nBlocksToMaturity > 0)
                 throw APIException(-202, debug::safe_printstr( "Signature chain not mature after your previous mined/stake block. ", nBlocksToMaturity, " more confirmation(s) required."));
+        }
+    }
+
+
+    /** CheckType
+     *
+     *  Checks if the designated object matches the explicet type specified in parameters.
+     *  We have no return value since this command is meant to throw on errors for API calls.
+     *
+     *  @param[in] params The json parameters to check against.
+     *  @param[in] hashCheck The register that we are checking against.
+     *
+     **/
+    void CheckType(const json::json& params, const uint256_t& hashCheck)
+    {
+        /* Let's grab our object to check against and throw if it's missing. */
+        TAO::Register::Object objCheck;
+        if(!LLD::Register->ReadObject(hashCheck, objCheck))
+            throw APIException(-33, "Incorrect or missing name / address");
+
+        /* If the user requested a particular object type then check it is that type */
+        if(params.find("type") != params.end())
+        {
+            /* Grab a copy of our type to check against. */
+            const std::string& strType = params["type"].get<std::string>();
+
+            /* Let's check against the types required now. */
+            const uint8_t nStandard = objCheck.Standard();
+            if(strType == "token" && nStandard != TAO::Register::OBJECTS::TOKEN)
+                throw APIException(-49, "Unexpected type for name / address");
+
+            /* Check for expected account type now. */
+            if(strType == "account" && nStandard != TAO::Register::OBJECTS::ACCOUNT)
+                throw APIException(-49, "Unexpected type for name / address");
         }
     }
 } // End TAO namespace

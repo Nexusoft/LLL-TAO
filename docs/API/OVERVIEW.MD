@@ -169,7 +169,7 @@ Error Codes
 | -30 | Operations failed to execute |
 | -31 | Ledger failed to sign transaction |
 | -32 | Failed to accept |
-| -33 | Missing name / address |
+| -33 | Incorrect or missing name / address |
 | -34 | Asset not found |
 | -35 | Specified name/address is not an asset |
 | -36 | Invalid type for command |
@@ -185,7 +185,7 @@ Error Codes
 | -46 | Missing amount |
 | -47 | Missing price |
 | -48 | Failed to read to state |
-| -49 | ------------------------------------------ |
+| -49 | Unexpected type for name / address |
 | -50 | Missing txid |
 | -51 | ------------------------------------------ |
 | -52 | ------------------------------------------ |

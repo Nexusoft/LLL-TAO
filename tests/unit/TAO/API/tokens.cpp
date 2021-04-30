@@ -1249,8 +1249,6 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens]")
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
         strTXID = tx.GetHash().GetHex();
-
-        debug::log(0, "From = ", hashToken.ToString());
     }
 
 
