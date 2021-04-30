@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -92,6 +93,9 @@ namespace TAO::API
                     uint64_t nAmount = 0;
                     debit >> nAmount;
 
+                    /* Now lets check our expected types match. */
+                    CheckType(params, hashCredit);
+
                     /* if we passed all of these checks then insert the credit contract into the tx */
                     TAO::Operation::Contract contract;
                     contract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
@@ -152,6 +156,9 @@ namespace TAO::API
                         if(objFrom.get<uint256_t>("token") != objCredit.get<uint256_t>("token"))
                             throw APIException(-33, "Incorrect or missing name / address");
 
+                        /* Now lets check our expected types match. */
+                        CheckType(params, objCredit);
+
                         /* If we passed these checks then insert the credit contract into the tx */
                         TAO::Operation::Contract contract;
                         contract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
@@ -175,6 +182,9 @@ namespace TAO::API
                         /* Check that the debit was made to an account that we own */
                         if(objTo.hashOwner != hashGenesis)
                             continue;
+
+                        /* Now lets check our expected types match. */
+                        CheckType(params, objTo);
 
                         /* Create our new contract now. */
                         TAO::Operation::Contract contract;
@@ -227,6 +237,9 @@ namespace TAO::API
                         if(objFrom.get<uint256_t>("token") != objCredit.get<uint256_t>("token"))
                             throw APIException(-33, "Incorrect or missing name / address");
 
+                        /* Now lets check our expected types match. */
+                        CheckType(params, objCredit);
+
                         /* Calculate the partial amount we want to claim based on our share of the proof tokens */
                         const uint64_t nPartial = (objProof.get<uint64_t>("balance") * nAmount) / objOwner.get<uint64_t>("supply");
 
@@ -269,13 +282,8 @@ namespace TAO::API
                 if(objTo.hashOwner != hashGenesis || nStandard != TAO::Register::OBJECTS::ACCOUNT)
                     continue;
 
-                /* If the user requested a particular object type then check it is that type */
-                //std::string strType =  ? params["type"].get<std::string>() : "";
-                //if((strType == "token" && nStandard == TAO::Register::OBJECTS::ACCOUNT))
-                //    continue;
-
-                //else if(strType == "account" && nStandard == TAO::Register::OBJECTS::TOKEN)
-                //    continue;
+                /* Now lets check our expected types match. */
+                CheckType(params, objTo);
 
                 /* Build the response contract now. */
                 TAO::Operation::Contract contract;
