@@ -90,6 +90,12 @@ namespace TAO
              **/
             json::json Execute(const std::string& strMethod, const json::json& jsonParams, bool fHelp = false)
             {
+                //XXX: WFT is this, everything paul did is completely fucked
+                //to fix this, we need to use API/method as our key for mapFunctions, and derive the type
+                //then pass this in as a parameter into the API's. RewriteURL needs some rethinking too
+                //so that we can handle type as a name, not the idiotic API/method/type/name that currently is implemented
+                //everything paul did is inconsistent, buggy, and redundant copy and paste code
+
                 json::json jsonParamsUpdated = jsonParams;
                 std::string strMethodToCall = strMethod;
 
@@ -159,7 +165,7 @@ namespace TAO
                     }
 
                     return jsonSanitizedParams;
-                
+
                 }
                 else
                     return jsonParams;
