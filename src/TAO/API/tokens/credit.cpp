@@ -41,7 +41,7 @@ namespace TAO::API
             throw APIException(-50, "Missing txid.");
 
         /* Extract some parameters from input data. */
-        const TAO::Register::Address hashCredit = ExtractAddress(params, "to");
+        const TAO::Register::Address hashCredit = ExtractAddress(params);
         const TAO::Register::Address hashProof  = ExtractAddress(params, "proof");
 
         /* Get the transaction id. */

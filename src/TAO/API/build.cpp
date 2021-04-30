@@ -34,11 +34,11 @@ namespace TAO::API
 {
 
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractAddress(const json::json& params, const std::string strSuffix)
+    uint256_t ExtractAddress(const json::json& params, const std::string& strSuffix, const std::string& strDefault)
     {
         /* Cache a couple keys we will be using. */
         const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
-        const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));;
+        const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
 
         /* If name is provided then use this to deduce the register address, */
         if(params.find(strName) != params.end())
@@ -70,12 +70,32 @@ namespace TAO::API
             return hashRet;
         }
 
+        /* Check for our default values. */
+        else if(!strDefault.empty())
+        {
+            /* Declare our return value. */
+            const TAO::Register::Address hashRet =
+                TAO::Register::Address(strDefault);
+
+            /* Check that this is valid address, invalid will be if default value is a name. */
+            if(hashRet.IsValid())
+                return hashRet;
+
+            /* Get our session to get the name object. */
+            const Session& session = users->GetSession(params);
+
+            /* Grab the name object register now. */
+            TAO::Register::Object object;
+            if(TAO::Register::GetNameRegister(session.GetAccount()->Genesis(), strDefault, object))
+                return object.get<uint256_t>("address");
+        }
+
         /* This exception is for name_to/address_to */
-        if(strSuffix == "to")
+        else if(strSuffix == "to")
             throw APIException(-64, "Missing recipient account name_to / address_to");
 
         /* This exception is for name_proof/address_proof */
-        if(strSuffix == "proof")
+        else if(strSuffix == "proof")
             throw APIException(-54, "Missing name_proof / address_proof to credit");
 
         /* This exception is for name/address */
@@ -100,8 +120,8 @@ namespace TAO::API
         else if(params.find("token") != params.end())
         {
             /* Declare our return value. */
-            TAO::Register::Address hashRet;// =
-            hashRet.SetBase58(params["token"].get<std::string>());
+            const TAO::Register::Address hashRet =
+                TAO::Register::Address(params["token"].get<std::string>());
 
             /* Check that it is valid */
             if(!hashRet.IsValid())

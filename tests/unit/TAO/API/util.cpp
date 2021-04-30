@@ -22,6 +22,16 @@ std::string SESSION1;
 std::string SESSION2;
 
 
+/* Generate a random txid for use in unit tests.*/
+uint512_t RandomTxid(const uint8_t nType)
+{
+    uint512_t hashTx = LLC::GetRand512();
+    hashTx.SetType(nType);
+
+    return hashTx;
+}
+
+
 json::json APICall(const std::string& strMethod, const json::json& jsonParams)
 {
     /* HTTP basic authentication for API */

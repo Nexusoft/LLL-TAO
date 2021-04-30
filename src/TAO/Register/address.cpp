@@ -87,8 +87,8 @@ namespace TAO
             SetBase58(strAddress);
 
             /* Check for valid address types. */
-            if(!IsValid())
-                throw debug::exception(FUNCTION, "invalid type for address");
+            //if(!IsValid()) XXX: disabled for now, we can don't always want an exception thrown here
+            //    throw debug::exception(FUNCTION, "invalid type for address");
         }
 
 

@@ -31,11 +31,12 @@ namespace TAO::API
      *
      *  @param[in] params The parameters to find address in.
      *  @param[in] strSuffix The suffix to append to end of parameter we are extracting.
+     *  @param[in] strDefault The default value to revert to if failed to find in parameters.
      *
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractAddress(const json::json& params, const std::string strSuffix = "");
+    uint256_t ExtractAddress(const json::json& params, const std::string& strSuffix = "", const std::string& strDefault = "");
 
 
     /** ExtractToken

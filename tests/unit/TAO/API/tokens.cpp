@@ -391,12 +391,7 @@ TEST_CASE( "Test Tokens API - credit token", "[tokens]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["txid"] = LLC::GetRand256().GetHex();
-
-        //dummy values to pass tests
-        params["name"]          = "default";
-        params["name_to"]       = "default";
-        params["address_proof"] = "8BfQEws91PMVaNG44DxYfr9B825W2MVdvdynyhtTYr6z5JQ2SPC";
+        params["txid"]    = RandomTxid().ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/credit/token", params);
@@ -1254,6 +1249,8 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens]")
         REQUIRE(Execute(tx[0], TAO::Ledger::FLAGS::BLOCK));
 
         strTXID = tx.GetHash().GetHex();
+
+        debug::log(0, "From = ", hashToken.ToString());
     }
 
 
@@ -1276,9 +1273,9 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens]")
     {
         /* Build the parameters to pass to the API */
         params.clear();
-        params["pin"] = PIN;
-        params["session"] = SESSION1;
-        params["txid"] = LLC::GetRand256().GetHex();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["txid"]       = RandomTxid().ToString();
 
         /* Invoke the API */
         ret = APICall("tokens/credit/account", params);
@@ -1292,9 +1289,9 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens]")
     {
         /* Build the parameters to pass to the API */
         params.clear();
-        params["pin"] = PIN;
+        params["pin"]     = PIN;
         params["session"] = SESSION1;
-        params["txid"] = strTXID;
+        params["txid"]    = strTXID;
 
         /* Invoke the API */
         ret = APICall("tokens/credit/account", params);

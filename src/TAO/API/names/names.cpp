@@ -264,8 +264,8 @@ namespace TAO
             if(!fFound && fThrow)
                 throw APIException(-101, debug::safe_printstr("Unknown name: ", strObjectName));
 
+            /* Get the address of the Name object to return */
             if(fFound)
-                /* Get the address of the Name object to return */
                 hashNameObject = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
             return nameObject;

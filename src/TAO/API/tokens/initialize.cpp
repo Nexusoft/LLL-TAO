@@ -24,7 +24,7 @@ namespace TAO::API
     void Tokens::Initialize()
     {
         mapFunctions["create/token"]              = Function(std::bind(&Tokens::Create,            this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["credit/token"]              = Function(std::bind(&Tokens::Credit,            this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["credit/token"]              = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["debit/token"]               = Function(std::bind(&Tokens::Debit,             this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["get/token"]                 = Function(std::bind(&Tokens::Get,               this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/token/transactions"]   = Function(std::bind(&Tokens::ListTransactions,  this, std::placeholders::_1, std::placeholders::_2));

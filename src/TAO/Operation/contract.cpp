@@ -638,7 +638,14 @@ namespace TAO
 
                 /* Nothing to do as the stream is already in the correct position (0) */
                 default:
+                {
+                    /* If we don't need primitive at cursor, seek 1 byte ahead since default catch will be at origin cursor 0 */
+                    if(!fInclude)
+                        ssOperation.seek(1);
+
                     break;
+                }
+
             }
         }
     }

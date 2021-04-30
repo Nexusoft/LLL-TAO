@@ -72,7 +72,7 @@ namespace TAO
                             {
                                 /* Check that the token register exists. NOTE we can't make this check in client mode as the
                                    token could be foreign. */
-                                if(!config::fClient.load() && !LLD::Register->HasState(hashToken, nFlags))
+                                if(!LLD::Register->HasState(hashToken, nFlags)) //XXX: do register lookup so we do have token
                                     return debug::error(FUNCTION, "cannot create account without token identifier");
 
                                 /* Check that the token identifier is for a token */
@@ -260,7 +260,7 @@ namespace TAO
 
             /* Check that the register doesn't exist yet. NOTE we cannot do this check in client mode as it is possible the register
                may have previously been retrieved from another signature chain and therefore the latest state could already exist. */
-            if(!config::fClient.load() && LLD::Register->HasState(address, nFlags))
+            if(LLD::Register->HasState(address, nFlags)) //XXX: do a register lookup if we don't have it, and error if none received.
                 return debug::error(FUNCTION, "cannot allocate register of same memory address ", address.SubString());
 
             /* Attempt to write new state to disk. */

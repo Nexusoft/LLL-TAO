@@ -52,7 +52,7 @@ namespace TAO
                 return debug::error(FUNCTION, "failed to write credit proof");
 
             /* DISABLED for -client mode. */
-            if(!config::fClient.load())
+            //if(!config::fClient.load()) XXX: this shouldn't be disabled for client mode
             {
                 /* Read the debit. */
                 debit.Reset();

@@ -149,7 +149,7 @@ Error Codes
 | -11 | User not logged in |
 | -12 | Missing Session ID |
 | -13 | Account not found |
-| -14 | ----------------------------------------
+| -14 | ---------------------------------------- |
 | -15 | Object is not an account or token |
 | -16 | Account has not been unlocked for transactions |
 | -17 | Failed to create transaction |
@@ -172,12 +172,12 @@ Error Codes
 | -33 | Missing name / address |
 | -34 | Asset not found |
 | -35 | Specified name/address is not an asset |
-| -36 | ------------------------------------------
+| -36 | Invalid type for command |
 | -37 | Missing token name / address |
 | -38 | Missing asset name / address |
 | -39 | Missing name_from / address_from |
 | -40 | Previous transaction not found |
-| -41 | ------------------------------------------
+| -41 | Invalid transaction-id |
 | -42 | No valid debits to buy from |
 | -43 | No valid contracts in debit tx |
 | -44 | Transaction failed to build |
@@ -185,15 +185,15 @@ Error Codes
 | -46 | Missing amount |
 | -47 | Missing price |
 | -48 | Failed to read to state |
-| -49 | ------------------------------------------
+| -49 | ------------------------------------------ |
 | -50 | Missing txid |
-| -51 | Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts |
-| -52 | ------------------------------------------
+| -51 | ------------------------------------------ |
+| -52 | ------------------------------------------ |
 | -53 | Missing name / address of account to credit |
 | -54 | Missing name_proof / address_proof to credit |
-| -55 | ------------------------------------------
-| -56 | ------------------------------------------
-| -57 | ------------------------------------------
+| -55 | ------------------------------------------ |
+| -56 | ------------------------------------------ |
+| -57 | ------------------------------------------ |
 | -58 | Debit transaction is not from a NXS account |
 | -59 | Account to credit is not a NXS account |
 | -60 | ------------------------------------------
@@ -207,7 +207,7 @@ Error Codes
 | -68 | Amount too small |
 | -69 | Insufficient funds |
 | -70 | Trust account not found |
-| -71 | ------------------------------------------
+| -71 | ------------------------------------------ |
 | -72 | Register is not a trust account |
 | -73 | Trust account is not a NXS account |
 | -74 | No registers found |
@@ -256,8 +256,8 @@ Error Codes
 | -117 | Item not found |
 | -118 | Missing type |
 | -119 | Missing supply |
-| -120 | Debit transaction is for a NXS account.  Please use the Finance API for crediting NXS accounts |
-| -121 | Account to credit is not for the same token as the debit |
+| -120 | ------------------------------------------ |
+| -121 | ------------------------------------------ |
 | -122 | Token/account not found |
 | -123 | Object is not a token |
 | -124 | Unknown token / account |

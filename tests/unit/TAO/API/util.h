@@ -14,9 +14,19 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <TAO/Ledger/include/enum.h>
 
 #include <Util/include/json.h>
 #include <LLC/types/uint1024.h>
+
+
+/** RandomTxid
+ *
+ *  Generate a random txid for use in unit tests.
+ *
+ **/
+uint512_t RandomTxid(const uint8_t nType = TAO::Ledger::TRITIUM);
+
 
 /** APICall
 *
