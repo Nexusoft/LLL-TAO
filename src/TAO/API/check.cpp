@@ -38,8 +38,7 @@ namespace TAO::API
 
 
     /*  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
-     *  Throws an appropriate APIException if it is not mature.
-     */
+     *  Throws an appropriate APIException if it is not mature. */
     void CheckMature(const uint256_t& hashGenesis)
     {
         /* No need to check this in private mode as there is no PoS/Pow */
@@ -53,15 +52,7 @@ namespace TAO::API
     }
 
 
-    /** CheckType
-     *
-     *  Checks if the designated object matches the explicet type specified in parameters.
-     *  We have no return value since this command is meant to throw on errors for API calls.
-     *
-     *  @param[in] params The json parameters to check against.
-     *  @param[in] hashCheck The register that we are checking against.
-     *
-     **/
+    /* Checks if the designated object matches the explicet type specified in parameters. */
     void CheckType(const json::json& params, const uint256_t& hashCheck)
     {
         /* Let's grab our object to check against and throw if it's missing. */
@@ -69,6 +60,15 @@ namespace TAO::API
         if(!LLD::Register->ReadObject(hashCheck, objCheck))
             throw APIException(-33, "Incorrect or missing name / address");
 
+        /* Execute now that we have the object. */
+        CheckType(params, objCheck);
+    }
+
+
+    /*  Checks if the designated object matches the explicet type specified in parameters.
+     *  Doesn't do a register database lookup like prior overload does. */
+    void CheckType(const json::json& params, const TAO::Register::Object& objCheck)
+    {
         /* If the user requested a particular object type then check it is that type */
         if(params.find("type") != params.end())
         {

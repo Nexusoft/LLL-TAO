@@ -19,6 +19,10 @@ ________________________________________________________________________________
 
 #include <string.h>
 
+/* Forward declarations */
+namespace TAO::Register { class Object; }
+
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -45,10 +49,10 @@ namespace TAO::API
     void CheckMature(const uint256_t& hashGenesis);
 
 
-
     /** CheckType
      *
      *  Checks if the designated object matches the explicet type specified in parameters.
+     *  We have no return value since this command is meant to throw on errors for API calls.
      *
      *  @param[in] params The json parameters to check against.
      *  @param[in] hashCheck The register that we are checking against.
@@ -57,4 +61,18 @@ namespace TAO::API
      *
      **/
     void CheckType(const json::json& params, const uint256_t& hashCheck);
+
+
+    /** CheckType
+     *
+     *  Checks if the designated object matches the explicet type specified in parameters.
+     *  Doesn't do a register database lookup like prior overload does.
+     *
+     *  @param[in] params The json parameters to check against.
+     *  @param[in] objCheck The object that we are checking for.
+     *
+     *  @return True if the object type is what was specified.
+     *
+     **/
+    void CheckType(const json::json& params, const TAO::Register::Object& objCheck);
 }
