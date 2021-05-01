@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
 
+#include <Util/include/string.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -25,7 +27,7 @@ namespace TAO::API
     {
         //XXX: we should format this better, we can't go over 132 characters in a line based on formatting guidelines.
         mapFunctions["create/token"]              = Function(std::bind(&Tokens::Create,            this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["credit/token"]              = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["credit"]                    = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["debit/token"]               = Function(std::bind(&Tokens::Debit,             this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["get/token"]                 = Function(std::bind(&Tokens::Get,               this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/token/transactions"]   = Function(std::bind(&Tokens::ListTransactions,  this, std::placeholders::_1, std::placeholders::_2));
@@ -34,7 +36,7 @@ namespace TAO::API
 
         /* Temporary reroute of the account methods to the finance API equivalents XXX: this is really hacky */
         mapFunctions["create/account"]            = Function(std::bind(&Finance::Create,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["credit/account"]            = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["credit"]                    = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["debit/account"]             = Function(std::bind(&Finance::Debit,            TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["get/account"]               = Function(std::bind(&Finance::Get,              TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/accounts"]             = Function(std::bind(&Finance::List,             TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
@@ -48,122 +50,77 @@ namespace TAO::API
     *  added to the jParams
     *  The return json contains the modifed method URL to be called.
     */
-    std::string Tokens::RewriteURL(const std::string& strMethod, json::json& jParams)
+    std::string Tokens::RewriteURL(const std::string& strMethod, json::json &jParams)
     {
-        //XXX: this is a lot of copy/paste code that could very easily be put into a helper function
-        std::string strMethodRewritten = strMethod;
+        /* Grab our components of the URL to rewrite. */
+        const std::vector<std::string> vMethods = Split(strMethod, '/');
 
-        /* Edge case for list/token/accounts  */
-        if(strMethod.find("list/token/accounts") != std::string::npos)
+        /* Check that we have all of our values. */
+        if(vMethods.empty()) //we are ignoring everything past first noun on rewrite
+            throw APIException(-14, debug::safe_printstr(FUNCTION, "Malformed request URL: ", strMethod));
+
+        /* Track if we've found an explicet type. */
+        bool fNoun = false, fAddress = false, fField = false;;
+
+        /* Grab the components of this URL. */
+        const std::string& strVerb = vMethods[0];
+        for(uint32_t n = 1; n < vMethods.size(); ++n)
         {
-            /* set the method name */
-            strMethodRewritten = "list/token/accounts";
+            /* Grab our current noun. */
+            const std::string& strNoun = vMethods[n];
 
-            /* Check to see whether there is a name after the /accounts/ name, i.e. list/token/accounts/mytoken */
-            std::size_t nPos = strMethod.find("/accounts/");
-
-            if(nPos != std::string::npos)
+            /* Now lets do some rules for the different nouns. */
+            if(!fNoun && (strNoun == "token" || strNoun == "account"))
             {
-                /* Get the name or address that comes after the /accounts/ part */
-                std::string strNameOrAddress = strMethod.substr(nPos +10);
+                debug::log(0, FUNCTION, "Adding ", strNoun, " as type");
+                jParams["type"] = strNoun;
 
-                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                if(CheckAddress(strNameOrAddress))
-                    jParams["address"] = strNameOrAddress;
-                else
-                    jParams["name"] = strNameOrAddress;
-
+                /* Set our explicet flag now. */
+                fNoun = true;
+                continue;
             }
 
-            return strMethodRewritten;
-        }
-
-        std::size_t nPos = strMethod.find("/token");
-        if(nPos != std::string::npos)
-        {
-            /* get the method name from before the /token */
-            strMethodRewritten = strMethod.substr(0, nPos);
-
-            /* Check to see whether there is a token name after the /token/ name, i.e. tokens/get/token/mytoken */
-            nPos = strMethod.find("/token/");
-
-            if(nPos != std::string::npos)
+            /* If we have reached here, we know we are an address or name. */
+            else if(!fAddress)
             {
-                /* Get the name or address that comes after the /token/ part */
-                std::string strNameOrAddress = strMethod.substr(nPos +7);
-
-                /* Check to see whether there is a fieldname after the token name, i.e. tokens/get/token/mytoken/somefield */
-                nPos = strNameOrAddress.find("/");
-
-                if(nPos != std::string::npos)
+                /* Check if this value is an address. */
+                if(CheckAddress(strNoun))
                 {
-                    /* Passing in the fieldname is only supported for the /get/ method so if the user has
-                       requested a different method then just return the requested URL, which will in turn error */
-                    if(strMethodRewritten != "get")
-                        return strMethod;
+                    debug::log(0, FUNCTION, "Adding ", strNoun, " as address");
+                    jParams["address"] = strNoun;
 
-                    std::string strFieldName = strNameOrAddress.substr(nPos +1);
-                    strNameOrAddress = strNameOrAddress.substr(0, nPos);
-                    jParams["fieldname"] = strFieldName;
+                    continue;
                 }
 
-                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                if(CheckAddress(strNameOrAddress))
-                    jParams["address"] = strNameOrAddress;
+                /* If not address it must be a nme. */
                 else
-                    jParams["name"] = strNameOrAddress;
-
-            }
-
-            /* Set the type parameter to token */
-            jParams["type"] = "token";
-
-            return strMethodRewritten;
-        }
-
-        nPos = strMethod.find("/account");
-        if(nPos != std::string::npos)
-        {
-            /* get the method name from before the /account */
-            strMethodRewritten = strMethod.substr(0, nPos);
-
-            /* Check to see whether there is an account name after the /account/ name, i.e. tokens/get/account/myaccount */
-            nPos = strMethod.find("/account/");
-
-            if(nPos != std::string::npos)
-            {
-                /* Get the name or address that comes after the /account/ part */
-                std::string strNameOrAddress = strMethod.substr(nPos +9);
-
-                /* Check to see whether there is a fieldname after the account name, i.e. tokens/get/account/myaccount/somefield */
-                nPos = strNameOrAddress.find("/");
-
-                if(nPos != std::string::npos)
                 {
-                    /* Passing in the fieldname is only supported for the /get/ method so if the user has
-                       requested a different method then just return the requested URL, which will in turn error */
-                    if(strMethodRewritten != "get")
-                        return strMethod;
+                    debug::log(0, FUNCTION, "Adding ", strNoun, " as name");
+                    jParams["name"] = strNoun;
 
-                    std::string strFieldName = strNameOrAddress.substr(nPos +1);
-                    strNameOrAddress = strNameOrAddress.substr(0, nPos);
-                    jParams["fieldname"] = strFieldName;
+                    continue;
                 }
 
-                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                if(CheckAddress(strNameOrAddress))
-                    jParams["address"] = strNameOrAddress;
-                else
-                    jParams["name"] = strNameOrAddress;
-
+                /* Set both address and noun to handle ommiting the noun if desired. */
+                fAddress = true;
+                fNoun    = true;
             }
 
-            /* Set the type parameter to account */
-            jParams["type"] = "account";
+            /* If we have reached here, we know we are a fieldname. */
+            else if(!fField)
+            {
+                debug::log(0, FUNCTION, "Adding ", strNoun, " as fieldname");
+                jParams["fieldname"] = strNoun;
 
-            return strMethodRewritten;
+                fField = true;
+                continue;
+            }
+
+            /* If we get here, we need to throw for malformed URL. */
+            else
+                throw APIException(-14, debug::safe_printstr(FUNCTION, "Malformed request URL: ", strMethod));
         }
 
-        return strMethodRewritten;
+        return strVerb;
     }
 }

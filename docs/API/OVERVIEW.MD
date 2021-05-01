@@ -149,7 +149,7 @@ Error Codes
 | -11 | User not logged in |
 | -12 | Missing Session ID |
 | -13 | Account not found |
-| -14 | ---------------------------------------- |
+| -14 | Malformed request URL |
 | -15 | Object is not an account or token |
 | -16 | Account has not been unlocked for transactions |
 | -17 | Failed to create transaction |

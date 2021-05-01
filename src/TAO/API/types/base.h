@@ -82,32 +82,26 @@ namespace TAO
              *  Derivations should also form the response JSON according to the API specification
              *
              *  @param[in] strMethod The requested API method.
-             *  @param[in] jsonParameters The parameters that the caller has passed to the API request.
+             *  @param[out] jParams The parameters that the caller has passed to the API request.
              *  @param[in] fHelp Flag to determine if command help is requested.
              *
              *  @return JSON encoded response.
              *
              **/
-            json::json Execute(const std::string& strMethod, const json::json& jsonParams, bool fHelp = false)
+            json::json Execute(const std::string &strMethod, json::json &jParams, bool fHelp = false)
             {
-                //XXX: WFT is this, everything paul did is completely fucked
-                //to fix this, we need to use API/method as our key for mapFunctions, and derive the type
-                //then pass this in as a parameter into the API's. RewriteURL needs some rethinking too
-                //so that we can handle type as a name, not the idiotic API/method/type/name that currently is implemented
-                //everything paul did is inconsistent, buggy, and redundant copy and paste code
+                /* Make a copy of our string in case it needs to be rewritten. */
+                std::string strFinal = strMethod;
 
-                json::json jsonParamsUpdated = jsonParams;
-                std::string strMethodToCall = strMethod;
+                 /* If the incoming method is not in the function map then rewrite the URL to one that does */
+                if(mapFunctions.find(strFinal) == mapFunctions.end())
+                    strFinal = RewriteURL(strMethod, jParams);
 
-                 /* If the incoming method is not in the function map then
-                   give derived API's the opportunity to rewrite the URL to one that does*/
-                if(mapFunctions.find(strMethodToCall) == mapFunctions.end())
-                    strMethodToCall = RewriteURL(strMethod, jsonParamsUpdated);
-
-                if(mapFunctions.find(strMethodToCall) != mapFunctions.end())
-                    return mapFunctions[strMethodToCall].Execute(SanitizeParams(strMethodToCall, jsonParamsUpdated), fHelp);
+                /* Execute the function map if method is found. */
+                if(mapFunctions.find(strFinal) != mapFunctions.end())
+                    return mapFunctions[strFinal].Execute(SanitizeParams(strFinal, jParams), fHelp);
                 else
-                    throw APIException(-2, debug::safe_printstr("Method not found: ", strMethodToCall));
+                    throw APIException(-2, debug::safe_printstr("Method not found: ", strFinal));
             }
 
 
@@ -117,16 +111,16 @@ namespace TAO
              *  map directly to a function in the target API.  Insted this method can be overriden to
              *  parse the incoming URL and route to a different/generic method handler, adding parameter
              *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-             *  added to the jsonParams
+             *  added to the jParams
              *  The return json contains the modifed method URL to be called.
              *
              *  @param[in] strMethod The name of the method being invoked.
-             *  @param[in] jsonParams The json array of parameters being passed to this method.
+             *  @param[in] jParams The json array of parameters being passed to this method.
              *
              *  @return the API method URL
              *
              **/
-            virtual std::string RewriteURL(const std::string& strMethod, json::json& jsonParams)
+            virtual std::string RewriteURL(const std::string& strMethod, json::json &jParams)
             {
                 return strMethod;
             };
@@ -140,12 +134,12 @@ namespace TAO
              *  for the method being called.
              *
              *  @param[in] strMethod The name of the method being invoked.
-             *  @param[in] jsonParams The json array of parameters being passed to this method.
+             *  @param[in] jParams The json array of parameters being passed to this method.
              *
              *  @return the sanitized json parameters array.
              *
              **/
-            virtual json::json SanitizeParams(const std::string& strMethod, const json::json& jsonParams)
+            virtual json::json SanitizeParams(const std::string& strMethod, const json::json& jParams)
             {
                 /* If configured, remove any string populated with the text null. Some 3rd party apps such as
                    bubble do not handle dynamic values very well and will insert the text null if not populated
@@ -153,10 +147,10 @@ namespace TAO
                 if(config::GetBoolArg("-apiremovenullstring", false))
                 {
                     /* Make a copy of the params to parse */
-                    json::json jsonSanitizedParams = jsonParams;
+                    json::json jsonSanitizedParams = jParams;
 
                     /* Iterate all parameters */
-                    for(auto param = jsonParams.begin(); param != jsonParams.end(); ++param)
+                    for(auto param = jParams.begin(); param != jParams.end(); ++param)
                     {
                         if((*param).is_string() && (*param).get<std::string>() == "null")
                         {
@@ -168,7 +162,7 @@ namespace TAO
 
                 }
                 else
-                    return jsonParams;
+                    return jParams;
             };
 
         protected:

@@ -75,7 +75,8 @@ namespace TAO
 
             /* Submit the payload object. */
             std::vector<TAO::Operation::Contract> vContracts(1);
-            vContracts[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
+            vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister;
+            vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
             if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())

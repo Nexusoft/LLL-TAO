@@ -1283,6 +1283,22 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens]")
         REQUIRE(ret["error"]["code"].get<int32_t>() == -40);
     }
 
+    /* Test fail with invalid type noun */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]     = PIN;
+        params["session"] = SESSION1;
+        params["txid"]    = strTXID;
+
+        /* Invoke the API */
+        ret = APICall("tokens/credit/token", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -49);
+    }
+
     /* Test success case */
     {
         /* Build the parameters to pass to the API */
