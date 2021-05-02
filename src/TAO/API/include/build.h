@@ -29,40 +29,40 @@ namespace TAO::API
      *
      *  Extract an address from incoming parameters to derive from name or address field.
      *
-     *  @param[in] params The parameters to find address in.
+     *  @param[in] jParams The parameters to find address in.
      *  @param[in] strSuffix The suffix to append to end of parameter we are extracting.
      *  @param[in] strDefault The default value to revert to if failed to find in parameters.
      *
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractAddress(const json::json& params, const std::string& strSuffix = "", const std::string& strDefault = "");
+    uint256_t ExtractAddress(const json::json& jParams, const std::string& strSuffix = "", const std::string& strDefault = "");
 
 
     /** ExtractToken
      *
      *  Extract a token address from incoming parameters to derive from name or address field.
      *
-     *  @param[in] params The parameters to find address in.
+     *  @param[in] jParams The parameters to find address in.
      *
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractToken(const json::json& params);
+    uint256_t ExtractToken(const json::json& jParams);
 
 
     /** BuildResponse
      *
      *  Build a response object for a transaction that was built.
      *
-     *  @param[in] params The parameters for the relevant API call.
+     *  @param[in] jParams The parameters for the relevant API call.
      *  @param[in] hashRegister The register address that we are responding for.
      *  @param[in] vContracts The list of contracts this call has generated.
      *
      *  @return the formatted JSON response to return with.
      *
      **/
-    json::json BuildResponse(const json::json& params, const TAO::Register::Address& hashRegister,
+    json::json BuildResponse(const json::json& jParams, const TAO::Register::Address& hashRegister,
                               const std::vector<TAO::Operation::Contract>& vContracts);
 
 
@@ -70,13 +70,13 @@ namespace TAO::API
      *
      *  Builds a transaction based on a list of contracts, to be deployed as a single tx or batched.
      *
-     *  @param[in] params The json parameters to build the transaction with.
+     *  @param[in] jParams The json parameters to build the transaction with.
      *  @param[in] vContracts The list of contracts to build tx for.
      *
      *  @return the txid of the transaction that was just built.
      *
      **/
-    uint512_t BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts);
+    uint512_t BuildAndAccept(const json::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts);
 
 
     /** AddFee

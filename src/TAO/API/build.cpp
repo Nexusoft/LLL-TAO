@@ -34,17 +34,17 @@ namespace TAO::API
 {
 
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractAddress(const json::json& params, const std::string& strSuffix, const std::string& strDefault)
+    uint256_t ExtractAddress(const json::json& jParams, const std::string& strSuffix, const std::string& strDefault)
     {
         /* Cache a couple keys we will be using. */
         const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
         const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
 
         /* If name is provided then use this to deduce the register address, */
-        if(params.find(strName) != params.end())
+        if(jParams.find(strName) != jParams.end())
         {
             /* Check for the ALL name, that debits from all relevant accounts. */
-            if(params[strName] == "ALL")
+            if(jParams[strName] == "ALL")
             {
                 /* Check for send to all */
                 if(strSuffix == "to")
@@ -53,15 +53,15 @@ namespace TAO::API
                 return TAO::Register::WILDCARD_ADDRESS; //placeholder for ALL functionality 0xffffff.....ffffff
             }
 
-            return Names::ResolveAddress(params, params[strName].get<std::string>());
+            return Names::ResolveAddress(jParams, jParams[strName].get<std::string>());
         }
 
         /* Otherwise let's check for the raw address format. */
-        else if(params.find(strAddr) != params.end())
+        else if(jParams.find(strAddr) != jParams.end())
         {
             /* Declare our return value. */
             const TAO::Register::Address hashRet =
-                TAO::Register::Address(params[strAddr].get<std::string>());
+                TAO::Register::Address(jParams[strAddr].get<std::string>());
 
             /* Check that it is valid */
             if(!hashRet.IsValid())
@@ -82,7 +82,7 @@ namespace TAO::API
                 return hashRet;
 
             /* Get our session to get the name object. */
-            const Session& session = users->GetSession(params);
+            const Session& session = users->GetSession(jParams);
 
             /* Grab the name object register now. */
             TAO::Register::Object object;
@@ -104,24 +104,24 @@ namespace TAO::API
 
 
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractToken(const json::json& params)
+    uint256_t ExtractToken(const json::json& jParams)
     {
         /* If name is provided then use this to deduce the register address, */
-        if(params.find("token_name") != params.end())
+        if(jParams.find("token_name") != jParams.end())
         {
             /* Check for default NXS token or empty name fields. */
-            if(params["token_name"] == "NXS" || params["token_name"].empty())
+            if(jParams["token_name"] == "NXS" || jParams["token_name"].empty())
                 return 0;
 
-            return Names::ResolveAddress(params, params["token_name"].get<std::string>());
+            return Names::ResolveAddress(jParams, jParams["token_name"].get<std::string>());
         }
 
         /* Otherwise let's check for the raw address format. */
-        else if(params.find("token") != params.end())
+        else if(jParams.find("token") != jParams.end())
         {
             /* Declare our return value. */
             const TAO::Register::Address hashRet =
-                TAO::Register::Address(params["token"].get<std::string>());
+                TAO::Register::Address(jParams["token"].get<std::string>());
 
             /* Check that it is valid */
             if(!hashRet.IsValid())
@@ -135,16 +135,17 @@ namespace TAO::API
 
 
     /* Build a response object for a transaction that was built. */
-    json::json BuildResponse(const json::json& params, const TAO::Register::Address& hashRegister,
+    json::json BuildResponse(const json::json& jParams, const TAO::Register::Address& hashRegister,
                              const std::vector<TAO::Operation::Contract>& vContracts)
     {
         /* Build a JSON response object. */
         json::json jRet;
         jRet["success"] = true; //just a little response for if using -autotx
         jRet["address"] = hashRegister.ToString();
+        jRet["status"]  = "active"; //XXX: we wnat this to check a functions map for status, this also allows disabling some methods.
 
         /* Handle passing txid if not in -autotx mode. */
-        const uint512_t hashTx = BuildAndAccept(params, vContracts);
+        const uint512_t hashTx = BuildAndAccept(jParams, vContracts);
         if(hashTx != 0)
             jRet["txid"] = hashTx.ToString();
 
@@ -153,18 +154,18 @@ namespace TAO::API
 
 
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
-    uint512_t BuildAndAccept(const json::json& params, const std::vector<TAO::Operation::Contract>& vContracts)
+    uint512_t BuildAndAccept(const json::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
     {
         /* Authenticate the users credentials */
-        if(!users->Authenticate(params))
+        if(!users->Authenticate(jParams))
             throw APIException(-139, "Invalid credentials");
 
         /* Get the PIN to be used for this API call */
         const SecureString strPIN =
-            users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            users->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
         /* Get the session to be used for this API call */
-        const Session& session = users->GetSession(params);
+        const Session& session = users->GetSession(jParams);
         LOCK(session.CREATE_MUTEX);
 
         /* Create the transaction. */
