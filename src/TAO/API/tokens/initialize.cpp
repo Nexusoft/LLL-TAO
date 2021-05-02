@@ -25,6 +25,19 @@ namespace TAO::API
     /* Standard initialization function. */
     void Tokens::Initialize()
     {
+        /* Handle for all CREATE operations. */
+        mapFunctions["create"] = Function
+        (
+            std::bind
+            (
+                &Finance::Create,
+                TAO::API::finance,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+
         /* Handle for all CREDIT operations. */
         mapFunctions["credit"] = Function
         (
@@ -36,7 +49,7 @@ namespace TAO::API
                 std::placeholders::_2
             )
         );
-        
+
         //XXX: we should format this better, we can't go over 132 characters in a line based on formatting guidelines.
         mapFunctions["create/token"]              = Function(std::bind(&Tokens::Create,            this, std::placeholders::_1, std::placeholders::_2));
         //mapFunctions["credit"]                    = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
@@ -47,7 +60,6 @@ namespace TAO::API
         mapFunctions["list/token/accounts"]       = Function(std::bind(&Tokens::ListTokenAccounts, this, std::placeholders::_1, std::placeholders::_2));
 
         /* Temporary reroute of the account methods to the finance API equivalents XXX: this is really hacky */
-        mapFunctions["create/account"]            = Function(std::bind(&Finance::Create,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         //mapFunctions["credit"]                    = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["debit/account"]             = Function(std::bind(&Finance::Debit,            TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["get/account"]               = Function(std::bind(&Finance::Get,              TAO::API::finance, std::placeholders::_1, std::placeholders::_2));

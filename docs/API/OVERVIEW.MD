@@ -311,10 +311,10 @@ Error Codes
 | -172 | Cannot void a transaction that does not belong to you |
 | -173 | Cannot void debit transaction as it has already been fully credited by all recipients |
 | -174 | Transaction contains no contracts that can be voided |
-| -175 | Invalid supply amount.  Supply must be whole number value |
-| -176 | Invalid supply amount.  The maximum token supply is 18446744073709551615 |
-| -177 | Invalid decimals amount.  Decimals must be whole number value between 0 and 8 |
-| -178 | Invalid supply / decimals.  The maximum combination of supply and decimals (supply * 10^decimals) cannot exceed 18446744073709551615 |
+| -175 | Invalid supply amount. Supply must be whole number value |
+| -176 | Invalid supply amount. The maximum token supply is 18446744073709551615 |
+| -177 | Invalid decimals amount. Decimals must be whole number value between 0 and 8 |
+| -178 | Invalid supply/decimals. The maximum supply/decimals cannot exceed 18446744073709551615 |
 | -179 | Legacy wallet is locked. walletpassphrase required |
 | -180 | Incorrect walletpassphrase for Legacy wallet |
 | -181 | Trust key not found for Legacy wallet |

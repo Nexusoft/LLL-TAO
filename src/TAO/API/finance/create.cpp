@@ -32,21 +32,76 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/templates/datastream.h>
+#include <Util/include/math.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Create a NXS account. */
+    json::json Finance::Create(const json::json& params, bool fHelp)
     {
+        /* Check that we have designated a type to create. */
+        TAO::Register::Address hashRegister;
+        if(params.find("type") == params.end())
+            throw APIException(-118, "Missing type");
 
-        /* Create a NXS account. */
-        json::json Finance::Create(const json::json& params, bool fHelp)
+        /* Check for account or token type. */
+        TAO::Register::Object object;
+        if(params["type"] == "token")
         {
-            /* Generate a random hash for this objects register address */
-            const TAO::Register::Address hashRegister =
-                TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+            /* Generate register address for token. */
+            hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
+
+            /* Check for supply parameter. */
+            if(params.find("supply") == params.end())
+                throw APIException(-119, "Missing supply");
+
+            /* Extract the supply parameter */
+            uint64_t nSupply = 0;
+            if(params.find("supply") != params.end())
+            {
+                /* Attempt to convert the supplied value to a 64-bit unsigned integer, catching argument/range exceptions */
+                try  { nSupply = std::stoull(params["supply"].get<std::string>()); }
+                catch(const std::invalid_argument& e)
+                {
+                    throw APIException(-175, "Invalid supply amount. Supply must be whole number value");
+                }
+                catch(const std::out_of_range& e)
+                {
+                    throw APIException(-176, "Invalid supply amount. The maximum token supply is 18446744073709551615");
+                }
+            }
+
+            /* Check for nDecimals parameter. */
+            uint8_t nDecimals = 0;
+            if(params.find("decimals") != params.end())
+            {
+                /* Attempt to convert the supplied value catching argument / range exceptions */
+                bool fValid = false;
+                try
+                {
+                    nDecimals = std::stoul(params["decimals"].get<std::string>());
+                    fValid = (nDecimals <= 8);
+                }
+                catch(const std::exception& e) { fValid = false; }
+
+                /* Check for errors. */
+                if(!fValid)
+                    throw APIException(-177, "Invalid decimals amount.  Decimals must be whole number value between 0 and 8");
+            }
+
+            /* Sanitize the supply/decimals combination for uint64 overflow */
+            const uint64_t nCoinDigits = math::pow(10, nDecimals);
+            if(nDecimals > 0 && nSupply > (std::numeric_limits<uint64_t>::max() / nCoinDigits))
+                throw APIException(-178, "Invalid supply/decimals. The maximum supply/decimals cannot exceed 18446744073709551615");
+
+            /* Create a token object register. */
+            object = TAO::Register::CreateToken(hashRegister, nSupply * nCoinDigits, nDecimals);
+        }
+        else if(params["type"] == "account")
+        {
+            /* Generate register address for account. */
+            hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
             /* If this is not a NXS token account, verify that the token identifier is for a valid token */
             const TAO::Register::Address hashToken = ExtractToken(params);
@@ -67,30 +122,32 @@ namespace TAO
             }
 
             /* Create an account object register. */
-            TAO::Register::Object account = TAO::Register::CreateAccount(hashToken);
-
-            /* If the user has supplied the data parameter than add this to the account register */
-            if(params.find("data") != params.end())
-                account << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << params["data"].get<std::string>();
-
-            /* Submit the payload object. */
-            std::vector<TAO::Operation::Contract> vContracts(1);
-            vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister;
-            vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
-
-            /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
-            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
-            {
-                /* Add an optional name if supplied. */
-                vContracts.push_back
-                (
-                    Names::CreateName(users->GetSession(params).GetAccount()->Genesis(),
-                    params["name"].get<std::string>(), "", hashRegister)
-                );
-            }
-
-            /* Build response JSON boilerplate. */
-            return BuildResponse(params, hashRegister, vContracts);
+            object = TAO::Register::CreateAccount(hashToken);
         }
+        else
+            throw APIException(-36, "Invalid type for command");
+
+        /* If the user has supplied the data parameter than add this to the account register */
+        if(params.find("data") != params.end())
+            object << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << params["data"].get<std::string>();
+
+        /* Submit the payload object. */
+        std::vector<TAO::Operation::Contract> vContracts(1);
+        vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister;
+        vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << object.GetState();
+
+        /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
+        if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
+        {
+            /* Add an optional name if supplied. */
+            vContracts.push_back
+            (
+                Names::CreateName(users->GetSession(params).GetAccount()->Genesis(),
+                params["name"].get<std::string>(), "", hashRegister)
+            );
+        }
+
+        /* Build response JSON boilerplate. */
+        return BuildResponse(params, hashRegister, vContracts);
     }
 }
