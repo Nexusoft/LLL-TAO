@@ -38,30 +38,30 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Create a NXS account. */
-    json::json Finance::Create(const json::json& params, bool fHelp)
+    json::json Finance::Create(const json::json& jParams, bool fHelp)
     {
         /* Check that we have designated a type to create. */
         TAO::Register::Address hashRegister;
-        if(params.find("type") == params.end())
+        if(jParams.find("type") == jParams.end())
             throw APIException(-118, "Missing type");
 
         /* Check for account or token type. */
         TAO::Register::Object object;
-        if(params["type"] == "token")
+        if(jParams["type"] == "token")
         {
             /* Generate register address for token. */
             hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
 
             /* Check for supply parameter. */
-            if(params.find("supply") == params.end())
+            if(jParams.find("supply") == jParams.end())
                 throw APIException(-119, "Missing supply");
 
             /* Extract the supply parameter */
             uint64_t nSupply = 0;
-            if(params.find("supply") != params.end())
+            if(jParams.find("supply") != jParams.end())
             {
                 /* Attempt to convert the supplied value to a 64-bit unsigned integer, catching argument/range exceptions */
-                try  { nSupply = std::stoull(params["supply"].get<std::string>()); }
+                try  { nSupply = std::stoull(jParams["supply"].get<std::string>()); }
                 catch(const std::invalid_argument& e)
                 {
                     throw APIException(-175, "Invalid supply amount. Supply must be whole number value");
@@ -74,13 +74,13 @@ namespace TAO::API
 
             /* Check for nDecimals parameter. */
             uint8_t nDecimals = 0;
-            if(params.find("decimals") != params.end())
+            if(jParams.find("decimals") != jParams.end())
             {
                 /* Attempt to convert the supplied value catching argument / range exceptions */
                 bool fValid = false;
                 try
                 {
-                    nDecimals = std::stoul(params["decimals"].get<std::string>());
+                    nDecimals = std::stoul(jParams["decimals"].get<std::string>());
                     fValid = (nDecimals <= 8);
                 }
                 catch(const std::exception& e) { fValid = false; }
@@ -91,20 +91,20 @@ namespace TAO::API
             }
 
             /* Sanitize the supply/decimals combination for uint64 overflow */
-            const uint64_t nCoinDigits = math::pow(10, nDecimals);
-            if(nDecimals > 0 && nSupply > (std::numeric_limits<uint64_t>::max() / nCoinDigits))
+            const uint64_t nCoinFigures = math::pow(10, nDecimals);
+            if(nDecimals > 0 && nSupply > (std::numeric_limits<uint64_t>::max() / nCoinFigures))
                 throw APIException(-178, "Invalid supply/decimals. The maximum supply/decimals cannot exceed 18446744073709551615");
 
             /* Create a token object register. */
-            object = TAO::Register::CreateToken(hashRegister, nSupply * nCoinDigits, nDecimals);
+            object = TAO::Register::CreateToken(hashRegister, nSupply * nCoinFigures, nDecimals);
         }
-        else if(params["type"] == "account")
+        else if(jParams["type"] == "account")
         {
             /* Generate register address for account. */
             hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
             /* If this is not a NXS token account, verify that the token identifier is for a valid token */
-            const TAO::Register::Address hashToken = ExtractToken(params);
+            const TAO::Register::Address hashToken = ExtractToken(jParams);
             if(hashToken != 0)
             {
                 /* Check our address before hitting the database. */
@@ -128,8 +128,8 @@ namespace TAO::API
             throw APIException(-36, "Invalid type for command");
 
         /* If the user has supplied the data parameter than add this to the account register */
-        if(params.find("data") != params.end())
-            object << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << params["data"].get<std::string>();
+        if(jParams.find("data") != jParams.end())
+            object << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << jParams["data"].get<std::string>();
 
         /* Submit the payload object. */
         std::vector<TAO::Operation::Contract> vContracts(1);
@@ -137,17 +137,17 @@ namespace TAO::API
         vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << object.GetState();
 
         /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
-        if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
+        if(jParams.find("name") != jParams.end() && !jParams["name"].get<std::string>().empty())
         {
             /* Add an optional name if supplied. */
             vContracts.push_back
             (
-                Names::CreateName(users->GetSession(params).GetAccount()->Genesis(),
-                params["name"].get<std::string>(), "", hashRegister)
+                Names::CreateName(users->GetSession(jParams).GetAccount()->Genesis(),
+                jParams["name"].get<std::string>(), "", hashRegister)
             );
         }
 
         /* Build response JSON boilerplate. */
-        return BuildResponse(params, hashRegister, vContracts);
+        return BuildResponse(jParams, hashRegister, vContracts);
     }
 }

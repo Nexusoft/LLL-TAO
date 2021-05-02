@@ -1151,6 +1151,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens]")
     /* Generate random token name */
     std::string strToken = "TOKEN" + std::to_string(LLC::GetRand());
     TAO::Register::Address hashToken = TAO::Register::Address(TAO::Register::Address::TOKEN);
+
     std::string strAccount = "ACCOUNT" + std::to_string(LLC::GetRand());
     TAO::Register::Address hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
@@ -1316,6 +1317,131 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens]")
         REQUIRE(result.find("txid") != result.end());
     }
 
+
+    //test failure for missing address/name
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]     = PIN;
+        params["session"] = SESSION1;
+
+        /* Invoke the API */
+        ret = APICall("tokens/burn", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -33);
+    }
+
+
+    //test failure for missing type
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]     = PIN;
+        params["session"] = SESSION1;
+        params["name"]    = strAccount;
+        params["amount"]  = "100";
+
+        /* Invoke the API */
+        ret = APICall("tokens/burn", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -118);
+    }
+
+
+    //test failure for invalid type
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]     = PIN;
+        params["session"] = SESSION1;
+        params["name"]    = strAccount;
+        params["amount"]  = "100";
+
+        /* Invoke the API */
+        ret = APICall("tokens/burn/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -36);
+    }
+
+
+    //test failure for object not account
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]     = PIN;
+        params["session"] = SESSION1;
+        params["name"]    = strToken;
+        params["amount"]  = "100";
+
+        /* Invoke the API */
+        ret = APICall("tokens/burn/token", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -65);
+    }
+
+
+    /* Test success case */
+    std::string strBurnID;
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]     = PIN;
+        params["session"] = SESSION1;
+        params["name"]    = strAccount;
+        params["amount"]  = "10";
+
+        /* Invoke the API */
+        ret = APICall("tokens/burn/token", params);
+
+        /* Check the result */
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+
+        strBurnID = result["txid"];
+    }
+
+
+    /* Test failure crediting with Unexpected type. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]     = PIN;
+        params["session"] = SESSION1;
+        params["txid"]    = strBurnID;
+
+        /* Invoke the API */
+        ret = APICall("tokens/credit/account", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -49);
+    }
+
+
+    /* Test failure crediting account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]     = PIN;
+        params["session"] = SESSION1;
+        params["txid"]    = strBurnID;
+
+        /* Invoke the API */
+        ret = APICall("tokens/credit/token", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -32);
+    }
 }
 
 TEST_CASE( "Test Tokens API - get account", "[tokens]")
@@ -1339,7 +1465,6 @@ TEST_CASE( "Test Tokens API - get account", "[tokens]")
 
     /* create token to create account for  */
     {
-
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"] = PIN;

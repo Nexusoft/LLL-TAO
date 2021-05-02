@@ -25,6 +25,18 @@ namespace TAO::API
     /* Standard initialization function. */
     void Tokens::Initialize()
     {
+        /* Handle for all BURN operations. */
+        mapFunctions["burn"] = Function
+        (
+            std::bind
+            (
+                &Finance::Burn,
+                TAO::API::finance,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Handle for all CREATE operations. */
         mapFunctions["create"] = Function
         (
@@ -36,7 +48,6 @@ namespace TAO::API
                 std::placeholders::_2
             )
         );
-
 
         /* Handle for all CREDIT operations. */
         mapFunctions["credit"] = Function
@@ -51,29 +62,19 @@ namespace TAO::API
         );
 
         //XXX: we should format this better, we can't go over 132 characters in a line based on formatting guidelines.
-        mapFunctions["create/token"]              = Function(std::bind(&Tokens::Create,            this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["credit"]                    = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["debit/token"]               = Function(std::bind(&Tokens::Debit,             this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["get/token"]                 = Function(std::bind(&Tokens::Get,               this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/token/transactions"]   = Function(std::bind(&Tokens::ListTransactions,  this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["burn/token"]                = Function(std::bind(&Tokens::Burn,              this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/token/accounts"]       = Function(std::bind(&Tokens::ListTokenAccounts, this, std::placeholders::_1, std::placeholders::_2));
 
         /* Temporary reroute of the account methods to the finance API equivalents XXX: this is really hacky */
-        //mapFunctions["credit"]                    = Function(std::bind(&Finance::Credit,           TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["debit/account"]             = Function(std::bind(&Finance::Debit,            TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["get/account"]               = Function(std::bind(&Finance::Get,              TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/accounts"]             = Function(std::bind(&Finance::List,             TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/account/transactions"] = Function(std::bind(&Finance::ListTransactions, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
     }
 
-    /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-    *  map directly to a function in the target API.  Insted this method can be overriden to
-    *  parse the incoming URL and route to a different/generic method handler, adding parameter
-    *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-    *  added to the jParams
-    *  The return json contains the modifed method URL to be called.
-    */
+    /* Rewrite the URL to include names and fields if preferred over using parameters.*/
     std::string Tokens::RewriteURL(const std::string& strMethod, json::json &jParams)
     {
         /* Grab our components of the URL to rewrite. */

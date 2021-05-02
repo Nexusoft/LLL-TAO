@@ -42,22 +42,22 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    json::json Finance::Credit(const json::json& params, bool fHelp)
+    json::json Finance::Credit(const json::json& jParams, bool fHelp)
     {
         /* Check for txid parameter. */
-        if(params.find("txid") == params.end())
+        if(jParams.find("txid") == jParams.end())
             throw APIException(-50, "Missing txid.");
 
         /* Extract some parameters from input data. */
-        const TAO::Register::Address hashCredit = ExtractAddress(params, "", "default");
+        const TAO::Register::Address hashCredit = ExtractAddress(jParams, "", "default");
 
         /* Get the transaction id. */
         const uint512_t hashTx =
-            uint512_t(params["txid"].get<std::string>());
+            uint512_t(jParams["txid"].get<std::string>());
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            users->GetSession(params).GetAccount()->Genesis();
+            users->GetSession(jParams).GetAccount()->Genesis();
 
         /* Check for tritium credits. */
         std::vector<TAO::Operation::Contract> vContracts(0);
@@ -94,7 +94,7 @@ namespace TAO::API
                     debit >> nAmount;
 
                     /* Now lets check our expected types match. */
-                    CheckType(params, hashCredit);
+                    CheckType(jParams, hashCredit);
 
                     /* if we passed all of these checks then insert the credit contract into the tx */
                     TAO::Operation::Contract contract;
@@ -157,7 +157,7 @@ namespace TAO::API
                             throw APIException(-33, "Incorrect or missing name / address");
 
                         /* Now lets check our expected types match. */
-                        CheckType(params, objCredit);
+                        CheckType(jParams, objCredit);
 
                         /* If we passed these checks then insert the credit contract into the tx */
                         TAO::Operation::Contract contract;
@@ -184,7 +184,7 @@ namespace TAO::API
                             continue;
 
                         /* Now lets check our expected types match. */
-                        CheckType(params, objTo);
+                        CheckType(jParams, objTo);
 
                         /* Create our new contract now. */
                         TAO::Operation::Contract contract;
@@ -199,7 +199,7 @@ namespace TAO::API
                     else if(nStandardBase == TAO::Register::OBJECTS::NONSTANDARD)
                     {
                         /* Attempt to get the proof from the parameters. */
-                        const TAO::Register::Address hashProof = ExtractAddress(params, "proof");
+                        const TAO::Register::Address hashProof = ExtractAddress(jParams, "proof");
 
                         /* Check that the owner is a token. */
                         if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
@@ -238,7 +238,7 @@ namespace TAO::API
                             throw APIException(-33, "Incorrect or missing name / address");
 
                         /* Now lets check our expected types match. */
-                        CheckType(params, objCredit);
+                        CheckType(jParams, objCredit);
 
                         /* Calculate the partial amount we want to claim based on our share of the proof tokens */
                         const uint64_t nPartial = (objProof.get<uint64_t>("balance") * nAmount) / objOwner.get<uint64_t>("supply");
@@ -283,7 +283,7 @@ namespace TAO::API
                     continue;
 
                 /* Now lets check our expected types match. */
-                CheckType(params, objTo);
+                CheckType(jParams, objTo);
 
                 /* Build the response contract now. */
                 TAO::Operation::Contract contract;
@@ -302,6 +302,6 @@ namespace TAO::API
             throw APIException(-43, "No valid contracts in debit tx.");
 
         /* Build response JSON boilerplate. */
-        return BuildResponse(params, hashCredit, vContracts);
+        return BuildResponse(jParams, hashCredit, vContracts);
     }
 }

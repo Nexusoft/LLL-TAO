@@ -53,18 +53,15 @@ namespace TAO
              *
              *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
              *  map directly to a function in the target API.  Insted this method can be overriden to
-             *  parse the incoming URL and route to a different/generic method handler, adding parameter
-             *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-             *  added to the jsonParams
-             *  The return json contains the modifed method URL to be called.
+             *  parse the incoming URL and route to a different/generic method handler,
              *
              *  @param[in] strMethod The name of the method being invoked.
-             *  @param[in] jsonParams The json array of parameters being passed to this method.
+             *  @param[out] jParams The json array of parameters to be modified and passed back.
              *
-             *  @return the API method URL
+             *  @return the modified API method URL as a string
              *
              **/
-            std::string RewriteURL(const std::string& strMethod, json::json& jsonParams) override;
+            std::string RewriteURL(const std::string& strMethod, json::json &jParams) final;
 
 
             /** GetName
@@ -78,56 +75,70 @@ namespace TAO
             }
 
 
-            /** Create
+            /** Burn
              *
-             *  Create an account or token object register
+             *  Burn tokens. This debits the account to send the coins back to the token address, but does so with a contract
+             *  condition that always evaluates to false.  Hence the debit can never be credited, burning the tokens.
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json Create(const json::json& params, bool fHelp);
+            json::json Burn(const json::json& jParams, bool fHelp);
+
+
+            /** Create
+             *
+             *  Create an account or token object register
+             *
+             *  @param[in] jParams The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Create(const json::json& jParams, bool fHelp);
 
 
             /** Credit
              *
              *  Claim a balance from an account or token object register.
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json Credit(const json::json& params, bool fHelp);
+            json::json Credit(const json::json& jParams, bool fHelp);
 
 
             /** Debit
              *
              *  Debit tokens from an account or token object register
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json Debit(const json::json& params, bool fHelp);
+            json::json Debit(const json::json& jParams, bool fHelp);
 
 
             /** Get
              *
              *  Get an account or token object register
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json Get(const json::json& params, bool fHelp);
+            json::json Get(const json::json& jParams, bool fHelp);
 
 
 
@@ -136,104 +147,104 @@ namespace TAO
              *  Get a summary of balance information across all accounts belonging to the currently logged in signature chain
              *  for a particular token type
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json GetBalances(const json::json& params, bool fHelp);
+            json::json GetBalances(const json::json& jParams, bool fHelp);
 
 
             /** ListBalances
              *
              *  Get a summary of balance information across all accounts belonging to the currently logged in signature chain
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json ListBalances(const json::json& params, bool fHelp);
+            json::json ListBalances(const json::json& jParams, bool fHelp);
 
 
             /** Info
              *
              *  Get staking metrics for a trust account.
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json Info(const json::json& params, bool fHelp);
+            json::json Info(const json::json& jParams, bool fHelp);
 
 
             /** List
              *
              *  List all NXS accounts
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json List(const json::json& params, bool fHelp);
+            json::json List(const json::json& jParams, bool fHelp);
 
 
             /** ListTransactions
              *
              *  Lists all transactions for a given account
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json ListTransactions(const json::json& params, bool fHelp);
+            json::json ListTransactions(const json::json& jParams, bool fHelp);
 
 
             /** MigrateAccounts
              *
              *  Migrate all Legacy wallet accounts to corresponding accounts in the signature chain.
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json MigrateAccounts(const json::json& params, bool fHelp);
+            json::json MigrateAccounts(const json::json& jParams, bool fHelp);
 
 
             /** Stake
              *
              *  Set the stake amount for trust account (add/remove stake).
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json Stake(const json::json& params, bool fHelp);
+            json::json Stake(const json::json& jParams, bool fHelp);
 
 
             /** TrustAccounts
              *
              *  Lists all trust accounts in the chain
              *
-             *  @param[in] params The parameters from the API call.
+             *  @param[in] jParams The parameters from the API call.
              *  @param[in] fHelp Trigger for help data.
              *
              *  @return The return object in JSON.
              *
              **/
-            json::json TrustAccounts(const json::json& params, bool fHelp);
+            json::json TrustAccounts(const json::json& jParams, bool fHelp);
 
         };
     }

@@ -427,6 +427,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_dex_sell.o \
 		build/API_types_dex_initialize.o \
 		build/API_types_finance_balances.o \
+		build/API_types_finance_burn.o \
 		build/API_types_finance_create.o \
 		build/API_types_finance_credit.o \
 		build/API_types_finance_debit.o \
@@ -473,10 +474,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_system_system.o \
 		build/API_types_system_metrics.o \
 		build/API_types_system_validate.o \
-		build/API_types_tokens_create.o \
-		build/API_types_tokens_credit.o \
 		build/API_types_tokens_debit.o \
-		build/API_types_tokens_burn.o \
 		build/API_types_tokens_list.o \
 		build/API_types_tokens_get.o \
 		build/API_types_tokens_initialize.o \
