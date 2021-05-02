@@ -42,12 +42,12 @@ namespace TAO
          *  Converts the block to formatted JSON
          *
          *  @param[in] block The block to convert
-         *  @param[in] nVerbosity determines the amount of transaction data to include in the response
+         *  @param[in] nVerbose determines the amount of transaction data to include in the response
          *
          *  @return the formatted JSON object
          *
          **/
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
+        json::json BlockToJSON(const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
                                const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
@@ -58,14 +58,14 @@ namespace TAO
          *  @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in)
          *  @param[in] tx The transaction to convert to JSON
          *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
-         *  @param[in] nVerbosity determines the amount of transaction data to include in the response
+         *  @param[in] nVerbose determines the amount of transaction data to include in the response
          *  @param[in] hashCoinbase Used to filter out coinbase transactions to only those belonging to hashCoinbase
          *
          *  @return the formatted JSON object
          *
          **/
         json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
-                                     const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
+                                     const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
                                      const uint256_t& hashCoinbase = 0,
                                      const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
@@ -76,12 +76,12 @@ namespace TAO
          *
          *  @param[in] tx The transaction to convert to JSON
          *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
-         *  @param[in] nVerbosity determines the amount of transaction data to include in the response
+         *  @param[in] nVerbose determines the amount of transaction data to include in the response
          *
          *  @return the formatted JSON object
          *
          **/
-        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
+        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
                                      const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
@@ -91,14 +91,14 @@ namespace TAO
          *
          *  @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in)
          *  @param[in] tx The transaction with contracts to convert to JSON
-         *  @param[in] nVerbosity The verbose output level.
+         *  @param[in] nVerbose The verbose output level.
          *  @param[in] hashCoinbase Used to filter out coinbase transactions to only those belonging to hashCoinbase
          *
          *  @return the formatted JSON object
          *
          **/
         json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
-                                   uint32_t nVerbosity = 0, const uint256_t& hashCoinbase = 0,
+                                   const uint32_t nVerbose = 0, const uint256_t& hashCoinbase = 0,
                                    const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
@@ -109,13 +109,13 @@ namespace TAO
          *  @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in)
          *  @param[in] contract The contract to de-serialize
          *  @param[in] nContract the id of the contract within the transaction
-         *  @param[in] nVerbosity The verbose output level.
+         *  @param[in] nVerbose The verbose output level.
          *
          *  @return the formatted JSON object
          *
          **/
         json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract,
-                                  uint32_t nContract, uint32_t nVerbosity = 0);
+                                  const uint32_t nContract, const uint32_t nVerbose = 0);
 
 
         /** ObjectToJSON

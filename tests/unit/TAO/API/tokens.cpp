@@ -1449,10 +1449,9 @@ TEST_CASE( "Test Tokens API - get account", "[tokens]")
         REQUIRE(result.find("modified") != result.end());
         REQUIRE(result.find("name") != result.end());
         REQUIRE(result.find("address") != result.end());
-        REQUIRE(result.find("token_name") != result.end());
+        //REQUIRE(result.find("token_name") != result.end());
         REQUIRE(result.find("token") != result.end());
         REQUIRE(result.find("balance") != result.end());
-
     }
 
     /* Test successful get by address  */
@@ -1475,7 +1474,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens]")
         REQUIRE(result.find("modified") != result.end());
         REQUIRE(result.find("name") != result.end());
         REQUIRE(result.find("address") != result.end());
-        REQUIRE(result.find("token_name") != result.end());
+        //REQUIRE(result.find("token_name") != result.end());
         REQUIRE(result.find("token") != result.end());
         REQUIRE(result.find("balance") != result.end());
 
