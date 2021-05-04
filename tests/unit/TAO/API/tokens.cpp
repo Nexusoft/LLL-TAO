@@ -1580,6 +1580,20 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 
          debug::log(0, ret.dump(4));
      }
+
+
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["name"]   = strToken;
+
+         /* Invoke the API */
+         ret = APICall("tokens/debit/all", params);
+
+         debug::log(0, ret.dump(4));
+     }
 }
 
 TEST_CASE( "Test Tokens API - credit account", "[tokens]")

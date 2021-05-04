@@ -44,7 +44,7 @@ namespace TAO::API
         if(jParams.find(strName) != jParams.end())
         {
             /* Check for the ALL name, that debits from all relevant accounts. */
-            if(jParams[strName] == "ALL")
+            if(jParams[strName] == "all")
             {
                 /* Check for send to all */
                 if(strSuffix == "to")
@@ -55,7 +55,7 @@ namespace TAO::API
 
 
             /* Check for the ALL name, that debits from all relevant accounts. */
-            if(jParams[strName] == "ANY")
+            if(jParams[strName] == "any")
             {
                 /* Check for send to all */
                 if(strSuffix == "to")
