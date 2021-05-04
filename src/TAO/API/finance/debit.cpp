@@ -387,17 +387,52 @@ namespace TAO::API
                 TokenAccounts& tAccounts = mapAccounts[0];
 
                 /* Check the amount is not too small once converted by the token Decimals */
-                const uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, tAccounts.nDecimals);
+                uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, tAccounts.nDecimals);
                 if(nAmount == 0)
                     throw APIException(-68, "Amount too small");
 
-                /* Check they have the required funds */
-                if(nAmount > tAccounts.GetBalance())
-                    throw APIException(-69, "Insufficient funds");
+                /* Loop until we have depleted the amount for this recipient. */
+                while(nAmount > 0)
+                {
+                    /* Grab the balance of our current account. */
+                    uint64_t nDebit = nAmount;
+
+                    /* Check they have the required funds */
+                    if(nDebit > tAccounts.GetBalance())
+                    {
+                        /* Check if we have another account on hand. */
+                        if(!tAccounts.HasNext())
+                            throw APIException(-69, "Insufficient funds");
+
+                        /* Adjust our debit amount. */
+                        nDebit = tAccounts.GetBalance();
+                    }
+
+                    /* Build our legacy address. */
+                    Legacy::NexusAddress addrLegacy = Legacy::NexusAddress(hashTo);
+
+                    /* Build our script payload */
+                    Legacy::Script script;
+                    script.SetNexusAddress(addrLegacy);
+
+                    /* Build our legacy contract. */
+                    TAO::Operation::Contract contract;
+                    contract << uint8_t(TAO::Operation::OP::LEGACY) << tAccounts.GetAddress() << nDebit << script;
+
+                    /* Add this contract to our processing queue. */
+                    vContracts.push_back(contract);
+
+                    /* Reduce the current balances. */
+                    tAccounts -= nDebit;
+                    nAmount   -= nDebit;
+
+                    /* Iterate to next if needed. */
+                    if(nAmount > 0)
+                        tAccounts++; //iterate to next account
+                }
+
 
                 //XXX: maybe we find a way to have these two share their logic?
-
-                //XXX: handle legacy contract here
             }
             else
             {
@@ -486,7 +521,7 @@ namespace TAO::API
                     /* Add this contract to our processing queue. */
                     vContracts.push_back(contract);
 
-                    /* Reduce the current balance and iterate to next account. */
+                    /* Reduce the current balances. */
                     tAccounts -= nDebit;
                     nAmount   -= nDebit;
 

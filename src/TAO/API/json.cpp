@@ -1054,8 +1054,7 @@ namespace TAO::API
                     /* Handle digit conversion. */
                     const uint8_t  nDecimals = GetDecimals(object);
 
-                    /* Add our balance in case we don't have a disk state. */
-                    jRet["balance"]     = (double)object.get<uint64_t>("balance") / math::pow(10, nDecimals);
+
 
                     /* Get disk state so we can find unconfirmed. */
                     TAO::Register::Object objDisk;
@@ -1071,6 +1070,12 @@ namespace TAO::API
 
                         /* Set balance from disk. */
                         jRet["balance"]     = (double)nDiskBalance / math::pow(10, nDecimals);
+                    }
+                    else
+                    {
+                        /* Add our balance in case we don't have a disk state. */
+                        jRet["balance"]         = (double)0;
+                        jRet["unconfirmed"]     = (double)object.get<uint64_t>("balance") / math::pow(10, nDecimals);
                     }
 
                     /* Set the value to the token contract address. */
