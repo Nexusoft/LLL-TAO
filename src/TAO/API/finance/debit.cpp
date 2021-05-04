@@ -365,7 +365,7 @@ namespace TAO::API
         for(const auto& jRecipient : vRecipients)
         {
             /* Double check that there are not too many recipients to fit into one transaction */
-            if(vContracts.size() == 99)
+            if(vContracts.size() >= 99)
                 throw APIException(-215, "Max number of recipients (99) exceeded");
 
             /* Check for amount parameter. */
