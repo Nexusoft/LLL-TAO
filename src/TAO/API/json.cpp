@@ -1074,7 +1074,7 @@ namespace TAO::API
                     }
 
                     /* Set the value to the token contract address. */
-                    jRet["token"] = object.get<uint256_t>("token").ToString();
+                    jRet["token"] = TAO::Register::Address(object.get<uint256_t>("token")).ToString();
 
                     /* If the register has extra data included then output that in the JSON */
                     if(object.Check("data"))
