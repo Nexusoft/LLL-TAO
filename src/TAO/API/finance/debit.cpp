@@ -49,7 +49,7 @@ namespace TAO::API
     struct TokenAccounts
     {
         /* Vector of addresses and balances to check against. */
-        std::vector<std::pair<TAO::Register::Address, uint64_t>> vAddresses;
+        std::vector<std::pair<uint256_t, uint64_t>> vAddresses;
 
 
         /* Iterator for our vector to get current account. */
@@ -138,11 +138,11 @@ namespace TAO::API
                 throw APIException(-52, "No more available accounts for debit");
 
             /* Check that we don't underflow here. */
-            if(vAddresses[nIterator].first < nBalance)
+            if(vAddresses[nIterator].second < nBalance)
                 throw APIException(-69, "Insufficient funds");
 
             /* Adjust the balance for designated account. */
-            vAddresses[nIterator].first -= nBalance;
+            vAddresses[nIterator].second -= nBalance;
 
             return *this;
         }

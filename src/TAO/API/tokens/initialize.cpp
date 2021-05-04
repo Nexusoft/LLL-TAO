@@ -109,7 +109,6 @@ namespace TAO::API
             /* Now lets do some rules for the different nouns. */
             if(!fNoun && (strNoun == "token" || strNoun == "account"))
             {
-                debug::log(0, FUNCTION, "Adding ", strNoun, " as type");
                 jParams["type"] = strNoun;
 
                 /* Set our explicet flag now. */
@@ -123,18 +122,14 @@ namespace TAO::API
                 /* Check if this value is an address. */
                 if(CheckAddress(strNoun))
                 {
-                    debug::log(0, FUNCTION, "Adding ", strNoun, " as address");
                     jParams["address"] = strNoun;
-
                     continue;
                 }
 
-                /* If not address it must be a nme. */
+                /* If not address it must be a name. */
                 else
                 {
-                    debug::log(0, FUNCTION, "Adding ", strNoun, " as name");
                     jParams["name"] = strNoun;
-
                     continue;
                 }
 
@@ -146,7 +141,6 @@ namespace TAO::API
             /* If we have reached here, we know we are a fieldname. */
             else if(!fField)
             {
-                debug::log(0, FUNCTION, "Adding ", strNoun, " as fieldname");
                 jParams["fieldname"] = strNoun;
 
                 fField = true;
