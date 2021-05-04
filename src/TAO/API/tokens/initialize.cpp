@@ -61,14 +61,26 @@ namespace TAO::API
             )
         );
 
+        /* Handle for all DEBIT operations. */
+        mapFunctions["debit"] = Function
+        (
+            std::bind
+            (
+                &Finance::Debit,
+                TAO::API::finance,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+
+
         //XXX: we should format this better, we can't go over 132 characters in a line based on formatting guidelines.
-        mapFunctions["debit/token"]               = Function(std::bind(&Tokens::Debit,             this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["get/token"]                 = Function(std::bind(&Tokens::Get,               this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/token/transactions"]   = Function(std::bind(&Tokens::ListTransactions,  this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/token/accounts"]       = Function(std::bind(&Tokens::ListTokenAccounts, this, std::placeholders::_1, std::placeholders::_2));
 
         /* Temporary reroute of the account methods to the finance API equivalents XXX: this is really hacky */
-        mapFunctions["debit/account"]             = Function(std::bind(&Finance::Debit,            TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["get/account"]               = Function(std::bind(&Finance::Get,              TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/accounts"]             = Function(std::bind(&Finance::List,             TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/account/transactions"] = Function(std::bind(&Finance::ListTransactions, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));

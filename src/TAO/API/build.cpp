@@ -48,9 +48,20 @@ namespace TAO::API
             {
                 /* Check for send to all */
                 if(strSuffix == "to")
-                    throw APIException(-310, "Cannot sent to ALL accounts");
+                    throw APIException(-310, "Cannot sent to ANY/ALL accounts");
 
                 return TAO::Register::WILDCARD_ADDRESS; //placeholder for ALL functionality 0xffffff.....ffffff
+            }
+
+
+            /* Check for the ALL name, that debits from all relevant accounts. */
+            if(jParams[strName] == "ANY")
+            {
+                /* Check for send to all */
+                if(strSuffix == "to")
+                    throw APIException(-310, "Cannot sent to ANY/ALL accounts");
+
+                return 0; //placeholder for ANY functionality 0x000000.....000000
             }
 
             return Names::ResolveAddress(jParams, jParams[strName].get<std::string>());
@@ -142,6 +153,23 @@ namespace TAO::API
         json::json jRet;
         jRet["success"] = true; //just a little response for if using -autotx
         jRet["address"] = hashRegister.ToString();
+        jRet["status"]  = "active"; //XXX: we wnat this to check a functions map for status, this also allows disabling some methods.
+
+        /* Handle passing txid if not in -autotx mode. */
+        const uint512_t hashTx = BuildAndAccept(jParams, vContracts);
+        if(hashTx != 0)
+            jRet["txid"] = hashTx.ToString();
+
+        return jRet;
+    }
+
+
+    /* Build a response object for a transaction that was built. */
+    json::json BuildResponse(const json::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
+    {
+        /* Build a JSON response object. */
+        json::json jRet;
+        jRet["success"] = true; //just a little response for if using -autotx
         jRet["status"]  = "active"; //XXX: we wnat this to check a functions map for status, this also allows disabling some methods.
 
         /* Handle passing txid if not in -autotx mode. */

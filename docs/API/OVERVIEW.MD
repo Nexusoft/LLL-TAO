@@ -184,11 +184,11 @@ Error Codes
 | -45 | Missing name_to / address_to |
 | -46 | Missing amount |
 | -47 | Missing price |
-| -48 | Failed to read to state |
+| -48 | Token not found |
 | -49 | Unexpected type for name / address |
 | -50 | Missing txid |
-| -51 | ------------------------------------------ |
-| -52 | ------------------------------------------ |
+| -51 | No available token accounts for recipient |
+| -52 | No more available accounts for debit |
 | -53 | Missing name / address of account to credit |
 | -54 | Missing name_proof / address_proof to credit |
 | -55 | ------------------------------------------ |
@@ -258,7 +258,7 @@ Error Codes
 | -119 | Missing supply |
 | -120 | ------------------------------------------ |
 | -121 | ------------------------------------------ |
-| -122 | Token/account not found |
+| -122 | ------------------------------------------ |
 | -123 | Object is not a token |
 | -124 | Unknown token / account |
 | -125 | Token not found |

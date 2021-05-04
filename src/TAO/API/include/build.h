@@ -66,6 +66,19 @@ namespace TAO::API
                               const std::vector<TAO::Operation::Contract>& vContracts);
 
 
+    /** BuildResponse
+     *
+     *  Build a response object for a transaction that was built, ommitting the address.
+     *
+     *  @param[in] jParams The parameters for the relevant API call.
+     *  @param[in] vContracts The list of contracts this call has generated.
+     *
+     *  @return the formatted JSON response to return with.
+     *
+     **/
+    json::json BuildResponse(const json::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts);
+
+
     /** Build And Accept
      *
      *  Builds a transaction based on a list of contracts, to be deployed as a single tx or batched.

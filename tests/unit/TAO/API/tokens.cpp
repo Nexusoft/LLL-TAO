@@ -212,16 +212,34 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens]")
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["amount"] = "100";
-        params["address_to"] = TAO::Register::Address(TAO::Register::Address::ACCOUNT).ToString();
-        params["address"] = TAO::Register::Address(TAO::Register::Address::TOKEN).ToString();
+        params["address"]    = "invalid";
 
         /* Invoke the API */
         ret = APICall("tokens/debit/token", params);
 
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -122);
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -165);
      }
+
+
+     /* Test fail with account not found. */
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["amount"] = "100";
+         params["address"] = TAO::Register::Address(TAO::Register::Address::TOKEN).ToString();
+
+         /* Invoke the API */
+         ret = APICall("tokens/debit/token", params);
+
+         /* Check response is an error and validate error code */
+         REQUIRE(ret.find("error") != ret.end());
+         REQUIRE(ret["error"]["code"].get<int32_t>() == -13);
+      }
+
 
     /* Test fail with missing name_to / address_to */
     {
@@ -280,6 +298,26 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens]")
 
         strAccountAddress = result["address"].get<std::string>();
     }
+
+
+    /* Test failure case by address_to that doesn't resolve*/
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["name"] = strToken;
+        params["amount"] = "100";
+        params["address_to"] = TAO::Register::Address(TAO::Register::Address::TOKEN).ToString();
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/token", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -209);
+     }
+
 
     /* Test success case by name_to */
     {
@@ -714,6 +752,9 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         //commit to disk
         REQUIRE(Execute(tx[1], TAO::Ledger::FLAGS::BLOCK));
 
+        //check that registers were created properly
+        TAO::Register::Address hashName = TAO::Register::Address(strToken, GENESIS1, TAO::Register::Address::NAME);
+        REQUIRE(LLD::Register->HasState(hashName));
     }
 
     /* create account to debit */
@@ -744,6 +785,10 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
 
         //commit to disk
         REQUIRE(Execute(tx[1], TAO::Ledger::FLAGS::BLOCK));
+
+        //check that registers were created properly
+        TAO::Register::Address hashName = TAO::Register::Address(strAccount, GENESIS1, TAO::Register::Address::NAME);
+        REQUIRE(LLD::Register->HasState(hashName));
     }
 
 
@@ -870,6 +915,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
 
 
     }
+
 
     /* Test fail with missing name_to / address_to */
     {
@@ -1072,7 +1118,26 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         REQUIRE(ret["error"]["code"].get<int32_t>() == -69);
     }
 
-/****************** SUCCESS CASES *****************/
+
+    /* Test failure case by invalid type for name_to */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["name"]   = strAccount;
+        params["amount"] = "100";
+        params["name_to"] = strToken;
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/token", params);
+
+        /* Check response is an error and validate error code */
+        REQUIRE(ret.find("error") != ret.end());
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -49);
+     }
+
+     /****************** SUCCESS CASES *****************/
 
     /* Test success case by name_to */
     {
@@ -1080,7 +1145,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["name"] = strAccount;
+        params["name"]   = strAccount;
         params["amount"] = "100";
         params["name_to"] = strToken;
 
@@ -1091,6 +1156,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         result = ret["result"];
         REQUIRE(result.find("txid") != result.end());
      }
+
 
     /* Test success case by address_to */
     {
@@ -1120,7 +1186,6 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
 
         /* create json array with 50 recipients */
         json::json jsonRecipients = json::json::array();
-
         for(int i=0; i<50; i++)
         {
             json::json jsonRecipient;
@@ -1133,6 +1198,8 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
 
         /* Invoke the API */
         ret = APICall("tokens/debit/account", params);
+
+        debug::log(0, ret.dump(4));
 
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];

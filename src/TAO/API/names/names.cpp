@@ -403,7 +403,7 @@ namespace TAO
         TAO::Register::Address Names::ResolveAddress(const json::json& params, const std::string& strName, const bool fThrow)
         {
             /* Declare the return register address hash */
-            TAO::Register::Address hashRegister ;
+            TAO::Register::Address hashRegister;
 
             /* Register address of nameObject.  Not used by this method */
             TAO::Register::Address hashNameObject;
