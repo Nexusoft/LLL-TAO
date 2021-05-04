@@ -1051,16 +1051,34 @@ namespace TAO::API
                     //if(!strTokenName.empty())
                     //    jRet["token_name"] = strTokenName;
 
+                    /* Handle digit conversion. */
+                    const uint8_t  nDecimals = GetDecimals(object);
+
+                    /* Add our balance in case we don't have a disk state. */
+                    jRet["balance"]     = (double)object.get<uint64_t>("balance") / math::pow(10, nDecimals);
+
+                    /* Get disk state so we can find unconfirmed. */
+                    TAO::Register::Object objDisk;
+                    if(LLD::Register->ReadObject(hashRegister, objDisk, TAO::Ledger::FLAGS::BLOCK))
+                    {
+                        /* Get our balances to check against for unconfirmed balance. */
+                        const uint64_t nMemBalance  = object.get<uint64_t>("balance");
+                        const uint64_t nDiskBalance = objDisk.get<uint64_t>("balance");
+
+                        /* Check if we have unconfired coins. */
+                        if(nMemBalance > nDiskBalance)
+                            jRet["unconfirmed"] = double(nMemBalance - nDiskBalance) / math::pow(10, nDecimals);
+
+                        /* Set balance from disk. */
+                        jRet["balance"]     = (double)nDiskBalance / math::pow(10, nDecimals);
+                    }
+
                     /* Set the value to the token contract address. */
                     jRet["token"] = object.get<uint256_t>("token").ToString();
 
                     /* If the register has extra data included then output that in the JSON */
                     if(object.Check("data"))
                         jRet["data"] = object.get<std::string>("data");
-
-                    /* Handle digit conversion. */
-                    const uint8_t  nDecimals = GetDecimals(object);
-                    jRet["balance"]      = (double) object.get<uint64_t>("balance") / math::pow(10, nDecimals);
 
                     /* Add Trust specific fields */
                     if(object.Check("stake"))

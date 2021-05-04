@@ -1606,6 +1606,22 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
         REQUIRE(result.find("txid") != result.end());
      }
 
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["token_name"]   = strToken;
+
+         /* Invoke the API */
+         ret = APICall("finance/list/accounts", params);
+
+         debug::log(0, ret.dump(4));
+         debug::log(0, VARIABLE(nBalance));
+
+         REQUIRE(ret.find("result") != ret.end());
+     }
+
 
      //let's try to fail here by exceeding our balance
      {
@@ -1661,8 +1677,109 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          result = ret["result"];
          REQUIRE(result.find("txid") != result.end());
 
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["name"]   = strAccount6;
+
+         /* Invoke the API */
+         ret = APICall("finance/get/account", params);
+
+         debug::log(0, ret.dump(4));
+
+         REQUIRE(ret.find("result") != ret.end());
+         REQUIRE(ret["result"]["unconfirmed"].get<double>() == nBalance);
+
          //build a block now
          REQUIRE(GenerateBlock());
+     }
+
+
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["name"]   = strAccount6;
+
+         /* Invoke the API */
+         ret = APICall("finance/get/account", params);
+
+         REQUIRE(ret.find("result") != ret.end());
+         REQUIRE(ret["result"]["balance"].get<double>() == nBalance);
+     }
+
+
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["name"]   = strAccount1;
+
+         /* Invoke the API */
+         ret = APICall("finance/get/account", params);
+
+         REQUIRE(ret.find("result") != ret.end());
+         REQUIRE(ret["result"]["balance"].get<double>() == 0);
+     }
+
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["name"]   = strAccount2;
+
+         /* Invoke the API */
+         ret = APICall("finance/get/account", params);
+
+         REQUIRE(ret.find("result") != ret.end());
+         REQUIRE(ret["result"]["balance"].get<double>() == 0);
+     }
+
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["name"]   = strAccount3;
+
+         /* Invoke the API */
+         ret = APICall("finance/get/account", params);
+
+         REQUIRE(ret.find("result") != ret.end());
+         REQUIRE(ret["result"]["balance"].get<double>() == 0);
+     }
+
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["name"]   = strAccount4;
+
+         /* Invoke the API */
+         ret = APICall("finance/get/account", params);
+
+         REQUIRE(ret.find("result") != ret.end());
+         REQUIRE(ret["result"]["balance"].get<double>() == 0);
+     }
+
+
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["name"]   = strAccount5;
+
+         /* Invoke the API */
+         ret = APICall("finance/get/account", params);
+
+         REQUIRE(ret.find("result") != ret.end());
+         REQUIRE(ret["result"]["balance"].get<double>() == 0);
      }
 }
 
