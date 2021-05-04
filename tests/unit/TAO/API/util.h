@@ -28,6 +28,14 @@ ________________________________________________________________________________
 uint512_t RandomTxid(const uint8_t nType = TAO::Ledger::TRITIUM);
 
 
+/** GenerateBlock
+ *
+ *  Generate a block and process for private mode.
+ *
+ */
+bool GenerateBlock();
+
+
 /** APICall
 *
 *  Makes an HTTP request to the API

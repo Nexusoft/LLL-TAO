@@ -148,6 +148,32 @@ namespace TAO::API
         }
 
 
+        /** Operator++ overload
+         *
+         *  Adjusts the iterator for the currently loaded account.
+         *
+         **/
+        TokenAccounts& operator++(int)
+        {
+            /* If we have exhausted our list of address, otherwise throw here. */
+            if(++nIterator >= vAddresses.size())
+                throw APIException(-52, "No more available accounts for debit");
+
+            return *this;
+        }
+
+
+        /** HasNext
+         *
+         *  Checks if we have another account to iterate to.
+         *
+         **/
+        bool HasNext() const
+        {
+            return (nIterator < (vAddresses.size() - 1));
+        }
+
+
         /** GetBalance
          *
          *  Get the balance of current token account being iterated.
@@ -358,15 +384,15 @@ namespace TAO::API
                     throw APIException(-51, "No available accounts for recipient");
 
                 /* Grab a reference of our token struct. */
-                TokenAccounts& refToken = mapAccounts[0];
+                TokenAccounts& tAccounts = mapAccounts[0];
 
                 /* Check the amount is not too small once converted by the token Decimals */
-                const uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, refToken.nDecimals);
+                const uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, tAccounts.nDecimals);
                 if(nAmount == 0)
                     throw APIException(-68, "Amount too small");
 
                 /* Check they have the required funds */
-                if(nAmount > refToken.GetBalance())
+                if(nAmount > tAccounts.GetBalance())
                     throw APIException(-69, "Insufficient funds");
 
                 //XXX: maybe we find a way to have these two share their logic?
@@ -388,67 +414,87 @@ namespace TAO::API
                     throw APIException(-51, "No available token accounts for recipient");
 
                 /* Grab a reference of our token struct. */
-                TokenAccounts& refToken = mapAccounts[hashToken];
+                TokenAccounts& tAccounts = mapAccounts[hashToken];
 
                 /* Check the amount is not too small once converted by the token Decimals */
-                const uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, refToken.nDecimals);
+                uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, tAccounts.nDecimals);
                 if(nAmount == 0)
                     throw APIException(-68, "Amount too small");
 
-                /* Check they have the required funds */
-                if(nAmount > refToken.GetBalance())
-                    throw APIException(-69, "Insufficient funds");
-
-                /* Flags to track for final adjustments in our expiration contract.  */
-                bool fTokenizedDebit = false, fSendToSelf = false;
-
-                /* Check recipient account type */
-                switch(objTo.Base())
+                /* Loop until we have depleted the amount for this recipient. */
+                while(nAmount > 0)
                 {
-                    /* Case if sending to an account. */
-                    case TAO::Register::OBJECTS::ACCOUNT:
-                    {
-                        /* Check if this is a send to self. */
-                        fSendToSelf = (objTo.hashOwner == hashGenesis);
+                    /* Grab the balance of our current account. */
+                    uint64_t nDebit = nAmount;
 
-                        break;
+                    /* Check they have the required funds */
+                    if(nDebit > tAccounts.GetBalance())
+                    {
+                        /* Check if we have another account on hand. */
+                        if(!tAccounts.HasNext())
+                            throw APIException(-69, "Insufficient funds");
+
+                        /* Adjust our debit amount. */
+                        nDebit = tAccounts.GetBalance();
                     }
 
-                    /* Case if sending to an asset (this is a tokenized debit) */
-                    case TAO::Register::OBJECTS::NONSTANDARD:
+
+                    /* Flags to track for final adjustments in our expiration contract.  */
+                    bool fTokenizedDebit = false, fSendToSelf = false;
+
+                    /* Check recipient account type */
+                    switch(objTo.Base())
                     {
-                        /* For payments to objects, they must be owned by a token */
-                        if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
-                            throw APIException(-211, "Recipient object has not been tokenized.");
+                        /* Case if sending to an account. */
+                        case TAO::Register::OBJECTS::ACCOUNT:
+                        {
+                            /* Check if this is a send to self. */
+                            fSendToSelf = (objTo.hashOwner == hashGenesis);
 
-                        /* Set the flag for this debit. */
-                        fTokenizedDebit = true;
+                            break;
+                        }
 
-                        break;
+                        /* Case if sending to an asset (this is a tokenized debit) */
+                        case TAO::Register::OBJECTS::NONSTANDARD:
+                        {
+                            /* For payments to objects, they must be owned by a token */
+                            if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
+                                throw APIException(-211, "Recipient object has not been tokenized.");
+
+                            /* Set the flag for this debit. */
+                            fTokenizedDebit = true;
+
+                            break;
+                        }
+
+                        default:
+                            throw APIException(-209, "Recipient is not a valid account.");
                     }
 
-                    default:
-                        throw APIException(-209, "Recipient is not a valid account.");
+                    /* The optional payment reference */
+                    uint64_t nReference = 0;
+                    if(jRecipient.find("reference") != jRecipient.end())
+                        nReference = stoull(jRecipient["reference"].get<std::string>());
+
+                    /* Submit the payload object. */
+                    TAO::Operation::Contract contract;
+                    contract << uint8_t(TAO::Operation::OP::DEBIT) << tAccounts.GetAddress() << hashTo << nDebit << nReference;
+
+                    /* Add expiration condition unless sending to self */
+                    if(!fSendToSelf)
+                        AddExpires(jRecipient, hashGenesis, contract, fTokenizedDebit);
+
+                    /* Add this contract to our processing queue. */
+                    vContracts.push_back(contract);
+
+                    /* Reduce the current balance and iterate to next account. */
+                    tAccounts -= nDebit;
+                    nAmount   -= nDebit;
+
+                    /* Iterate to next if needed. */
+                    if(nAmount > 0)
+                        tAccounts++; //iterate to next account
                 }
-
-                /* The optional payment reference */
-                uint64_t nReference = 0;
-                if(jRecipient.find("reference") != jRecipient.end())
-                    nReference = stoull(jRecipient["reference"].get<std::string>());
-
-                /* Submit the payload object. */
-                TAO::Operation::Contract contract;
-                contract << uint8_t(TAO::Operation::OP::DEBIT) << refToken.GetAddress() << hashTo << nAmount << nReference;
-
-                /* Add expiration condition unless sending to self */
-                if(!fSendToSelf)
-                    AddExpires(jRecipient, hashGenesis, contract, fTokenizedDebit);
-
-                /* Reduce the current balance by the amount for this recipient */
-                refToken -= nAmount;
-
-                /* Add this contract to our processing queue. */
-                vContracts.push_back(contract);
             }
         }
 

@@ -85,6 +85,7 @@ namespace TAO::API
         mapFunctions["list/accounts"]             = Function(std::bind(&Finance::List,             TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/account/transactions"] = Function(std::bind(&Finance::ListTransactions, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
     }
+    
 
     /* Rewrite the URL to include names and fields if preferred over using parameters.*/
     std::string Tokens::RewriteURL(const std::string& strMethod, json::json &jParams)

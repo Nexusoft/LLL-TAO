@@ -928,7 +928,9 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect ", state->GetHash().SubString());
 
                     /* Harden a checkpoint if there is any. */
+                    #ifndef UNIT_TESTS
                     HardenCheckpoint(Prev());
+                    #endif
 
                     /* Insert into delete queue. */
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
@@ -1030,8 +1032,10 @@ namespace TAO
                 nTotalInputs    = 0;
 
                 /* Broadcast the block to nodes if not synchronizing. */
+                #ifndef UNIT_TESTS
                 if(!ChainState::Synchronizing())
                     Dispatch::GetInstance().PushRelay(ChainState::hashBestChain.load());
+                #endif
             }
 
             return true;

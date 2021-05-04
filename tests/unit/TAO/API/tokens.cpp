@@ -701,6 +701,8 @@ TEST_CASE( "Test Tokens API - create account", "[tokens]")
         REQUIRE(result.find("txid") != result.end());
         REQUIRE(result.find("address") != result.end());
     }
+
+    REQUIRE(GenerateBlock());
 }
 
 
@@ -1199,12 +1201,385 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         /* Invoke the API */
         ret = APICall("tokens/debit/account", params);
 
-        debug::log(0, ret.dump(4));
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+}
+
+
+TEST_CASE( "Test Tokens API - debit all", "[tokens]")
+{
+    /* Declare variables shared across test cases */
+    json::json params;
+    json::json ret;
+    json::json result;
+    json::json error;
+
+    //track our accounts
+    std::string strToken = "token";
+    std::string strAccount1 = "account1";
+    std::string strAccount2 = "account2";
+    std::string strAccount3 = "account3";
+    std::string strAccount4 = "account4";
+    std::string strAccount5 = "account5";
+
+    /* Ensure user is created and logged in for testing */
+    InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
+
+
+    /* Create a new token. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]      = PIN;
+        params["session"]  = SESSION1;
+        params["name"]     = strToken;
+        params["supply"]   = "1000000";
+        params["decimals"] = "4";
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/token", params);
 
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
         REQUIRE(result.find("txid") != result.end());
     }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount1;
+        params["token_name"] = strToken;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount2;
+        params["token_name"] = strToken;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount3;
+        params["token_name"] = strToken;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount4;
+        params["token_name"] = strToken;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount5;
+        params["token_name"] = strToken;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+    //build a block now
+    REQUIRE(GenerateBlock());
+
+
+    /* Test success case by name_to */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["name"]   = strToken;
+        params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+        params["name_to"] = strAccount1;
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/token", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+
+        //build a block now
+        REQUIRE(GenerateBlock());
+
+        //now build our credit
+        std::string strTXID = result["txid"];
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["txid"]   = strTXID;
+
+        /* Invoke the API */
+        ret = APICall("tokens/credit/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+     }
+
+
+ /* Test success case by name_to */
+ {
+     /* Build the parameters to pass to the API */
+     params.clear();
+     params["pin"] = PIN;
+     params["session"] = SESSION1;
+     params["name"]   = strToken;
+     params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+     params["name_to"] = strAccount2;
+
+     /* Invoke the API */
+     ret = APICall("tokens/debit/token", params);
+
+     REQUIRE(ret.find("result") != ret.end());
+     result = ret["result"];
+     REQUIRE(result.find("txid") != result.end());
+
+     //build a block now
+     REQUIRE(GenerateBlock());
+
+     //now build our credit
+     std::string strTXID = result["txid"];
+
+     /* Build the parameters to pass to the API */
+     params.clear();
+     params["pin"] = PIN;
+     params["session"] = SESSION1;
+     params["txid"]   = strTXID;
+
+     /* Invoke the API */
+     ret = APICall("tokens/credit/account", params);
+
+     REQUIRE(ret.find("result") != ret.end());
+     result = ret["result"];
+     REQUIRE(result.find("txid") != result.end());
+  }
+
+
+  /* Test success case by name_to */
+  {
+      /* Build the parameters to pass to the API */
+      params.clear();
+      params["pin"] = PIN;
+      params["session"] = SESSION1;
+      params["name"]   = strToken;
+      params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+      params["name_to"] = strAccount3;
+
+      /* Invoke the API */
+      ret = APICall("tokens/debit/token", params);
+
+      REQUIRE(ret.find("result") != ret.end());
+      result = ret["result"];
+      REQUIRE(result.find("txid") != result.end());
+
+      //build a block now
+      REQUIRE(GenerateBlock());
+
+      //now build our credit
+      std::string strTXID = result["txid"];
+
+      /* Build the parameters to pass to the API */
+      params.clear();
+      params["pin"] = PIN;
+      params["session"] = SESSION1;
+      params["txid"]   = strTXID;
+
+      /* Invoke the API */
+      ret = APICall("tokens/credit/account", params);
+
+      REQUIRE(ret.find("result") != ret.end());
+      result = ret["result"];
+      REQUIRE(result.find("txid") != result.end());
+   }
+
+
+   /* Test success case by name_to */
+   {
+       /* Build the parameters to pass to the API */
+       params.clear();
+       params["pin"] = PIN;
+       params["session"] = SESSION1;
+       params["name"]   = strToken;
+       params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+       params["name_to"] = strAccount4;
+
+       /* Invoke the API */
+       ret = APICall("tokens/debit/token", params);
+
+       REQUIRE(ret.find("result") != ret.end());
+       result = ret["result"];
+       REQUIRE(result.find("txid") != result.end());
+
+       //build a block now
+       REQUIRE(GenerateBlock());
+
+       //now build our credit
+       std::string strTXID = result["txid"];
+
+       /* Build the parameters to pass to the API */
+       params.clear();
+       params["pin"] = PIN;
+       params["session"] = SESSION1;
+       params["txid"]   = strTXID;
+
+       /* Invoke the API */
+       ret = APICall("tokens/credit/account", params);
+
+       REQUIRE(ret.find("result") != ret.end());
+       result = ret["result"];
+       REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Test success case by name_to */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["name"]   = strToken;
+        params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+        params["name_to"] = strAccount5;
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/token", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+
+        //build a block now
+        REQUIRE(GenerateBlock());
+
+        //now build our credit
+        std::string strTXID = result["txid"];
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["txid"]   = strTXID;
+
+        /* Invoke the API */
+        ret = APICall("tokens/credit/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+     }
+
+
+
+    /* Test success case by name_to */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["name"]   = strToken;
+        params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+        params["name_to"] = strAccount5;
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/token", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+
+        //build a block now
+        REQUIRE(GenerateBlock());
+
+        //now build our credit
+        std::string strTXID = result["txid"];
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["txid"]   = strTXID;
+
+        /* Invoke the API */
+        ret = APICall("tokens/credit/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+     }
+
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["name"]   = strToken;
+
+         /* Invoke the API */
+         ret = APICall("tokens/list/token/accounts", params);
+
+         debug::log(0, ret.dump(4));
+     }
 }
 
 TEST_CASE( "Test Tokens API - credit account", "[tokens]")

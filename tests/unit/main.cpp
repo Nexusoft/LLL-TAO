@@ -36,6 +36,7 @@ TEST_CASE("Arguments Tests", "[args]")
     config::mapArgs["-testnet"] = "92349234";
     config::mapArgs["-flushwallet"] = "false";
     config::mapArgs["-apiauth"]     = "0";
+    config::mapArgs["-generate"]    = "password";
 
     /* To simplify the API testing we will always use multiuser mode */
     config::fMultiuser = true;
