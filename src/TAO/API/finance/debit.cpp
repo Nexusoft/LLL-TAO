@@ -438,7 +438,6 @@ namespace TAO::API
                         nDebit = tAccounts.GetBalance();
                     }
 
-
                     /* Flags to track for final adjustments in our expiration contract.  */
                     bool fTokenizedDebit = false, fSendToSelf = false;
 

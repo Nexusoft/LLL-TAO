@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/exception.h>
+#include <TAO/API/include/json.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
@@ -24,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
 
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/transaction.h>
 

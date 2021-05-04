@@ -1223,6 +1223,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
     std::string strAccount3 = "account3";
     std::string strAccount4 = "account4";
     std::string strAccount5 = "account5";
+    std::string strAccount6 = "account6";
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -1336,18 +1337,40 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
         REQUIRE(result.find("txid") != result.end());
     }
 
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount6;
+        params["token_name"] = strToken;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
     //build a block now
     REQUIRE(GenerateBlock());
 
 
     /* Test success case by name_to */
+    uint64_t nBalance = 0;
     {
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["name"]   = strToken;
-        params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+
+        uint64_t nAmount = LLC::GetRand(1000);
+        nBalance += nAmount;
+        params["amount"] = debug::safe_printstr(nAmount);
         params["name_to"] = strAccount1;
 
         /* Invoke the API */
@@ -1385,7 +1408,10 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
      params["pin"] = PIN;
      params["session"] = SESSION1;
      params["name"]   = strToken;
-     params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+
+     uint64_t nAmount = LLC::GetRand(1000);
+     nBalance += nAmount;
+     params["amount"] = debug::safe_printstr(nAmount);
      params["name_to"] = strAccount2;
 
      /* Invoke the API */
@@ -1423,7 +1449,10 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
       params["pin"] = PIN;
       params["session"] = SESSION1;
       params["name"]   = strToken;
-      params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+
+      uint64_t nAmount = LLC::GetRand(1000);
+      nBalance += nAmount;
+      params["amount"] = debug::safe_printstr(nAmount);
       params["name_to"] = strAccount3;
 
       /* Invoke the API */
@@ -1461,7 +1490,10 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
        params["pin"] = PIN;
        params["session"] = SESSION1;
        params["name"]   = strToken;
-       params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+
+       uint64_t nAmount = LLC::GetRand(1000);
+       nBalance += nAmount;
+       params["amount"] = debug::safe_printstr(nAmount);
        params["name_to"] = strAccount4;
 
        /* Invoke the API */
@@ -1499,7 +1531,10 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["name"]   = strToken;
-        params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+
+        uint64_t nAmount = LLC::GetRand(1000);
+        nBalance += nAmount;
+        params["amount"] = debug::safe_printstr(nAmount);
         params["name_to"] = strAccount5;
 
         /* Invoke the API */
@@ -1538,7 +1573,10 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["name"]   = strToken;
-        params["amount"] = debug::safe_printstr(LLC::GetRand(1000));
+
+        uint64_t nAmount = LLC::GetRand(1000);
+        nBalance += nAmount;
+        params["amount"] = debug::safe_printstr(nAmount);
         params["name_to"] = strAccount5;
 
         /* Invoke the API */
@@ -1568,31 +1606,63 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
         REQUIRE(result.find("txid") != result.end());
      }
 
+
+     //let's try to fail here by exceeding our balance
      {
          /* Build the parameters to pass to the API */
          params.clear();
-         params["pin"] = PIN;
-         params["session"] = SESSION1;
-         params["name"]   = strToken;
+         params["pin"]        = PIN;
+         params["session"]    = SESSION1;
+         params["token_name"] = strToken;
+         params["name_to"]    = strAccount6;
+         params["amount"]     = debug::safe_printstr(nBalance + 10);
 
          /* Invoke the API */
-         ret = APICall("tokens/list/token/accounts", params);
+         ret = APICall("tokens/debit/all", params);
 
-         debug::log(0, ret.dump(4));
+         /* Check response is an error and validate error code */
+         REQUIRE(ret.find("error") != ret.end());
+         REQUIRE(ret["error"]["code"].get<int32_t>() == -69);
      }
 
 
      {
          /* Build the parameters to pass to the API */
          params.clear();
-         params["pin"] = PIN;
-         params["session"] = SESSION1;
-         params["name"]   = strToken;
+         params["pin"]        = PIN;
+         params["session"]    = SESSION1;
+         params["token_name"] = strToken;
+         params["name_to"]    = strAccount6;
+         params["amount"]     = debug::safe_printstr(nBalance);
 
          /* Invoke the API */
          ret = APICall("tokens/debit/all", params);
 
-         debug::log(0, ret.dump(4));
+         REQUIRE(ret.find("result") != ret.end());
+         result = ret["result"];
+         REQUIRE(result.find("txid") != result.end());
+
+         //build a block now
+         REQUIRE(GenerateBlock());
+
+         //now build our credit
+         std::string strTXID = result["txid"];
+
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["txid"]   = strTXID;
+
+         /* Invoke the API */
+         ret = APICall("tokens/credit/account", params);
+
+         REQUIRE(ret.find("result") != ret.end());
+         result = ret["result"];
+         REQUIRE(result.find("txid") != result.end());
+
+         //build a block now
+         REQUIRE(GenerateBlock());
      }
 }
 
