@@ -1208,6 +1208,202 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
 }
 
 
+TEST_CASE( "Test Tokens API - debit any", "[tokens]")
+{
+    /* Declare variables shared across test cases */
+    json::json params;
+    json::json ret;
+    json::json result;
+    json::json error;
+
+    //track our accounts
+    std::string strToken1   = "token1";
+    std::string strAccount1 = "1_account1";
+    std::string strAccount2 = "1_account2";
+
+    std::string strToken2   = "token2";
+    std::string strAccount3 = "2_account1";
+    std::string strAccount4 = "2_account2";
+
+    std::string strToken3   = "token3";
+    std::string strAccount5 = "3_account1";
+    std::string strAccount6 = "3_account2";
+
+    /* Ensure user is created and logged in for testing */
+    InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
+
+
+    /* Create a new token. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]      = PIN;
+        params["session"]  = SESSION1;
+        params["name"]     = strToken1;
+        params["supply"]   = "1000000";
+        params["decimals"] = "4";
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/token", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new token. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]      = PIN;
+        params["session"]  = SESSION1;
+        params["name"]     = strToken2;
+        params["supply"]   = "2000000";
+        params["decimals"] = "6";
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/token", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new token. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]      = PIN;
+        params["session"]  = SESSION1;
+        params["name"]     = strToken3;
+        params["supply"]   = "3000000";
+        params["decimals"] = "8";
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/token", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount1;
+        params["token_name"] = strToken1;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount2;
+        params["token_name"] = strToken1;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount3;
+        params["token_name"] = strToken2;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount4;
+        params["token_name"] = strToken2;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount5;
+        params["token_name"] = strToken3;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount6;
+        params["token_name"] = strToken3;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    //build a block now
+    REQUIRE(GenerateBlock());
+
+}
+
+
 TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 {
     /* Declare variables shared across test cases */
