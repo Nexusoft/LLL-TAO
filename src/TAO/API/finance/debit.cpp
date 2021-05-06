@@ -242,7 +242,7 @@ namespace TAO::API
                 if(fSession)
                     jAdjusted["session"] = jParams["session"];
 
-                vRecipients.push_back(jRecipient);
+                vRecipients.push_back(jAdjusted);
             }
         }
 
