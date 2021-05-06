@@ -29,6 +29,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/names/types/names.h>
 
+#include <Util/include/math.h>
+
 TEST_CASE( "Test Tokens API - create token", "[tokens]")
 {
     /* Declare variables shared across test cases */
@@ -1218,16 +1220,27 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
     //track our accounts
     std::string strToken1   = "1token";
+    std::string strAny1     = "1any";
     std::string strAccount1 = "1account1";
     std::string strAccount2 = "1account2";
 
     std::string strToken2   = "2token";
+    std::string strAny2     = "2any";
     std::string strAccount3 = "2account1";
     std::string strAccount4 = "2account2";
 
     std::string strToken3   = "3token";
+    std::string strAny3     = "3any";
     std::string strAccount5 = "3account1";
     std::string strAccount6 = "3account2";
+
+    const uint8_t nDigits1  = 4;
+    const uint8_t nDigits2  = 6;
+    const uint8_t nDigits3  = 8;
+
+    const uint64_t nFigures1 = math::pow(10, nDigits1);
+    const uint64_t nFigures2 = math::pow(10, nDigits2);
+    const uint64_t nFigures3 = math::pow(10, nDigits3);
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -1241,7 +1254,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         params["session"]  = SESSION1;
         params["name"]     = strToken1;
         params["supply"]   = "1000000";
-        params["decimals"] = "4";
+        params["decimals"] = nDigits1;
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
@@ -1260,7 +1273,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         params["session"]  = SESSION1;
         params["name"]     = strToken2;
         params["supply"]   = "2000000";
-        params["decimals"] = "6";
+        params["decimals"] = nDigits2;
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
@@ -1279,7 +1292,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         params["session"]  = SESSION1;
         params["name"]     = strToken3;
         params["supply"]   = "3000000";
-        params["decimals"] = "8";
+        params["decimals"] = nDigits3;
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);
@@ -1562,9 +1575,8 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
 
     //lets check our accounts now
+    double dBalance1 = 10000;
     {
-        double dBalance = 10000;
-
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"]        = PIN;
@@ -1578,12 +1590,13 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         result = ret["result"];
 
         REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance);
+        REQUIRE(result["unconfirmed"].get<double>() == dBalance1);
     }
 
 
+    double dBalance2 = 29845;
     {
-        double dBalance = 29845;
+
 
         /* Build the parameters to pass to the API */
         params.clear();
@@ -1598,7 +1611,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         result = ret["result"];
 
         REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance);
+        REQUIRE(result["unconfirmed"].get<double>() == dBalance2);
     }
 
 
@@ -1609,7 +1622,6 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
     //lets check our accounts now
     {
-        double dBalance = 10000;
 
         /* Build the parameters to pass to the API */
         params.clear();
@@ -1621,12 +1633,11 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         ret = APICall("tokens/get/account", params);
 
         REQUIRE(ret.find("result") != ret.end());
-        REQUIRE(ret["result"]["balance"].get<double>() == dBalance);
+        REQUIRE(ret["result"]["balance"].get<double>() == dBalance1);
     }
 
 
     {
-        double dBalance = 29845;
 
         /* Build the parameters to pass to the API */
         params.clear();
@@ -1638,7 +1649,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         ret = APICall("tokens/get/account", params);
 
         REQUIRE(ret.find("result") != ret.end());
-        REQUIRE(ret["result"]["balance"].get<double>() == dBalance);
+        REQUIRE(ret["result"]["balance"].get<double>() == dBalance2);
     }
 
 
@@ -1701,8 +1712,9 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
 
     //lets check our accounts now
+    double dBalance3 = 184943.333;
     {
-        double dBalance = 184943.333;
+
 
         /* Build the parameters to pass to the API */
         params.clear();
@@ -1717,13 +1729,12 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         result = ret["result"];
 
         REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance);
+        REQUIRE(result["unconfirmed"].get<double>() == dBalance3);
     }
 
 
+    double dBalance4 = 83828.777;
     {
-        double dBalance = 83828.777;
-
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"]        = PIN;
@@ -1737,7 +1748,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         result = ret["result"];
 
         REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance);
+        REQUIRE(result["unconfirmed"].get<double>() == dBalance4);
     }
 
 
@@ -1748,8 +1759,6 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
     //lets check our accounts now
     {
-        double dBalance = 184943.333;
-
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"]        = PIN;
@@ -1760,13 +1769,11 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         ret = APICall("tokens/get/account", params);
 
         REQUIRE(ret.find("result") != ret.end());
-        REQUIRE(ret["result"]["balance"].get<double>() == dBalance);
+        REQUIRE(ret["result"]["balance"].get<double>() == dBalance3);
     }
 
 
     {
-        double dBalance = 83828.777;
-
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"]        = PIN;
@@ -1777,7 +1784,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         ret = APICall("tokens/get/account", params);
 
         REQUIRE(ret.find("result") != ret.end());
-        REQUIRE(ret["result"]["balance"].get<double>() == dBalance);
+        REQUIRE(ret["result"]["balance"].get<double>() == dBalance4);
     }
 
 
@@ -1838,9 +1845,8 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
 
     //lets check our accounts now
+    double dBalance5 = 33377.888;
     {
-        double dBalance = 33377.888;
-
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"]        = PIN;
@@ -1854,13 +1860,12 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         result = ret["result"];
 
         REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance);
+        REQUIRE(result["unconfirmed"].get<double>() == dBalance5);
     }
 
 
+    double dBalance6 = 83338.777;
     {
-        double dBalance = 83338.777;
-
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"]        = PIN;
@@ -1874,7 +1879,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         result = ret["result"];
 
         REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance);
+        REQUIRE(result["unconfirmed"].get<double>() == dBalance6);
     }
 
 
@@ -1885,8 +1890,6 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
     //lets check our accounts now
     {
-        double dBalance = 33377.888;
-
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"]        = PIN;
@@ -1897,13 +1900,11 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         ret = APICall("tokens/get/account", params);
 
         REQUIRE(ret.find("result") != ret.end());
-        REQUIRE(ret["result"]["balance"].get<double>() == dBalance);
+        REQUIRE(ret["result"]["balance"].get<double>() == dBalance5);
     }
 
 
     {
-        double dBalance = 83338.777;
-
         /* Build the parameters to pass to the API */
         params.clear();
         params["pin"]        = PIN;
@@ -1914,10 +1915,289 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         ret = APICall("tokens/get/account", params);
 
         REQUIRE(ret.find("result") != ret.end());
+        REQUIRE(ret["result"]["balance"].get<double>() == dBalance6);
+    }
+
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny1;
+        params["token_name"] = strToken1;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny2;
+        params["token_name"] = strToken2;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny3;
+        params["token_name"] = strToken3;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    //build a block now
+    REQUIRE(GenerateBlock());
+
+
+    //lets check our accounts now
+    {
+        double dBalance = 0.0;
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny1;
+
+        /* Invoke the API */
+        ret = APICall("tokens/get/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
         REQUIRE(ret["result"]["balance"].get<double>() == dBalance);
     }
 
+
+    {
+        double dBalance = 0.0;
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny2;
+
+        /* Invoke the API */
+        ret = APICall("tokens/get/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        REQUIRE(ret["result"]["balance"].get<double>() == dBalance);
+    }
+
+
+    {
+        double dBalance = 0.0;
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny3;
+
+        /* Invoke the API */
+        ret = APICall("tokens/get/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        REQUIRE(ret["result"]["balance"].get<double>() == dBalance);
+    }
+
+
+    /* Finally we can do a debit/any */
+    double dBalanceAny1 = dBalance1 + dBalance2;
+    double dBalanceAny2 = dBalance3 + dBalance4;
+    double dBalanceAny3 = dBalance5 + dBalance6;
+
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+
+        /* create json array with 50 recipients */
+        json::json jsonRecipients = json::json::array();
+        {
+            json::json jsonRecipient;
+            jsonRecipient["amount"] = dBalanceAny1;
+            jsonRecipient["name_to"] = strAny1;
+            jsonRecipients.push_back(jsonRecipient);
+        }
+
+
+        {
+            json::json jsonRecipient;
+            jsonRecipient["amount"] = dBalanceAny2;
+            jsonRecipient["name_to"] = strAny2;
+            jsonRecipients.push_back(jsonRecipient);
+        }
+
+
+        {
+            json::json jsonRecipient;
+            jsonRecipient["amount"] = dBalanceAny3;
+            jsonRecipient["name_to"] = strAny3;
+            jsonRecipients.push_back(jsonRecipient);
+        }
+
+        params["recipients"] = jsonRecipients;
+
+        /* Invoke the API */
+        ret = APICall("tokens/debit/any", params);
+
+        debug::warning(ret.dump(4));
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+
+        //build a block now
+        REQUIRE(GenerateBlock());
+
+        //get our txid for a credit.
+        std::string strTXID = result["txid"];
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"] = PIN;
+        params["session"] = SESSION1;
+        params["txid"]   = strTXID;
+
+        /* Invoke the API */
+        ret = APICall("tokens/credit/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
+
+    //lets check our accounts now
+
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny1;
+
+        /* Invoke the API */
+        ret = APICall("tokens/get/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        REQUIRE(ret["result"]["unconfirmed"].get<double>() * nFigures1 == dBalanceAny1 * nFigures1);
+    }
+
+
+
+    {
+
+
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny2;
+
+        /* Invoke the API */
+        ret = APICall("tokens/get/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        REQUIRE(ret["result"]["unconfirmed"].get<double>() * nFigures2 == dBalanceAny2 * nFigures2);
+    }
+
+
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny3;
+
+        /* Invoke the API */
+        ret = APICall("tokens/get/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        REQUIRE(ret["result"]["unconfirmed"].get<double>() * nFigures3 == dBalanceAny3 * nFigures3);
+    }
+
+
+    //build a block now
+    REQUIRE(GenerateBlock());
+
+
+    //lets check our accounts now
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny1;
+
+        /* Invoke the API */
+        ret = APICall("tokens/get/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        REQUIRE(ret["result"]["balance"].get<double>() * nFigures1 == dBalanceAny1 * nFigures1);
+    }
+
+
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny2;
+
+        /* Invoke the API */
+        ret = APICall("tokens/get/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        REQUIRE(ret["result"]["balance"].get<double>() * nFigures2 == dBalanceAny2 * nFigures2);
+    }
+
+
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAny3;
+
+        /* Invoke the API */
+        ret = APICall("tokens/get/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        REQUIRE(ret["result"]["balance"].get<double>() * nFigures3 == dBalanceAny3 * nFigures3);
+    }
 }
+
 
 
 TEST_CASE( "Test Tokens API - debit all", "[tokens]")
