@@ -191,7 +191,7 @@ Error Codes
 | -52 | No more available accounts for debit |
 | -53 | Missing name / address of account to credit |
 | -54 | Missing name_proof / address_proof to credit |
-| -55 | ------------------------------------------ |
+| -55 | Must have at least two recipients to debit from any |
 | -56 | ------------------------------------------ |
 | -57 | ------------------------------------------ |
 | -58 | Debit transaction is not from a NXS account |
