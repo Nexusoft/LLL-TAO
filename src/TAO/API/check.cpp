@@ -85,4 +85,28 @@ namespace TAO::API
                 throw APIException(-49, "Unexpected type for name / address");
         }
     }
+
+
+    /* For use in list commands that check for 'accounts' or 'tokens' */
+    bool CheckTypes(const json::json& params, const TAO::Register::Object& objCheck)
+    {
+        /* If the user requested a particular object type then check it is that type */
+        if(params.find("type") == params.end())
+            throw APIException(-118, "Missing type");
+
+        /* Grab a copy of our type to check against. */
+        const std::string& strType = params["type"].get<std::string>();
+
+        /* Let's check against the types required now. */
+        const uint8_t nStandard = objCheck.Standard();
+        if(strType == "tokens" && nStandard != TAO::Register::OBJECTS::TOKEN)
+            return false;
+
+        /* Check for expected account type now. */
+        if(strType == "accounts" && nStandard != TAO::Register::OBJECTS::ACCOUNT)
+            return false;
+
+        return true;
+    }
+
 } // End TAO namespace

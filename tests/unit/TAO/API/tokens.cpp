@@ -2604,7 +2604,9 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["token_name"]   = strToken;
 
          /* Invoke the API */
-         ret = APICall("finance/list/accounts", params);
+         ret = APICall("tokens/list/accounts", params);
+
+         debug::log(0, ret.dump(4));
 
          REQUIRE(ret.find("result") != ret.end());
      }

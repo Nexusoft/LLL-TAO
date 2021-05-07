@@ -75,4 +75,18 @@ namespace TAO::API
      *
      **/
     void CheckType(const json::json& params, const TAO::Register::Object& objCheck);
+
+
+    /** CheckTypes
+     *
+     *  Checks if the designated object matches the explicet type specified in parameters.
+     *  For use in list commands that check for 'accounts' or 'tokens'
+     *
+     *  @param[in] params The json parameters to check against.
+     *  @param[in] objCheck The object that we are checking for.
+     *
+     *  @return True if the object type is what was specified.
+     *
+     **/
+    bool CheckTypes(const json::json& params, const TAO::Register::Object& objCheck);
 }

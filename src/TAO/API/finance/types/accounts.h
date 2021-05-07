@@ -25,7 +25,11 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /** Token struct to manage token related data. **/
+    /** @class Accounts
+     *
+     *  Manages a list of accounts and balances for debiting from multiple accounts.
+     *
+     **/
     class Accounts
     {
         /** Vector of addresses and balances to check against. **/
