@@ -1795,7 +1795,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         params.clear();
         params["pin"] = PIN;
         params["session"] = SESSION1;
-        params["name"]    = strToken3;
+        //params["name"]    = strToken3;
 
         /* create json array with 50 recipients */
         json::json jsonRecipients = json::json::array();
@@ -1817,7 +1817,9 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         params["recipients"] = jsonRecipients;
 
         /* Invoke the API */
-        ret = APICall("tokens/debit/token", params);
+        ret = APICall("tokens/debit/" + strToken3, params);
+
+        debug::log(0, ret.dump(4));
 
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];

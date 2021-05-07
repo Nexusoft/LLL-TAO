@@ -131,7 +131,7 @@ namespace TAO::API
             const std::string& strNoun = vMethods[n];
 
             /* Now lets do some rules for the different nouns. */
-            if(!fNoun && (strNoun.find("token") != std::string::npos || strNoun.find("account") != std::string::npos))
+            if(!fNoun && (strNoun.find("token") == 0 || strNoun.find("account") == 0))
             {
                 jParams["type"] = strNoun;
 
