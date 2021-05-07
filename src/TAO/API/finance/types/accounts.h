@@ -48,21 +48,21 @@ namespace TAO::API
     /** Token struct to manage token related data. **/
     class Accounts
     {
-        /* Vector of addresses and balances to check against. */
+        /** Vector of addresses and balances to check against. **/
         std::vector<std::pair<uint256_t, uint64_t>> vAddresses;
 
 
-        /* Set of addresses, to track duplicate entries. */
+        /** Set of addresses, to track duplicate entries. **/
         std::set<uint256_t> setAddresses;
 
 
-        /* Iterator for our vector to get current account. */
+        /** Iterator for our vector to get current account. **/
         uint32_t nIterator;
 
 
     public:
 
-        /* The decimals for this specific token. */
+        /** The decimals for this specific token. **/
         uint8_t nDecimals;
 
 

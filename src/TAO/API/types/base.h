@@ -81,27 +81,24 @@ namespace TAO
              *  Derivations should implement this to lookup the requested method in the mapFunctions map and pass the processing on.
              *  Derivations should also form the response JSON according to the API specification
              *
-             *  @param[in] strMethod The requested API method.
+             *  @param[out] strMethod The requested API method.
              *  @param[out] jParams The parameters that the caller has passed to the API request.
              *  @param[in] fHelp Flag to determine if command help is requested.
              *
              *  @return JSON encoded response.
              *
              **/
-            json::json Execute(const std::string &strMethod, json::json &jParams, bool fHelp = false)
+            json::json Execute(std::string &strMethod, json::json &jParams, bool fHelp = false)
             {
-                /* Make a copy of our string in case it needs to be rewritten. */
-                std::string strFinal = strMethod;
-
                  /* If the incoming method is not in the function map then rewrite the URL to one that does */
-                if(mapFunctions.find(strFinal) == mapFunctions.end())
-                    strFinal = RewriteURL(strMethod, jParams);
+                if(mapFunctions.find(strMethod) == mapFunctions.end())
+                    strMethod = RewriteURL(strMethod, jParams);
 
                 /* Execute the function map if method is found. */
-                if(mapFunctions.find(strFinal) != mapFunctions.end())
-                    return mapFunctions[strFinal].Execute(SanitizeParams(strFinal, jParams), fHelp);
+                if(mapFunctions.find(strMethod) != mapFunctions.end())
+                    return mapFunctions[strMethod].Execute(SanitizeParams(strMethod, jParams), fHelp);
                 else
-                    throw APIException(-2, debug::safe_printstr("Method not found: ", strFinal));
+                    throw APIException(-2, debug::safe_printstr("Method not found: ", strMethod));
             }
 
 
