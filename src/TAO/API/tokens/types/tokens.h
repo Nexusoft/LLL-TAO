@@ -77,46 +77,6 @@ namespace TAO
             }
 
 
-            /** Get
-             *
-             *  Get an account or token object register
-             *
-             *  @param[in] jParams The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Get(const json::json& jParams, bool fHelp);
-
-
-            /** Debit
-             *
-             *  Debit tokens from an account or token object register
-             *
-             *  @param[in] jParams The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Debit(const json::json& jParams, bool fHelp);
-
-
-
-            /** ListAccounts
-             *
-             *  List all token accounts
-             *
-             *  @param[in] jParams The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json ListAccounts(const json::json& jParams, bool fHelp);
-
-
             /** ListTransactions
              *
              *  Lists all transactions for a given token or account
