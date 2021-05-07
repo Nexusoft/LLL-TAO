@@ -268,7 +268,7 @@ namespace LLP
         const uint64_t nLatency = tLatency.ElapsedNanoseconds();
 
         /* Add some micro-benchamrks to response data. */
-        ret["stats"] =
+        ret["info"] =
         {
             {"method",    strAPI + "/" + strMethod},
             {"status",    "active"}, //we want to check our functions map for method status
