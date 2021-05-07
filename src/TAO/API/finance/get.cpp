@@ -14,74 +14,41 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/finance/types/finance.h>
-#include <TAO/API/names/types/names.h>
-#include <TAO/API/include/global.h>
+
+#include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/json.h>
 
-#include <TAO/Ledger/types/sigchain.h>
-
-#include <TAO/Operation/include/enum.h>
-
-#include <TAO/Register/types/object.h>
-
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Get the data from a digital asset */
+    json::json Finance::Get(const json::json& jParams, bool fHelp)
     {
+        /* Get the Register address. */
+        const TAO::Register::Address hashRegister = ExtractAddress(jParams);
 
-        /* Get the data from a digital asset */
-        json::json Finance::Get(const json::json& params, bool fHelp)
-        {
-            json::json ret;
+        /* Get the token / account object. */
+        TAO::Register::Object objThis;
+        if(!LLD::Register->ReadObject(hashRegister, objThis, TAO::Ledger::FLAGS::LOOKUP))
+            throw APIException(-13, "Object not found");
 
-            /* Get the Register ID. */
-            TAO::Register::Address hashRegister;
+        /* Check the object standard. */
+        if(objThis.Base() != TAO::Register::OBJECTS::ACCOUNT)
+            throw APIException(-15, "Object is not an account or token");
 
-            /* Attempt to deduce the register address from name. */
-            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
-                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
+        /* Now lets check our expected types match. */
+        CheckType(jParams, objThis);
 
-            /* Get the RAW address from hex. */
-            else if(params.find("address") != params.end())
-                hashRegister.SetBase58(params["address"].get<std::string>());
-            else
-                throw APIException(-33, "Missing name / address");
+        /* Build our response object. */
+        json::json jRet  = ObjectToJSON(jParams, objThis, hashRegister);
+        jRet["owner"]    = TAO::Register::Address(objThis.hashOwner).ToString();
+        jRet["created"]  = objThis.nCreated;
+        jRet["modified"] = objThis.nModified;
 
-            /* Get the token / account object. */
-            TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-13, "Account not found");
+        /* Filter out our expected fieldnames if specified. */
+        FilterResponse(jParams, jRet);
 
-            if(config::fClient.load() && object.hashOwner != users->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
-
-            /* Parse the object register. */
-            if(!object.Parse())
-                throw APIException(-14, "Object failed to parse");
-
-            /* Check the object standard. */
-            uint8_t nStandard = object.Standard();
-            if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
-                throw APIException(-65, "Object is not an account");
-
-            /* Populate the response JSON */
-            ret["owner"]    = TAO::Register::Address(object.hashOwner).ToString();
-            ret["created"]  = object.nCreated;
-            ret["modified"] = object.nModified;
-
-            json::json data  =TAO::API::ObjectToJSON(params, object, hashRegister);
-
-            /* Copy the asset data in to the response after the type/checksum */
-            ret.insert(data.begin(), data.end());
-
-
-            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            FilterResponse(params, ret);
-
-            return ret;
-        }
+        return jRet;
     }
 }

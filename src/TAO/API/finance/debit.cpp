@@ -223,7 +223,7 @@ namespace TAO::API
             /* Get the token / account object. */
             TAO::Register::Object objFrom;
             if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-13, "Account not found");
+                throw APIException(-13, "Object not found");
 
             /* Now lets check our expected types match. */
             CheckType(jParams, objFrom);

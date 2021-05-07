@@ -55,7 +55,7 @@ namespace TAO
             /* Get the account . */
             TAO::Register::Object account;
             if(!LLD::Register->ReadState(hashAccount, account))
-                throw APIException(-13, "Account not found");
+                throw APIException(-13, "Object not found");
 
             /* Get the Genesis ID of the account owner. */
             uint256_t hashGenesis = account.hashOwner;

@@ -1038,7 +1038,7 @@ namespace TAO
                     /* Read the object register, which is the token . */
                     TAO::Register::Object account;
                     if(!LLD::Register->ReadState(hashProof, account, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-13, "Account not found");
+                        throw APIException(-13, "Object not found");
 
                     /* Parse the object register. */
                     if(!account.Parse())
@@ -1077,7 +1077,7 @@ namespace TAO
                     /* Get the account that made the debit, so that we can determine the decimals */
                     TAO::Register::Object accountFrom;
                     if(!LLD::Register->ReadState(hashFrom, accountFrom, TAO::Ledger::FLAGS::LOOKUP))
-                        throw APIException(-13, "Account not found");
+                        throw APIException(-13, "Object not found");
 
                     /* Parse the object register. */
                     if(!accountFrom.Parse())

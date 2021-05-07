@@ -540,7 +540,7 @@ TEST_CASE( "Test Tokens API - get token", "[tokens]")
 
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -122);
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -13);
     }
 
     /* Test successful get by name  */

@@ -307,7 +307,7 @@ namespace TAO::API
             /* Get the account from the register DB. */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-13, "Account not found");
+                throw APIException(-13, "Object not found");
 
             /* Check that this is a non-standard object type so that we can parse it and check the type*/
             if(object.nType != TAO::Register::REGISTER::OBJECT)

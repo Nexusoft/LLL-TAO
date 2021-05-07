@@ -141,7 +141,7 @@ namespace TAO
             /* Get the account object. */
             TAO::Register::Object account;
             if(!LLD::Register->ReadState(hashFrom, account))
-                throw APIException(-13, "Account not found");
+                throw APIException(-13, "Object not found");
 
             /* Parse the object register. */
             if(!account.Parse())

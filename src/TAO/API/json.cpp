@@ -647,7 +647,7 @@ namespace TAO::API
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
                     TAO::Register::Object object;
                     if(!LLD::Register->ReadState(hashFrom, object))
-                        throw APIException(-13, "Account not found");
+                        throw APIException(-13, "Object not found");
 
                     /* Parse the object register. */
                     if(!object.Parse())
@@ -734,7 +734,7 @@ namespace TAO::API
                     /* Get the token/account we are crediting to so that we can output the token address / name. */
                     TAO::Register::Object account;
                     if(!LLD::Register->ReadState(hashAddress, account))
-                        throw APIException(-13, "Account not found");
+                        throw APIException(-13, "Object not found");
 
                     /* Parse the object register. */
                     if(!account.Parse())
@@ -940,7 +940,7 @@ namespace TAO::API
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
                     TAO::Register::Object object;
                     if(!LLD::Register->ReadState(hashFrom, object))
-                        throw APIException(-13, "Account not found");
+                        throw APIException(-13, "Object not found");
 
                     /* Parse the object register. */
                     if(!object.Parse())

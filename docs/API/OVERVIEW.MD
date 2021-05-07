@@ -148,7 +148,7 @@ Error Codes
 | -10 | Invalid session ID |
 | -11 | User not logged in |
 | -12 | Missing Session ID |
-| -13 | Account not found |
+| -13 | Object not found |
 | -14 | Malformed request URL |
 | -15 | Object is not an account or token |
 | -16 | Account has not been unlocked for transactions |
