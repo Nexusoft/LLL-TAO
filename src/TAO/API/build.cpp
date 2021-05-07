@@ -12,9 +12,10 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/constants.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/exception.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/types/exception.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
@@ -34,7 +35,6 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-
     /* Extract an address from incoming parameters to derive from name or address field. */
     uint256_t ExtractAddress(const json::json& jParams, const std::string& strSuffix, const std::string& strDefault)
     {
@@ -52,7 +52,7 @@ namespace TAO::API
                 if(strSuffix == "to")
                     throw APIException(-310, "Cannot sent to ANY/ALL accounts");
 
-                return TAO::Register::WILDCARD_ADDRESS; //placeholder for ALL functionality 0xffffff.....ffffff
+                return TAO::API::ADDRESS_ALL;
             }
 
 
@@ -63,7 +63,7 @@ namespace TAO::API
                 if(strSuffix == "to")
                     throw APIException(-310, "Cannot sent to ANY/ALL accounts");
 
-                return 0; //placeholder for ANY functionality 0x000000.....000000
+                return TAO::API::ADDRESS_ANY;
             }
 
             return Names::ResolveAddress(jParams, jParams[strName].get<std::string>());

@@ -474,7 +474,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_system_system.o \
 		build/API_types_system_metrics.o \
 		build/API_types_system_validate.o \
-		build/API_types_tokens_debit.o \
 		build/API_types_tokens_list.o \
 		build/API_types_tokens_get.o \
 		build/API_types_tokens_initialize.o \

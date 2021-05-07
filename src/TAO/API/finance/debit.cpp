@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/constants.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
@@ -126,7 +127,7 @@ namespace TAO::API
 
         /* The sending account or token. */
         const TAO::Register::Address hashFrom = ExtractAddress(jParams);
-        if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
+        if(hashFrom == TAO::API::ADDRESS_ALL)
         {
             /* Extract a token name if debit from ALL. */
             const uint256_t hashToken = ExtractToken(jParams);
@@ -138,7 +139,7 @@ namespace TAO::API
 
             /* Let's now push our account to vector. */
             std::vector<TAO::Register::Address> vAccounts;
-            ListAccounts(hashGenesis, vAccounts, false, false);
+            ListAccounts(hashGenesis, vAccounts, false, false); //XXX: we need to be able to pass in FLAGS::BLOCK here
 
             /* Iterate through our accounts and add to our map. */
             for(const auto& hashRegister : vAccounts)
@@ -166,7 +167,7 @@ namespace TAO::API
         }
 
         /* Handle a sending from ANY which allows a mix-and-match of different token types. */
-        else if(hashFrom == 0)
+        else if(hashFrom == TAO::API::ADDRESS_ANY)
         {
             /* To send to ANY we need to have more than one recipient. */
             if(vRecipients.size() <= 1)
