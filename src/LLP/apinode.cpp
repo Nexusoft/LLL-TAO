@@ -247,7 +247,6 @@ namespace LLP
 
             /* Populate the return JSON to the error */
             ret = { { "error", jsonError } };
-
         }
 
 
@@ -265,7 +264,7 @@ namespace LLP
             RESPONSE.mapHeaders["Connection"] = "close";
 
         /* Track the stopping time of this command. */
-        const uint64_t nLatency = tLatency.ElapsedNanoseconds();
+        const double nLatency = tLatency.ElapsedNanoseconds() / 1000000.0;
 
         /* Add some micro-benchamrks to response data. */
         ret["info"] =
@@ -274,7 +273,7 @@ namespace LLP
             {"status",    "active"}, //we want to check our functions map for method status
             {"timestamp", debug::rfc1123Time() },
             {"address",   this->addr.ToString()},
-            {"latency",   debug::safe_printstr(nLatency, " ns") }
+            {"latency",   debug::safe_printstr(std::fixed, nLatency, " ms") }
         };
 
         /* Log our response if argument is specified. */
