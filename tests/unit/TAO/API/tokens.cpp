@@ -2071,8 +2071,6 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         /* Invoke the API */
         ret = APICall("tokens/debit/any", params);
 
-        debug::warning(ret.dump(4));
-
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
         REQUIRE(result.find("txid") != result.end());
@@ -2608,9 +2606,6 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          /* Invoke the API */
          ret = APICall("finance/list/accounts", params);
 
-         debug::log(0, ret.dump(4));
-         debug::log(0, VARIABLE(nBalance));
-
          REQUIRE(ret.find("result") != ret.end());
      }
 
@@ -2677,8 +2672,6 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 
          /* Invoke the API */
          ret = APICall("finance/get/account", params);
-
-         debug::log(0, ret.dump(4));
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["unconfirmed"].get<double>() == nBalance);
