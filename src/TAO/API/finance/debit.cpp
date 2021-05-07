@@ -267,7 +267,7 @@ namespace TAO::API
                 Accounts& tAccounts = mapAccounts[0];
 
                 /* Check the amount is not too small once converted by the token Decimals */
-                uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, tAccounts.nDecimals);
+                uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * tAccounts.GetFigures();
                 if(nAmount == 0)
                     throw APIException(-68, "Amount too small");
 
@@ -332,7 +332,7 @@ namespace TAO::API
                 Accounts& tAccounts = mapAccounts[hashToken];
 
                 /* Check the amount is not too small once converted by the token Decimals */
-                uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, tAccounts.nDecimals);
+                uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * tAccounts.GetFigures();
                 if(nAmount == 0)
                     throw APIException(-68, "Amount too small");
 

@@ -11,36 +11,16 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Legacy/wallet/wallet.h>
+#pragma once
 
-#include <LLC/hash/SK.h>
+#include <LLC/types/uint1024.h>
 
-#include <LLD/include/global.h>
+#include <TAO/API/types/exception.h>
 
-#include <TAO/API/include/build.h>
-#include <TAO/API/include/check.h>
-#include <TAO/API/include/global.h>
-#include <TAO/API/include/get.h>
-#include <TAO/API/include/list.h>
-
-#include <TAO/API/include/conditions.h>
-
-#include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/execute.h>
-
-#include <TAO/Register/include/enum.h>
-#include <TAO/Register/include/constants.h>
-#include <TAO/Register/types/object.h>
-
-#include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/include/create.h>
-#include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
-
-#include <Util/templates/datastream.h>
-#include <Util/include/string.h>
 #include <Util/include/math.h>
+
+#include <vector>
+#include <set>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -60,10 +40,10 @@ namespace TAO::API
         uint32_t nIterator;
 
 
-    public:
-
         /** The decimals for this specific token. **/
         uint8_t nDecimals;
+
+    public:
 
 
         /* Default constructor. */
@@ -205,6 +185,17 @@ namespace TAO::API
         bool HasNext() const
         {
             return (nIterator < (vAddresses.size() - 1));
+        }
+
+
+        /** GetFigures
+         *
+         *  Expand the log-10 decimal value by a base-10 power to obtain the figures.
+         *
+         **/
+        uint64_t GetFigures() const
+        {
+            return math::pow(10, nDecimals);
         }
 
 
