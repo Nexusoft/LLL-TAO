@@ -271,6 +271,7 @@ namespace LLP
         ret["stats"] =
         {
             {"method",    strAPI + "/" + strMethod},
+            {"status",    "active"}, //we want to check our functions map for method status
             {"timestamp", debug::rfc1123Time() },
             {"address",   this->addr.ToString()},
             {"latency",   debug::safe_printstr(nLatency, " ns") }

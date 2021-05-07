@@ -25,6 +25,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/conditions.h>
 
+#include <TAO/API/finance/types/accounts.h>
+
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
 
@@ -45,165 +47,6 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /** Token struct to manage token related data. **/
-    struct TokenAccounts
-    {
-        /* Vector of addresses and balances to check against. */
-        std::vector<std::pair<uint256_t, uint64_t>> vAddresses;
-
-
-        /* Iterator for our vector to get current account. */
-        uint32_t nIterator;
-
-
-        /* The decimals for this specific token. */
-        uint8_t nDecimals;
-
-
-        /* Default constructor. */
-        TokenAccounts()
-        : vAddresses ( )
-        , nIterator  (0)
-        , nDecimals  (0)
-        {
-        }
-
-
-        /* Copy constructor. */
-        TokenAccounts(const TokenAccounts& in)
-        : vAddresses (in.vAddresses)
-        , nIterator  (in.nIterator)
-        , nDecimals  (in.nDecimals)
-        {
-        }
-
-
-        /* Move constructor. */
-        TokenAccounts(TokenAccounts&& in)
-        : vAddresses (std::move(in.vAddresses))
-        , nIterator  (std::move(in.nIterator))
-        , nDecimals  (std::move(in.nDecimals))
-        {
-        }
-
-
-        /** Copy assignment. **/
-        TokenAccounts& operator=(const TokenAccounts& in)
-        {
-            vAddresses = in.vAddresses;
-            nIterator  = in.nIterator;
-            nDecimals  = in.nDecimals;
-
-            return *this;
-        }
-
-
-        /** Move assignment. **/
-        TokenAccounts& operator=(TokenAccounts&& in)
-        {
-            vAddresses = std::move(in.vAddresses);
-            nIterator  = std::move(in.nIterator);
-            nDecimals  = std::move(in.nDecimals);
-
-            return *this;
-        }
-
-
-        /** Default destructor. **/
-        ~TokenAccounts()
-        {
-        }
-
-
-        /** Constructor for decimals. **/
-        TokenAccounts(const uint8_t nDecimalsIn)
-        : vAddresses ( )
-        , nIterator  (0)
-        , nDecimals  (nDecimalsIn)
-        {
-        }
-
-
-        /** Operator-= overload
-         *
-         *  Adjusts the balance for the currently loaded account.
-         *
-         *  @param[in] nBalance The balance to deduct by.
-         *
-         **/
-        TokenAccounts& operator-=(const uint32_t nBalance)
-        {
-            /* If we have exhausted our list of address, otherwise throw here. */
-            if(nIterator >= vAddresses.size())
-                throw APIException(-52, "No more available accounts for debit");
-
-            /* Check that we don't underflow here. */
-            if(vAddresses[nIterator].second < nBalance)
-                throw APIException(-69, "Insufficient funds");
-
-            /* Adjust the balance for designated account. */
-            vAddresses[nIterator].second -= nBalance;
-
-            return *this;
-        }
-
-
-        /** Operator++ overload
-         *
-         *  Adjusts the iterator for the currently loaded account.
-         *
-         **/
-        TokenAccounts& operator++(int)
-        {
-            /* If we have exhausted our list of address, otherwise throw here. */
-            if(++nIterator >= vAddresses.size())
-                throw APIException(-52, "No more available accounts for debit");
-
-            return *this;
-        }
-
-
-        /** HasNext
-         *
-         *  Checks if we have another account to iterate to.
-         *
-         **/
-        bool HasNext() const
-        {
-            return (nIterator < (vAddresses.size() - 1));
-        }
-
-
-        /** GetBalance
-         *
-         *  Get the balance of current token account being iterated.
-         *
-         **/
-        uint64_t GetBalance() const
-        {
-            /* If we have exhausted our list of address, otherwise throw here. */
-            if(nIterator >= vAddresses.size())
-                throw APIException(-52, "No more available accounts for debit");
-
-            return vAddresses[nIterator].second;
-        }
-
-
-        /** GetAddress
-         *
-         *  Gets the current address of the account we are operating on.
-         *
-         **/
-        uint256_t GetAddress() const
-        {
-            /* If we have exhausted our list of address, otherwise throw here. */
-            if(nIterator >= vAddresses.size())
-                throw APIException(-52, "No more available accounts for debit");
-
-            return vAddresses[nIterator].first;
-        }
-    };
-
 
     /* Debit an account for NXS or any token. */
     json::json Finance::Debit(const json::json& jParams, bool fHelp)
@@ -213,7 +56,7 @@ namespace TAO::API
             users->GetSession(jParams).GetAccount()->Genesis();
 
         /* Let's keep our working accounts in a nice tidy multimap, mapped by token-id. */
-        std::map<uint256_t, TokenAccounts> mapAccounts;
+        std::map<uint256_t, Accounts> mapAccounts;
 
         /* Check for the existence of recipients array */
         std::vector<json::json> vRecipients;
@@ -315,10 +158,10 @@ namespace TAO::API
 
                 /* Initialize our map if required. */
                 if(!mapAccounts.count(hashToken))
-                    mapAccounts[hashToken] = TokenAccounts(GetDecimals(objFrom));
+                    mapAccounts[hashToken] = Accounts(GetDecimals(objFrom));
 
                 /* Add our new value to our map now. */
-                mapAccounts[hashToken].vAddresses.push_back(std::make_pair(hashRegister, objFrom.get<uint64_t>("balance")));
+                mapAccounts[hashToken].Insert(hashRegister, objFrom.get<uint64_t>("balance"));
             }
         }
 
@@ -344,7 +187,7 @@ namespace TAO::API
                  /* Initialize our map if required. */
                  const uint256_t hashToken = objTo.get<uint256_t>("token");
                  if(!mapAccounts.count(hashToken))
-                     mapAccounts[hashToken] = TokenAccounts(GetDecimals(objTo));
+                     mapAccounts[hashToken] = Accounts(GetDecimals(objTo));
             }
 
             /* Let's now push our account to vector. */
@@ -369,7 +212,7 @@ namespace TAO::API
                     continue;
 
                 /* Add our new value to our map now. */
-                mapAccounts[hashToken].vAddresses.push_back(std::make_pair(hashRegister, objFrom.get<uint64_t>("balance")));
+                mapAccounts[hashToken].Insert(hashRegister, objFrom.get<uint64_t>("balance"));
             }
         }
 
@@ -387,10 +230,10 @@ namespace TAO::API
             /* Extract a token name from our from parameter. */
             const uint256_t hashToken = objFrom.get<uint256_t>("token");
             if(!mapAccounts.count(hashToken))
-                mapAccounts[hashToken] = TokenAccounts(GetDecimals(objFrom));
+                mapAccounts[hashToken] = Accounts(GetDecimals(objFrom));
 
             /* Add our new value to our map now. */
-            mapAccounts[hashToken].vAddresses.push_back(std::make_pair(hashFrom, objFrom.get<uint64_t>("balance")));
+            mapAccounts[hashToken].Insert(hashFrom, objFrom.get<uint64_t>("balance"));
         }
 
         /* Check that there are not too many recipients to fit into one transaction */
@@ -421,7 +264,7 @@ namespace TAO::API
                     throw APIException(-51, "No available accounts for recipient");
 
                 /* Grab a reference of our token struct. */
-                TokenAccounts& tAccounts = mapAccounts[0];
+                Accounts& tAccounts = mapAccounts[0];
 
                 /* Check the amount is not too small once converted by the token Decimals */
                 uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, tAccounts.nDecimals);
@@ -486,7 +329,7 @@ namespace TAO::API
                     throw APIException(-51, "No available token accounts for recipient");
 
                 /* Grab a reference of our token struct. */
-                TokenAccounts& tAccounts = mapAccounts[hashToken];
+                Accounts& tAccounts = mapAccounts[hashToken];
 
                 /* Check the amount is not too small once converted by the token Decimals */
                 uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * math::pow(10, tAccounts.nDecimals);
