@@ -495,6 +495,32 @@ namespace TAO
             json::json Has(const json::json& params, bool fHelp);
 
 
+            /** Processed
+             *
+             *  Lists the currently processed notifications.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Processed(const json::json& params, bool fHelp);
+
+
+            /** Clear
+             *
+             *  Clears the currently processed notifications.
+             *
+             *  @param[in] params The parameters from the API call.
+             *  @param[in] fHelp Trigger for help data.
+             *
+             *  @return The return object in JSON.
+             *
+             **/
+            json::json Clear(const json::json& params, bool fHelp);
+
+
             /** LoginThread
              *
              *  Background thread to auto login user once connections are established .

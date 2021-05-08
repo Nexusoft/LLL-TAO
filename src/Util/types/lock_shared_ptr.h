@@ -214,7 +214,7 @@ namespace memory
 
 	        /* Check for dereferencing nullptr. */
 	        if(pData == nullptr)
-	            throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
+	            throw std::range_error(debug::safe_printstr(FUNCTION, "dereferencing nullptr"));
 
 	        return *pData == pDataIn;
 	    }
@@ -283,7 +283,7 @@ namespace memory
 
 	        /* Check for dereferencing nullptr. */
 	        if(pData == nullptr)
-	            throw std::range_error(debug::warning(FUNCTION, "dereferencing nullptr"));
+	            throw std::range_error(debug::safe_printstr(FUNCTION, "dereferencing nullptr"));
 
 	        return *pData;
 	    }

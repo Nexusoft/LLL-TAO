@@ -1790,11 +1790,15 @@ namespace TAO
                     throw APIException(-32, "Failed to accept");
 
                 /* Capture the transaction ID */
-                vTxIDs.push_back(txout.GetHash());
+                const uint512_t hashTx = txout.GetHash();
+                vTxIDs.push_back(hashTx);
 
                 /* AutoTX debug output. */
                 if(config::GetBoolArg("-autotx", false))
                 {
+                    /* Add to our recent procssed vector. */
+                    session.vProcessed->push_back(hashTx);
+
                     debug::log(0, "[AUTOTX] Generated tx ", vTxIDs.back().SubString(), " with ", txout.Size(), " contracts");
                 }
 

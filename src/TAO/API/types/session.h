@@ -78,6 +78,10 @@ namespace TAO
             memory::lock_shared_ptr<std::queue<TAO::Operation::Contract>> vProcessQueue;
 
 
+            /** Shared list of recently processed transactions. **/
+            memory::lock_shared_ptr<std::vector<uint512_t>> vProcessed;
+
+
             /** Initialize
              *
              *  Initializes the session from username / password / pin

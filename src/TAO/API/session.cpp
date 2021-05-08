@@ -34,6 +34,7 @@ namespace TAO
         : CREATE_MUTEX          ()
         , hashAuth              ()
         , vProcessQueue         (new std::queue<TAO::Operation::Contract>())
+        , vProcessed            (new std::vector<uint512_t>())
         , MUTEX                 ()
         , nID                   (0)
         , nStarted              (0)
@@ -50,6 +51,7 @@ namespace TAO
         Session::Session(Session&& session) noexcept
         : hashAuth              (std::move(session.hashAuth))
         , vProcessQueue         (std::move(session.vProcessQueue))
+        , vProcessed            (std::move(session.vProcessed))
         , nID                   (std::move(session.nID))
         , nStarted              (std::move(session.nStarted))
         , nLastActive           (std::move(session.nLastActive))
@@ -66,6 +68,7 @@ namespace TAO
         {
             hashAuth          = (std::move(session.hashAuth));
             vProcessQueue     = (std::move(session.vProcessQueue));
+            vProcessed        = (std::move(session.vProcessed));
             nID               = (std::move(session.nID));
             nStarted          = (std::move(session.nStarted));
             nLastActive       = (std::move(session.nLastActive));

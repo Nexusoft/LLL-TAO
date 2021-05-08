@@ -40,9 +40,13 @@ namespace TAO
             mapFunctions["list/names"]               = Function(std::bind(&Users::Names,         this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/namespaces"]          = Function(std::bind(&Users::Namespaces,    this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["list/invoices"]            = Function(std::bind(&Users::Invoices,      this, std::placeholders::_1, std::placeholders::_2));
+
+            mapFunctions["list/processed"]           = Function(std::bind(&Users::Processed,      this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["clear/processed"]          = Function(std::bind(&Users::Clear,      this, std::placeholders::_1, std::placeholders::_2));
+
             mapFunctions["load/session"]             = Function(std::bind(&Users::Load,         this, std::placeholders::_1, std::placeholders::_2));
             mapFunctions["save/session"]             = Function(std::bind(&Users::Save,         this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["has/session"]             = Function(std::bind(&Users::Has,         this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["has/session"]              = Function(std::bind(&Users::Has,         this, std::placeholders::_1, std::placeholders::_2));
         }
 
         /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
