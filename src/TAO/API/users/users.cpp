@@ -44,9 +44,9 @@ namespace TAO
         /* Default Constructor. */
         Users::Users()
         : Base()
-        , fShutdown(false)
-        , LOGIN_THREAD()
-        , NOTIFICATIONS_PROCESSOR(nullptr)
+        , fShutdown               (false)
+        , LOGIN_THREAD            ( )
+        , NOTIFICATIONS_PROCESSOR (nullptr)
         {
             Initialize();
 

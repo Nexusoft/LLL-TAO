@@ -94,7 +94,7 @@ namespace TAO
         void NotificationsThread::Thread()
         {
             /** The interval between processing notifications in milliseconds, defaults to 5s if not specified in config **/
-            uint64_t nInterval = config::GetArg("-notificationsinterval", 5) * 1000;
+            uint64_t nInterval = config::GetArg("-notificationsinterval", 1) * 1000;
 
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
@@ -107,9 +107,11 @@ namespace TAO
                 if(LLP::MINING_SERVER)
                     LLP::MINING_SERVER->NotifyEvent();
 
+                runtime::sleep(nInterval);
+
                 /* Wait for the events processing thread to be woken up (such as a login) */
-                std::unique_lock<std::mutex> lock(NOTIFICATIONS_MUTEX);
-                CONDITION.wait_for(lock, std::chrono::milliseconds(nInterval), [this]{ return fEvent.load() || fShutdown.load();});
+                //std::unique_lock<std::mutex> lock(NOTIFICATIONS_MUTEX);
+                //CONDITION.wait_for(lock, std::chrono::milliseconds(nInterval), [this]{ return fEvent.load() || fShutdown.load();});
 
                 /* Check for a shutdown event. */
                 if(fShutdown.load())
@@ -126,7 +128,7 @@ namespace TAO
                     {
                         /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
                         if(GetSessionManager().Has(nSession))
-                        { 
+                        {
                             Session& session = GetSessionManager().Get(nSession, false);
                             if(!session.Locked() && session.CanProcessNotifications())
                                 auto_process_notifications(session.ID());
@@ -145,7 +147,7 @@ namespace TAO
 
 
 
-        
+
 
 
         /* Process notifications for the currently logged in user(s) */
@@ -225,6 +227,6 @@ namespace TAO
             CONDITION.notify_one();
         }
 
-        
+
     }
 }

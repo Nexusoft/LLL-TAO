@@ -1214,7 +1214,6 @@ namespace TAO
             if(params.find("suppressed") != params.end())
                 fIncludeSuppressed = params["suppressed"].get<std::string>() == "true" || params["suppressed"].get<std::string>() == "1";
 
-
             /* Get the list of outstanding contracts. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
             GetOutstanding(hashGenesis, fIncludeSuppressed, vContracts);
@@ -1228,7 +1227,7 @@ namespace TAO
             GetOutstanding(hashGenesis, fIncludeSuppressed, vLegacyTx);
 
             /* Check if there is anything to process */
-            if(vContracts.size() == 0 && vLegacyTx.size() == 0 && vExpired.size() == 0)
+            if(vContracts.size() == 0 && vLegacyTx.size() == 0 && vExpired.size() == 0 && session.vProcessQueue->empty())
                 return ret;
 
             /* Ensure that the signature is mature. This is an expensive check, so we only check this after we know
@@ -1250,9 +1249,6 @@ namespace TAO
 
             /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
             std::map<uint256_t, TAO::Register::State> mapStates;
-
-            /* Loop through each contract in the notification queue. */
-            std::queue<TAO::Operation::Contract> vProcessQueue;
 
             try
             {
@@ -1376,8 +1372,7 @@ namespace TAO
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                vProcessQueue.push(credit);
-
+                                session.vProcessQueue->push(credit);
                             }
                             else
                             {
@@ -1401,7 +1396,7 @@ namespace TAO
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                vProcessQueue.push(credit);
+                                session.vProcessQueue->push(credit);
                             }
 
                             /* Log debug message. */
@@ -1442,7 +1437,7 @@ namespace TAO
                                 continue;
 
                             /* Add the contract to the transaction */
-                            vProcessQueue.push(credit);
+                            session.vProcessQueue->push(credit);
 
                             /* Log debug message. */
                             debug::log(2, FUNCTION, "Matching COINBASE with CREDIT");
@@ -1476,7 +1471,7 @@ namespace TAO
                                 /* If the Name contract operation was created then add it to the transaction */
                                 if(!nameContract.Empty())
                                 {
-                                    vProcessQueue.push(nameContract);
+                                    session.vProcessQueue->push(nameContract);
                                 }
                             }
 
@@ -1494,7 +1489,7 @@ namespace TAO
                                 continue;
 
                             /* Add the contract to the transaction */
-                            vProcessQueue.push(claim);
+                            session.vProcessQueue->push(claim);
 
                             /* Log debug message. */
                             debug::log(2, FUNCTION, "Matching TRANSFER with CLAIM");
@@ -1631,7 +1626,7 @@ namespace TAO
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                vProcessQueue.push(migrate);
+                                session.vProcessQueue->push(migrate);
 
                                 /* Log debug message. */
                                 debug::log(2, FUNCTION, "Matching LEGACY SEND with trust key MIGRATE",
@@ -1668,7 +1663,7 @@ namespace TAO
                                 continue;
 
                             /* Add the contract to the transaction */
-                            vProcessQueue.push(credit);
+                            session.vProcessQueue->push(credit);
 
                             /* Log debug message. */
                             debug::log(2, FUNCTION, "Matching LEGACY SEND with CREDIT");
@@ -1703,7 +1698,7 @@ namespace TAO
                             continue;
 
                         /* Add the void contract */
-                        vProcessQueue.push(voidContract);
+                        session.vProcessQueue->push(voidContract);
                     }
                 }
             }
@@ -1722,7 +1717,7 @@ namespace TAO
             }
 
             /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
-            while(!vProcessQueue.empty())
+            while(!session.vProcessQueue->empty())
             {
                 /* Lock the signature chain. */
                 LOCK(session.CREATE_MUTEX);
@@ -1736,12 +1731,12 @@ namespace TAO
                 for(uint32_t i = 0; i < TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1; ++i)
                 {
                     /* Stop if run out of items to process. */
-                    if(vProcessQueue.empty())
+                    if(session.vProcessQueue->empty())
                         break;
 
                     /* Add the contract to tx. */
-                    txout[i] = vProcessQueue.front();
-                    vProcessQueue.pop();
+                    txout[i] = session.vProcessQueue->front();
+                    session.vProcessQueue->pop();
                 }
 
                 /* Check for end. */
@@ -1796,6 +1791,26 @@ namespace TAO
 
                 /* Capture the transaction ID */
                 vTxIDs.push_back(txout.GetHash());
+
+                /* AutoTX debug output. */
+                if(config::GetBoolArg("-autotx", false))
+                {
+                    debug::log(0, "[AUTOTX] Generated tx ", vTxIDs.back().SubString(), " with ", txout.Size(), " contracts");
+                }
+
+                /* Check for nofee parameters. */
+                if(!config::GetBoolArg("-fee", true))
+                {
+                    /* Loop and sleep until we have reached our new interval. */
+                    while(txout.nTimestamp + 10 >= runtime::unifiedtimestamp())
+                    {
+                        /* Check for shutdown. */
+                        if(config::fShutdown.load())
+                            break;
+
+                        runtime::sleep(500);
+                    }
+                }
             }
 
             /* Populate the response JSON */
@@ -1810,7 +1825,6 @@ namespace TAO
             }
 
             return ret;
-
         }
 
         /* Checks that the contract passes both Build() and Execute() */

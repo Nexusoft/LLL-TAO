@@ -66,6 +66,9 @@ namespace TAO
             static std::atomic<uint64_t> nLastTime;
 
             bool fSynchronizing = true;
+            if(!config::GetBoolArg("-sync", true)) //hard value to rely on if needed
+                return false;
+
             /* Persistent switch once synchronized. */
             //if(!fSynchronizing.load())
             //    return false;
@@ -87,7 +90,7 @@ namespace TAO
             if(config::fTestNet.load())
             {
                 /* Check for specific conditions such as local testnet or available connections. */
-                bool fLocalTestnet   = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+                bool fLocalTestnet   = config::fTestNet.load() && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
                 bool fHasConnections = LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() > 0;
 
                 /* Set the synchronizing flag. */
@@ -98,7 +101,7 @@ namespace TAO
                         && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
 
                     /* If local testnet with connections then rely on LLP flag  */
-                    || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load() )
+                    || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load())
 
                     /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago
                        and block age is more than 20 mins, which gives us a 30s window to connect to a local peer */

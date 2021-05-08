@@ -28,6 +28,7 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
+
 #include <condition_variable>
 #include <thread>
 #include <atomic>
@@ -58,6 +59,10 @@ namespace TAO
 
             /** The auto login thread. **/
             std::thread LOGIN_THREAD;
+
+
+            /** Shared processing queue for managing notifications and -autotx. **/
+            memory::lock_shared_ptr<std::queue<TAO::Operation::Contract>> vProcessQueue;
 
 
         public:

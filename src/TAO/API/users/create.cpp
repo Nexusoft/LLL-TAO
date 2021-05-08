@@ -167,7 +167,7 @@ namespace TAO
 
                 /* Set up tx operation to create the trust account register at the same time as sig chain genesis. */
                 tx[1] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
-                    << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
+                      << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateTrust().GetState();
 
                 /* Generate a random hash for the default account register address */
                 hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
@@ -177,7 +177,7 @@ namespace TAO
 
                 /* Add the default account register operation to the transaction */
                 tx[3] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister
-                    << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
+                      << uint8_t(TAO::Register::REGISTER::OBJECT) << TAO::Register::CreateAccount(0).GetState();
             }
 
             /* Generate register address for crypto register deterministically */

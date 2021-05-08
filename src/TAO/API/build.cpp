@@ -194,7 +194,19 @@ namespace TAO::API
             users->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
         /* Get the session to be used for this API call */
-        const Session& session = users->GetSession(jParams);
+        Session& session = users->GetSession(jParams);
+
+        /* Handle auto-tx feature. */
+        if(config::GetBoolArg("-autotx", false))
+        {
+            /* Add our contracts to the notifications queue. */
+            for(const auto& tContract : vContracts)
+                session.vProcessQueue->push(tContract);
+
+            return 0;
+        }
+
+        /* Otherwise let's lock the session to generate the tx. */
         LOCK(session.CREATE_MUTEX);
 
         /* Create the transaction. */

@@ -194,6 +194,8 @@ namespace memory
 
 	        /* Increase our reference count now. */
 	        ++pRefs->nCount;
+
+			return *this;
 	    }
 
 

@@ -33,11 +33,12 @@ namespace TAO
         Session::Session()
         : CREATE_MUTEX          ()
         , hashAuth              ()
+        , vProcessQueue         (new std::queue<TAO::Operation::Contract>())
         , MUTEX                 ()
         , nID                   (0)
         , nStarted              (0)
         , nLastActive           (0)
-        , nAuthAttempts          (0)
+        , nAuthAttempts         (0)
         , pSigChain             ()
         , pActivePIN            ()
         , nNetworkKey           (0)
@@ -48,10 +49,11 @@ namespace TAO
         /* Move constructor. */
         Session::Session(Session&& session) noexcept
         : hashAuth              (std::move(session.hashAuth))
+        , vProcessQueue         (std::move(session.vProcessQueue))
         , nID                   (std::move(session.nID))
         , nStarted              (std::move(session.nStarted))
         , nLastActive           (std::move(session.nLastActive))
-        , nAuthAttempts          (std::move(session.nAuthAttempts))
+        , nAuthAttempts         (std::move(session.nAuthAttempts))
         , pSigChain             (std::move(session.pSigChain))
         , pActivePIN            (std::move(session.pActivePIN))
         , nNetworkKey           (std::move(session.nNetworkKey))
@@ -62,14 +64,15 @@ namespace TAO
         /** Move assignment. **/
         Session& Session::operator=(Session&& session) noexcept
         {
-            hashAuth =          (std::move(session.hashAuth));
-            nID =               (std::move(session.nID));
-            nStarted =          (std::move(session.nStarted));
-            nLastActive =       (std::move(session.nLastActive));
-            nAuthAttempts =      (std::move(session.nAuthAttempts));
-            pSigChain =         (std::move(session.pSigChain));
-            pActivePIN =        (std::move(session.pActivePIN));
-            nNetworkKey =       (std::move(session.nNetworkKey));
+            hashAuth          = (std::move(session.hashAuth));
+            vProcessQueue     = (std::move(session.vProcessQueue));
+            nID               = (std::move(session.nID));
+            nStarted          = (std::move(session.nStarted));
+            nLastActive       = (std::move(session.nLastActive));
+            nAuthAttempts     = (std::move(session.nAuthAttempts));
+            pSigChain         = (std::move(session.pSigChain));
+            pActivePIN        = (std::move(session.pActivePIN));
+            nNetworkKey       = (std::move(session.nNetworkKey));
 
             return *this;
         }
