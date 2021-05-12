@@ -1727,7 +1727,7 @@ namespace TAO
                 if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
                     throw APIException(-17, "Failed to create transaction");
 
-                /* Add the contracts into tx. NOTE we add one less than maximum allowed to leave room for a fee contract. */
+                /* We add one less than maximum allowed to leave room for a fee contract. */
                 for(uint32_t i = 0; i < TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1; ++i)
                 {
                     /* Stop if run out of items to process. */

@@ -36,7 +36,7 @@ namespace memory
 
 
 			/** Reference counter for active copies. **/
-		   std::atomic<uint32_t> nCount;
+		    std::atomic<uint32_t> nCount;
 
 
 			/** Default Constructor. **/
@@ -52,7 +52,7 @@ namespace memory
 			 *  Access atomic with easier syntax.
 			 *
 			 **/
-			uint32_t count()
+			uint32_t count() const
 			{
 				return nCount.load();
 			}
@@ -127,7 +127,7 @@ namespace memory
 
 	    /** Default Constructor. **/
 	    lock_shared_ptr()
-	    : pRefs  (nullptr)
+	    : pRefs  (new lock_control())
 	    , pData  (nullptr)
 	    {
 	    }
@@ -161,8 +161,8 @@ namespace memory
 	    /** Destructor. **/
 	    ~lock_shared_ptr()
 	    {
-	        /* Adjust our reference count. */
-	        if(pRefs->count() > 0)
+			/* Adjust our reference count. */
+			if(pRefs->count() > 0)
 	            --pRefs->nCount;
 
 	        /* Delete if no more references. */
