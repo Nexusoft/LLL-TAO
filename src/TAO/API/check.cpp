@@ -16,6 +16,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/check.h>
 
+#include <TAO/Operation/include/execute.h>
+
+#include <TAO/Register/include/build.h>
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
@@ -49,6 +52,46 @@ namespace TAO::API
             if(nBlocksToMaturity > 0)
                 throw APIException(-202, debug::safe_printstr( "Signature chain not mature after your previous mined/stake block. ", nBlocksToMaturity, " more confirmation(s) required."));
         }
+    }
+
+
+    /* Checks if a contract will execute correctly once built including conditions. */
+    bool CheckContract(const TAO::Operation::Contract& rContract)
+    {
+        /* Dummy value used for build. */
+        std::map<uint256_t, TAO::Register::State> mapStates;
+
+        /* Start a ACID transaction. */
+        LLD::TxnBegin(TAO::Ledger::FLAGS::MINER); //we use miner flag here so we don't conflict with mempool
+
+        /* Return flag */
+        bool fSanitized = false;
+        try
+        {
+            /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
+            debug::fLogError = false;
+
+            /* Make a copy of our contract, to ensure we don't create bugs if this state isn't properly managed */
+            TAO::Operation::Contract tContract = rContract; //XXX: assess how much this copy costs us in cycles, compare with ref
+
+            /* Track if contract succeeded execution and bulding. */
+            fSanitized = TAO::Register::Build(tContract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
+                         && TAO::Operation::Execute(tContract, TAO::Ledger::FLAGS::MEMPOOL);
+
+            /* Reenable error logging. */
+            debug::fLogError = true;
+        }
+
+        /* Log the error and attempt to continue processing */
+        catch(const std::exception& e)
+        {
+            debug::error(FUNCTION, e.what());
+        }
+
+        /* Abort the mempool ACID transaction */
+        LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+
+        return fSanitized;
     }
 
 

@@ -49,6 +49,18 @@ namespace TAO::API
     void CheckMature(const uint256_t& hashGenesis);
 
 
+    /** CheckContract
+     *
+     *  Checks if a contract will execute correctly once built.
+     *
+     *  @param[in] tContract The contract to check and sanitize.
+     *
+     *  @return true if the contract executed correctly.
+     *
+     **/
+    bool CheckContract(const TAO::Operation::Contract& tContract);
+
+
     /** CheckType
      *
      *  Checks if the designated object matches the explicet type specified in parameters.

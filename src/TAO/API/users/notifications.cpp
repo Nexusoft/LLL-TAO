@@ -1013,20 +1013,20 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Get a reference to the contract */
-                const TAO::Operation::Contract& refContract = std::get<0>(contract);
+                const TAO::Operation::Contract& rContract = std::get<0>(contract);
 
                 /* Get contract JSON data. */
-                json::json obj = ContractToJSON(hashCaller, refContract, std::get<1>(contract), 1);
+                json::json obj = ContractToJSON(hashCaller, rContract, std::get<1>(contract), 1);
 
-                obj["txid"]      = refContract.Hash().ToString();
-                obj["time"]      = refContract.Timestamp();
+                obj["txid"]      = rContract.Hash().ToString();
+                obj["time"]      = rContract.Timestamp();
 
                 /* If caller has chosen to include suppressed notifications, then include an extra field in the response to
                    indicate which ones are suppressed */
                 if(fIncludeSuppressed)
                 {
                     uint64_t nTimeout = 0;
-                    obj["suppressed"] = (LLD::Local->ReadSuppressNotification(refContract.Hash(), std::get<1>(contract), nTimeout) && nTimeout > runtime::unifiedtimestamp());
+                    obj["suppressed"] = (LLD::Local->ReadSuppressNotification(rContract.Hash(), std::get<1>(contract), nTimeout) && nTimeout > runtime::unifiedtimestamp());
                 }
 
                 /* Check to see if there is a proof for the contract, indicating this is a split dividend payment and the
@@ -1068,11 +1068,11 @@ namespace TAO
 
                     /* Get the amount from the debit contract*/
                     uint64_t nAmount = 0;
-                    TAO::Register::Unpack(refContract, nAmount);
+                    TAO::Register::Unpack(rContract, nAmount);
 
                     /* Get the from account the debit contract*/
                     TAO::Register::Address hashFrom;
-                    TAO::Register::Unpack(refContract, hashFrom);
+                    TAO::Register::Unpack(rContract, hashFrom);
 
                     /* Get the account that made the debit, so that we can determine the decimals */
                     TAO::Register::Object accountFrom;
@@ -1252,17 +1252,16 @@ namespace TAO
 
             try
             {
-
                 for(const auto& contract : vContracts)
                 {
                     /* Reset the receiving address */
                     hashTo = uint256_t(0);
 
                     /* Get a reference to the contract */
-                    const TAO::Operation::Contract& refContract = std::get<0>(contract);
+                    const TAO::Operation::Contract& rContract = std::get<0>(contract);
 
                     /* Set the transaction hash. */
-                    hashTx = refContract.Hash();
+                    hashTx = rContract.Hash();
 
                     /* Get the contract ID */
                     nContract = std::get<1>(contract);
@@ -1271,11 +1270,11 @@ namespace TAO
                     bool fMature = LLD::Ledger->ReadMature(hashTx);
 
                     /* Reset the contract to the position of the primitive. */
-                    refContract.SeekToPrimitive();
+                    rContract.SeekToPrimitive();
 
                     /* Get the opcode. */
                     uint8_t OPERATION;
-                    refContract >> OPERATION;
+                    rContract >> OPERATION;
 
                     /* Check the opcodes for debit, coinbase or transfers. */
                     switch (OPERATION)
@@ -1294,7 +1293,7 @@ namespace TAO
                                 Therefore we need to retrieve the account/token the debit is from so that we can check */
 
                                 /* Get the token/account we are debiting from */
-                                refContract >> hashFrom;
+                                rContract >> hashFrom;
                                 TAO::Register::Object from;
                                 if(!LLD::Register->ReadState(hashFrom, from))
                                     continue;
@@ -1352,7 +1351,7 @@ namespace TAO
 
                                 /* Get the amount from the debit contract*/
                                 uint64_t nAmount = 0;
-                                TAO::Register::Unpack(refContract, nAmount);
+                                TAO::Register::Unpack(rContract, nAmount);
 
                                 /* Calculate the partial debit amount that this token holder is entitled to. */
                                 uint64_t nPartial = (nAmount * nBalance) / nSupply;
@@ -1377,9 +1376,9 @@ namespace TAO
                             else
                             {
                                 /* Set to and from hashes and amount. */
-                                refContract >> hashFrom;
-                                refContract >> hashTo;
-                                refContract >> nAmount;
+                                rContract >> hashFrom;
+                                rContract >> hashTo;
+                                rContract >> nAmount;
 
                                 /* Submit the payload object. */
                                 TAO::Operation::Contract credit;
@@ -1416,8 +1415,8 @@ namespace TAO
                             }
 
                             /* Set the genesis hash and the amount. */
-                            refContract >> hashFrom;
-                            refContract >> nAmount;
+                            rContract >> hashFrom;
+                            rContract >> nAmount;
 
                             /* Get the address that this name register for default account is pointing to. */
                             hashTo = objectDefault.get<uint256_t>("address");
@@ -1449,14 +1448,14 @@ namespace TAO
                         case Operation::OP::TRANSFER:
                         {
                             /* Get the address of the asset being transfered from the transaction. */
-                            refContract >> hashFrom;
+                            rContract >> hashFrom;
 
                             /* Get the genesis hash (recipient) of the transfer. */
-                            refContract >> hashTo;
+                            rContract >> hashTo;
 
                             /* Read the force transfer flag */
                             uint8_t nType = 0;
-                            refContract >> nType;
+                            rContract >> nType;
 
                             /* Ensure this wasn't a forced transfer (which requires no Claim) */
                             if(nType == TAO::Operation::TRANSFER::FORCE)
@@ -1678,17 +1677,17 @@ namespace TAO
                 for(const auto& contract : vExpired)
                 {
                     /* Get a reference to the contract */
-                    const TAO::Operation::Contract& refContract = std::get<0>(contract);
+                    const TAO::Operation::Contract& rContract = std::get<0>(contract);
 
                     /* Get the transaction hash */
-                    hashTx = refContract.Hash();
+                    hashTx = rContract.Hash();
 
                     /* Get the current contract ID */
                     nContract = std::get<1>(contract);
 
                     /* Attempt to add the void contract */
                     TAO::Operation::Contract voidContract;
-                    if(AddVoid(refContract, nContract, voidContract))
+                    if(AddVoid(rContract, nContract, voidContract))
                     {
                         /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
                         voidContract.Bind(nTimestamp, hashGenesis);

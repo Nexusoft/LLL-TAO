@@ -16,6 +16,7 @@ The variable names have a prefix that defines the type. This helps us not lose t
 * (p)Variable ex. pVar - (p) denotes the variable is a pointer.
 * (s)Variable ex. sVar - (s) denotes the variable is static.
 * {j}Variable ex. jVar - (j) denotes the variable is a json container.
+* (r)Variable ex. rVar - (r) denotes this variable is a reference.
 
 ### STL Types
 
@@ -27,7 +28,7 @@ The variable names have a prefix that defines the type. This helps us not lose t
 ### TAO Types
 * (obj)Variable ex. objVar - (obj) denotes the type is TAO::Register::Object, if single word use full typename i.e. object
 * (ste)Variable ex. steVar - (ste) denotes the type is TAO::Register::State, if single word use full typename i.e. state
-* (txn)Variable ex. txnVar - (txn) denotes the type is TAO::Ledger::Transaction, if single word reduced typename i.e. tx 
+* (txn)Variable ex. txnVar - (txn) denotes the type is TAO::Ledger::Transaction, if single word reduced typename i.e. tx
 
 ## Namespaces
 
@@ -49,7 +50,8 @@ This section involves how to format the code due to carriage return
 
 There are certain types that cause more problems than they solve. Following is a list of types to be warned of using.
 
-* Avoid floating points in objects when possible to avoid floating point precision errors that can occur on certain hardware. One can easily convert from an integer into float by setting the significant figures. ex. unsigned int n = 1000000; printf("%f", n / 1000000.0);
+* Avoid floating points in objects and ALL consensus critical code. Always use cv::softfloat or cv::softdouble when floating points
+are required.
 
 
 ## Security Precautions
