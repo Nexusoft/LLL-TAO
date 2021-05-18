@@ -108,16 +108,32 @@ namespace TAO::API
     //XXX: this is hacky to use an empty address for default parameter
 
 
-    /** BuildCredit
+    /** BuildCredits
      *
      *  Builds a credit contract based on given txid.
      *
-     *  @param[in] hashTx The txid to check credit against.
      *  @param[in] jParams The parameters to use for this call.
+     *  @param[in] hashTx The txid to check credit against.
      *  @param[out] vContracts The contracts built based on this credit.
      *
      *  @return true if contracts were generated, false if credit has no contracts available.
      *
      **/
-    bool BuildCredit(const uint512_t& hashTx, const json::json& jParams, std::vector<TAO::Operation::Contract> &vContracts);
+    bool BuildCredits(const json::json& jParams, const uint512_t& hashTx, std::vector<TAO::Operation::Contract> &vContracts);
+
+
+    /** BuildCredit
+     *
+     *  Builds a credit contract based on given contract and related parameters.
+     *
+     *  @param[in] jParams The parameters to use for this call.
+     *  @param[in] nContract The contract we are building for.
+     *  @param[in] rContract The debit contract to credit from.
+     *  @param[out] vContracts The contracts built based on this credit.
+     *
+     *  @return true if contracts were generated, false if credit has no contracts available.
+     *
+     **/
+    bool BuildCredit(const json::json& jParams, const uint32_t nContract,
+        const TAO::Operation::Contract& rContract, std::vector<TAO::Operation::Contract> &vContracts);
 }

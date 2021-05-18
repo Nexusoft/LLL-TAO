@@ -11,10 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
-#include <Legacy/types/txout.h>
+#include <Legacy/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
+
+#include <TAO/Register/include/constants.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/timelocks.h>
@@ -102,6 +104,40 @@ namespace TAO
         }
 
 
+        /* Construct based on legacy transation. */
+        Contract::Contract(const Legacy::Transaction& tx, const uint32_t& nContract)
+        {
+            /* Check boundaries. */
+            if(nContract >= tx.vout.size())
+                throw debug::exception(FUNCTION, "contract output out of bounds");
+
+            /* Grab a reference of our output. */
+            const Legacy::TxOut& txout = tx.vout[nContract];
+
+            /* Check script size. */
+            if(txout.scriptPubKey.size() != 34)
+                throw debug::exception(FUNCTION, "invalid script size ", txout.scriptPubKey.size());
+
+            /* Get the script output. */
+            uint256_t hashAccount;
+            std::copy((uint8_t*)&txout.scriptPubKey[1], (uint8_t*)&txout.scriptPubKey[1] + 32, (uint8_t*)&hashAccount);
+
+            /* Check for OP::RETURN. */
+            if(txout.scriptPubKey[33] != Legacy::OP_RETURN)
+                throw debug::exception(FUNCTION, "last OP has to be OP_RETURN");
+
+            /* Create Contract. */
+            ssOperation << uint8_t(TAO::Operation::OP::DEBIT)    << TAO::Register::WILDCARD_ADDRESS;
+            ssOperation << hashAccount << uint64_t(txout.nValue) << uint64_t(0);
+
+            /* Populate our contract level data. */
+            hashCaller = 0; //superfluous, but being explicet
+            nTimestamp = tx.nTime;
+            hashTx     = tx.GetHash();
+            nVersion   = tx.nVersion;
+        }
+
+
         /* Bind the contract to a transaction. */
         void Contract::Bind(const TAO::Ledger::Transaction* tx) const
         {
@@ -140,7 +176,7 @@ namespace TAO
             nTimestamp = nTimestampIn;
 
             /* Set the transaction version based on the timestamp. */
-            uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
+            const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
             if(TAO::Ledger::TransactionVersionActive(nTimestamp, nCurrent))
                 nVersion = nCurrent;
             else
@@ -156,7 +192,7 @@ namespace TAO
                 throw debug::exception(FUNCTION, "cannot get primitive when empty");
 
             /* Get the operation code.*/
-            uint8_t nOP = ssOperation.get(0);
+            const uint8_t nOP = ssOperation.get(0);
 
             /* Switch for validate or condition. */
             switch(nOP)
@@ -412,7 +448,7 @@ namespace TAO
 
 
         /* Get the legacy converted output of the contract if valid */
-        bool Contract::Legacy(Legacy::TxOut& txout) const
+        bool Contract::Legacy(Legacy::TxOut &txout) const
         {
             /* Check for LEGACY. */
             if(Primitive() != OP::LEGACY)

@@ -20,7 +20,8 @@ ________________________________________________________________________________
 #include <string.h>
 
 /* Forward declarations */
-namespace TAO::Register { class Object; }
+namespace TAO::Operation { class Contract; }
+namespace TAO::Register  { class Object;   }
 
 
 /* Global TAO namespace. */
@@ -53,12 +54,12 @@ namespace TAO::API
      *
      *  Checks if a contract will execute correctly once built.
      *
-     *  @param[in] tContract The contract to check and sanitize.
+     *  @param[in] rContract The contract to check and sanitize.
      *
      *  @return true if the contract executed correctly.
      *
      **/
-    bool CheckContract(const TAO::Operation::Contract& tContract);
+    bool CheckContract(const TAO::Operation::Contract& rContract);
 
 
     /** CheckType

@@ -57,7 +57,7 @@ namespace TAO::API
 
         /* Check for tritium credits. */
         std::vector<TAO::Operation::Contract> vContracts(0);
-        if(!BuildCredit(hashTx, jParams, vContracts))
+        if(!BuildCredits(jParams, hashTx, vContracts))
             throw APIException(-43, "No valid contracts in debit tx.");
 
         /* Build response JSON boilerplate. */

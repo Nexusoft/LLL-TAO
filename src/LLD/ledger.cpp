@@ -136,8 +136,8 @@ namespace LLD
                 throw debug::exception(FUNCTION, "failed to read contract");
 
             /* Get const reference for read-only access. */
-            const TAO::Ledger::Transaction& ref = tx;
-            return ref[nContract];
+            const TAO::Ledger::Transaction& rtx = tx;
+            return rtx[nContract];
         }
 
         /* Check for Legacy transaction. */
@@ -148,27 +148,7 @@ namespace LLD
             if(!LLD::Legacy->ReadTx(hashTx, tx, nFlags))
                 throw debug::exception(FUNCTION, "failed to get legacy transaction");
 
-            /* Check boundaries. */
-            if(nContract >= tx.vout.size())
-                throw debug::exception(FUNCTION, "contract output out of bounds");
-
-            /* Check script size. */
-            if(tx.vout[nContract].scriptPubKey.size() != 34)
-                throw debug::exception(FUNCTION, "invalid script size ", tx.vout[nContract].scriptPubKey.size());
-
-            /* Get the script output. */
-            uint256_t hashAccount;
-            std::copy((uint8_t*)&tx.vout[nContract].scriptPubKey[1], (uint8_t*)&tx.vout[nContract].scriptPubKey[1] + 32, (uint8_t*)&hashAccount);
-
-            /* Check for OP::RETURN. */
-            if(tx.vout[nContract].scriptPubKey[33] != Legacy::OP_RETURN)
-                throw debug::exception(FUNCTION, "last OP has to be OP_RETURN");
-
-            /* Create Contract. */
-            TAO::Operation::Contract contract;
-            contract << uint8_t(TAO::Operation::OP::DEBIT) << TAO::Register::WILDCARD_ADDRESS << hashAccount << uint64_t(tx.vout[nContract].nValue) << uint64_t(0);
-
-            return contract;
+            return TAO::Operation::Contract(tx, nContract);
         }
         else
             throw debug::exception(FUNCTION, "invalid txid type");
@@ -681,7 +661,7 @@ namespace LLD
     {
         /* Get the last known event sequence for this address  */
         uint32_t nSequence = 0;
-        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value 
+        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value
 
         /* Read the transaction ID of the last event */
         if(nSequence > 0)
