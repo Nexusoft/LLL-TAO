@@ -169,7 +169,7 @@ namespace TAO
             json::json ListBalances(const json::json& jParams, bool fHelp);
 
 
-            /** Info
+            /** StakeInfo
              *
              *  Get staking metrics for a trust account.
              *
@@ -179,7 +179,7 @@ namespace TAO
              *  @return The return object in JSON.
              *
              **/
-            json::json Info(const json::json& jParams, bool fHelp);
+            json::json StakeInfo(const json::json& jParams, bool fHelp);
 
 
             /** List
