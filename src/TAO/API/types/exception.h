@@ -34,15 +34,16 @@ namespace TAO
         public:
 
             /** Default Constructor **/
-            APIException(int32_t nCode, const char* strMessage)
-            : json::detail::exception(nCode, strMessage)
+            APIException(const int32_t nCode, const std::string& strMessage)
+            : json::detail::exception(nCode, strMessage.c_str())
             {
             }
 
 
-            /** Default Constructor **/
-            APIException(int32_t nCode, const std::string& strMessage)
-            : json::detail::exception(nCode, strMessage.c_str())
+            /** Variadic template constructor for building error strings. **/
+            template<class... Args>
+            APIException(const int32_t nCode, Args&&... args)
+            : json::detail::exception(nCode, debug::safe_printstr(args...).c_str())
             {
             }
 
@@ -56,18 +57,12 @@ namespace TAO
              **/
             json::json ToJSON()
             {
-                json::json jsonError;
-                jsonError["code"] = id;
-
+                /* Include our global errors if applicable. */
                 std::string strMessage = std::string(what());
-
-                /* If a global error message has been logged via debug::error then include this in the JSON*/
                 if(!debug::strLastError.empty())
                     strMessage += ". " + debug::GetLastError();
 
-                jsonError["message"] = strMessage;
-
-                return jsonError;
+                return { {"code", id }, {"message", strMessage} }; //no need to make another copy, so emplace our return value
             }
 
         };

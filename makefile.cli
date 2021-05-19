@@ -505,6 +505,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_voting_count.o \
 		build/API_types_voting_initialize.o \
 		build/API_types_voting_list.o \
+		build/API_base.o \
 		build/API_build.o \
 		build/API_check.o \
 		build/API_cmd.o \
