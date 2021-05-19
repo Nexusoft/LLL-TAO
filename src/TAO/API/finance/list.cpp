@@ -107,31 +107,15 @@ namespace TAO
         json::json Finance::ListTransactions(const json::json& jParams, bool fHelp)
         {
             /* The account to list transactions for. */
-            TAO::Register::Address hashAccount;
-
-            /* If name is provided then use this to deduce the register address,
-             * otherwise try to find the raw hex encoded address. */
-            if(jParams.find("name") != jParams.end())
-                hashAccount = Names::ResolveAddress(jParams, jParams["name"].get<std::string>());
-            else if(jParams.find("address") != jParams.end())
-                hashAccount.SetBase58(jParams["address"].get<std::string>());
-            else
-                throw APIException(-33, "Missing name or address");
+            const TAO::Register::Address hashAccount = ExtractAddress(jParams);
 
             /* Get the account object. */
             TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashAccount, object))
+            if(!LLD::Register->ReadObject(hashAccount, object))
                 throw APIException(-13, "Object not found");
 
-            /* Parse the object register. */
-            if(!object.Parse())
-                throw APIException(-14, "Object failed to parse");
-
-            /* Get the object standard. */
-            uint8_t nStandard = object.Standard();
-
             /* Check the object standard. */
-            if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
+            if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
                 throw APIException(-65, "Object is not an account");
 
             return Objects::ListTransactions(jParams, fHelp);

@@ -28,7 +28,8 @@ namespace TAO::API
         /* Populate our standard objects. */
         mapStandards["account"] = TAO::Register::OBJECTS::ACCOUNT;
         mapStandards["token"]   = TAO::Register::OBJECTS::TOKEN;
-        
+
+
         /* Handle for all BURN operations. */
         mapFunctions["burn"] = Function
         (
