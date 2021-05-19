@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/finance/types/finance.h>
 
+#include <TAO/API/include/format.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 
@@ -41,112 +42,77 @@ namespace TAO
         /* Get staking metrics for a trust account */
         json::json Finance::Info(const json::json& params, bool fHelp)
         {
-            json::json ret;
-
-            /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
-
-            /* Get the user account. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user)
-                throw APIException(-10, "Invalid session ID");
+            /* The user genesis hash */
+            const uint256_t hashGenesis =
+                users->GetSession(params).GetAccount()->Genesis();
 
             /* Retrieve the trust register address, which is based on the users genesis */
-            TAO::Register::Address hashRegister =
-                TAO::Register::Address(std::string("trust"), user->Genesis(), TAO::Register::Address::TRUST);
+            const TAO::Register::Address hashRegister =
+                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
             /* Attempt to read our trust register. */
             TAO::Register::Object trust;
-            if(!LLD::Register->ReadState(hashRegister, trust, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadObject(hashRegister, trust, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-70, "Trust account not found");
 
-            /* Parse the object. */
-            if(!trust.Parse())
-                throw APIException(-71, "Unable to parse trust account.");
-
-            /* Check the object standard. */
-            if(trust.Standard() != TAO::Register::OBJECTS::TRUST)
-                throw APIException(-72, "Register is not a trust account");
-
-            /* Check the account is a NXS account */
-            if(trust.get<uint256_t>("token") != 0)
-                throw APIException(-73, "Trust account is not a NXS account.");
+            /* Grab our trust score since we will use in further calculations. */
+            const uint64_t nTrustScore = trust.get<uint64_t>("trust");
 
             /* Set trust account values for return data */
-            ret["address"] = hashRegister.ToString();
+            json::json jRet;
+            jRet["address"] = hashRegister.ToString();
+            jRet["balance"] = FormatBalance(trust.get<uint64_t>("balance"), 0);
+            jRet["stake"]   = FormatBalance(trust.get<uint64_t>("stake"),   0);
+            jRet["trust"]   = nTrustScore;
 
-            ret["balance"] = (double)trust.get<uint64_t>("balance") / TAO::Ledger::NXS_COIN;
-
-            ret["stake"] = (double)trust.get<uint64_t>("stake") / TAO::Ledger::NXS_COIN;
-
-            /* Trust is returned as a percentage of maximum */
-            uint64_t nTrustScore = trust.get<uint64_t>("trust");
-
-            ret["trust"] = nTrustScore;
-
-            TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
-
-            /* Indexed trust account has genesis */
-            bool fTrustIndexed = LLD::Register->HasTrust(user->Genesis());
-
-            ret["new"] = (bool)(!fTrustIndexed);
-
-            /* Return whether stake minter is started and actively running. */
-            ret["staking"] = (bool)(stakeMinter.IsStarted() && trust.hashOwner == user->Genesis());
-
-            /* Flag indicating whether pooled staking is enabled */
-            ret["pooled"] = config::fPoolStaking.load();
-
-            /* Need the stake minter running for accessing current staking metrics.
-             * Verifying current user ownership of trust account is a sanity check.
-             */
-            if(stakeMinter.IsStarted() && trust.hashOwner == user->Genesis())
+            /* Need the stake minter running for accessing current staking metrics.*/
+            TAO::Ledger::StakeMinter& rStakeMinter = TAO::Ledger::StakeMinter::GetInstance();
+            if(rStakeMinter.IsStarted())
             {
                 /* The trust account is on hold when it does not have genesis, and is waiting to reach minimum age to stake */
-                bool fOnHold = (!fTrustIndexed && stakeMinter.IsWaitPeriod());
+                const bool fOnHold = (!LLD::Register->HasTrust(hashGenesis) || rStakeMinter.IsWaitPeriod());
 
-                /* When trust account is on hold pending minimum age, also return the time remaining in hold period. */
-                ret["onhold"] = (bool)(fOnHold);
+                /* When trust account is on hold pending minimum age return the time remaining in hold period. */
+                jRet["onhold"] = fOnHold;
                 if(fOnHold)
-                    ret["holdtime"] = (uint64_t)stakeMinter.GetWaitTime();
+                    jRet["holdtime"] = (uint64_t)rStakeMinter.GetWaitTime();
 
-                /* If stake minter is running, get current stake rate it is using. */
-                ret["stakerate"] = stakeMinter.GetStakeRatePercent();
-
-                /* Other staking metrics also are available with running minter */
-                ret["trustweight"] = stakeMinter.GetTrustWeightPercent();
-                ret["blockweight"] = stakeMinter.GetBlockWeightPercent();
-
-                /* Raw trust weight and block weight total to 100, so can use the total as a % directly */
-                ret["stakeweight"] = stakeMinter.GetTrustWeight() + stakeMinter.GetBlockWeight();
+                /* Populate our running statistics. */
+                jRet["stakerate"]   = rStakeMinter.GetStakeRatePercent();
+                jRet["trustweight"] = rStakeMinter.GetTrustWeightPercent();
+                jRet["blockweight"] = rStakeMinter.GetBlockWeightPercent();
+                jRet["stakeweight"] = rStakeMinter.GetTrustWeight() + rStakeMinter.GetBlockWeight();
+                jRet["staking"]     = true;
             }
             else
             {
                 /* When stake minter not running, return latest known value calculated from trust score (as an annual percent). */
-                ret["stakerate"] = TAO::Ledger::StakeRate(nTrustScore, (nTrustScore == 0)) * 100.0;
+                jRet["stakerate"] = TAO::Ledger::StakeRate(nTrustScore, (nTrustScore == 0)) * 100.0;
 
                 /* Other staking metrics not available if stake minter not running */
-                ret["trustweight"] = 0.0;
-                ret["blockweight"] = 0.0;
-                ret["stakeweight"] = 0.0;
+                jRet["trustweight"] = 0.0;
+                jRet["blockweight"] = 0.0;
+                jRet["stakeweight"] = 0.0;
+                jRet["staking"]     = false;
             }
 
-            TAO::Ledger::StakeChange stakeChange;
-            if(LLD::Local->ReadStakeChange(user->Genesis(), stakeChange) && !stakeChange.fProcessed
-            && (stakeChange.nExpires == 0 || stakeChange.nExpires > runtime::unifiedtimestamp()))
+            /* Check if we have any pending stake changes. */
+            TAO::Ledger::StakeChange tStakeChange;
+            if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange) && !tStakeChange.fProcessed)
             {
-                ret["change"] = true;
-                ret["amount"] = (double)stakeChange.nAmount / TAO::Ledger::NXS_COIN;
-                ret["requested"] = stakeChange.nTime;
-                ret["expires"] = stakeChange.nExpires;
+                /* Populate our stake change values. */
+                jRet["change"]    = true;
+                jRet["amount"]    = FormatBalance(tStakeChange.nAmount, 0);
+                jRet["requested"] = tStakeChange.nTime;
+                jRet["expires"]   = tStakeChange.nExpires;
             }
             else
-                ret["change"] = false;
+                jRet["change"] = false;
 
-            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            FilterResponse(params, ret);
+            /* Filter based on requested fieldname. */
+            FilterResponse(params, jRet);
 
-            return ret;
+            return jRet;
         }
     }
 }
