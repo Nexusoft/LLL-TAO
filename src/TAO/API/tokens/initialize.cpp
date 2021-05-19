@@ -25,6 +25,10 @@ namespace TAO::API
     /* Standard initialization function. */
     void Tokens::Initialize()
     {
+        /* Populate our standard objects. */
+        mapStandards["account"] = TAO::Register::OBJECTS::ACCOUNT;
+        mapStandards["token"]   = TAO::Register::OBJECTS::TOKEN;
+        
         /* Handle for all BURN operations. */
         mapFunctions["burn"] = Function
         (
@@ -107,75 +111,5 @@ namespace TAO::API
 
         /* Temporary reroute of the account methods to the finance API equivalents XXX: this is really hacky */
         mapFunctions["list/account/transactions"] = Function(std::bind(&Finance::ListTransactions, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
-    }
-
-
-    /* Rewrite the URL to include names and fields if preferred over using parameters.*/
-    std::string Tokens::RewriteURL(const std::string& strMethod, json::json &jParams)
-    {
-        /* Grab our components of the URL to rewrite. */
-        const std::vector<std::string> vMethods = Split(strMethod, '/');
-
-        /* Check that we have all of our values. */
-        if(vMethods.empty()) //we are ignoring everything past first noun on rewrite
-            throw APIException(-14, debug::safe_printstr(FUNCTION, "Malformed request URL: ", strMethod));
-
-        /* Track if we've found an explicet type. */
-        bool fNoun = false, fAddress = false, fField = false;;
-
-        /* Grab the components of this URL. */
-        const std::string& strVerb = vMethods[0];
-        for(uint32_t n = 1; n < vMethods.size(); ++n)
-        {
-            /* Grab our current noun. */
-            const std::string& strNoun = vMethods[n];
-
-            /* Now lets do some rules for the different nouns. */
-            if(!fNoun && (strNoun.find("token") == 0 || strNoun.find("account") == 0))
-            {
-                jParams["type"] = strNoun;
-
-                /* Set our explicet flag now. */
-                fNoun = true;
-                continue;
-            }
-
-            /* If we have reached here, we know we are an address or name. */
-            else if(!fAddress)
-            {
-                /* Check if this value is an address. */
-                if(CheckAddress(strNoun))
-                {
-                    jParams["address"] = strNoun;
-                    continue;
-                }
-
-                /* If not address it must be a name. */
-                else
-                {
-                    jParams["name"] = strNoun;
-                    continue;
-                }
-
-                /* Set both address and noun to handle ommiting the noun if desired. */
-                fAddress = true;
-                fNoun    = true;
-            }
-
-            /* If we have reached here, we know we are a fieldname. */
-            else if(!fField)
-            {
-                jParams["fieldname"] = strNoun;
-
-                fField = true;
-                continue;
-            }
-
-            /* If we get here, we need to throw for malformed URL. */
-            else
-                throw APIException(-14, debug::safe_printstr(FUNCTION, "Malformed request URL: ", strMethod));
-        }
-
-        return strVerb;
     }
 }

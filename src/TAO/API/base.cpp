@@ -55,7 +55,7 @@ namespace TAO::API
         for(uint32_t n = 1; n < vMethods.size(); ++n)
         {
             /* Grab our current noun. */
-            const std::string& strNoun = ((vMethods[n].back() == 's' && strVerb == "list")
+            const std::string strNoun = ((vMethods[n].back() == 's' && strVerb == "list")
                 ? vMethods[n].substr(0, vMethods[n].size() - 1)
                 : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
