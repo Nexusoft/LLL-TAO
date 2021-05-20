@@ -33,7 +33,6 @@ namespace TAO::API
     {
     public:
 
-
         /** Default Constructor **/
         Base ( )
         : fInitialized (false)
@@ -130,5 +129,28 @@ namespace TAO::API
 
         /** Map of standard nouns to check for standard object types. **/
         std::map<std::string, uint8_t>  mapStandards;
+    };
+
+
+    /** Derived
+     *
+     *  Class for forcing the polymorphic get so we can cast to and from child and parent classes.
+     *  This follows similar logic as polymorphic clone, but is indented to be used without copying.
+     *
+     **/
+    template<class Type>
+    class Derived : public Base
+    {
+    public:
+
+        /** Get
+         *
+         *  Method to be overridden by commands class, to allow casting to and from parent and child classes.
+         *
+         **/
+        Base* Get() final override
+        {
+            return static_cast<Type*>(this);
+        }
     };
 }

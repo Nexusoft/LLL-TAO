@@ -48,7 +48,7 @@ namespace TAO
              *  Sets the function pointers for this API.
              *
              **/
-            void Initialize() final;
+            void Initialize() override final;
 
 
             /** GetName
