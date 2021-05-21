@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/sessionmanager.h>
 
+#include <TAO/API/ledger/types/ledger.h>
+
 #include <TAO/Ledger/include/process.h>
 
 

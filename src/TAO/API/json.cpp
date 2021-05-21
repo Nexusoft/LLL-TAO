@@ -19,9 +19,11 @@ ________________________________________________________________________________
 #include <Legacy/types/address.h>
 #include <Legacy/types/trustkey.h>
 
-#include <TAO/API/include/global.h>
-
 #include <TAO/API/types/exception.h>
+#include <TAO/API/types/commands.h>
+
+#include <TAO/API/users/types/users.h>
+#include <TAO/API/names/types/names.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>

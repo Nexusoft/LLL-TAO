@@ -18,7 +18,10 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/conditions.h>
-#include <TAO/API/include/global.h>
+#include <TAO/API/types/commands.h>
+
+#include <TAO/API/users/types/users.h>
+#include <TAO/API/ledger/types/ledger.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>

@@ -14,8 +14,10 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/build.h>
-#include <TAO/API/include/global.h>
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/get.h>
+
+#include <TAO/API/finance/types/finance.h>
 
 #include <TAO/Operation/include/enum.h>
 

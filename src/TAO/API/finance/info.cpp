@@ -18,8 +18,11 @@ ________________________________________________________________________________
 #include <TAO/API/finance/types/finance.h>
 
 #include <TAO/API/include/format.h>
-#include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/types/commands.h>
+
+#include <TAO/API/users/types/users.h>
+#include <TAO/API/finance/types/finance.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>

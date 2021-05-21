@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 
+#include <TAO/API/ledger/types/ledger.h>
+
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/include/create.h>

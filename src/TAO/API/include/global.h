@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands.h>
 
+#include <TAO/API/users/types/users.h> //XXX: temporary work-around for users being littered everywhere and dependent on this header
+
 #include <TAO/API/rpc/types/rpc.h>
 
 namespace TAO::API

@@ -6,8 +6,11 @@
 #include <LLP/types/tritium.h>
 #include <LLP/templates/trigger.h>
 
-#include <TAO/API/include/global.h>
 #include <TAO/API/include/list.h>
+#include <TAO/API/types/commands.h>
+
+#include <TAO/API/users/types/users.h>
+#include <TAO/API/names/types/names.h>
 
 #include <TAO/API/types/sessionmanager.h>
 #include <TAO/API/types/exception.h>

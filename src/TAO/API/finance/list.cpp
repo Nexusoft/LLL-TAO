@@ -18,10 +18,14 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
-#include <TAO/API/include/global.h>
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/list.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/types/commands.h>
+
+#include <TAO/API/users/types/users.h>
+#include <TAO/API/finance/types/finance.h>
 
 #include <TAO/Ledger/types/sigchain.h>
 

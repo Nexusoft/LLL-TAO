@@ -25,30 +25,6 @@ namespace TAO::Ledger    { class Transaction; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /** ExtractAddress
-     *
-     *  Extract an address from incoming parameters to derive from name or address field.
-     *
-     *  @param[in] jParams The parameters to find address in.
-     *  @param[in] strSuffix The suffix to append to end of parameter we are extracting.
-     *  @param[in] strDefault The default value to revert to if failed to find in parameters.
-     *
-     *  @return The register address if valid.
-     *
-     **/
-    uint256_t ExtractAddress(const json::json& jParams, const std::string& strSuffix = "", const std::string& strDefault = "");
-
-
-    /** ExtractToken
-     *
-     *  Extract a token address from incoming parameters to derive from name or address field.
-     *
-     *  @param[in] jParams The parameters to find address in.
-     *
-     *  @return The register address if valid.
-     *
-     **/
-    uint256_t ExtractToken(const json::json& jParams);
 
 
     /** BuildResponse
