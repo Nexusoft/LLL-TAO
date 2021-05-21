@@ -88,7 +88,7 @@ namespace TAO
                         jsonRet["type"]    = RegisterType(state.nType);
 
                         /* Check if address is owned by current user */
-                        uint256_t hashGenesis = users->GetCallersGenesis(params);
+                        uint256_t hashGenesis = Commands::Get<Users>()->GetCallersGenesis(params);
                         if(hashGenesis != 0)
                         {
                             if(state.hashOwner == hashGenesis)

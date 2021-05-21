@@ -185,30 +185,7 @@ namespace LLP
             }
 
             /* Execute the api and methods. */
-            if(strAPI == "supply")
-                ret = { {"result", TAO::API::supply->Execute(strMethod, params) } };
-            else if(strAPI == "users")
-                ret = { {"result", TAO::API::users->Execute(strMethod, params) } };
-            else if(strAPI == "assets")
-                ret = { {"result", TAO::API::assets->Execute(strMethod, params) } };
-            else if(strAPI == "ledger")
-                ret = { {"result", TAO::API::ledger->Execute(strMethod, params) } };
-            else if(strAPI == "tokens")
-                ret = { {"result", TAO::API::tokens->Execute(strMethod, params) } };
-            else if(strAPI == "system")
-                ret = { {"result", TAO::API::system->Execute(strMethod, params) } };
-            else if(strAPI == "finance")
-                ret = { {"result", TAO::API::finance->Execute(strMethod, params) } };
-            else if(strAPI == "names")
-                ret = { {"result", TAO::API::names->Execute(strMethod, params) } };
-            else if(strAPI == "dex")
-                ret = { {"result", TAO::API::dex->Execute(strMethod, params) } };
-            else if(strAPI == "voting")
-                ret = { {"result", TAO::API::voting->Execute(strMethod, params) } };
-            else if(strAPI == "invoices")
-                ret = { {"result", TAO::API::invoices->Execute(strMethod, params) } };
-            else
-                throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
+            ret = { {"result", TAO::API::Commands::Invoke(strAPI, strMethod, params) } };
         }
 
         /* Handle for custom API exceptions. */

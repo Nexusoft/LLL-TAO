@@ -989,7 +989,7 @@ namespace TAO::API
         json::json jRet;
 
         /* Get callers hashGenesis . */
-        uint256_t hashGenesis = users->GetCallersGenesis(params);
+        uint256_t hashGenesis = Commands::Get<Users>()->GetCallersGenesis(params);
 
         /* The resolved name for this object */
         std::string strName = "";

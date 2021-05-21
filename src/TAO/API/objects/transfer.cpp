@@ -41,14 +41,14 @@ namespace TAO
             json::json ret;
 
             /* Authenticate the users credentials */
-            if(!users->Authenticate(params))
+            if(!Commands::Get<Users>()->Authenticate(params))
                 throw APIException(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
+            Session& session = Commands::Get<Users>()->GetSession(params);
 
             /* Watch for destination genesis. */
             uint256_t hashTo = 0;

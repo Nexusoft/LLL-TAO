@@ -67,7 +67,7 @@ namespace TAO
                 strFormat = "raw";
 
             /* Get the callers genesis hash so that we can use it to include name data in the response */
-            uint512_t hashCaller = users->GetCallersGenesis(params);
+            uint512_t hashCaller = Commands::Get<Users>()->GetCallersGenesis(params);
 
             /* Declare the tritium and legacy transaction objects ready to attempt to load them from disk*/
             TAO::Ledger::Transaction txTritium;

@@ -49,14 +49,14 @@ namespace TAO
             uint8_t nScheme = 0;
 
             /* Authenticate the users credentials */
-            if(!users->Authenticate(params))
+            if(!Commands::Get<Users>()->Authenticate(params))
                 throw APIException(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
+            Session& session = Commands::Get<Users>()->GetSession(params);
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();

@@ -41,14 +41,14 @@ namespace TAO
             json::json ret;
 
             /* Authenticate the users credentials */
-            if(!users->Authenticate(params))
+            if(!Commands::Get<Users>()->Authenticate(params))
                 throw APIException(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
+            Session& session = Commands::Get<Users>()->GetSession(params);
 
             /* Get the register address. */
             TAO::Register::Address hashToken;
@@ -105,7 +105,7 @@ namespace TAO
             if(!LLD::Register->ReadState(hashRegister, asset, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-34, "Asset not found");
 
-            if(config::fClient.load() && asset.hashOwner != users->GetCallersGenesis(params))
+            if(config::fClient.load() && asset.hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Only include raw and non-standard object types (assets)*/

@@ -83,14 +83,14 @@ namespace TAO
                     throw APIException(-293, "Invalid key name.  Keys in the crypto register cannot be used for encryption, only signature generation and verification");
 
                 /* Authenticate the users credentials */
-                if(!users->Authenticate(params))
+                if(!Commands::Get<Users>()->Authenticate(params))
                     throw APIException(-139, "Invalid credentials");
 
                 /* Get the PIN to be used for this API call */
-                SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+                SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
                 /* Get the session to be used for this API call */
-                Session& session = users->GetSession(params);
+                Session& session = Commands::Get<Users>()->GetSession(params);
 
                 /* Get the private key. */
                 uint512_t hashSecret = session.GetAccount()->Generate(strName, 0, strPIN);

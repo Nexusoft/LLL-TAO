@@ -970,10 +970,10 @@ namespace TAO
                in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession
                method will throw an appropriate error. */
             else
-                hashGenesis = users->GetSession(params).GetAccount()->Genesis();
+                hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
 
             /* The genesis hash of the API caller, if logged in */
-            uint256_t hashCaller = users->GetCallersGenesis(params);
+            uint256_t hashCaller = Commands::Get<Users>()->GetCallersGenesis(params);
 
             if(config::fClient.load() && hashGenesis != hashCaller)
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
@@ -1190,7 +1190,7 @@ namespace TAO
                 fLogActivity = params["logactivity"].get<std::string>() == "true" || params["logactivity"].get<std::string>() == "1";
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params, true, fLogActivity);
+            Session& session = Commands::Get<Users>()->GetSession(params, true, fLogActivity);
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
@@ -1201,7 +1201,7 @@ namespace TAO
             uint256_t hashGenesis = user->Genesis();
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::NOTIFICATIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::NOTIFICATIONS);
 
             /* Retrieve user's default NXS account. This is only relevant when not in private mode (as there is no NXS)*/
             std::string strAccount = config::GetArg("-events_account", "default");

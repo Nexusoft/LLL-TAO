@@ -47,7 +47,7 @@ namespace TAO
                 throw APIException(-306, "No connections available");
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params, true, false);
+            Session& session = Commands::Get<Users>()->GetSession(params, true, false);
 
             /* The callers genesis */
             uint256_t hashGenesis = session.GetAccount()->Genesis();

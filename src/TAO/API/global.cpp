@@ -14,6 +14,21 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/commands.h>
 
+#include <TAO/API/assets/types/assets.h>
+#include <TAO/API/dex/types/dex.h>
+#include <TAO/API/ledger/types/ledger.h>
+#include <TAO/API/register/types/register.h>
+#include <TAO/API/supply/types/supply.h>
+#include <TAO/API/system/types/system.h>
+#include <TAO/API/tokens/types/tokens.h>
+#include <TAO/API/users/types/users.h>
+#include <TAO/API/finance/types/finance.h>
+#include <TAO/API/names/types/names.h>
+#include <TAO/API/objects/types/objects.h>
+#include <TAO/API/voting/types/voting.h>
+#include <TAO/API/invoices/types/invoices.h>
+#include <TAO/API/crypto/types/crypto.h>
+
 #include <TAO/API/types/sessionmanager.h>
 
 #include <Util/include/debug.h>
@@ -22,26 +37,9 @@ namespace TAO::API
 {
     std::map<std::string, Base*> Commands::mapTypes;
 
-    /* The API global instance pointers. */
-    Assets*     assets;
-    Ledger*     ledger;
-    Register*   reg;
-
     #ifndef NO_WALLET
     RPC*        legacy;
     #endif
-
-    Supply*     supply;
-    System*     system;
-    Tokens*     tokens;
-    Users*      users;
-    Finance*    finance;
-    Names*      names;
-    Market*     dex;
-    Voting*     voting;
-    Invoices*   invoices;
-    Crypto*     crypto;
-
 
     /*  Instantiate global instances of the API. */
     void Initialize()
@@ -49,24 +47,24 @@ namespace TAO::API
         debug::log(0, FUNCTION, "Initializing API");
 
         /* Create the API instances. */
-        assets      = new Assets();
-        ledger      = new Ledger();
-        reg         = new Register();
+        Commands::Register<Assets>();
+        Commands::Register<Crypto>();
+        Commands::Register<Market>();
+        Commands::Register<Finance>();
+        Commands::Register<Invoices>();
+        Commands::Register<Ledger>();
+        Commands::Register<Names>();
+        Commands::Register<Register>();
+        Commands::Register<Supply>();
+        Commands::Register<System>();
+        Commands::Register<Tokens>();
+        Commands::Register<Users>();
+        Commands::Register<Voting>();
 
+        /* Create RPC server if enabled. */
         #ifndef NO_WALLET
         legacy = new RPC();
         #endif
-
-        supply      = new Supply();
-        system      = new System();
-        tokens      = new Tokens();
-        users       = new Users();
-        finance     = new Finance();
-        names       = new Names();
-        dex         = new Market();
-        voting      = new Voting();
-        invoices    = new Invoices();
-        crypto      = new Crypto();
     }
 
 
@@ -75,48 +73,13 @@ namespace TAO::API
     {
         debug::log(0, FUNCTION, "Shutting down API");
 
-        if(assets)
-            delete assets;
-
-        if(ledger)
-            delete ledger;
-
-        if(reg)
-            delete reg;
-
+        /* Shutdown our RPC server if enabled. */
         #ifndef NO_WALLET
         if(legacy)
             delete legacy;
         #endif
 
-        if(supply)
-            delete supply;
-
-        if(system)
-            delete system;
-
-        if(tokens)
-            delete tokens;
-
-        if(users)
-            delete users;
-
-        if(finance)
-            delete finance;
-
-        if(names)
-            delete names;
-
-        if(dex)
-            delete dex;
-
-        if(voting)
-            delete voting;
-
-        if(invoices)
-            delete invoices;
-
-        if(crypto)
-            delete crypto;
+        /* Shut down our subsequent API's */
+        Commands::Shutdown();
     }
 }

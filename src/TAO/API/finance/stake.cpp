@@ -41,14 +41,14 @@ namespace TAO
             json::json ret;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPin = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPin = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Check for pin size. */
             if(strPin.size() == 0)
                 throw APIException(-135, "Zero-length PIN");
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
+            Session& session = Commands::Get<Users>()->GetSession(params);
 
             /* Get the user account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();

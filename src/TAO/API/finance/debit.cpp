@@ -54,7 +54,7 @@ namespace TAO::API
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            users->GetSession(jParams).GetAccount()->Genesis();
+            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
         /* Let's keep our working accounts in a nice tidy multimap, mapped by token-id. */
         std::map<uint256_t, Accounts> mapAccounts;

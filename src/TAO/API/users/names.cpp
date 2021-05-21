@@ -39,7 +39,7 @@ namespace TAO
                 throw APIException(-142, "Username parameter not supported for this method.  Names can only be obtained for the logged in user.");
 
             /* Get the callers hashGenesis */
-            uint256_t hashGenesis = users->GetCallersGenesis(params);
+            uint256_t hashGenesis = Commands::Get<Users>()->GetCallersGenesis(params);
 
             /* Ensure the hashGenesis is valid */
             if(hashGenesis == 0)

@@ -56,10 +56,10 @@ namespace TAO
                in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession
                method will throw an appropriate error. */
             else
-                hashGenesis = users->GetSession(params).GetAccount()->Genesis();
+                hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
 
             /* The genesis hash of the API caller, if logged in */
-            uint256_t hashCaller = users->GetCallersGenesis(params);
+            uint256_t hashCaller = Commands::Get<Users>()->GetCallersGenesis(params);
             if(config::fClient.load() && hashGenesis != hashCaller)
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 

@@ -12,60 +12,29 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_API_INCLUDE_GLOBAL_H
-#define NEXUS_TAO_API_INCLUDE_GLOBAL_H
 
-#include <TAO/API/assets/types/assets.h>
-#include <TAO/API/dex/types/dex.h>
-#include <TAO/API/ledger/types/ledger.h>
-#include <TAO/API/register/types/register.h>
+#include <TAO/API/types/commands.h>
+
 #include <TAO/API/rpc/types/rpc.h>
-#include <TAO/API/supply/types/supply.h>
-#include <TAO/API/system/types/system.h>
-#include <TAO/API/tokens/types/tokens.h>
-#include <TAO/API/users/types/users.h>
-#include <TAO/API/finance/types/finance.h>
-#include <TAO/API/names/types/names.h>
-#include <TAO/API/objects/types/objects.h>
-#include <TAO/API/voting/types/voting.h>
-#include <TAO/API/invoices/types/invoices.h>
-#include <TAO/API/crypto/types/crypto.h>
 
-namespace TAO
+namespace TAO::API
 {
-    namespace API
-    {
-        extern Assets*      assets;
-        extern Ledger*      ledger;
-        extern Register*    reg;
-        extern RPC*         legacy;
-        extern Supply*      supply;
-        extern System*      system;
-        extern Tokens*      tokens;
-        extern Users*       users;
-        extern Finance*     finance;
-        extern Names*       names;
-        extern Market*      dex;
-        extern Voting*      voting;
-        extern Invoices*    invoices;
-        extern Crypto*      crypto;
+    #ifndef NO_WALLET
+    extern RPC*         legacy;
+    #endif
 
-        /** Initialize
-         *
-         *  Instantiate global instances of the API.
-         *
-         **/
-        void Initialize();
+    /** Initialize
+     *
+     *  Instantiate global instances of the API.
+     *
+     **/
+    void Initialize();
 
 
-        /** Shutdown
-         *
-         *  Delete global instances of the API.
-         *
-         **/
-        void Shutdown();
-    }
+    /** Shutdown
+     *
+     *  Delete global instances of the API.
+     *
+     **/
+    void Shutdown();
 }
-
-
-#endif

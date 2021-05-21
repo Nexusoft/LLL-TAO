@@ -89,7 +89,7 @@ namespace TAO
             if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
                 hashOwner.SetType(TAO::Ledger::GENESIS::UserType());
 
-            if(config::fClient.load() && hashOwner != users->GetCallersGenesis(params))
+            if(config::fClient.load() && hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Read the last hash of owner. */

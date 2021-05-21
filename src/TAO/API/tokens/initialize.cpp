@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
 
+#include <TAO/Register/include/enum.h>
+
 #include <Util/include/string.h>
 
 /* Global TAO namespace. */
@@ -36,7 +38,7 @@ namespace TAO::API
             std::bind
             (
                 &Finance::Burn,
-                TAO::API::finance,
+                Commands::Get<Finance>(),
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -48,7 +50,7 @@ namespace TAO::API
             std::bind
             (
                 &Finance::Create,
-                TAO::API::finance,
+                Commands::Get<Finance>(),
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -60,7 +62,7 @@ namespace TAO::API
             std::bind
             (
                 &Finance::Credit,
-                TAO::API::finance,
+                Commands::Get<Finance>(),
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -72,7 +74,7 @@ namespace TAO::API
             std::bind
             (
                 &Finance::Debit,
-                TAO::API::finance,
+                Commands::Get<Finance>(),
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -85,7 +87,7 @@ namespace TAO::API
             std::bind
             (
                 &Finance::Get,
-                TAO::API::finance,
+                Commands::Get<Finance>(),
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -98,7 +100,7 @@ namespace TAO::API
             std::bind
             (
                 &Finance::List,
-                TAO::API::finance,
+                Commands::Get<Finance>(),
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -111,6 +113,6 @@ namespace TAO::API
         mapFunctions["list/token/accounts"]       = Function(std::bind(&Tokens::ListTokenAccounts, this, std::placeholders::_1, std::placeholders::_2));
 
         /* Temporary reroute of the account methods to the finance API equivalents XXX: this is really hacky */
-        mapFunctions["list/account/transactions"] = Function(std::bind(&Finance::ListTransactions, TAO::API::finance, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["list/account/transactions"] = Function(std::bind(&Finance::ListTransactions, Commands::Get<Finance>(), std::placeholders::_1, std::placeholders::_2));
     }
 }

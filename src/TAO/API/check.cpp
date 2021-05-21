@@ -48,7 +48,7 @@ namespace TAO::API
         if(!config::fHybrid.load())
         {
             /* Get the number of blocks to maturity for this sig chain */
-            const uint32_t nBlocksToMaturity = users->BlocksToMaturity(hashGenesis);
+            const uint32_t nBlocksToMaturity = Commands::Get<Users>()->BlocksToMaturity(hashGenesis);
             if(nBlocksToMaturity > 0)
                 throw APIException(-202, debug::safe_printstr( "Signature chain not mature after your previous mined/stake block. ", nBlocksToMaturity, " more confirmation(s) required."));
         }

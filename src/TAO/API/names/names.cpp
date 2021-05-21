@@ -202,7 +202,7 @@ namespace TAO
             /* First check the callers local namespace to see if it exists */
             /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can check the
                other namespaces after */
-            Session& session = users->GetSession(params, false);
+            Session& session = Commands::Get<Users>()->GetSession(params, false);
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
@@ -508,7 +508,7 @@ namespace TAO
                 else
                 {
                     /* the genesis hash of the caller */
-                    uint256_t hashGenesis = users->GetCallersGenesis(params);
+                    uint256_t hashGenesis = Commands::Get<Users>()->GetCallersGenesis(params);
 
                     /* Look up the token name based on the Name records in the caller's sig chain */
                     strTokenName = Names::ResolveName(hashGenesis, hashToken);

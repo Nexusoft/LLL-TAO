@@ -43,7 +43,7 @@ namespace TAO
         {
             /* Get our genesis-id for this call. */
             const uint256_t hashGenesis =
-                users->GetSession(jParams).GetAccount()->Genesis();
+                Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
             /* Number of results to return. */
             uint32_t nLimit = 100, nOffset = 0;

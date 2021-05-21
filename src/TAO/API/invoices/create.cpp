@@ -57,7 +57,7 @@ namespace TAO
             json::json ret;
 
             /* Authenticate the users credentials */
-            if(!users->Authenticate(params))
+            if(!Commands::Get<Users>()->Authenticate(params))
                 throw APIException(-139, "Invalid credentials");
 
             /* The JSON representation of the invoice that we store in the register */
@@ -73,10 +73,10 @@ namespace TAO
             double dTotal = 0;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
+            Session& session = Commands::Get<Users>()->GetSession(params);
 
             /* Check whether the caller has provided the account name parameter. */
             if(params.find("account_name") != params.end() && !params["account_name"].get<std::string>().empty())

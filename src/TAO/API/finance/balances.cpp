@@ -71,7 +71,7 @@ namespace TAO::API
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
-            users->GetSession(params).GetAccount()->Genesis();
+            Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
 
         /* The token to return balances for. Default to 0 (NXS) */
         const uint256_t hashToken = ExtractToken(params);
@@ -151,7 +151,7 @@ namespace TAO::API
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
-            users->GetSession(params).GetAccount()->Genesis();
+            Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0, nTotal = 0;

@@ -55,7 +55,7 @@ namespace TAO
             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-117, "Item not found");
 
-            if(config::fClient.load() && state.hashOwner != users->GetCallersGenesis(params))
+            if(config::fClient.load() && state.hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Ensure that it is an append register */

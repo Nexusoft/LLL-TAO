@@ -44,7 +44,7 @@ namespace TAO
         {
             /* The user genesis hash */
             const uint256_t hashGenesis =
-                users->GetSession(params).GetAccount()->Genesis();
+                Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
 
             /* Retrieve the trust register address, which is based on the users genesis */
             const TAO::Register::Address hashRegister =

@@ -142,7 +142,7 @@ namespace TAO::API
             /* Add an optional name if supplied. */
             vContracts.push_back
             (
-                Names::CreateName(users->GetSession(jParams).GetAccount()->Genesis(),
+                Names::CreateName(Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis(),
                 jParams["name"].get<std::string>(), "", hashRegister)
             );
         }

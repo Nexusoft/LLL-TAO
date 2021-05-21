@@ -98,7 +98,7 @@ namespace TAO::API
                 return hashRet;
 
             /* Get our session to get the name object. */
-            const Session& session = users->GetSession(jParams);
+            const Session& session = Commands::Get<Users>()->GetSession(jParams);
 
             /* Grab the name object register now. */
             TAO::Register::Object object;
@@ -189,15 +189,15 @@ namespace TAO::API
     uint512_t BuildAndAccept(const json::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
     {
         /* Authenticate the users credentials */
-        if(!users->Authenticate(jParams))
+        if(!Commands::Get<Users>()->Authenticate(jParams))
             throw APIException(-139, "Invalid credentials");
 
         /* Get the PIN to be used for this API call */
         const SecureString strPIN =
-            users->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
         /* Get the session to be used for this API call */
-        Session& session = users->GetSession(jParams);
+        Session& session = Commands::Get<Users>()->GetSession(jParams);
 
         /* Handle auto-tx feature. */
         if(config::GetBoolArg("-autotx", false))
@@ -371,7 +371,7 @@ namespace TAO::API
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            users->GetSession(jParams).GetAccount()->Genesis();
+            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
         /* Copy our txid out of the contract. */
         const uint512_t hashTx = rContract.Hash();

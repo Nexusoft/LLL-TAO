@@ -51,10 +51,10 @@ namespace TAO
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else
                 /* If no specific genesis or username have been provided then fall back to the active sig chain */
-                hashGenesis = users->GetSession(params).GetAccount()->Genesis();
+                hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
 
             /* The genesis hash of the API caller, if logged in */
-            uint256_t hashCaller = users->GetCallersGenesis(params);
+            uint256_t hashCaller = Commands::Get<Users>()->GetCallersGenesis(params);
 
             if(config::fClient.load() && hashGenesis != hashCaller)
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
@@ -79,7 +79,7 @@ namespace TAO
             if(!LLD::Register->ReadState(hashRegister, object))
                 throw APIException(-104, "Object not found");
 
-            if(config::fClient.load() && object.hashOwner != users->GetCallersGenesis(params))
+            if(config::fClient.load() && object.hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* We need to check if this register is a trust account as stake/genesis/trust/stake/unstake
