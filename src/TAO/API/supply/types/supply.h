@@ -12,152 +12,141 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_API_INCLUDE_SUPPLY_H
-#define NEXUS_TAO_API_INCLUDE_SUPPLY_H
 
 #include <TAO/API/types/base.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /** Supply
+     *
+     *  Supply API Class.
+     *  Manages the function pointers for all Supply commands.
+     *
+     **/
+    class Supply : public Derived<Supply>
     {
+    public:
 
-        /** Supply
+        /** Default Constructor. **/
+        Supply()
+        : Derived<Supply>()
+        {
+        }
+
+
+        /** Initialize.
          *
-         *  Supply API Class.
-         *  Manages the function pointers for all Supply commands.
+         *  Sets the function pointers for this API.
          *
          **/
-        class Supply : public Base
+        void Initialize() final;
+
+
+        /** Name
+         *
+         *  Returns the name of this API.
+         *
+         **/
+        static std::string Name()
         {
-        public:
-
-            /** Default Constructor. **/
-            Supply()
-            : Base()
-            {
-                Initialize();
-            }
+            return "supply";
+        }
 
 
-            /** Initialize.
-             *
-             *  Sets the function pointers for this API.
-             *
-             **/
-            void Initialize() final;
+        /** RewriteURL
+         *
+         *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
+         *  map directly to a function in the target API.  Insted this method can be overriden to
+         *  parse the incoming URL and route to a different/generic method handler, adding parameter
+         *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
+         *  added to the jsonParams
+         *  The return json contains the modifed method URL to be called.
+         *
+         *  @param[in] strMethod The name of the method being invoked.
+         *  @param[in] jsonParams The json array of parameters being passed to this method.
+         *
+         *  @return the API method URL
+         *
+         **/
+        std::string RewriteURL(const std::string& strMethod, json::json& jsonParams) override;
 
 
-            /** GetName
-             *
-             *  Returns the name of this API.
-             *
-             **/
-            std::string GetName() const final
-            {
-                return "Supply";
-            }
+        /** GetItem
+         *
+         *  Gets the description of an item.
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json GetItem(const json::json& params, bool fHelp);
 
 
-            /** RewriteURL
-             *
-             *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-             *  map directly to a function in the target API.  Insted this method can be overriden to
-             *  parse the incoming URL and route to a different/generic method handler, adding parameter
-             *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-             *  added to the jsonParams
-             *  The return json contains the modifed method URL to be called.
-             *
-             *  @param[in] strMethod The name of the method being invoked.
-             *  @param[in] jsonParams The json array of parameters being passed to this method.
-             *
-             *  @return the API method URL
-             *
-             **/
-            std::string RewriteURL(const std::string& strMethod, json::json& jsonParams) override;
+        /** Transfer
+         *
+         *  Transfers an item.
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Transfer(const json::json& params, bool fHelp);
 
 
-            /** GetItem
-             *
-             *  Gets the description of an item.
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json GetItem(const json::json& params, bool fHelp);
+        /** Claims
+         *
+         *  Claims an item transfer
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Claim(const json::json& params, bool fHelp);
 
 
-            /** Transfer
-             *
-             *  Transfers an item.
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Transfer(const json::json& params, bool fHelp);
+        /** CreateItem
+         *
+         *  Creates an item.
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json CreateItem(const json::json& params, bool fHelp);
 
 
-            /** Claims
-             *
-             *  Claims an item transfer
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Claim(const json::json& params, bool fHelp);
+        /** UpdateItem
+         *
+         *  Updates data to an item.
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json UpdateItem(const json::json& params, bool fHelp);
 
 
-            /** CreateItem
-             *
-             *  Creates an item.
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json CreateItem(const json::json& params, bool fHelp);
-
-
-            /** UpdateItem
-             *
-             *  Updates data to an item.
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json UpdateItem(const json::json& params, bool fHelp);
-
-
-            /** History
-             *
-             *  Gets the history of an item.
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json History(const json::json& params, bool fHelp);
-        };
-    }
+        /** History
+         *
+         *  Gets the history of an item.
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json History(const json::json& params, bool fHelp);
+    };
 }
-
-#endif

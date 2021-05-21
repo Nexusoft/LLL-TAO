@@ -41,7 +41,7 @@ namespace TAO
     {
 
         /* Create an asset or digital item. */
-        json::json DEX::Sell(const json::json& params, bool fHelp)
+        json::json Market::Sell(const json::json& params, bool fHelp)
         {
             json::json ret;
 

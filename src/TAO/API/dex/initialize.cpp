@@ -22,10 +22,10 @@ namespace TAO
     {
 
         /* Standard initialization function. */
-        void DEX::Initialize()
+        void Market::Initialize()
         {
-            mapFunctions["buy"]  = Function(std::bind(&DEX::Buy,  this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["sell"] = Function(std::bind(&DEX::Sell, this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["buy"]  = Function(std::bind(&Market::Buy,  this, std::placeholders::_1, std::placeholders::_2));
+            mapFunctions["sell"] = Function(std::bind(&Market::Sell, this, std::placeholders::_1, std::placeholders::_2));
         }
     }
 }

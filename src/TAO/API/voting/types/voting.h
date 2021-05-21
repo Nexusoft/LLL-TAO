@@ -16,74 +16,69 @@ ________________________________________________________________________________
 #include <TAO/API/types/base.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
 
-    /* API Layer namespace. */
-    namespace API
+    /** Voting
+     *
+     *  Voting API Class.
+     *  Manages the function pointers for all Voting commands.
+     *
+     **/
+    class Voting : public Derived<Voting>
     {
+    public:
 
-        /** Voting
+        /** Default Constructor. **/
+        Voting()
+        : Derived<Voting>()
+        {
+            Initialize();
+        }
+
+
+        /** Initialize.
          *
-         *  Voting API Class.
-         *  Manages the function pointers for all Voting commands.
+         *  Sets the function pointers for this API.
          *
          **/
-        class Voting : public Base
+        void Initialize() final;
+
+
+        /** Name
+         *
+         *  Returns the name of this API.
+         *
+         **/
+        static std::string Name()
         {
-        public:
-
-            /** Default Constructor. **/
-            Voting()
-            : Base()
-            {
-                Initialize();
-            }
+            return "voting";
+        }
 
 
-            /** Initialize.
-             *
-             *  Sets the function pointers for this API.
-             *
-             **/
-            void Initialize() final;
+        /** Count
+         *
+         *  Counts the number of votes (transactions) made to a given account.
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Count(const json::json& params, bool fHelp);
 
 
-            /** GetName
-             *
-             *  Returns the name of this API.
-             *
-             **/
-            std::string GetName() const final
-            {
-                return "Voting";
-            }
-
-            /** Count
-             *
-             *  Counts the number of votes (transactions) made to a given account.
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Count(const json::json& params, bool fHelp);
-
-
-            /** List
-             *
-             *  Returns a list of all votes made to an account
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json List(const json::json& params, bool fHelp);
-        };
-    }
+        /** List
+         *
+         *  Returns a list of all votes made to an account
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json List(const json::json& params, bool fHelp);
+    };
 }
-

@@ -12,83 +12,73 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_API_INCLUDE_TOKENS_H
-#define NEXUS_TAO_API_INCLUDE_TOKENS_H
 
 #include <TAO/API/types/base.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /** Assets
+     *
+     *  Assets API Class.
+     *  Manages the function pointers for all Asset commands.
+     *
+     **/
+    class Tokens : public Derived<Tokens>
     {
+    public:
 
-        /** Assets
+        /** Default Constructor. **/
+        Tokens()
+        : Derived<Tokens>()
+        {
+            Initialize();
+        }
+
+
+        /** Initialize.
          *
-         *  Assets API Class.
-         *  Manages the function pointers for all Asset commands.
+         *  Sets the function pointers for this API.
          *
          **/
-        class Tokens : public Base
+        void Initialize() override final;
+
+
+        /** Name
+         *
+         *  Returns the name of this API.
+         *
+         **/
+        static std::string Name()
         {
-        public:
-
-            /** Default Constructor. **/
-            Tokens()
-            : Base()
-            {
-                Initialize();
-            }
+            return "tokens";
+        }
 
 
-            /** Initialize.
-             *
-             *  Sets the function pointers for this API.
-             *
-             **/
-            void Initialize() override final;
+        /** ListTransactions
+         *
+         *  Lists all transactions for a given token or account
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json ListTransactions(const json::json& jParams, bool fHelp);
 
 
-            /** GetName
-             *
-             *  Returns the name of this API.
-             *
-             **/
-            std::string GetName() const final
-            {
-                return "Tokens";
-            }
+        /** ListTokenAccounts
+         *
+         *  Lists all accounts that have been created for a particular token
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json ListTokenAccounts(const json::json& jParams, bool fHelp);
 
-
-            /** ListTransactions
-             *
-             *  Lists all transactions for a given token or account
-             *
-             *  @param[in] jParams The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json ListTransactions(const json::json& jParams, bool fHelp);
-
-
-            /** ListTokenAccounts
-             *
-             *  Lists all accounts that have been created for a particular token
-             *
-             *  @param[in] jParams The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json ListTokenAccounts(const json::json& jParams, bool fHelp);
-
-        };
-    }
+    };
 }
-
-#endif

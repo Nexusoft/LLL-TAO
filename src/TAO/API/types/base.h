@@ -59,13 +59,12 @@ namespace TAO::API
         virtual void Initialize() = 0;
 
 
-        /** GetName
+        /** Get
          *
-         *  Name of this API.  Derivations should implement this and return
-         *  an appropriate API name
+         *  Abstract initializer so we don't need to copy this method for each derived class.
          *
          **/
-        virtual std::string GetName() const = 0;
+        virtual Base* Get() = 0;
 
 
         /** Execute
@@ -145,7 +144,7 @@ namespace TAO::API
 
         /** Get
          *
-         *  Method to be overridden by commands class, to allow casting to and from parent and child classes.
+         *  Method to be used by commands class, to allow casting to and from parent and child classes.
          *
          **/
         Base* Get() final override

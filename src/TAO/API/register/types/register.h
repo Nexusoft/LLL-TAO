@@ -12,129 +12,118 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_API_INCLUDE_REGISTER_H
-#define NEXUS_TAO_API_INCLUDE_REGISTER_H
 
 #include <TAO/API/types/base.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /** Register
+     *
+     *  Register API Class.
+     *  Lower level API to interact directly with registers.
+     *
+     **/
+    class Register : public Derived<Register>
     {
+    public:
 
-        /** Register
+        /** Default Constructor. **/
+        Register()
+        : Derived<Register>()
+        {
+        }
+
+
+        /** Default Destructor. **/
+        virtual ~Register()
+        {
+        }
+
+
+        /** Initialize.
          *
-         *  Register API Class.
-         *  Lower level API to interact directly with registers.
+         *  Sets the function pointers for this API.
          *
          **/
-        class Register : public Base
+        void Initialize() final
         {
-        public:
-
-            /** Default Constructor. **/
-            Register()
-            : Base()
-            {
-                Initialize();
-            }
+        }
 
 
-            /** Default Destructor. **/
-            virtual ~Register()
-            {
-            }
+        /** Name
+         *
+         *  Returns the name of this API.
+         *
+         **/
+        static std::string Name()
+        {
+            return "register";
+        }
 
 
-            /** Initialize.
-             *
-             *  Sets the function pointers for this API.
-             *
-             **/
-            void Initialize() final
-            {
-            }
+        /** Create
+         *
+         *  Creates a register with given RAW state.
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Create(const json::json& params, bool fHelp);
 
 
-            /** GetName
-             *
-             *  Returns the name of this API.
-             *
-             **/
-            std::string GetName() const final
-            {
-                return "Register";
-            }
+        /** Read
+         *
+         *  Read a register's raw data
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Read(const json::json& params, bool fHelp);
 
 
-            /** Create
-             *
-             *  Creates a register with given RAW state.
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Create(const json::json& params, bool fHelp);
+        /** Write
+         *
+         *  Writes a register's raw data
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Write(const json::json& params, bool fHelp);
 
 
-            /** Read
-             *
-             *  Read a register's raw data
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Read(const json::json& params, bool fHelp);
+        /** Transfer
+         *
+         *  Transfers a register to destination.
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Transfer(const json::json& params, bool fHelp);
 
 
-            /** Write
-             *
-             *  Writes a register's raw data
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Write(const json::json& params, bool fHelp);
-
-
-            /** Transfer
-             *
-             *  Transfers a register to destination.
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Transfer(const json::json& params, bool fHelp);
-
-
-            /** History
-             *
-             *  Gets the history of a register's states
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json History(const json::json& params, bool fHelp);
-        };
-    }
+        /** History
+         *
+         *  Gets the history of a register's states
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json History(const json::json& params, bool fHelp);
+    };
 }
-
-#endif

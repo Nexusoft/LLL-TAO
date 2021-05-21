@@ -45,7 +45,7 @@ namespace TAO
         extern Users*       users;
         extern Finance*     finance;
         extern Names*       names;
-        extern DEX*         dex;
+        extern Market*      dex;
         extern Voting*      voting;
         extern Invoices*    invoices;
         extern Crypto*      crypto;

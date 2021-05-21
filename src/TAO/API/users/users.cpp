@@ -43,7 +43,7 @@ namespace TAO
     {
         /* Default Constructor. */
         Users::Users()
-        : Base()
+        : Derived<Users>          ( )
         , fShutdown               (false)
         , LOGIN_THREAD            ( )
         , NOTIFICATIONS_PROCESSOR (nullptr)

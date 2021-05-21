@@ -12,83 +12,72 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_API_INCLUDE_DEX_H
-#define NEXUS_TAO_API_INCLUDE_DEX_H
 
 #include <TAO/API/types/base.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /** DEX
+     *
+     *  DEX API Class.
+     *  Manages the function pointers for all DEX exchanges
+     *
+     **/
+    class Market : public Derived<Market>
     {
+    public:
 
-        /** DEX
+        /** Default Constructor. **/
+        Market()
+        : Derived<Market>()
+        {
+        }
+
+
+        /** Initialize.
          *
-         *  DEX API Class.
-         *  Manages the function pointers for all DEX exchanges
+         *  Sets the function pointers for this API.
          *
          **/
-        class DEX : public Base
+        void Initialize() final;
+
+
+        /** Name
+         *
+         *  Returns the name of this API.
+         *
+         **/
+        static std::string Name()
         {
-        public:
-
-            /** Default Constructor. **/
-            DEX()
-            : Base()
-            {
-                Initialize();
-            }
+            return "market";
+        }
 
 
-            /** Initialize.
-             *
-             *  Sets the function pointers for this API.
-             *
-             **/
-            void Initialize() final;
+        /** Buy
+         *
+         *  Create a new BUY order on the Market
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Buy(const json::json& params, bool fHelp);
 
 
-            /** GetName
-             *
-             *  Returns the name of this API.
-             *
-             **/
-            std::string GetName() const final
-            {
-                return "DEX";
-            }
+        /** Sell
+         *
+         *  Create a new SELL order on the Market
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        json::json Sell(const json::json& params, bool fHelp);
 
-
-            /** Buy
-             *
-             *  Create a new BUY order on the DEX
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Buy(const json::json& params, bool fHelp);
-
-
-            /** Sell
-             *
-             *  Create a new SELL order on the DEX
-             *
-             *  @param[in] params The parameters from the API call.
-             *  @param[in] fHelp Trigger for help data.
-             *
-             *  @return The return object in JSON.
-             *
-             **/
-            json::json Sell(const json::json& params, bool fHelp);
-
-        };
-    }
+    };
 }
-
-#endif

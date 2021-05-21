@@ -2675,7 +2675,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount6;
 
          /* Invoke the API */
-         ret = APICall("finance/get/account", params);
+         ret = APICall("tokens/get/account", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["unconfirmed"].get<double>() == nBalance);
@@ -2693,7 +2693,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount6;
 
          /* Invoke the API */
-         ret = APICall("finance/get/account", params);
+         ret = APICall("tokens/get/account", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == nBalance);
@@ -2708,7 +2708,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount1;
 
          /* Invoke the API */
-         ret = APICall("finance/get/account", params);
+         ret = APICall("tokens/get/account", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == 0);
@@ -2722,7 +2722,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount2;
 
          /* Invoke the API */
-         ret = APICall("finance/get/account", params);
+         ret = APICall("tokens/get/account", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == 0);
@@ -2736,7 +2736,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount3;
 
          /* Invoke the API */
-         ret = APICall("finance/get/account", params);
+         ret = APICall("tokens/get/account", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == 0);
@@ -2750,7 +2750,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount4;
 
          /* Invoke the API */
-         ret = APICall("finance/get/account", params);
+         ret = APICall("tokens/get/account", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == 0);
@@ -2765,7 +2765,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount5;
 
          /* Invoke the API */
-         ret = APICall("finance/get/account", params);
+         ret = APICall("tokens/get/account", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == 0);
