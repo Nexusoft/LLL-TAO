@@ -44,7 +44,6 @@ namespace TAO
         /* Default Constructor. */
         Users::Users()
         : Derived<Users>          ( )
-        , fShutdown               (false)
         , LOGIN_THREAD            ( )
         , NOTIFICATIONS_PROCESSOR (nullptr)
         {
@@ -63,9 +62,6 @@ namespace TAO
         /* Destructor. */
         Users::~Users()
         {
-            /* Set the shutdown flag and join events processing thread. */
-            fShutdown = true;
-
             if(LOGIN_THREAD.joinable())
                 LOGIN_THREAD.join();
 
@@ -83,24 +79,14 @@ namespace TAO
 
 
         /*  Background thread to auto login user once connections are established. */
-        void Users::LoginThread()
+        void Users::LoginThread() //XXX: this isn't really needed, could easily be added before processing notifications, DELETE ME
         {
-            /* Mutex for this thread's condition variable */
-            std::mutex LOGIN_MUTEX;
-
-            /* The condition variable to wait on */
-            std::condition_variable LOGIN_CONDITION;
-
             /* Loop the events processing thread until shutdown. */
-            while(!fShutdown.load())
+            while(!config::fShutdown.load())
             {
-                /* retry every 5s if not logged in */
-                std::unique_lock<std::mutex> lock(LOGIN_MUTEX);
-                LOGIN_CONDITION.wait_for(lock, std::chrono::milliseconds(5000), [this]{return fShutdown.load();});
-
-                /* Check for a shutdown event. */
-                if(fShutdown.load())
-                    return;
+                /* We sleep in increments of 100ms so shutdown response is sub-second. */
+                for(uint32_t n = 0; n < 50; ++n)
+                    runtime::sleep(100);  //XXX: assess whether this should come before or after the login attempt
 
                 try
                 {
