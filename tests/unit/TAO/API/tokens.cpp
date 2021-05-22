@@ -2675,7 +2675,9 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount6;
 
          /* Invoke the API */
-         ret = APICall("tokens/get/account", params);
+         ret = APICall("tokens/get/account/unconfirmed", params);
+
+         debug::log(0, ret.dump(4));
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["unconfirmed"].get<double>() == nBalance);

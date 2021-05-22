@@ -66,6 +66,8 @@ namespace TAO::API
 
                 /* Set our explicet flag now. */
                 fStandard = true;
+                fAddress  = true; //we set this here so that first noun slot can't be either/or, it breaks our fieldname
+
                 continue;
             }
 
@@ -74,21 +76,17 @@ namespace TAO::API
             {
                 /* Check if this value is an address. */
                 if(CheckAddress(strNoun))
-                {
                     jParams["address"] = strNoun;
-                    continue;
-                }
 
                 /* If not address it must be a name. */
                 else
-                {
                     jParams["name"] = strNoun;
-                    continue;
-                }
 
                 /* Set both address and noun to handle ommiting the noun if desired. */
-                fAddress = true;
-                fStandard    = true;
+                fAddress  = true;
+                fStandard = true;
+
+                continue;
             }
 
             /* If we have reached here, we know we are a fieldname. */

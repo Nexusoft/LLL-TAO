@@ -110,9 +110,15 @@ namespace LLP
         tLatency.Start();
 
         /* Handle basic HTTP logic here. */
+        json::json params;
+        params["info"] =
+        {
+            {"commands", strAPI},
+            {"method", strMethod},
+        };
+
         try
         {
-            json::json params;
             if(INCOMING.strType == "POST")
             {
                 /* Only parse content if some has been provided */
