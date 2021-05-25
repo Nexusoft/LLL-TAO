@@ -83,7 +83,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json List(const json::json& params, bool fHelp);
+        json::json List(const json::json& params, const bool fHelp);
 
 
         /** Get
@@ -96,7 +96,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Get(const json::json& params, bool fHelp);
+        json::json Get(const json::json& params, const bool fHelp);
 
 
         /** GetPublic
@@ -109,7 +109,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetPublic(const json::json& params, bool fHelp);
+        json::json GetPublic(const json::json& params, const bool fHelp);
 
 
         /** GetPrivate
@@ -122,7 +122,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetPrivate(const json::json& params, bool fHelp);
+        json::json GetPrivate(const json::json& params, const bool fHelp);
 
 
         /** Create
@@ -135,7 +135,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& params, bool fHelp);
+        json::json Create(const json::json& params, const bool fHelp);
 
 
         /** Encrypt
@@ -148,7 +148,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Encrypt(const json::json& params, bool fHelp);
+        json::json Encrypt(const json::json& params, const bool fHelp);
 
 
         /** Decrypt
@@ -161,7 +161,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Decrypt(const json::json& params, bool fHelp);
+        json::json Decrypt(const json::json& params, const bool fHelp);
 
 
         /** Sign
@@ -174,7 +174,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Sign(const json::json& params, bool fHelp);
+        json::json Sign(const json::json& params, const bool fHelp);
 
 
         /** Verify
@@ -187,7 +187,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Verify(const json::json& params, bool fHelp);
+        json::json Verify(const json::json& params, const bool fHelp);
 
 
         /** GetHash
@@ -200,7 +200,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetHash(const json::json& params, bool fHelp);
+        json::json GetHash(const json::json& params, const bool fHelp);
 
 
         /** ChangeScheme
@@ -214,7 +214,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ChangeScheme(const json::json& params, bool fHelp);
+        json::json ChangeScheme(const json::json& params, const bool fHelp);
 
 
         /** CreateCertificate
@@ -227,7 +227,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json CreateCertificate(const json::json& params, bool fHelp);
+        json::json CreateCertificate(const json::json& params, const bool fHelp);
 
 
         /** GetCertificate
@@ -240,7 +240,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetCertificate(const json::json& params, bool fHelp);
+        json::json GetCertificate(const json::json& params, const bool fHelp);
 
 
         /** VerifyCertificate
@@ -253,7 +253,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json VerifyCertificate(const json::json& params, bool fHelp);
+        json::json VerifyCertificate(const json::json& params, const bool fHelp);
 
 
     /* private helper methods */

@@ -41,7 +41,7 @@ namespace TAO
     {
 
         /* Submits an item. */
-        json::json Supply::UpdateItem(const json::json& params, bool fHelp)
+        json::json Supply::UpdateItem(const json::json& params, const bool fHelp)
         {
             json::json ret;
 

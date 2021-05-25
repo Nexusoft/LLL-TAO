@@ -35,7 +35,7 @@ namespace TAO
     namespace API
     {
         /* Retrieves the transaction for the given hash. */
-        json::json Ledger::Transaction(const json::json& params, bool fHelp)
+        json::json Ledger::Transaction(const json::json& params, const bool fHelp)
         {
             /* Extract the hash out of the JSON params*/
             uint512_t hash;
@@ -121,7 +121,7 @@ namespace TAO
 
 
         /* Retrieves the transaction for the given hash. */
-        json::json Ledger::Submit(const json::json& params, bool fHelp)
+        json::json Ledger::Submit(const json::json& params, const bool fHelp)
         {
             /* Declare the JSON return object */
             json::json ret;

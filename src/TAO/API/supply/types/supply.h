@@ -82,7 +82,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetItem(const json::json& params, bool fHelp);
+        json::json GetItem(const json::json& params, const bool fHelp);
 
 
         /** Transfer
@@ -95,7 +95,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Transfer(const json::json& params, bool fHelp);
+        json::json Transfer(const json::json& params, const bool fHelp);
 
 
         /** Claims
@@ -108,7 +108,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Claim(const json::json& params, bool fHelp);
+        json::json Claim(const json::json& params, const bool fHelp);
 
 
         /** CreateItem
@@ -121,7 +121,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json CreateItem(const json::json& params, bool fHelp);
+        json::json CreateItem(const json::json& params, const bool fHelp);
 
 
         /** UpdateItem
@@ -134,7 +134,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json UpdateItem(const json::json& params, bool fHelp);
+        json::json UpdateItem(const json::json& params, const bool fHelp);
 
 
         /** History
@@ -147,6 +147,6 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json History(const json::json& params, bool fHelp);
+        json::json History(const json::json& params, const bool fHelp);
     };
 }

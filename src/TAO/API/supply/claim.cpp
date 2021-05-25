@@ -25,7 +25,7 @@ namespace TAO
     {
 
         /* Transfers an item. */
-        json::json Supply::Claim(const json::json& params, bool fHelp)
+        json::json Supply::Claim(const json::json& params, const bool fHelp)
         {
             return Objects::Claim(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Item"));
         }

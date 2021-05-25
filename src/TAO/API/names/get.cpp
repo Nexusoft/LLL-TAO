@@ -31,7 +31,7 @@ namespace TAO
     namespace API
     {
         /* Get the data from a name */
-        json::json Names::Get(const json::json& params, bool fHelp)
+        json::json Names::Get(const json::json& params, const bool fHelp)
         {
             /* Return JSON object */
             json::json jsonRet;
@@ -94,7 +94,7 @@ namespace TAO
 
 
         /* Get the data from a namespace */
-        json::json Names::GetNamespace(const json::json& params, bool fHelp)
+        json::json Names::GetNamespace(const json::json& params, const bool fHelp)
         {
             /* Return JSON object */
             json::json jsonRet;

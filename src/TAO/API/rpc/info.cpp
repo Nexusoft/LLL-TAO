@@ -51,7 +51,7 @@ namespace TAO
 
         /* getinfo
         Returns an object containing various state info */
-        json::json RPC::GetInfo(const json::json& params, bool fHelp)
+        json::json RPC::GetInfo(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -122,7 +122,7 @@ namespace TAO
 
         /* getpeerinfo
         Returns data about each connected network node */
-        json::json RPC::GetPeerInfo(const json::json& params, bool fHelp)
+        json::json RPC::GetPeerInfo(const json::json& params, const bool fHelp)
         {
             json::json response;
 
@@ -167,7 +167,7 @@ namespace TAO
 
         /* getmininginfo
         Returns an object containing mining-related information.*/
-        json::json RPC::GetMiningInfo(const json::json& params, bool fHelp)
+        json::json RPC::GetMiningInfo(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(

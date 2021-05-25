@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /* Saves the users session into the local DB so that it can be resumed later after a crash */
-        json::json Users::Save(const json::json& params, bool fHelp)
+        json::json Users::Save(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

@@ -40,7 +40,7 @@ namespace TAO
     namespace API
     {
         /* Tokenize an asset into fungible tokens that represent ownership. */
-        json::json Assets::Tokenize(const json::json& params, bool fHelp)
+        json::json Assets::Tokenize(const json::json& params, const bool fHelp)
         {
             json::json ret;
 

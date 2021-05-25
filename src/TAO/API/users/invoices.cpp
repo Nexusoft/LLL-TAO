@@ -38,7 +38,7 @@ namespace TAO
     {
 
         /* Generic method to list object registers by sig chain*/
-        json::json Users::Invoices(const json::json& params, bool fHelp)
+        json::json Users::Invoices(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret = json::json::array();

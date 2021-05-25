@@ -45,7 +45,7 @@ namespace TAO
         //TODO: have the authorization system build a SHA256 hash and salt on the client side as the AUTH hash.
 
         /* Login to a user account. */
-        json::json Users::Login(const json::json& params, bool fHelp)
+        json::json Users::Login(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

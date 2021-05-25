@@ -72,7 +72,7 @@ namespace TAO
              *  @return The json formatted response.
              *
              **/
-            json::json Execute(const json::json& jsonParams, bool fHelp)
+            json::json Execute(const json::json& jsonParams, const bool fHelp)
             {
                 if(!fEnabled)
                     return json::json::object({"error", "method disabled"});

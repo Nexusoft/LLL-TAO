@@ -57,7 +57,7 @@ namespace TAO
 
         /* stop"
         *  Stop Nexus server */
-        json::json System::Stop(const json::json& params, bool fHelp)
+        json::json System::Stop(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 1)
                 return std::string("stop password=<password> - Stop server, if -system/stop set require password");
@@ -83,7 +83,7 @@ namespace TAO
 
 
         /* Reurns a summary of node and ledger information for the currently running node. */
-        json::json System::GetInfo(const json::json& params, bool fHelp)
+        json::json System::GetInfo(const json::json& params, const bool fHelp)
         {
             /* Declare return JSON object */
             json::json jsonRet;
@@ -156,7 +156,7 @@ namespace TAO
 
 
         /* Returns information about the peers currently connected to this node */
-        json::json System::ListPeers(const json::json& params, bool fHelp)
+        json::json System::ListPeers(const json::json& params, const bool fHelp)
         {
             /* Declare the JSON response object*/
             json::json jsonRet = json::json::array();

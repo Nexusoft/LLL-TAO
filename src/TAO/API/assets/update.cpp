@@ -44,7 +44,7 @@ namespace TAO
     {
 
         /* Update the data in an asset */
-        json::json Assets::Update(const json::json& params, bool fHelp)
+        json::json Assets::Update(const json::json& params, const bool fHelp)
         {
             json::json ret;
 

@@ -62,7 +62,7 @@ namespace TAO
         Returns a new Nexus address for receiving payments.
         If [account] is specified (recommended), it is added to the address book
         so payments received with the address will be credited to [account] */
-        json::json RPC::GetNewAddress(const json::json& params, bool fHelp)
+        json::json RPC::GetNewAddress(const json::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -95,7 +95,7 @@ namespace TAO
 
         /* getaccountaddress <account>
         Returns the current Nexus address for receiving payments to this account */
-        json::json RPC::GetAccountAddress(const json::json& params, bool fHelp)
+        json::json RPC::GetAccountAddress(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -114,7 +114,7 @@ namespace TAO
 
         /* setaccount <Nexusaddress> <account>
         Sets the account associated with the given address */
-        json::json RPC::SetAccount(const json::json& params, bool fHelp)
+        json::json RPC::SetAccount(const json::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -148,7 +148,7 @@ namespace TAO
 
         /* getaccount <Nexusaddress>
         Returns the account associated with the given address */
-        json::json RPC::GetAccount(const json::json& params, bool fHelp)
+        json::json RPC::GetAccount(const json::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -170,7 +170,7 @@ namespace TAO
 
         /* getaddressesbyaccount <account>
         Returns the list of addresses for the given account */
-        json::json RPC::GetAddressesByAccount(const json::json& params, bool fHelp)
+        json::json RPC::GetAddressesByAccount(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -198,7 +198,7 @@ namespace TAO
         *  - <amount> is a real and is rounded to the nearest 0.000001
         *  - requires wallet unlocked or [passphrase] provided
         *  - [passphrase] temporarily unlocks wallet for send operation only */
-        json::json RPC::SendToAddress(const json::json& params, bool fHelp)
+        json::json RPC::SendToAddress(const json::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -327,7 +327,7 @@ namespace TAO
 
         /* signmessage <Nexusaddress> <message>
         Sign a message with the private key of an address */
-        json::json RPC::SignMessage(const json::json& params, bool fHelp)
+        json::json RPC::SignMessage(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 2)
                 return std::string(
@@ -362,7 +362,7 @@ namespace TAO
 
         /* verifymessage <Nexusaddress> <signature> <message>
         Verify a signed message */
-        json::json RPC::VerifyMessage(const json::json& params, bool fHelp)
+        json::json RPC::VerifyMessage(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 3)
                 return std::string(
@@ -397,7 +397,7 @@ namespace TAO
 
         /* getreceivedbyaddress <Nexusaddress> [minconf=1]
         Returns the total amount received by <Nexusaddress> in transactions with at least [minconf] confirmations */
-        json::json RPC::GetReceivedByAddress(const json::json& params, bool fHelp)
+        json::json RPC::GetReceivedByAddress(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
@@ -450,7 +450,7 @@ namespace TAO
 
         /* getreceivedbyaccount <account> [minconf=1]
         Returns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations */
-        json::json RPC::GetReceivedByAccount(const json::json& params, bool fHelp)
+        json::json RPC::GetReceivedByAccount(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
@@ -499,7 +499,7 @@ namespace TAO
         /* getbalance [account] [minconf=1]
         *  If [account] is not specified, returns the server's total available balance.
         *  If [account] is specified, returns the balance in the account */
-        json::json RPC::GetBalance(const json::json& params, bool fHelp)
+        json::json RPC::GetBalance(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 2)
                 return std::string(
@@ -564,7 +564,7 @@ namespace TAO
 
         /* move <fromaccount> <toaccount> <amount> [minconf=1] [comment]
         Move from one account in your wallet to another */
-        json::json RPC::MoveCmd(const json::json& params, bool fHelp)
+        json::json RPC::MoveCmd(const json::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -699,7 +699,7 @@ namespace TAO
         /* sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]
         * <amount> is a real and is rounded to the nearest 0.000001
         * requires wallet passphrase to be set with walletpassphrase first */
-        json::json RPC::SendFrom(const json::json& params, bool fHelp)
+        json::json RPC::SendFrom(const json::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -858,7 +858,7 @@ namespace TAO
         /* sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]
         * - amounts are double-precision floating point numbers
         * requires wallet passphrase to be set with walletpassphrase first*/
-        json::json RPC::SendMany(const json::json& params, bool fHelp)
+        json::json RPC::SendMany(const json::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -1045,7 +1045,7 @@ namespace TAO
         *  Add a nrequired-to-sign multisignature address to the wallet
         *  each key is a nexus address or hex-encoded public key.
         *  If [account] is specified, assign address to [account]. */
-        json::json RPC::AddMultisigAddress(const json::json& params, bool fHelp)
+        json::json RPC::AddMultisigAddress(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 2 || params.size() > 3)
             {
@@ -1231,7 +1231,7 @@ namespace TAO
         *  \"account\" : the account of the receiving address
         *  \"amount\" : total amount received by the address
         *  \"confirmations\" : number of confirmations of the most recent transaction included */
-        json::json RPC::ListReceivedByAddress(const json::json& params, bool fHelp)
+        json::json RPC::ListReceivedByAddress(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 2)
                 return std::string(
@@ -1256,7 +1256,7 @@ namespace TAO
         *  \"account\" : the account of the receiving address
         *  \"amount\" : total amount received by the address
         *  \"confirmations\" : number of confirmations of the most recent transaction incl*/
-        json::json RPC::ListReceivedByAccount(const json::json& params, bool fHelp)
+        json::json RPC::ListReceivedByAccount(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 2)
                 return std::string(
@@ -1494,7 +1494,7 @@ namespace TAO
 
         /* listtransactions [account] [count=10] [from=0]
         Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]*/
-        json::json RPC::ListTransactions(const json::json& params, bool fHelp)
+        json::json RPC::ListTransactions(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 3)
                 return std::string(
@@ -1555,7 +1555,7 @@ namespace TAO
 
         /* listaddresses [max=100]
         Returns list of addresses */
-        json::json RPC::ListAddresses(const json::json& params, bool fHelp)
+        json::json RPC::ListAddresses(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -1582,7 +1582,7 @@ namespace TAO
 
         /* listaccounts
         Returns Object that has account names as keys, account balances as values */
-        json::json RPC::ListAccounts(const json::json& params, bool fHelp)
+        json::json RPC::ListAccounts(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 0)
                 return std::string(
@@ -1645,7 +1645,7 @@ namespace TAO
 
         /* listsinceblock [blockhash] [target-confirmations]
         Get all transactions in blocks since block [blockhash], or all transactions if omitted **/
-        json::json RPC::ListSinceBlock(const json::json& params, bool fHelp)
+        json::json RPC::ListSinceBlock(const json::json& params, const bool fHelp)
         {
             if(fHelp)
                 return std::string(
@@ -1698,7 +1698,7 @@ namespace TAO
         }
 
         /* RPC Method to bridge limitation of Transaction Lookup from Wallet. Allows lookup from any wallet. */
-        json::json RPC::GetGlobalTransaction(const json::json& params, bool fHelp)
+        json::json RPC::GetGlobalTransaction(const json::json& params, const bool fHelp)
         {
             if (fHelp || params.size() != 1)
                 return std::string(
@@ -1891,7 +1891,7 @@ namespace TAO
 
         /* gettransaction <txid>
         Get detailed information about <txid> */
-        json::json RPC::GetTransaction(const json::json& params, bool fHelp)
+        json::json RPC::GetTransaction(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -1946,7 +1946,7 @@ namespace TAO
 
         /* getrawtransaction <txid>
         Returns a std::string that is serialized, hex-encoded data for <txid> */
-        json::json RPC::GetRawTransaction(const json::json& params, bool fHelp)
+        json::json RPC::GetRawTransaction(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -1972,7 +1972,7 @@ namespace TAO
         /* sendrawtransaction <hex std::string> [checkinputs=0]
         Submits raw transaction (serialized, hex-encoded) to local node and network.
         If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it */
-        json::json RPC::SendRawTransaction(const json::json& params, bool fHelp)
+        json::json RPC::SendRawTransaction(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
@@ -2027,7 +2027,7 @@ namespace TAO
 
         /* validateaddress <Nexusaddress>
         Return information about <Nexusaddress> */
-        json::json RPC::ValidateAddress(const json::json& params, bool fHelp)
+        json::json RPC::ValidateAddress(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -2124,7 +2124,7 @@ namespace TAO
         }
 
         /* Make a public/private key pair. [prefix] is optional preferred prefix for the public key */
-        json::json RPC::MakeKeyPair(const json::json& params, bool fHelp)
+        json::json RPC::MakeKeyPair(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 1)
                 return std::string(
@@ -2164,7 +2164,7 @@ namespace TAO
 
             Second TODO: While at this the wallet core code needs to be reworked in orcder to mitigate the issue of
             having a large number of transactions in the actual memory map which can slow the entire process down. */
-        json::json RPC::UnspentBalance(const json::json& params, bool fHelp)
+        json::json RPC::UnspentBalance(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 1)
                 return std::string(
@@ -2232,7 +2232,7 @@ namespace TAO
         Optionally filtered to only include txouts paid to specified addresses.
         Results are an array of Objects, each of which has:
         {txid, vout, scriptPubKey, amount, confirmations} */
-        json::json RPC::ListUnspent(const json::json& params, bool fHelp)
+        json::json RPC::ListUnspent(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 3)
                 return std::string(

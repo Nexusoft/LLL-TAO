@@ -23,13 +23,13 @@ namespace TAO
     namespace API
     {
         /* Transfer a name. */
-        json::json Names::TransferName(const json::json& params, bool fHelp)
+        json::json Names::TransferName(const json::json& params, const bool fHelp)
         {
             return Objects::Transfer(params, TAO::Register::OBJECTS::NAME, std::string("Name"));
         }
 
         /* Transfer a namespace. */
-        json::json Names::TransferNamespace(const json::json& params, bool fHelp)
+        json::json Names::TransferNamespace(const json::json& params, const bool fHelp)
         {
             return Objects::Transfer(params, TAO::Register::OBJECTS::NAMESPACE, std::string("Namespace"));
         }

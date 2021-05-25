@@ -33,7 +33,7 @@ namespace TAO
     {
 
         /* Unlock an account for mining (TODO: make this much more secure) */
-        json::json Users::Unlock(const json::json& params, bool fHelp)
+        json::json Users::Unlock(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

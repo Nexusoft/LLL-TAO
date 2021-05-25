@@ -54,7 +54,7 @@ namespace TAO::API
 {
 
     /* Debit an account for NXS or any token. */
-    json::json Finance::Debit(const json::json& jParams, bool fHelp)
+    json::json Finance::Debit(const json::json& jParams, const bool fHelp)
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =

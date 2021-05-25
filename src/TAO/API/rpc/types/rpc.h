@@ -86,7 +86,7 @@ namespace TAO::API
          *  @return JSON containing the user supplied parameters array
          *
          **/
-        json::json Echo(const json::json& params, bool fHelp);
+        json::json Echo(const json::json& params, const bool fHelp);
 
 
         /** Help
@@ -100,7 +100,7 @@ namespace TAO::API
          *  @return JSON containing the help list
          *
          **/
-        json::json Help( const json::json& params, bool fHelp);
+        json::json Help( const json::json& params, const bool fHelp);
 
 
         /** Stop
@@ -113,7 +113,7 @@ namespace TAO::API
          *  @return JSON containing the help list
          *
          **/
-        json::json Stop(const json::json& params, bool fHelp);
+        json::json Stop(const json::json& params, const bool fHelp);
 
 
         /** GetInfo
@@ -126,7 +126,7 @@ namespace TAO::API
          *  @return JSON containing the information.
          *
          **/
-        json::json GetInfo(const json::json& params, bool fHelp);
+        json::json GetInfo(const json::json& params, const bool fHelp);
 
 
         /** GetMiningInfo
@@ -139,7 +139,7 @@ namespace TAO::API
          *  @return JSON containing the information.
          *
          **/
-        json::json GetMiningInfo(const json::json& params, bool fHelp);
+        json::json GetMiningInfo(const json::json& params, const bool fHelp);
 
 
         /** GetConnectionCount
@@ -152,7 +152,7 @@ namespace TAO::API
          *  @return JSON containing the information.
          *
          **/
-        json::json GetConnectionCount(const json::json& params, bool fHelp);
+        json::json GetConnectionCount(const json::json& params, const bool fHelp);
 
 
         /** GetNewAddress
@@ -165,7 +165,7 @@ namespace TAO::API
          *  @return JSON containing the information.
          *
          **/
-        json::json GetNewAddress(const json::json& params, bool fHelp);
+        json::json GetNewAddress(const json::json& params, const bool fHelp);
 
 
         /** GetAccountAddress
@@ -178,7 +178,7 @@ namespace TAO::API
          *  @return JSON containing the information.
          *
          **/
-        json::json GetAccountAddress(const json::json& params, bool fHelp);
+        json::json GetAccountAddress(const json::json& params, const bool fHelp);
 
 
         /** SetAccount
@@ -191,7 +191,7 @@ namespace TAO::API
          *  @return JSON containing the information.
          *
          **/
-        json::json SetAccount(const json::json& params, bool fHelp);
+        json::json SetAccount(const json::json& params, const bool fHelp);
 
 
         /** GetAccount
@@ -204,7 +204,7 @@ namespace TAO::API
          *  @return JSON containing the information.
          *
          **/
-        json::json GetAccount(const json::json& params, bool fHelp);
+        json::json GetAccount(const json::json& params, const bool fHelp);
 
 
         /** GetAddressesByAccount
@@ -217,7 +217,7 @@ namespace TAO::API
          *  @return JSON containing the information.
          *
          **/
-        json::json GetAddressesByAccount(const json::json& params, bool fHelp);
+        json::json GetAddressesByAccount(const json::json& params, const bool fHelp);
 
 
         /** SendToAddress
@@ -231,7 +231,7 @@ namespace TAO::API
          *  @return JSON containing the information.
          *
          **/
-        json::json SendToAddress(const json::json& params, bool fHelp);
+        json::json SendToAddress(const json::json& params, const bool fHelp);
 
 
         /** SignMessage
@@ -244,7 +244,7 @@ namespace TAO::API
          *  @return JSON containing the information.
          *
          **/
-        json::json SignMessage(const json::json& params, bool fHelp);
+        json::json SignMessage(const json::json& params, const bool fHelp);
 
 
         /** VerifyMessage
@@ -257,7 +257,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json VerifyMessage(const json::json& params, bool fHelp);
+        json::json VerifyMessage(const json::json& params, const bool fHelp);
 
 
         /** GetReceivedByAddress
@@ -270,7 +270,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetReceivedByAddress(const json::json& params, bool fHelp);
+        json::json GetReceivedByAddress(const json::json& params, const bool fHelp);
 
 
         /** GetReceivedByAccount
@@ -283,7 +283,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetReceivedByAccount(const json::json& params, bool fHelp);
+        json::json GetReceivedByAccount(const json::json& params, const bool fHelp);
 
 
         /** GetBalance
@@ -297,7 +297,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetBalance(const json::json& params, bool fHelp);
+        json::json GetBalance(const json::json& params, const bool fHelp);
 
 
         /** MoveCmd
@@ -310,7 +310,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json MoveCmd(const json::json& params, bool fHelp);
+        json::json MoveCmd(const json::json& params, const bool fHelp);
 
 
         /** SendFrom
@@ -324,7 +324,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json SendFrom(const json::json& params, bool fHelp);
+        json::json SendFrom(const json::json& params, const bool fHelp);
 
 
         /** SendMany
@@ -338,7 +338,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json SendMany(const json::json& params, bool fHelp);
+        json::json SendMany(const json::json& params, const bool fHelp);
 
 
         /** AddMultisigAddress
@@ -353,7 +353,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json AddMultisigAddress(const json::json& params, bool fHelp);
+        json::json AddMultisigAddress(const json::json& params, const bool fHelp);
 
 
         /** ListReceivedByAddress
@@ -372,7 +372,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ListReceivedByAddress(const json::json& params, bool fHelp);
+        json::json ListReceivedByAddress(const json::json& params, const bool fHelp);
 
 
         /** ListReceivedByAccount
@@ -391,7 +391,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ListReceivedByAccount(const json::json& params, bool fHelp);
+        json::json ListReceivedByAccount(const json::json& params, const bool fHelp);
 
 
         /** ListTransactions
@@ -404,7 +404,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ListTransactions(const json::json& params, bool fHelp);
+        json::json ListTransactions(const json::json& params, const bool fHelp);
 
 
         /** ListAddresses
@@ -417,7 +417,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ListAddresses(const json::json& params, bool fHelp);
+        json::json ListAddresses(const json::json& params, const bool fHelp);
 
 
         /** ListAccounts
@@ -430,7 +430,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ListAccounts(const json::json& params, bool fHelp);
+        json::json ListAccounts(const json::json& params, const bool fHelp);
 
 
         /** ListSinceBlock
@@ -443,7 +443,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ListSinceBlock(const json::json& params, bool fHelp);
+        json::json ListSinceBlock(const json::json& params, const bool fHelp);
 
 
         /** GetGlobalTransaction
@@ -456,7 +456,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetGlobalTransaction(const json::json& params, bool fHelp);
+        json::json GetGlobalTransaction(const json::json& params, const bool fHelp);
 
 
         /** GetTransaction
@@ -469,7 +469,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetTransaction(const json::json& params, bool fHelp);
+        json::json GetTransaction(const json::json& params, const bool fHelp);
 
 
         /** GetRawTransaction
@@ -482,7 +482,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetRawTransaction(const json::json& params, bool fHelp);
+        json::json GetRawTransaction(const json::json& params, const bool fHelp);
 
 
         /** SendRawTransaction
@@ -496,7 +496,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json SendRawTransaction(const json::json& params, bool fHelp);
+        json::json SendRawTransaction(const json::json& params, const bool fHelp);
 
 
         /** ValidateAddress
@@ -509,7 +509,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ValidateAddress(const json::json& params, bool fHelp);
+        json::json ValidateAddress(const json::json& params, const bool fHelp);
 
 
         /** MakeKeyPair
@@ -522,7 +522,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json MakeKeyPair(const json::json& params, bool fHelp);
+        json::json MakeKeyPair(const json::json& params, const bool fHelp);
 
 
         /** UnspentBalance
@@ -535,7 +535,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json UnspentBalance(const json::json& params, bool fHelp);
+        json::json UnspentBalance(const json::json& params, const bool fHelp);
 
 
         /** ListUnspent
@@ -551,7 +551,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ListUnspent(const json::json& params, bool fHelp);
+        json::json ListUnspent(const json::json& params, const bool fHelp);
 
 
         /** Reset
@@ -564,7 +564,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json Reset(const json::json& params, bool fHelp);
+        json::json Reset(const json::json& params, const bool fHelp);
 
 
         /** GetPeerInfo
@@ -577,7 +577,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetPeerInfo(const json::json& params, bool fHelp);
+        json::json GetPeerInfo(const json::json& params, const bool fHelp);
 
 
         /** GetNetworkHashps
@@ -590,7 +590,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetNetworkHashps(const json::json& params, bool fHelp);
+        json::json GetNetworkHashps(const json::json& params, const bool fHelp);
 
 
         /** GetNetworkPps
@@ -603,7 +603,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetNetworkPps(const json::json& params, bool fHelp);
+        json::json GetNetworkPps(const json::json& params, const bool fHelp);
 
 
         /** GetNetworkTrustKeys
@@ -616,7 +616,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetNetworkTrustKeys(const json::json& params, bool fHelp);
+        json::json GetNetworkTrustKeys(const json::json& params, const bool fHelp);
 
 
         /** GetBlockCount
@@ -629,7 +629,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetBlockCount(const json::json& params, bool fHelp);
+        json::json GetBlockCount(const json::json& params, const bool fHelp);
 
 
         /** GetBlockNumber
@@ -642,7 +642,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetBlockNumber(const json::json& params, bool fHelp);
+        json::json GetBlockNumber(const json::json& params, const bool fHelp);
 
 
         /** GetDifficulty
@@ -655,7 +655,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetDifficulty(const json::json& params, bool fHelp);
+        json::json GetDifficulty(const json::json& params, const bool fHelp);
 
 
         /** GetSupplyRates
@@ -670,7 +670,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetSupplyRates(const json::json& params, bool fHelp);
+        json::json GetSupplyRates(const json::json& params, const bool fHelp);
 
 
         /** GetMoneySupply
@@ -684,7 +684,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetMoneySupply(const json::json& params, bool fHelp);
+        json::json GetMoneySupply(const json::json& params, const bool fHelp);
 
 
         /** GetBlockHash
@@ -697,7 +697,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetBlockHash(const json::json& params, bool fHelp);
+        json::json GetBlockHash(const json::json& params, const bool fHelp);
 
 
         /** IsOrphan
@@ -710,7 +710,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json IsOrphan(const json::json& params, bool fHelp);
+        json::json IsOrphan(const json::json& params, const bool fHelp);
 
 
         /** GetBlock
@@ -724,7 +724,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json GetBlock(const json::json& params, bool fHelp);
+        json::json GetBlock(const json::json& params, const bool fHelp);
 
 
         /** BackupWallet
@@ -737,7 +737,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json BackupWallet(const json::json& params, bool fHelp);
+        json::json BackupWallet(const json::json& params, const bool fHelp);
 
 
         /** KeypoolRefill
@@ -750,7 +750,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json KeypoolRefill(const json::json& params, bool fHelp);
+        json::json KeypoolRefill(const json::json& params, const bool fHelp);
 
 
         /** SetTxFee
@@ -762,7 +762,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json SetTxFee(const json::json& params, bool fHelp);
+        json::json SetTxFee(const json::json& params, const bool fHelp);
 
 
         /** WalletPassphrase
@@ -777,7 +777,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json WalletPassphrase(const json::json& params, bool fHelp);
+        json::json WalletPassphrase(const json::json& params, const bool fHelp);
 
 
         /** EncryptWallet
@@ -790,7 +790,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json EncryptWallet(const json::json& params, bool fHelp);
+        json::json EncryptWallet(const json::json& params, const bool fHelp);
 
 
         /** WalletPassphraseChange
@@ -803,7 +803,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json WalletPassphraseChange(const json::json& params, bool fHelp);
+        json::json WalletPassphraseChange(const json::json& params, const bool fHelp);
 
 
         /** WalletLock
@@ -818,7 +818,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json WalletLock(const json::json& params, bool fHelp);
+        json::json WalletLock(const json::json& params, const bool fHelp);
 
 
         /** CheckWallet
@@ -831,7 +831,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json CheckWallet(const json::json& params, bool fHelp);
+        json::json CheckWallet(const json::json& params, const bool fHelp);
 
 
         /** ListTrustKeys
@@ -844,7 +844,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ListTrustKeys(const json::json& params, bool fHelp);
+        json::json ListTrustKeys(const json::json& params, const bool fHelp);
 
 
         /** RepairWallet
@@ -857,7 +857,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json RepairWallet(const json::json& params, bool fHelp);
+        json::json RepairWallet(const json::json& params, const bool fHelp);
 
 
         /** Rescan
@@ -870,7 +870,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json Rescan(const json::json& params, bool fHelp);
+        json::json Rescan(const json::json& params, const bool fHelp);
 
 
         /** ImportPrivKey
@@ -883,7 +883,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ImportPrivKey(const json::json& params, bool fHelp);
+        json::json ImportPrivKey(const json::json& params, const bool fHelp);
 
 
         /** DumpPrivKey
@@ -896,7 +896,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json DumpPrivKey(const json::json& params, bool fHelp);
+        json::json DumpPrivKey(const json::json& params, const bool fHelp);
 
 
         /** ImportKeys
@@ -910,7 +910,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ImportKeys(const json::json& params, bool fHelp);
+        json::json ImportKeys(const json::json& params, const bool fHelp);
 
 
         /** ExportKeys
@@ -924,7 +924,7 @@ namespace TAO::API
         *  @return JSON containing the information.
         *
         **/
-        json::json ExportKeys(const json::json& params, bool fHelp);
+        json::json ExportKeys(const json::json& params, const bool fHelp);
 
     private:
 

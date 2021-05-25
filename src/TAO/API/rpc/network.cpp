@@ -45,7 +45,7 @@ namespace TAO
     {
 
         /* Get network hashrate for the hashing channel */
-        json::json RPC::GetNetworkHashps(const json::json& params, bool fHelp)
+        json::json RPC::GetNetworkHashps(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -97,7 +97,7 @@ namespace TAO
 
 
         /* Get network prime searched per second */
-        json::json RPC::GetNetworkPps(const json::json& params, bool fHelp)
+        json::json RPC::GetNetworkPps(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -147,7 +147,7 @@ namespace TAO
 
 
         /* List all the Trust Keys on the Network */
-        json::json RPC::GetNetworkTrustKeys(const json::json& params, bool fHelp)
+        json::json RPC::GetNetworkTrustKeys(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string("getnetworktrustkeys - List all the Trust Keys on the Network");
@@ -212,7 +212,7 @@ namespace TAO
 
 
         /* Returns the number of blocks in the longest block chain */
-        json::json RPC::GetBlockCount(const json::json& params, bool fHelp)
+        json::json RPC::GetBlockCount(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -224,7 +224,7 @@ namespace TAO
 
 
         /* Deprecated.  Use getblockcount */
-        json::json RPC::GetBlockNumber(const json::json& params, bool fHelp)
+        json::json RPC::GetBlockNumber(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -235,7 +235,7 @@ namespace TAO
 
 
         /* Returns difficulty as a multiple of the minimum difficulty */
-        json::json RPC::GetDifficulty(const json::json& params, bool fHelp)
+        json::json RPC::GetDifficulty(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -272,7 +272,7 @@ namespace TAO
         Returns an object containing current Nexus production rates in set time intervals.
         Time Frequency is in base 13 month, 28 day totalling 364 days.
         This is to prevent error from Gregorian Figures */
-        json::json RPC::GetSupplyRates(const json::json& params, bool fHelp)
+        json::json RPC::GetSupplyRates(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -315,7 +315,7 @@ namespace TAO
         /* getmoneysupply <timestamp>
         Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors.
         Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp */
-        json::json RPC::GetMoneySupply(const json::json& params, bool fHelp)
+        json::json RPC::GetMoneySupply(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 1)
                 return std::string(
@@ -354,7 +354,7 @@ namespace TAO
 
         /* getblockhash <index>"
         *  Returns hash of block in best-block-chain at <index> */
-        json::json RPC::GetBlockHash(const json::json& params, bool fHelp)
+        json::json RPC::GetBlockHash(const json::json& params, const bool fHelp)
         {
 
             if(fHelp || params.size() != 1)
@@ -381,7 +381,7 @@ namespace TAO
 
         /* isorphan <hash>"
         *  Returns whether a block is an orphan or not*/
-        json::json RPC::IsOrphan(const json::json& params, bool fHelp)
+        json::json RPC::IsOrphan(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -407,7 +407,7 @@ namespace TAO
         /* getblock <hash> [txinfo]"
         *  txinfo optional to print more detailed tx info."
         *  Returns details of a block with given block-hash */
-        json::json RPC::GetBlock(const json::json& params, bool fHelp)
+        json::json RPC::GetBlock(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(

@@ -223,7 +223,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Login(const json::json& params, bool fHelp);
+        json::json Login(const json::json& params, const bool fHelp);
 
 
         /** Unlock
@@ -236,7 +236,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Unlock(const json::json& params, bool fHelp);
+        json::json Unlock(const json::json& params, const bool fHelp);
 
 
         /** Lock
@@ -249,7 +249,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Lock(const json::json& params, bool fHelp);
+        json::json Lock(const json::json& params, const bool fHelp);
 
 
         /** Logout
@@ -262,7 +262,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Logout(const json::json& params, bool fHelp);
+        json::json Logout(const json::json& params, const bool fHelp);
 
 
         /** Create
@@ -275,7 +275,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& params, bool fHelp);
+        json::json Create(const json::json& params, const bool fHelp);
 
 
         /** Update
@@ -288,7 +288,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Update(const json::json& params, bool fHelp);
+        json::json Update(const json::json& params, const bool fHelp);
 
 
         /** Recover
@@ -301,7 +301,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Recover(const json::json& params, bool fHelp);
+        json::json Recover(const json::json& params, const bool fHelp);
 
 
         /** GetTransactions
@@ -314,7 +314,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Transactions(const json::json& params, bool fHelp);
+        json::json Transactions(const json::json& params, const bool fHelp);
 
 
         /** Notifications
@@ -327,7 +327,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Notifications(const json::json& params, bool fHelp);
+        json::json Notifications(const json::json& params, const bool fHelp);
 
 
         /** Assets
@@ -340,7 +340,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Assets(const json::json& params, bool fHelp);
+        json::json Assets(const json::json& params, const bool fHelp);
 
 
         /** Tokens
@@ -353,7 +353,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Tokens(const json::json& params, bool fHelp);
+        json::json Tokens(const json::json& params, const bool fHelp);
 
 
         /** Accounts
@@ -366,7 +366,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Accounts(const json::json& params, bool fHelp);
+        json::json Accounts(const json::json& params, const bool fHelp);
 
 
         /** Names
@@ -379,7 +379,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Names(const json::json& params, bool fHelp);
+        json::json Names(const json::json& params, const bool fHelp);
 
 
         /** Namespaces
@@ -392,7 +392,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Namespaces(const json::json& params, bool fHelp);
+        json::json Namespaces(const json::json& params, const bool fHelp);
 
 
         /** Items
@@ -405,7 +405,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Items(const json::json& params, bool fHelp);
+        json::json Items(const json::json& params, const bool fHelp);
 
 
         /** Status
@@ -418,7 +418,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Status(const json::json& params, bool fHelp);
+        json::json Status(const json::json& params, const bool fHelp);
 
 
         /** Invoices
@@ -431,7 +431,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Invoices(const json::json& params, bool fHelp);
+        json::json Invoices(const json::json& params, const bool fHelp);
 
 
         /** ProcessNotifications
@@ -444,7 +444,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ProcessNotifications(const json::json& params, bool fHelp);
+        json::json ProcessNotifications(const json::json& params, const bool fHelp);
 
 
         /** Save
@@ -457,7 +457,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Save(const json::json& params, bool fHelp);
+        json::json Save(const json::json& params, const bool fHelp);
 
 
         /** Load
@@ -470,7 +470,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Load(const json::json& params, bool fHelp);
+        json::json Load(const json::json& params, const bool fHelp);
 
 
         /** Has
@@ -483,7 +483,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Has(const json::json& params, bool fHelp);
+        json::json Has(const json::json& params, const bool fHelp);
 
 
         /** Processed
@@ -496,7 +496,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Processed(const json::json& params, bool fHelp);
+        json::json Processed(const json::json& params, const bool fHelp);
 
 
         /** Clear
@@ -509,7 +509,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Clear(const json::json& params, bool fHelp);
+        json::json Clear(const json::json& params, const bool fHelp);
 
 
         /** LoginThread

@@ -39,7 +39,7 @@ namespace TAO
     {
 
         /* Generic method to list object registers by sig chain*/
-        json::json Objects::List(const json::json& params, uint8_t nRegisterType, uint8_t nObjectType)
+        json::json Objects::List(const json::json& params, const uint8_t nRegisterType, const uint8_t nObjectType)
         {
             /* JSON return value. */
             json::json ret = json::json::array();

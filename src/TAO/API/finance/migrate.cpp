@@ -54,7 +54,7 @@ namespace TAO
     namespace API
     {
         /* Migrate all Legacy wallet accounts to corresponding accounts in the signature chain */
-        json::json Finance::MigrateAccounts(const json::json& params, bool fHelp)
+        json::json Finance::MigrateAccounts(const json::json& params, const bool fHelp)
         {
             /* Return value array */
             json::json ret = json::json::array();

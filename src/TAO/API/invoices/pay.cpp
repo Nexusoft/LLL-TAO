@@ -42,7 +42,7 @@ namespace TAO
     {
 
         /* Transfers an item. */
-        json::json Invoices::Pay(const json::json& params, bool fHelp)
+        json::json Invoices::Pay(const json::json& params, const bool fHelp)
         {
             /* First ensure that transaction version 2 active, as the conditions required for invoices were not enabled until v2 */
             const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();

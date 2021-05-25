@@ -43,7 +43,7 @@ namespace TAO
 
         /* Change the signature scheme used to generate the public-private keys for the users signature chain as well
            as keys stored in the crypto object register. */
-        json::json Crypto::ChangeScheme(const json::json& params, bool fHelp)
+        json::json Crypto::ChangeScheme(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

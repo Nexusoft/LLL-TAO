@@ -37,7 +37,7 @@ namespace TAO
     {
 
         /* Returns a list of all votes made to an account. */
-        json::json Voting::List(const json::json& params, bool fHelp)
+        json::json Voting::List(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret = json::json::array();

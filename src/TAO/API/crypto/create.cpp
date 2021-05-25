@@ -50,7 +50,7 @@ namespace TAO
     {
 
         /* Generates private key based on keyname/user/pass/pin and stores it in the keyname slot in the crypto register. */
-        json::json Crypto::Create(const json::json& params, bool fHelp)
+        json::json Crypto::Create(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;
@@ -179,7 +179,7 @@ namespace TAO
 
 
         /* Generates an x509 certificate and stores a hash of the certificate data in the "cert" slot in the crypto register. */
-        json::json Crypto::CreateCertificate(const json::json& params, bool fHelp)
+        json::json Crypto::CreateCertificate(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

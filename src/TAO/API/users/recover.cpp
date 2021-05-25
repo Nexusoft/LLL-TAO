@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Recover a sig chain and set new credentials by supplying the recovery seed */
-        json::json Users::Recover(const json::json& params, bool fHelp)
+        json::json Users::Recover(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json jsonRet;

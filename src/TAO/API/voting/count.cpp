@@ -37,7 +37,7 @@ namespace TAO
     {
 
         /* Counts the number of votes (transactions) made to a given account. */
-        json::json Voting::Count(const json::json& params, bool fHelp)
+        json::json Voting::Count(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

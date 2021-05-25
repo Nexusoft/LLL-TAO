@@ -43,7 +43,7 @@ namespace TAO
     {
 
         /* Get a list of accounts owned by a signature chain. */
-        json::json Finance::List(const json::json& jParams, bool fHelp)
+        json::json Finance::List(const json::json& jParams, const bool fHelp)
         {
             /* Get our genesis-id for this call. */
             const uint256_t hashGenesis =
@@ -108,7 +108,7 @@ namespace TAO
 
 
         /* Lists all transactions for a given account. */
-        json::json Finance::ListTransactions(const json::json& jParams, bool fHelp)
+        json::json Finance::ListTransactions(const json::json& jParams, const bool fHelp)
         {
             /* The account to list transactions for. */
             const TAO::Register::Address hashAccount = ExtractAddress(jParams);

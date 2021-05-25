@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Login to a user account. */
-        json::json Users::Logout(const json::json& params, bool fHelp)
+        json::json Users::Logout(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

@@ -38,7 +38,7 @@ namespace TAO::API
 
 
     /* Handles the processing of the requested method. */
-    json::json Base::Execute(std::string &strMethod, json::json &jParams, bool fHelp)
+    json::json Base::Execute(std::string &strMethod, json::json &jParams, const bool fHelp)
     {
          /* If the incoming method is not in the function map then rewrite the URL to one that does */
         if(mapFunctions.find(strMethod) == mapFunctions.end())

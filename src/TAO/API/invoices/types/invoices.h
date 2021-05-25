@@ -85,7 +85,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& params, bool fHelp);
+        json::json Create(const json::json& params, const bool fHelp);
 
 
         /** Get
@@ -98,7 +98,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Get(const json::json& params, bool fHelp);
+        json::json Get(const json::json& params, const bool fHelp);
 
 
         /** Pay
@@ -111,7 +111,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Pay(const json::json& params, bool fHelp);
+        json::json Pay(const json::json& params, const bool fHelp);
 
 
         /** Cancel
@@ -124,7 +124,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Cancel(const json::json& params, bool fHelp);
+        json::json Cancel(const json::json& params, const bool fHelp);
 
 
         /** History
@@ -137,7 +137,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json History(const json::json& params, bool fHelp);
+        json::json History(const json::json& params, const bool fHelp);
 
 
         /** InvoiceToJSON

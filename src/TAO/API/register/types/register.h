@@ -72,7 +72,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& params, bool fHelp);
+        json::json Create(const json::json& params, const bool fHelp);
 
 
         /** Read
@@ -85,7 +85,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Read(const json::json& params, bool fHelp);
+        json::json Read(const json::json& params, const bool fHelp);
 
 
         /** Write
@@ -98,7 +98,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Write(const json::json& params, bool fHelp);
+        json::json Write(const json::json& params, const bool fHelp);
 
 
         /** Transfer
@@ -111,7 +111,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Transfer(const json::json& params, bool fHelp);
+        json::json Transfer(const json::json& params, const bool fHelp);
 
 
         /** History
@@ -124,6 +124,6 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json History(const json::json& params, bool fHelp);
+        json::json History(const json::json& params, const bool fHelp);
     };
 }

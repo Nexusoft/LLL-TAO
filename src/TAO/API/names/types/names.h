@@ -86,7 +86,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& params, bool fHelp);
+        json::json Create(const json::json& params, const bool fHelp);
 
 
         /** Get
@@ -100,7 +100,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Get(const json::json& params, bool fHelp);
+        json::json Get(const json::json& params, const bool fHelp);
 
 
         /** UpdateName
@@ -113,7 +113,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json UpdateName(const json::json& params, bool fHelp);
+        json::json UpdateName(const json::json& params, const bool fHelp);
 
 
         /** TransferName
@@ -126,7 +126,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json TransferName(const json::json& params, bool fHelp);
+        json::json TransferName(const json::json& params, const bool fHelp);
 
 
         /** ClaimName
@@ -139,7 +139,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ClaimName(const json::json& params, bool fHelp);
+        json::json ClaimName(const json::json& params, const bool fHelp);
 
 
         /** NameHistory
@@ -152,7 +152,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json NameHistory(const json::json& params, bool fHelp);
+        json::json NameHistory(const json::json& params, const bool fHelp);
 
 
         /** CreateNamespace
@@ -165,7 +165,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json CreateNamespace(const json::json& params, bool fHelp);
+        json::json CreateNamespace(const json::json& params, const bool fHelp);
 
 
         /** GetNamespace
@@ -178,7 +178,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetNamespace(const json::json& params, bool fHelp);
+        json::json GetNamespace(const json::json& params, const bool fHelp);
 
 
         /** TransferNamespace
@@ -191,7 +191,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json TransferNamespace(const json::json& params, bool fHelp);
+        json::json TransferNamespace(const json::json& params, const bool fHelp);
 
 
         /** ClaimNamespace
@@ -204,7 +204,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ClaimNamespace(const json::json& params, bool fHelp);
+        json::json ClaimNamespace(const json::json& params, const bool fHelp);
 
 
         /** NamespaceHistory
@@ -217,7 +217,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json NamespaceHistory(const json::json& params, bool fHelp);
+        json::json NamespaceHistory(const json::json& params, const bool fHelp);
 
 
 

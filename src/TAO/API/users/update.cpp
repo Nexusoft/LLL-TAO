@@ -32,7 +32,7 @@ namespace TAO
     namespace API
     {
         /* Update a user's credentials given older credentials to authorize the update. */
-        json::json Users::Update(const json::json& params, bool fHelp)
+        json::json Users::Update(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json jsonRet;

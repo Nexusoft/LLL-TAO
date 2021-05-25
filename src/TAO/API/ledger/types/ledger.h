@@ -82,7 +82,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& params, bool fHelp);
+        json::json Create(const json::json& params, const bool fHelp);
 
 
         /** BlockHash
@@ -95,7 +95,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json BlockHash(const json::json& params, bool fHelp);
+        json::json BlockHash(const json::json& params, const bool fHelp);
 
 
         /** Block
@@ -108,7 +108,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Block(const json::json& params, bool fHelp);
+        json::json Block(const json::json& params, const bool fHelp);
 
 
         /** Blocks
@@ -122,7 +122,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Blocks(const json::json& params, bool fHelp);
+        json::json Blocks(const json::json& params, const bool fHelp);
 
 
         /** Transaction
@@ -135,7 +135,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Transaction(const json::json& params, bool fHelp);
+        json::json Transaction(const json::json& params, const bool fHelp);
 
 
         /** Submit
@@ -148,7 +148,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Submit(const json::json& params, bool fHelp);
+        json::json Submit(const json::json& params, const bool fHelp);
 
 
         /** MiningInfo
@@ -161,7 +161,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json MiningInfo(const json::json& params, bool fHelp);
+        json::json MiningInfo(const json::json& params, const bool fHelp);
 
 
         /** VoidTransaction
@@ -174,7 +174,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json VoidTransaction(const json::json& params, bool fHelp);
+        json::json VoidTransaction(const json::json& params, const bool fHelp);
 
 
         /** SyncSigChain
@@ -187,7 +187,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json SyncSigChain(const json::json& params, bool fHelp);
+        json::json SyncSigChain(const json::json& params, const bool fHelp);
 
 
         /** SyncHeaders
@@ -201,7 +201,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json SyncHeaders(const json::json& params, bool fHelp);
+        json::json SyncHeaders(const json::json& params, const bool fHelp);
 
 
     };

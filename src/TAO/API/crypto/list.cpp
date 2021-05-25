@@ -36,7 +36,7 @@ namespace TAO
     {
 
         /* List the public keys stored in the crypto object register. */
-        json::json Crypto::List(const json::json& params, bool fHelp)
+        json::json Crypto::List(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret = json::json::array();

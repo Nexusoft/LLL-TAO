@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /* Get the schema for an asset */
-        json::json Assets::GetSchema(const json::json& params, bool fHelp)
+        json::json Assets::GetSchema(const json::json& params, const bool fHelp)
         {
             /* The response JSON array */
             json::json ret = json::json::array();

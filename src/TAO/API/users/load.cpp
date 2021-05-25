@@ -32,7 +32,7 @@ namespace TAO
     {
 
         /* Loads and resumes the users session from the local DB */
-        json::json Users::Load(const json::json& params, bool fHelp)
+        json::json Users::Load(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

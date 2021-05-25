@@ -28,7 +28,7 @@ namespace TAO
     {
 
         /* Get the data from a digital asset */
-        json::json Assets::Get(const json::json& params, bool fHelp)
+        json::json Assets::Get(const json::json& params, const bool fHelp)
         {
             json::json ret;
 

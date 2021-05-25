@@ -36,7 +36,7 @@ namespace TAO
     {
 
         /* Returns an object containing mining-related information. */
-        json::json Ledger::MiningInfo(const json::json& params, bool fHelp)
+        json::json Ledger::MiningInfo(const json::json& params, const bool fHelp)
         {
             // Prime
             uint64_t nPrimePS = 0;

@@ -35,7 +35,7 @@ namespace TAO
 
         /* backupwallet <destination>
         *  Safely copies wallet.dat to destination, which can be a directory or a path with filename */
-        json::json RPC::BackupWallet(const json::json& params, bool fHelp)
+        json::json RPC::BackupWallet(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
             {
@@ -57,7 +57,7 @@ namespace TAO
 
         /*  keypoolrefill
         *   Fills the keypool, requires wallet passphrase to be set */
-        json::json RPC::KeypoolRefill(const json::json& params, bool fHelp)
+        json::json RPC::KeypoolRefill(const json::json& params, const bool fHelp)
         {
             if((fHelp || params.size() > 0))
                 return std::string(
@@ -77,7 +77,7 @@ namespace TAO
 
 
         /* Set the default transaction fee. */
-        json::json RPC::SetTxFee(const json::json& params, bool fHelp)
+        json::json RPC::SetTxFee(const json::json& params, const bool fHelp)
         {
             if (fHelp || params.size() < 1 || params.size() > 1 || Legacy::AmountToSatoshis(params[0]) < Legacy::MIN_TX_FEE)
                 return std::string(
@@ -95,7 +95,7 @@ namespace TAO
         /* walletpassphrase <passphrase> [timeout] [mintonly]
         *  Stores the wallet decryption key in memory for [timeout] seconds.
         *  mintonly is optional true/false allowing only block minting. timeout is ignored if mintonly is true / 1*/
-        json::json RPC::WalletPassphrase(const json::json& params, bool fHelp)
+        json::json RPC::WalletPassphrase(const json::json& params, const bool fHelp)
         {
             if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && (params.size() < 1 || params.size() > 3)))
                 return std::string(
@@ -150,7 +150,7 @@ namespace TAO
 
         /* walletpassphrasechange <oldpassphrase> <newpassphrase>
         *  Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>*/
-        json::json RPC::WalletPassphraseChange(const json::json& params, bool fHelp)
+        json::json RPC::WalletPassphraseChange(const json::json& params, const bool fHelp)
         {
             if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 2))
                 return std::string(
@@ -184,7 +184,7 @@ namespace TAO
         *  Removes the wallet encryption key from memory, locking the wallet.
         *  After calling this method, you will need to call walletpassphrase again
         *  before being able to call any methods which require the wallet to be unlocked */
-        json::json RPC::WalletLock(const json::json& params, bool fHelp)
+        json::json RPC::WalletLock(const json::json& params, const bool fHelp)
         {
             if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 0))
                 return std::string(
@@ -205,7 +205,7 @@ namespace TAO
 
         /* encryptwallet <passphrase>
         *  Encrypts the wallet with <passphrase>. */
-        json::json RPC::EncryptWallet(const json::json& params, bool fHelp)
+        json::json RPC::EncryptWallet(const json::json& params, const bool fHelp)
         {
             if(fHelp || (!Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 1))
                 return std::string(
@@ -232,7 +232,7 @@ namespace TAO
 
         /* checkwallet
         *  Check wallet for integrity */
-        json::json RPC::CheckWallet(const json::json& params, bool fHelp)
+        json::json RPC::CheckWallet(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 0)
                 return std::string("checkwallet - Check wallet for integrity.");
@@ -254,7 +254,7 @@ namespace TAO
 
         /* listtrustkeys
         *  List all the Trust Keys this Node owns */
-        json::json RPC::ListTrustKeys(const json::json& params, bool fHelp)
+        json::json RPC::ListTrustKeys(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 0)
                 return std::string("listtrustkeys - List all the Trust Keys this Node owns.");
@@ -281,7 +281,7 @@ namespace TAO
 
         /* repairwallet
         *  Repair wallet if checkwallet reports any problem */
-        json::json RPC::RepairWallet(const json::json& params, bool fHelp)
+        json::json RPC::RepairWallet(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 0)
                 return std::string("repairwallet - Repair wallet if checkwallet reports any problem.");
@@ -303,7 +303,7 @@ namespace TAO
 
         /* rescan
         *  Rescans the database for relevant wallet transactions */
-        json::json RPC::Rescan(const json::json& params, bool fHelp)
+        json::json RPC::Rescan(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string("rescan - Rescans the database for relevant wallet transactions.");
@@ -316,7 +316,7 @@ namespace TAO
 
         /* importprivkey <PrivateKey> [label]
         *  Adds a private key (as returned by dumpprivkey) to your wallet */
-        json::json RPC::ImportPrivKey(const json::json& params, bool fHelp)
+        json::json RPC::ImportPrivKey(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
@@ -360,7 +360,7 @@ namespace TAO
 
         /* dumpprivkey <NexusAddress>
         *  Reveals the private key corresponding to <NexusAddress> */
-        json::json RPC::DumpPrivKey(const json::json& params, bool fHelp)
+        json::json RPC::DumpPrivKey(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -390,7 +390,7 @@ namespace TAO
         /* importkeys
         *  Import List of Private Keys and return if they import properly or fail with their own code in the output sequence"
         *  You need to list the imported keys in a JSON array of {[account],[privatekey]} */
-        json::json RPC::ImportKeys(const json::json& params, bool fHelp)
+        json::json RPC::ImportKeys(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1)
             {
@@ -452,7 +452,7 @@ namespace TAO
         /* exportkeys
         *  Export the private keys of the current UTXO values.
         *  This will allow the importing and exporting of private keys much easier. */
-        json::json RPC::ExportKeys(const json::json& params, bool fHelp)
+        json::json RPC::ExportKeys(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(

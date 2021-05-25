@@ -149,7 +149,7 @@ namespace TAO
 
 
         /* Test method to echo back the parameters passed by the caller */
-        json::json RPC::Echo(const json::json& jsonParams, bool fHelp)
+        json::json RPC::Echo(const json::json& jsonParams, const bool fHelp)
         {
             if(fHelp || jsonParams.size() == 0)
                 return std::string(
@@ -167,7 +167,7 @@ namespace TAO
 
 
         /* Returns help list.  Iterates through all functions in mapFunctions and calls each one with fHelp=true */
-        json::json RPC::Help(const json::json& jsonParams, bool fHelp)
+        json::json RPC::Help(const json::json& jsonParams, const bool fHelp)
         {
             json::json ret;
 

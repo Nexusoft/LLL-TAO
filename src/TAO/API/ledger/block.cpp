@@ -36,13 +36,13 @@ namespace TAO
     namespace API
     {
         /* Creates a block . */
-        json::json Ledger::Create(const json::json& params, bool fHelp)
+        json::json Ledger::Create(const json::json& params, const bool fHelp)
         {
             throw APIException(-1, "Method not available.");
         }
 
         /* Retrieves the blockhash for the given height. */
-        json::json Ledger::BlockHash(const json::json& params, bool fHelp)
+        json::json Ledger::BlockHash(const json::json& params, const bool fHelp)
         {
             /* Check that the node is configured to index blocks by height */
             if(!config::GetBoolArg("-indexheight"))
@@ -80,7 +80,7 @@ namespace TAO
 
 
         /* Retrieves the block data for a given hash or height. */
-        json::json Ledger::Block(const json::json& params, bool fHelp)
+        json::json Ledger::Block(const json::json& params, const bool fHelp)
         {
             if(config::fClient.load())
                 throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
@@ -149,7 +149,7 @@ namespace TAO
 
 
         /* Retrieves the block data for a sequential range of blocks starting at a given hash or height. */
-        json::json Ledger::Blocks(const json::json& params, bool fHelp)
+        json::json Ledger::Blocks(const json::json& params, const bool fHelp)
         {
             /* Check for the block height parameter. */
             if(params.find("hash") == params.end() && params.find("height") == params.end())

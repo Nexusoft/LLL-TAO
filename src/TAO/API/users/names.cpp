@@ -28,7 +28,7 @@ namespace TAO
     {
 
         /* Get a list of names owned by a signature chain. */
-        json::json Users::Names(const json::json& params, bool fHelp)
+        json::json Users::Names(const json::json& params, const bool fHelp)
         {
             /* For privacy reasons Names are only returned for the currently logged in user (multiuser=0) 
                 or for the logged in session (multiuser=1). To ensure this, we first obtain the session and then inject this into

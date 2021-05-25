@@ -64,7 +64,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Buy(const json::json& params, bool fHelp);
+        json::json Buy(const json::json& params, const bool fHelp);
 
 
         /** Sell
@@ -77,7 +77,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Sell(const json::json& params, bool fHelp);
+        json::json Sell(const json::json& params, const bool fHelp);
 
     };
 }

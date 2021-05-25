@@ -32,7 +32,7 @@ namespace TAO
     {
 
         /* Get status information for the currently logged in user. */
-        json::json Users::Status(const json::json& params, bool fHelp)
+        json::json Users::Status(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

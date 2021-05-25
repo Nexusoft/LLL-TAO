@@ -39,7 +39,7 @@ namespace TAO
     {
 
         /* Verifies the signature is correct for the specified public key and data. */
-        json::json Crypto::Verify(const json::json& params, bool fHelp)
+        json::json Crypto::Verify(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;
@@ -139,7 +139,7 @@ namespace TAO
 
 
         /* Verifies the x509 certificate. */
-        json::json Crypto::VerifyCertificate(const json::json& params, bool fHelp)
+        json::json Crypto::VerifyCertificate(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

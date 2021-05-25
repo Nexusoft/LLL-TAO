@@ -33,7 +33,7 @@ namespace TAO
     namespace API
     {
         /* Validates a register / legacy address */
-        json::json System::Validate(const json::json& params, bool fHelp)
+        json::json System::Validate(const json::json& params, const bool fHelp)
         {
             json::json jsonRet;
 

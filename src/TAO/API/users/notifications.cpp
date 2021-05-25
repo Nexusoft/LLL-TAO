@@ -951,7 +951,7 @@ namespace TAO
 
 
         /* Get a user's notifications. */
-        json::json Users::Notifications(const json::json& params, bool fHelp)
+        json::json Users::Notifications(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret = json::json::array();
@@ -1159,7 +1159,7 @@ namespace TAO
 
 
         /* Process any outstanding notifications for a particular sig chain */
-        json::json Users::ProcessNotifications(const json::json& params, bool fHelp)
+        json::json Users::ProcessNotifications(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

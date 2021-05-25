@@ -20,7 +20,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Lists the currently processed notifications. */
-    json::json Users::Clear(const json::json& params, bool fHelp)
+    json::json Users::Clear(const json::json& params, const bool fHelp)
     {
         /* JSON return value. */
         json::json jRet;

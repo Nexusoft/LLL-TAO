@@ -43,7 +43,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Create a NXS account. */
-    json::json Finance::Create(const json::json& jParams, bool fHelp)
+    json::json Finance::Create(const json::json& jParams, const bool fHelp)
     {
         /* Check that we have designated a type to create. */
         TAO::Register::Address hashRegister;

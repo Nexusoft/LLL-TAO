@@ -28,7 +28,7 @@ namespace TAO
     namespace API
     {
         /* Get's the description of an item. */
-        json::json Supply::GetItem(const json::json& params, bool fHelp)
+        json::json Supply::GetItem(const json::json& params, const bool fHelp)
         {
             json::json ret;
 

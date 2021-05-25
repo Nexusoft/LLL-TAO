@@ -46,7 +46,7 @@ namespace TAO
     {
 
         /* Returns the public key from the crypto object register for the specified key name, from the specified signature chain. */
-        json::json Crypto::Get(const json::json& params, bool fHelp)
+        json::json Crypto::Get(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;
@@ -132,7 +132,7 @@ namespace TAO
 
 
         /* Generates and returns the public key for a key stored in the crypto object register. */
-        json::json Crypto::GetPublic(const json::json& params, bool fHelp)
+        json::json Crypto::GetPublic(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;
@@ -185,7 +185,7 @@ namespace TAO
 
 
         /* Generates and returns the private key for a key stored in the crypto object register. */
-        json::json Crypto::GetPrivate(const json::json& params, bool fHelp)
+        json::json Crypto::GetPrivate(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;
@@ -223,7 +223,7 @@ namespace TAO
         }
 
         /* Generates a hash of the data using the requested hashing function. */
-        json::json Crypto::GetHash(const json::json& params, bool fHelp)
+        json::json Crypto::GetHash(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;
@@ -273,7 +273,7 @@ namespace TAO
 
 
         /* Returns the last generated x509 certificate for this sig chain. */
-        json::json Crypto::GetCertificate(const json::json& params, bool fHelp)
+        json::json Crypto::GetCertificate(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

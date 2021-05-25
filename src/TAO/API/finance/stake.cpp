@@ -36,7 +36,7 @@ namespace TAO
     {
 
         /* Set the stake amount for trust account (add/remove stake). */
-        json::json Finance::Stake(const json::json& params, bool fHelp)
+        json::json Finance::Stake(const json::json& params, const bool fHelp)
         {
             json::json ret;
 

@@ -24,7 +24,7 @@ namespace TAO
     namespace API
     {
         /* Transfer an asset or digital item. */
-        json::json Assets::Transfer(const json::json& params, bool fHelp)
+        json::json Assets::Transfer(const json::json& params, const bool fHelp)
         {
             return Objects::Transfer(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Asset"));
         }

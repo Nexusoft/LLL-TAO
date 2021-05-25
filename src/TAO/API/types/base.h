@@ -93,7 +93,7 @@ namespace TAO::API
          *  @return JSON encoded response.
          *
          **/
-        json::json Execute(std::string &strMethod, json::json &jParams, bool fHelp = false);
+        json::json Execute(std::string &strMethod, json::json &jParams, const bool fHelp = false);
 
 
         /** RewriteURL

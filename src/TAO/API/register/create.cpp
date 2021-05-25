@@ -22,7 +22,7 @@ namespace TAO
     {
 
         /* Creates a register with given RAW state. */
-        json::json Register::Create(const json::json& params, bool fHelp)
+        json::json Register::Create(const json::json& params, const bool fHelp)
         {
 
         }

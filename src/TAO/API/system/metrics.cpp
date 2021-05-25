@@ -31,7 +31,7 @@ namespace TAO
     namespace API
     {
         /* Returns local database and other metrics */
-        json::json System::Metrics(const json::json& params, bool fHelp)
+        json::json System::Metrics(const json::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string("get/metrics: no parameters required");

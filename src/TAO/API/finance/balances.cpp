@@ -71,7 +71,7 @@ namespace TAO::API
 
     /* Get a summary of nBalances information across all accounts belonging to the currently logged in signature chain
        for a particular token type */
-    json::json Finance::GetBalances(const json::json& params, bool fHelp)
+    json::json Finance::GetBalances(const json::json& params, const bool fHelp)
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
@@ -151,7 +151,7 @@ namespace TAO::API
 
 
     /* Get a summary of nBalances information across all accounts belonging to the currently logged in signature chain */
-    json::json Finance::ListBalances(const json::json& params, bool fHelp)
+    json::json Finance::ListBalances(const json::json& params, const bool fHelp)
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =

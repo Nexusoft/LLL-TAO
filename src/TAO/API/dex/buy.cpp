@@ -43,7 +43,7 @@ namespace TAO
     {
 
         /* Create an asset or digital item. */
-        json::json Market::Buy(const json::json& params, bool fHelp)
+        json::json Market::Buy(const json::json& params, const bool fHelp)
         {
             json::json ret;
 

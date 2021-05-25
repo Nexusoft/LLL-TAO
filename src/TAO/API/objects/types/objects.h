@@ -43,9 +43,6 @@ namespace TAO::API
         void Initialize() final;
 
 
-
-        /******************* STATIC HELPER METHODS BELOW THIS LINE **********************/
-
         /** Transfer
          *
          *  Generic method to transfer an object register .
@@ -57,7 +54,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        static json::json Transfer(const json::json& params, uint8_t nType, const std::string& strType);
+        static json::json Transfer(const json::json& params, const uint8_t nType, const std::string& strType);
 
 
         /** Claim
@@ -71,7 +68,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        static json::json Claim(const json::json& params, uint8_t nType, const std::string& strType);
+        static json::json Claim(const json::json& params, const uint8_t nType, const std::string& strType);
 
 
         /** History
@@ -85,7 +82,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        static json::json History(const json::json& params, uint8_t nType, const std::string& strType);
+        static json::json History(const json::json& params, const uint8_t nType, const std::string& strType);
 
 
         /** List
@@ -99,7 +96,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        static json::json List(const json::json& params, uint8_t nRegisterType, uint8_t nObjectType);
+        static json::json List(const json::json& params, const uint8_t nRegisterType, const uint8_t nObjectType);
 
 
         /** ListTransactions
@@ -112,8 +109,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        static json::json ListTransactions(const json::json& params, bool fHelp);
-
+        static json::json ListTransactions(const json::json& params, const bool fHelp);
 
     };
 }

@@ -83,7 +83,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& params, bool fHelp);
+        json::json Create(const json::json& params, const bool fHelp);
 
 
         /** Get
@@ -96,7 +96,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Get(const json::json& params, bool fHelp);
+        json::json Get(const json::json& params, const bool fHelp);
 
 
         /** Update
@@ -109,7 +109,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Update(const json::json& params, bool fHelp);
+        json::json Update(const json::json& params, const bool fHelp);
 
 
         /** Transfer
@@ -122,7 +122,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Transfer(const json::json& params, bool fHelp);
+        json::json Transfer(const json::json& params, const bool fHelp);
 
 
         /** Claim
@@ -135,7 +135,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Claim(const json::json& params, bool fHelp);
+        json::json Claim(const json::json& params, const bool fHelp);
 
 
         /** History
@@ -148,7 +148,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json History(const json::json& params, bool fHelp);
+        json::json History(const json::json& params, const bool fHelp);
 
 
         /** Tokenize
@@ -161,7 +161,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Tokenize(const json::json& params, bool fHelp);
+        json::json Tokenize(const json::json& params, const bool fHelp);
 
 
         /** GetSchema
@@ -174,7 +174,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetSchema(const json::json& params, bool fHelp);
+        json::json GetSchema(const json::json& params, const bool fHelp);
 
     };
 }

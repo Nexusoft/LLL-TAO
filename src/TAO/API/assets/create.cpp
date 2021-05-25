@@ -46,7 +46,7 @@ namespace TAO
     {
 
         /* Create an asset or digital item. */
-        json::json Assets::Create(const json::json& params, bool fHelp)
+        json::json Assets::Create(const json::json& params, const bool fHelp)
         {
             json::json ret;
 

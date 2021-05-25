@@ -35,7 +35,7 @@ namespace TAO
     {
 
         /* Synchronizes the signature chain for the currently logged in user.  Only applicable in lite / client mode. */
-        json::json Ledger::SyncSigChain(const json::json& params, bool fHelp)
+        json::json Ledger::SyncSigChain(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;
@@ -98,7 +98,7 @@ namespace TAO
 
         /* Synchronizes the block header data from a peer. NOTE: the method call will return as soon as the synchronization
            process is initiated with a peer, NOT when synchronization is complete.  Only applicable in lite / client mode. */
-        json::json Ledger::SyncHeaders(const json::json& params, bool fHelp)
+        json::json Ledger::SyncHeaders(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

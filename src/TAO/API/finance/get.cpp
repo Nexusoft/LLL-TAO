@@ -24,7 +24,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Get the data from a digital asset */
-    json::json Finance::Get(const json::json& jParams, bool fHelp)
+    json::json Finance::Get(const json::json& jParams, const bool fHelp)
     {
         /* Get the Register address. */
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);

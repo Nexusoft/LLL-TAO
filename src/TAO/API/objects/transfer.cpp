@@ -40,7 +40,7 @@ namespace TAO
     namespace API
     {
         /* Transfer an object register. */
-        json::json Objects::Transfer(const json::json& params, uint8_t nType, const std::string& strType)
+        json::json Objects::Transfer(const json::json& params, const uint8_t nType, const std::string& strType)
         {
             json::json ret;
 
@@ -68,7 +68,7 @@ namespace TAO
                 throw APIException(-113, "Destination user doesn't exist");
 
             /* Get the register address. */
-            TAO::Register::Address hashRegister ;
+            TAO::Register::Address hashRegister;
 
             /* The Object to get history for */
             TAO::Register::Object object;

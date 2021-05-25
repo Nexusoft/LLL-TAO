@@ -34,7 +34,7 @@ namespace TAO
     {
 
         /* History of an object register and its ownership */
-        json::json Objects::History(const json::json& params, uint8_t nType, const std::string& strType)
+        json::json Objects::History(const json::json& params, const uint8_t nType, const std::string& strType)
         {
             json::json ret;
 

@@ -44,7 +44,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    json::json Finance::Credit(const json::json& jParams, bool fHelp)
+    json::json Finance::Credit(const json::json& jParams, const bool fHelp)
     {
         /* Check for txid parameter. */
         if(jParams.find("txid") == jParams.end())

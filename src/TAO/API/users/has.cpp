@@ -26,7 +26,7 @@ namespace TAO
     {
 
         /* Checks to see if a saves session exists in the local DB for the given user */
-        json::json Users::Has(const json::json& params, bool fHelp)
+        json::json Users::Has(const json::json& params, const bool fHelp)
         {
             /* JSON return value. */
             json::json ret;

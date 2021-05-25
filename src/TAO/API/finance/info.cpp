@@ -43,7 +43,7 @@ namespace TAO
     {
 
         /* Get staking metrics for a trust account */
-        json::json Finance::StakeInfo(const json::json& params, bool fHelp)
+        json::json Finance::StakeInfo(const json::json& params, const bool fHelp)
         {
             /* The user genesis hash */
             const uint256_t hashGenesis =

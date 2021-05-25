@@ -33,7 +33,7 @@ namespace TAO
     namespace API
     {
         /* Queries the lisp api and returns the EID's for this node. */
-        json::json System::LispEIDs(const json::json& params, bool fHelp)
+        json::json System::LispEIDs(const json::json& params, const bool fHelp)
         {
             json::json jsonEIDs = json::json::array();
 

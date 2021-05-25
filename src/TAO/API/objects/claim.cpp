@@ -38,7 +38,7 @@ namespace TAO
     namespace API
     {
         /* Claim a transferred asset. */
-        json::json Objects::Claim(const json::json& params, uint8_t nType, const std::string& strType)
+        json::json Objects::Claim(const json::json& params, const uint8_t nType, const std::string& strType)
         {
             json::json ret;
 
