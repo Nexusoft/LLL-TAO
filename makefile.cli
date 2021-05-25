@@ -46,6 +46,9 @@ else ifeq (${ARM64}, 1)
         BUILD_ARCH=aarch64
         CXXFLAGS+= -march=native -mtune=native
 
+else ifeq ($(shell uname -m),armv7l)
+        BUILD_ARCH=arm
+
 else
 	BUILD_ARCH=x64
 	CXXFLAGS+= -m64
