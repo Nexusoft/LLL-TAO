@@ -31,6 +31,26 @@ namespace TAO::API
 
     public:
 
+
+        /** Base
+         *
+         *  Gets the base instance of commands, this contains standards and functions pointers, but not the actual functions.
+         *
+         *  @param[in] strAPI The API that we are getting base for.
+         *
+         *  @return a pointer to the base object indexed by commands name.
+         *
+         **/
+        static Base* Get(const std::string& strAPI)
+        {
+            /* Check that set of commands exists. */
+            if(!Commands::mapTypes.count(strAPI))
+                return nullptr; //we don't throw here as this function won't be used directly in commands body, more of a helper
+
+            return static_cast<Base*>(Commands::mapTypes[strAPI]->Get());
+        }
+
+
         /** Get
          *
          *  Gets an instance of the API, indexed by our name.

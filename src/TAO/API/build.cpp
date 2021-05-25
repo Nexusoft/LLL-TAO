@@ -287,7 +287,8 @@ namespace TAO::API
             rContract >> nAmount;
 
             /* Now lets check our expected types match. */
-            CheckType(jParams, hashCredit);
+            if(!CheckType(jParams, hashCredit))
+                return false;
 
             /* if we passed all of these checks then insert the credit contract into the tx */
             TAO::Operation::Contract contract;
@@ -328,7 +329,8 @@ namespace TAO::API
                     throw APIException(-59, "Account to credit is not a NXS account");
 
                 /* Now lets check our expected types match. */
-                CheckType(jParams, objCredit);
+                if(!CheckType(jParams, objCredit))
+                    throw APIException(-49, "Unexpected type for name / address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract contract;
@@ -376,7 +378,8 @@ namespace TAO::API
                     throw APIException(-33, "Incorrect or missing name / address");
 
                 /* Now lets check our expected types match. */
-                CheckType(jParams, objCredit);
+                if(!CheckType(jParams, objCredit))
+                    throw APIException(-49, "Unexpected type for name / address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract contract;
@@ -403,7 +406,8 @@ namespace TAO::API
                     return false;
 
                 /* Now lets check our expected types match. */
-                CheckType(jParams, objTo);
+                if(!CheckType(jParams, objTo))
+                    throw APIException(-49, "Unexpected type for name / address");
 
                 /* Create our new contract now. */
                 TAO::Operation::Contract contract;
@@ -457,7 +461,8 @@ namespace TAO::API
                     throw APIException(-33, "Incorrect or missing name / address");
 
                 /* Now lets check our expected types match. */
-                CheckType(jParams, objCredit);
+                if(!CheckType(jParams, objCredit))
+                    throw APIException(-49, "Unexpected type for name / address");
 
                 /* Calculate the partial amount we want to claim based on our share of the proof tokens */
                 const uint64_t nPartial = (objProof.get<uint64_t>("balance") * nAmount) / objOwner.get<uint64_t>("supply");

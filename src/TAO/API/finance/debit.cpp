@@ -230,7 +230,8 @@ namespace TAO::API
                 throw APIException(-13, "Object not found");
 
             /* Now lets check our expected types match. */
-            CheckType(jParams, objFrom);
+            if(!CheckType(jParams, objFrom))
+                throw APIException(-49, "Unexpected type for name / address");
 
             /* Extract a token name from our from parameter. */
             const uint256_t hashToken = objFrom.get<uint256_t>("token");

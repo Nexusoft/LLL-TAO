@@ -47,12 +47,12 @@ namespace TAO::API
     {
         /* Check that we have designated a type to create. */
         TAO::Register::Address hashRegister;
-        if(jParams.find("type") == jParams.end())
+        if(jParams["request"].find("type") == jParams["request"].end())
             throw APIException(-118, "Missing type");
 
         /* Check for account or token type. */
         TAO::Register::Object object;
-        if(jParams["type"] == "token")
+        if(jParams["request"]["type"] == "token")
         {
             /* Generate register address for token. */
             hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
@@ -103,7 +103,7 @@ namespace TAO::API
             /* Create a token object register. */
             object = TAO::Register::CreateToken(hashRegister, nSupply * nCoinFigures, nDecimals);
         }
-        else if(jParams["type"] == "account")
+        else if(jParams["request"]["type"] == "account")
         {
             /* Generate register address for account. */
             hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);

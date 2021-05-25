@@ -22,6 +22,21 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /* Checks an object's standard if it has been standardized for this command-set. */
+    bool Base::Standard(const std::string& strType, const uint16_t nStandard) const
+    {
+        /* Let's check against the types required now. */
+        if(!mapStandards.count(strType))
+            return false;
+
+        /* Now let's check that the enum values match. */
+        if(mapStandards.at(strType) != nStandard)
+            return false;
+
+        return true;
+    }
+
+
     /* Handles the processing of the requested method. */
     json::json Base::Execute(std::string &strMethod, json::json &jParams, bool fHelp)
     {
@@ -62,7 +77,7 @@ namespace TAO::API
             /* Now lets do some rules for the different nouns. */
             if(!fStandard && mapStandards.count(strNoun))
             {
-                jParams["type"] = strNoun;
+                jParams["request"]["type"] = strNoun;
 
                 /* Set our explicet flag now. */
                 fStandard = true;

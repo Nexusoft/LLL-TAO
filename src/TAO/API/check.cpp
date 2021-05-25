@@ -50,7 +50,7 @@ namespace TAO::API
             /* Get the number of blocks to maturity for this sig chain */
             const uint32_t nBlocksToMaturity = Commands::Get<Users>()->BlocksToMaturity(hashGenesis);
             if(nBlocksToMaturity > 0)
-                throw APIException(-202, debug::safe_printstr( "Signature chain not mature after your previous mined/stake block. ", nBlocksToMaturity, " more confirmation(s) required."));
+                throw APIException(-202, "Signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");
         }
     }
 
@@ -89,14 +89,14 @@ namespace TAO::API
         }
 
         /* Abort the mempool ACID transaction */
-        LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+        LLD::TxnAbort(TAO::Ledger::FLAGS::MINER);
 
         return fSanitized;
     }
 
 
     /* Checks if the designated object matches the explicet type specified in parameters. */
-    void CheckType(const json::json& params, const uint256_t& hashCheck)
+    bool CheckType(const json::json& jParams, const uint256_t& hashCheck)
     {
         /* Let's grab our object to check against and throw if it's missing. */
         TAO::Register::Object objCheck;
@@ -104,52 +104,31 @@ namespace TAO::API
             throw APIException(-33, "Incorrect or missing name / address");
 
         /* Execute now that we have the object. */
-        CheckType(params, objCheck);
+        return CheckType(jParams, objCheck);
     }
 
 
     /*  Checks if the designated object matches the explicet type specified in parameters.
      *  Doesn't do a register database lookup like prior overload does. */
-    void CheckType(const json::json& params, const TAO::Register::Object& objCheck)
+    bool CheckType(const json::json& jParams, const TAO::Register::Object& objCheck)
     {
-        /* If the user requested a particular object type then check it is that type */
-        if(params.find("type") != params.end())
-        {
-            /* Grab a copy of our type to check against. */
-            const std::string& strType = params["type"].get<std::string>();
+        /* Check for our request parameters first, since this method can be called without */
+        if(jParams.find("request") == jParams.end())
+            return true;
 
-            /* Let's check against the types required now. */
-            const uint8_t nStandard = objCheck.Standard();
-            if(strType == "token" && nStandard != TAO::Register::OBJECTS::TOKEN)
-                throw APIException(-49, "Unexpected type for name / address");
+        /* Check for our type we are checking against. */
+        if(jParams["request"].find("type") == jParams["request"].end())
+            return true;
 
-            /* Check for expected account type now. */
-            if(strType == "account" && nStandard != TAO::Register::OBJECTS::ACCOUNT)
-                throw APIException(-49, "Unexpected type for name / address");
-        }
-    }
-
-
-    /* For use in list commands that check for 'accounts' or 'tokens' */
-    bool CheckTypes(const json::json& params, const TAO::Register::Object& objCheck)
-    {
-        /* If the user requested a particular object type then check it is that type */
-        if(params.find("type") == params.end())
-            throw APIException(-118, "Missing type");
+        /* Check that we have the commands set. */
+        const Base* pBase = Commands::Get(jParams["request"]["commands"].get<std::string>());
+        if(!pBase)
+            return true;
 
         /* Grab a copy of our type to check against. */
-        const std::string& strType = params["type"].get<std::string>();
-
-        /* Let's check against the types required now. */
-        const uint8_t nStandard = objCheck.Standard();
-        if(strType == "tokens" && nStandard != TAO::Register::OBJECTS::TOKEN)
-            return false;
-
-        /* Check for expected account type now. */
-        if(strType == "accounts" && nStandard != TAO::Register::OBJECTS::ACCOUNT)
-            return false;
+        if(!pBase->Standard(jParams["request"]["type"].get<std::string>(), objCheck.Standard()))
+            return false; //we only fail here, as we want to isolate returns based on the standards, not parameters
 
         return true;
     }
-
 } // End TAO namespace

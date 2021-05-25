@@ -83,7 +83,7 @@ namespace TAO
                     continue;
 
                 /* Check that our type matches our noun. */
-                if(!CheckTypes(jParams, objThis)) //XXX: CheckTypes is ambiguous with CheckType, consider better name
+                if(!CheckType(jParams, objThis))
                     continue;
 
                 /* Check the account matches the filter */

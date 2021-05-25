@@ -67,6 +67,19 @@ namespace TAO::API
         virtual Base* Get() = 0;
 
 
+        /** Standard
+         *
+         *  Checks an object's standard if it has been standardized for this command-set.
+         *
+         *  @param[in] strType The object standard name we are checking for.
+         *  @param[in] nStandard The object's standard enum value to check against.
+         *
+         *  @return true if standard exists and matches, false otherwise.
+         *
+         **/
+        bool Standard(const std::string& strType, const uint16_t nStandard) const;
+
+
         /** Execute
          *
          *  Handles the processing of the requested method.
@@ -127,7 +140,7 @@ namespace TAO::API
 
 
         /** Map of standard nouns to check for standard object types. **/
-        std::map<std::string, uint8_t>  mapStandards;
+        std::map<std::string, uint16_t>  mapStandards; //XXX: we don't want standard to be bitwise, we can convert from dec to bin
     };
 
 

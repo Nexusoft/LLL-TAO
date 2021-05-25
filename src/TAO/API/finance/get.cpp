@@ -39,7 +39,8 @@ namespace TAO::API
             throw APIException(-15, "Object is not an account or token");
 
         /* Now lets check our expected types match. */
-        CheckType(jParams, objThis);
+        if(!CheckType(jParams, objThis))
+            throw APIException(-49, "Unexpected type for name / address");
 
         /* Build our response object. */
         json::json jRet  = ObjectToJSON(jParams, objThis, hashRegister);

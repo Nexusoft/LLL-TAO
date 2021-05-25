@@ -110,13 +110,7 @@ namespace LLP
         tLatency.Start();
 
         /* Handle basic HTTP logic here. */
-        json::json params;
-        params["info"] =
-        {
-            {"commands", strAPI},
-            {"method", strMethod},
-        };
-
+        json::json jParams;
         try
         {
             if(INCOMING.strType == "POST")
@@ -134,12 +128,12 @@ namespace LLP
                             INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
 
                             /* parse the querystring */
-                            params = QuerystringToJSON(INCOMING.strContent, strMethod);
+                            jParams = QuerystringToJSON(INCOMING.strContent, strMethod);
                         }
 
                         /* JSON encoding. */
                         else if(INCOMING.mapHeaders["content-type"] == "application/json")
-                            params = json::json::parse(INCOMING.strContent);
+                            jParams = json::json::parse(INCOMING.strContent);
                         else
                             throw TAO::API::APIException(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
                     }
@@ -160,7 +154,7 @@ namespace LLP
                     strMethod = strMethod.substr(0, pos);
 
                     /* parse the querystring */
-                    params = QuerystringToJSON(encoding::urldecode(strQuerystring), strMethod);
+                    jParams = QuerystringToJSON(encoding::urldecode(strQuerystring), strMethod);
                 }
             }
             else if(INCOMING.strType == "OPTIONS")
@@ -190,8 +184,15 @@ namespace LLP
                 return true;
             }
 
+            /* Add our request information before invoking command. */
+            jParams["request"] =
+            {
+                {"commands", strAPI},
+                {"method", strMethod},
+            };
+
             /* Execute the api and methods. */
-            ret = { {"result", TAO::API::Commands::Invoke(strAPI, strMethod, params) } };
+            ret = { {"result", TAO::API::Commands::Invoke(strAPI, strMethod, jParams) } };
         }
 
         /* Handle for custom API exceptions. */
@@ -303,7 +304,7 @@ namespace LLP
     json::json APINode::QuerystringToJSON(const std::string& strQuerystring, const std::string& strMethod)
     {
         /* The json params to return */
-        json::json params;
+        json::json jParams;
 
         /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
         bool fIsList = strMethod.find("list/") != strMethod.npos;
@@ -356,15 +357,15 @@ namespace LLP
                 jsonClause["value"] = strParam.substr(pos2 + 1);
 
                 /* Add it to the where params*/
-                params["where"].push_back(jsonClause);
+                jParams["where"].push_back(jsonClause);
             }
 
             /* Add the parameter as a JSON parameter regardless of whether it is has been added as where clause as it might be a
                keyword required by a list method such as name or address */
-            params[key] =  strParam.substr(pos2 + 1);
+            jParams[key] =  strParam.substr(pos2 + 1);
         }
 
-        return params;
+        return jParams;
     }
 
 }
