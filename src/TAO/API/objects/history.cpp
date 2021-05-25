@@ -80,7 +80,7 @@ namespace TAO
                 TAO::Register::Object token;
                 if(!LLD::Register->ReadState(hashOwner, token, TAO::Ledger::FLAGS::MEMPOOL))
                     throw APIException(-125, "Token not found");
-                
+
                 /* Update the hashOwner to be the owner of the token */
                 hashOwner = token.hashOwner;
             }

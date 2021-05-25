@@ -77,7 +77,7 @@ namespace TAO::API
          *  @return true if standard exists and matches, false otherwise.
          *
          **/
-        bool Standard(const std::string& strType, const uint16_t nStandard) const;
+        bool Standard(const std::string& strType, const uint8_t nStandard) const;
 
 
         /** Execute
@@ -140,7 +140,7 @@ namespace TAO::API
 
 
         /** Map of standard nouns to check for standard object types. **/
-        std::map<std::string, uint16_t>  mapStandards; //XXX: we don't want standard to be bitwise, we can convert from dec to bin
+        std::map<std::string, uint8_t>  mapStandards;
     };
 
 

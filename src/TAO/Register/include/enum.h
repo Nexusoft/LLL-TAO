@@ -84,26 +84,40 @@ namespace TAO
             enum : uint8_t
             {
                 /* Non-Standard Object (User Defined Type). */
-                NONSTANDARD  = (1 << 1),
+                NONSTANDARD  = 0x01,
 
                 /* Account Object Register. */
-                ACCOUNT      = (1 << 2),
+                ACCOUNT      = 0x02,
 
                 /* Token Object Register. */
-                TOKEN        = (1 << 3),
+                TOKEN        = 0x03,
 
                 /* Trust Object Register. */
-                TRUST        = (1 << 4),
+                TRUST        = 0x04,
 
                 /* Name Object Register. */
-                NAME         = (1 << 5),
+                NAME         = 0x05,
 
                 /* Namespace Object Register. */
-                NAMESPACE    = (1 << 6),
+                NAMESPACE    = 0x06,
 
                 /* Crypto Object Register. */
-                CRYPTO       = (1 << 7)
+                CRYPTO       = 0x07
             };
+
+            /** BITWISE
+             *
+             *  Get's a bitwise representation of standard as a unique bit, hence an 8 bit standard has max of 256 unique bits.
+             *
+             *  @param[in] nStandard The standard enum to convert.
+             *
+             *  @return the standard represented as single unique bit.
+             *
+             **/
+            static uint256_t BITWISE(const uint8_t nStandard)
+            {
+                return (uint256_t(1) << nStandard);
+            }
         };
 
 

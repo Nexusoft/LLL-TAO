@@ -23,7 +23,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Checks an object's standard if it has been standardized for this command-set. */
-    bool Base::Standard(const std::string& strType, const uint16_t nStandard) const
+    bool Base::Standard(const std::string& strType, const uint8_t nStandard) const
     {
         /* Let's check against the types required now. */
         if(!mapStandards.count(strType))

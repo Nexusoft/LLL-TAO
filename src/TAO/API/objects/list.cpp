@@ -118,7 +118,7 @@ namespace TAO
                         throw APIException(-36, "Failed to parse object register");
 
                     /* Only included requested object types. */
-                    if(!(object.Standard() & nObjectType))
+                    if(!(TAO::Register::OBJECTS::BITWISE(object.Standard()) & TAO::Register::OBJECTS::BITWISE(nObjectType)))
                         continue;
                 }
 
