@@ -74,7 +74,7 @@ namespace TAO
 
             /* Check caller has provided the name parameter */
             if(params.find("name") == params.end())
-                throw APIException(-88, "Missing name.");
+                throw APIException(-88, "Missing or empty name.");
 
             /* The name */
             std::string strName = "";
@@ -184,7 +184,7 @@ namespace TAO
 
             /* Check caller has provided the name parameter */
             if(params.find("name") == params.end())
-                throw APIException(-88, "Missing name");
+                throw APIException(-88, "Missing or empty name.");
 
             /* Get the namespace name */
             std::string strNamespace = params["name"].get<std::string>();

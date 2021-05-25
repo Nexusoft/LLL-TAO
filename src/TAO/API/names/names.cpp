@@ -52,7 +52,7 @@ namespace TAO
         {
             /* Check name length */
             if(strName.length() == 0)
-                throw APIException(-88, "Missing name");
+                throw APIException(-88, "Missing or empty name.");
 
             /* Name can't start with : */
             if(strName[0]== ':' )

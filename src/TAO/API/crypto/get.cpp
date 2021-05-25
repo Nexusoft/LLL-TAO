@@ -77,7 +77,7 @@ namespace TAO
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
-                throw APIException(-88, "Missing name.");
+                throw APIException(-88, "Missing or empty name.");
 
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
@@ -149,7 +149,7 @@ namespace TAO
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
-                throw APIException(-88, "Missing name.");
+                throw APIException(-88, "Missing or empty name.");
 
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
@@ -202,7 +202,7 @@ namespace TAO
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
-                throw APIException(-88, "Missing name.");
+                throw APIException(-88, "Missing or empty name.");
 
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();

@@ -224,7 +224,7 @@ Error Codes
 | -85 | getblock by height requires the daemon to be started with the -indexheight flag |
 | -86 | Missing hash or txid |
 | -87 | Invalid or unknown transaction |
-| -88 | Missing name |
+| -88 | Missing or empty name |
 | -89 | Invalid register_address |
 | -90 | Namespace already exists |
 | -91 | Missing name / register_address |
