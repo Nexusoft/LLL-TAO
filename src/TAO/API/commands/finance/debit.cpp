@@ -24,13 +24,11 @@ ________________________________________________________________________________
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
 #include <TAO/API/types/commands.h>
+#include <TAO/API/types/commands/finance.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/finance/types/finance.h>
 
 #include <TAO/API/include/conditions.h>
-
-#include <TAO/API/finance/types/accounts.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -49,10 +47,11 @@ ________________________________________________________________________________
 #include <Util/include/string.h>
 #include <Util/include/math.h>
 
+#include "accounts.h" //same directory
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
-
     /* Debit an account for NXS or any token. */
     json::json Finance::Debit(const json::json& jParams, const bool fHelp)
     {
@@ -316,9 +315,6 @@ namespace TAO::API
                     if(nAmount > 0)
                         tAccounts++; //iterate to next account
                 }
-
-
-                //XXX: maybe we find a way to have these two share their logic?
             }
             else
             {

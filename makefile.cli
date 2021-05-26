@@ -426,18 +426,18 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_dex_buy.o \
 		build/API_types_dex_sell.o \
 		build/API_types_dex_initialize.o \
-		build/API_types_finance_balances.o \
-		build/API_types_finance_burn.o \
-		build/API_types_finance_create.o \
-		build/API_types_finance_credit.o \
-		build/API_types_finance_debit.o \
-		build/API_types_finance_get.o \
-		build/API_types_finance_info.o \
-		build/API_types_finance_initialize.o \
-		build/API_types_finance_list.o \
-		build/API_types_finance_migrate.o \
-		build/API_types_finance_trustaccounts.o \
-		build/API_types_finance_stake.o \
+		build/API_commands_finance_balances.o \
+		build/API_commands_finance_burn.o \
+		build/API_commands_finance_create.o \
+		build/API_commands_finance_credit.o \
+		build/API_commands_finance_debit.o \
+		build/API_commands_finance_get.o \
+		build/API_commands_finance_info.o \
+		build/API_commands_finance_initialize.o \
+		build/API_commands_finance_list.o \
+		build/API_commands_finance_migrate.o \
+		build/API_commands_finance_trustaccounts.o \
+		build/API_commands_finance_stake.o \
 		build/API_types_invoices_cancel.o \
 		build/API_types_invoices_create.o \
 		build/API_types_invoices_get.o \
@@ -474,8 +474,8 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_system_system.o \
 		build/API_types_system_metrics.o \
 		build/API_types_system_validate.o \
-		build/API_types_tokens_list.o \
-		build/API_types_tokens_initialize.o \
+		build/API_commands_tokens_list.o \
+		build/API_commands_tokens_initialize.o \
 		build/API_types_users_accounts.o \
 		build/API_types_users_assets.o \
 		build/API_types_users_create.o \
@@ -748,7 +748,7 @@ build/API_types_crypto_%.o: ./src/TAO/API/crypto/%.cpp $(HEADERS)
 build/API_types_dex_%.o: ./src/TAO/API/dex/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_finance_%.o: ./src/TAO/API/finance/%.cpp $(HEADERS)
+build/API_commands_finance_%.o: ./src/TAO/API/commands/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_invoices_%.o: ./src/TAO/API/invoices/%.cpp $(HEADERS)
@@ -772,7 +772,7 @@ build/API_types_rpc_%.o: ./src/TAO/API/rpc/%.cpp $(HEADERS)
 build/API_types_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_tokens_%.o: ./src/TAO/API/tokens/%.cpp $(HEADERS)
+build/API_commands_tokens_%.o: ./src/TAO/API/commands/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_users_%.o: ./src/TAO/API/users/%.cpp $(HEADERS)
@@ -1314,7 +1314,7 @@ build/API_types_dex_%.o: src/TAO/API/dex/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_finance_%.o: src/TAO/API/finance/%.cpp $(HEADERS)
+build/API_commands_finance_%.o: src/TAO/API/commands/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1370,7 +1370,7 @@ build/API_types_supply_%.o: src/TAO/API/supply/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_tokens_%.o: src/TAO/API/tokens/%.cpp $(HEADERS)
+build/API_commands_tokens_%.o: src/TAO/API/commands/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

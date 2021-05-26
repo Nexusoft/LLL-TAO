@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/finance/types/finance.h>
+#include <TAO/API/types/commands/finance.h>
 
 #include <LLD/include/global.h>
 

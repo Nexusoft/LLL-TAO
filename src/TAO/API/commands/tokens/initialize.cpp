@@ -11,8 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/tokens/types/tokens.h>
-#include <TAO/API/finance/types/finance.h>
+#include <TAO/API/types/commands/tokens.h>
+#include <TAO/API/types/commands/finance.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>

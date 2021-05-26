@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/finance/types/finance.h>
+#include <TAO/API/types/commands/finance.h>
 
 #include <LLD/include/global.h>
 
@@ -22,7 +22,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/names/types/names.h>
-#include <TAO/API/finance/types/finance.h>
+#include <TAO/API/types/commands/finance.h>
 
 #include <TAO/Ledger/include/constants.h>
 
