@@ -30,7 +30,7 @@ extern std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
 
 
 namespace runtime
-{
+{    
 
     /** timestamp
      *
@@ -75,7 +75,7 @@ namespace runtime
         #ifdef UNIT_TESTS
         return 1000000;
         #endif
-        
+
         /* Check if before version 8 time-lock. */
         if(unifiedtimestamp() < TAO::Ledger::StartBlockTimelock(8))
             return 10;

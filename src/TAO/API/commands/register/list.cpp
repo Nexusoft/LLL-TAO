@@ -52,7 +52,7 @@ namespace TAO::API
             strSort = jParams["sort"].get<std::string>();
 
         /* Timestamp of 30 days ago, to use to include active accounts */
-        const uint64_t nActive = runtime::unifiedtimestamp() - (60 * 60 * 24 * 30);
+        //const uint64_t nActive = runtime::unifiedtimestamp() - (60 * 60 * 24 * 30);
 
         /* The vector of active accounts */
         std::vector<TAO::Register::Object> vActive;
@@ -69,8 +69,8 @@ namespace TAO::API
                     continue;
 
                 /* Only include active within last 30 days */
-                if(rAccount.nModified < nActive)
-                    continue;
+                //if(rAccount.nModified < nActive)
+                //    continue;
 
                 /* Only include accounts with stake or trust (genesis has stake w/o trust; can unstake to trust w/o stake) */
                 if(strType == "trust" && rAccount.get<uint64_t>("stake") == 0 && rAccount.get<uint64_t>("trust") == 0)
@@ -109,28 +109,7 @@ namespace TAO::API
         for(const auto& rAccount : vActive)
         {
             /* Populate the response */
-            json::json jAccount;
-            jAccount["owner"]    = rAccount.hashOwner.ToString();
-            jAccount["created"]  = rAccount.nCreated;
-            jAccount["modified"] = rAccount.nModified;
-
-            /* Check for a supported type for address. */
-            if(strType == "trust")
-            {
-                /* The register address */
-                const TAO::Register::Address hashAddress =
-                    TAO::Register::Address("trust", rAccount.hashOwner, TAO::Register::Address::TRUST);
-
-                /* Populate stake related information. */
-                jAccount["address"]  = hashAddress.ToString();
-                jAccount["balance"]  = FormatBalance(rAccount.get<uint64_t>("balance"), 0);
-                jAccount["stake"]    = FormatBalance(rAccount.get<uint64_t>("stake"),   0);
-
-                /* Calculate and add the stake rate */
-                const uint64_t nTrust = rAccount.get<uint64_t>("trust");
-                jAccount["trust"]     = nTrust;
-                jAccount["stakerate"] = TAO::Ledger::StakeRate(nTrust, (nTrust == 0)) * 100.0;
-            }
+            json::json jAccount = ObjectToJSON(rAccount);
 
             /* Check the offset. */
             if(++nTotal <= nOffset)

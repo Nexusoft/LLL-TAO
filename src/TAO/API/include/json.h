@@ -117,6 +117,17 @@ namespace TAO
         json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract,
                                   const uint32_t nContract, const uint32_t nVerbose = 0);
 
+        /** ObjectToJSON
+         *
+         *  Converts an Object Register to formattted JSON with no external lookups
+         *
+         *  @param[in] object The Object Register to convert
+         *
+         *  @return the formatted JSON object
+         *
+         **/
+        json::json ObjectToJSON(const TAO::Register::Object& object);
+
 
         /** ObjectToJSON
          *

@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 
 #include <Util/include/softfloat.h>
+#include <Util/include/convert.h>
 
 #include <Legacy/include/money.h>
 
@@ -32,15 +33,6 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
-
-        /* Break the Chain Age in Minutes into Days, Hours, and Minutes. */
-        void GetChainTimes(uint32_t nAge, uint32_t& nDays, uint32_t& nHours, uint32_t& nMinutes)
-        {
-            nDays = nAge / 1440;
-            nHours = (nAge - (nDays * 1440)) / 60;
-            nMinutes = nAge % 60;
-        }
-
 
         /* Gets a block time from a weighted average at given depth. */
         uint64_t GetWeightedTimes(const BlockState& state, uint32_t nDepth)
@@ -175,7 +167,7 @@ namespace TAO
             if(fDebug)
             {
                 uint32_t nDays, nHours, nMinutes;
-                GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
+                convert::i64todays(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
                 debug::log(2,
                     "RETARGET weighted time=", nBlockTime,
@@ -314,7 +306,7 @@ namespace TAO
             if(fDebug)
             {
                 uint32_t nDays, nHours, nMinutes;
-                GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
+                convert::i64todays(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
                 debug::log(2,
                     "RETARGET weighted time=", nBlockTime,
@@ -454,7 +446,7 @@ namespace TAO
             if(fDebug)
             {
                 uint32_t nDays, nHours, nMinutes;
-                GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
+                convert::i64todays(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
                 debug::log(2,
                     "RETARGET weighted time=", nBlockTime, " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),

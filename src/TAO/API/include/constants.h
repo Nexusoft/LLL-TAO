@@ -23,4 +23,14 @@ namespace TAO::API
 
     /** Address for select any. **/
     const uint256_t ADDRESS_ANY =  uint256_t(0);
+
+
+    /** Struct to hold tiker constants. */
+    struct TOKEN
+    {
+        /* Hard coded value for NXS token-id. */
+        const static uint256_t NXS;
+    };
+
+    const uint256_t TOKEN::NXS = 0;
 }

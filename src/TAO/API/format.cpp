@@ -22,6 +22,13 @@ ________________________________________________________________________________
 
 namespace TAO::API
 {
+    /* Outputs the correct balance in terms of a double based on decimals input. */
+    double FormatBalance(const uint64_t nBalance, const uint8_t nDecimals)
+    {
+        return (nBalance / math::pow(10, nDecimals));
+    }
+
+
     /* Outputs the correct balance in terms of a double that can be formatted for output. */
     double FormatBalance(const uint64_t nBalance, const uint256_t& hashToken)
     {

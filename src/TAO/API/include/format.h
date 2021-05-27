@@ -19,6 +19,19 @@ namespace TAO::API
 {
     /** FormatBalance
      *
+     *  Outputs the correct balance in terms of a double based on decimals input.
+     *
+     *  @param[in] nBalance The balance to encode for output.
+     *  @param[in] nDecimals The number of decimals to format for
+     *
+     *  @return a double representation of the whole formatting.
+     *
+     **/
+    double FormatBalance(const uint64_t nBalance, const uint8_t nDecimals); //we don't pass by reference for <= 8 bytes
+
+
+    /** FormatBalance
+     *
      *  Outputs the correct balance in terms of a double that can be formatted for output.
      *
      *  @param[in] nBalance The balance to encode for output.
@@ -28,4 +41,6 @@ namespace TAO::API
      *
      **/
     double FormatBalance(const uint64_t nBalance, const uint256_t& hashToken);
+
+
 }

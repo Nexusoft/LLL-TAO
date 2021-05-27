@@ -25,6 +25,14 @@ ________________________________________________________________________________
 
 namespace convert
 {
+    /* Break the Chain Age in Minutes into Days, Hours, and Minutes. */
+    inline void i64todays(const uint64_t nAge, uint32_t &nDays, uint32_t &nHours, uint32_t &nMinutes)
+    {
+        nDays    = nAge / 1440;
+        nHours   = (nAge - (nDays * 1440)) / 60;
+        nMinutes = nAge % 60;
+    }
+
     /** i64tostr
      *
      *  Converts a 64-bit signed integer into a string.

@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <Legacy/types/address.h>
 #include <Legacy/types/trustkey.h>
 
+#include <TAO/API/include/constants.h>
+#include <TAO/API/include/format.h>
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/commands.h>
 
@@ -981,6 +983,207 @@ namespace TAO::API
     }
 
 
+    /** ObjectToJSON
+     *
+     *  Converts an Object Register to formattted JSON
+     *
+     *  @param[in] object The Object Register to convert
+     *
+     *  @return the formatted JSON object
+     *
+     **/
+    json::json ObjectToJSON(const TAO::Register::Object& object)
+    {
+        /* Add the register owner */
+        json::json jRet;
+        jRet["owner"]    = TAO::Register::Address(object.hashOwner).ToString();
+        jRet["created"]  = object.nCreated;
+        jRet["modified"] = object.nModified;
+
+        /* Declare type and data variables for unpacking the Object fields */
+        const std::vector<std::string> vFieldNames = object.ListFields();
+        for(const auto& strName : vFieldNames)
+        {
+            /* First get the type */
+            uint8_t nType = 0;
+            object.Type(strName, nType);
+
+            /* Switch based on type. */
+            switch(nType)
+            {
+                /* Check for uint8_t type. */
+                case TAO::Register::TYPES::UINT8_T:
+                {
+                    /* Set the return value from object register data. */
+                    jRet[strName] = object.get<uint8_t>(strName);
+
+                    break;
+                }
+
+                /* Check for uint16_t type. */
+                case TAO::Register::TYPES::UINT16_T:
+                {
+                    /* Set the return value from object register data. */
+                    jRet[strName] = object.get<uint16_t>(strName);
+
+                    break;
+                }
+
+                /* Check for uint32_t type. */
+                case TAO::Register::TYPES::UINT32_T:
+                {
+                    /* Set the return value from object register data. */
+                    jRet[strName] = object.get<uint32_t>(strName);
+
+                    break;
+                }
+
+                /* Check for uint64_t type. */
+                case TAO::Register::TYPES::UINT64_T:
+                {
+                    /* Grab a copy of our object register value. */
+                    const uint64_t nValue = object.get<uint64_t>(strName);
+
+                    /* Specific rule for balance. */
+                    if(strName == "balance" || strName == "stake" || strName == "supply")
+                    {
+                        /* Handle decimals conversion. */
+                        const uint8_t nDecimals = GetDecimals(object);
+
+                        /* Special rule for supply. */
+                        if(strName == "supply")
+                        {
+                            /* Find our current supply. */
+                            const uint64_t nCurrent = (object.get<uint64_t>("supply") - object.get<uint64_t>("balance"));
+
+                            /* Populate json values. */
+                            jRet["current_supply"] = FormatBalance(nCurrent, nDecimals);
+                            jRet["max_supply"]     = FormatBalance(object.get<uint64_t>("supply"), nDecimals);
+                        }
+                        else
+                            jRet[strName] = FormatBalance(nValue, nDecimals);
+                    }
+                    else if(strName == "trust")
+                    {
+                        /* The register address */
+                        const TAO::Register::Address hashAddress =
+                            TAO::Register::Address("trust", object.hashOwner, TAO::Register::Address::TRUST);
+
+                        /* Populate stake related information. */
+                        jRet["address"] = hashAddress.ToString();
+
+                        /* Get our total counters. */
+                        uint32_t nDays = 0, nHours = 0, nMinutes = 0;
+                        convert::i64todays(nValue / 60, nDays, nHours, nMinutes);
+
+                        /* Add string to trust. */
+                        jRet["trust"]  = nValue;
+                        jRet["times"]   = debug::safe_printstr(nDays, " days, ", nHours, " hours, ", nMinutes, " minutes");
+                    }
+
+                    /* Set the return value from object register data. */
+                    else
+                        jRet[strName] = nValue;
+
+                    break;
+                }
+
+                /* Check for uint256_t type. */
+                case TAO::Register::TYPES::UINT256_T:
+                {
+                    /* Grab a copy of our hash to check. */
+                    const uint256_t hash = object.get<uint256_t>(strName);
+
+                    /* Specific rule for token ticker. */
+                    if(strName == "token")
+                    {
+                        /* Encode token in Base58 Encoding. */
+                        jRet["token"] = TAO::Register::Address(hash).ToString();
+
+                        /* Handle for NXS hardcoded token name. */
+                        if(hash == TOKEN::NXS)
+                            jRet["token_name"] = "NXS";
+                    }
+
+                    /* Specific rule for register address. */
+                    else if(strName == "address")
+                        jRet["register"] = TAO::Register::Address(hash).ToString();
+
+                    /* Set the return value from object register data. */
+                    else
+                        jRet[strName] = hash.GetHex();
+
+                    break;
+                }
+
+                /* Check for uint512_t type. */
+                case TAO::Register::TYPES::UINT512_T:
+                {
+                    /* Set the return value from object register data. */
+                    jRet[strName] = object.get<uint512_t>(strName).GetHex();
+
+                    break;
+                }
+
+
+                /* Check for uint1024_t type. */
+                case TAO::Register::TYPES::UINT1024_T:
+                {
+                    /* Set the return value from object register data. */
+                    jRet[strName] = object.get<uint1024_t>(strName).GetHex();
+
+                    break;
+                }
+
+                /* Check for string type. */
+                case TAO::Register::TYPES::STRING:
+                {
+                    /* Set the return value from object register data. */
+                    const std::string strRet = object.get<std::string>(strName);
+
+                    /* Remove trailing nulls from the data, which are padding to maxlength on mutable fields */
+                    jRet[strName] = strRet.substr(0, strRet.find_last_not_of('\0') + 1);
+
+                    /* Special rule for namespaces. */
+                    if(strName == "namespace")
+                        jRet["global"]    = (jRet["namespace"] == TAO::Register::NAMESPACE::GLOBAL);
+                    else if(strName == "name")
+                    {
+                        /* Start with default namespace generated by user-id. */
+                        uint256_t hashNamespace = object.hashOwner;
+
+                        /* Check if object contains a namespace. */
+                        if(object.Check("namespace", TAO::Register::TYPES::STRING, false))
+                            hashNamespace = TAO::Register::Address(object.get<std::string>("namespace"), TAO::Register::Address::NAMESPACE);
+
+                        /* Generate name object's address. */
+                        jRet["address"] = TAO::Register::Address(strRet, hashNamespace, TAO::Register::Address::NAME).ToString();
+                    }
+
+                    break;
+                }
+
+                /* Check for bytes type. */
+                case TAO::Register::TYPES::BYTES:
+                {
+                    /* Set the return value from object register data. */
+                    std::vector<uint8_t> vRet = object.get<std::vector<uint8_t>>(strName);
+
+                    /* Remove trailing nulls from the data, which are padding to maxlength on mutable fields */
+                    vRet.erase(std::find(vRet.begin(), vRet.end(), '\0'), vRet.end());
+
+                    /* Add to return value in base64 encoding. */
+                    jRet[strName] = encoding::EncodeBase64(&vRet[0], vRet.size()) ;
+
+                    break;
+                }
+            }
+        }
+
+        return jRet;
+    }
+
+
     /* Converts an Object Register to formattted JSON */
     json::json ObjectToJSON(const json::json& params,
                             const TAO::Register::Object& object,
@@ -1033,7 +1236,6 @@ namespace TAO::API
                 //jRet["checksum"] = state.hashChecksum;
                 jRet["data"] = data;
             }
-
         }
         else if(object.nType == TAO::Register::REGISTER::OBJECT)
         {
