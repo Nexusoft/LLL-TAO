@@ -1041,7 +1041,6 @@ namespace TAO::API
             uint8_t nStandard = object.Standard();
             switch(nStandard)
             {
-
                 /* Handle for a regular account. */
                 case TAO::Register::OBJECTS::ACCOUNT:
                 case TAO::Register::OBJECTS::TRUST:

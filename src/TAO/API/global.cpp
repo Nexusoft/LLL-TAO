@@ -17,17 +17,19 @@ ________________________________________________________________________________
 #include <TAO/API/assets/types/assets.h>
 #include <TAO/API/dex/types/dex.h>
 #include <TAO/API/ledger/types/ledger.h>
-#include <TAO/API/register/types/register.h>
 #include <TAO/API/supply/types/supply.h>
 #include <TAO/API/system/types/system.h>
-#include <TAO/API/types/commands/tokens.h>
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/types/commands/finance.h>
 #include <TAO/API/names/types/names.h>
 #include <TAO/API/objects/types/objects.h>
 #include <TAO/API/voting/types/voting.h>
 #include <TAO/API/invoices/types/invoices.h>
 #include <TAO/API/crypto/types/crypto.h>
+
+
+#include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/register.h>
+#include <TAO/API/types/commands/tokens.h>
 
 #include <TAO/API/types/sessionmanager.h>
 
