@@ -25,12 +25,10 @@ namespace TAO::API
     const uint256_t ADDRESS_ANY =  uint256_t(0);
 
 
-    /** Struct to hold tiker constants. */
-    struct TOKEN
+    /** Namespace to hold ticker constants. */
+    namespace TOKEN
     {
         /* Hard coded value for NXS token-id. */
-        const static uint256_t NXS;
-    };
-
-    const uint256_t TOKEN::NXS = 0;
+        const uint256_t NXS = uint256_t(0);
+    }
 }

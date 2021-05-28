@@ -59,7 +59,7 @@ namespace TAO::API
 
         /* Batch read up to 1000 at a time */
         std::vector<TAO::Register::Object> vAccounts;
-        if(LLD::Register->BatchRead(strType, vAccounts, 1000))
+        if(LLD::Register->BatchRead(strType, vAccounts, -1))
         {
             /* Make sure they are all parsed so that we can sort them */
             for(auto& rAccount : vAccounts)
@@ -67,6 +67,17 @@ namespace TAO::API
                 /* Parse so we can access the data */
                 if(!rAccount.Parse())
                     continue;
+
+                //NOTE: this is a temporary manual filtering paramter, need to automate filtering language
+                if(rAccount.Check("token", TAO::Register::TYPES::UINT256_T, false) && jParams.find("token") != jParams.end())
+                {
+                    /* Grab our token-id from our input parameters. */
+                    const uint256_t hashToken = TAO::Register::Address(jParams["token"].get<std::string>());
+
+                    /* Check for where clause with token. */
+                    if(rAccount.get<uint256_t>("token") != hashToken)
+                        continue;
+                }
 
                 /* Only include active within last 30 days */
                 //if(rAccount.nModified < nActive)

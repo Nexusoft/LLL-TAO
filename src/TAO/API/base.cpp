@@ -56,7 +56,8 @@ namespace TAO::API
     std::string Base::RewriteURL(const std::string& strMethod, json::json &jParams)
     {
         /* Grab our components of the URL to rewrite. */
-        const std::vector<std::string> vMethods = Split(strMethod, '/');
+        std::vector<std::string> vMethods;
+        ParseString(strMethod, '/', vMethods);
 
         /* Check that we have all of our values. */
         if(vMethods.empty()) //we are ignoring everything past first noun on rewrite
