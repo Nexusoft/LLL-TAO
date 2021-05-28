@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/register.h>
 
 #include <TAO/API/include/json.h>
+#include <TAO/API/include/filter.h>
 #include <TAO/API/include/format.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/types/exception.h>
@@ -68,23 +69,8 @@ namespace TAO::API
                 if(!rAccount.Parse())
                     continue;
 
-                //NOTE: this is a temporary manual filtering paramter, need to automate filtering language
-                if(rAccount.Check("token", TAO::Register::TYPES::UINT256_T, false) && jParams.find("token") != jParams.end())
-                {
-                    /* Grab our token-id from our input parameters. */
-                    const uint256_t hashToken = TAO::Register::Address(jParams["token"].get<std::string>());
-
-                    /* Check for where clause with token. */
-                    if(rAccount.get<uint256_t>("token") != hashToken)
-                        continue;
-                }
-
-                /* Only include active within last 30 days */
-                //if(rAccount.nModified < nActive)
-                //    continue;
-
-                /* Only include accounts with stake or trust (genesis has stake w/o trust; can unstake to trust w/o stake) */
-                if(strType == "trust" && rAccount.get<uint64_t>("stake") == 0 && rAccount.get<uint64_t>("trust") == 0)
+                /* Check that we match our filters. */
+                if(!FilterObject(jParams, rAccount))
                     continue;
 
                 /* Add the account to our active list */
@@ -120,7 +106,7 @@ namespace TAO::API
         for(const auto& rAccount : vActive)
         {
             /* Populate the response */
-            json::json jAccount = ObjectToJSON(rAccount);
+            const json::json jAccount = ObjectToJSON(rAccount);
 
             /* Check the offset. */
             if(++nTotal <= nOffset)

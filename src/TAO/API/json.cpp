@@ -1673,7 +1673,7 @@ namespace TAO::API
 
 
     /* Returns a type string for the register type */
-    std::string RegisterType(uint8_t nType)
+    std::string RegisterType(const uint8_t nType)
     {
         std::string strRegisterType = "UNKNOWN";
 
@@ -1704,7 +1704,7 @@ namespace TAO::API
 
 
     /* Returns a type string for the register object type */
-    std::string ObjectType(uint8_t nType)
+    std::string ObjectType(const uint8_t nType)
     {
         std::string strObjectType = "UNKNOWN";
 

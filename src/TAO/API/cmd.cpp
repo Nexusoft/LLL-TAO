@@ -120,9 +120,9 @@ namespace TAO
 
             /* list of keywords that are acceptale parameters for a /list/xxx method.  Parameters not in this list will be converted
                a `where` array */
-                
+
             std::vector<std::string> vKeywords = {"genesis", "username", "verbose", "page", "limit", "offset", "sort", "order", "where"};
-            
+
             /* Build the JSON request object. */
             json::json parameters;
 
@@ -155,12 +155,12 @@ namespace TAO
                         strValue.append(" " + arg);
                         jsonClause["value"] = strValue;
                     }
-                    
+
                     /* Append this data to the previously stored parameter. */
                     std::string value = parameters[prev];
                     value.append(" " + arg);
                     parameters[prev] = value;
-                    
+
                     /* Reset the Where flag */
                     fWhere = false;
 
@@ -198,7 +198,7 @@ namespace TAO
                     /* Add it to the where params*/
                     parameters["where"].push_back(jsonClause);
                 }
-    
+
 
                 // if the paramter is a JSON list or array then we need to parse it
                 if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
@@ -227,7 +227,7 @@ namespace TAO
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
             /* Make the connection to the API server. */
-            
+
 
             std::string strAddr = config::GetArg("-apiconnect", "127.0.0.1");
             uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
@@ -244,7 +244,7 @@ namespace TAO
             {
                 LLP::APINode apiNode;
                 apiNode.SetSSL(true);
-                
+
                 LLP::BaseAddress addr(strAddr, nSSLPort);
 
                 /* Make connection, write packet, read response, and disconnect. */
@@ -261,7 +261,7 @@ namespace TAO
             {
                 LLP::APINode apiNode;
                 apiNode.SetSSL(false);
-                
+
                 LLP::BaseAddress addr(strAddr, nPort);
 
                 /* Make connection, write packet, read response, and disconnect. */
@@ -289,6 +289,7 @@ namespace TAO
 
             /* Dump response to console. */
             printf("%s\n", strPrint.c_str());
+            printf("Executed in %s\n", ret["info"]["latency"].get<std::string>().c_str());
 
             return 0;
         }
@@ -366,7 +367,7 @@ namespace TAO
             {
                 LLP::RPCNode rpcNode;
                 rpcNode.SetSSL(true);
-                
+
                 LLP::BaseAddress addr(strAddr, nSSLPort);
 
                 /* Make connection, write packet, read response, and disconnect. */
@@ -384,7 +385,7 @@ namespace TAO
             {
                 LLP::RPCNode rpcNode;
                 rpcNode.SetSSL(false);
-                
+
                 LLP::BaseAddress addr(strAddr, nPort);
 
                 /* Make connection, write packet, read response, and disconnect. */
