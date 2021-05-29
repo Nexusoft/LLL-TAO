@@ -91,36 +91,30 @@ namespace TAO
 
 
         /* Executes an API call from the commandline */
-        int CommandLineAPI(int argc, char** argv, int argn)
+        int CommandLineAPI(int argc, char** argv, int nArgBegin)
         {
             /* Check the parameters. */
-            if(argc < argn + 1)
-            {
-                debug::error("missing endpoint parameter");
-
-                return 0;
-            }
-
+            if(argc < nArgBegin + 1)
+                return debug::error("Missing endpoint parameter");
 
             /* HTTP basic authentication for API */
-            std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-apiuser"] + ":" + config::mapArgs["-apipassword"]);
+            const std::string strUserPass64 =
+                encoding::EncodeBase64(config::mapArgs["-apiuser"] + ":" + config::mapArgs["-apipassword"]);
 
             /* Parse out the endpoints. */
-            std::string strEndpoint = std::string(argv[argn]);
-            std::string::size_type nPos = strEndpoint.find('/');
-            if(nPos == strEndpoint.npos)
-            {
-                debug::error("\nendpoint argument requires a forward slash [ex. ./nexus -api <API-NAME>/<METHOD> <KEY>=<VALUE>]");
+            const std::string strEndpoint = std::string(argv[nArgBegin]);
 
-                return 0;
-            }
+            /* Get our starting position. */
+            const std::string::size_type nPos = strEndpoint.find('/');
+            if(nPos == strEndpoint.npos)
+                return debug::error("Endpoint argument requires a forward slash [ex. ./nexus -api <API-NAME>/<METHOD> <KEY>=<VALUE>]");
 
             /* Build the JSON request object. */
             json::json jParameters;
 
             /* Keep track of previous parameter. */
-            std::string prev;
-            for(int i = argn + 1; i < argc; ++i)
+            std::string strPrev;
+            for(int i = nArgBegin + 1; i < argc; ++i)
             {
                 /* Parse out the key / values. */
                 std::string strArg = std::string(argv[i]);
@@ -130,21 +124,21 @@ namespace TAO
                 if(nPos == strArg.npos)
                 {
                     /* Append this data with URL encoding. */
-                    std::string value = jParameters[prev];
-                    value.append(" " + strArg);
-                    jParameters[prev] = value;
+                    std::string strValue = jParameters[strPrev];
+                    strValue.append(" " + strArg);
+                    jParameters[strPrev] = strValue;
 
                     continue;
                 }
 
                 /* Set the previous argument. */
-                prev = strArg.substr(0, nPos);
+                strPrev = strArg.substr(0, nPos);
 
                 // if the paramter is a JSON list or array then we need to parse it
-                if(strArg.compare(nPos + 1,1,"{") == 0 || strArg.compare(nPos + 1,1,"[") == 0)
-                    jParameters[prev]=json::json::parse(strArg.substr(nPos + 1));
+                if(strArg.compare(nPos + 1, 1, "{") == 0 || strArg.compare(nPos + 1, 1, "[") == 0)
+                    jParameters[strPrev] = json::json::parse(strArg.substr(nPos + 1));
                 else
-                    jParameters[prev] = strArg.substr(nPos + 1);
+                    jParameters[strPrev] = strArg.substr(nPos + 1);
             }
 
 
@@ -195,10 +189,10 @@ namespace TAO
 
 
         /* Executes an API call from the commandline */
-        int CommandLineRPC(int argc, char** argv, int argn)
+        int CommandLineRPC(int argc, char** argv, int nArgBegin)
         {
             /* Check the parameters. */
-            if(argc < argn + 1)
+            if(argc < nArgBegin + 1)
             {
                 debug::log(0, "Not Enough Parameters");
 
@@ -216,26 +210,26 @@ namespace TAO
             std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"]);
 
             /* Build the JSON request object. */
-            json::json parameters = json::json::array();
-            for(int i = argn + 1; i < argc; ++i)
+            json::json jParameters = json::json::array();
+            for(int i = nArgBegin + 1; i < argc; ++i)
             {
                 std::string strArg = argv[i];
                 // if the paramter is a JSON list or array then we need to parse it
                 if(strArg.compare(0,1,"{") == 0 || strArg.compare(0,1,"[") == 0)
-                    parameters.push_back(json::json::parse(argv[i]));
+                    jParameters.push_back(json::json::parse(argv[i]));
                 else
-                    parameters.push_back(argv[i]);
+                    jParameters.push_back(argv[i]);
             }
 
             /* Build the HTTP Header. */
-            json::json body =
+            json::json jBody =
             {
-                {"method", argv[argn]},
-                {"params", parameters},
+                {"method", argv[nArgBegin]},
+                {"params", jParameters},
                 {"id", 1}
             };
 
-            std::string strContent = body.dump();
+            std::string strContent = jBody.dump();
             std::string strReply = debug::safe_printstr(
                     "POST / HTTP/1.1\r\n",
                     "Date: ", debug::rfc1123Time(), "\r\n",
