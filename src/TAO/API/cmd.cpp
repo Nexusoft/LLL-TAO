@@ -106,9 +106,9 @@ namespace TAO
             std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-apiuser"] + ":" + config::mapArgs["-apipassword"]);
 
             /* Parse out the endpoints. */
-            std::string endpoint = std::string(argv[argn]);
-            std::string::size_type pos = endpoint.find('/');
-            if(pos == endpoint.npos)
+            std::string strEndpoint = std::string(argv[argn]);
+            std::string::size_type nPos = strEndpoint.find('/');
+            if(nPos == strEndpoint.npos)
             {
                 debug::error("\nendpoint argument requires a forward slash [ex. ./nexus -api <API-NAME>/<METHOD> <KEY>=<VALUE>]");
 
@@ -116,52 +116,53 @@ namespace TAO
             }
 
             /* Build the JSON request object. */
-            json::json parameters;
+            json::json jParameters;
 
             /* Keep track of previous parameter. */
             std::string prev;
             for(int i = argn + 1; i < argc; ++i)
             {
                 /* Parse out the key / values. */
-                std::string arg = std::string(argv[i]);
-                std::string::size_type pos = arg.find('=', 0);
+                std::string strArg = std::string(argv[i]);
+                std::string::size_type nPos = strArg.find('=', 0);
 
                 /* Watch for missing delimiter. */
-                if(pos == arg.npos)
+                if(nPos == strArg.npos)
                 {
                     /* Append this data with URL encoding. */
-                    std::string value = parameters[prev];
-                    value.append(" " + arg);
-                    parameters[prev] = value;
+                    std::string value = jParameters[prev];
+                    value.append(" " + strArg);
+                    jParameters[prev] = value;
 
                     continue;
                 }
 
                 /* Set the previous argument. */
-                prev = arg.substr(0, pos);
-
+                prev = strArg.substr(0, nPos);
 
                 // if the paramter is a JSON list or array then we need to parse it
-                if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
-                    parameters[prev]=json::json::parse(arg.substr(pos + 1));
+                if(strArg.compare(nPos + 1,1,"{") == 0 || strArg.compare(nPos + 1,1,"[") == 0)
+                    jParameters[prev]=json::json::parse(strArg.substr(nPos + 1));
                 else
-                    parameters[prev] = arg.substr(pos + 1);
+                    jParameters[prev] = strArg.substr(nPos + 1);
             }
 
 
             /* Build the HTTP Header. */
-            std::string strContent = parameters.dump();
-            std::string strReply = debug::safe_printstr(
-                    "POST /", endpoint.substr(0, pos), "/", endpoint.substr(pos + 1), " HTTP/1.1\r\n",
-                    "Date: ", debug::rfc1123Time(), "\r\n",
-                    "Connection: close\r\n",
-                    "Content-Length: ", strContent.size(), "\r\n",
-                    "Content-Type: application/json\r\n",
-                    "Origin: http://localhost:8080\r\n",
-                    "Server: Nexus-JSON-API\r\n",
-                    "Authorization: Basic ", strUserPass64, "\r\n",
-                    "\r\n",
-                    strContent);
+            const std::string strContent = jParameters.dump();
+            const std::string strReply = debug::safe_printstr
+            (
+                "POST /", strEndpoint.substr(0, nPos), "/", strEndpoint.substr(nPos + 1), " HTTP/1.1\r\n",
+                "Date: ", debug::rfc1123Time(), "\r\n",
+                "Connection: close\r\n",
+                "Content-Length: ", strContent.size(), "\r\n",
+                "Content-Type: application/json\r\n",
+                "Origin: http://localhost:8080\r\n",
+                "Server: Nexus-JSON-API\r\n",
+                "Authorization: Basic ", strUserPass64, "\r\n",
+                "\r\n",
+                strContent
+            );
 
             /* Convert the content into a byte buffer. */
             const std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
