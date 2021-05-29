@@ -111,35 +111,96 @@ namespace TAO
 
             /* Build the JSON request object. */
             json::json jParameters;
+            json::json jWhere;
+
+            /* Track if WHERE clause is in effect. */
+            bool fWhere = false;
 
             /* Keep track of previous parameter. */
-            std::string strPrev;
+            std::string strKey, strValue;
             for(int i = nArgBegin + 1; i < argc; ++i)
             {
                 /* Parse out the key / values. */
-                std::string strArg = std::string(argv[i]);
-                std::string::size_type nPos = strArg.find('=', 0);
+                const std::string strArg = std::string(argv[i]);
 
-                /* Watch for missing delimiter. */
-                if(nPos == strArg.npos)
+                /* Get the position of key/value delimiter. */
+                const std::string::size_type nPos = strArg.find('=', 0);
+
+                /* Check for where clause. */
+                if(strArg == "WHERE")
                 {
-                    /* Append this data with URL encoding. */
-                    std::string strValue = jParameters[strPrev];
-                    strValue.append(" " + strArg);
-                    jParameters[strPrev] = strValue;
-
+                    fWhere = true;
                     continue;
                 }
 
-                /* Set the previous argument. */
-                strPrev = strArg.substr(0, nPos);
+                else if(fWhere)
+                {
+                    /* Copy our string position. */
+                    const std::string::size_type nGet = strArg.find_first_of("<=>");
 
-                // if the paramter is a JSON list or array then we need to parse it
-                if(strArg.compare(nPos + 1, 1, "{") == 0 || strArg.compare(nPos + 1, 1, "[") == 0)
-                    jParameters[strPrev] = json::json::parse(strArg.substr(nPos + 1));
+                    /* Check for correct symbols. */
+                    if(nGet != strArg.npos)
+                    {
+                        /* Grab our current key. */
+                        const std::string strKey = strArg.substr(0, nGet);
+
+                        /* Check for our incoming parameter. */
+                        const std::string::size_type nDot = strKey.find('.');
+                        if(nDot == strKey.npos)
+                            return debug::error("Syntax Error at '", strKey, "'. Missing '.'");
+
+                        /* Build our current json value. */
+                        json::json jClause;
+                        jClause["class"]  = strKey.substr(0, nDot);
+                        jClause["field"]  = strKey.substr(nDot + 1);
+
+                        /* Check if its < or =. */
+                        const std::string::size_type nOP = strArg.find_first_of("<=>", nGet + 1);
+                        if(nOP != strArg.npos)
+                        {
+                            jClause["operator"] = strArg[nGet] + std::string("") + strArg[nOP];
+                            jClause["value"]    = strArg.substr(nGet + 2);
+                        }
+
+                        /* It's just < if we reach here. */
+                        else
+                        {
+                            jClause["operator"] = strArg[nGet] + std::string("");
+                            jClause["value"]    = strArg.substr(nGet + 1);
+                        }
+
+                        //debug::log(0, "Process where ", jValue.dump(4));
+                        jWhere.push_back(jClause);
+                    }
+                }
+
+                /* Regular key=value parsing handling spaces. */
                 else
-                    jParameters[strPrev] = strArg.substr(nPos + 1);
+                {
+                    /* Watch for missing delimiter. */
+                    if(nPos == strArg.npos)
+                    {
+                        /* Append this data with URL encoding. */
+                        strValue.append(" " + strArg);
+
+                        continue;
+                    }
+                    else //by default assign directly
+                        strValue = strArg.substr(nPos + 1);
+
+                    /* Set the previous argument. */
+                    strKey = strArg.substr(0, nPos);
+
+                    // if the paramter is a JSON list or array then we need to parse it
+                    if(strArg.compare(nPos + 1, 1, "{") == 0 || strArg.compare(nPos + 1, 1, "[") == 0)
+                        jParameters[strKey] = json::json::parse(strArg.substr(nPos + 1));
+                    else
+                        jParameters[strKey] = strValue;
+                }
             }
+
+            /* Add our complete where clause to request parameters. */
+            jParameters["where"] = jWhere;
 
 
             /* Build the HTTP Header. */

@@ -21,111 +21,113 @@ namespace TAO::API
     /* Determines if an object should be included in a list based on input parameters. */
     bool FilterObject(const json::json& jParams, const TAO::Register::Object& objCheck)
     {
-        /* First let's check some core register values. */
-        if(jParams.find("owner") != jParams.end())
-        {
-            /* Grab copy of our owner from parameters. */
-            const uint256_t hashOwner = uint256_t(jParams["owner"].get<std::string>());
-            if(hashOwner != objCheck.hashOwner)
-                return false;
-        }
+        /* Check for a where clause. */
+        if(jParams.find("where") == jParams.end())
+            return true; //no filters
 
-        /* Check for a core structure filter for version. */
-        if(jParams.find("version") != jParams.end())
+        /* Loop through our where clauses. */
+        for(const auto& jClause : jParams["where"])
         {
-            /* Grab a copy of our version from parameters. */
-            const uint64_t nVersion = uint64_t(std::stoull(jParams["version"].get<std::string>()));
-            if(nVersion != objCheck.nVersion)
-                return false;
-        }
-
-        /* Loop through all of our type names. */
-        const std::vector<std::string> vFieldNames = objCheck.ListFields();
-        for(const auto& strName : vFieldNames)
-        {
-            /* Check if we have a key in our parameters. */
-            if(jParams.find(strName) == jParams.end())
+            /* Check that we are operating object. */
+            if(jClause["class"].get<std::string>() != "object")
                 continue;
 
-            /* Cache a reference of our value. */
-            const json::json jCheck = jParams[strName];
-            if(!jCheck.is_primitive())
+            /* Grab a copy of our field to check. */
+            const std::string strName = jClause["field"].get<std::string>();
+
+            /* First let's check some core register values. */
+            if(strName == "owner")
+            {
+                /* Grab copy of our owner from parameters. */
+                const uint256_t hashOwner = uint256_t(jClause["value"].get<std::string>());
+                if(hashOwner != objCheck.hashOwner)
+                    return false;
+            }
+
+            /* Check for a core structure filter for version. */
+            if(strName == "version")
+            {
+                /* Grab a copy of our version from parameters. */
+                const uint64_t nVersion = uint64_t(std::stoull(jClause["value"].get<std::string>()));
+                if(nVersion != objCheck.nVersion)
+                    return false;
+            }
+
+            /* Check for the available type. */
+            if(!objCheck.Check(strName))
                 continue;
 
             /* We want to catch and continue here, in case there are any issues with parameters. */
             try
             {
+                /* Grab a reference of value to check. */
+                const json::json& jCheck = jClause["value"];
+
                 /* Now let's check our type. */
                 uint8_t nType = 0;
                 objCheck.Type(strName, nType);
+
+                /* Grab our OP code now. */
+                const std::string strOP = jClause["operator"].get<std::string>();
 
                 /* Switch based on type. */
                 switch(nType)
                 {
                     /* Check for uint8_t type. */
                     case TAO::Register::TYPES::UINT8_T:
-                    {
-                        /* Set the return value from object register data. */
-                        const uint8_t nValue = objCheck.get<uint8_t>(strName);
-                        if(!jCheck.is_string())
-                            continue;
-
-                        /* Check that our values match. */
-                        if(nValue != std::stoull(jCheck.get<std::string>()))
-                            return false;
-
-                        break;
-                    }
-
-                    /* Check for uint16_t type. */
                     case TAO::Register::TYPES::UINT16_T:
-                    {
-                        /* Set the return value from object register data. */
-                        const uint16_t nValue = objCheck.get<uint16_t>(strName);
-                        if(!jCheck.is_string())
-                            continue;
-
-                        /* Check that our values match. */
-                        if(nValue != std::stoull(jCheck.get<std::string>()))
-                            return false;
-
-                        break;
-                    }
-
-                    /* Check for uint32_t type. */
                     case TAO::Register::TYPES::UINT32_T:
-                    {
-                        /* Set the return value from object register data. */
-                        const uint32_t nValue = objCheck.get<uint32_t>(strName);
-                        if(!jCheck.is_string())
-                            continue;
-
-                        /* Check that our values match. */
-                        if(nValue != std::stoull(jCheck.get<std::string>()))
-                            return false;
-
-                        break;
-                    }
-
-                    /* Check for uint64_t type. */
                     case TAO::Register::TYPES::UINT64_T:
                     {
                         /* Grab a copy of our object register value. */
-                        const uint64_t nValue = objCheck.get<uint64_t>(strName);
+                        uint64_t nValue = 0; //we will store all in 64 bits
                         if(!jCheck.is_string())
                             continue;
 
-                        /* Special rule for balances that need to cast in and out of double. */
-                        if(strName == "balance" || strName == "stake" || strName == "supply")
+                        /* We need to switch to decode the correct type out of the object register. */
+                        switch(nType)
                         {
-                            /* Convert our input parameter into integer converted uint64_t. */
-                            const uint64_t nCheck = std::stod(jCheck.get<std::string>()) * GetFigures(objCheck);
-                            if(nValue != nCheck)
-                                return false;
+                            /* Case for 8-bit unsigned int, or unsigned char. */
+                            case TAO::Register::TYPES::UINT8_T:
+                                nValue = objCheck.get<uint8_t>(strName);
+                                break;
+
+                            /* Case for 16-bit unsigned int, or unsigned short. */
+                            case TAO::Register::TYPES::UINT16_T:
+                                nValue = objCheck.get<uint16_t>(strName);
+                                break;
+
+                            /* Case for 32-bit unsigned int, or unsigned int. */
+                            case TAO::Register::TYPES::UINT32_T:
+                                nValue = objCheck.get<uint32_t>(strName);
+                                break;
+
+                            /* Case for 64-bit unsigned int, or unsigned long. */
+                            case TAO::Register::TYPES::UINT64_T:
+                                nValue = objCheck.get<uint64_t>(strName);
+                                break;
                         }
 
+                        /* Special rule for balances that need to cast in and out of double. */
+                        uint64_t nCheck = std::stoull(jCheck.get<std::string>());
+                        if(strName == "balance" || strName == "stake" || strName == "supply")
+                            nCheck = std::stod(jCheck.get<std::string>()) * GetFigures(objCheck);
+
                         /* Check that our values match. */
-                        else if(nValue != std::stoull(jCheck.get<std::string>()))
+                        bool fEvaluate = false;
+                        if(strOP.find("=") != strOP.npos && nValue == nCheck)
+                            fEvaluate = true;
+
+                        /* Check our less than operator. */
+                        if(strOP.find("<") != strOP.npos && nValue < nCheck)
+                            fEvaluate = true;
+
+                        /* Check our greater than operator. */
+                        if(strOP.find(">") != strOP.npos && nValue > nCheck)
+                            fEvaluate = true;
+
+                        /* Break out if object failed filters. */
+                        if(!fEvaluate)
                             return false;
 
                         break;
@@ -140,15 +142,25 @@ namespace TAO::API
                             continue;
 
                         /* Special case where value is an address. */
+                        uint256_t hashCheck = uint256_t(jCheck.get<std::string>());
                         if(strName == "token" || strName == "address")
-                        {
-                            /* Check our value against a register address. */
-                            if(hashValue != TAO::Register::Address(jCheck.get<std::string>()))
-                                return false;
-                        }
+                            hashCheck = TAO::Register::Address(jCheck.get<std::string>());
 
                         /* Check that our values match. */
-                        else if(hashValue != uint256_t(jCheck.get<std::string>()))
+                        bool fEvaluate = false;
+                        if(strOP.find("=") != strOP.npos && hashValue == hashCheck)
+                            fEvaluate = true;
+
+                        /* Check our less than operator. */
+                        if(strOP.find("<") != strOP.npos && hashValue < hashCheck)
+                            fEvaluate = true;
+
+                        /* Check our greater than operator. */
+                        if(strOP.find(">") != strOP.npos && hashValue > hashCheck)
+                            fEvaluate = true;
+
+                        /* Break out if object failed filters. */
+                        if(!fEvaluate)
                             return false;
 
                         break;
@@ -162,8 +174,25 @@ namespace TAO::API
                         if(!jCheck.is_string())
                             continue;
 
+                        /* Our hash to check against. */
+                        const uint512_t hashCheck =
+                            uint512_t(jCheck.get<std::string>());
+
                         /* Check that our values match. */
-                        if(hashValue != uint512_t(jCheck.get<std::string>()))
+                        bool fEvaluate = false;
+                        if(strOP.find("=") != strOP.npos && hashValue == hashCheck)
+                            fEvaluate = true;
+
+                        /* Check our less than operator. */
+                        if(strOP.find("<") != strOP.npos && hashValue < hashCheck)
+                            fEvaluate = true;
+
+                        /* Check our greater than operator. */
+                        if(strOP.find(">") != strOP.npos && hashValue > hashCheck)
+                            fEvaluate = true;
+
+                        /* Break out if object failed filters. */
+                        if(!fEvaluate)
                             return false;
 
                         break;
@@ -177,8 +206,25 @@ namespace TAO::API
                         if(!jCheck.is_string())
                             continue;
 
+                        /* Our hash to check against. */
+                        const uint1024_t hashCheck =
+                            uint1024_t(jCheck.get<std::string>());
+
                         /* Check that our values match. */
-                        if(hashValue != uint1024_t(jCheck.get<std::string>()))
+                        bool fEvaluate = false;
+                        if(strOP.find("=") != strOP.npos && hashValue == hashCheck)
+                            fEvaluate = true;
+
+                        /* Check our less than operator. */
+                        if(strOP.find("<") != strOP.npos && hashValue < hashCheck)
+                            fEvaluate = true;
+
+                        /* Check our greater than operator. */
+                        if(strOP.find(">") != strOP.npos && hashValue > hashCheck)
+                            fEvaluate = true;
+
+                        /* Break out if object failed filters. */
+                        if(!fEvaluate)
                             return false;
 
                         break;
@@ -192,8 +238,24 @@ namespace TAO::API
                         if(!jCheck.is_string())
                             continue;
 
+                        /* Our hash to check against. */
+                        const std::string strCheck = jCheck.get<std::string>();
+
                         /* Check that our values match. */
-                        if(strValue != jCheck.get<std::string>())
+                        bool fEvaluate = false;
+                        if(strOP.find("=") != strOP.npos && strValue == strCheck)
+                            fEvaluate = true;
+
+                        /* Check our less than operator. */
+                        if(strOP.find("<") != strOP.npos && strValue < strCheck)
+                            fEvaluate = true;
+
+                        /* Check our greater than operator. */
+                        if(strOP.find(">") != strOP.npos && strValue > strCheck)
+                            fEvaluate = true;
+
+                        /* Break out if object failed filters. */
+                        if(!fEvaluate)
                             return false;
 
                         break;
