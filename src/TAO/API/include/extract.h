@@ -44,7 +44,7 @@ namespace TAO::API
 
 
 
-    /** ExtractParams
+    /** ExtractList
      *
      *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result
      *
@@ -54,6 +54,6 @@ namespace TAO::API
      *  @param[out] nOffset The offset to apply to the results
      *
      **/
-    void ExtractParams(const json::json& params, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset);
+    void ExtractList(const json::json& params, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset);
 
 }

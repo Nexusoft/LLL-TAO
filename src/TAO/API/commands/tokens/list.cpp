@@ -124,7 +124,7 @@ namespace TAO::API
         std::string strOrder = "desc";
 
         /* Get the params to apply to the response. */
-        ExtractParams(params, strOrder, nLimit, nOffset);
+        ExtractList(params, strOrder, nLimit, nOffset);
 
         /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as
            standard where clauses to filter the json */

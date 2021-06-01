@@ -162,7 +162,7 @@ namespace TAO::API
 
         /* Get the params to apply to the response. */
         std::string strOrder = "desc";
-        ExtractParams(params, strOrder, nLimit, nOffset);
+        ExtractList(params, strOrder, nLimit, nOffset);
 
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
         std::vector<TAO::Register::Address> vRegisters;

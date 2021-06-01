@@ -81,7 +81,7 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Get the params to apply to the response. */
-            ExtractParams(params, strOrder, nLimit, nOffset);
+            ExtractList(params, strOrder, nLimit, nOffset);
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;

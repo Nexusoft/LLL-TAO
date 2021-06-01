@@ -83,7 +83,7 @@ namespace TAO
 
             /* Get the params to apply to the response. */
             std::string strOrder = "desc";
-            ExtractParams(params, strOrder, nLimit, nOffset);
+            ExtractList(params, strOrder, nLimit, nOffset);
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;

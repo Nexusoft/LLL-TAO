@@ -46,7 +46,7 @@ namespace TAO::API
 
         /* Get the params to apply to the response. */
         std::string strOrder = "desc";
-        ExtractParams(jParams, strOrder, nLimit, nOffset);
+        ExtractList(jParams, strOrder, nLimit, nOffset);
 
         /* Sort order to apply */
         std::string strSort = "trust";

@@ -144,7 +144,7 @@ namespace TAO::API
 
 
     /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
-    void ExtractParams(const json::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
+    void ExtractList(const json::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
     {
         /* Check for page parameter. */
         uint32_t nPage = 0;

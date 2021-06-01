@@ -100,7 +100,7 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Get the params to apply to the response. */
-            ExtractParams(params, strOrder, nLimit, nOffset);
+            ExtractList(params, strOrder, nLimit, nOffset);
 
             /* Get verbose levels. */
             std::string strVerbose = "default";
