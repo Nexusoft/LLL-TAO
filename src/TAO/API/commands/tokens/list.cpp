@@ -126,10 +126,6 @@ namespace TAO::API
         /* Get the params to apply to the response. */
         ExtractList(params, strOrder, nLimit, nOffset);
 
-        /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as
-           standard where clauses to filter the json */
-        std::vector<std::string> vIgnore = {"name", "address"};
-
 
         /* The process below for building up the list of token accounts might seem convoluted but there is a reason for the
            long-winded process.  We can batch read accounts from the register database to obtain all accounts and then filter

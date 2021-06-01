@@ -120,10 +120,6 @@ namespace TAO
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-144, "No transactions found");
 
-            /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as
-               standard where clauses to filter the json */
-            std::vector<std::string> vIgnore = {"name", "address"};
-
             /* Loop until genesis. */
             uint32_t nTotal = 0;
             while(hashLast != 0)

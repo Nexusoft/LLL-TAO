@@ -225,10 +225,6 @@ namespace TAO
             /* Declare the JSON array to return */
             encoding::json ret = encoding::json::array();
 
-            /* fields to ignore in the where clause.  This is necessary so that height and hash params are not treated as
-               standard where clauses to filter the json */
-            std::vector<std::string> vIgnore = {"height", "hash"};
-
             /* Iterate through blocks until we hit the limit or no more blocks*/
             uint32_t nTotal = 0;
             while(!blockState.IsNull())

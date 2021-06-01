@@ -992,10 +992,6 @@ namespace TAO
             /* Get the params to apply to the response. */
             ExtractList(params, strOrder, nLimit, nOffset);
 
-            /* fields to ignore in the where clause.  This is necessary so that the suppressed param is not treated as
-               standard where clauses to filter the json */
-            std::vector<std::string> vIgnore = {"suppressed"};
-
             /* Check for suppressed parameter. */
             bool fIncludeSuppressed = false;
             if(params.find("suppressed") != params.end())
