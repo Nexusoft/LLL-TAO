@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 
@@ -85,7 +86,7 @@ namespace TAO
                         jsonRet["is_valid"] = true;
 
                         /* Set the register type */
-                        jsonRet["type"]    = RegisterType(state.nType);
+                        jsonRet["type"]    = GetRegisterType(state.nType);
 
                         /* Check if address is owned by current user */
                         uint256_t hashGenesis = Commands::Get<Users>()->GetCallersGenesis(params);
@@ -102,7 +103,7 @@ namespace TAO
                         {
                             /* parse object so that the data fields can be accessed */
                             if(state.Parse())
-                                jsonRet["object_type"] = ObjectType(state.Standard());
+                                jsonRet["object_type"] = GetObjectType(state.Standard());
                             else
                                 jsonRet["is_valid"] = false;
                         }

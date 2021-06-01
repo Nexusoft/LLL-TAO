@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/names/types/names.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/filter.h>
 #include <TAO/API/include/json.h>
 
 /* Global TAO namespace. */

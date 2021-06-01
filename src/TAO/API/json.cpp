@@ -431,7 +431,7 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]      = "CREATE";
                     jRet["address"] = hashAddress.ToString();
-                    jRet["type"]    = RegisterType(nType);
+                    jRet["type"]    = GetRegisterType(nType);
 
                     /* If this is a register object then decode the object type */
                     if(nType == TAO::Register::REGISTER::OBJECT)
@@ -450,7 +450,7 @@ namespace TAO::API
                         if(!state.Parse())
                             throw APIException(-36, "Failed to parse object register");
 
-                        jRet["object_type"] = ObjectType(state.Standard());
+                        jRet["object_type"] = GetObjectType(state.Standard());
                     }
 
                     jRet["data"]    = HexStr(vchData.begin(), vchData.end());
@@ -489,7 +489,7 @@ namespace TAO::API
                             if(!object.Parse())
                                 throw APIException(-36, "Failed to parse object register");
 
-                            jRet["object_type"] = ObjectType(object.Standard());
+                            jRet["object_type"] = GetObjectType(object.Standard());
                         }
                     }
 
@@ -1529,235 +1529,5 @@ namespace TAO::API
         }
 
         return jRet;
-    }
-
-
-    /* If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field */
-    void FilterResponse(const json::json& jParams, json::json &jResponse)
-    {
-        /* Check for fieldname filters. */
-        if(jParams.find("fieldname") != jParams.end())
-        {
-            /* Declare our new return json object. */
-            json::json jRet;
-
-            /* Grab our field string to rebuild response. */
-            const std::string strField = jParams["fieldname"].get<std::string>();
-
-            /* Copy over our new field. */
-            jRet[strField] = jResponse[strField];
-            jResponse      = jRet;
-        }
-    }
-
-
-    /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
-    void GetListParams(const json::json& params, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
-    {
-        /* Check for page parameter. */
-        uint32_t nPage = 0;
-        if(params.find("page") != params.end())
-            nPage = std::stoul(params["page"].get<std::string>());
-
-        /* Check for offset parameter. */
-        nOffset = 0;
-        if(params.find("offset") != params.end())
-            nOffset = std::stoul(params["offset"].get<std::string>());
-
-        /* Check for limit and offset parameter. */
-        nLimit = 100;
-        if(params.find("limit") != params.end())
-        {
-            std::string strLimit = params["limit"].get<std::string>();
-
-            /* Check to see whether the limit includes an offset comma separated */
-            if(IsAllDigit(strLimit))
-            {
-                /* No offset included in the limit */
-                nLimit = std::stoul(strLimit);
-            }
-            else if(strLimit.find(","))
-            {
-                /* Parse the limit and offset */
-                std::vector<std::string> vParts = Split(strLimit, ",");
-
-                /* Get the limit */
-                nLimit = std::stoul(trim(vParts[0]));
-
-                /* Get the offset */
-                nOffset = std::stoul(trim(vParts[1]));
-            }
-            else
-            {
-                /* Invalid limit */
-            }
-        }
-
-        /* If no offset explicitly included calculate it from the limit + page */
-        if(nOffset == 0 && nPage > 0)
-            nOffset = nLimit * nPage;
-
-        /* Get sort order*/
-        if(params.find("order") != params.end())
-            strOrder = params["order"].get<std::string>();
-    }
-
-
-    /* Checks to see if the json response matches the where clauses  */
-    bool MatchesWhere(const json::json& obj, const std::vector<Clause>& vWhere, const std::vector<std::string>& vIgnore)
-    {
-        bool fMatchesAll = true;
-        for(const auto& clause : vWhere)
-        {
-            /* Skip the clause if the field is on the ignore list */
-            if(std::find(vIgnore.begin(), vIgnore.end(), clause.strField) != vIgnore.end())
-                continue;
-
-            /* Check that the field exists in the JSON.  If it doesn't then remove skip the record */
-            if(obj.find(clause.strField) != obj.end())
-            {
-                /* Check the value */
-                switch(clause.nOP)
-                {
-                    case TAO::Operation::OP::EQUALS :
-                    {
-                        if(obj[clause.strField].is_number_float())
-                            fMatchesAll = obj[clause.strField] == std::stof(clause.strValue);
-                        else if(obj[clause.strField].is_number_unsigned())
-                            fMatchesAll = obj[clause.strField] == std::stoul(clause.strValue);
-                        else if(obj[clause.strField].is_boolean())
-                            fMatchesAll = obj[clause.strField] == (clause.strValue == "true");
-                        else
-                            fMatchesAll = obj[clause.strField] == clause.strValue;
-                        break;
-                    }
-                    case TAO::Operation::OP::NOTEQUALS :
-                    {
-                        if(obj[clause.strField].is_number_float())
-                            fMatchesAll = obj[clause.strField] != std::stof(clause.strValue);
-                        else if(obj[clause.strField].is_number_unsigned())
-                            fMatchesAll = obj[clause.strField] != std::stoul(clause.strValue);
-                        else if(obj[clause.strField].is_boolean())
-                            fMatchesAll = obj[clause.strField] != (clause.strValue == "true");
-                        else
-                            fMatchesAll = obj[clause.strField] != clause.strValue;
-                        break;
-                    }
-                    case TAO::Operation::OP::LESSTHAN :
-                    {
-                        if(obj[clause.strField].is_number_float())
-                            fMatchesAll = obj[clause.strField] < std::stof(clause.strValue);
-                        else if(obj[clause.strField].is_number_unsigned())
-                            fMatchesAll = obj[clause.strField] < std::stoul(clause.strValue);
-                        else
-                            fMatchesAll = obj[clause.strField] < clause.strValue;
-                        break;
-                    }
-                    case TAO::Operation::OP::LESSEQUALS :
-                    {
-                        if(obj[clause.strField].is_number_float())
-                            fMatchesAll = obj[clause.strField] <= std::stof(clause.strValue);
-                        else if(obj[clause.strField].is_number_unsigned())
-                            fMatchesAll = obj[clause.strField] <= std::stoul(clause.strValue);
-                        else
-                            fMatchesAll = obj[clause.strField] <= clause.strValue;
-                        break;
-                    }
-                    case TAO::Operation::OP::GREATERTHAN :
-                    {
-                        if(obj[clause.strField].is_number_float())
-                            fMatchesAll = obj[clause.strField] > std::stof(clause.strValue);
-                        else if(obj[clause.strField].is_number_unsigned())
-                            fMatchesAll = obj[clause.strField] > std::stoul(clause.strValue);
-                        else
-                            fMatchesAll = obj[clause.strField] > clause.strValue;
-                        break;
-                    }
-                    case TAO::Operation::OP::GREATEREQUALS :
-                    {
-                        if(obj[clause.strField].is_number_float())
-                            fMatchesAll = obj[clause.strField] >= std::stof(clause.strValue);
-                        else if(obj[clause.strField].is_number_unsigned())
-                            fMatchesAll = obj[clause.strField] >= std::stoul(clause.strValue);
-                        else
-                            fMatchesAll = obj[clause.strField] >= clause.strValue;
-                        break;
-                    }
-                }
-            }
-            else
-                fMatchesAll = false;
-
-            if(!fMatchesAll)
-                break;
-
-        }
-
-        return fMatchesAll;
-    }
-
-
-    /* Returns a type string for the register type */
-    std::string RegisterType(const uint8_t nType)
-    {
-        std::string strRegisterType = "UNKNOWN";
-
-        switch(nType)
-        {
-            case TAO::Register::REGISTER::RESERVED :
-                strRegisterType = "RESERVED";
-                break;
-            case TAO::Register::REGISTER::READONLY :
-                strRegisterType = "READONLY";
-                break;
-            case TAO::Register::REGISTER::APPEND :
-                strRegisterType = "APPEND";
-                break;
-            case TAO::Register::REGISTER::RAW :
-                strRegisterType = "RAW";
-                break;
-            case TAO::Register::REGISTER::OBJECT :
-                strRegisterType = "OBJECT";
-                break;
-            case TAO::Register::REGISTER::SYSTEM :
-                strRegisterType = "SYSTEM";
-
-        }
-
-        return strRegisterType;
-    }
-
-
-    /* Returns a type string for the register object type */
-    std::string ObjectType(const uint8_t nType)
-    {
-        std::string strObjectType = "UNKNOWN";
-
-        switch(nType)
-        {
-            case TAO::Register::OBJECTS::NONSTANDARD :
-                strObjectType = "REGISTER";
-                break;
-            case TAO::Register::OBJECTS::ACCOUNT :
-                strObjectType = "ACCOUNT";
-                break;
-            case TAO::Register::OBJECTS::NAME :
-                strObjectType = "NAME";
-                break;
-            case TAO::Register::OBJECTS::NAMESPACE :
-                strObjectType = "NAMESPACE";
-                break;
-            case TAO::Register::OBJECTS::TOKEN :
-                strObjectType = "TOKEN";
-                break;
-            case TAO::Register::OBJECTS::TRUST :
-                strObjectType = "TRUST";
-                break;
-            case TAO::Register::OBJECTS::CRYPTO :
-                strObjectType = "CRYPTO";
-                break;
-        }
-
-        return strObjectType;
     }
 }

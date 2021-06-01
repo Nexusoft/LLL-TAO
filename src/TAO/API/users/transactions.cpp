@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h>
 
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/types/sessionmanager.h>
@@ -82,7 +83,7 @@ namespace TAO
 
             /* Get the params to apply to the response. */
             std::string strOrder = "desc";
-            GetListParams(params, strOrder, nLimit, nOffset);
+            ExtractParams(params, strOrder, nLimit, nOffset);
 
             /* Get the last transaction. */
             uint512_t hashLast = 0;

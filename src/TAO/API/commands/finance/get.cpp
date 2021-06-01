@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
+#include <TAO/API/include/filter.h>
 #include <TAO/API/include/json.h>
 
 /* Global TAO namespace. */

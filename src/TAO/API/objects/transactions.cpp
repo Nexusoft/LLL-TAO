@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/types/commands.h>
 
@@ -99,7 +100,7 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset);
+            ExtractParams(params, strOrder, nLimit, nOffset);
 
             /* Get verbose levels. */
             std::string strVerbose = "default";

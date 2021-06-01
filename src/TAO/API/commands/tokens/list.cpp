@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/names/types/names.h>
 #include <TAO/API/objects/types/objects.h>
 
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
 #include <TAO/API/include/json.h>
@@ -123,7 +124,7 @@ namespace TAO::API
         std::string strOrder = "desc";
 
         /* Get the params to apply to the response. */
-        GetListParams(params, strOrder, nLimit, nOffset);
+        ExtractParams(params, strOrder, nLimit, nOffset);
 
         /* fields to ignore in the where clause.  This is necessary so that name and address params are not treated as
            standard where clauses to filter the json */

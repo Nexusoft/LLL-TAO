@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
 
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/invoices/types/invoices.h>
@@ -74,7 +75,7 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset);
+            ExtractParams(params, strOrder, nLimit, nOffset);
 
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAddresses;

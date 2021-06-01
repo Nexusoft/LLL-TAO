@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/register.h>
 
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/include/filter.h>
 #include <TAO/API/include/format.h>
@@ -45,7 +46,7 @@ namespace TAO::API
 
         /* Get the params to apply to the response. */
         std::string strOrder = "desc";
-        GetListParams(jParams, strOrder, nLimit, nOffset);
+        ExtractParams(jParams, strOrder, nLimit, nOffset);
 
         /* Sort order to apply */
         std::string strSort = "trust";

@@ -56,7 +56,7 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Get the jParams to apply to the response. */
-            GetListParams(jParams, strOrder, nLimit, nOffset);
+            ExtractParams(jParams, strOrder, nLimit, nOffset);
 
             /* The token to filter on.  Default to 0 (NXS) */
             const uint256_t hashToken = ExtractToken(jParams);

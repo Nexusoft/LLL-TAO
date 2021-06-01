@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 
@@ -168,7 +169,7 @@ namespace TAO
             std::string strOrder = "desc";
 
             /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset);
+            ExtractParams(params, strOrder, nLimit, nOffset);
 
             /* look up by height*/
             if(params.find("height") != params.end())

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/finance.h>
 
+#include <TAO/API/include/filter.h>
 #include <TAO/API/include/format.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/types/commands.h>

@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/invoices/types/invoices.h>
 #include <TAO/API/names/types/names.h>
+
+#include <TAO/API/include/filter.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/types/user_types.h>

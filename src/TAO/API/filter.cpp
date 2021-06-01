@@ -269,4 +269,20 @@ namespace TAO::API
 
         return true;
     }
+
+
+    /* If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field */
+    void FilterResponse(const json::json& jParams, json::json &jResponse)
+    {
+        /* Check for fieldname filters. */
+        if(jParams.find("fieldname") != jParams.end())
+        {
+            /* Grab our field string to rebuild response. */
+            const std::string strField = jParams["fieldname"].get<std::string>();
+
+            /* Copy over our new field. */
+            const json::json jRet = { strField, jResponse[strField].get<std::string>() };
+            jResponse      = jRet;
+        }
+    }
 }

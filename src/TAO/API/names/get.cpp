@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/users.h>
 
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/filter.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 

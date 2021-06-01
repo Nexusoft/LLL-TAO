@@ -104,17 +104,6 @@ namespace TAO::API
     double GetTokenOwnership(const TAO::Register::Address& hashToken, const uint256_t& hashGenesis);
 
 
-    /** CheckMature
-    *
-    *  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
-    *  Throws an appropriate APIException if it is not mature
-    *
-    *  @param[in] hashGenesis The genesis hash of the signature chain to check
-    *
-    **/
-    void CheckMature(const uint256_t& hashGenesis);
-
-
     /** GetRegisters
      *
      *  Reads a batch of states registers from the Register DB
@@ -142,5 +131,29 @@ namespace TAO::API
      *
      **/
     bool GetAccountByToken(const uint256_t& hashGenesis, const uint256_t& hashToken, TAO::Register::Address& hashAccount);
+
+
+    /** GetRegisterType
+     *
+     *  Returns a type string for the register type
+     *
+     *  @param[in] nType The register type enum
+     *
+     *  @return A string representation of the register type
+     *
+     **/
+    std::string GetRegisterType(const uint8_t nType);
+
+
+    /** GetObjectType
+     *
+     *  Returns a type string for the register object type
+     *
+     *  @param[in] nType The object type enum
+     *
+     *  @return A string representation of the object register type
+     *
+     **/
+    std::string GetObjectType(const uint8_t nType);
 
 }

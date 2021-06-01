@@ -26,6 +26,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/names.h>
 
+#include <Util/include/string.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -139,4 +141,57 @@ namespace TAO::API
 
         return 0;
     }
+
+
+    /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
+    void ExtractParams(const json::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
+    {
+        /* Check for page parameter. */
+        uint32_t nPage = 0;
+        if(jParams.find("page") != jParams.end())
+            nPage = std::stoul(jParams["page"].get<std::string>());
+
+        /* Check for offset parameter. */
+        nOffset = 0;
+        if(jParams.find("offset") != jParams.end())
+            nOffset = std::stoul(jParams["offset"].get<std::string>());
+
+        /* Check for limit and offset parameter. */
+        nLimit = 100;
+        if(jParams.find("limit") != jParams.end())
+        {
+            std::string strLimit = jParams["limit"].get<std::string>();
+
+            /* Check to see whether the limit includes an offset comma separated */
+            if(IsAllDigit(strLimit))
+            {
+                /* No offset included in the limit */
+                nLimit = std::stoul(strLimit);
+            }
+            else if(strLimit.find(","))
+            {
+                /* Parse the limit and offset */
+                std::vector<std::string> vParts = Split(strLimit, ",");
+
+                /* Get the limit */
+                nLimit = std::stoul(trim(vParts[0]));
+
+                /* Get the offset */
+                nOffset = std::stoul(trim(vParts[1]));
+            }
+            else
+            {
+                /* Invalid limit */
+            }
+        }
+
+        /* If no offset explicitly included calculate it from the limit + page */
+        if(nOffset == 0 && nPage > 0)
+            nOffset = nLimit * nPage;
+
+        /* Get sort order*/
+        if(jParams.find("order") != jParams.end())
+            strOrder = jParams["order"].get<std::string>();
+    }
+
 } // End TAO namespace

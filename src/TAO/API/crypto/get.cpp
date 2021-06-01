@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/objects/types/objects.h>
 
+#include <TAO/API/include/filter.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/types/commands.h>
 
