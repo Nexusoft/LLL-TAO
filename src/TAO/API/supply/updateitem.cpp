@@ -41,9 +41,9 @@ namespace TAO
     {
 
         /* Submits an item. */
-        json::json Supply::UpdateItem(const json::json& params, const bool fHelp)
+        encoding::json Supply::UpdateItem(const encoding::json& params, const bool fHelp)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))

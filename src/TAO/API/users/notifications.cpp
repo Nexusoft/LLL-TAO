@@ -952,10 +952,10 @@ namespace TAO
 
 
         /* Get a user's notifications. */
-        json::json Users::Notifications(const json::json& params, const bool fHelp)
+        encoding::json Users::Notifications(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
@@ -1018,7 +1018,7 @@ namespace TAO
                 const TAO::Operation::Contract& rContract = std::get<0>(contract);
 
                 /* Get contract JSON data. */
-                json::json obj = ContractToJSON(hashCaller, rContract, std::get<1>(contract), 1);
+                encoding::json obj = ContractToJSON(hashCaller, rContract, std::get<1>(contract), 1);
 
                 obj["txid"]      = rContract.Hash().ToString();
                 obj["time"]      = rContract.Timestamp();
@@ -1130,7 +1130,7 @@ namespace TAO
                 Legacy::ExtractRegister(tx.first->vout[tx.second].scriptPubKey, hashTo);
 
                 /* Get transaction JSON data. */
-                json::json obj;
+                encoding::json obj;
                 obj["OP"]       = "LEGACY";
                 obj["address"]  = hashTo.ToString();
 
@@ -1160,10 +1160,10 @@ namespace TAO
 
 
         /* Process any outstanding notifications for a particular sig chain */
-        json::json Users::ProcessNotifications(const json::json& params, const bool fHelp)
+        encoding::json Users::ProcessNotifications(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Track how many contracts were processed */
             uint8_t nProcessed = 0;
@@ -1710,11 +1710,11 @@ namespace TAO
 
             /* Populate the response JSON */
             ret["processed"] = nProcessed;
-            ret["transactions"] = json::json::array();
+            ret["transactions"] = encoding::json::array();
 
             for(const auto& tx : vTxIDs)
             {
-                json::json jsonTX;
+                encoding::json jsonTX;
                 jsonTX["txid"] = tx.ToString();
                 ret["transactions"].push_back(jsonTX);
             }

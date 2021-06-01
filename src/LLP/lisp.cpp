@@ -110,7 +110,7 @@ namespace LLP
             if(strResponse.length() > 0)
             {
                 /* Parse out the response. */
-                json::json jsonLispResponse = json::json::parse(strResponse);
+                encoding::json jsonLispResponse = encoding::json::parse(strResponse);
 
                 /* Loop the response items. */
                 for(auto& el : jsonLispResponse.items())
@@ -136,7 +136,7 @@ namespace LLP
                     EID.strAddress = strEIDPrefix.substr(nFindStart, nFindEnd - nFindStart);
 
                     /* Grab the rlocs from parsed JSON. */
-                    json::json jsonRLOCs = el.value()["rlocs"];
+                    encoding::json jsonRLOCs = el.value()["rlocs"];
 
                     /* Iterate the list of RLOC's. */
                     for(const auto& rloc : jsonRLOCs.items())

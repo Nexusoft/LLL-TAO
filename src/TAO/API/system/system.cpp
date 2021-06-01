@@ -57,7 +57,7 @@ namespace TAO
 
         /* stop"
         *  Stop Nexus server */
-        json::json System::Stop(const json::json& params, const bool fHelp)
+        encoding::json System::Stop(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 1)
                 return std::string("stop password=<password> - Stop server, if -system/stop set require password");
@@ -83,10 +83,10 @@ namespace TAO
 
 
         /* Reurns a summary of node and ledger information for the currently running node. */
-        json::json System::GetInfo(const json::json& params, const bool fHelp)
+        encoding::json System::GetInfo(const encoding::json& params, const bool fHelp)
         {
             /* Declare return JSON object */
-            json::json jsonRet;
+            encoding::json jsonRet;
 
             /* The daemon version*/
             jsonRet["version"] = version::CLIENT_VERSION_BUILD_STRING;
@@ -156,10 +156,10 @@ namespace TAO
 
 
         /* Returns information about the peers currently connected to this node */
-        json::json System::ListPeers(const json::json& params, const bool fHelp)
+        encoding::json System::ListPeers(const encoding::json& params, const bool fHelp)
         {
             /* Declare the JSON response object*/
-            json::json jsonRet = json::json::array();
+            encoding::json jsonRet = encoding::json::array();
 
             /* Get the connections from the tritium server */
             std::vector<std::shared_ptr<LLP::TritiumNode>> vConnections = LLP::TRITIUM_SERVER->GetConnections();
@@ -174,7 +174,7 @@ namespace TAO
                 /* Push the active connection. */
                 if(connection.get()->Connected())
                 {
-                    json::json obj;
+                    encoding::json obj;
 
                     /* The IPV4/V6 address */
                     obj["address"]  = connection.get()->addr.ToString();

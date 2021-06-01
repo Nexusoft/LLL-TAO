@@ -38,9 +38,9 @@ namespace TAO
     namespace API
     {
         /* Claim a transferred asset. */
-        json::json Objects::Claim(const json::json& params, const uint8_t nType, const std::string& strType)
+        encoding::json Objects::Claim(const encoding::json& params, const uint8_t nType, const std::string& strType)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
@@ -79,7 +79,7 @@ namespace TAO
                 strName = params["name"].get<std::string>();
 
             /* Declare json object to store the objects that were claimed */
-            json::json jsonClaimed = json::json::array();
+            encoding::json jsonClaimed = encoding::json::array();
 
             /* Loop through all transactions. */
             int32_t nCurrent = -1;

@@ -62,7 +62,7 @@ namespace TAO
         Returns a new Nexus address for receiving payments.
         If [account] is specified (recommended), it is added to the address book
         so payments received with the address will be credited to [account] */
-        json::json RPC::GetNewAddress(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetNewAddress(const encoding::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -95,7 +95,7 @@ namespace TAO
 
         /* getaccountaddress <account>
         Returns the current Nexus address for receiving payments to this account */
-        json::json RPC::GetAccountAddress(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetAccountAddress(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -105,7 +105,7 @@ namespace TAO
             // Parse the account first so we don't generate a key if there's an error
             std::string strAccount = AccountFromValue(params[0]);
 
-            json::json ret;
+            encoding::json ret;
             ret = Legacy::Wallet::GetInstance().GetAddressBook().GetAccountAddress(strAccount).ToString();
 
             return ret;
@@ -114,7 +114,7 @@ namespace TAO
 
         /* setaccount <Nexusaddress> <account>
         Sets the account associated with the given address */
-        json::json RPC::SetAccount(const json::json& params, const bool fHelp)
+        encoding::json RPC::SetAccount(const encoding::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -142,13 +142,13 @@ namespace TAO
 
             wallet.GetAddressBook().SetAddressBookName(address, strAccount);
 
-            json::json ret;
+            encoding::json ret;
             return ret;
         }
 
         /* getaccount <Nexusaddress>
         Returns the account associated with the given address */
-        json::json RPC::GetAccount(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetAccount(const encoding::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -170,7 +170,7 @@ namespace TAO
 
         /* getaddressesbyaccount <account>
         Returns the list of addresses for the given account */
-        json::json RPC::GetAddressesByAccount(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetAddressesByAccount(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -180,7 +180,7 @@ namespace TAO
             std::string strAccount = AccountFromValue(params[0]);
 
             // Find all addresses that have the given account
-            json::json ret;
+            encoding::json ret;
             for(const auto& entry : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
             {
                 const Legacy::NexusAddress& address = entry.first;
@@ -198,7 +198,7 @@ namespace TAO
         *  - <amount> is a real and is rounded to the nearest 0.000001
         *  - requires wallet unlocked or [passphrase] provided
         *  - [passphrase] temporarily unlocks wallet for send operation only */
-        json::json RPC::SendToAddress(const json::json& params, const bool fHelp)
+        encoding::json RPC::SendToAddress(const encoding::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -327,7 +327,7 @@ namespace TAO
 
         /* signmessage <Nexusaddress> <message>
         Sign a message with the private key of an address */
-        json::json RPC::SignMessage(const json::json& params, const bool fHelp)
+        encoding::json RPC::SignMessage(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 2)
                 return std::string(
@@ -362,7 +362,7 @@ namespace TAO
 
         /* verifymessage <Nexusaddress> <signature> <message>
         Verify a signed message */
-        json::json RPC::VerifyMessage(const json::json& params, const bool fHelp)
+        encoding::json RPC::VerifyMessage(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 3)
                 return std::string(
@@ -397,7 +397,7 @@ namespace TAO
 
         /* getreceivedbyaddress <Nexusaddress> [minconf=1]
         Returns the total amount received by <Nexusaddress> in transactions with at least [minconf] confirmations */
-        json::json RPC::GetReceivedByAddress(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetReceivedByAddress(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
@@ -450,7 +450,7 @@ namespace TAO
 
         /* getreceivedbyaccount <account> [minconf=1]
         Returns the total amount received by addresses with <account> in transactions with at least [minconf] confirmations */
-        json::json RPC::GetReceivedByAccount(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetReceivedByAccount(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
@@ -499,7 +499,7 @@ namespace TAO
         /* getbalance [account] [minconf=1]
         *  If [account] is not specified, returns the server's total available balance.
         *  If [account] is specified, returns the balance in the account */
-        json::json RPC::GetBalance(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetBalance(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 2)
                 return std::string(
@@ -564,7 +564,7 @@ namespace TAO
 
         /* move <fromaccount> <toaccount> <amount> [minconf=1] [comment]
         Move from one account in your wallet to another */
-        json::json RPC::MoveCmd(const json::json& params, const bool fHelp)
+        encoding::json RPC::MoveCmd(const encoding::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -699,7 +699,7 @@ namespace TAO
         /* sendfrom <fromaccount> <toNexusaddress> <amount> [minconf=1] [comment] [comment-to]
         * <amount> is a real and is rounded to the nearest 0.000001
         * requires wallet passphrase to be set with walletpassphrase first */
-        json::json RPC::SendFrom(const json::json& params, const bool fHelp)
+        encoding::json RPC::SendFrom(const encoding::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -858,7 +858,7 @@ namespace TAO
         /* sendmany <fromaccount> {address:amount,...} [minconf=1] [comment]
         * - amounts are double-precision floating point numbers
         * requires wallet passphrase to be set with walletpassphrase first*/
-        json::json RPC::SendMany(const json::json& params, const bool fHelp)
+        encoding::json RPC::SendMany(const encoding::json& params, const bool fHelp)
         {
             Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
 
@@ -881,7 +881,7 @@ namespace TAO
             if(!params[1].is_object())
                 throw APIException(-8, std::string("Invalid recipient list format"));
 
-            json::json sendTo = params[1];
+            encoding::json sendTo = params[1];
 
             /* Min number of confirmations for transactions to source NXS */
             int nMinDepth = 1;
@@ -908,7 +908,7 @@ namespace TAO
             TAO::Register::Address hashAccount;
 
             int64_t totalAmount = 0;
-            for(json::json::iterator it = sendTo.begin(); it != sendTo.end(); ++it)
+            for(encoding::json::iterator it = sendTo.begin(); it != sendTo.end(); ++it)
             {
                 Legacy::Script scriptPubKey;
                 std::string strAddress = it.key();
@@ -1045,7 +1045,7 @@ namespace TAO
         *  Add a nrequired-to-sign multisignature address to the wallet
         *  each key is a nexus address or hex-encoded public key.
         *  If [account] is specified, assign address to [account]. */
-        json::json RPC::AddMultisigAddress(const json::json& params, const bool fHelp)
+        encoding::json RPC::AddMultisigAddress(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 2 || params.size() > 3)
             {
@@ -1061,7 +1061,7 @@ namespace TAO
             if(!params[1].is_array())
                 throw APIException(-8, std::string("Invalid address array format"));
 
-            json::json keys = params[1];
+            encoding::json keys = params[1];
             std::string strAccount;
             if(params.size() > 2)
                 strAccount = AccountFromValue(params[2]);
@@ -1133,7 +1133,7 @@ namespace TAO
             }
         };
 
-        json::json ListReceived(const json::json& params, bool fByAccounts)
+        encoding::json ListReceived(const encoding::json& params, bool fByAccounts)
         {
             // Minimum confirmations
             int nMinDepth = 1;
@@ -1171,7 +1171,7 @@ namespace TAO
             }
 
             // Reply
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
             std::map<std::string, tallyitem> mapAccountTally;
             for(const auto& item : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
             {
@@ -1197,7 +1197,7 @@ namespace TAO
                 }
                 else
                 {
-                    json::json obj;
+                    encoding::json obj;
                     obj["address"] =       address.ToString();
                     obj["account"] =       strAccount;
                     obj["amount"] =        Legacy::SatoshisToAmount(nAmount);
@@ -1212,7 +1212,7 @@ namespace TAO
                 {
                     int64_t nAmount = (*it).second.nAmount;
                     int nConf = (*it).second.nConf;
-                    json::json obj;
+                    encoding::json obj;
                     obj["account"] =       (*it).first;
                     obj["amount"] =        Legacy::SatoshisToAmount(nAmount);
                     obj["confirmations"] = (nConf == std::numeric_limits<int>::max() ? 0 : nConf);
@@ -1231,7 +1231,7 @@ namespace TAO
         *  \"account\" : the account of the receiving address
         *  \"amount\" : total amount received by the address
         *  \"confirmations\" : number of confirmations of the most recent transaction included */
-        json::json RPC::ListReceivedByAddress(const json::json& params, const bool fHelp)
+        encoding::json RPC::ListReceivedByAddress(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 2)
                 return std::string(
@@ -1256,7 +1256,7 @@ namespace TAO
         *  \"account\" : the account of the receiving address
         *  \"amount\" : total amount received by the address
         *  \"confirmations\" : number of confirmations of the most recent transaction incl*/
-        json::json RPC::ListReceivedByAccount(const json::json& params, const bool fHelp)
+        encoding::json RPC::ListReceivedByAccount(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 2)
                 return std::string(
@@ -1275,7 +1275,7 @@ namespace TAO
          * If one is recognized, this flag allows us to still generate output for it. Set the value false and function
          * will generate output as a tx with zero confirms rather than potentially incorrect data.
          */
-        void WalletTxToJSON(const Legacy::WalletTx& wtx, json::json& entry, bool ftxValid = true)
+        void WalletTxToJSON(const Legacy::WalletTx& wtx, encoding::json& entry, bool ftxValid = true)
         {
             if(!ftxValid)
             {
@@ -1316,7 +1316,7 @@ namespace TAO
                 entry[item.first] = item.second;
         }
 
-        void ListTransactionsJSON(const Legacy::WalletTx& wtx, const std::string& strAccount, int nMinDepth, bool fLong, json::json& ret)
+        void ListTransactionsJSON(const Legacy::WalletTx& wtx, const std::string& strAccount, int nMinDepth, bool fLong, encoding::json& ret)
         {
             int64_t nGeneratedImmature, nGeneratedMature, nFee;
             std::string strSentAccount;
@@ -1331,7 +1331,7 @@ namespace TAO
             // Generated blocks assigned to account ""
             if((nGeneratedMature + nGeneratedImmature) != 0 && (fAllAccounts || strAccount == ""))
             {
-                json::json entry;
+                encoding::json entry;
                 entry["account"] = std::string("default");
 
                 /* For coinbase / coinstake transactions we need to extract the address from the first TxOut in vout */
@@ -1438,7 +1438,7 @@ namespace TAO
                     if(config::GetBoolArg("-legacy") && strSentAccount == "default")
                         strSentAccount = "";
 
-                    json::json entry;
+                    encoding::json entry;
                     entry["account"] = strSentAccount;
                     entry["address"] = address.IsValid() ? address.ToString() : hashRegister.ToString(); // handle sending to register address
                     entry["category"] = "send";
@@ -1479,7 +1479,7 @@ namespace TAO
                         if(config::GetBoolArg("-legacy") && account == "default")
                             account = "";
 
-                        json::json entry;
+                        encoding::json entry;
                         entry["account"] = account;
                         entry["address"] = address.IsValid() ? address.ToString() : hashRegister.ToString(); // handle sending to register address
                         entry["category"] = "receive";
@@ -1494,7 +1494,7 @@ namespace TAO
 
         /* listtransactions [account] [count=10] [from=0]
         Returns up to [count] most recent transactions skipping the first [from] transactions for account [account]*/
-        json::json RPC::ListTransactions(const json::json& params, const bool fHelp)
+        encoding::json RPC::ListTransactions(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 3)
                 return std::string(
@@ -1511,7 +1511,7 @@ namespace TAO
             if(params.size() > 2)
                 nFrom = params[2];
 
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             // First: get all Legacy::WalletTx into a sorted-by-time multimap.
             typedef std::multimap<uint64_t, const Legacy::WalletTx* > TxItems;
@@ -1555,7 +1555,7 @@ namespace TAO
 
         /* listaddresses [max=100]
         Returns list of addresses */
-        json::json RPC::ListAddresses(const json::json& params, const bool fHelp)
+        encoding::json RPC::ListAddresses(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -1573,7 +1573,7 @@ namespace TAO
                 throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
             /* Find all the addresses in the list */
-            json::json list;
+            encoding::json list;
             for(std::map<Legacy::NexusAddress, int64_t>::iterator it = mapAddresses.begin(); it != mapAddresses.end() && list.size() < nMax; ++it)
                 list[it->first.ToString()] = Legacy::SatoshisToAmount(it->second);
 
@@ -1582,7 +1582,7 @@ namespace TAO
 
         /* listaccounts
         Returns Object that has account names as keys, account balances as values */
-        json::json RPC::ListAccounts(const json::json& params, const bool fHelp)
+        encoding::json RPC::ListAccounts(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 0)
                 return std::string(
@@ -1634,7 +1634,7 @@ namespace TAO
                 }
             }
 
-            json::json ret;
+            encoding::json ret;
             for(const auto& accountBalance :  mapAccountBalances)
             {
                 ret[accountBalance.first] = Legacy::SatoshisToAmount(accountBalance.second);
@@ -1645,7 +1645,7 @@ namespace TAO
 
         /* listsinceblock [blockhash] [target-confirmations]
         Get all transactions in blocks since block [blockhash], or all transactions if omitted **/
-        json::json RPC::ListSinceBlock(const json::json& params, const bool fHelp)
+        encoding::json RPC::ListSinceBlock(const encoding::json& params, const bool fHelp)
         {
             if(fHelp)
                 return std::string(
@@ -1680,7 +1680,7 @@ namespace TAO
 
             int32_t depth = nBlockHeight ? (1 + TAO::Ledger::ChainState::nBestHeight.load() - nBlockHeight) : -1;
 
-            json::json transactions = json::json::array();
+            encoding::json transactions = encoding::json::array();
 
             for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
             {
@@ -1691,14 +1691,14 @@ namespace TAO
             }
 
 
-            json::json ret;
+            encoding::json ret;
             ret["transactions"] = transactions;
 
             return ret;
         }
 
         /* RPC Method to bridge limitation of Transaction Lookup from Wallet. Allows lookup from any wallet. */
-        json::json RPC::GetGlobalTransaction(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetGlobalTransaction(const encoding::json& params, const bool fHelp)
         {
             if (fHelp || params.size() != 1)
                 return std::string(
@@ -1706,7 +1706,7 @@ namespace TAO
                     "Get detailed information about [txid]");
 
             /* Build return json object. */
-            json::json ret;
+            encoding::json ret;
 
             /* Get hash Index. */
             uint512_t hash;
@@ -1744,7 +1744,7 @@ namespace TAO
                 ret["amount"] = Legacy::SatoshisToAmount(txLegacy.GetValueOut());
 
                 /* Get the outputs. */
-                json::json vOutputs;
+                encoding::json vOutputs;
                 for(const auto& out : txLegacy.vout)
                 {
                     Legacy::NexusAddress address;
@@ -1769,7 +1769,7 @@ namespace TAO
                     uint32_t nSize = static_cast<uint32_t>(txLegacy.vin.size());
 
                     /* Read all of the inputs. */
-                    json::json vInputs;
+                    encoding::json vInputs;
                     for (uint32_t i = (uint32_t)txLegacy.IsCoinStake(); i < nSize; ++i)
                     {
                         /* Skip inputs that are already found. */
@@ -1835,7 +1835,7 @@ namespace TAO
                 uint64_t nTotal = 0;
 
                 /* Get the vOutputs. */
-                json::json vOutputs;
+                encoding::json vOutputs;
 
                 /* Iterate through contracts to fill the outputs with all OP::LEGACY contracts */
                 uint32_t nContracts = txTritium.Size();
@@ -1891,7 +1891,7 @@ namespace TAO
 
         /* gettransaction <txid>
         Get detailed information about <txid> */
-        json::json RPC::GetTransaction(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetTransaction(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -1903,7 +1903,7 @@ namespace TAO
             uint512_t hash;
             hash.SetHex(params[0].get<std::string>());
 
-            json::json ret;
+            encoding::json ret;
 
             if(!wallet.mapWallet.count(hash))
                 throw APIException(-5, "Invalid or non-wallet transaction id");
@@ -1937,7 +1937,7 @@ namespace TAO
 
             WalletTxToJSON(wallet.mapWallet[hash], ret);
 
-            json::json details = json::json::array();
+            encoding::json details = encoding::json::array();
             ListTransactionsJSON(wallet.mapWallet[hash], "*", 0, false, details);
             ret["details"] = details;
 
@@ -1946,7 +1946,7 @@ namespace TAO
 
         /* getrawtransaction <txid>
         Returns a std::string that is serialized, hex-encoded data for <txid> */
-        json::json RPC::GetRawTransaction(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetRawTransaction(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -1972,7 +1972,7 @@ namespace TAO
         /* sendrawtransaction <hex std::string> [checkinputs=0]
         Submits raw transaction (serialized, hex-encoded) to local node and network.
         If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it */
-        json::json RPC::SendRawTransaction(const json::json& params, const bool fHelp)
+        encoding::json RPC::SendRawTransaction(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
@@ -2020,14 +2020,14 @@ namespace TAO
         //     RelayMessage(CInv(MSG_TX_LEGACY, hashTx), tx);
 
         //     return hashTx.GetHex();
-            json::json ret;
+            encoding::json ret;
             ret = "NOT AVAILABLE IN THIS RELEASE";
             return ret;
         }
 
         /* validateaddress <Nexusaddress>
         Return information about <Nexusaddress> */
-        json::json RPC::ValidateAddress(const json::json& params, const bool fHelp)
+        encoding::json RPC::ValidateAddress(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -2076,7 +2076,7 @@ namespace TAO
                 isValid = address.IsValid();
             }
 
-            json::json ret;
+            encoding::json ret;
             ret["isvalid"] = isValid;
             if(isValid && isLegacy)
             {
@@ -2103,7 +2103,7 @@ namespace TAO
                     int nRequired;
                     Legacy::ExtractAddresses(subscript, whichType, addresses, nRequired);
                     ret["script"] = Legacy::GetTxnOutputType(whichType);
-                    json::json addressesJSON = json::json::array();
+                    encoding::json addressesJSON = encoding::json::array();
                     for(const Legacy::NexusAddress& addr : addresses)
                         addressesJSON.push_back(addr.ToString());
                     ret["addresses"] = addressesJSON;
@@ -2124,7 +2124,7 @@ namespace TAO
         }
 
         /* Make a public/private key pair. [prefix] is optional preferred prefix for the public key */
-        json::json RPC::MakeKeyPair(const json::json& params, const bool fHelp)
+        encoding::json RPC::MakeKeyPair(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 1)
                 return std::string(
@@ -2148,7 +2148,7 @@ namespace TAO
                 return "";
 
             LLC::CPrivKey vchPrivKey = key.GetPrivKey();
-            json::json result;
+            encoding::json result;
             result["PrivateKey"] = HexStr<LLC::CPrivKey::iterator>(vchPrivKey.begin(), vchPrivKey.end());
             result["PublicKey"] = HexStr(key.GetPubKey());
             return result;
@@ -2164,7 +2164,7 @@ namespace TAO
 
             Second TODO: While at this the wallet core code needs to be reworked in orcder to mitigate the issue of
             having a large number of transactions in the actual memory map which can slow the entire process down. */
-        json::json RPC::UnspentBalance(const json::json& params, const bool fHelp)
+        encoding::json RPC::UnspentBalance(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 1)
                 return std::string(
@@ -2232,7 +2232,7 @@ namespace TAO
         Optionally filtered to only include txouts paid to specified addresses.
         Results are an array of Objects, each of which has:
         {txid, vout, scriptPubKey, amount, confirmations} */
-        json::json RPC::ListUnspent(const json::json& params, const bool fHelp)
+        encoding::json RPC::ListUnspent(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 3)
                 return std::string(
@@ -2257,7 +2257,7 @@ namespace TAO
                 if(!params[2].is_array())
                     throw APIException(-8, std::string("Invalid address array format"));
 
-                json::json inputs = params[2];
+                encoding::json inputs = params[2];
                 for(uint32_t i = 0; i < inputs.size(); ++i)
                 {
                     Legacy::NexusAddress address(inputs[i].get<std::string>());
@@ -2271,7 +2271,7 @@ namespace TAO
                 }
             }
 
-            json::json results = json::json::array();
+            encoding::json results = encoding::json::array();
             std::vector<Legacy::Output> vecOutputs;
             Legacy::Wallet::GetInstance().AvailableCoins((uint32_t)runtime::unifiedtimestamp(), vecOutputs, false);
             for(const Legacy::Output& out : vecOutputs)
@@ -2292,7 +2292,7 @@ namespace TAO
                 int64_t nValue = out.walletTx.vout[out.i].nValue;
                 const Legacy::Script& pk = out.walletTx.vout[out.i].scriptPubKey;
                 Legacy::NexusAddress address;
-                json::json entry;
+                encoding::json entry;
                 entry["txid"] = out.walletTx.GetHash().GetHex();
                 entry["vout"] = out.i;
                 if(Legacy::ExtractAddress(pk, address))

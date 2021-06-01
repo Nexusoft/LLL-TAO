@@ -26,7 +26,7 @@ namespace TAO
     {
 
         /* Get a list of tokens owned by a signature chain. */
-        json::json Users::Tokens(const json::json& params, const bool fHelp)
+        encoding::json Users::Tokens(const encoding::json& params, const bool fHelp)
         {
             return Objects::List(params, TAO::Register::REGISTER::OBJECT, TAO::Register::OBJECTS::TOKEN);
         }

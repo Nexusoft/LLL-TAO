@@ -45,7 +45,7 @@ namespace TAO::API
     *  @return true if the conditions were successfully added, otherwise false
     *
     **/
-    bool AddExpires(const json::json& params, const uint256_t& hashCaller, TAO::Operation::Contract& contract, bool fTokenizedDebit);
+    bool AddExpires(const encoding::json& params, const uint256_t& hashCaller, TAO::Operation::Contract& contract, bool fTokenizedDebit);
 
 
     /** HasExpires

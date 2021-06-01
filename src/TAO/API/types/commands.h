@@ -98,7 +98,7 @@ namespace TAO::API
          *  @param[out] jParams The parameters to pass to method, can be modified during RewriteURL
          *
          **/
-        static json::json Invoke(const std::string& strAPI, std::string &strMethod, json::json &jParams)
+        static encoding::json Invoke(const std::string& strAPI, std::string &strMethod, encoding::json &jParams)
         {
             /* Check that requested API is registered. */
             if(!Commands::mapTypes.count(strAPI))

@@ -26,7 +26,7 @@ namespace TAO
     {
 
         /* History of an asset and its ownership */
-        json::json Assets::History(const json::json& params, const bool fHelp)
+        encoding::json Assets::History(const encoding::json& params, const bool fHelp)
         {
             return Objects::History(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Asset"));
         }

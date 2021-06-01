@@ -46,7 +46,7 @@ bool GenerateBlock();
 *  @return JSON returned by the API
 *
 **/
-json::json APICall(const std::string& strMethod, const json::json& jsonParams);
+encoding::json APICall(const std::string& strMethod, const encoding::json& jsonParams);
 
 
 /** InitializeUser

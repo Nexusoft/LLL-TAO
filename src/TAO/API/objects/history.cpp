@@ -34,9 +34,9 @@ namespace TAO
     {
 
         /* History of an object register and its ownership */
-        json::json Objects::History(const json::json& params, const uint8_t nType, const std::string& strType)
+        encoding::json Objects::History(const encoding::json& params, const uint8_t nType, const std::string& strType)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Get the Register ID. */
             TAO::Register::Address hashRegister ;
@@ -184,7 +184,7 @@ namespace TAO
                             }
 
                             /* Generate return object. */
-                            json::json obj;
+                            encoding::json obj;
                             obj["type"]     = "CREATE";
                             obj["owner"]    = contract.Caller().ToString();
                             obj["modified"] = state.nModified;
@@ -193,7 +193,7 @@ namespace TAO
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
                                is a name of namesace object, as those are the edge case that do not have a Name object themselves */
                             bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
+                            encoding::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the asset data in to the response after the type/checksum */
                             obj.insert(data.begin(), data.end());
@@ -224,7 +224,7 @@ namespace TAO
                             contract >> vchData;
 
                             /* Generate return object. */
-                            json::json obj;
+                            encoding::json obj;
                             obj["type"]       = "MODIFY";
 
                             /* Get the flag. */
@@ -258,7 +258,7 @@ namespace TAO
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
                                is a name of namesace object, as those are the edge case that do not have a Name object themselves */
                             bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
+                            encoding::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the name data in to the response after the type */
                             obj.insert(data.begin(), data.end());
@@ -285,7 +285,7 @@ namespace TAO
                             contract >> vchData;
 
                             /* Generate return object. */
-                            json::json obj;
+                            encoding::json obj;
                             obj["type"]       = "MODIFY";
 
                             /* Get the flag. */
@@ -308,7 +308,7 @@ namespace TAO
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
                                is a name of namesace object, as those are the edge case that do not have a Name object themselves */
                             bool fLookupName = (nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE);
-                            json::json data  = TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
+                            encoding::json data  = TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the name data in to the response after the type */
                             obj.insert(data.begin(), data.end());
@@ -339,7 +339,7 @@ namespace TAO
                                 break;
 
                             /* Generate return object. */
-                            json::json obj;
+                            encoding::json obj;
                             obj["type"]       = "CLAIM";
 
                             /* Get the flag. */
@@ -369,7 +369,7 @@ namespace TAO
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
                                is a name of namesace object, as those are the edge case that do not have a Name object themselves */
                             bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
+                            encoding::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the name data in to the response after the type */
                             obj.insert(data.begin(), data.end());
@@ -399,7 +399,7 @@ namespace TAO
                             contract >> hashTransfer;
 
                             /* Generate return object. */
-                            json::json obj;
+                            encoding::json obj;
                             obj["type"] = "TRANSFER";
 
 
@@ -430,7 +430,7 @@ namespace TAO
                             /* Get the JSON data for this object.  NOTE that we pass false for fLookupName if the requested type
                                is a name of namesace object, as those are the edge case that do not have a Name object themselves */
                             bool fLookupName = nType != TAO::Register::OBJECTS::NAME && nType != TAO::Register::OBJECTS::NAMESPACE;
-                            json::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
+                            encoding::json data  =TAO::API::ObjectToJSON(params, state, hashRegister, fLookupName);
 
                             /* Copy the name data in to the response after the type */
                             obj.insert(data.begin(), data.end());

@@ -26,7 +26,7 @@ namespace TAO
     {
 
         /* Get a list of names owned by a signature chain. */
-        json::json Users::Namespaces(const json::json& params, const bool fHelp)
+        encoding::json Users::Namespaces(const encoding::json& params, const bool fHelp)
         {
             return Objects::List(params, TAO::Register::REGISTER::OBJECT, TAO::Register::OBJECTS::NAMESPACE);
         }

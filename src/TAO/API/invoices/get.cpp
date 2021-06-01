@@ -34,14 +34,14 @@ namespace TAO
     namespace API
     {
         /* Get's the description of an item. */
-        json::json Invoices::Get(const json::json& params, const bool fHelp)
+        encoding::json Invoices::Get(const encoding::json& params, const bool fHelp)
         {
             /* First ensure that transaction version 2 active, as the conditions required for invoices were not enabled until v2 */
             const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
             if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(runtime::unifiedtimestamp(), 2)))
                 throw APIException(-254, "Invoices API not yet active.");
 
-            json::json ret;
+            encoding::json ret;
 
             /* Get the Register ID. */
             TAO::Register::Address hashRegister ;
@@ -134,11 +134,11 @@ namespace TAO
         }
 
         /* Returns the JSON representation of this invoice */
-        json::json Invoices::InvoiceToJSON(const json::json& params, const TAO::Register::State& state,
+        encoding::json Invoices::InvoiceToJSON(const encoding::json& params, const TAO::Register::State& state,
                                              const TAO::Register::Address& hashInvoice)
         {
             /* The JSON to return */
-            json::json ret;
+            encoding::json ret;
 
             /* Build the response JSON. */
             /* Look up the object name based on the Name records in the caller's sig chain */
@@ -159,7 +159,7 @@ namespace TAO
             state >> strJSON;
 
             /* parse the serialized invoice JSON so that we can easily add the fields to the response */
-            json::json invoice = json::json::parse(strJSON);
+            encoding::json invoice = encoding::json::parse(strJSON);
 
             /* Add each of the invoice fields to the response */
             for(auto it = invoice.begin(); it != invoice.end(); ++it)

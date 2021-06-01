@@ -37,10 +37,10 @@ namespace TAO
     {
 
         /* Counts the number of votes (transactions) made to a given account. */
-        json::json Voting::Count(const json::json& params, const bool fHelp)
+        encoding::json Voting::Count(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* The register address of the account to get the vote count for. */
             TAO::Register::Address hashAccount ;

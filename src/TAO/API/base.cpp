@@ -38,7 +38,7 @@ namespace TAO::API
 
 
     /* Handles the processing of the requested method. */
-    json::json Base::Execute(std::string &strMethod, json::json &jParams, const bool fHelp)
+    encoding::json Base::Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp)
     {
          /* If the incoming method is not in the function map then rewrite the URL to one that does */
         if(mapFunctions.find(strMethod) == mapFunctions.end())
@@ -53,7 +53,7 @@ namespace TAO::API
 
 
     /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not map directly to a function */
-    std::string Base::RewriteURL(const std::string& strMethod, json::json &jParams)
+    std::string Base::RewriteURL(const std::string& strMethod, encoding::json &jParams)
     {
         /* Grab our components of the URL to rewrite. */
         std::vector<std::string> vMethods;
@@ -125,14 +125,14 @@ namespace TAO::API
 
 
     /* Allows derived API's to check the values in the parameters array for the method being called. */
-    json::json Base::SanitizeParams(const std::string& strMethod, const json::json& jParams)
+    encoding::json Base::SanitizeParams(const std::string& strMethod, const encoding::json& jParams)
     {
         /* Some 3rd party apps such as bubble do not handle dynamic values very well
          * and will insert the text null if not populated */
         if(config::GetBoolArg("-apiremovenullstring", false))
         {
             /* Make a copy of the params to parse */
-            json::json jsonSanitizedParams = jParams;
+            encoding::json jsonSanitizedParams = jParams;
 
             /* Iterate all parameters */
             for(auto param = jParams.begin(); param != jParams.end(); ++param)

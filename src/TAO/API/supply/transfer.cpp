@@ -25,7 +25,7 @@ namespace TAO
     {
 
         /* Transfers an item. */
-        json::json Supply::Transfer(const json::json& params, const bool fHelp)
+        encoding::json Supply::Transfer(const encoding::json& params, const bool fHelp)
         {
             return Objects::Transfer(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Item"));
         }

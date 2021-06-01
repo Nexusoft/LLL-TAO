@@ -36,9 +36,9 @@ namespace TAO
     {
 
         /* Set the stake amount for trust account (add/remove stake). */
-        json::json Finance::Stake(const json::json& params, const bool fHelp)
+        encoding::json Finance::Stake(const encoding::json& params, const bool fHelp)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Get the PIN to be used for this API call */
             SecureString strPin = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);

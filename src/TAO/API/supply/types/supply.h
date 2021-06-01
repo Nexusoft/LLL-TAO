@@ -69,7 +69,7 @@ namespace TAO::API
          *  @return the API method URL
          *
          **/
-        std::string RewriteURL(const std::string& strMethod, json::json& jsonParams) override;
+        std::string RewriteURL(const std::string& strMethod, encoding::json& jsonParams) override;
 
 
         /** GetItem
@@ -82,7 +82,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetItem(const json::json& params, const bool fHelp);
+        encoding::json GetItem(const encoding::json& params, const bool fHelp);
 
 
         /** Transfer
@@ -95,7 +95,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Transfer(const json::json& params, const bool fHelp);
+        encoding::json Transfer(const encoding::json& params, const bool fHelp);
 
 
         /** Claims
@@ -108,7 +108,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Claim(const json::json& params, const bool fHelp);
+        encoding::json Claim(const encoding::json& params, const bool fHelp);
 
 
         /** CreateItem
@@ -121,7 +121,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json CreateItem(const json::json& params, const bool fHelp);
+        encoding::json CreateItem(const encoding::json& params, const bool fHelp);
 
 
         /** UpdateItem
@@ -134,7 +134,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json UpdateItem(const json::json& params, const bool fHelp);
+        encoding::json UpdateItem(const encoding::json& params, const bool fHelp);
 
 
         /** History
@@ -147,6 +147,6 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json History(const json::json& params, const bool fHelp);
+        encoding::json History(const encoding::json& params, const bool fHelp);
     };
 }

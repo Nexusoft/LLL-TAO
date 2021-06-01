@@ -154,7 +154,7 @@ namespace TAO
         void NotificationsThread::auto_process_notifications(const uint256_t& nSession)
         {
             /* Dummy params to pass into ProcessNotifications call */
-            json::json params;
+            encoding::json params;
 
             /* Set the session ID in the params */
             params["session"] = nSession.ToString();

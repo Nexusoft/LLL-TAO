@@ -32,10 +32,10 @@ namespace TAO
     namespace API
     {
         /* Get the data from a name */
-        json::json Names::Get(const json::json& params, const bool fHelp)
+        encoding::json Names::Get(const encoding::json& params, const bool fHelp)
         {
             /* Return JSON object */
-            json::json jsonRet;
+            encoding::json jsonRet;
 
             /* Declare the Name object to look for*/
             TAO::Register::Object name;
@@ -80,7 +80,7 @@ namespace TAO
             jsonRet["created"]  = name.nCreated;
             jsonRet["modified"] = name.nModified;
 
-            json::json data  =TAO::API::ObjectToJSON(params, name, hashNameRegister, false);
+            encoding::json data  =TAO::API::ObjectToJSON(params, name, hashNameRegister, false);
 
             /* Copy the asset data in to the response after the type/checksum */
             jsonRet.insert(data.begin(), data.end());
@@ -95,10 +95,10 @@ namespace TAO
 
 
         /* Get the data from a namespace */
-        json::json Names::GetNamespace(const json::json& params, const bool fHelp)
+        encoding::json Names::GetNamespace(const encoding::json& params, const bool fHelp)
         {
             /* Return JSON object */
-            json::json jsonRet;
+            encoding::json jsonRet;
 
             /* Register address of Namespace object */
             TAO::Register::Address hashRegister ;
@@ -122,7 +122,7 @@ namespace TAO
             jsonRet["owner"]    = TAO::Register::Address(namespaceObject.hashOwner).ToString();
             jsonRet["created"]  = namespaceObject.nCreated;
 
-            json::json data  =TAO::API::ObjectToJSON(params, namespaceObject, hashRegister, false);
+            encoding::json data  =TAO::API::ObjectToJSON(params, namespaceObject, hashRegister, false);
 
             /* Copy the asset data in to the response after the type/checksum */
             jsonRet.insert(data.begin(), data.end());

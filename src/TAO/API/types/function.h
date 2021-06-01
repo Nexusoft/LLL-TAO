@@ -36,7 +36,7 @@ namespace TAO
         class Function
         {
             /** The function pointer to be called. */
-            std::function<json::json(const json::json&, bool)> function;
+            std::function<encoding::json(const encoding::json&, bool)> function;
 
 
             /** The state being enabled or not. **/
@@ -55,7 +55,7 @@ namespace TAO
 
 
             /** Function input **/
-            Function(std::function<json::json(const json::json&, bool)> functionIn)
+            Function(std::function<encoding::json(const encoding::json&, bool)> functionIn)
             : function(functionIn)
             , fEnabled(true)
             {
@@ -72,10 +72,10 @@ namespace TAO
              *  @return The json formatted response.
              *
              **/
-            json::json Execute(const json::json& jsonParams, const bool fHelp)
+            encoding::json Execute(const encoding::json& jsonParams, const bool fHelp)
             {
                 if(!fEnabled)
-                    return json::json::object({"error", "method disabled"});
+                    return encoding::json::object({"error", "method disabled"});
 
                 return function(jsonParams, fHelp);
             }

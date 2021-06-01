@@ -47,9 +47,9 @@ namespace TAO
     {
 
         /* Reverses a debit or transfer transaction that the caller has made */
-        json::json Ledger::VoidTransaction(const json::json& params, const bool fHelp)
+        encoding::json Ledger::VoidTransaction(const encoding::json& params, const bool fHelp)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))

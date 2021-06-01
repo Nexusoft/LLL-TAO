@@ -47,7 +47,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
+        encoding::json BlockToJSON(const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
                                const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
@@ -64,7 +64,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
+        encoding::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
                                      const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
                                      const uint256_t& hashCoinbase = 0,
                                      const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
@@ -81,7 +81,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
+        encoding::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
                                      const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
@@ -97,7 +97,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
+        encoding::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
                                    const uint32_t nVerbose = 0, const uint256_t& hashCoinbase = 0,
                                    const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
@@ -114,7 +114,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract,
+        encoding::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract,
                                   const uint32_t nContract, const uint32_t nVerbose = 0);
 
         /** ObjectToJSON
@@ -126,7 +126,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json ObjectToJSON(const TAO::Register::Object& object);
+        encoding::json ObjectToJSON(const TAO::Register::Object& object);
 
 
         /** ObjectToJSON
@@ -141,7 +141,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json ObjectToJSON(const json::json& params,
+        encoding::json ObjectToJSON(const encoding::json& params,
                                 const TAO::Register::Object& object,
                                 const TAO::Register::Address& hashRegister,
                                 bool fLookupName = true);
@@ -156,7 +156,7 @@ namespace TAO
          *  @return The JSON object generated with query.
          *
          **/
-        json::json QueryToJSON(const std::vector<std::string>& vQuery);
+        encoding::json QueryToJSON(const std::vector<std::string>& vQuery);
 
     }
 }

@@ -30,10 +30,10 @@ namespace TAO
     {
 
         /* Recover a sig chain and set new credentials by supplying the recovery seed */
-        json::json Users::Recover(const json::json& params, const bool fHelp)
+        encoding::json Users::Recover(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json jsonRet;
+            encoding::json jsonRet;
 
             /* Check for username parameter. */
             if(params.find("username") == params.end())

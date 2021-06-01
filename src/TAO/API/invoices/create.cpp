@@ -51,7 +51,7 @@ namespace TAO
     {
 
         /* Creates a new invoice. */
-        json::json Invoices::Create(const json::json& params, const bool fHelp)
+        encoding::json Invoices::Create(const encoding::json& params, const bool fHelp)
         {
             /* First ensure that transaction version 2 active, as the conditions required for invoices were not enabled until v2 */
             const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
@@ -59,14 +59,14 @@ namespace TAO
                 throw APIException(-254, "Invoices API not yet active.");
 
             /* The response JSON */
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
                 throw APIException(-139, "Invalid credentials");
 
             /* The JSON representation of the invoice that we store in the register */
-            json::json invoice;
+            encoding::json invoice;
 
             /* The genesis hash of the recipient */
             uint256_t hashRecipient = 0;
@@ -186,7 +186,7 @@ namespace TAO
                 throw APIException(-232, "Missing items");
 
             /* Check items is not empty */
-            json::json items = params["items"];
+            encoding::json items = params["items"];
             if(items.empty())
                 throw APIException(-233, "Invoice must include at least one item");
 

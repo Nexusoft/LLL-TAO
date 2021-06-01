@@ -53,7 +53,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Debit an account for NXS or any token. */
-    json::json Finance::Debit(const json::json& jParams, const bool fHelp)
+    encoding::json Finance::Debit(const encoding::json& jParams, const bool fHelp)
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
@@ -63,11 +63,11 @@ namespace TAO::API
         std::map<uint256_t, Accounts> mapAccounts;
 
         /* Check for the existence of recipients array */
-        std::vector<json::json> vRecipients;
+        std::vector<encoding::json> vRecipients;
         if(jParams.find("recipients") != jParams.end())
         {
             /* Grab a reference to work on. */
-            const json::json& jRecipients = jParams["recipients"];
+            const encoding::json& jRecipients = jParams["recipients"];
 
             /* Check for correct JSON types. */
             if(!jRecipients.is_array())
@@ -85,7 +85,7 @@ namespace TAO::API
             {
                 /* Add our session-id for now XXX: name lookup spagetti shouldn't require session to lookup. */
                 //we are passing these parameters around to functions without having a clear and consistent design
-                json::json jAdjusted = jRecipient;
+                encoding::json jAdjusted = jRecipient;
                 if(fSession)
                     jAdjusted["session"] = jParams["session"];
 
@@ -101,7 +101,7 @@ namespace TAO::API
                 throw APIException(-46, "Missing amount");
 
             /* Build a recipeint object from parameters. */
-            json::json jRecipient;
+            encoding::json jRecipient;
             jRecipient["amount"] = jParams["amount"];
 
             /* Check for a name_to parameter. */

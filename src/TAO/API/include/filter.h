@@ -30,7 +30,7 @@ namespace TAO::API
      *  @return true if the object should be included in the results.
      *
      **/
-    bool FilterObject(const json::json& jParams, const TAO::Register::Object& objCheck);
+    bool FilterObject(const encoding::json& jParams, const TAO::Register::Object& objCheck);
 
 
     /** FilterResponse
@@ -41,6 +41,6 @@ namespace TAO::API
      *  @param[in] response The reponse JSON to be filtered.
      *
      **/
-    void FilterResponse(const json::json& jParams, json::json& jResponse);
+    void FilterResponse(const encoding::json& jParams, encoding::json& jResponse);
 
 }

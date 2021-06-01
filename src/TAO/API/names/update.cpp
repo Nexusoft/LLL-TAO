@@ -42,10 +42,10 @@ namespace TAO
     namespace API
     {
         /* Update the data in an asset */
-        json::json Names::UpdateName(const json::json& params, const bool fHelp)
+        encoding::json Names::UpdateName(const encoding::json& params, const bool fHelp)
         {
             /* Return JSON object */
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))

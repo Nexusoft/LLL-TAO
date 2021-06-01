@@ -65,7 +65,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ListTransactions(const json::json& jParams, const bool fHelp);
+        encoding::json ListTransactions(const encoding::json& jParams, const bool fHelp);
 
 
         /** ListTokenAccounts
@@ -78,7 +78,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ListTokenAccounts(const json::json& jParams, const bool fHelp);
+        encoding::json ListTokenAccounts(const encoding::json& jParams, const bool fHelp);
 
     };
 }

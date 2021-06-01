@@ -28,7 +28,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractAddress(const json::json& jParams, const std::string& strSuffix = "", const std::string& strDefault = "");
+    uint256_t ExtractAddress(const encoding::json& jParams, const std::string& strSuffix = "", const std::string& strDefault = "");
 
 
     /** ExtractToken
@@ -40,7 +40,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractToken(const json::json& jParams);
+    uint256_t ExtractToken(const encoding::json& jParams);
 
 
 
@@ -54,6 +54,6 @@ namespace TAO::API
      *  @param[out] nOffset The offset to apply to the results
      *
      **/
-    void ExtractList(const json::json& params, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset);
+    void ExtractList(const encoding::json& params, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset);
 
 }

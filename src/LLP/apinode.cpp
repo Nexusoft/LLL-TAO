@@ -101,7 +101,7 @@ namespace LLP
         std::string strMethod = INCOMING.strRequest.substr(npos + 1);
 
         /* The JSON response */
-        json::json ret;
+        encoding::json ret;
 
         /* The HTTP response status code, default to 200 unless an error is encountered */
         uint16_t nStatus = 200;
@@ -111,7 +111,7 @@ namespace LLP
         tLatency.Start();
 
         /* Handle basic HTTP logic here. */
-        json::json jParams;
+        encoding::json jParams;
         try
         {
             if(INCOMING.strType == "POST")
@@ -138,7 +138,7 @@ namespace LLP
 
                         /* JSON encoding. */
                         else if(INCOMING.mapHeaders["content-type"] == "application/json")
-                            jParams = json::json::parse(INCOMING.strContent);
+                            jParams = encoding::json::parse(INCOMING.strContent);
                         else
                             throw TAO::API::APIException(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
                     }
@@ -205,7 +205,7 @@ namespace LLP
         catch(TAO::API::APIException& e)
         {
             /* Get error from exception. */
-            json::json jsonError = e.ToJSON();
+            encoding::json jsonError = e.ToJSON();
 
             /* Check to see if the caller has specified an error code to use for general API errors */
             if(INCOMING.mapHeaders.count("api-error-code"))

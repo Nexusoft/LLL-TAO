@@ -34,10 +34,10 @@ ________________________________________________________________________________
 TEST_CASE( "Test Tokens API - create token", "[tokens]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Generate random token name */
     std::string strToken = "TOKEN" + std::to_string(LLC::GetRand());
@@ -123,10 +123,10 @@ TEST_CASE( "Test Tokens API - create token", "[tokens]")
 TEST_CASE( "Test Tokens API - debit token", "[tokens]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
@@ -359,10 +359,10 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens]")
 TEST_CASE( "Test Tokens API - credit token", "[tokens]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
@@ -461,10 +461,10 @@ TEST_CASE( "Test Tokens API - credit token", "[tokens]")
 TEST_CASE( "Test Tokens API - get token", "[tokens]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
@@ -599,10 +599,10 @@ TEST_CASE( "Test Tokens API - get token", "[tokens]")
 TEST_CASE( "Test Tokens API - create account", "[tokens]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
@@ -711,10 +711,10 @@ TEST_CASE( "Test Tokens API - create account", "[tokens]")
 TEST_CASE( "Test Tokens API - debit account", "[tokens]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());
@@ -998,7 +998,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["address"] = hashAccount.ToString();
-        params["recipients"] = json::json::array();
+        params["recipients"] = encoding::json::array();
 
         /* Invoke the API */
         ret = APICall("tokens/debit/account", params);
@@ -1017,11 +1017,11 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         params["address"] = hashAccount.ToString();
 
         /* create json array with 100 recipients */
-        json::json jsonRecipients = json::json::array();
+        encoding::json jsonRecipients = encoding::json::array();
 
         for(int i=0; i<100; i++)
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = "1";
             jsonRecipient["name_to"] = strToken;
             jsonRecipients.push_back(jsonRecipient);
@@ -1046,11 +1046,11 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         params["address"] = hashAccount.ToString();
 
         /* create json array with 10 recipients */
-        json::json jsonRecipients = json::json::array();
+        encoding::json jsonRecipients = encoding::json::array();
 
         for(int i=0; i<10; i++)
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["name_to"] = strToken;
             jsonRecipients.push_back(jsonRecipient);
         }
@@ -1074,11 +1074,11 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         params["address"] = hashAccount.ToString();
 
         /* create json array with 10 recipients */
-        json::json jsonRecipients = json::json::array();
+        encoding::json jsonRecipients = encoding::json::array();
 
         for(int i=0; i<10; i++)
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = "1";
             jsonRecipients.push_back(jsonRecipient);
         }
@@ -1102,11 +1102,11 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         params["address"] = hashAccount.ToString();
 
         /* create json array with 50 recipients */
-        json::json jsonRecipients = json::json::array();
+        encoding::json jsonRecipients = encoding::json::array();
 
         for(int i=0; i<50; i++)
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = "20000";
             jsonRecipient["address_to"] = hashToken.ToString();
             jsonRecipients.push_back(jsonRecipient);
@@ -1189,10 +1189,10 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
         params["address"] = hashAccount.ToString();
 
         /* create json array with 50 recipients */
-        json::json jsonRecipients = json::json::array();
+        encoding::json jsonRecipients = encoding::json::array();
         for(int i=0; i<50; i++)
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = (double)(i+1)/10.0; // vary the amount in each contract
             jsonRecipient["address_to"] = hashToken.ToString();
             jsonRecipients.push_back(jsonRecipient);
@@ -1213,10 +1213,10 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens]")
 TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     //track our accounts
     std::string strToken1   = "1token";
@@ -1528,9 +1528,9 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         params["name"]    = strToken1;
 
         /* create json array with 50 recipients */
-        json::json jsonRecipients = json::json::array();
+        encoding::json jsonRecipients = encoding::json::array();
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = "10000";
             jsonRecipient["name_to"] = strAccount1;
             jsonRecipients.push_back(jsonRecipient);
@@ -1538,7 +1538,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
 
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = "29845";
             jsonRecipient["name_to"] = strAccount2;
             jsonRecipients.push_back(jsonRecipient);
@@ -1665,9 +1665,9 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         params["name"]    = strToken2;
 
         /* create json array with 50 recipients */
-        json::json jsonRecipients = json::json::array();
+        encoding::json jsonRecipients = encoding::json::array();
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = "184943.333";
             jsonRecipient["name_to"] = strAccount3;
             jsonRecipients.push_back(jsonRecipient);
@@ -1675,7 +1675,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
 
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = "83828.777";
             jsonRecipient["name_to"] = strAccount4;
             jsonRecipients.push_back(jsonRecipient);
@@ -1798,9 +1798,9 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         //params["name"]    = strToken3;
 
         /* create json array with 50 recipients */
-        json::json jsonRecipients = json::json::array();
+        encoding::json jsonRecipients = encoding::json::array();
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = "33377.888";
             jsonRecipient["name_to"] = strAccount5;
             jsonRecipients.push_back(jsonRecipient);
@@ -1808,7 +1808,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
 
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = "83338.777";
             jsonRecipient["name_to"] = strAccount6;
             jsonRecipients.push_back(jsonRecipient);
@@ -2044,9 +2044,9 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         params["session"] = SESSION1;
 
         /* create json array with 50 recipients */
-        json::json jsonRecipients = json::json::array();
+        encoding::json jsonRecipients = encoding::json::array();
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = dBalanceAny1;
             jsonRecipient["name_to"] = strAny1;
             jsonRecipients.push_back(jsonRecipient);
@@ -2054,7 +2054,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
 
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = dBalanceAny2;
             jsonRecipient["name_to"] = strAny2;
             jsonRecipients.push_back(jsonRecipient);
@@ -2062,7 +2062,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 
 
         {
-            json::json jsonRecipient;
+            encoding::json jsonRecipient;
             jsonRecipient["amount"] = dBalanceAny3;
             jsonRecipient["name_to"] = strAny3;
             jsonRecipients.push_back(jsonRecipient);
@@ -2203,10 +2203,10 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
 TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     //track our accounts
     std::string strToken = "token";
@@ -2777,10 +2777,10 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 TEST_CASE( "Test Tokens API - credit account", "[tokens]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Generate random token name */
     std::string strToken = "TOKEN" + std::to_string(LLC::GetRand());
@@ -3081,10 +3081,10 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens]")
 TEST_CASE( "Test Tokens API - get account", "[tokens]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Generate random token name */
     std::string strToken = "TOKEN" +std::to_string(LLC::GetRand());

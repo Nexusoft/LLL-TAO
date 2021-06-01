@@ -50,10 +50,10 @@ TAO::Register::Address hashRegisterAddress(TAO::Register::Address::OBJECT);
 TEST_CASE( "Test Names API - create namespace", "[names/create/namespace]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -195,10 +195,10 @@ TEST_CASE( "Test Names API - create namespace", "[names/create/namespace]")
 TEST_CASE( "Test Names API - get namespace", "[names/get/namespace]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -261,10 +261,10 @@ TEST_CASE( "Test Names API - get namespace", "[names/get/namespace]")
 TEST_CASE( "Test Names API - transfer namespace", "[names/transfer/namespace]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -401,10 +401,10 @@ TEST_CASE( "Test Names API - transfer namespace", "[names/transfer/namespace]")
 TEST_CASE( "Test Names API - claim namespace", "[names/claim/namespace]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -519,10 +519,10 @@ TEST_CASE( "Test Names API - claim namespace", "[names/claim/namespace]")
 TEST_CASE( "Test Names API - list namespace history", "[names/list/namespace/history]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -616,10 +616,10 @@ TEST_CASE( "Test Names API - list namespace history", "[names/list/namespace/his
 TEST_CASE( "Test Names API - create name", "[names/create/name]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -831,10 +831,10 @@ TEST_CASE( "Test Names API - create name", "[names/create/name]")
 TEST_CASE( "Test Names API - get name", "[names/get/name]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -976,10 +976,10 @@ TEST_CASE( "Test Names API - get name", "[names/get/name]")
 TEST_CASE( "Test Names API - update name", "[names/update/name]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -1088,10 +1088,10 @@ TEST_CASE( "Test Names API - update name", "[names/update/name]")
 TEST_CASE( "Test Names API - transfer name", "[names/transfer/name]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -1246,10 +1246,10 @@ TEST_CASE( "Test Names API - transfer name", "[names/transfer/name]")
 TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -1394,10 +1394,10 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
 TEST_CASE( "Test Names API - list name history", "[names/list/name/history]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);

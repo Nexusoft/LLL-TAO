@@ -93,7 +93,7 @@ namespace TAO::API
          *  @return JSON encoded response.
          *
          **/
-        json::json Execute(std::string &strMethod, json::json &jParams, const bool fHelp = false);
+        encoding::json Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp = false);
 
 
         /** RewriteURL
@@ -111,7 +111,7 @@ namespace TAO::API
          *  @return the API method URL
          *
          **/
-        virtual std::string RewriteURL(const std::string& strMethod, json::json &jParams);
+        virtual std::string RewriteURL(const std::string& strMethod, encoding::json &jParams);
 
 
 
@@ -127,7 +127,7 @@ namespace TAO::API
          *  @return the sanitized json parameters array.
          *
          **/
-        virtual json::json SanitizeParams(const std::string& strMethod, const json::json& jParams);
+        virtual encoding::json SanitizeParams(const std::string& strMethod, const encoding::json& jParams);
 
     protected:
 

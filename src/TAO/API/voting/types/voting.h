@@ -66,7 +66,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Count(const json::json& params, const bool fHelp);
+        encoding::json Count(const encoding::json& params, const bool fHelp);
 
 
         /** List
@@ -79,6 +79,6 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json List(const json::json& params, const bool fHelp);
+        encoding::json List(const encoding::json& params, const bool fHelp);
     };
 }

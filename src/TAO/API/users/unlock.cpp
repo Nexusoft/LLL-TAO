@@ -33,10 +33,10 @@ namespace TAO
     {
 
         /* Unlock an account for mining (TODO: make this much more secure) */
-        json::json Users::Unlock(const json::json& params, const bool fHelp)
+        encoding::json Users::Unlock(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Pin parameter. */
             SecureString strPin;
@@ -173,7 +173,7 @@ namespace TAO
             }
 
             /* populate unlocked status */
-            json::json jsonUnlocked;
+            encoding::json jsonUnlocked;
 
             jsonUnlocked["mining"] = !session.GetActivePIN().IsNull() && session.CanMine();
             jsonUnlocked["notifications"] = !session.GetActivePIN().IsNull() && session.CanProcessNotifications();

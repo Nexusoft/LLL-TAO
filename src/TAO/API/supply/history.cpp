@@ -25,7 +25,7 @@ namespace TAO
     {
 
         /* Gets the history of an item. */
-        json::json Supply::History(const json::json& params, const bool fHelp)
+        encoding::json Supply::History(const encoding::json& params, const bool fHelp)
         {
             return Objects::History(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Item"));
         }

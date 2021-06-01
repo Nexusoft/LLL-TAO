@@ -45,7 +45,7 @@ namespace TAO
     {
 
         /* Get network hashrate for the hashing channel */
-        json::json RPC::GetNetworkHashps(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetNetworkHashps(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -87,7 +87,7 @@ namespace TAO
                 }
             }
 
-            json::json obj;
+            encoding::json obj;
             obj["averagetime"] =  (int)nHashAverageTime;
             obj["averagedifficulty"] = nHashAverageDifficulty;
             obj["hashrate"] = nHashRate;
@@ -97,7 +97,7 @@ namespace TAO
 
 
         /* Get network prime searched per second */
-        json::json RPC::GetNetworkPps(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetNetworkPps(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -137,7 +137,7 @@ namespace TAO
                 nPrimePS = (uint64_t)((nPrimeTimeConstant / nPrimeAverageTime) * std::pow(50.0, (nPrimeAverageDifficulty - 3.0)));
             }
 
-            json::json obj;
+            encoding::json obj;
             obj["averagetime"] = (int)nPrimeAverageTime;
             obj["averagedifficulty"] = nPrimeAverageDifficulty;
             obj["primespersecond"] = nPrimePS;
@@ -147,13 +147,13 @@ namespace TAO
 
 
         /* List all the Trust Keys on the Network */
-        json::json RPC::GetNetworkTrustKeys(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetNetworkTrustKeys(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string("getnetworktrustkeys - List all the Trust Keys on the Network");
 
-            json::json response;
-            std::vector<json::json> trustKeyList;
+            encoding::json response;
+            std::vector<encoding::json> trustKeyList;
 
             /* Map will store trust keys, keyed by stake rate, sorted in descending order */
             std::multimap<double, Legacy::TrustKey, std::greater<double> > mapTrustKeys;
@@ -193,7 +193,7 @@ namespace TAO
             /* Now have map of all trust keys. Assemble into response data */
             for(auto& item : mapTrustKeys)
             {
-                json::json obj;
+                encoding::json obj;
                 Legacy::NexusAddress address;
                 address.SetPubKey(item.second.vchPubKey);
 
@@ -212,7 +212,7 @@ namespace TAO
 
 
         /* Returns the number of blocks in the longest block chain */
-        json::json RPC::GetBlockCount(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetBlockCount(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -224,7 +224,7 @@ namespace TAO
 
 
         /* Deprecated.  Use getblockcount */
-        json::json RPC::GetBlockNumber(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetBlockNumber(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -235,7 +235,7 @@ namespace TAO
 
 
         /* Returns difficulty as a multiple of the minimum difficulty */
-        json::json RPC::GetDifficulty(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetDifficulty(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -258,7 +258,7 @@ namespace TAO
             if(fHasHash == false)
                 debug::error(FUNCTION, "couldn't find last hash block state");
 
-            json::json obj;
+            encoding::json obj;
             obj["stake"] = fHasStake ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastStakeBlockState, 0, false), 0) : 0;
             obj["prime"] = fHasPrime ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastPrimeBlockState, 1, false), 1) : 0;
             obj["hash"] = fHasHash ? TAO::Ledger::GetDifficulty(TAO::Ledger::GetNextTargetRequired(lastHashBlockState, 2, false), 2) : 0;
@@ -272,7 +272,7 @@ namespace TAO
         Returns an object containing current Nexus production rates in set time intervals.
         Time Frequency is in base 13 month, 28 day totalling 364 days.
         This is to prevent error from Gregorian Figures */
-        json::json RPC::GetSupplyRates(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetSupplyRates(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -281,7 +281,7 @@ namespace TAO
                     " Time Frequency is in base 13 month, 28 day totalling 364 days."
                     " This is to prevent error from Gregorian Figures.");
 
-            json::json obj;
+            encoding::json obj;
 
             /* Read the stateBest using hashBestChain
              * Cannot use ChainState::stateBest for this because certain fields (like money supply) are not populated
@@ -315,7 +315,7 @@ namespace TAO
         /* getmoneysupply <timestamp>
         Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors.
         Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp */
-        json::json RPC::GetMoneySupply(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetMoneySupply(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 1)
                 return std::string(
@@ -323,7 +323,7 @@ namespace TAO
                     " - Returns the total supply of Nexus produced by miners, holdings, developers, and ambassadors."
                     " Default timestamp is the current Unified timestamp. The timestamp is recorded as a UNIX timestamp");
 
-            json::json obj;
+            encoding::json obj;
 
             uint32_t nMinutes;
 
@@ -354,7 +354,7 @@ namespace TAO
 
         /* getblockhash <index>"
         *  Returns hash of block in best-block-chain at <index> */
-        json::json RPC::GetBlockHash(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetBlockHash(const encoding::json& params, const bool fHelp)
         {
 
             if(fHelp || params.size() != 1)
@@ -381,7 +381,7 @@ namespace TAO
 
         /* isorphan <hash>"
         *  Returns whether a block is an orphan or not*/
-        json::json RPC::IsOrphan(const json::json& params, const bool fHelp)
+        encoding::json RPC::IsOrphan(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -407,7 +407,7 @@ namespace TAO
         /* getblock <hash> [txinfo]"
         *  txinfo optional to print more detailed tx info."
         *  Returns details of a block with given block-hash */
-        json::json RPC::GetBlock(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetBlock(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(

@@ -19,7 +19,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Determines if an object should be included in a list based on input parameters. */
-    bool FilterObject(const json::json& jParams, const TAO::Register::Object& objCheck)
+    bool FilterObject(const encoding::json& jParams, const TAO::Register::Object& objCheck)
     {
         /* Check for a where clause. */
         if(jParams.find("where") == jParams.end())
@@ -61,7 +61,7 @@ namespace TAO::API
             try
             {
                 /* Grab a reference of value to check. */
-                const json::json& jCheck = jClause["value"];
+                const encoding::json& jCheck = jClause["value"];
 
                 /* Now let's check our type. */
                 uint8_t nType = 0;
@@ -272,7 +272,7 @@ namespace TAO::API
 
 
     /* If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field */
-    void FilterResponse(const json::json& jParams, json::json &jResponse)
+    void FilterResponse(const encoding::json& jParams, encoding::json &jResponse)
     {
         /* Check for fieldname filters. */
         if(jParams.find("fieldname") != jParams.end())
@@ -281,7 +281,7 @@ namespace TAO::API
             const std::string strField = jParams["fieldname"].get<std::string>();
 
             /* Copy over our new field. */
-            const json::json jRet = { strField, jResponse[strField].get<std::string>() };
+            const encoding::json jRet = { strField, jResponse[strField].get<std::string>() };
             jResponse      = jRet;
         }
     }

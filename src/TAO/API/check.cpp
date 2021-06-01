@@ -96,7 +96,7 @@ namespace TAO::API
 
 
     /* Checks if the designated object matches the explicet type specified in parameters. */
-    bool CheckType(const json::json& jParams, const uint256_t& hashCheck)
+    bool CheckType(const encoding::json& jParams, const uint256_t& hashCheck)
     {
         /* Let's grab our object to check against and throw if it's missing. */
         TAO::Register::Object objCheck;
@@ -110,7 +110,7 @@ namespace TAO::API
 
     /*  Checks if the designated object matches the explicet type specified in parameters.
      *  Doesn't do a register database lookup like prior overload does. */
-    bool CheckType(const json::json& jParams, const TAO::Register::Object& objCheck)
+    bool CheckType(const encoding::json& jParams, const TAO::Register::Object& objCheck)
     {
         /* Check for our request parameters first, since this method can be called without */
         if(jParams.find("request") == jParams.end())

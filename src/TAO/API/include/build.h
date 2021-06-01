@@ -38,7 +38,7 @@ namespace TAO::API
      *  @return the formatted JSON response to return with.
      *
      **/
-    json::json BuildResponse(const json::json& jParams, const TAO::Register::Address& hashRegister,
+    encoding::json BuildResponse(const encoding::json& jParams, const TAO::Register::Address& hashRegister,
                               const std::vector<TAO::Operation::Contract>& vContracts);
 
 
@@ -52,7 +52,7 @@ namespace TAO::API
      *  @return the formatted JSON response to return with.
      *
      **/
-    json::json BuildResponse(const json::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts);
+    encoding::json BuildResponse(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts);
 
 
     /** Build And Accept
@@ -65,7 +65,7 @@ namespace TAO::API
      *  @return the txid of the transaction that was just built.
      *
      **/
-    uint512_t BuildAndAccept(const json::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts);
+    uint512_t BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts);
 
 
     /** AddFee
@@ -95,7 +95,7 @@ namespace TAO::API
      *  @return true if contracts were generated, false if credit has no contracts available.
      *
      **/
-    bool BuildCredits(const json::json& jParams, const uint512_t& hashTx, std::vector<TAO::Operation::Contract> &vContracts);
+    bool BuildCredits(const encoding::json& jParams, const uint512_t& hashTx, std::vector<TAO::Operation::Contract> &vContracts);
 
 
     /** BuildCredit
@@ -110,6 +110,6 @@ namespace TAO::API
      *  @return true if contracts were generated, false if credit has no contracts available.
      *
      **/
-    bool BuildCredit(const json::json& jParams, const uint32_t nContract,
+    bool BuildCredit(const encoding::json& jParams, const uint32_t nContract,
         const TAO::Operation::Contract& rContract, std::vector<TAO::Operation::Contract> &vContracts);
 }

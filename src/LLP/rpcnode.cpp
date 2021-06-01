@@ -146,11 +146,11 @@ namespace LLP
             return false;
         }
 
-        json::json jsonID = nullptr;
+        encoding::json jsonID = nullptr;
         try
         {
             /* Get the parameters from the HTTP Packet. */
-            json::json jsonIncoming = json::json::parse(INCOMING.strContent);
+            encoding::json jsonIncoming = encoding::json::parse(INCOMING.strContent);
 
             /* Ensure the method is in the calling json. */
             if(jsonIncoming["method"].is_null())
@@ -164,7 +164,7 @@ namespace LLP
             std::string strMethod = jsonIncoming["method"].get<std::string>();
 
             /* Check for parameters, if none set default value to empty array. */
-            json::json jsonParams = jsonIncoming["params"].is_null() ? "[]" : jsonIncoming["params"];
+            encoding::json jsonParams = jsonIncoming["params"].is_null() ? "[]" : jsonIncoming["params"];
 
             /* Extract the ID from the json */
             if(!jsonIncoming["id"].is_null())
@@ -180,7 +180,7 @@ namespace LLP
 
             /* Execute the RPC method. */
             #ifndef NO_WALLET
-            json::json jsonResult = TAO::API::legacy->Execute(strMethod, jsonParams, false);
+            encoding::json jsonResult = TAO::API::legacy->Execute(strMethod, jsonParams, false);
 
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
@@ -196,7 +196,7 @@ namespace LLP
         }
 
         /* Handle for JSON exceptions. */
-        catch(const json::detail::exception& e)
+        catch(const encoding::detail::exception& e)
         {
             ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
 
@@ -217,9 +217,9 @@ namespace LLP
 
 
     /* JSON Spec 1.0 Reply including error messages. */
-    json::json RPCNode::JSONReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID)
+    encoding::json RPCNode::JSONReply(const encoding::json& jsonResponse, const encoding::json& jsonError, const encoding::json& jsonID)
     {
-        json::json jsonReply;
+        encoding::json jsonReply;
         if(!jsonError.is_null())
         {
             jsonReply["result"] = nullptr;
@@ -239,7 +239,7 @@ namespace LLP
         return jsonReply;
     }
 
-    void RPCNode::ErrorReply(const json::json& jsonError, const json::json& jsonID)
+    void RPCNode::ErrorReply(const encoding::json& jsonError, const encoding::json& jsonID)
     {
         /* Default error status code is 500. */
         uint16_t nStatus = 500;
@@ -260,7 +260,7 @@ namespace LLP
         }
 
         /* Send the response packet. */
-        PushResponse(nStatus, JSONReply(json::json(nullptr), jsonError, jsonID).dump());
+        PushResponse(nStatus, JSONReply(encoding::json(nullptr), jsonError, jsonID).dump());
     }
 
     bool RPCNode::Authorized(std::map<std::string, std::string>& mapHeaders)

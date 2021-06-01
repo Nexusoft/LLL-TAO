@@ -65,7 +65,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Stop(const json::json& params, const bool fHelp);
+        encoding::json Stop(const encoding::json& params, const bool fHelp);
 
 
         /** GetInfo
@@ -78,7 +78,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetInfo(const json::json& params, const bool fHelp);
+        encoding::json GetInfo(const encoding::json& params, const bool fHelp);
 
 
         /** GetInfo
@@ -91,7 +91,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ListPeers(const json::json& params, const bool fHelp);
+        encoding::json ListPeers(const encoding::json& params, const bool fHelp);
 
 
         /** LispEIDs
@@ -104,7 +104,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json LispEIDs(const json::json& params, const bool fHelp);
+        encoding::json LispEIDs(const encoding::json& params, const bool fHelp);
 
 
         /** Validate
@@ -117,7 +117,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Validate(const json::json& params, const bool fHelp);
+        encoding::json Validate(const encoding::json& params, const bool fHelp);
 
 
 
@@ -131,7 +131,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Metrics(const json::json& params, const bool fHelp);
+        encoding::json Metrics(const encoding::json& params, const bool fHelp);
 
 
 

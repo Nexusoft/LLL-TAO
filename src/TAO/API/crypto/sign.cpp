@@ -38,10 +38,10 @@ namespace TAO
     {
 
         /* Generates a signature for the data based on the private key for the keyname/user/pass/pin combination. */
-        json::json Crypto::Sign(const json::json& params, const bool fHelp)
+        encoding::json Crypto::Sign(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))

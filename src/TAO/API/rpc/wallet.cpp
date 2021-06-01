@@ -35,7 +35,7 @@ namespace TAO
 
         /* backupwallet <destination>
         *  Safely copies wallet.dat to destination, which can be a directory or a path with filename */
-        json::json RPC::BackupWallet(const json::json& params, const bool fHelp)
+        encoding::json RPC::BackupWallet(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
             {
@@ -57,7 +57,7 @@ namespace TAO
 
         /*  keypoolrefill
         *   Fills the keypool, requires wallet passphrase to be set */
-        json::json RPC::KeypoolRefill(const json::json& params, const bool fHelp)
+        encoding::json RPC::KeypoolRefill(const encoding::json& params, const bool fHelp)
         {
             if((fHelp || params.size() > 0))
                 return std::string(
@@ -77,7 +77,7 @@ namespace TAO
 
 
         /* Set the default transaction fee. */
-        json::json RPC::SetTxFee(const json::json& params, const bool fHelp)
+        encoding::json RPC::SetTxFee(const encoding::json& params, const bool fHelp)
         {
             if (fHelp || params.size() < 1 || params.size() > 1 || Legacy::AmountToSatoshis(params[0]) < Legacy::MIN_TX_FEE)
                 return std::string(
@@ -95,7 +95,7 @@ namespace TAO
         /* walletpassphrase <passphrase> [timeout] [mintonly]
         *  Stores the wallet decryption key in memory for [timeout] seconds.
         *  mintonly is optional true/false allowing only block minting. timeout is ignored if mintonly is true / 1*/
-        json::json RPC::WalletPassphrase(const json::json& params, const bool fHelp)
+        encoding::json RPC::WalletPassphrase(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && (params.size() < 1 || params.size() > 3)))
                 return std::string(
@@ -150,7 +150,7 @@ namespace TAO
 
         /* walletpassphrasechange <oldpassphrase> <newpassphrase>
         *  Changes the wallet passphrase from <oldpassphrase> to <newpassphrase>*/
-        json::json RPC::WalletPassphraseChange(const json::json& params, const bool fHelp)
+        encoding::json RPC::WalletPassphraseChange(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 2))
                 return std::string(
@@ -184,7 +184,7 @@ namespace TAO
         *  Removes the wallet encryption key from memory, locking the wallet.
         *  After calling this method, you will need to call walletpassphrase again
         *  before being able to call any methods which require the wallet to be unlocked */
-        json::json RPC::WalletLock(const json::json& params, const bool fHelp)
+        encoding::json RPC::WalletLock(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || (Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 0))
                 return std::string(
@@ -205,7 +205,7 @@ namespace TAO
 
         /* encryptwallet <passphrase>
         *  Encrypts the wallet with <passphrase>. */
-        json::json RPC::EncryptWallet(const json::json& params, const bool fHelp)
+        encoding::json RPC::EncryptWallet(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || (!Legacy::Wallet::GetInstance().IsCrypted() && params.size() != 1))
                 return std::string(
@@ -232,7 +232,7 @@ namespace TAO
 
         /* checkwallet
         *  Check wallet for integrity */
-        json::json RPC::CheckWallet(const json::json& params, const bool fHelp)
+        encoding::json RPC::CheckWallet(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 0)
                 return std::string("checkwallet - Check wallet for integrity.");
@@ -240,7 +240,7 @@ namespace TAO
             uint32_t nMismatchSpent;
             int64_t nBalanceInQuestion;
             Legacy::Wallet::GetInstance().FixSpentCoins(nMismatchSpent, nBalanceInQuestion, true);
-            json::json result;
+            encoding::json result;
             if(nMismatchSpent == 0)
                 result["wallet check passed"] = true;
             else
@@ -254,7 +254,7 @@ namespace TAO
 
         /* listtrustkeys
         *  List all the Trust Keys this Node owns */
-        json::json RPC::ListTrustKeys(const json::json& params, const bool fHelp)
+        encoding::json RPC::ListTrustKeys(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 0)
                 return std::string("listtrustkeys - List all the Trust Keys this Node owns.");
@@ -275,13 +275,13 @@ namespace TAO
 
 
         //     return result;
-            json::json ret;
+            encoding::json ret;
             return ret;
         }
 
         /* repairwallet
         *  Repair wallet if checkwallet reports any problem */
-        json::json RPC::RepairWallet(const json::json& params, const bool fHelp)
+        encoding::json RPC::RepairWallet(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() > 0)
                 return std::string("repairwallet - Repair wallet if checkwallet reports any problem.");
@@ -289,7 +289,7 @@ namespace TAO
             uint32_t nMismatchSpent;
             int64_t nBalanceInQuestion;
             Legacy::Wallet::GetInstance().FixSpentCoins(nMismatchSpent, nBalanceInQuestion);
-            json::json result;
+            encoding::json result;
             if(nMismatchSpent == 0)
                 result["wallet check passed"] = true;
             else
@@ -303,7 +303,7 @@ namespace TAO
 
         /* rescan
         *  Rescans the database for relevant wallet transactions */
-        json::json RPC::Rescan(const json::json& params, const bool fHelp)
+        encoding::json RPC::Rescan(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string("rescan - Rescans the database for relevant wallet transactions.");
@@ -316,7 +316,7 @@ namespace TAO
 
         /* importprivkey <PrivateKey> [label]
         *  Adds a private key (as returned by dumpprivkey) to your wallet */
-        json::json RPC::ImportPrivKey(const json::json& params, const bool fHelp)
+        encoding::json RPC::ImportPrivKey(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
@@ -360,7 +360,7 @@ namespace TAO
 
         /* dumpprivkey <NexusAddress>
         *  Reveals the private key corresponding to <NexusAddress> */
-        json::json RPC::DumpPrivKey(const json::json& params, const bool fHelp)
+        encoding::json RPC::DumpPrivKey(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 1)
                 return std::string(
@@ -390,7 +390,7 @@ namespace TAO
         /* importkeys
         *  Import List of Private Keys and return if they import properly or fail with their own code in the output sequence"
         *  You need to list the imported keys in a JSON array of {[account],[privatekey]} */
-        json::json RPC::ImportKeys(const json::json& params, const bool fHelp)
+        encoding::json RPC::ImportKeys(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() < 1)
             {
@@ -410,14 +410,14 @@ namespace TAO
                 throw APIException(-8, "Invalid import list format.");
 
             /** Establish the JSON Object from the Parameters. **/
-            json::json jsonImportArray = params[0];
+            encoding::json jsonImportArray = params[0];
 
 
             /** Establish a return value JSON object for Error Reporting. **/
-            json::json response;
+            encoding::json response;
 
             /** Import the Keys one by One. **/
-            for(json::json::iterator it = jsonImportArray.begin(); it != jsonImportArray.end(); ++it)
+            for(encoding::json::iterator it = jsonImportArray.begin(); it != jsonImportArray.end(); ++it)
             {
                 Legacy::NexusSecret vchSecret;
                 if(!vchSecret.SetString(it.value()))
@@ -452,7 +452,7 @@ namespace TAO
         /* exportkeys
         *  Export the private keys of the current UTXO values.
         *  This will allow the importing and exporting of private keys much easier. */
-        json::json RPC::ExportKeys(const json::json& params, const bool fHelp)
+        encoding::json RPC::ExportKeys(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -474,8 +474,8 @@ namespace TAO
 
             /** Loop all entries of the memory map to compile the list of account names and their addresses.
                 JSON object format is a reflection of the import and export options. **/
-            json::json ret = json::json::array();
-            json::json entry;
+            encoding::json ret = encoding::json::array();
+            encoding::json entry;
             for(std::map<Legacy::NexusAddress, int64_t>::iterator it = mapAddresses.begin(); it != mapAddresses.end(); ++it)
             {
                 /** Extract the Secret key from the Wallet. **/

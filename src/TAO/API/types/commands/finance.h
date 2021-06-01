@@ -55,7 +55,7 @@ namespace TAO::API
          *  @return the modified API method URL as a string
          *
          **/
-        std::string RewriteURL(const std::string& strMethod, json::json &jParams) final;
+        std::string RewriteURL(const std::string& strMethod, encoding::json &jParams) final;
 
 
         /** Name
@@ -80,7 +80,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Burn(const json::json& jParams, const bool fHelp);
+        encoding::json Burn(const encoding::json& jParams, const bool fHelp);
 
 
         /** Create
@@ -93,7 +93,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& jParams, const bool fHelp);
+        encoding::json Create(const encoding::json& jParams, const bool fHelp);
 
 
         /** Credit
@@ -106,7 +106,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Credit(const json::json& jParams, const bool fHelp);
+        encoding::json Credit(const encoding::json& jParams, const bool fHelp);
 
 
         /** Debit
@@ -119,7 +119,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Debit(const json::json& jParams, const bool fHelp);
+        encoding::json Debit(const encoding::json& jParams, const bool fHelp);
 
 
         /** Get
@@ -132,7 +132,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Get(const json::json& jParams, const bool fHelp);
+        encoding::json Get(const encoding::json& jParams, const bool fHelp);
 
 
 
@@ -147,7 +147,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetBalances(const json::json& jParams, const bool fHelp);
+        encoding::json GetBalances(const encoding::json& jParams, const bool fHelp);
 
 
         /** ListBalances
@@ -160,7 +160,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ListBalances(const json::json& jParams, const bool fHelp);
+        encoding::json ListBalances(const encoding::json& jParams, const bool fHelp);
 
 
         /** StakeInfo
@@ -173,7 +173,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json StakeInfo(const json::json& jParams, const bool fHelp);
+        encoding::json StakeInfo(const encoding::json& jParams, const bool fHelp);
 
 
         /** List
@@ -186,7 +186,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json List(const json::json& jParams, const bool fHelp);
+        encoding::json List(const encoding::json& jParams, const bool fHelp);
 
 
         /** ListTransactions
@@ -199,7 +199,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ListTransactions(const json::json& jParams, const bool fHelp);
+        encoding::json ListTransactions(const encoding::json& jParams, const bool fHelp);
 
 
         /** MigrateAccounts
@@ -212,7 +212,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json MigrateAccounts(const json::json& jParams, const bool fHelp);
+        encoding::json MigrateAccounts(const encoding::json& jParams, const bool fHelp);
 
 
         /** Stake
@@ -225,7 +225,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Stake(const json::json& jParams, const bool fHelp);
+        encoding::json Stake(const encoding::json& jParams, const bool fHelp);
 
 
         /** TrustAccounts
@@ -238,7 +238,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json TrustAccounts(const json::json& jParams, const bool fHelp);
+        encoding::json TrustAccounts(const encoding::json& jParams, const bool fHelp);
 
     };
 }

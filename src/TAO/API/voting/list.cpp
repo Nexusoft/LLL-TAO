@@ -37,10 +37,10 @@ namespace TAO
     {
 
         /* Returns a list of all votes made to an account. */
-        json::json Voting::List(const json::json& params, const bool fHelp)
+        encoding::json Voting::List(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             /* The register address of the account to get the vote count for. */
             TAO::Register::Address hashAccount ;
@@ -203,7 +203,7 @@ namespace TAO
                         break;
 
                     /* Build the transaction JSON. */
-                    json::json jsonTx;
+                    encoding::json jsonTx;
 
                     /* Read the block state from the the ledger DB using the transaction hash index */
                     TAO::Ledger::BlockState blockState;

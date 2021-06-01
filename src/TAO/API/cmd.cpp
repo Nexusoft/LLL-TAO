@@ -106,8 +106,8 @@ namespace TAO
                 return debug::error("Endpoint argument requires a forward slash [ex. ./nexus -api <API-NAME>/<METHOD> <KEY>=<VALUE>]");
 
             /* Build the JSON request object. */
-            json::json jParameters;
-            json::json jWhere;
+            encoding::json jParameters;
+            encoding::json jWhere;
 
             /* Track if WHERE clause is in effect. */
             bool fWhere = false;
@@ -146,7 +146,7 @@ namespace TAO
                             return debug::error("Syntax Error at '", strKey, "'. Missing '.'");
 
                         /* Build our current json value. */
-                        json::json jClause;
+                        encoding::json jClause;
                         jClause["class"]  = strKey.substr(0, nDot);
                         jClause["field"]  = strKey.substr(nDot + 1);
 
@@ -189,7 +189,7 @@ namespace TAO
 
                     // if the paramter is a JSON list or array then we need to parse it
                     if(strArg.compare(nPos + 1, 1, "{") == 0 || strArg.compare(nPos + 1, 1, "[") == 0)
-                        jParameters[strKey] = json::json::parse(strArg.substr(nPos + 1));
+                        jParameters[strKey] = encoding::json::parse(strArg.substr(nPos + 1));
                     else
                         jParameters[strKey] = strValue;
                 }
@@ -228,7 +228,7 @@ namespace TAO
                 return debug::error("Couldn't connect to ", tAddr.ToStringIP());
 
             /* Parse response JSON. */
-            const json::json jRet = json::json::parse(tNode.INCOMING.strContent);
+            const encoding::json jRet = encoding::json::parse(tNode.INCOMING.strContent);
 
             /* Check for errors. */
             std::string strPrint = "";
@@ -267,19 +267,19 @@ namespace TAO
             std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"]);
 
             /* Build the JSON request object. */
-            json::json jParameters = json::json::array();
+            encoding::json jParameters = encoding::json::array();
             for(int i = nArgBegin + 1; i < argc; ++i)
             {
                 std::string strArg = argv[i];
                 // if the paramter is a JSON list or array then we need to parse it
                 if(strArg.compare(0,1,"{") == 0 || strArg.compare(0,1,"[") == 0)
-                    jParameters.push_back(json::json::parse(argv[i]));
+                    jParameters.push_back(encoding::json::parse(argv[i]));
                 else
                     jParameters.push_back(argv[i]);
             }
 
             /* Build the HTTP Header. */
-            json::json jBody =
+            encoding::json jBody =
             {
                 {"method", argv[nArgBegin]},
                 {"params", jParameters},
@@ -358,7 +358,7 @@ namespace TAO
             std::string strPrint = "";
             if(strResponse.length() > 0)
             {
-                json::json ret = json::json::parse(strResponse);
+                encoding::json ret = encoding::json::parse(strResponse);
 
                 if(!ret["error"].is_null())
                 {

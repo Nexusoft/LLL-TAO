@@ -43,10 +43,10 @@ namespace TAO
     {
 
         /* Create's a user account. */
-        json::json Users::Create(const json::json& params, const bool fHelp)
+        encoding::json Users::Create(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Pin parameter. */
             SecureString strPin;

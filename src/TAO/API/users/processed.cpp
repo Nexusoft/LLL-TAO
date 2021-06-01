@@ -20,10 +20,10 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Lists the currently processed notifications. */
-    json::json Users::Processed(const json::json& params, const bool fHelp)
+    encoding::json Users::Processed(const encoding::json& params, const bool fHelp)
     {
         /* JSON return value. */
-        json::json jRet = json::json::array();
+        encoding::json jRet = encoding::json::array();
 
         /* Get the Genesis ID. */
         const uint256_t hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
@@ -40,7 +40,7 @@ namespace TAO::API
         for(const auto& hashTx : vProcessed)
         {
             /* Add the txid in, we will want to support verbose settings later. */
-            json::json jObj;
+            encoding::json jObj;
             jObj["txid"] = hashTx.ToString();
 
             /* Push to our return object. */

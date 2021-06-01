@@ -46,9 +46,9 @@ namespace TAO
     {
 
         /* Create an asset or digital item. */
-        json::json Assets::Create(const json::json& params, const bool fHelp)
+        encoding::json Assets::Create(const encoding::json& params, const bool fHelp)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
@@ -159,7 +159,7 @@ namespace TAO
                 /* declare the object register to hold the asset data*/
                 TAO::Register::Object asset = TAO::Register::CreateAsset();
 
-                json::json jsonAssetDefinition = params["json"];
+                encoding::json jsonAssetDefinition = params["json"];
 
                 /* Track the number of fields so that we can check there is at least one */
                 int nFieldCount = 0;

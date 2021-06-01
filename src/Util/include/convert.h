@@ -392,7 +392,7 @@ namespace convert
     *
     **/
     template<typename T>
-    void StringValueTo(json::json::value_type& value)
+    void StringValueTo(encoding::json::value_type& value)
     {
         if(value.is_string())
         {

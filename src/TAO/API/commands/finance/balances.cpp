@@ -71,7 +71,7 @@ namespace TAO::API
 
     /* Get a summary of nBalances information across all accounts belonging to the currently logged in signature chain
        for a particular token type */
-    json::json Finance::GetBalances(const json::json& params, const bool fHelp)
+    encoding::json Finance::GetBalances(const encoding::json& params, const bool fHelp)
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
@@ -129,7 +129,7 @@ namespace TAO::API
             (hashToken != 0 ? Names::ResolveName(hashGenesis, hashToken) : "NXS");
 
         /* Poplate the json response object. */
-        json::json jRet;
+        encoding::json jRet;
         jRet["token"]        = hashToken.ToString();
         jRet["available"]    = (double)nBalances.nAvailable   / math::pow(10, nBalances.nDecimals);
         jRet["pending"]      = (double)nBalances.nUnclaimed   / math::pow(10, nBalances.nDecimals);
@@ -151,7 +151,7 @@ namespace TAO::API
 
 
     /* Get a summary of nBalances information across all accounts belonging to the currently logged in signature chain */
-    json::json Finance::ListBalances(const json::json& params, const bool fHelp)
+    encoding::json Finance::ListBalances(const encoding::json& params, const bool fHelp)
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
@@ -170,7 +170,7 @@ namespace TAO::API
             throw APIException(-74, "No registers found");
 
         /* Iterate through each register we own */
-        json::json jRet = json::json::array();
+        encoding::json jRet = encoding::json::array();
         for(const auto& hashRegister : vRegisters)
         {
             /* Initial check that it is an account/trust/token, before we hit the DB to get the nBalances */
@@ -204,7 +204,7 @@ namespace TAO::API
                 (hashToken != 0 ? Names::ResolveName(hashGenesis, hashToken) : "NXS");
 
             /* Poplate the json response object. */
-            json::json jBalances;
+            encoding::json jBalances;
             jBalances["token"]        = hashToken.ToString();
             jBalances["available"]    = (double)nBalances.nAvailable   / math::pow(10, nBalances.nDecimals);
             jBalances["pending"]      = (double)nBalances.nUnclaimed   / math::pow(10, nBalances.nDecimals);

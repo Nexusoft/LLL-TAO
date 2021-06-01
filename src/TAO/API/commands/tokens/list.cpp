@@ -37,7 +37,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Lists all transactions for a given account. */
-    json::json Tokens::ListTransactions(const json::json& params, const bool fHelp)
+    encoding::json Tokens::ListTransactions(const encoding::json& params, const bool fHelp)
     {
         /* The account to list transactions for. */
         TAO::Register::Address hashAccount;
@@ -77,10 +77,10 @@ namespace TAO::API
 
     /* Lists all accounts that have been created for a particular token. */
     //XXX: this command will experience combinatoral explosion, to be deprecated in T++
-    json::json Tokens::ListTokenAccounts(const json::json& params, const bool fHelp)
+    encoding::json Tokens::ListTokenAccounts(const encoding::json& params, const bool fHelp)
     {
         /* The return json array */
-        json::json jsonRet = json::json::array();
+        encoding::json jsonRet = encoding::json::array();
 
         /* Check they are not using client mode */
         if(config::fClient.load())
@@ -304,7 +304,7 @@ namespace TAO::API
         for(const auto& account : vTokenAccounts)
         {
             /* The JSON for this account */
-            json::json jsonAccount;
+            encoding::json jsonAccount;
             jsonAccount["owner"]    = account.second.hashOwner.ToString();
             jsonAccount["created"]  = account.second.nCreated;
             jsonAccount["modified"] = account.second.nModified;

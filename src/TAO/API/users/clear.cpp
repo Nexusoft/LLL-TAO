@@ -20,10 +20,10 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Lists the currently processed notifications. */
-    json::json Users::Clear(const json::json& params, const bool fHelp)
+    encoding::json Users::Clear(const encoding::json& params, const bool fHelp)
     {
         /* JSON return value. */
-        json::json jRet;
+        encoding::json jRet;
 
         /* Get the Genesis ID. */
         const uint256_t hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();

@@ -49,10 +49,10 @@ namespace TAO
     namespace API
     {
         /* Create an name . */
-        json::json Names::Create(const json::json& params, const bool fHelp)
+        encoding::json Names::Create(const encoding::json& params, const bool fHelp)
         {
             /* Return JSON object */
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
@@ -159,10 +159,10 @@ namespace TAO
 
 
         /* Create an namespace . */
-        json::json Names::CreateNamespace(const json::json& params, const bool fHelp)
+        encoding::json Names::CreateNamespace(const encoding::json& params, const bool fHelp)
         {
             /* Return JSON object */
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))

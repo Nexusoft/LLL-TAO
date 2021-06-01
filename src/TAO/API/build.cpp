@@ -42,11 +42,11 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Build a response object for a transaction that was built. */
-    json::json BuildResponse(const json::json& jParams, const TAO::Register::Address& hashRegister,
+    encoding::json BuildResponse(const encoding::json& jParams, const TAO::Register::Address& hashRegister,
                              const std::vector<TAO::Operation::Contract>& vContracts)
     {
         /* Build a JSON response object. */
-        json::json jRet;
+        encoding::json jRet;
         jRet["success"] = true; //just a little response for if using -autotx
         jRet["address"] = hashRegister.ToString();
 
@@ -60,10 +60,10 @@ namespace TAO::API
 
 
     /* Build a response object for a transaction that was built. */
-    json::json BuildResponse(const json::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
+    encoding::json BuildResponse(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
     {
         /* Build a JSON response object. */
-        json::json jRet;
+        encoding::json jRet;
         jRet["success"] = true; //just a little response for if using -autotx
         jRet["status"]  = "active"; //XXX: we wnat this to check a functions map for status, this also allows disabling some methods.
 
@@ -77,7 +77,7 @@ namespace TAO::API
 
 
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
-    uint512_t BuildAndAccept(const json::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
+    uint512_t BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
     {
         /* Authenticate the users credentials */
         if(!Commands::Get<Users>()->Authenticate(jParams))
@@ -204,7 +204,7 @@ namespace TAO::API
 
 
     /* Builds a credit contract based on given txid. */
-    bool BuildCredits(const json::json& jParams, const uint512_t& hashTx, std::vector<TAO::Operation::Contract> &vContracts)
+    bool BuildCredits(const encoding::json& jParams, const uint512_t& hashTx, std::vector<TAO::Operation::Contract> &vContracts)
     {
         /* Track contracts added to compare values for return */
         const uint32_t nContracts = vContracts.size();
@@ -254,7 +254,7 @@ namespace TAO::API
 
 
     /* Builds a credit contract based on given contract and related parameters. */
-    bool BuildCredit(const json::json& jParams, const uint32_t nContract, const TAO::Operation::Contract& rContract,
+    bool BuildCredit(const encoding::json& jParams, const uint32_t nContract, const TAO::Operation::Contract& rContract,
         std::vector<TAO::Operation::Contract> &vContracts)
     {
         /* Extract some parameters from input data. */

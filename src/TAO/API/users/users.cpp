@@ -105,7 +105,7 @@ namespace TAO
 
 
         /* Returns the genesis ID from the calling session or the the account logged in.*/
-        uint256_t Users::GetCallersGenesis(const json::json & params) const
+        uint256_t Users::GetCallersGenesis(const encoding::json & params) const
         {
             /* default to session 0 unless using multiuser mode */
             uint256_t nSession = 0;
@@ -147,7 +147,7 @@ namespace TAO
          * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
          * then the method will return the pin from the params.  If no pin is available then
          * an APIException is thrown */
-        SecureString Users::GetPin(const json::json params, uint8_t nUnlockAction) const
+        SecureString Users::GetPin(const encoding::json params, uint8_t nUnlockAction) const
         {
 
             /* Check for pin parameter. */
@@ -179,7 +179,7 @@ namespace TAO
          * logged in than an APIException is thrown, if fThrow is true.
          * If not in sessionless mode then the method will return the session from the params.
          * If the session is not is available in the params then an APIException is thrown, if fThrow is true. */
-        Session& Users::GetSession(const json::json params, bool fThrow, bool fLogActivity) const
+        Session& Users::GetSession(const encoding::json params, bool fThrow, bool fLogActivity) const
         {
             /* Check for session parameter. */
             uint256_t nSession = 0; // ID 0 is used for sessionless API
@@ -334,7 +334,7 @@ namespace TAO
         /* Checks that the session/password/pin parameters have been provided (where necessary) and then verifies that the
         *  password and pin are correct.
         *  If authentication fails then the AuthAttempts counter in the callers session is incremented */
-        bool Users::Authenticate(const json::json& params)
+        bool Users::Authenticate(const encoding::json& params)
         {
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);

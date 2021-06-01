@@ -29,10 +29,10 @@ namespace TAO
     {
 
         /* Get the schema for an asset */
-        json::json Assets::GetSchema(const json::json& params, const bool fHelp)
+        encoding::json Assets::GetSchema(const encoding::json& params, const bool fHelp)
         {
             /* The response JSON array */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             /* Get the Register ID. */
             TAO::Register::Address hashRegister ;
@@ -86,7 +86,7 @@ namespace TAO
             for(const auto& strName : vFieldNames)
             {
                 /* JSON for this field */
-                json::json field;
+                encoding::json field;
 
                 /* max field size (only applicable to mutable fields) */
                 std::size_t nMaxSize = 0;

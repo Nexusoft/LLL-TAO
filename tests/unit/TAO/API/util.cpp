@@ -136,7 +136,7 @@ bool GenerateBlock()
 }
 
 
-json::json APICall(const std::string& strMethod, const json::json& jsonParams)
+encoding::json APICall(const std::string& strMethod, const encoding::json& jsonParams)
 {
     /* HTTP basic authentication for API */
     std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-apiuser"] + ":" + config::mapArgs["-apipassword"]);
@@ -196,7 +196,7 @@ json::json APICall(const std::string& strMethod, const json::json& jsonParams)
     apiNode.Disconnect();
 
     /* Parse response JSON. */
-    json::json ret = json::json::parse(apiNode.INCOMING.strContent);
+    encoding::json ret = encoding::json::parse(apiNode.INCOMING.strContent);
 
     return ret;
 
@@ -212,10 +212,10 @@ void InitializeUser(const std::string& strUsername, const std::string& strPasswo
         return;
 
     /* Declare variables */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Enure that we use low argon2 requirements for unit test to speed up the use of the sig chain */
     config::SoftSetArg("-argon2", "0");
@@ -267,10 +267,10 @@ void LogoutUser( uint256_t& hashGenesis, std::string& strSession)
         return;
 
     /* Declare variables */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Enure that we use low argon2 requirements for unit test to speed up the use of the sig chain */
     config::SoftSetArg("-argon2", "0");

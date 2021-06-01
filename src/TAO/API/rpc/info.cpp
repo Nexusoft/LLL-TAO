@@ -51,13 +51,13 @@ namespace TAO
 
         /* getinfo
         Returns an object containing various state info */
-        json::json RPC::GetInfo(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetInfo(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
                     "getinfo - Returns an object containing various state info.");
 
-            json::json obj;
+            encoding::json obj;
             obj["version"] = version::CLIENT_VERSION_BUILD_STRING;
             obj["protocolversion"] = LLP::PROTOCOL_VERSION;
             obj["walletversion"] = Legacy::Wallet::GetInstance().GetVersion();
@@ -89,7 +89,7 @@ namespace TAO
             std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
             if(mapEIDs.size() > 0)
             {
-                json::json jsonEIDs = json::json::array();
+                encoding::json jsonEIDs = encoding::json::array();
                 for(const auto& eid : mapEIDs)
                 {
                     jsonEIDs.push_back(eid.first);
@@ -122,9 +122,9 @@ namespace TAO
 
         /* getpeerinfo
         Returns data about each connected network node */
-        json::json RPC::GetPeerInfo(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetPeerInfo(const encoding::json& params, const bool fHelp)
         {
-            json::json response;
+            encoding::json response;
 
             if(fHelp || params.size() != 0)
                     return std::string(
@@ -143,7 +143,7 @@ namespace TAO
                 /* Push the active connection. */
                 if(connection.get()->Connected())
                 {
-                    json::json obj;
+                    encoding::json obj;
 
                     obj["addr"]     = connection.get()->addr.ToString();
                     obj["type"]     = connection.get()->strFullVersion;
@@ -167,7 +167,7 @@ namespace TAO
 
         /* getmininginfo
         Returns an object containing mining-related information.*/
-        json::json RPC::GetMiningInfo(const json::json& params, const bool fHelp)
+        encoding::json RPC::GetMiningInfo(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string(
@@ -246,7 +246,7 @@ namespace TAO
                 }
             }
 
-            json::json obj;
+            encoding::json obj;
             obj["blocks"] = (int32_t)TAO::Ledger::ChainState::nBestHeight.load();
             obj["timestamp"] = (int32_t)runtime::unifiedtimestamp();
 

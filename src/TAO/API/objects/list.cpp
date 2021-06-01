@@ -40,10 +40,10 @@ namespace TAO
     {
 
         /* Generic method to list object registers by sig chain*/
-        json::json Objects::List(const json::json& params, const uint8_t nRegisterType, const uint8_t nObjectType)
+        encoding::json Objects::List(const encoding::json& params, const uint8_t nRegisterType, const uint8_t nObjectType)
         {
             /* JSON return value. */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
@@ -124,11 +124,11 @@ namespace TAO
                 }
 
                 /* Populate the response JSON */
-                json::json json;
+                encoding::json json;
                 json["created"]  = state.second.nCreated;
                 json["modified"] = state.second.nModified;
 
-                json::json data  = TAO::API::ObjectToJSON(params, object, state.first, fLookupName);
+                encoding::json data  = TAO::API::ObjectToJSON(params, object, state.first, fLookupName);
 
                 /* Copy the data in to the response after the  */
                 json.insert(data.begin(), data.end());

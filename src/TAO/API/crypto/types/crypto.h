@@ -59,7 +59,7 @@ namespace TAO::API
          *  @return the API method URL
          *
          **/
-        std::string RewriteURL(const std::string& strMethod, json::json& jsonParams) override;
+        std::string RewriteURL(const std::string& strMethod, encoding::json& jsonParams) override;
 
 
         /** Name
@@ -83,7 +83,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json List(const json::json& params, const bool fHelp);
+        encoding::json List(const encoding::json& params, const bool fHelp);
 
 
         /** Get
@@ -96,7 +96,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Get(const json::json& params, const bool fHelp);
+        encoding::json Get(const encoding::json& params, const bool fHelp);
 
 
         /** GetPublic
@@ -109,7 +109,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetPublic(const json::json& params, const bool fHelp);
+        encoding::json GetPublic(const encoding::json& params, const bool fHelp);
 
 
         /** GetPrivate
@@ -122,7 +122,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetPrivate(const json::json& params, const bool fHelp);
+        encoding::json GetPrivate(const encoding::json& params, const bool fHelp);
 
 
         /** Create
@@ -135,7 +135,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& params, const bool fHelp);
+        encoding::json Create(const encoding::json& params, const bool fHelp);
 
 
         /** Encrypt
@@ -148,7 +148,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Encrypt(const json::json& params, const bool fHelp);
+        encoding::json Encrypt(const encoding::json& params, const bool fHelp);
 
 
         /** Decrypt
@@ -161,7 +161,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Decrypt(const json::json& params, const bool fHelp);
+        encoding::json Decrypt(const encoding::json& params, const bool fHelp);
 
 
         /** Sign
@@ -174,7 +174,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Sign(const json::json& params, const bool fHelp);
+        encoding::json Sign(const encoding::json& params, const bool fHelp);
 
 
         /** Verify
@@ -187,7 +187,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Verify(const json::json& params, const bool fHelp);
+        encoding::json Verify(const encoding::json& params, const bool fHelp);
 
 
         /** GetHash
@@ -200,7 +200,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetHash(const json::json& params, const bool fHelp);
+        encoding::json GetHash(const encoding::json& params, const bool fHelp);
 
 
         /** ChangeScheme
@@ -214,7 +214,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ChangeScheme(const json::json& params, const bool fHelp);
+        encoding::json ChangeScheme(const encoding::json& params, const bool fHelp);
 
 
         /** CreateCertificate
@@ -227,7 +227,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json CreateCertificate(const json::json& params, const bool fHelp);
+        encoding::json CreateCertificate(const encoding::json& params, const bool fHelp);
 
 
         /** GetCertificate
@@ -240,7 +240,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetCertificate(const json::json& params, const bool fHelp);
+        encoding::json GetCertificate(const encoding::json& params, const bool fHelp);
 
 
         /** VerifyCertificate
@@ -253,7 +253,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json VerifyCertificate(const json::json& params, const bool fHelp);
+        encoding::json VerifyCertificate(const encoding::json& params, const bool fHelp);
 
 
     /* private helper methods */
@@ -269,7 +269,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        uint8_t get_scheme(const json::json& params );
+        uint8_t get_scheme(const encoding::json& params );
 
 
     };

@@ -36,7 +36,7 @@ namespace TAO
     {
 
         /* Returns an object containing mining-related information. */
-        json::json Ledger::MiningInfo(const json::json& params, const bool fHelp)
+        encoding::json Ledger::MiningInfo(const encoding::json& params, const bool fHelp)
         {
             // Prime
             uint64_t nPrimePS = 0;
@@ -128,7 +128,7 @@ namespace TAO
                 }
             }
 
-            json::json obj;
+            encoding::json obj;
             obj["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
             obj["timestamp"] = (int)runtime::unifiedtimestamp();
 

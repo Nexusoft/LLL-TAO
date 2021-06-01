@@ -31,7 +31,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Retrieves the transaction for the given hash. */
-    json::json Register::List(const json::json& jParams, const bool fHelp)
+    encoding::json Register::List(const encoding::json& jParams, const bool fHelp)
     {
         /* Check that there is a type defined here. */
         if(jParams["request"].find("type") == jParams["request"].end())
@@ -100,14 +100,14 @@ namespace TAO::API
 
 
         /* The return json array */
-        json::json jRet = json::json::array();
+        encoding::json jRet = encoding::json::array();
 
         /* Iterate the list and build the response */
         uint32_t nTotal = 0;
         for(const auto& rAccount : vActive)
         {
             /* Populate the response */
-            const json::json jAccount = ObjectToJSON(rAccount);
+            const encoding::json jAccount = ObjectToJSON(rAccount);
 
             /* Check the offset. */
             if(++nTotal <= nOffset)

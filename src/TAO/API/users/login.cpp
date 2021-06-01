@@ -45,10 +45,10 @@ namespace TAO
         //TODO: have the authorization system build a SHA256 hash and salt on the client side as the AUTH hash.
 
         /* Login to a user account. */
-        json::json Users::Login(const json::json& params, const bool fHelp)
+        encoding::json Users::Login(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Pin parameter. */
             SecureString strPin;
@@ -106,7 +106,7 @@ namespace TAO
                 }
                 else if(GetSessionManager().Has(0))
                 {
-                    json::json ret;
+                    encoding::json ret;
                     ret["genesis"] = hashGenesis.ToString();
 
                     return ret;

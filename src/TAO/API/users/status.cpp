@@ -32,10 +32,10 @@ namespace TAO
     {
 
         /* Get status information for the currently logged in user. */
-        json::json Users::Status(const json::json& params, const bool fHelp)
+        encoding::json Users::Status(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Get the session to be used for this API call */
             Session& session = Commands::Get<Users>()->GetSession(params, true, false);
@@ -123,7 +123,7 @@ namespace TAO
 
 
             /* populate unlocked status */
-            json::json jsonUnlocked;
+            encoding::json jsonUnlocked;
 
             jsonUnlocked["mining"] = !session.GetActivePIN().IsNull() && session.CanMine();
             jsonUnlocked["notifications"] = !session.GetActivePIN().IsNull() && session.CanProcessNotifications();

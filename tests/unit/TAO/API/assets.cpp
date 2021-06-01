@@ -46,10 +46,10 @@ uint512_t hashTransfer;
 TEST_CASE( "Test Assets API - create asset - basic", "[assets/create/asset]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -165,10 +165,10 @@ TEST_CASE( "Test Assets API - create asset - basic", "[assets/create/asset]")
 TEST_CASE( "Test Assets API - create asset - raw", "[assets/create/asset]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -237,10 +237,10 @@ TEST_CASE( "Test Assets API - create asset - raw", "[assets/create/asset]")
 TEST_CASE( "Test Assets API - create asset - json", "[assets/create/asset]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -285,7 +285,7 @@ TEST_CASE( "Test Assets API - create asset - json", "[assets/create/asset]")
         params["session"] = SESSION1;
         params["pin"] = PIN;
         params["format"] = "JSON";
-        params["json"] = json::json::array();
+        params["json"] = encoding::json::array();
 
         /* Invoke the API */
         ret = APICall("assets/create/asset", params);
@@ -303,9 +303,9 @@ TEST_CASE( "Test Assets API - create asset - json", "[assets/create/asset]")
         params["pin"] = PIN;
         params["format"] = "JSON";
 
-        json::json jsonAssetDefinition = json::json::array();
+        encoding::json jsonAssetDefinition = encoding::json::array();
 
-        json::json jsonFieldDefinition;
+        encoding::json jsonFieldDefinition;
 
 
         /* Test missing name*/
@@ -444,9 +444,9 @@ TEST_CASE( "Test Assets API - create asset - json", "[assets/create/asset]")
         params["name"] = strJSONAsset;
         params["format"] = "JSON";
 
-        json::json jsonAssetDefinition = json::json::array();
+        encoding::json jsonAssetDefinition = encoding::json::array();
 
-        json::json jsonFieldDefinition;
+        encoding::json jsonFieldDefinition;
 
         /* Add string */
         jsonFieldDefinition["name"] = "stringfield";
@@ -535,10 +535,10 @@ TEST_CASE( "Test Assets API - create asset - json", "[assets/create/asset]")
 TEST_CASE( "Test Assets API - get asset", "[assets/get/asset]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -630,10 +630,10 @@ TEST_CASE( "Test Assets API - get asset", "[assets/get/asset]")
 TEST_CASE( "Test Assets API - update asset", "[assets/update/asset]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -806,10 +806,10 @@ TEST_CASE( "Test Assets API - update asset", "[assets/update/asset]")
 TEST_CASE( "Test Assets API - transfer asset", "[assets/transfer/asset]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -946,10 +946,10 @@ TEST_CASE( "Test Assets API - transfer asset", "[assets/transfer/asset]")
 TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -1063,10 +1063,10 @@ TEST_CASE( "Test Assets API - claim asset", "[assets/claim/asset]")
 TEST_CASE( "Test Assets API - list asset history", "[assets/list/asset/history]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);

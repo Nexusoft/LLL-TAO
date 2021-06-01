@@ -39,10 +39,10 @@ namespace TAO
     {
 
         /* Verifies the signature is correct for the specified public key and data. */
-        json::json Crypto::Verify(const json::json& params, const bool fHelp)
+        encoding::json Crypto::Verify(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* The key scheme */
             uint8_t nScheme = 0;
@@ -139,10 +139,10 @@ namespace TAO
 
 
         /* Verifies the x509 certificate. */
-        json::json Crypto::VerifyCertificate(const json::json& params, const bool fHelp)
+        encoding::json Crypto::VerifyCertificate(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Check the caller included the certificate cert */
             if(params.find("certificate") == params.end() || params["certificate"].get<std::string>().empty())

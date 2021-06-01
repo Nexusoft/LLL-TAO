@@ -27,7 +27,7 @@ namespace TAO
     {
 
         /* Gets the history of an item. */
-        json::json Invoices::History(const json::json& params, const bool fHelp)
+        encoding::json Invoices::History(const encoding::json& params, const bool fHelp)
         {
             /* First ensure that transaction version 2 active, as the conditions required for invoices were not enabled until v2 */
             const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();

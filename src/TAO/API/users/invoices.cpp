@@ -39,10 +39,10 @@ namespace TAO
     {
 
         /* Generic method to list object registers by sig chain*/
-        json::json Users::Invoices(const json::json& params, const bool fHelp)
+        encoding::json Users::Invoices(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
@@ -115,7 +115,7 @@ namespace TAO
                     continue;
 
                 /* The invoice JSON data */
-                json::json invoice = Invoices::InvoiceToJSON(params, state.second, state.first);
+                encoding::json invoice = Invoices::InvoiceToJSON(params, state.second, state.first);
 
                 /* Check the offset. */
                 if(++nTotal <= nOffset)

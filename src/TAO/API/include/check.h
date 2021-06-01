@@ -73,7 +73,7 @@ namespace TAO::API
      *  @return True if the object type is what was specified.
      *
      **/
-    bool CheckType(const json::json& jParams, const uint256_t& hashCheck);
+    bool CheckType(const encoding::json& jParams, const uint256_t& hashCheck);
 
 
     /** CheckType
@@ -87,7 +87,7 @@ namespace TAO::API
      *  @return True if the object type is what was specified.
      *
      **/
-    bool CheckType(const json::json& jParams, const TAO::Register::Object& objCheck);
+    bool CheckType(const encoding::json& jParams, const TAO::Register::Object& objCheck);
 
 
 }

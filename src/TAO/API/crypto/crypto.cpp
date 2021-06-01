@@ -42,7 +42,7 @@ namespace TAO
     namespace API
     {
         /* Determines the scheme (key type) to use for constructing keys. */
-        uint8_t Crypto::get_scheme(const json::json& params )
+        uint8_t Crypto::get_scheme(const encoding::json& params )
         {
             /* The scheme to return. Default to brainpool*/
             uint8_t nKeyType = TAO::Ledger::SIGNATURE::BRAINPOOL;

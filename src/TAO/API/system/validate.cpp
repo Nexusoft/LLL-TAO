@@ -34,9 +34,9 @@ namespace TAO
     namespace API
     {
         /* Validates a register / legacy address */
-        json::json System::Validate(const json::json& params, const bool fHelp)
+        encoding::json System::Validate(const encoding::json& params, const bool fHelp)
         {
-            json::json jsonRet;
+            encoding::json jsonRet;
 
             /* Check for address parameter. */
             if(params.find("address") == params.end() )

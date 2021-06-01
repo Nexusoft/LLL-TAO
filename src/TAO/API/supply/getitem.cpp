@@ -28,9 +28,9 @@ namespace TAO
     namespace API
     {
         /* Get's the description of an item. */
-        json::json Supply::GetItem(const json::json& params, const bool fHelp)
+        encoding::json Supply::GetItem(const encoding::json& params, const bool fHelp)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Get the Register ID. */
             TAO::Register::Address hashRegister ;

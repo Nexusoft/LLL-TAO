@@ -40,9 +40,9 @@ namespace TAO
     namespace API
     {
         /* Tokenize an asset into fungible tokens that represent ownership. */
-        json::json Assets::Tokenize(const json::json& params, const bool fHelp)
+        encoding::json Assets::Tokenize(const encoding::json& params, const bool fHelp)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))

@@ -33,25 +33,25 @@ namespace TAO
     namespace API
     {
         /* Queries the lisp api and returns the EID's for this node. */
-        json::json System::LispEIDs(const json::json& params, const bool fHelp)
+        encoding::json System::LispEIDs(const encoding::json& params, const bool fHelp)
         {
-            json::json jsonEIDs = json::json::array();
+            encoding::json jsonEIDs = encoding::json::array();
 
             std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
             if(mapEIDs.size() > 0)
             {
                 for(const auto& eid : mapEIDs)
                 {
-                    json::json jsonEID;
+                    encoding::json jsonEID;
 
                     jsonEID["instance-id"] = eid.second.strInstanceID;
                     jsonEID["eid"] = eid.second.strAddress;
 
-                    json::json jsonRLOCs = json::json::array();
+                    encoding::json jsonRLOCs = encoding::json::array();
 
                     for(const auto& rloc : eid.second.vRLOCs)
                     {
-                        json::json jsonRLOC;
+                        encoding::json jsonRLOC;
 
                         jsonRLOC["interface"] = rloc.strInterface;
                         jsonRLOC["rloc-name"] = rloc.strRLOCName;

@@ -181,7 +181,7 @@ namespace TAO
         }
 
         /* Retrieves a Name object by name. */
-        TAO::Register::Object Names::GetName(const json::json& params, const std::string& strObjectName,
+        TAO::Register::Object Names::GetName(const encoding::json& params, const std::string& strObjectName,
                                              TAO::Register::Address& hashNameObject, const bool fThrow)
         {
             /* Declare the name object to return */
@@ -403,7 +403,7 @@ namespace TAO
 
 
         /* Resolves a register address from a name by looking up the Name object. */
-        TAO::Register::Address Names::ResolveAddress(const json::json& params, const std::string& strName, const bool fThrow)
+        TAO::Register::Address Names::ResolveAddress(const encoding::json& params, const std::string& strName, const bool fThrow)
         {
             /* Declare the return register address hash */
             TAO::Register::Address hashRegister;
@@ -490,7 +490,7 @@ namespace TAO
         /* Retrieves the token name for the token that this account object is used for.
         *  The token is obtained by looking at the token_address field,
         *  which contains the register address of the issuing token */
-        std::string Names::ResolveAccountTokenName(const json::json& params, const TAO::Register::Object& account)
+        std::string Names::ResolveAccountTokenName(const encoding::json& params, const TAO::Register::Object& account)
         {
             /* Declare token name to return  */
             std::string strTokenName;

@@ -39,10 +39,10 @@ namespace TAO
     {
 
         /* Lists all transactions for a given register. */
-        json::json Objects::ListTransactions(const json::json& params, const bool fHelp)
+        encoding::json Objects::ListTransactions(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
@@ -242,7 +242,7 @@ namespace TAO
                 LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
 
                 /* Build the transaction JSON. */
-                json::json jsonTx;
+                encoding::json jsonTx;
 
                 /* Always add the transaction hash */
                 jsonTx["txid"] = tx.GetHash().GetHex();
@@ -276,13 +276,13 @@ namespace TAO
                 if(nVerbose >= 1)
                 {
                     /* Declare the return JSON object*/
-                    json::json jsonContracts = json::json::array();
+                    encoding::json jsonContracts = encoding::json::array();
 
                     /* Add all relevant contracts to the response. */
                     for(const auto& contract : vContracts)
                     {
                         /* JSONify the contract */
-                        json::json contractJSON = ContractToJSON(hashCaller, contract.first, contract.second, nVerbose);
+                        encoding::json contractJSON = ContractToJSON(hashCaller, contract.first, contract.second, nVerbose);
 
                         /* add the contract to the array */
                         jsonContracts.push_back(contractJSON);
@@ -293,7 +293,7 @@ namespace TAO
                     if(!jsonContracts.empty())
                         jsonTx["contracts"] = jsonContracts;
                     else
-                        jsonTx = json::json();
+                        jsonTx = encoding::json();
                 }
 
                 /* Check to see whether the contracts were filtered out */

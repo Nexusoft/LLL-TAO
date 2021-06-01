@@ -70,6 +70,6 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json List(const json::json& jParams, const bool fHelp);
+        encoding::json List(const encoding::json& jParams, const bool fHelp);
     };
 }

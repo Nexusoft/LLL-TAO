@@ -43,7 +43,7 @@ namespace TAO
     {
 
         /* Get a list of accounts owned by a signature chain. */
-        json::json Finance::List(const json::json& jParams, const bool fHelp)
+        encoding::json Finance::List(const encoding::json& jParams, const bool fHelp)
         {
             /* Get our genesis-id for this call. */
             const uint256_t hashGenesis =
@@ -67,7 +67,7 @@ namespace TAO
                 throw APIException(-74, "No registers found");
 
             /* Build our response json object. */
-            json::json jRet;
+            encoding::json jRet;
 
             /* Add the register data to the response */
             uint32_t nTotal = 0;
@@ -91,7 +91,7 @@ namespace TAO
                     continue;
 
                 /* Check to see whether the transaction has had all children filtered out */
-                json::json jObj = TAO::API::ObjectToJSON(jParams, objThis, hashRegister);
+                encoding::json jObj = TAO::API::ObjectToJSON(jParams, objThis, hashRegister);
                 if(jObj.empty())
                     continue;
 
@@ -108,7 +108,7 @@ namespace TAO
 
 
         /* Lists all transactions for a given account. */
-        json::json Finance::ListTransactions(const json::json& jParams, const bool fHelp)
+        encoding::json Finance::ListTransactions(const encoding::json& jParams, const bool fHelp)
         {
             /* The account to list transactions for. */
             const TAO::Register::Address hashAccount = ExtractAddress(jParams);

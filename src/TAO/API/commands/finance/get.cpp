@@ -25,7 +25,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Get the data from a digital asset */
-    json::json Finance::Get(const json::json& jParams, const bool fHelp)
+    encoding::json Finance::Get(const encoding::json& jParams, const bool fHelp)
     {
         /* Get the Register address. */
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
@@ -44,7 +44,7 @@ namespace TAO::API
             throw APIException(-49, "Unexpected type for name / address");
 
         /* Build our response object. */
-        json::json jRet  = ObjectToJSON(jParams, objThis, hashRegister);
+        encoding::json jRet  = ObjectToJSON(jParams, objThis, hashRegister);
         jRet["owner"]    = TAO::Register::Address(objThis.hashOwner).ToString();
         jRet["created"]  = objThis.nCreated;
         jRet["modified"] = objThis.nModified;

@@ -23,10 +23,10 @@ ________________________________________________________________________________
 TEST_CASE("Test Finance API - create acccount", "[finance")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
 
@@ -87,10 +87,10 @@ TEST_CASE("Test Finance API - create acccount", "[finance")
 TEST_CASE("Test Finance API - get acccount", "[finance]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
     TAO::Register::Address hashAccount;
@@ -208,10 +208,10 @@ TEST_CASE("Test Finance API - get acccount", "[finance]")
 TEST_CASE("Test Finance API - list acccounts", "[finance]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     std::string strAccount = "ACCOUNT" +std::to_string(LLC::GetRand());
     TAO::Register::Address hashAccount;
@@ -258,7 +258,7 @@ TEST_CASE("Test Finance API - list acccounts", "[finance]")
         /* Must be at least one entry */
         REQUIRE(result.size() > 0);
 
-        json::json account = result[0];
+        encoding::json account = result[0];
 
         REQUIRE(account.find("name") != account.end());
         REQUIRE(account.find("address") != account.end());
@@ -271,10 +271,10 @@ TEST_CASE("Test Finance API - list acccounts", "[finance]")
 TEST_CASE("Test Finance API - get stakeinfo", "[finance]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     std::string strAccount = "ACCOUNT" + std::to_string(LLC::GetRand());
     TAO::Register::Address hashAccount ;
@@ -315,10 +315,10 @@ TEST_CASE("Test Finance API - set stake", "[finance]")
 {
     /* NOTE: We can only test failure cases here because you cannot set the stake until after genesis */
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);

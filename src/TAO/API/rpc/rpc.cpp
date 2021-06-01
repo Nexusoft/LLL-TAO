@@ -101,9 +101,9 @@ namespace TAO
         /* Allows derived API's to check the values in the parameters array for the method being called.
         *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
         *  for the method being called */
-        json::json RPC::SanitizeParams(const std::string& strMethod, const json::json& jsonParams)
+        encoding::json RPC::SanitizeParams(const std::string& strMethod, const encoding::json& jsonParams)
         {
-            json::json jsonSanitizedParams = jsonParams;
+            encoding::json jsonSanitizedParams = jsonParams;
 
             int n = jsonSanitizedParams.size();
 
@@ -149,7 +149,7 @@ namespace TAO
 
 
         /* Test method to echo back the parameters passed by the caller */
-        json::json RPC::Echo(const json::json& jsonParams, const bool fHelp)
+        encoding::json RPC::Echo(const encoding::json& jsonParams, const bool fHelp)
         {
             if(fHelp || jsonParams.size() == 0)
                 return std::string(
@@ -159,7 +159,7 @@ namespace TAO
             if(jsonParams.size() == 0)
                 throw APIException(-11, "Not enough parameters");
 
-            json::json ret;
+            encoding::json ret;
             ret["echo"] = jsonParams;
 
             return ret;
@@ -167,9 +167,9 @@ namespace TAO
 
 
         /* Returns help list.  Iterates through all functions in mapFunctions and calls each one with fHelp=true */
-        json::json RPC::Help(const json::json& jsonParams, const bool fHelp)
+        encoding::json RPC::Help(const encoding::json& jsonParams, const bool fHelp)
         {
-            json::json ret;
+            encoding::json ret;
 
             if(fHelp || jsonParams.size() > 1)
                 return std::string(

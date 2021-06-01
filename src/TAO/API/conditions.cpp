@@ -154,7 +154,7 @@ namespace TAO::API
 
     /* Checks the params for the existence of the "expires" field.  If supplied, a condition will be added to this contract
     *  for the expiration */
-    bool AddExpires(const json::json& params, const uint256_t& hashCaller, TAO::Operation::Contract& contract, bool fTokenizedDebit)
+    bool AddExpires(const encoding::json& params, const uint256_t& hashCaller, TAO::Operation::Contract& contract, bool fTokenizedDebit)
     {
         using namespace TAO::Operation;
 
@@ -258,7 +258,7 @@ namespace TAO::API
     {
         /* Create a contract with a dummy expiration condition that we can use for comparison */
         TAO::Operation::Contract expiration;
-        AddExpires( json::json(), 0, expiration, false);
+        AddExpires( encoding::json(), 0, expiration, false);
 
         /* Check to see if the contract contains the expiration condition */
         return HasCondition(contract, expiration);

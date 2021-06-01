@@ -47,10 +47,10 @@ namespace TAO
     {
 
         /* Returns the public key from the crypto object register for the specified key name, from the specified signature chain. */
-        json::json Crypto::Get(const json::json& params, const bool fHelp)
+        encoding::json Crypto::Get(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
@@ -133,10 +133,10 @@ namespace TAO
 
 
         /* Generates and returns the public key for a key stored in the crypto object register. */
-        json::json Crypto::GetPublic(const json::json& params, const bool fHelp)
+        encoding::json Crypto::GetPublic(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
@@ -186,10 +186,10 @@ namespace TAO
 
 
         /* Generates and returns the private key for a key stored in the crypto object register. */
-        json::json Crypto::GetPrivate(const json::json& params, const bool fHelp)
+        encoding::json Crypto::GetPrivate(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
@@ -224,10 +224,10 @@ namespace TAO
         }
 
         /* Generates a hash of the data using the requested hashing function. */
-        json::json Crypto::GetHash(const json::json& params, const bool fHelp)
+        encoding::json Crypto::GetHash(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Check the caller included the data */
             if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
@@ -274,10 +274,10 @@ namespace TAO
 
 
         /* Returns the last generated x509 certificate for this sig chain. */
-        json::json Crypto::GetCertificate(const json::json& params, const bool fHelp)
+        encoding::json Crypto::GetCertificate(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))

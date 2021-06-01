@@ -73,7 +73,7 @@ namespace TAO::API
          *  @return the API method URL
          *
          **/
-        std::string RewriteURL(const std::string& strMethod, json::json& jsonParams) override;
+        std::string RewriteURL(const std::string& strMethod, encoding::json& jsonParams) override;
 
 
         /** Create
@@ -86,7 +86,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& params, const bool fHelp);
+        encoding::json Create(const encoding::json& params, const bool fHelp);
 
 
         /** Get
@@ -100,7 +100,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Get(const json::json& params, const bool fHelp);
+        encoding::json Get(const encoding::json& params, const bool fHelp);
 
 
         /** UpdateName
@@ -113,7 +113,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json UpdateName(const json::json& params, const bool fHelp);
+        encoding::json UpdateName(const encoding::json& params, const bool fHelp);
 
 
         /** TransferName
@@ -126,7 +126,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json TransferName(const json::json& params, const bool fHelp);
+        encoding::json TransferName(const encoding::json& params, const bool fHelp);
 
 
         /** ClaimName
@@ -139,7 +139,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ClaimName(const json::json& params, const bool fHelp);
+        encoding::json ClaimName(const encoding::json& params, const bool fHelp);
 
 
         /** NameHistory
@@ -152,7 +152,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json NameHistory(const json::json& params, const bool fHelp);
+        encoding::json NameHistory(const encoding::json& params, const bool fHelp);
 
 
         /** CreateNamespace
@@ -165,7 +165,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json CreateNamespace(const json::json& params, const bool fHelp);
+        encoding::json CreateNamespace(const encoding::json& params, const bool fHelp);
 
 
         /** GetNamespace
@@ -178,7 +178,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json GetNamespace(const json::json& params, const bool fHelp);
+        encoding::json GetNamespace(const encoding::json& params, const bool fHelp);
 
 
         /** TransferNamespace
@@ -191,7 +191,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json TransferNamespace(const json::json& params, const bool fHelp);
+        encoding::json TransferNamespace(const encoding::json& params, const bool fHelp);
 
 
         /** ClaimNamespace
@@ -204,7 +204,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json ClaimNamespace(const json::json& params, const bool fHelp);
+        encoding::json ClaimNamespace(const encoding::json& params, const bool fHelp);
 
 
         /** NamespaceHistory
@@ -217,7 +217,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json NamespaceHistory(const json::json& params, const bool fHelp);
+        encoding::json NamespaceHistory(const encoding::json& params, const bool fHelp);
 
 
 
@@ -267,7 +267,7 @@ namespace TAO::API
          *
          *  @return The Name object .
          **/
-        static TAO::Register::Object GetName(const json::json& params,
+        static TAO::Register::Object GetName(const encoding::json& params,
                                              const std::string& strObjectName,
                                              TAO::Register::Address& hashRegister,
                                              const bool fThrow = true);
@@ -299,7 +299,7 @@ namespace TAO::API
          *
          *  @return The 256 bit hash of the object name.
          **/
-        static TAO::Register::Address ResolveAddress(const json::json& params,
+        static TAO::Register::Address ResolveAddress(const encoding::json& params,
                                                      const std::string& strName,
                                                      const bool fThrow = true);
 
@@ -329,7 +329,7 @@ namespace TAO::API
          *  @return the token name for the token that this account object is used for
          *
          **/
-        static std::string ResolveAccountTokenName(const json::json& params, const TAO::Register::Object& account);
+        static std::string ResolveAccountTokenName(const encoding::json& params, const TAO::Register::Object& account);
 
 
     };

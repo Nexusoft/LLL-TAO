@@ -45,9 +45,9 @@ namespace TAO
     {
 
         /* Create an asset or digital item. */
-        json::json Market::Sell(const json::json& params, const bool fHelp)
+        encoding::json Market::Sell(const encoding::json& params, const bool fHelp)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))

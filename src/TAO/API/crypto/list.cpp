@@ -36,10 +36,10 @@ namespace TAO
     {
 
         /* List the public keys stored in the crypto object register. */
-        json::json Crypto::List(const json::json& params, const bool fHelp)
+        encoding::json Crypto::List(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
@@ -84,7 +84,7 @@ namespace TAO
             for(const auto& strName : vKeys)
             {
                 /* JSON entry for this key */
-                json::json jsonKey;
+                encoding::json jsonKey;
 
                 /* Get the public key */
                 uint256_t hashPublic = crypto.get<uint256_t>(strName);

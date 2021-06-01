@@ -32,10 +32,10 @@ namespace TAO
     namespace API
     {
         /* Update a user's credentials given older credentials to authorize the update. */
-        json::json Users::Update(const json::json& params, const bool fHelp)
+        encoding::json Users::Update(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json jsonRet;
+            encoding::json jsonRet;
 
             /* Get the session to be used for this API call */
             Session& session = GetSession(params);

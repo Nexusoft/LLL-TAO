@@ -72,7 +72,7 @@ namespace TAO::API
          *  @return the API method URL
          *
          **/
-        std::string RewriteURL(const std::string& strMethod, json::json& jsonParams) override;
+        std::string RewriteURL(const std::string& strMethod, encoding::json& jsonParams) override;
 
 
         /** Create
@@ -85,7 +85,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Create(const json::json& params, const bool fHelp);
+        encoding::json Create(const encoding::json& params, const bool fHelp);
 
 
         /** Get
@@ -98,7 +98,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Get(const json::json& params, const bool fHelp);
+        encoding::json Get(const encoding::json& params, const bool fHelp);
 
 
         /** Pay
@@ -111,7 +111,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Pay(const json::json& params, const bool fHelp);
+        encoding::json Pay(const encoding::json& params, const bool fHelp);
 
 
         /** Cancel
@@ -124,7 +124,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json Cancel(const json::json& params, const bool fHelp);
+        encoding::json Cancel(const encoding::json& params, const bool fHelp);
 
 
         /** History
@@ -137,7 +137,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        json::json History(const json::json& params, const bool fHelp);
+        encoding::json History(const encoding::json& params, const bool fHelp);
 
 
         /** InvoiceToJSON
@@ -151,7 +151,7 @@ namespace TAO::API
         *  @return the invoice JSON
         *
         **/
-        static json::json InvoiceToJSON(const json::json& params, const TAO::Register::State& state,
+        static encoding::json InvoiceToJSON(const encoding::json& params, const TAO::Register::State& state,
                                    const TAO::Register::Address& hashInvoice);
 
 

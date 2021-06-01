@@ -31,13 +31,13 @@ namespace TAO
     namespace API
     {
         /* Returns local database and other metrics */
-        json::json System::Metrics(const json::json& params, const bool fHelp)
+        encoding::json System::Metrics(const encoding::json& params, const bool fHelp)
         {
             if(fHelp || params.size() != 0)
                 return std::string("get/metrics: no parameters required");
 
             /* Build json response. */
-            json::json jsonRet;
+            encoding::json jsonRet;
 
             /* Keep track of global stats. */
             uint64_t nTotalStake = 0;
@@ -136,7 +136,7 @@ namespace TAO
 
 
             /* Add register metrics */
-            json::json jsonRegisters;
+            encoding::json jsonRegisters;
             jsonRegisters["total"] = nTotalRegisters;
             jsonRegisters["account"] = nTotalAccounts;
             jsonRegisters["append"] = nTotalAppend;
@@ -156,7 +156,7 @@ namespace TAO
             jsonRet["sig_chains"] = nTotalSigChains;
 
             /* Add trust metrics */
-            json::json jsonTrust;
+            encoding::json jsonTrust;
             jsonTrust["total"]  = nTotalTrustKeys;
             jsonTrust["stake"] = double(nTotalStake / TAO::Ledger::NXS_COIN);
             jsonTrust["trust"] = nTotalTrust;
@@ -167,7 +167,7 @@ namespace TAO
             if(!config::fHybrid.load())
             {
                 /* Add supply metrics */
-                json::json jsonSupply;
+                encoding::json jsonSupply;
 
                 /* Read the stateBest using hashBestChain
                  * Cannot use ChainState::stateBest for this because certain fields (like money supply) are not populated */
@@ -192,7 +192,7 @@ namespace TAO
                 jsonRet["supply"] = jsonSupply;
 
                 /* Add reserves */
-                json::json jsonReserves;
+                encoding::json jsonReserves;
 
                 TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest.load();
                 bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);

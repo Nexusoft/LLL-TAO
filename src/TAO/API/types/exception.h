@@ -29,13 +29,13 @@ namespace TAO
          *  Encapsulates an exception that can be converted into a valid JSON error object
          *
          **/
-        class APIException : public json::detail::exception
+        class APIException : public encoding::detail::exception
         {
         public:
 
             /** Default Constructor **/
             APIException(const int32_t nCode, const std::string& strMessage)
-            : json::detail::exception(nCode, strMessage.c_str())
+            : encoding::detail::exception(nCode, strMessage.c_str())
             {
             }
 
@@ -43,7 +43,7 @@ namespace TAO
             /** Variadic template constructor for building error strings. **/
             template<class... Args>
             APIException(const int32_t nCode, Args&&... args)
-            : json::detail::exception(nCode, debug::safe_printstr(args...).c_str())
+            : encoding::detail::exception(nCode, debug::safe_printstr(args...).c_str())
             {
             }
 
@@ -55,7 +55,7 @@ namespace TAO
              *  @return the json object containing the exception code and message.
              *
              **/
-            json::json ToJSON()
+            encoding::json ToJSON()
             {
                 /* Include our global errors if applicable. */
                 std::string strMessage = std::string(what());

@@ -54,10 +54,10 @@ namespace TAO
     namespace API
     {
         /* Migrate all Legacy wallet accounts to corresponding accounts in the signature chain */
-        json::json Finance::MigrateAccounts(const json::json& params, const bool fHelp)
+        encoding::json Finance::MigrateAccounts(const encoding::json& params, const bool fHelp)
         {
             /* Return value array */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             #ifndef NO_WALLET
 
@@ -301,7 +301,7 @@ namespace TAO
                 /* Create the legacy transaction */
                 std::string strException = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx, false, 1, true);
 
-                json::json entry;
+                encoding::json entry;
                 entry["account"] = strAccount;
                 entry["address"] = hashAccount.ToString();
                 entry["amount"]  = (nAmount / (double)TAO::Ledger::NXS_COIN);

@@ -30,7 +30,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* This debits the account to send the coins back to the token address, but does so with a condition that never is true. */
-    json::json Finance::Burn(const json::json& jParams, const bool fHelp)
+    encoding::json Finance::Burn(const encoding::json& jParams, const bool fHelp)
     {
         /* The sending account or token. */
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);

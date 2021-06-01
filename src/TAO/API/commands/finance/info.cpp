@@ -44,7 +44,7 @@ namespace TAO
     {
 
         /* Get staking metrics for a trust account */
-        json::json Finance::StakeInfo(const json::json& params, const bool fHelp)
+        encoding::json Finance::StakeInfo(const encoding::json& params, const bool fHelp)
         {
             /* The user genesis hash */
             const uint256_t hashGenesis =
@@ -63,7 +63,7 @@ namespace TAO
             const uint64_t nTrustScore = trust.get<uint64_t>("trust");
 
             /* Set trust account values for return data */
-            json::json jRet;
+            encoding::json jRet;
             jRet["address"] = hashRegister.ToString();
             jRet["balance"] = FormatBalance(trust.get<uint64_t>("balance"), 0);
             jRet["stake"]   = FormatBalance(trust.get<uint64_t>("stake"),   0);

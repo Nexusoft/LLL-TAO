@@ -30,10 +30,10 @@ namespace TAO
     {
 
         /* Login to a user account. */
-        json::json Users::Logout(const json::json& params, const bool fHelp)
+        encoding::json Users::Logout(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Check for username parameter. */
             if(config::fMultiuser.load() && params.find("session") == params.end())

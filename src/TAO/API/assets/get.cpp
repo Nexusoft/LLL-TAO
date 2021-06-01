@@ -29,9 +29,9 @@ namespace TAO
     {
 
         /* Get the data from a digital asset */
-        json::json Assets::Get(const json::json& params, const bool fHelp)
+        encoding::json Assets::Get(const encoding::json& params, const bool fHelp)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Get the Register ID. */
             TAO::Register::Address hashRegister ;
@@ -90,7 +90,7 @@ namespace TAO
             ret["created"]  = object.nCreated;
             ret["modified"] = object.nModified;
 
-            json::json data  =TAO::API::ObjectToJSON(params, object, hashRegister);
+            encoding::json data  =TAO::API::ObjectToJSON(params, object, hashRegister);
 
             /* Copy the asset data in to the response after the type/checksum */
             ret.insert(data.begin(), data.end());

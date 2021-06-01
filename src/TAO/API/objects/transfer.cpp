@@ -40,9 +40,9 @@ namespace TAO
     namespace API
     {
         /* Transfer an object register. */
-        json::json Objects::Transfer(const json::json& params, const uint8_t nType, const std::string& strType)
+        encoding::json Objects::Transfer(const encoding::json& params, const uint8_t nType, const std::string& strType)
         {
-            json::json ret;
+            encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))

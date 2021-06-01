@@ -37,10 +37,10 @@ namespace TAO
     namespace API
     {
         /* Get a user's account. */
-        json::json Users::Transactions(const json::json& params, const bool fHelp)
+        encoding::json Users::Transactions(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
@@ -123,7 +123,7 @@ namespace TAO
                 LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
 
                 /* Get the transaction JSON. */
-                json::json obj = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis);
+                encoding::json obj = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis);
 
                 /* Check to see whether the transaction has had all children filtered out */
                 if(obj.empty())

@@ -26,10 +26,10 @@ namespace TAO
     {
 
         /* Lock an account for mining (TODO: make this much more secure) */
-        json::json Users::Lock(const json::json& params, const bool fHelp)
+        encoding::json Users::Lock(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Get the session */
             Session& session = GetSession(params);
@@ -131,7 +131,7 @@ namespace TAO
                 session.Save(strPin);
 
             /* populate unlocked status */
-            json::json jsonUnlocked;
+            encoding::json jsonUnlocked;
 
             jsonUnlocked["mining"] = !session.GetActivePIN().IsNull() && session.GetActivePIN()->CanMine();
             jsonUnlocked["notifications"] = !session.GetActivePIN().IsNull() && session.GetActivePIN()->ProcessNotifications();

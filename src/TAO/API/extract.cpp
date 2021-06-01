@@ -32,7 +32,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractAddress(const json::json& jParams, const std::string& strSuffix, const std::string& strDefault)
+    uint256_t ExtractAddress(const encoding::json& jParams, const std::string& strSuffix, const std::string& strDefault)
     {
         /* Cache a couple keys we will be using. */
         const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
@@ -113,7 +113,7 @@ namespace TAO::API
 
 
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractToken(const json::json& jParams)
+    uint256_t ExtractToken(const encoding::json& jParams)
     {
         /* If name is provided then use this to deduce the register address, */
         if(jParams.find("token_name") != jParams.end())
@@ -144,7 +144,7 @@ namespace TAO::API
 
 
     /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
-    void ExtractList(const json::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
+    void ExtractList(const encoding::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
     {
         /* Check for page parameter. */
         uint32_t nPage = 0;
