@@ -88,32 +88,6 @@ bool ParseMoney(const char* pszIn, int64_t& nRet, int64_t COIN_SIZE = 1000000, i
 bool ParseMoney(const std::string& str, int64_t& nRet);
 
 
-/** Split
- *
- *  Split a string into it's components by delimiter.
- *
- *  @param[in] strInput The input string.
- *  @param[in] strDelimiter The delimeter to seperate at.
- *
- *  @return The vector of the tokenized strings.
- *
- **/
-std::vector<std::string> Split(const std::string& strInput, char strDelimiter);
-
-
-/** Split
- *
- *  Split a string into it's components by delimiter.
- *
- *  @param[in] strInput The input string.
- *  @param[in] strDelimiter The delimeter to seperate at.
- *
- *  @return The vector of the tokenized strings.
- *
- **/
-std::vector<std::string> Split(const std::string& strInput, const std::string& strDelimiter);
-
-
 /** ltrim
 *
 *  Trims spaces from the left of a std::string.

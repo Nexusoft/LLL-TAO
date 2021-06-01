@@ -171,7 +171,8 @@ namespace TAO::API
             else if(strLimit.find(","))
             {
                 /* Parse the limit and offset */
-                std::vector<std::string> vParts = Split(strLimit, ",");
+                std::vector<std::string> vParts;
+                ParseString(strLimit, ',', vParts);
 
                 /* Get the limit */
                 nLimit = std::stoul(trim(vParts[0]));
