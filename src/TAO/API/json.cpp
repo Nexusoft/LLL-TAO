@@ -1507,6 +1507,31 @@ namespace TAO::API
         return jRet;
     }
 
+
+    /* Turns a query string in url encoding into a formatted JSON object. */
+    json::json QueryToJSON(const std::vector<std::string>& vQuery)
+    {
+        /* Get the parameters. */
+        json::json jRet;
+        for(const auto& strParam : vQuery)
+        {
+            /* Find the key/value delimiter. */
+            const auto nPos = strParam.find("=");
+            if(nPos == strParam.npos)
+                break;
+
+            /* Grab the key and value substrings. */
+            const std::string strKey   = strParam.substr(0, nPos);
+            const std::string strValue = strParam.substr(nPos + 1);
+
+            /* Add to our return json. */
+            jRet[strKey] = strValue;
+        }
+
+        return jRet;
+    }
+
+
     /* If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field */
     void FilterResponse(const json::json& jParams, json::json &jResponse)
     {

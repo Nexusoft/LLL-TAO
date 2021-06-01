@@ -40,11 +40,7 @@ namespace TAO
         int WriteReadResponse(ProtocolType &rNode, const LLP::BaseAddress& rAddr, const std::vector<uint8_t> &vBuffer, const std::string& type)
         {
             if(!rNode.Connect(rAddr))
-            {
-                debug::log(0, "Couldn't Connect to ", type);
-
                 return 0;
-            }
 
             /* Write the buffer to the socket. */
             rNode.Write(vBuffer, vBuffer.size());

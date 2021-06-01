@@ -25,25 +25,28 @@ namespace encoding
      *
      *  Encode a string into URL format.
      *
-     *  @param[in] s The string to encode.
+     *  @param[in] strValue The string to encode.
      *
      *  @return The encoded string.
      *
      **/
-    inline std::string urlencode(const std::string &s)
+    inline std::string urlencode(const std::string& strValue)
     {
         //RFC 3986 section 2.3 Unreserved Characters (January 2005)
-        const std::string unreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~";
+        const std::string strUnreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~";
 
-        std::string escaped="";
-        for(size_t i=0; i<s.length(); i++)
+        /* Loop through our values and append to return string. */
+        std::string strRet = "";
+        for(size_t i=0; i < strValue.length(); i++)
         {
-            if(unreserved.find_first_of(s[i]) != std::string::npos)
-                escaped.push_back(s[i]);
+            /* Push regular letter that's not hex value. */
+            if(strUnreserved.find_first_of(strValue[i]) != std::string::npos)
+                strRet.push_back(strValue[i]);
             else
-                escaped.append(debug::safe_printstr("%", std::uppercase, std::hex, uint32_t(s[i])));
+                strRet.append(debug::safe_printstr("%", std::uppercase, std::hex, uint32_t(strValue[i])));
         }
-        return escaped;
+
+        return strRet;
     }
 
 
@@ -51,33 +54,40 @@ namespace encoding
      *
      *  Encode a string into URL format.
      *
-     *  @param[in] s The string to encode.
+     *  @param[in] strValue The string to encode.
      *
      *  @return The encoded string.
      *
      **/
-    inline std::string urldecode(const std::string &s)
+    inline std::string urldecode(const std::string& strValue)
     {
-        std::string returned="";
-        for(size_t i=0; i < s.length(); i++)
+        /* Loop and convert each hex value to given character. */
+        std::string strRet = "";
+        for(size_t i = 0; i < strValue.length(); i++)
         {
-            if(s[i] != '%')
+            /* Check for special characters. */
+            if(strValue[i] != '%')
             {
-                if(s[i] == '+')
-                    returned.push_back(' ');
+                if(strValue[i] == '+')
+                    strRet.push_back(' ');
                 else
-                    returned.push_back(s[i]);
+                    strRet.push_back(strValue[i]);
             }
+
+            /* Handle the hexadecimal encoding. */
             else
             {
-                char buff[2];
-                std::copy((char*)&s[i] + 1, (char*)&s[i] + 3, (char*)&buff[0]);
+                /* Copy into our buffer. */
+                char chBuffer[2];
+                std::copy((char*)&strValue[i] + 1, (char*)&strValue[i] + 3, (char*)&chBuffer[0]);
 
-                returned.push_back(HexChar(buff));
+                /* Add to our return value. */
+                strRet.push_back(HexChar(chBuffer));
                 i += 2;
             }
         }
-        return returned;
+
+        return strRet;
     }
 
 }

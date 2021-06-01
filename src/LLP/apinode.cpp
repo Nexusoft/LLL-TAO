@@ -15,8 +15,9 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/templates/events.h>
 
+#include <TAO/API/include/json.h>
+#include <TAO/API/types/commands.h>
 #include <TAO/API/types/exception.h>
-#include <TAO/API/include/global.h>
 
 #include <Util/include/string.h>
 #include <Util/include/urlencode.h>
@@ -127,8 +128,12 @@ namespace LLP
                             /* Decode if url-form-encoded. */
                             INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
 
-                            /* parse the querystring */
-                            jParams = QuerystringToJSON(INCOMING.strContent, strMethod);
+                            /* Split by delimiter. */
+                            std::vector<std::string> vParams;
+                            ParseString(INCOMING.strContent, '&', vParams);
+
+                            /* Grab our parameters. */
+                            jParams = TAO::API::QueryToJSON(vParams);
                         }
 
                         /* JSON encoding. */
@@ -144,17 +149,18 @@ namespace LLP
             else if(INCOMING.strType == "GET")
             {
                 /* Detect if it is url form encoding. */
-                std::string::size_type pos = strMethod.find("?");
-                if(pos != strMethod.npos)
+                const auto nPos = strMethod.find("?");
+                if(nPos != strMethod.npos)
                 {
-                    /* Parse the querystring */
-                    std::string strQuerystring = strMethod.substr(pos + 1);
+                    /* Parse out the form entries by char '&' */
+                    std::vector<std::string> vParams;
+                    ParseString(encoding::urldecode(strMethod.substr(nPos + 1)), '&', vParams);
 
-                    /* Parse the method. */
-                    strMethod = strMethod.substr(0, pos);
+                    /* Parse the form from the end of method. */
+                    strMethod = strMethod.substr(0, nPos);
 
-                    /* parse the querystring */
-                    jParams = QuerystringToJSON(encoding::urldecode(strQuerystring), strMethod);
+                    /* Grab our parameters. */
+                    jParams = TAO::API::QueryToJSON(vParams);
                 }
             }
             else if(INCOMING.strType == "OPTIONS")
@@ -298,74 +304,4 @@ namespace LLP
         std::string strUserPass = (config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", ""));
         return encoding::DecodeBase64(strUserPass64) == strUserPass;
     }
-
-
-    /* Parses the querystring and coverts it to a json object of key=value pairs */
-    json::json APINode::QuerystringToJSON(const std::string& strQuerystring, const std::string& strMethod)
-    {
-        /* The json params to return */
-        json::json jParams;
-
-        /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
-        bool fIsList = strMethod.find("list/") != strMethod.npos;
-
-        /* list of keywords that are acceptale parameters for a /list/xxx method.  Parameters not in this list will be converted
-           into a `where` array */
-        std::vector<std::string> vKeywords = {"genesis", "username", "verbose", "page", "limit", "offset", "sort", "order", "where"};
-
-        /* Parse out the form entries by char '&' */
-        std::vector<std::string> vParams;
-        ParseString(strQuerystring, '&', vParams);
-
-        /* Check each form entry. */
-        for(std::string strParam : vParams)
-        {
-            std::string::size_type pos2 = std::string::npos;
-
-            if(fIsList)
-                pos2 = strParam.find_first_of("><=", 0);
-            else
-                pos2 = strParam.find('=', 0);
-
-            if(pos2 == strParam.npos)
-                break;
-
-            /* Get the parameter key */
-            std::string key = strParam.substr(0, pos2);
-
-            /* If this is a list command, check to see if this is a where clause (not a keyword parameter supported by list)*/
-            if(fIsList && std::find(vKeywords.begin(), vKeywords.end(), key) == vKeywords.end())
-            {
-                /* add the where clause */
-                json::json jsonClause;
-                jsonClause["field"] = key;
-
-                /* Check to see if the parameter delimter is a two-character operand */
-                if(strParam.find_first_of("><=", pos2+1) != strParam.npos)
-                {
-                    /* Extract the operand */
-                    jsonClause["op"] = strParam.substr(pos2, 2);
-                    pos2++;
-                }
-                else
-                {
-                    /* Extract the operand */
-                    jsonClause["op"] = strParam.substr(pos2, 1);
-                }
-
-                /* Extract the value */
-                jsonClause["value"] = strParam.substr(pos2 + 1);
-
-                /* Add it to the where params*/
-                jParams["where"].push_back(jsonClause);
-            }
-
-            /* Add the parameter as a JSON parameter regardless of whether it is has been added as where clause as it might be a
-               keyword required by a list method such as name or address */
-            jParams[key] =  strParam.substr(pos2 + 1);
-        }
-
-        return jParams;
-    }
-
 }

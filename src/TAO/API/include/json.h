@@ -147,6 +147,18 @@ namespace TAO
                                 bool fLookupName = true);
 
 
+        /** QueryToJSON
+         *
+         *  Turns a query string in url encoding into a formatted JSON object.
+         *
+         *  @param[in] vQuery The string to parse and generate into json.
+         *
+         *  @return The JSON object generated with query.
+         *
+         **/
+        json::json QueryToJSON(const std::vector<std::string>& vQuery);
+
+
         /** FilterResponse
         *
         *  If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field
