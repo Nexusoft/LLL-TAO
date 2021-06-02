@@ -132,13 +132,13 @@ namespace TAO
                 else if(fWhere)
                 {
                     /* Copy our string position. */
-                    const std::string::size_type nGet = strArg.find_first_of("<=>");
+                    const std::string::size_type nBegin = strArg.find_first_of("!=<>");
 
                     /* Check for correct symbols. */
-                    if(nGet != strArg.npos)
+                    if(nBegin != strArg.npos)
                     {
                         /* Grab our current key. */
-                        const std::string strKey = strArg.substr(0, nGet);
+                        const std::string strKey = strArg.substr(0, nBegin);
 
                         /* Check for our incoming parameter. */
                         const std::string::size_type nDot = strKey.find('.');
@@ -151,18 +151,18 @@ namespace TAO
                         jClause["field"]  = strKey.substr(nDot + 1);
 
                         /* Check if its < or =. */
-                        const std::string::size_type nOP = strArg.find_first_of("<=>", nGet + 1);
-                        if(nOP != strArg.npos)
+                        const std::string::size_type nEnd = strArg.find_first_of("!=<>", nBegin + 1);
+                        if(nEnd != strArg.npos)
                         {
-                            jClause["operator"] = strArg[nGet] + std::string("") + strArg[nOP];
-                            jClause["value"]    = strArg.substr(nGet + 2);
+                            jClause["operator"] = strArg[nBegin] + std::string("") + strArg[nEnd];
+                            jClause["value"]    = strArg.substr(nBegin + 2);
                         }
 
                         /* It's just < if we reach here. */
                         else
                         {
-                            jClause["operator"] = strArg[nGet] + std::string("");
-                            jClause["value"]    = strArg.substr(nGet + 1);
+                            jClause["operator"] = strArg[nBegin] + std::string("");
+                            jClause["value"]    = strArg.substr(nBegin + 1);
                         }
 
                         //debug::log(0, "Process where ", jValue.dump(4));

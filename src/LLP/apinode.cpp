@@ -214,7 +214,8 @@ namespace LLP
                 /* Default error status code is 400. */
                 nStatus = 400;
 
-            int32_t nError = jError["code"].get<int32_t>();
+            /* Cache our error code here. */
+            const int32_t nError = jError["code"].get<int32_t>();
 
             /* Set status by error code. */
             switch(nError)

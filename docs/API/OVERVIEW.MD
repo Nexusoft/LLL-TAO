@@ -192,8 +192,8 @@ Error Codes
 | -53 | Missing name / address of account to credit |
 | -54 | Missing name_proof / address_proof to credit |
 | -55 | Must have at least two recipients to debit from any |
-| -56 | ------------------------------------------ |
-| -57 | ------------------------------------------ |
+| -56 | Query Syntax Error, duplicate wildcard not allowed |
+| -57 | Query Syntax Error, only '=' operator allowed with wildcard |
 | -58 | Debit transaction is not from a NXS account |
 | -59 | Account to credit is not a NXS account |
 | -60 | ------------------------------------------
