@@ -94,14 +94,14 @@ namespace LLP
         }
 
         /* Parse the packet request. */
-        std::string::size_type npos = INCOMING.strRequest.find('/', 1);
+        std::string::size_type nPos = INCOMING.strRequest.find('/', 1);
 
         /* Extract the API requested. */
-        std::string strAPI    = INCOMING.strRequest.substr(1, npos - 1);
-        std::string strMethod = INCOMING.strRequest.substr(npos + 1);
+        std::string strAPI    = INCOMING.strRequest.substr(1, nPos - 1);
+        std::string strMethod = INCOMING.strRequest.substr(nPos + 1);
 
         /* The JSON response */
-        encoding::json ret;
+        encoding::json jRet;
 
         /* The HTTP response status code, default to 200 unless an error is encountered */
         uint16_t nStatus = 200;
@@ -198,14 +198,14 @@ namespace LLP
             };
 
             /* Execute the api and methods. */
-            ret = { {"result", TAO::API::Commands::Invoke(strAPI, strMethod, jParams) } };
+            jRet = { {"result", TAO::API::Commands::Invoke(strAPI, strMethod, jParams) } };
         }
 
         /* Handle for custom API exceptions. */
         catch(TAO::API::APIException& e)
         {
             /* Get error from exception. */
-            encoding::json jsonError = e.ToJSON();
+            encoding::json jError = e.ToJSON();
 
             /* Check to see if the caller has specified an error code to use for general API errors */
             if(INCOMING.mapHeaders.count("api-error-code"))
@@ -214,7 +214,7 @@ namespace LLP
                 /* Default error status code is 400. */
                 nStatus = 400;
 
-            int32_t nError = jsonError["code"].get<int32_t>();
+            int32_t nError = jError["code"].get<int32_t>();
 
             /* Set status by error code. */
             switch(nError)
@@ -236,7 +236,7 @@ namespace LLP
             }
 
             /* Populate the return JSON to the error */
-            ret = { { "error", jsonError } };
+            jRet = { { "error", jError } };
         }
 
 
@@ -257,7 +257,7 @@ namespace LLP
         const double nLatency = tLatency.ElapsedNanoseconds() / 1000000.0;
 
         /* Add some micro-benchamrks to response data. */
-        ret["info"] =
+        jRet["info"] =
         {
             {"method",    strAPI + "/" + strMethod},
             {"status",    "active"}, //we want to check our functions map for method status
@@ -268,10 +268,10 @@ namespace LLP
 
         /* Log our response if argument is specified. */
         if(config::GetBoolArg("-httpresponse", false))
-            debug::log(0, ret.dump(4));
+            debug::log(0, jRet.dump(4));
 
         /* Add content. */
-        RESPONSE.strContent = ret.dump();
+        RESPONSE.strContent = jRet.dump();
 
         /* Write the response */
         this->WritePacket(RESPONSE);
