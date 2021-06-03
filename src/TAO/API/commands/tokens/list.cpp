@@ -144,7 +144,7 @@ namespace TAO::API
         std::vector<std::pair<TAO::Register::Address, TAO::Register::Object>> vTokenAccounts;
 
         /* Batch read up to 100,000 */
-        if(LLD::Register->BatchRead("account", vAccounts, 100000))
+        if(LLD::Register->BatchRead("account", vAccounts, -1))
         {
             /* Check that the account belongs to the token being filtered on */
             for(auto& account : vAccounts)

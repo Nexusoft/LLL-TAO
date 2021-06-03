@@ -170,7 +170,7 @@ namespace LLP
 
 
         /* MINING_SERVER instance */
-        if(config::GetBoolArg(std::string("-mining", false)) && !config::fClient.load())
+        if(config::GetBoolArg(std::string("-mining"), false) && !config::fClient.load())
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetMiningPort());

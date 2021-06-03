@@ -1604,7 +1604,7 @@ namespace TAO::API
         /* Check for a set to compare. */
         const auto nBegin = strClause.find_first_of("!=<>");
         if(nBegin == strClause.npos)
-            throw APIException(-60, "Query Syntax Error, malformed where clause at ", strClause);
+            throw APIException(-120, "Invalid Parameters, must use <key>=<value> with no extra characters.");
 
         /* Grab our current key. */
         const std::string strKey = strClause.substr(0, nBegin);
@@ -1636,6 +1636,10 @@ namespace TAO::API
             jClause["value"]    = strClause.substr(nBegin + 1);
         }
 
+        /* Check for valid values and parameters. */
+        if(jClause["value"].get<std::string>().empty())
+            throw APIException(-120, "Invalid Parameters, must use <key>=<value> with no extra characters.");
+
         return jClause;
     }
 
@@ -1643,21 +1647,91 @@ namespace TAO::API
     /* Turns a query string in url encoding into a formatted JSON object. */
     encoding::json ParamsToJSON(const std::vector<std::string>& vParams)
     {
+        /* Track our where clause. */
+        std::string strWhere;
+
         /* Get the parameters. */
         encoding::json jRet;
-        for(const auto& strParam : vParams)
+        for(uint32_t n = 0; n < vParams.size(); ++n)
         {
+            /* Set et as reference of our parameter. */
+            const std::string& strParam = vParams[n];
+
             /* Find the key/value delimiter. */
             const auto nPos = strParam.find("=");
-            if(nPos == strParam.npos)
-                break;
+            if(nPos != strParam.npos || strParam == "WHERE")
+            {
+                /* Check for key/value pairs. */
+                std::string strKey, strValue;
+                if(nPos != strParam.npos)
+                {
+                    /* Grab the key and value substrings. */
+                    strKey   = strParam.substr(0, nPos);
+                    strValue = strParam.substr(nPos + 1);
 
-            /* Grab the key and value substrings. */
-            const std::string strKey   = strParam.substr(0, nPos);
-            const std::string strValue = strParam.substr(nPos + 1);
+                    /* Check for empty value, due to ' ' or bad input. */
+                    if(strValue.empty())
+                        throw APIException(-120, "Invalid Parameters, must use <key>=<value> with no extra characters.");
+                }
 
-            /* Add to our return json. */
-            jRet[strKey] = strValue;
+                /* Check for where clauses. */
+                if(strParam == "WHERE" || strKey == "where")
+                {
+                    /* Check if we have operated before. */
+                    if(!strWhere.empty()) //check for double WHERE
+                        throw APIException(-60, "Query Syntax Error, malformed where clause at ", strValue);
+
+                    /* If where as key/value, append the value we parsed out. */
+                    if(strKey == "where")
+                    {
+                        /* Check that our where clause is a proper conditional statement. */
+                        if(strValue.find_first_of("!=<>") == strValue.npos)
+                            throw APIException(-60, "Query Syntax Error, malformed where clause at ", strValue);
+
+                        strWhere += std::string(strValue);
+                    }
+
+                    /* Check if we have empty WHERE. */
+                    if(n + 1 >= vParams.size())
+                        throw APIException(-60, "Query Syntax Error, malformed where clause at ", strValue);
+
+                    /* Build a single where string for parsing. */
+                    for(uint32_t i = n + 1; i < vParams.size(); ++i)
+                    {
+                        /* Check if we have operated before. */
+                        if(vParams[i] == "WHERE" && strKey == "where") //check for double WHERE
+                            throw APIException(-60, "Query Syntax Error, malformed where clause at ", strValue);
+
+                        /* Append the string with remaining arguments. */
+                        strWhere += vParams[i];
+
+                        /* Add a space as delimiter. */
+                        if(i < vParams.size() - 1)
+                            strWhere += std::string(" ");
+                    }
+
+                    /* Build where clause for return value from string. */
+                    jRet["where"] = strWhere;
+
+                    break;
+                }
+
+                /* Add to our return json. */
+                else
+                {
+                    /* Parse if the parameter is a json object or array. */
+                    if(strValue.find_first_of("{}") != strValue.npos || strValue.find_first_of("[]") != strValue.npos)
+                    {
+                        jRet[strKey] = encoding::json::parse(strValue);
+                        continue;
+                    }
+
+                    /* Set our return value */
+                    jRet[strKey] = strValue;
+                }
+            }
+            else
+                throw APIException(-120, "Invalid Parameters, must use <key>=<value> with no extra characters.");
         }
 
         return jRet;

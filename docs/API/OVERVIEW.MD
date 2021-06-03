@@ -256,9 +256,9 @@ Error Codes
 | -117 | Item not found |
 | -118 | Missing type |
 | -119 | Missing supply |
-| -120 | ------------------------------------------ |
-| -121 | ------------------------------------------ |
-| -122 | ------------------------------------------ |
+| -120 | Invalid Parameters, must use <key>=<value> with no extra characters. |
+| -121 | --------------------------------------------- |
+| -122 | --------------------------------------------- |
 | -123 | Object is not a token |
 | -124 | Unknown token / account |
 | -125 | Token not found |

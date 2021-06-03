@@ -106,82 +106,26 @@ namespace TAO
             if(nPos == strEndpoint.npos)
                 return debug::error("Endpoint argument requires a forward slash [ex. ./nexus -api <API-NAME>/<METHOD> <KEY>=<VALUE>]");
 
-            /* Build the JSON request object. */
-            encoding::json jParameters;
-            encoding::json jGroup =
-            {
-                { "operator", "NONE" },
-                { "condition", encoding::json::array() }
-            };
-
-            /* Track if WHERE clause is in effect. */
-            std::string strWhere;
-
-            /* Keep track of previous parameter. */
-            std::string strKey, strValue;
+            /* Copy our arguments into a parameters object. */
+            std::vector<std::string> vParams;
             for(int i = nArgBegin + 1; i < argc; ++i)
-            {
-                /* Parse out the key / values. */
-                const std::string strArg = std::string(argv[i]);
+                vParams.push_back(argv[i]);
 
-                /* Get the position of key/value delimiter. */
-                const std::string::size_type nPos = strArg.find('=', 0);
-
-                /* Check for where clause SQL style. */
-                if(strArg == "WHERE")
-                {
-                    /* Build a single where string for parsing. */
-                    for(uint32_t n = i + 1; n < argc; ++n)
-                    {
-                        /* Append the string with remaining arguments. */
-                        strWhere += std::string(argv[n]);
-
-                        /* Add a space as delimiter. */
-                        if(n < argc - 1)
-                            strWhere += std::string(" ");
-                    }
-
-                    break;
-                }
-
-                /* Watch for missing delimiter. */
-                if(nPos == strArg.npos)
-                {
-                    /* Append this data with URL encoding. */
-                    strValue.append(" " + strArg);
-
-                    continue;
-                }
-                else //by default assign directly
-                    strValue = strArg.substr(nPos + 1);
-
-                /* Set the previous argument. */
-                strKey = strArg.substr(0, nPos);
-
-                // if the paramter is a JSON list or array then we need to parse it
-                if(strArg.compare(nPos + 1, 1, "{") == 0 || strArg.compare(nPos + 1, 1, "[") == 0)
-                    jParameters[strKey] = encoding::json::parse(strArg.substr(nPos + 1));
-                else
-                    jParameters[strKey] = strValue;
-            }
-
-            /* Grab where clause from key=value parameter otherwise. */
+            /* Build the JSON request object. */
+            encoding::json jParameters = TAO::API::ParamsToJSON(vParams);
             if(jParameters.find("where") != jParameters.end())
             {
-                /* Check if we have assigned where already. */
-                if(!strWhere.empty())
-                    return debug::error("Syntax Error: can only include one variation of where syntax");
+                /* Grab a copy of our where string. */
+                const std::string strWhere = jParameters["where"].get<std::string>();
+                if(strWhere.empty())
+                    jParameters.erase("where");
 
-                /* Assign from input parameters. */
-                strWhere = jParameters["where"].get<std::string>();
+                /* Build our query string now. */
+                jParameters["where"] = TAO::API::QueryToJSON(strWhere);
             }
 
 
-            debug::log(0, "QUERY: |", strWhere, "|");
-
-            jParameters["where"] = TAO::API::QueryToJSON(strWhere);
-
-            debug::log(0, jParameters["where"].dump(4));
+            debug::log(0, jParameters.dump(4));
 
             return 0;
 
