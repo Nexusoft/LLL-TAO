@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 
 #include <TAO/API/include/cmd.h>
+#include <TAO/API/include/json.h>
 
 #include <LLP/types/apinode.h>
 #include <LLP/include/base_address.h>
@@ -107,10 +108,14 @@ namespace TAO
 
             /* Build the JSON request object. */
             encoding::json jParameters;
-            encoding::json jWhere;
+            encoding::json jGroup =
+            {
+                { "operator", "NONE" },
+                { "condition", encoding::json::array() }
+            };
 
             /* Track if WHERE clause is in effect. */
-            bool fWhere = false;
+            std::string strWhere;
 
             /* Keep track of previous parameter. */
             std::string strKey, strValue;
@@ -122,81 +127,63 @@ namespace TAO
                 /* Get the position of key/value delimiter. */
                 const std::string::size_type nPos = strArg.find('=', 0);
 
-                /* Check for where clause. */
+                /* Check for where clause SQL style. */
                 if(strArg == "WHERE")
                 {
-                    fWhere = true;
+                    /* Build a single where string for parsing. */
+                    for(uint32_t n = i + 1; n < argc; ++n)
+                    {
+                        /* Append the string with remaining arguments. */
+                        strWhere += std::string(argv[n]);
+
+                        /* Add a space as delimiter. */
+                        if(n < argc - 1)
+                            strWhere += std::string(" ");
+                    }
+
+                    break;
+                }
+
+                /* Watch for missing delimiter. */
+                if(nPos == strArg.npos)
+                {
+                    /* Append this data with URL encoding. */
+                    strValue.append(" " + strArg);
+
                     continue;
                 }
+                else //by default assign directly
+                    strValue = strArg.substr(nPos + 1);
 
-                else if(fWhere)
-                {
-                    /* Copy our string position. */
-                    const std::string::size_type nBegin = strArg.find_first_of("!=<>");
+                /* Set the previous argument. */
+                strKey = strArg.substr(0, nPos);
 
-                    /* Check for correct symbols. */
-                    if(nBegin != strArg.npos)
-                    {
-                        /* Grab our current key. */
-                        const std::string strKey = strArg.substr(0, nBegin);
-
-                        /* Check for our incoming parameter. */
-                        const std::string::size_type nDot = strKey.find('.');
-                        if(nDot == strKey.npos)
-                            return debug::error("Syntax Error at '", strKey, "'. Missing '.'");
-
-                        /* Build our current json value. */
-                        encoding::json jClause;
-                        jClause["class"]  = strKey.substr(0, nDot);
-                        jClause["field"]  = strKey.substr(nDot + 1);
-
-                        /* Check if its < or =. */
-                        const std::string::size_type nEnd = strArg.find_first_of("!=<>", nBegin + 1);
-                        if(nEnd != strArg.npos)
-                        {
-                            jClause["operator"] = strArg[nBegin] + std::string("") + strArg[nEnd];
-                            jClause["value"]    = strArg.substr(nBegin + 2);
-                        }
-
-                        /* It's just < if we reach here. */
-                        else
-                        {
-                            jClause["operator"] = strArg[nBegin] + std::string("");
-                            jClause["value"]    = strArg.substr(nBegin + 1);
-                        }
-
-                        //debug::log(0, "Process where ", jValue.dump(4));
-                        jWhere.push_back(jClause);
-                    }
-                }
-
-                /* Regular key=value parsing handling spaces. */
+                // if the paramter is a JSON list or array then we need to parse it
+                if(strArg.compare(nPos + 1, 1, "{") == 0 || strArg.compare(nPos + 1, 1, "[") == 0)
+                    jParameters[strKey] = encoding::json::parse(strArg.substr(nPos + 1));
                 else
-                {
-                    /* Watch for missing delimiter. */
-                    if(nPos == strArg.npos)
-                    {
-                        /* Append this data with URL encoding. */
-                        strValue.append(" " + strArg);
-
-                        continue;
-                    }
-                    else //by default assign directly
-                        strValue = strArg.substr(nPos + 1);
-
-                    /* Set the previous argument. */
-                    strKey = strArg.substr(0, nPos);
-
-                    // if the paramter is a JSON list or array then we need to parse it
-                    if(strArg.compare(nPos + 1, 1, "{") == 0 || strArg.compare(nPos + 1, 1, "[") == 0)
-                        jParameters[strKey] = encoding::json::parse(strArg.substr(nPos + 1));
-                    else
-                        jParameters[strKey] = strValue;
-                }
+                    jParameters[strKey] = strValue;
             }
 
-            /* Add our complete where clause to request parameters. */
-            jParameters["where"] = jWhere;
+            /* Grab where clause from key=value parameter otherwise. */
+            if(jParameters.find("where") != jParameters.end())
+            {
+                /* Check if we have assigned where already. */
+                if(!strWhere.empty())
+                    return debug::error("Syntax Error: can only include one variation of where syntax");
+
+                /* Assign from input parameters. */
+                strWhere = jParameters["where"].get<std::string>();
+            }
+
+
+            debug::log(0, "QUERY: |", strWhere, "|");
+
+            jParameters["where"] = TAO::API::QueryToJSON(strWhere);
+
+            debug::log(0, jParameters["where"].dump(4));
+
+            return 0;
 
 
             /* Build the HTTP Header. */

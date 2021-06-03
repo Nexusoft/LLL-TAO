@@ -38,9 +38,9 @@ namespace TAO::API
      *  If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field
      *
      *  @param[in] params The parameters passed into the request
-     *  @param[in] response The reponse JSON to be filtered.
+     *  @param[out] response The reponse JSON to be filtered.
      *
      **/
-    void FilterResponse(const encoding::json& jParams, encoding::json& jResponse);
+    void FilterResponse(const encoding::json& jParams, encoding::json &jResponse);
 
 }

@@ -30,9 +30,21 @@ The variable names have a prefix that defines the type. This helps us not lose t
 * (ste)Variable ex. steVar - (ste) denotes the type is TAO::Register::State, if single word use full typename i.e. state
 * (txn)Variable ex. txnVar - (txn) denotes the type is TAO::Ledger::Transaction, if single word reduced typename i.e. tx
 
+
 ## Namespaces
 
 Always use namespaces to keep the code well ordered and organized. The guide to using namespaces is based around the folder the source files are in. Always declare a new namespace every time you increment a folder, to ensure it is easy to find objects, and there are no duplicate declarations.
+
+
+## Using 'auto' keyword
+
+Don't be liberal with the 'auto' keyword, we reserve its use for the following conditions:
+
+* foreach, such as for(const auto& tData : vData)
+* iterators, such as const auto it = mapData.begin();
+
+Otherwise please use explicit type so that it is easy to see intent and required data type. Auto is nice for specific cases, but
+can be a big risk to fall into bad habits with. So please watch this carefully.
 
 
 ## Indentation and Formatting

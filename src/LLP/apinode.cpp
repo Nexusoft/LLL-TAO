@@ -133,7 +133,7 @@ namespace LLP
                             ParseString(INCOMING.strContent, '&', vParams);
 
                             /* Grab our parameters. */
-                            jParams = TAO::API::QueryToJSON(vParams);
+                            jParams = TAO::API::ParamsToJSON(vParams);
                         }
 
                         /* JSON encoding. */
@@ -160,7 +160,7 @@ namespace LLP
                     strMethod = strMethod.substr(0, nPos);
 
                     /* Grab our parameters. */
-                    jParams = TAO::API::QueryToJSON(vParams);
+                    jParams = TAO::API::ParamsToJSON(vParams);
                 }
             }
             else if(INCOMING.strType == "OPTIONS")

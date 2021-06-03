@@ -196,7 +196,7 @@ Error Codes
 | -57 | Query Syntax Error, only '=' operator allowed with wildcard |
 | -58 | Debit transaction is not from a NXS account |
 | -59 | Account to credit is not a NXS account |
-| -60 | ------------------------------------------
+| -60 | Query Syntax Error, malformed where clause at |
 | -61 | Proof account is for a different token than the asset token |
 | -62 | Coinbase transaction mined by different user |
 | -63 | Could not retrieve default NXS account to credit |
@@ -207,7 +207,7 @@ Error Codes
 | -68 | Amount too small |
 | -69 | Insufficient funds |
 | -70 | Trust account not found |
-| -71 | ------------------------------------------ |
+| -71 | Query Syntax Error, maximum logical depth is 1 |
 | -72 | Register is not a trust account |
 | -73 | Trust account is not a NXS account |
 | -74 | No registers found |

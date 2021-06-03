@@ -149,14 +149,38 @@ namespace TAO
 
         /** QueryToJSON
          *
-         *  Turns a query string in url encoding into a formatted JSON object.
+         *  Turns a where query string in url encoding into a formatted JSON object.
          *
-         *  @param[in] vQuery The string to parse and generate into json.
+         *  @param[in] strWhere The string to parse and generate into json.
          *
          *  @return The JSON object generated with query.
          *
          **/
-        encoding::json QueryToJSON(const std::vector<std::string>& vQuery);
+        encoding::json QueryToJSON(const std::string& strWhere);
+
+
+        /** ClauseToJSON
+         *
+         *  Turns a where clause string in url encoding into a formatted JSON object.
+         *
+         *  @param[in] strClause The string to parse and generate into json.
+         *
+         *  @return The JSON object generated with query.
+         *
+         **/
+        encoding::json ClauseToJSON(const std::string& strClause);
+
+
+        /** ParamsToJSON
+         *
+         *  Turns parameters from url encoding into a formatted JSON object.
+         *
+         *  @param[in] vParams The string to parse and generate into json.
+         *
+         *  @return The JSON object generated with query.
+         *
+         **/
+        encoding::json ParamsToJSON(const std::vector<std::string>& vParams);
 
     }
 }

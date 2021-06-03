@@ -1508,12 +1508,144 @@ namespace TAO::API
     }
 
 
+    /* Turns a where query string in url encoding into a formatted JSON object. */
+    encoding::json QueryToJSON(const std::string& strWhere)
+    {
+        /* Split up our query by spaces. */
+        std::vector<std::string> vWhere;
+        ParseString(strWhere, ' ', vWhere);
+
+        /* Track or left hand and right hand sides. */
+        encoding::json jGroup
+        {
+            { "logical", "NONE" },
+            { "statement", encoding::json::array() },
+        };
+
+        /* Track our conditional depth. */
+        uint32_t nDepth = 0;
+
+        /* Build our response object. */
+        encoding::json jRet;
+        for(uint32_t n = 0; n < vWhere.size(); ++n)
+        {
+            /* Grab our current statement. */
+            const std::string& strWhere = vWhere[n];
+
+            /* Convert our clause into json. */
+            const encoding::json jClause = ClauseToJSON(strWhere);
+            jGroup["statement"].push_back(jClause);
+
+            /* Check if we have another logical operator. */
+            if(n == vWhere.size() - 1)
+                break;
+
+            /* Grab our logical operator. */
+            const std::string& strLogical = vWhere[++n]; //prefix increment over logical operator
+            if(strLogical == "AND" || strLogical == "OR")
+            {
+                /* Check if a logical group has not yet been defined. */
+                if(jGroup["logical"].get<std::string>() == "NONE")
+                {
+                    jGroup["logical"] = strLogical;
+                    continue;
+                }
+
+                /* Push back to same conditional group. */
+                if(jGroup["logical"].get<std::string>() == strLogical)
+                {
+                    jGroup["statement"].push_back(ClauseToJSON(strWhere));
+                    continue;
+                }
+
+                /* Now we need to push our conditions back one set. */
+                encoding::json jNew =
+                {
+                    { "logical", strLogical },
+                    { "statement", encoding::json::array() },
+                };
+
+                /* Push our entire group to new now. */
+                jNew["statement"].push_back(jGroup);
+
+                /* Update our depth. */
+                if(++nDepth == 2)
+                    throw APIException(-71, "Query Syntax Error, maximum logical depth is 1");
+
+                /* Update our return value. */
+                jRet = jNew;
+
+                /* Reset our group's values. */
+                jGroup =
+                {
+                    { "logical", "NONE" },
+                    { "statement", encoding::json::array() },
+                };
+            }
+        }
+
+        /* Strip out logical grouping if none specified for last group. */
+        if(jGroup["logical"].get<std::string>() == "NONE")
+            jGroup.erase("logical");
+
+        /* Update to final statements. */
+        if(jRet.find("statement") != jRet.end())
+            jRet["statement"].push_back(jGroup);
+        else
+            jRet = jGroup;
+
+        return jRet;
+    }
+
+
+    /* Turns a where clause string in url encoding into a formatted JSON object. */
+    encoding::json ClauseToJSON(const std::string& strClause)
+    {
+        /* Check for a set to compare. */
+        const auto nBegin = strClause.find_first_of("!=<>");
+        if(nBegin == strClause.npos)
+            throw APIException(-60, "Query Syntax Error, malformed where clause at ", strClause);
+
+        /* Grab our current key. */
+        const std::string strKey = strClause.substr(0, nBegin);
+
+        /* Check for our incoming parameter. */
+        const std::string::size_type nDot = strKey.find('.');
+        if(nDot == strKey.npos)
+            return debug::error("Syntax Error at '", strKey, "'. Missing '.'");
+
+        /* Build our current json value. */
+        encoding::json jClause =
+        {
+            { "class", strKey.substr(0, nDot)  },
+            { "field", strKey.substr(nDot + 1) },
+        };
+
+        /* Check if its < or =. */
+        const auto nEnd = strClause.find_first_of("!=<>", nBegin + 1);
+        if(nEnd != strClause.npos)
+        {
+            jClause["operator"] = strClause[nBegin] + std::string("") + strClause[nEnd];
+            jClause["value"]    = strClause.substr(nBegin + 2);
+        }
+
+        /* It's just < if we reach here. */
+        else
+        {
+            jClause["operator"] = strClause[nBegin] + std::string("");
+            jClause["value"]    = strClause.substr(nBegin + 1);
+        }
+
+        return jClause;
+    }
+
+
     /* Turns a query string in url encoding into a formatted JSON object. */
-    encoding::json QueryToJSON(const std::vector<std::string>& vQuery)
+    encoding::json ParamsToJSON(const std::vector<std::string>& vParams)
     {
         /* Get the parameters. */
         encoding::json jRet;
-        for(const auto& strParam : vQuery)
+        for(const auto& strParam : vParams)
         {
             /* Find the key/value delimiter. */
             const auto nPos = strParam.find("=");
