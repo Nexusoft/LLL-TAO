@@ -127,8 +127,6 @@ namespace TAO
 
             debug::log(0, jParameters.dump(4));
 
-            return 0;
-
 
             /* Build the HTTP Header. */
             const std::string strContent = jParameters.dump();

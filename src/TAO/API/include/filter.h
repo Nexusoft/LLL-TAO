@@ -19,6 +19,18 @@ namespace TAO::Register { class Object; }
 
 namespace TAO::API
 {
+    /** ObjectClause
+     *
+     *  Determines if an object should be included in a list based on given clause.
+     *
+     *  @param[in] jClause The clause to check filter for.
+     *  @param[in] objCheck The object we are checking for.
+     *
+     *  @return true if the object should be included in the results.
+     *
+     **/
+    bool ObjectClause(const encoding::json& jClause, const TAO::Register::Object& objCheck);
+
 
     /** FilterObject
      *
