@@ -19,17 +19,32 @@ namespace TAO::Register { class Object; }
 
 namespace TAO::API
 {
-    /** ObjectClause
+    /** FilterStatement
      *
-     *  Determines if an object should be included in a list based on given clause.
+     *  Recursive handle for any type of filter by passing in function and type to filter.
+     *  Can process any depth of logical recursion required.
      *
-     *  @param[in] jClause The clause to check filter for.
-     *  @param[in] objCheck The object we are checking for.
+     *  @param[in] jStatement The statement to filter by, in JSON encoding.
+     *  @param[in] rCheck The object that we are checking on.
+     *  @param[in] rFunct The function that executes the final clause filter.
      *
-     *  @return true if the object should be included in the results.
+     *  @return true if the object passes filter checks, false if it shouldn't be included.
      *
      **/
-    bool ObjectClause(const encoding::json& jClause, const TAO::Register::Object& objCheck);
+    template<typename ObjectType>
+    bool FilterStatement(const encoding::json& jStatement, const ObjectType& rCheck,
+                         const std::function<bool (const encoding::json&, const ObjectType&)>& rFunct);
+
+
+    /** FilterFieldname
+     *
+     *  If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field
+     *
+     *  @param[in] params The parameters passed into the request
+     *  @param[out] response The reponse JSON to be filtered.
+     *
+     **/
+    void FilterFieldname(const encoding::json& jParams, encoding::json &jResponse);
 
 
     /** FilterObject
@@ -43,16 +58,5 @@ namespace TAO::API
      *
      **/
     bool FilterObject(const encoding::json& jParams, const TAO::Register::Object& objCheck);
-
-
-    /** FilterResponse
-     *
-     *  If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field
-     *
-     *  @param[in] params The parameters passed into the request
-     *  @param[out] response The reponse JSON to be filtered.
-     *
-     **/
-    void FilterResponse(const encoding::json& jParams, encoding::json &jResponse);
 
 }

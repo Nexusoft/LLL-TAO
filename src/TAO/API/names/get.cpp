@@ -88,7 +88,7 @@ namespace TAO
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            FilterResponse(params, jsonRet);
+            FilterFieldname(params, jsonRet);
 
             return jsonRet;
         }
@@ -129,7 +129,7 @@ namespace TAO
 
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            FilterResponse(params, jsonRet);
+            FilterFieldname(params, jsonRet);
 
             return jsonRet;
         }

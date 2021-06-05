@@ -50,7 +50,7 @@ namespace TAO::API
         jRet["modified"] = objThis.nModified;
 
         /* Filter out our expected fieldnames if specified. */
-        FilterResponse(jParams, jRet);
+        FilterFieldname(jParams, jRet);
 
         return jRet;
     }

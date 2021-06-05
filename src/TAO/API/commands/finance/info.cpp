@@ -114,7 +114,7 @@ namespace TAO
                 jRet["change"] = false;
 
             /* Filter based on requested fieldname. */
-            FilterResponse(params, jRet);
+            FilterFieldname(params, jRet);
 
             return jRet;
         }

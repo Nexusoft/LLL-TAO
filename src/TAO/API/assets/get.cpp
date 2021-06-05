@@ -96,7 +96,7 @@ namespace TAO
             ret.insert(data.begin(), data.end());
 
             /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            FilterResponse(params, ret);
+            FilterFieldname(params, ret);
 
             return ret;
         }
