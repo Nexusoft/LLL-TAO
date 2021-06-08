@@ -19,6 +19,19 @@ namespace TAO::Register { class Object; }
 
 namespace TAO::API
 {
+    /** Evaluate Wildcard
+     *
+     *  Checks a given string against value to find wildcard pattern matches.
+     *
+     *  @param[in] strWildcard The wildcard statement we are checking against.
+     *  @param[in] strValue The value we are checking wildcard against.
+     *
+     *  @return true if wildcard pattern was found in value.
+     *
+     **/
+    bool EvaluateWildcard(const std::string& strWildcard, const std::string& strValue);
+
+
     /** EvaluateObject
      *
      *  Determines if an object should be included in a list based on given clause.

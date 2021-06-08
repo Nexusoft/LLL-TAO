@@ -21,6 +21,54 @@ ________________________________________________________________________________
 
 namespace TAO::API
 {
+
+    /* Checks a given string against value to find wildcard pattern matches. */
+    bool EvaluateWildcard(const std::string& strWildcard, const std::string& strValue)
+    {
+        /* Check for multiple asterisk which will break our splitting logic. */
+        if(strWildcard.find("**") != strWildcard.npos)
+            throw APIException(-56, "Query Syntax Error: duplicate wildcard not allowed ", strWildcard);
+
+        /* Check for single asterisk. */
+        if(strWildcard == "*")
+            return true;
+
+        /* Split by delimiter. */
+        std::vector<std::string> vWildcard;
+        ParseString(strWildcard, '*', vWildcard);
+
+        /* Build an object to store our strings between wildcards. */
+        std::string::size_type nPos = 0;
+        for(uint32_t n = 0; n < vWildcard.size(); ++n)
+        {
+            /* Grab reference to check. */
+            const std::string& strWildcard = vWildcard[n];
+
+            /* If non empty, push to comparisons vector. */
+            if(!strWildcard.empty())
+            {
+                /* Check if we have pattern 'check*' */
+                const std::string::size_type nFind = strValue.find(strWildcard, nPos);
+                if(nFind == strValue.npos)
+                    return false;
+
+                /* Check for wildcard postfix i.e. (check*) */
+                if(n == 0 && nFind != 0)
+                    return false;
+
+                /* Check for wildcard prefix i.e. (*check) */
+                if(n == vWildcard.size() - 1 && nFind != (strValue.length() - strWildcard.length()))
+                    return false;
+
+                /* Iterate our position past current string. */
+                nPos = (nFind + strWildcard.length());
+            }
+        }
+
+        return true;
+    }
+
+
     /* Determines if an object should be included in a list based on given clause. */
     bool EvaluateObject(const encoding::json& jClause, const TAO::Register::Object& objCheck)
     {
@@ -230,58 +278,21 @@ namespace TAO::API
                 const std::string strCheck = jCheck.get<std::string>();
                 if(strCheck.find("*") != strCheck.npos) //handle for all characters wildcard
                 {
-                    /* Check for multiple asterisk which will break our splitting logic. */
-                    if(strCheck.find("**") != strCheck.npos)
-                        throw APIException(-56, "Query Syntax Error: duplicate wildcard not allowed ", strCheck);
+                    /* Find if we have a wildcard match. */
+                    const bool fWildcard = EvaluateWildcard(strCheck, strValue);
 
-                    /* Check for single asterisk. */
-                    if(strCheck == "*")
+                    /* Check for standard equals operator. */
+                    if(strOP == "=" && fWildcard)
                     {
                         fEvaluate = true;
                         break;
                     }
 
-                    /* Split by delimiter. */
-                    std::vector<std::string> vWildcard;
-                    ParseString(strCheck, '*', vWildcard);
-
-                    /* Build an object to store our strings between wildcards. */
-                    std::string::size_type nPos = 0;
-                    for(uint32_t n = 0; n < vWildcard.size(); ++n)
+                    /* Check for not operator. */
+                    if(strOP == "!=" && !fWildcard)
                     {
-                        /* Grab reference to check. */
-                        const std::string& strWildcard = vWildcard[n];
-
-                        /* If non empty, push to comparisons vector. */
-                        if(!strWildcard.empty())
-                        {
-                            /* Check if we have pattern 'check*' */
-                            const std::string::size_type nFind = strValue.find(strWildcard, nPos);
-                            if(nFind != strValue.npos)
-                                fEvaluate = true;
-                            else
-                            {
-                                fEvaluate = false;
-                                break;
-                            }
-
-                            /* Check for wildcard postfix i.e. (check*) */
-                            if(n == 0 && nFind != 0)
-                            {
-                                fEvaluate = false;
-                                break;
-                            }
-
-                            /* Check for wildcard prefix i.e. (*check) */
-                            if(n == vWildcard.size() - 1 && nFind != (strValue.length() - strWildcard.length()))
-                            {
-                                fEvaluate = false;
-                                break;
-                            }
-
-                            /* Iterate our position past current string. */
-                            nPos = (nFind + strWildcard.length());
-                        }
+                        fEvaluate = true;
+                        break;
                     }
                 }
 
