@@ -192,11 +192,11 @@ Error Codes
 | -53 | Missing name / address of account to credit |
 | -54 | Missing name_proof / address_proof to credit |
 | -55 | Must have at least two recipients to debit from any |
-| -56 | Query Syntax Error, duplicate wildcard not allowed |
-| -57 | Query Syntax Error, only '=' operator allowed with wildcard |
+| -56 | Query Syntax Error: duplicate wildcard not allowed |
+| -57 | Query Syntax Error: only '=' operator allowed with wildcard |
 | -58 | Debit transaction is not from a NXS account |
 | -59 | Account to credit is not a NXS account |
-| -60 | Query Syntax Error, malformed where clause at |
+| -60 | Query Syntax Error: malformed where clause at |
 | -61 | Proof account is for a different token than the asset token |
 | -62 | Coinbase transaction mined by different user |
 | -63 | Could not retrieve default NXS account to credit |
@@ -256,9 +256,9 @@ Error Codes
 | -117 | Item not found |
 | -118 | Missing type |
 | -119 | Missing supply |
-| -120 | Invalid Parameters, must use <key>=<value> with no extra characters. |
-| -121 | --------------------------------------------- |
-| -122 | --------------------------------------------- |
+| -120 | Query Syntax Error: must use <key>=<value> with no extra characters. |
+| -121 | Query Syntax Error: must use '(' and ')' to mix AND/OR statements |
+| -122 | Query Syntax Error: missing logical operator for group |
 | -123 | Object is not a token |
 | -124 | Unknown token / account |
 | -125 | Token not found |

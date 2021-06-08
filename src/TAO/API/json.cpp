@@ -1508,6 +1508,78 @@ namespace TAO::API
     }
 
 
+
+    encoding::json StatementToJSON(std::vector<std::string> &vWhere, uint32_t &nIndex, encoding::json &jStatement)
+    {
+        /* Check if we have consumed all of our clauses. */
+        if(nIndex >= vWhere.size())
+            return jStatement;
+
+        /* Grab a reference of our working string. */
+        std::string& strClause = vWhere[nIndex];
+
+        /* Check if we are recursing up a level. */
+        const auto nLeft = strClause.find("(");
+        if(nLeft == 0)
+        {
+            /* Parse out substring removing paranthesis. */
+            strClause = strClause.substr(nLeft + 1);
+
+            /* Create a new group to recurse up a level. */
+            encoding::json jGroup
+            {
+                { "logical", "NONE" },
+                { "statement", encoding::json::array() },
+            };
+
+            /* We want to push this new group recursive field to current level. */
+            jStatement["statement"].push_back(StatementToJSON(vWhere, nIndex, jGroup));
+
+            /* Now we continue consuming our clauses to complete the statement. */
+            return StatementToJSON(vWhere, ++nIndex, jStatement);
+        }
+
+        /* Check if we are recursing back down a level. */
+        const auto nRight = strClause.rfind(")");
+        if(nRight == strClause.length() - 1)
+        {
+            /* Parse out substring removing paranthesis. */
+            strClause = strClause.substr(0, nRight);
+
+            /* Check if we need to recurse another level still. */
+            if(strClause.rfind(")") == strClause.length() - 1)
+                return StatementToJSON(vWhere, nIndex, jStatement);
+
+            /* Add our clause to end of statement. */
+            jStatement["statement"].push_back(ClauseToJSON(strClause));
+
+            return jStatement;
+        }
+
+        /* Check for logical statement. */
+        if(strClause == "AND" || strClause == "OR")
+        {
+            /* Check for incorrect mixing of AND/OR. */
+            if(jStatement.find("logical") == jStatement.end())
+                throw APIException(-122, "Query Syntax Error: missing logical operator for group");
+
+            /* Grab a copy of our current logical statement. */
+            const std::string strLogical = jStatement["logical"].get<std::string>();
+            if(strLogical != "NONE" && strLogical != strClause)
+                throw APIException(-121, "Query Syntax Error, must use '(' and ')' to mix AND/OR statements");
+
+            jStatement["logical"] = strClause;
+            return StatementToJSON(vWhere, ++nIndex, jStatement);
+        }
+
+        /* Regular statement adding clause. */
+        jStatement["statement"].push_back(ClauseToJSON(strClause));
+
+        /* Regular recursion to move to next statement. */
+        return StatementToJSON(vWhere, ++nIndex, jStatement);
+    }
+
+
     /* Turns a where query string in url encoding into a formatted JSON object. */
     encoding::json QueryToJSON(const std::string& strWhere)
     {
@@ -1515,84 +1587,21 @@ namespace TAO::API
         std::vector<std::string> vWhere;
         ParseString(strWhere, ' ', vWhere);
 
-        /* Track or left hand and right hand sides. */
-        encoding::json jGroup
+        /* Build our return object. */
+        encoding::json jRet
         {
             { "logical", "NONE" },
             { "statement", encoding::json::array() },
         };
 
-        /* Track our conditional depth. */
-        uint32_t nDepth = 0;
+        /* Recursively process the query. */
+        uint32_t n = 0;
+        jRet = StatementToJSON(vWhere, n, jRet);
 
-        /* Build our response object. */
-        encoding::json jRet;
-        for(uint32_t n = 0; n < vWhere.size(); ++n)
-        {
-            /* Grab our current statement. */
-            const std::string& strWhere = vWhere[n];
+        /* Check for logical operator. */
+        if(jRet["logical"].get<std::string>() == "NONE" && jRet["statement"].size() > 1)
+            throw APIException(-120, "Query Syntax Error: missing logical operator for base group, too many '()' maybe?");
 
-            /* Convert our clause into json. */
-            const encoding::json jClause = ClauseToJSON(strWhere);
-            jGroup["statement"].push_back(jClause);
-
-            /* Check if we have another logical operator. */
-            if(n == vWhere.size() - 1)
-                break;
-
-            /* Grab our logical operator. */
-            const std::string& strLogical = vWhere[++n]; //prefix increment over logical operator
-            if(strLogical == "AND" || strLogical == "OR")
-            {
-                /* Check if a logical group has not yet been defined. */
-                if(jGroup["logical"].get<std::string>() == "NONE")
-                {
-                    jGroup["logical"] = strLogical;
-                    continue;
-                }
-
-                /* Push back to same conditional group. */
-                if(jGroup["logical"].get<std::string>() == strLogical)
-                {
-                    jGroup["statement"].push_back(ClauseToJSON(strWhere));
-                    continue;
-                }
-
-                /* Now we need to push our conditions back one set. */
-                encoding::json jNew =
-                {
-                    { "logical", strLogical },
-                    { "statement", encoding::json::array() },
-                };
-
-                /* Push our entire group to new now. */
-                jNew["statement"].push_back(jGroup);
-
-                /* Update our depth. */
-                if(++nDepth == 2)
-                    throw APIException(-71, "Query Syntax Error, maximum logical depth is 1");
-
-                /* Update our return value. */
-                jRet = jNew;
-
-                /* Reset our group's values. */
-                jGroup =
-                {
-                    { "logical", "NONE" },
-                    { "statement", encoding::json::array() },
-                };
-            }
-        }
-
-        /* Strip out logical grouping if none specified for last group. */
-        if(jGroup["logical"].get<std::string>() == "NONE")
-            jGroup.erase("logical");
-
-        /* Update to final statements. */
-        if(jRet.find("statement") != jRet.end())
-            jRet["statement"].push_back(jGroup);
-        else
-            jRet = jGroup;
 
         return jRet;
     }
@@ -1604,7 +1613,7 @@ namespace TAO::API
         /* Check for a set to compare. */
         const auto nBegin = strClause.find_first_of("!=<>");
         if(nBegin == strClause.npos)
-            throw APIException(-120, "Invalid Parameters, must use <key>=<value> with no extra characters.");
+            throw APIException(-120, "Query Syntax Error: must use <key>=<value> with no extra characters. ", strClause);
 
         /* Grab our current key. */
         const std::string strKey = strClause.substr(0, nBegin);
@@ -1612,7 +1621,7 @@ namespace TAO::API
         /* Check for our incoming parameter. */
         const std::string::size_type nDot = strKey.find('.');
         if(nDot == strKey.npos)
-            return debug::error("Syntax Error at '", strKey, "'. Missing '.'");
+            throw APIException(-60, "Query Syntax Error: malformed where clause at ", strKey);
 
         /* Build our current json value. */
         encoding::json jClause =
@@ -1638,7 +1647,7 @@ namespace TAO::API
 
         /* Check for valid values and parameters. */
         if(jClause["value"].get<std::string>().empty())
-            throw APIException(-120, "Invalid Parameters, must use <key>=<value> with no extra characters.");
+            throw APIException(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
 
         return jClause;
     }
@@ -1671,7 +1680,7 @@ namespace TAO::API
 
                     /* Check for empty value, due to ' ' or bad input. */
                     if(strValue.empty())
-                        throw APIException(-120, "Invalid Parameters, must use <key>=<value> with no extra characters.");
+                        throw APIException(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
                 }
 
                 /* Check for where clauses. */
@@ -1679,28 +1688,28 @@ namespace TAO::API
                 {
                     /* Check if we have operated before. */
                     if(!strWhere.empty()) //check for double WHERE
-                        throw APIException(-60, "Query Syntax Error, malformed where clause at ", strValue);
+                        throw APIException(-60, "Query Syntax Error: malformed where clause at ", strValue);
 
                     /* If where as key/value, append the value we parsed out. */
                     if(strKey == "where")
                     {
                         /* Check that our where clause is a proper conditional statement. */
                         if(strValue.find_first_of("!=<>") == strValue.npos)
-                            throw APIException(-60, "Query Syntax Error, malformed where clause at ", strValue);
+                            throw APIException(-60, "Query Syntax Error: malformed where clause at ", strValue);
 
                         strWhere += std::string(strValue);
                     }
 
                     /* Check if we have empty WHERE. */
                     if(n + 1 >= vParams.size())
-                        throw APIException(-60, "Query Syntax Error, malformed where clause at ", strValue);
+                        throw APIException(-60, "Query Syntax Error: malformed where clause at ", strValue);
 
                     /* Build a single where string for parsing. */
                     for(uint32_t i = n + 1; i < vParams.size(); ++i)
                     {
                         /* Check if we have operated before. */
                         if(vParams[i] == "WHERE" && strKey == "where") //check for double WHERE
-                            throw APIException(-60, "Query Syntax Error, malformed where clause at ", strValue);
+                            throw APIException(-60, "Query Syntax Error: malformed where clause at ", strValue);
 
                         /* Append the string with remaining arguments. */
                         strWhere += vParams[i];
@@ -1731,7 +1740,7 @@ namespace TAO::API
                 }
             }
             else
-                throw APIException(-120, "Invalid Parameters, must use <key>=<value> with no extra characters.");
+                throw APIException(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
         }
 
         return jRet;

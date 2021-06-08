@@ -124,10 +124,6 @@ namespace TAO
                 jParameters["where"] = TAO::API::QueryToJSON(strWhere);
             }
 
-
-            debug::log(0, jParameters.dump(4));
-
-
             /* Build the HTTP Header. */
             const std::string strContent = jParameters.dump();
             const std::string strReply = debug::safe_printstr

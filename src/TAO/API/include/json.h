@@ -147,6 +147,20 @@ namespace TAO
                                 bool fLookupName = true);
 
 
+        /** StatementToJSON
+         *
+         *  Recursive helper function for QueryToJSON to recursively generate JSON statements for use with filters.
+         *
+         *  @param[out] vWhere The statements to parse into query.
+         *  @param[out] nIndex The current statement being processed.
+         *  @param[out] jStatement The statement reference to pass through recursion.
+         *
+         *  @return The JSON statement generated with query.
+         *
+         **/
+        encoding::json StatementToJSON(std::vector<std::string> &vWhere, uint32_t &nIndex, encoding::json &jStatement);
+
+
         /** QueryToJSON
          *
          *  Turns a where query string in url encoding into a formatted JSON object.

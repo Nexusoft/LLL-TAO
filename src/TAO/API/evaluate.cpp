@@ -219,7 +219,7 @@ namespace TAO::API
             {
                 /* Check syntax to omit < and > operators for string comparisons. */
                 if(strOP.find_first_of("<>") != strOP.npos)
-                    throw APIException(-57, "Query Syntax Error, only '=' and '!=' operator allowed for TYPES::STRING");
+                    throw APIException(-57, "Query Syntax Error: only '=' and '!=' operator allowed for TYPES::STRING");
 
                 /* Grab our value from object */
                 const std::string strValue = objCheck.get<std::string>(strName);
@@ -232,7 +232,7 @@ namespace TAO::API
                 {
                     /* Check for multiple asterisk which will break our splitting logic. */
                     if(strCheck.find("**") != strCheck.npos)
-                        throw APIException(-56, "Query Syntax Error, duplicate wildcard not allowed ", strCheck);
+                        throw APIException(-56, "Query Syntax Error: duplicate wildcard not allowed ", strCheck);
 
                     /* Check for single asterisk. */
                     if(strCheck == "*")

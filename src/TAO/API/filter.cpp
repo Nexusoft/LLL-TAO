@@ -28,7 +28,7 @@ namespace TAO::API
     {
         /* Check for final depth and call our object filter there. */
         if(jStatement.find("statement") == jStatement.end())
-            return rFunc(jStatement, rCheck);
+            return rFunc(jStatement, rCheck); //execute evaluation function when reached final level of recursion
 
         /* Check for logical operator. */
         std::string strLogical = "NONE";
@@ -45,7 +45,7 @@ namespace TAO::API
                 /* Grab a reference of our clause. */
                 const encoding::json& jClause = jStatement["statement"][n];
 
-                /* If first iteration, set the result by evaluatino. */
+                /* If first iteration, set the result by evalute. */
                 if(n == 0)
                 {
                     fResult = FilterStatement(jClause, rCheck, rFunc);
