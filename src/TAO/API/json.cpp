@@ -1508,7 +1508,7 @@ namespace TAO::API
     }
 
 
-
+    /* Recursive helper function for QueryToJSON to recursively generate JSON statements for use with filters. */
     encoding::json StatementToJSON(std::vector<std::string> &vWhere, uint32_t &nIndex, encoding::json &jStatement)
     {
         /* Check if we have consumed all of our clauses. */
