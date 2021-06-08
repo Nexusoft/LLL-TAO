@@ -32,6 +32,19 @@ namespace TAO::API
     bool EvaluateWildcard(const std::string& strWildcard, const std::string& strValue);
 
 
+    /** EvaluateResults
+     *
+     *  Determines if an results JSON object should be included in a list based on given clause.
+     *
+     *  @param[in] jClause The clause to check filter for.
+     *  @param[in] jCheck The JSON object we are checking for.
+     *
+     *  @return true if the object should be included in the results.
+     *
+     **/
+    bool EvaluateResults(const encoding::json& jClause, const encoding::json& jCheck);
+
+
     /** EvaluateObject
      *
      *  Determines if an object should be included in a list based on given clause.

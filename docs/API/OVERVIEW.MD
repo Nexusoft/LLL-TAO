@@ -193,7 +193,7 @@ Error Codes
 | -54 | Missing name_proof / address_proof to credit |
 | -55 | Must have at least two recipients to debit from any |
 | -56 | Query Syntax Error: duplicate wildcard not allowed |
-| -57 | Query Syntax Error: only '=' operator allowed with wildcard |
+| -57 | Query Syntax Error: only '=' and '!=' operator allowed for type [typename] |
 | -58 | Debit transaction is not from a NXS account |
 | -59 | Account to credit is not a NXS account |
 | -60 | Query Syntax Error: malformed where clause at |

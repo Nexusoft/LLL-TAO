@@ -75,17 +75,6 @@ namespace TAO::API
     }
 
 
-    /* Determines if an object should be included in a list based on input parameters. */
-    bool FilterObject(const encoding::json& jParams, const TAO::Register::Object& objCheck)
-    {
-        /* Check for a where clause. */
-        if(jParams.find("where") == jParams.end())
-            return true; //no filters
-
-        return FilterStatement<TAO::Register::Object>(jParams["where"], objCheck, EvaluateObject);
-    }
-
-
     /* If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field */
     void FilterFieldname(const encoding::json& jParams, encoding::json &jResponse)
     {
@@ -99,5 +88,27 @@ namespace TAO::API
             const encoding::json jRet = { strField, jResponse[strField].get<std::string>() };
             jResponse = jRet;
         }
+    }
+
+
+    /* Determines if an object should be included in a list based on input parameters. */
+    bool FilterObject(const encoding::json& jParams, const TAO::Register::Object& objCheck)
+    {
+        /* Check for a where clause. */
+        if(jParams.find("where") == jParams.end())
+            return true; //no filters
+
+        return FilterStatement<TAO::Register::Object>(jParams["where"], objCheck, EvaluateObject);
+    }
+
+
+    /* Determines if an object should be included in results list if they match parameters. */
+    bool FilterResults(const encoding::json& jParams, const encoding::json& jCheck)
+    {
+        /* Check for a where clause. */
+        if(jParams.find("where") == jParams.end())
+            return true; //no filters
+
+        return FilterStatement<encoding::json>(jParams["where"], jCheck, EvaluateResults);
     }
 }

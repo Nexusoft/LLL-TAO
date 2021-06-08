@@ -109,6 +109,10 @@ namespace TAO::API
             /* Populate the response */
             const encoding::json jAccount = ObjectToJSON(rAccount);
 
+            /* Check that we match our filters. */
+            if(!FilterResults(jParams, jAccount))
+                continue;
+
             /* Check the offset. */
             if(++nTotal <= nOffset)
                 continue;

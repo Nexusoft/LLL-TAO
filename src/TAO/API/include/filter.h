@@ -59,4 +59,17 @@ namespace TAO::API
      **/
     bool FilterObject(const encoding::json& jParams, const TAO::Register::Object& objCheck);
 
+
+    /** FilterResults
+     *
+     *  Determines if an object should be included in results list if they match parameters.
+     *
+     *  @param[in] jParams The input parameters for the command.
+     *  @param[in] jCheck The json object we are checking for.
+     *
+     *  @return true if the object should be included in the results.
+     *
+     **/
+    bool FilterResults(const encoding::json& jParams, const encoding::json& jCheck);
+
 }

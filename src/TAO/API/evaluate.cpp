@@ -69,6 +69,161 @@ namespace TAO::API
     }
 
 
+    /* Determines if an JSON object should be included in a list based on given clause. */
+    bool EvaluateResults(const encoding::json& jClause, const encoding::json& jCheck)
+    {
+        /* Check that we are operating on a json object. */
+        if(jClause["class"].get<std::string>() != "results")
+            return true;
+
+        /* Check that field exists in object. */
+        const std::string strName = jClause["field"].get<std::string>();
+        if(jCheck.find(strName) == jCheck.end())
+            return false;
+
+        /* Grab our OP code now. */
+        const std::string strOP = jClause["operator"].get<std::string>();
+
+        /* Check our types to compare now. */
+        if(jCheck[strName].is_string())
+        {
+            /* Check syntax to omit < and > operators for string comparisons. */
+            if(strOP.find_first_of("<>") != strOP.npos)
+                throw APIException(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [string]");
+
+            /* Grab our string to check. */
+            const std::string strCheck = jCheck[strName].get<std::string>();
+
+            /* Grab a reference of value to check. */
+            const std::string strClause = jClause["value"].get<std::string>();
+            if(strClause.find("*") != strClause.npos) //handle for all characters wildcard
+            {
+                /* Find if we have a wildcard match. */
+                const bool fWildcard = EvaluateWildcard(strClause, strCheck);
+
+                /* Check for standard equals operator. */
+                if(strOP == "=" && fWildcard)
+                    return true;
+
+                /* Check for not operator. */
+                if(strOP == "!=" && !fWildcard)
+                    return true;
+            }
+
+            /* Check for not operator. */
+            if(strOP == "!=" && strClause != strCheck)
+                return true;
+
+            /* Check the rest of our combinations. */
+            if(strOP == "=" && strClause == strCheck)
+                return true;
+        }
+
+        /* Check now for floating points. */
+        if(jCheck[strName].is_number_float())
+        {
+            /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
+            const double dValue  = jCheck[strName].get<double>();
+            const double dCheck  = std::stod(jClause["value"].get<std::string>());
+
+            /* Check our not operator. */
+            if(strOP == "!=" && dValue != dCheck)
+                return true;
+            else
+            {
+                /* Check that our values match. */
+                if(strOP.find("=") != strOP.npos && dValue == dCheck)
+                    return true;
+
+                /* Check our less than operator. */
+                if(strOP.find("<") != strOP.npos && dValue < dCheck)
+                    return true;
+
+                /* Check our greater than operator. */
+                if(strOP.find(">") != strOP.npos && dValue > dCheck)
+                    return true;
+            }
+        }
+
+        /* Check now for integers. */
+        if(jCheck[strName].is_number_integer())
+        {
+            /* Handle for unsigned integers. */
+            if(jCheck[strName].is_number_unsigned())
+            {
+                /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
+                const uint64_t nValue  = jCheck[strName].get<uint64_t>();
+                const uint64_t nCheck  = std::stoull(jClause["value"].get<std::string>());
+
+                /* Check our not operator. */
+                if(strOP == "!=" && nValue != nCheck)
+                    return true;
+                else
+                {
+                    /* Check that our values match. */
+                    if(strOP.find("=") != strOP.npos && nValue == nCheck)
+                        return true;
+
+                    /* Check our less than operator. */
+                    if(strOP.find("<") != strOP.npos && nValue < nCheck)
+                        return true;
+
+                    /* Check our greater than operator. */
+                    if(strOP.find(">") != strOP.npos && nValue > nCheck)
+                        return true;
+                }
+            }
+            else
+            {
+                /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
+                const int64_t nValue  = jCheck[strName].get<int64_t>();
+                const int64_t nCheck  = std::stoll(jClause["value"].get<std::string>());
+
+                /* Check our not operator. */
+                if(strOP == "!=" && nValue != nCheck)
+                    return true;
+                else
+                {
+                    /* Check that our values match. */
+                    if(strOP.find("=") != strOP.npos && nValue == nCheck)
+                        return true;
+
+                    /* Check our less than operator. */
+                    if(strOP.find("<") != strOP.npos && nValue < nCheck)
+                        return true;
+
+                    /* Check our greater than operator. */
+                    if(strOP.find(">") != strOP.npos && nValue > nCheck)
+                        return true;
+                }
+            }
+        }
+
+
+        /* Check now for floating points. */
+        if(jCheck[strName].is_boolean())
+        {
+            /* Check syntax to omit < and > operators for string comparisons. */
+            if(strOP.find_first_of("<>") != strOP.npos)
+                throw APIException(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [bool]");
+
+            /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
+            const bool fValue  = jCheck[strName].get<bool>();
+            const bool fCheck  = (ToLower(jClause["value"].get<std::string>()) == "true") ? true : false;
+
+            /* Check our not operator. */
+            if(strOP == "!=" && fValue != fCheck)
+                return true;
+
+            /* Check that our values match. */
+            if(strOP == "=" && fValue == fCheck)
+                return true;
+        }
+
+        return false;
+    }
+
+
     /* Determines if an object should be included in a list based on given clause. */
     bool EvaluateObject(const encoding::json& jClause, const TAO::Register::Object& objCheck)
     {
@@ -81,7 +236,7 @@ namespace TAO::API
 
         /* Check for the available type. */
         if(!objCheck.Check(strName))
-            return true;
+            return false;
 
         /* Grab a reference of value to check. */
         const encoding::json& jCheck = jClause["value"];
@@ -267,7 +422,7 @@ namespace TAO::API
             {
                 /* Check syntax to omit < and > operators for string comparisons. */
                 if(strOP.find_first_of("<>") != strOP.npos)
-                    throw APIException(-57, "Query Syntax Error: only '=' and '!=' operator allowed for TYPES::STRING");
+                    throw APIException(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [string]");
 
                 /* Grab our value from object */
                 const std::string strValue = objCheck.get<std::string>(strName);
