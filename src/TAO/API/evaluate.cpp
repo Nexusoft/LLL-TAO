@@ -249,7 +249,6 @@ namespace TAO::API
         const std::string strOP = jClause["operator"].get<std::string>();
 
         /* Switch based on type. */
-        bool fEvaluate = false;
         switch(nType)
         {
             /* Check for uint8_t type. */
@@ -293,23 +292,22 @@ namespace TAO::API
                     nCheck = std::stod(jCheck.get<std::string>()) * GetFigures(objCheck);
 
                 /* Check our not operator. */
-                if(strOP.find("!=") != strOP.npos && nValue != nCheck)
+                if(strOP == "!=" && nValue != nCheck)
+                    return true;
+                else
                 {
-                    fEvaluate = true;
-                    break;
+                    /* Check that our values match. */
+                    if(strOP.find("=") != strOP.npos && nValue == nCheck)
+                        return true;
+
+                    /* Check our less than operator. */
+                    if(strOP.find("<") != strOP.npos && nValue < nCheck)
+                        return true;
+
+                    /* Check our greater than operator. */
+                    if(strOP.find(">") != strOP.npos && nValue > nCheck)
+                        return true;
                 }
-
-                /* Check that our values match. */
-                if(strOP.find("=") != strOP.npos && nValue == nCheck)
-                    fEvaluate = true;
-
-                /* Check our less than operator. */
-                if(strOP.find("<") != strOP.npos && nValue < nCheck)
-                    fEvaluate = true;
-
-                /* Check our greater than operator. */
-                if(strOP.find(">") != strOP.npos && nValue > nCheck)
-                    fEvaluate = true;
 
                 break;
             }
@@ -328,23 +326,22 @@ namespace TAO::API
                     hashCheck = TAO::Register::Address(jCheck.get<std::string>());
 
                 /* Check our not operator. */
-                if(strOP.find("!=") != strOP.npos && hashValue != hashCheck)
+                if(strOP == "!=" && hashValue != hashCheck)
+                    return true;
+                else
                 {
-                    fEvaluate = true;
-                    break;
+                    /* Check that our values match. */
+                    if(strOP.find("=") != strOP.npos && hashValue == hashCheck)
+                        return true;
+
+                    /* Check our less than operator. */
+                    if(strOP.find("<") != strOP.npos && hashValue < hashCheck)
+                        return true;
+
+                    /* Check our greater than operator. */
+                    if(strOP.find(">") != strOP.npos && hashValue > hashCheck)
+                        return true;
                 }
-
-                /* Check that our values match. */
-                if(strOP.find("=") != strOP.npos && hashValue == hashCheck)
-                    fEvaluate = true;
-
-                /* Check our less than operator. */
-                if(strOP.find("<") != strOP.npos && hashValue < hashCheck)
-                    fEvaluate = true;
-
-                /* Check our greater than operator. */
-                if(strOP.find(">") != strOP.npos && hashValue > hashCheck)
-                    fEvaluate = true;
 
                 break;
             }
@@ -362,23 +359,22 @@ namespace TAO::API
                     uint512_t(jCheck.get<std::string>());
 
                 /* Check our not operator. */
-                if(strOP.find("!=") != strOP.npos && hashValue != hashCheck)
+                if(strOP == "!=" && hashValue != hashCheck)
+                    return true;
+                else
                 {
-                    fEvaluate = true;
-                    break;
+                    /* Check that our values match. */
+                    if(strOP.find("=") != strOP.npos && hashValue == hashCheck)
+                        return true;
+
+                    /* Check our less than operator. */
+                    if(strOP.find("<") != strOP.npos && hashValue < hashCheck)
+                        return true;
+
+                    /* Check our greater than operator. */
+                    if(strOP.find(">") != strOP.npos && hashValue > hashCheck)
+                        return true;
                 }
-
-                /* Check that our values match. */
-                if(strOP.find("=") != strOP.npos && hashValue == hashCheck)
-                    fEvaluate = true;
-
-                /* Check our less than operator. */
-                if(strOP.find("<") != strOP.npos && hashValue < hashCheck)
-                    fEvaluate = true;
-
-                /* Check our greater than operator. */
-                if(strOP.find(">") != strOP.npos && hashValue > hashCheck)
-                    fEvaluate = true;
 
                 break;
             }
@@ -396,23 +392,22 @@ namespace TAO::API
                     uint1024_t(jCheck.get<std::string>());
 
                 /* Check our not operator. */
-                if(strOP.find("!=") != strOP.npos && hashValue != hashCheck)
+                if(strOP == "!=" && hashValue != hashCheck)
+                    return true;
+                else
                 {
-                    fEvaluate = true;
-                    break;
+                    /* Check our regular operators. */
+                    if(strOP.find("=") != strOP.npos && hashValue == hashCheck)
+                        return true;
+
+                    /* Check our less than operator. */
+                    if(strOP.find("<") != strOP.npos && hashValue < hashCheck)
+                        return true;
+
+                    /* Check our greater than operator. */
+                    if(strOP.find(">") != strOP.npos && hashValue > hashCheck)
+                        return true;
                 }
-
-                /* Check our regular operators. */
-                if(strOP.find("=") != strOP.npos && hashValue == hashCheck)
-                    fEvaluate = true;
-
-                /* Check our less than operator. */
-                if(strOP.find("<") != strOP.npos && hashValue < hashCheck)
-                    fEvaluate = true;
-
-                /* Check our greater than operator. */
-                if(strOP.find(">") != strOP.npos && hashValue > hashCheck)
-                    fEvaluate = true;
 
                 break;
             }
@@ -438,35 +433,23 @@ namespace TAO::API
 
                     /* Check for standard equals operator. */
                     if(strOP == "=" && fWildcard)
-                    {
-                        fEvaluate = true;
-                        break;
-                    }
+                        return true;
 
                     /* Check for not operator. */
                     if(strOP == "!=" && !fWildcard)
-                    {
-                        fEvaluate = true;
-                        break;
-                    }
+                        return true;
                 }
 
                 /* Check for not operator. */
                 if(strOP == "!=" && strValue != strCheck)
-                {
-                    fEvaluate = true;
-                    break;
-                }
+                    return true;
 
                 /* Check the rest of our combinations. */
                 if(strOP == "=" && strValue == strCheck)
-                {
-                    fEvaluate = true;
-                    break;
-                }
+                    return true;
             }
         }
 
-        return fEvaluate;
+        return false;
     }
 }
