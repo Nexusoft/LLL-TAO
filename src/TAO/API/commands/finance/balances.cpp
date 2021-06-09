@@ -23,7 +23,10 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/constants.h>
 #include <TAO/API/include/extract.h>
+#include <TAO/API/include/filter.h>
+#include <TAO/API/include/format.h>
 #include <TAO/API/include/list.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/json.h>
@@ -71,14 +74,14 @@ namespace TAO::API
 
     /* Get a summary of nBalances information across all accounts belonging to the currently logged in signature chain
        for a particular token type */
-    encoding::json Finance::GetBalances(const encoding::json& params, const bool fHelp)
+    encoding::json Finance::GetBalances(const encoding::json& j, const bool fHelp)
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
-            Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
+            Commands::Get<Users>()->GetSession(j).GetAccount()->Genesis();
 
         /* The token to return balances for. Default to 0 (NXS) */
-        const uint256_t hashToken = ExtractToken(params);
+        const uint256_t hashToken = ExtractToken(j);
 
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
         std::vector<TAO::Register::Address> vRegisters;
@@ -151,26 +154,28 @@ namespace TAO::API
 
 
     /* Get a summary of nBalances information across all accounts belonging to the currently logged in signature chain */
-    encoding::json Finance::ListBalances(const encoding::json& params, const bool fHelp)
+    encoding::json Finance::ListBalances(const encoding::json& jParams, const bool fHelp)
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
-            Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
+            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0, nTotal = 0;
 
         /* Get the params to apply to the response. */
         std::string strOrder = "desc";
-        ExtractList(params, strOrder, nLimit, nOffset);
+        ExtractList(jParams, strOrder, nLimit, nOffset);
 
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
         std::vector<TAO::Register::Address> vRegisters;
         if(!ListRegisters(hashGenesis, vRegisters))
             throw APIException(-74, "No registers found");
 
+        /* Keep a map to track our aggregated balance, we use a second map for better readability. */
+        std::map<uint256_t, std::map<std::string, uint64_t>> mapBalances;
+
         /* Iterate through each register we own */
-        encoding::json jRet = encoding::json::array();
         for(const auto& hashRegister : vRegisters)
         {
             /* Initial check that it is an account/trust/token, before we hit the DB to get the nBalances */
@@ -179,47 +184,81 @@ namespace TAO::API
 
             /* Get the register from the register DB */
             TAO::Register::Object object;
-            if(!LLD::Register->ReadObject(hashRegister, object)) // note we don't include mempool state here as we want the confirmed
-                continue;
+            if(!LLD::Register->ReadObject(hashRegister, object))
+                continue; // note we don't include mempool state here as we want the confirmed bakances
 
             /* Check that this is an account */
             if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
                 continue;
 
+            /* Check the accounts match the where filter. */
+            if(!FilterObject(jParams, object))
+                continue;
+
             /* Get the token */
             const uint256_t hashToken = object.get<uint256_t>("token");
 
-            /* Populate the response object */
-            balances_t nBalances;
-            nBalances.nBalance            += object.get<uint64_t>("nBalances");
-            nBalances.nDecimals            = GetDecimals(object);
-            nBalances.nUnclaimed           = GetPending(hashGenesis, hashToken);
-            nBalances.nUnconfirmed         = GetUnconfirmed(hashGenesis, hashToken, false);
-            nBalances.nUnconfirmedOutgoing = GetUnconfirmed(hashGenesis, hashToken, true); //XXX: hacky names and unneeded
-            nBalances.nAvailable           = nBalances.nBalance - nBalances.nUnconfirmedOutgoing;
-            nBalances.nImmature            = GetImmature(hashGenesis);
+            /* Cache the decimals for this token to use for display */
+            if(!mapBalances.count(hashToken))
+            {
+                /* Grab our decimals and store as string key. */
+                mapBalances[hashToken]["decimals"] = GetDecimals(object);
+
+                /* We are initializing here to not leave any room for uninitialed values across platforms. */
+                mapBalances[hashToken]["balance"]  = 0;
+                mapBalances[hashToken]["stake"]    = 0;
+            }
+
+            /* Increment the balance */
+            mapBalances[hashToken]["balance"] += object.get<uint64_t>("balance");
+
+            /* Check for available stake. */
+            if(object.Standard() == TAO::Register::OBJECTS::TRUST)
+                mapBalances[hashToken]["stake"] += object.get<uint64_t>("stake");
+        }
+
+        /* Iterate through each register we own */
+        encoding::json jRet = encoding::json::array();
+        for(const auto& rBalances : mapBalances)
+        {
+            /* Get the token */
+            const TAO::Register::Address hashToken = rBalances.first;
+
+            /* Grab our decimals from balances map. */
+            const uint8_t nDecimals = rBalances.second.at("decimals");
+
+            /* Grab unconfirmed balances as a pair. */
+            const uint64_t nOutgoing =
+                GetUnconfirmed(hashGenesis, hashToken, true);
 
             /* Resolve the name of the token name */
             const std::string strToken =
-                (hashToken != 0 ? Names::ResolveName(hashGenesis, hashToken) : "NXS");
+                (hashToken != TOKEN::NXS ? Names::ResolveName(hashGenesis, hashToken) : "NXS");
 
             /* Poplate the json response object. */
             encoding::json jBalances;
-            jBalances["token"]        = hashToken.ToString();
-            jBalances["available"]    = (double)nBalances.nAvailable   / math::pow(10, nBalances.nDecimals);
-            jBalances["pending"]      = (double)nBalances.nUnclaimed   / math::pow(10, nBalances.nDecimals);
-            jBalances["unconfirmed"]  = (double)nBalances.nUnconfirmed / math::pow(10, nBalances.nDecimals);
+            if(hashToken != TOKEN::NXS)
+                jBalances["token"]    = hashToken.ToString();
+
+            /* Populate the rest of the balances. */
+            jBalances["available"]    = FormatBalance(rBalances.second.at("balance") - nOutgoing,    nDecimals);
+            jBalances["unclaimed"]    = FormatBalance(GetPending(hashGenesis, hashToken),            nDecimals);
+            jBalances["unconfirmed"]  = FormatBalance(GetUnconfirmed(hashGenesis, hashToken, false), nDecimals);
 
             /* Add the token identifier */
             if(!strToken.empty())
                 jBalances["token_name"] = strToken;
 
             /* Add stake/immature for NXS only */
-            if(hashToken == 0)
+            if(hashToken == TOKEN::NXS)
             {
-                jBalances["stake"]    = (double)nBalances.nStake    / math::pow(10, nBalances.nDecimals);
-                jBalances["immature"] = (double)nBalances.nImmature / math::pow(10, nBalances.nDecimals);
+                jBalances["stake"]    = FormatBalance(rBalances.second.at("stake"), nDecimals);
+                jBalances["immature"] = FormatBalance(GetImmature(hashGenesis),     nDecimals);
             }
+
+            /* Filter results now. */
+            if(!FilterResults(jParams, jBalances))
+                continue;
 
             /* Check the offset. */
             if(++nTotal <= nOffset)
