@@ -76,8 +76,28 @@ namespace TAO::API
         if(jClause["class"].get<std::string>() != "results")
             return true;
 
-        /* Check that field exists in object. */
+        /* Grab a copy of our current name we are processing. */
         const std::string strName = jClause["field"].get<std::string>();
+
+        /* Check that we have any nested parameters. */
+        const auto nFind = strName.find("."); //we use . to move up levels of recursion
+        if(nFind != strName.npos)
+        {
+            /* Grab a copy of our substring. */
+            const std::string strKey   = strName.substr(0, nFind);
+
+            /* Check that we have nested values. */
+            if(jCheck.find(strKey) == jCheck.end())
+                return false;
+
+            /* Grab a copy to pass back recursively. */
+            encoding::json jAdjusted = jClause;
+            jAdjusted["field"] = strName.substr(nFind + 1);
+
+            return EvaluateResults(jAdjusted, jCheck[strKey]);
+        }
+
+        /* Check that field exists in object. */
         if(jCheck.find(strName) == jCheck.end())
             return false;
 
