@@ -160,7 +160,8 @@ namespace TAO::API
         nLimit = 100;
         if(jParams.find("limit") != jParams.end())
         {
-            std::string strLimit = jParams["limit"].get<std::string>();
+            /* Grab our limit from parameters. */
+            const std::string strLimit = jParams["limit"].get<std::string>();
 
             /* Check to see whether the limit includes an offset comma separated */
             if(IsAllDigit(strLimit))

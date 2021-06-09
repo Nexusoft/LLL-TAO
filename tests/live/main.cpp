@@ -144,6 +144,9 @@ const uint256_t hashSeed = 55;
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    
+    return 0;
+
     config::mapArgs["-datadir"] = "/public/SYNC";
 
     /* Initialize LLD. */

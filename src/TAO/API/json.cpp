@@ -1246,7 +1246,6 @@ namespace TAO::API
             /* Add the name to the response if one is found. */
             if(!strName.empty())
                 jRet["name"] = strName;
-
         }
 
         /* Now build the response based on the register type */

@@ -19,12 +19,14 @@ ________________________________________________________________________________
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
+#include <TAO/API/include/filter.h>
 #include <TAO/API/include/list.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>
+#include <TAO/API/names/types/names.h>
 #include <TAO/API/types/commands/finance.h>
 
 #include <TAO/Ledger/types/sigchain.h>
@@ -61,6 +63,10 @@ namespace TAO
             /* The token to filter on.  Default to 0 (NXS) */
             const uint256_t hashToken = ExtractToken(jParams);
 
+            /* Check for where clause. */
+            const bool fWhere = (jParams.find("where") != jParams.end());
+            const bool fToken = ((jParams.find("token_name") != jParams.end()) || (jParams.find("token") != jParams.end()));
+
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vAccounts;
             if(!ListAccounts(hashGenesis, vAccounts, false, true))
@@ -86,17 +92,29 @@ namespace TAO
                 if(!CheckType(jParams, objThis))
                     continue;
 
-                /* Check the account matches the filter */
-                if(objThis.get<uint256_t>("token") != hashToken)
+                /* Check the account matches the parameter filter if supplied, otherwise revert to where clause. */
+                if(!fWhere && !fToken && objThis.get<uint256_t>("token") != hashToken)
+                    continue;
+
+                /* Check the accounts match the where filter. */
+                if(!FilterObject(jParams, objThis))
                     continue;
 
                 /* Check to see whether the transaction has had all children filtered out */
-                encoding::json jObj = TAO::API::ObjectToJSON(jParams, objThis, hashRegister);
-                if(jObj.empty())
+                encoding::json jObject = TAO::API::ObjectToJSON(objThis);
+                if(jObject.empty())
+                    continue;
+
+                /* Add additional data for finance call. */
+                jObject["address"] = hashRegister.ToString();
+                jObject["name"]    = Names::ResolveName(hashGenesis, hashRegister);
+
+                /* Check results filters if supplied. */
+                if(!FilterResults(jParams, jObject))
                     continue;
 
                 /* Add to our return json. */
-                jRet.push_back(jObj);
+                jRet.push_back(jObject);
 
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
