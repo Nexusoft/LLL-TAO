@@ -43,21 +43,6 @@ namespace TAO::API
         void Initialize() final;
 
 
-        /** RewriteURL
-         *
-         *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-         *  map directly to a function in the target API.  Insted this method can be overriden to
-         *  parse the incoming URL and route to a different/generic method handler,
-         *
-         *  @param[in] strMethod The name of the method being invoked.
-         *  @param[out] jParams The json array of parameters to be modified and passed back.
-         *
-         *  @return the modified API method URL as a string
-         *
-         **/
-        std::string RewriteURL(const std::string& strMethod, encoding::json &jParams) final;
-
-
         /** Name
          *
          *  Returns the name of this API.

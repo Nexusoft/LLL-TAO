@@ -84,7 +84,7 @@ namespace TAO::API
         if(nFind != strName.npos)
         {
             /* Grab a copy of our substring. */
-            const std::string strKey   = strName.substr(0, nFind);
+            const std::string strKey = strName.substr(0, nFind);
 
             /* Check that we have nested values. */
             if(jCheck.find(strKey) == jCheck.end())

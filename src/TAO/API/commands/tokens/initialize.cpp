@@ -94,7 +94,7 @@ namespace TAO::API
         );
 
 
-        /* Handle for all GET operations. */
+        /* Handle for all LIST operations. */
         mapFunctions["list"] = Function
         (
             std::bind
