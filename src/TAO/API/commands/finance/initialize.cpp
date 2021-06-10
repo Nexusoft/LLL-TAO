@@ -88,15 +88,34 @@ namespace TAO::API
             )
         );
 
+        /* Handle for BALANCES. */
+        mapFunctions["get/balances"] = Function
+        (
+            std::bind
+            (
+                &Finance::GetBalances,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
 
-        mapFunctions["get/balances"]   = Function(std::bind(&Finance::GetBalances, this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["list/balances"]   = Function(std::bind(&Finance::ListBalances, this, std::placeholders::_1, std::placeholders::_2));
 
-        mapFunctions["get/stakeinfo"]   = Function(std::bind(&Finance::StakeInfo, this, std::placeholders::_1, std::placeholders::_2));
+        /* Handle for Stake Info. */
+        mapFunctions["get/stakeinfo"] = Function
+        (
+            std::bind
+            (
+                &Finance::GetStakeInfo,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
 
         mapFunctions["list/account/transactions"]  = Function(std::bind(&Finance::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["migrate/accounts"]    = Function(std::bind(&Finance::MigrateAccounts, this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["set/stake"]       = Function(std::bind(&Finance::Stake, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["set/stake"]       = Function(std::bind(&Finance::SetStake, this, std::placeholders::_1, std::placeholders::_2));
 
         //mapFunctions["list/trustaccounts"] = Function(std::bind(&Finance::TrustAccounts, this, std::placeholders::_1, std::placeholders::_2));
     }

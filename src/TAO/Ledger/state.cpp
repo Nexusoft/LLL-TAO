@@ -1122,16 +1122,20 @@ namespace TAO
                          * It also handles marking stake changes in stake pool as processed, because the block is likely
                          * mined by another node on the network, and stake change must be marked when that block is received.
                          */
-                        StakeChange request;
-                        if(LLD::Local->ReadStakeChange(tx.hashGenesis, request) && !request.fProcessed)
+                        StakeChange tRequest;
+                        if(LLD::Local->ReadStakeChange(tx.hashGenesis, tRequest))
                         {
-                            /* Mark as processed. */
-                            request.fProcessed = true;
-                            request.hashTx = tx.GetHash();
+                            /* Update stake change request if not processed. */
+                            if(!tRequest.fProcessed)
+                            {
+                                /* Mark as processed. */
+                                tRequest.fProcessed = true;
+                                tRequest.hashTx     = hash;
 
-                            /* Erase if we can't update it. */
-                            if(!LLD::Local->WriteStakeChange(tx.hashGenesis, request))
-                                LLD::Local->EraseStakeChange(tx.hashGenesis);
+                                /* Erase if we can't update it. */
+                                if(!LLD::Local->WriteStakeChange(tx.hashGenesis, tRequest))
+                                    LLD::Local->EraseStakeChange(tx.hashGenesis);
+                            }
                         }
                     }
 

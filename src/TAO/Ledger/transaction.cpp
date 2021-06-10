@@ -1023,18 +1023,21 @@ namespace TAO
                         if(!LLD::Ledger->WriteStake(hashGenesis, hashLast))
                             return debug::error(FUNCTION, "failed to write last stake");
 
-                        /* If local database has a stake change request for this transaction that is marked as processed, reset it.
-                         * If it is later reconnected it can be marked as processed again. Otherwise, the stake minter will
-                         * recognize that the stake change is reset and implement it with the next stake block.
-                         */
-                        StakeChange request;
-                        if(LLD::Local->ReadStakeChange(hashGenesis, request) && request.fProcessed && request.hashTx == GetHash())
+                        /* If local database has a stake change request, update it to not processed. */
+                        StakeChange tRequest;
+                        if(LLD::Local->ReadStakeChange(hashGenesis, tRequest))
                         {
-                            request.fProcessed = false;
-                            request.hashTx = 0;
+                            /* Check for processed change that's also for this transaction. */
+                            if(tRequest.fProcessed && tRequest.hashTx == GetHash()) //XXX: this is ugly, needs improvement
+                            {
+                                /* Set the stake request to not processed now. */
+                                tRequest.fProcessed = false;
+                                tRequest.hashTx = 0;
 
-                            if(!LLD::Local->WriteStakeChange(hashGenesis, request))
-                                debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail
+                                /* Update stake change request on disconnect. */
+                                if(!LLD::Local->WriteStakeChange(hashGenesis, tRequest))
+                                    debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail
+                            }
                         }
                     }
                     else

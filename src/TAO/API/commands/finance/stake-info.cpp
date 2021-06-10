@@ -44,7 +44,7 @@ namespace TAO
     {
 
         /* Get staking metrics for a trust account */
-        encoding::json Finance::StakeInfo(const encoding::json& params, const bool fHelp)
+        encoding::json Finance::GetStakeInfo(const encoding::json& params, const bool fHelp)
         {
             /* The user genesis hash */
             const uint256_t hashGenesis =
@@ -55,22 +55,22 @@ namespace TAO
                 TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
             /* Attempt to read our trust register. */
-            TAO::Register::Object trust;
-            if(!LLD::Register->ReadObject(hashRegister, trust, TAO::Ledger::FLAGS::MEMPOOL))
+            TAO::Register::Object objTrust;
+            if(!LLD::Register->ReadObject(hashRegister, objTrust, TAO::Ledger::FLAGS::MEMPOOL))
                 throw APIException(-70, "Trust account not found");
 
             /* Grab our trust score since we will use in further calculations. */
-            const uint64_t nTrustScore = trust.get<uint64_t>("trust");
+            const uint64_t nTrustScore = objTrust.get<uint64_t>("trust");
 
             /* Set trust account values for return data */
             encoding::json jRet;
             jRet["address"] = hashRegister.ToString();
-            jRet["balance"] = FormatBalance(trust.get<uint64_t>("balance"), 0);
-            jRet["stake"]   = FormatBalance(trust.get<uint64_t>("stake"),   0);
+            jRet["balance"] = FormatBalance(objTrust.get<uint64_t>("balance"), 0);
+            jRet["stake"]   = FormatBalance(objTrust.get<uint64_t>("stake"),   0);
             jRet["trust"]   = nTrustScore;
 
             /* Need the stake minter running for accessing current staking metrics.*/
-            TAO::Ledger::StakeMinter& rStakeMinter = TAO::Ledger::StakeMinter::GetInstance();
+            const TAO::Ledger::StakeMinter& rStakeMinter = TAO::Ledger::StakeMinter::GetInstance();
             if(rStakeMinter.IsStarted())
             {
                 /* The trust account is on hold when it does not have genesis, and is waiting to reach minimum age to stake */

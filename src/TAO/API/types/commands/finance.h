@@ -123,8 +123,7 @@ namespace TAO::API
 
         /** GetBalances
          *
-         *  Get a summary of balance information across all accounts belonging to the currently logged in signature chain
-         *  for a particular token type
+         *  Get balances for a particular token type including immature, stake, and unclaimed.
          *
          *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
@@ -135,20 +134,7 @@ namespace TAO::API
         encoding::json GetBalances(const encoding::json& jParams, const bool fHelp);
 
 
-        /** ListBalances
-         *
-         *  Get a summary of balance information across all accounts belonging to the currently logged in signature chain
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json ListBalances(const encoding::json& jParams, const bool fHelp);
-
-
-        /** StakeInfo
+        /** GetStakeInfo
          *
          *  Get staking metrics for a trust account.
          *
@@ -158,7 +144,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json StakeInfo(const encoding::json& jParams, const bool fHelp);
+        encoding::json GetStakeInfo(const encoding::json& jParams, const bool fHelp);
 
 
         /** List
@@ -210,20 +196,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Stake(const encoding::json& jParams, const bool fHelp);
-
-
-        /** TrustAccounts
-         *
-         *  Lists all trust accounts in the chain
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json TrustAccounts(const encoding::json& jParams, const bool fHelp);
+        encoding::json SetStake(const encoding::json& jParams, const bool fHelp);
 
     };
 }
