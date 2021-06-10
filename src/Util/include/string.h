@@ -92,36 +92,36 @@ bool ParseMoney(const std::string& str, int64_t& nRet);
 *
 *  Trims spaces from the left of a std::string.
 *
-*  @param[in] s The string to be trimmed.
+*  @param[in] strValue The string to be trimmed.
 *
 *  @return The string with all leading spaces removed.
 *
 **/
-std::string &ltrim(std::string &s);
+std::string &ltrim(std::string &strValue);
 
 
 /** rtrim
 *
 *  Trims spaces from the right of a std::string.
 *
-*  @param[in] s The string to be trimmed.
+*  @param[in] strValue The string to be trimmed.
 *
 *  @return The string with all trailing spaces removed.
 *
 **/
-std::string &rtrim(std::string &s);
+std::string &rtrim(std::string &strValue);
 
 
 /** trim
 *
 *  Trims spaces from both ends of a std::string.
 *
-*  @param[in] s The string to be trimmed.
+*  @param[in] strValue The string to be trimmed.
 *
 *  @return The string with all leading and trailing spaces removed.
 *
 **/
-std::string &trim(std::string &s);
+std::string &trim(std::string &strValue);
 
 
 /** EqualsNoCase

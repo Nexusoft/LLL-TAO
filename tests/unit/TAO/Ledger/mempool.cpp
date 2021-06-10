@@ -959,7 +959,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
 
         {
             //random shuffle the list for sequencing
-            std::random_shuffle(vTX.begin(), vTX.end());
+            LLC::random_shuffle(vTX.begin(), vTX.end());
 
             //accept all transactions in random ordering
             for(auto& tx : vTX)

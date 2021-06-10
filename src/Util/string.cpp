@@ -150,21 +150,19 @@ bool ParseMoney(const std::string& str, int64_t& nRet)
 
 
 /*  Trims spaces from the left of a std::string. */
-std::string &ltrim(std::string &s)
+std::string &ltrim(std::string &strValue)
 {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))));
-    return s;
+    strValue.erase(strValue.begin(), std::find_if(strValue.begin(), strValue.end(), std::bind1st(std::not_equal_to<char>(), ' ')));
+    return strValue;
 }
 
 
 
 /*  Trims spaces from the right of a std::string. */
-std::string &rtrim(std::string &s)
+std::string &rtrim(std::string &strValue)
 {
-    s.erase(std::find_if(s.rbegin(), s.rend(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
-    return s;
+    strValue.erase(std::find_if(strValue.rbegin(), strValue.rend(), std::bind1st(std::not_equal_to<char>(), ' ')).base(), strValue.end());
+    return strValue;
 }
 
 
