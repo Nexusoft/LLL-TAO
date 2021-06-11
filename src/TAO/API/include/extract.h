@@ -12,6 +12,8 @@
 ____________________________________________________________________________________________*/
 #pragma once
 
+#include <TAO/API/types/exception.h>
+
 #include <Util/include/json.h>
 
 /* Global TAO namespace. */
@@ -43,6 +45,18 @@ namespace TAO::API
     uint256_t ExtractToken(const encoding::json& jParams);
 
 
+    /** ExtractAmount
+     *
+     *  Extract an amount value from either string or integer and convert to its final value.
+     *
+     *  @param[in] jParams The parameters to extract amount from.
+     *  @param[in] nFigures The figures calculated from decimals.
+     *
+     *  @return The amount represented as whole integer value.
+     *
+     **/
+    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures);
+
 
     /** ExtractList
      *
@@ -55,5 +69,55 @@ namespace TAO::API
      *
      **/
     void ExtractList(const encoding::json& params, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset);
+
+
+    /** ExtractInteger
+     *
+     *  Extracts an integer value from given input parameters.
+     *
+     *  @param[in] jParams The parameters that contain requesting value.
+     *  @param[in] strKey The key that we are checking parameters for.
+     *  @param[in] nLimit The numeric limits to bound this type to, that may be less than type's value.
+     *
+     *  @return The extracted integer value.
+     *
+     **/
+    template<typename Type>
+    Type ExtractInteger(const encoding::json& jParams, const char* strKey, const Type nLimit = std::numeric_limits<Type>::max())
+    {
+        /* Check for missing parameter. */
+        if(jParams.find(strKey) != jParams.end())
+        {
+            /* Catch parsing exceptions. */
+            try
+            {
+                /* Build our return value. */
+                Type nRet = 0;
+
+                /* Convert to value if in string form. */
+                if(jParams[strKey].is_string())
+                    nRet = std::stoull(jParams[strKey].get<std::string>());
+
+                /* Grab value regularly if it is integer. */
+                else if(jParams[strKey].is_number_integer())
+                    nRet = jParams[strKey].get<Type>();
+
+                /* Otherwise we have an invalid parameter. */
+                else
+                    throw APIException(-57, "Invalid Parameter [", strKey, "]");
+
+                /* Check our numeric limits now. */
+                if(nRet > nLimit)
+                    throw APIException(-60, "[", strKey, "] out of range [", nLimit, "]");
+
+                return nRet;
+            }
+            catch(const encoding::detail::exception& e) { throw APIException(-57, "Invalid Parameter [", strKey, "]");           }
+            catch(const std::invalid_argument& e)       { throw APIException(-57, "Invalid Parameter [", strKey, "]");           }
+            catch(const std::out_of_range& e)           { throw APIException(-60, "[", strKey, "] out of range [", nLimit, "]"); }
+        }
+
+        throw APIException(-56, "Missing Parameter [", strKey, "]");
+    }
 
 }

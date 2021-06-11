@@ -57,43 +57,11 @@ namespace TAO::API
             /* Generate register address for token. */
             hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
 
-            /* Check for supply parameter. */
-            if(jParams.find("supply") == jParams.end())
-                throw APIException(-119, "Missing supply");
-
             /* Extract the supply parameter */
-            uint64_t nSupply = 0;
-            if(jParams.find("supply") != jParams.end())
-            {
-                /* Attempt to convert the supplied value to a 64-bit unsigned integer, catching argument/range exceptions */
-                try  { nSupply = std::stoull(jParams["supply"].get<std::string>()); }
-                catch(const std::invalid_argument& e)
-                {
-                    throw APIException(-175, "Invalid supply amount. Supply must be whole number value");
-                }
-                catch(const std::out_of_range& e)
-                {
-                    throw APIException(-176, "Invalid supply amount. The maximum token supply is 18446744073709551615");
-                }
-            }
+            const uint64_t nSupply  = ExtractInteger<uint64_t>(jParams, "supply");
 
             /* Check for nDecimals parameter. */
-            uint8_t nDecimals = 0;
-            if(jParams.find("decimals") != jParams.end())
-            {
-                /* Attempt to convert the supplied value catching argument / range exceptions */
-                bool fValid = false;
-                try
-                {
-                    nDecimals = std::stoul(jParams["decimals"].get<std::string>());
-                    fValid = (nDecimals <= 8);
-                }
-                catch(const std::exception& e) { fValid = false; }
-
-                /* Check for errors. */
-                if(!fValid)
-                    throw APIException(-177, "Invalid decimals amount.  Decimals must be whole number value between 0 and 8");
-            }
+            const uint8_t nDecimals = ExtractInteger<uint64_t>(jParams, "decimals", 8);
 
             /* Sanitize the supply/decimals combination for uint64 overflow */
             const uint64_t nCoinFigures = math::pow(10, nDecimals);

@@ -93,7 +93,7 @@ TEST_CASE( "Test Tokens API - create token", "[tokens]")
 
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -119);
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -56);
     }
 
     /* tokens/create/token success */
@@ -105,7 +105,7 @@ TEST_CASE( "Test Tokens API - create token", "[tokens]")
         params["session"] = SESSION1;
         params["name"] = strToken;
         params["supply"] = "10000";
-        params["decimals"] = "2";
+        params["decimals"] = 2;
 
         /* Invoke the API */
         ret = APICall("tokens/create/token", params);

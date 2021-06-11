@@ -132,7 +132,23 @@ In the event that an API call results in an error, a JSON object will be returne
 }
 ```
 
-Error Codes
+
+DSL Error Codes
+
+| Code   | Message   |
+| :-----:| :-------- |
+| 1 | Query Syntax Error: duplicate wildcard not allowed |
+| 2 | Query Syntax Error: only '=' and '!=' operator allowed for type [typename] |
+| 3 | Query Syntax Error: malformed where clause at [clause] |
+| 4 | Query Syntax Error: must use <key>=<value> with no extra characters. |
+| 5 | Query Syntax Error: must use '(' and ')' to mix AND/OR statements |
+| 6 | Query Syntax Error: missing logical operator for group |
+| 7 |  |
+| 8 |  |
+| 9 |  |
+
+
+API Error Codes
 
 | Code   | Message   |
 | :-----:| :-------- |
@@ -192,11 +208,11 @@ Error Codes
 | -53 | Missing name / address of account to credit |
 | -54 | Missing name_proof / address_proof to credit |
 | -55 | Must have at least two recipients to debit from any |
-| -56 | Query Syntax Error: duplicate wildcard not allowed |
-| -57 | Query Syntax Error: only '=' and '!=' operator allowed for type [typename] |
+| -56 | Missing Parameter [name] |
+| -57 | Invalid Parameter [name] |
 | -58 | Debit transaction is not from a NXS account |
 | -59 | Account to credit is not a NXS account |
-| -60 | Query Syntax Error: malformed where clause at |
+| -60 | [name] out of range [max] |
 | -61 | Proof account is for a different token than the asset token |
 | -62 | Coinbase transaction mined by different user |
 | -63 | Could not retrieve default NXS account to credit |
@@ -207,7 +223,7 @@ Error Codes
 | -68 | Amount too small |
 | -69 | Insufficient funds |
 | -70 | Trust account not found |
-| -71 | Query Syntax Error, maximum logical depth is 1 |
+| -71 | |
 | -72 | Register is not a trust account |
 | -73 | Trust account is not a NXS account |
 | -74 | No registers found |
@@ -256,9 +272,9 @@ Error Codes
 | -117 | Item not found |
 | -118 | Missing type |
 | -119 | Missing supply |
-| -120 | Query Syntax Error: must use <key>=<value> with no extra characters. |
-| -121 | Query Syntax Error: must use '(' and ')' to mix AND/OR statements |
-| -122 | Query Syntax Error: missing logical operator for group |
+| -120 |  |
+| -121 |  |
+| -122 |  |
 | -123 | Object is not a token |
 | -124 | Unknown token / account |
 | -125 | Token not found |

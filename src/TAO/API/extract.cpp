@@ -143,6 +143,57 @@ namespace TAO::API
     }
 
 
+    /* Extract an amount value from either string or integer and convert to its final value. */
+    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures)
+    {
+        /* Check for missing parameter. */
+        if(jParams.find("amount") != jParams.end())
+        {
+            /* Watch our numeric limits. */
+            const uint64_t nLimit = std::numeric_limits<uint64_t>::max();
+
+            /* Catch parsing exceptions. */
+            try
+            {
+                /* Initialize our return value. */
+                double dValue = 0;
+
+                /* Convert to value if in string form. */
+                if(jParams["amount"].is_string())
+                    dValue = std::stod(jParams["amount"].get<std::string>());
+
+                /* Grab value regularly if it is integer. */
+                else if(jParams["amount"].is_number_unsigned())
+                    dValue = double(jParams["amount"].get<uint64_t>());
+
+                /* Check for a floating point value. */
+                else if(jParams["amount"].is_number_float())
+                    dValue = jParams["amount"].get<double>();
+
+                /* Otherwise we have an invalid parameter. */
+                else
+                    throw APIException(-57, "Invalid Parameter [amount]");
+
+                /* Check our minimum range. */
+                if(dValue == 0)
+                    throw APIException(-68, "[amount] too small");
+
+                /* Check our limits and ranges now. */
+                if(uint64_t(dValue) > (nLimit / nFigures))
+                    throw APIException(-60, "[amount] out of range [", nLimit, "]");
+
+                /* Final compute of our figures. */
+                return uint64_t(dValue * nFigures);
+            }
+            catch(const encoding::detail::exception& e) { throw APIException(-57, "Invalid Parameter [amount]");           }
+            catch(const std::invalid_argument& e)       { throw APIException(-57, "Invalid Parameter [amount]");           }
+            catch(const std::out_of_range& e)           { throw APIException(-60, "[amount] out of range [", nLimit, "]"); }
+        }
+
+        throw APIException(-56, "Missing Parameter [amount]");
+    }
+
+
     /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
     void ExtractList(const encoding::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
     {

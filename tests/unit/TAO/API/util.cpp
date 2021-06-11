@@ -184,7 +184,7 @@ encoding::json APICall(const std::string& strMethod, const encoding::json& jsonP
             throw "Socket Error";
 
         /* Catch if the connection timed out. */
-        if(apiNode.Timeout(30000))
+        if(apiNode.Timeout(3000))
             throw "Socket Timeout";
 
         /* Read the response packet. */
