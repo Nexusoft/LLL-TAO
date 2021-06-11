@@ -57,23 +57,13 @@ namespace TAO::API
         if(hashToken == 0)
             throw APIException(-212, "Invalid token");
 
-        /* Check for amount parameter. */
-        if(jParams.find("amount") == jParams.end())
-            throw APIException(-46, "Missing amount");
-
-        /* Check the amount is not too small once converted by the token Decimals */
-        const uint64_t nAmount = std::stod(jParams["amount"].get<std::string>()) * GetFigures(object);
-        if(nAmount == 0)
-            throw APIException(-68, "Amount too small");
-
         /* Check they have the required funds */
+        const uint64_t nAmount = ExtractAmount(jParams, GetFigures(object));
         if(nAmount > object.get<uint64_t>("balance"))
             throw APIException(-69, "Insufficient funds");
 
         /* The optional payment reference */
-        uint64_t nReference = 0;
-        if(jParams.find("reference") != jParams.end())
-            nReference = stoull(jParams["reference"].get<std::string>());
+        const uint64_t nReference = ExtractInteger<uint64_t>(jParams, "reference");
 
         /* Submit the payload object. */
         std::vector<TAO::Operation::Contract> vContracts(1);

@@ -271,12 +271,8 @@ namespace TAO::API
                 /* Grab a reference of our token struct. */
                 Accounts& tAccounts = mapAccounts[0];
 
-                /* Check the amount is not too small once converted by the token Decimals */
-                uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * tAccounts.GetFigures();
-                if(nAmount == 0)
-                    throw APIException(-68, "Amount too small");
-
                 /* Loop until we have depleted the amount for this recipient. */
+                uint64_t nAmount = ExtractAmount(jRecipient, tAccounts.GetFigures());
                 while(nAmount > 0)
                 {
                     /* Grab the balance of our current account. */
@@ -301,11 +297,11 @@ namespace TAO::API
                     script.SetNexusAddress(addrLegacy);
 
                     /* Build our legacy contract. */
-                    TAO::Operation::Contract contract;
-                    contract << uint8_t(TAO::Operation::OP::LEGACY) << tAccounts.GetAddress() << nDebit << script;
+                    TAO::Operation::Contract tContract;
+                    tContract << uint8_t(TAO::Operation::OP::LEGACY) << tAccounts.GetAddress() << nDebit << script;
 
                     /* Add this contract to our processing queue. */
-                    vContracts.push_back(contract);
+                    vContracts.push_back(tContract);
 
                     /* Reduce the current balances. */
                     tAccounts -= nDebit;
@@ -333,12 +329,8 @@ namespace TAO::API
                 /* Grab a reference of our token struct. */
                 Accounts& tAccounts = mapAccounts[hashToken];
 
-                /* Check the amount is not too small once converted by the token Decimals */
-                uint64_t nAmount = std::stod(jRecipient["amount"].get<std::string>()) * tAccounts.GetFigures();
-                if(nAmount == 0)
-                    throw APIException(-68, "Amount too small");
-
                 /* Loop until we have depleted the amount for this recipient. */
+                uint64_t nAmount = ExtractAmount(jRecipient, tAccounts.GetFigures());
                 while(nAmount > 0)
                 {
                     /* Grab the balance of our current account. */
@@ -388,20 +380,18 @@ namespace TAO::API
                     }
 
                     /* The optional payment reference */
-                    uint64_t nReference = 0;
-                    if(jRecipient.find("reference") != jRecipient.end())
-                        nReference = stoull(jRecipient["reference"].get<std::string>());
+                    const uint64_t nReference = ExtractInteger<uint64_t>(jRecipient, "reference");
 
                     /* Submit the payload object. */
-                    TAO::Operation::Contract contract;
-                    contract << uint8_t(TAO::Operation::OP::DEBIT) << tAccounts.GetAddress() << hashTo << nDebit << nReference;
+                    TAO::Operation::Contract tContract;
+                    tContract << uint8_t(TAO::Operation::OP::DEBIT) << tAccounts.GetAddress() << hashTo << nDebit << nReference;
 
                     /* Add expiration condition unless sending to self */
                     if(!fSendToSelf)
-                        AddExpires(jRecipient, hashGenesis, contract, fTokenizedDebit);
+                        AddExpires(jRecipient, hashGenesis, tContract, fTokenizedDebit);
 
                     /* Add this contract to our processing queue. */
-                    vContracts.push_back(contract);
+                    vContracts.push_back(tContract);
 
                     /* Reduce the current balances. */
                     tAccounts -= nDebit;
