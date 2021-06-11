@@ -175,8 +175,8 @@ namespace TAO::API
                     throw APIException(-57, "Invalid Parameter [amount]");
 
                 /* Check our minimum range. */
-                if(dValue == 0)
-                    throw APIException(-68, "[amount] too small");
+                if(dValue <= 0)
+                    throw APIException(-68, "[amount] too small [", dValue, "]");
 
                 /* Check our limits and ranges now. */
                 if(uint64_t(dValue) > (nLimit / nFigures))
