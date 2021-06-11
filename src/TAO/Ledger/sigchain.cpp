@@ -41,10 +41,10 @@ namespace TAO
 
         /* Copy Constructor */
         SignatureChain::SignatureChain(const SignatureChain& sigchain)
-        : strUsername (sigchain.strUsername.c_str())
-        , strPassword (sigchain.strPassword.c_str())
+        : strUsername (sigchain.strUsername)
+        , strPassword (sigchain.strPassword)
         , MUTEX       ( )
-        , cacheKeys   (sigchain.cacheKeys)
+        , pairCache   (sigchain.pairCache)
         , hashGenesis (sigchain.hashGenesis)
         {
         }
@@ -55,7 +55,7 @@ namespace TAO
         : strUsername (std::move(sigchain.strUsername.c_str()))
         , strPassword (std::move(sigchain.strPassword.c_str()))
         , MUTEX       ( )
-        , cacheKeys   (std::move(sigchain.cacheKeys))
+        , pairCache   (std::move(sigchain.pairCache))
         , hashGenesis (std::move(sigchain.hashGenesis))
         {
         }
@@ -72,7 +72,7 @@ namespace TAO
         : strUsername (strUsernameIn.c_str())
         , strPassword (strPasswordIn.c_str())
         , MUTEX       ( )
-        , cacheKeys   (5)
+        , pairCache   (std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
         , hashGenesis (SignatureChain::Genesis(strUsernameIn))
         {
         }
@@ -113,29 +113,19 @@ namespace TAO
          *  This function is responsible for genearting the private key in the keychain of a specific account.
          *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
          */
-        uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache) const
+        uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strSecret, const bool fCache) const
         {
-            /* key used to identify this private key in the key cache */
-            std::tuple<SecureString, SecureString, uint32_t> cacheKey = std::make_tuple(strPassword, strSecret, nKeyID);
-
-            /* If caching is requested, check to see if we have already cached this private key, to stop exhaustive
-               hash key generation */
-            if(fCache)
             {
                 LOCK(MUTEX);
 
-                /* Check the cache */
-                if(cacheKeys.Has(cacheKey))
+                /* Handle cache to stop exhaustive hash key generation. */
+                if(fCache && nKeyID == pairCache.first)
                 {
-                    /* Retreive the private key hash from the cache */
-                    SecureString strKey;
-                    cacheKeys.Get(cacheKey, strKey);
-
                     /* Create the hash key object. */
                     uint512_t hashKey;
 
                     /* Get the bytes from secure allocator. */
-                    std::vector<uint8_t> vBytes(strKey.begin(), strKey.end());
+                    std::vector<uint8_t> vBytes(pairCache.second.begin(), pairCache.second.end());
 
                     /* Set the bytes of return value. */
                     hashKey.SetBytes(vBytes);
@@ -165,13 +155,15 @@ namespace TAO
                             std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
                             uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
-            /* Add the private key to the cache. */
-            if(fCache)
+            /* Set the cache items. */
             {
                 LOCK(MUTEX);
 
-                std::vector<uint8_t> vBytes = hashKey.GetBytes();
-                cacheKeys.Put(cacheKey, SecureString(vBytes.begin(), vBytes.end()));
+                if(fCache)
+                {
+                    pairCache.first  = nKeyID;
+                    pairCache.second = SecureString(hashKey.begin(), hashKey.end());
+                }
             }
 
             return hashKey;
@@ -414,7 +406,7 @@ namespace TAO
         {
             encrypt(strUsername);
             encrypt(strPassword);
-            encrypt(cacheKeys);
+            encrypt(pairCache);
             encrypt(hashGenesis);
         }
 
@@ -444,12 +436,11 @@ namespace TAO
 
             /* call the Sign method with the retrieved type */
             return Sign(nType, vchData, hashSecret, vchPubKey, vchSig);
-
         }
 
         /* Generates a signature for the data, using the specified crypto key type. */
         bool SignatureChain::Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
-                                  std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const
+                                  std::vector<uint8_t> &vchPubKey, std::vector<uint8_t> &vchSig) const
         {
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();

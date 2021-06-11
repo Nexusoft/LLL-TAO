@@ -59,7 +59,7 @@ namespace TAO
 
 
             /** Internal sigchain cache (to not exhaust ourselves regenerating the same key). **/
-            mutable LLD::TemplateLRU<std::tuple<SecureString, SecureString, uint32_t>, SecureString> cacheKeys;
+            mutable std::pair<uint32_t, SecureString> pairCache;
 
 
             /** Internal genesis hash. **/
@@ -167,7 +167,7 @@ namespace TAO
             /** Generate
              *
              *  This function is responsible for generating a private key from a seed phrase.  By comparison to the other Generate
-             *  functions, this version using far stronger argon2 hashing since the only data input into the hashing function is 
+             *  functions, this version using far stronger argon2 hashing since the only data input into the hashing function is
              *  the seed phrase itself.
              *
              *  @param[in] strSecret The secret seed phrase to use
@@ -212,7 +212,7 @@ namespace TAO
              *  @param[in] strRecovery The recovery seed phrase to use
              *  @param[in] nType The key type to use.
              *
-             *  @return The 256 bit hash of the generated public key 
+             *  @return The 256 bit hash of the generated public key
              **/
             uint256_t RecoveryHash(const SecureString& strRecovery, const uint8_t nType) const;
 
@@ -279,19 +279,19 @@ namespace TAO
 
             /** Verify
             *
-            *  Verifies a signature for the data, as well as verifying that the hashed public key matches the 
+            *  Verifies a signature for the data, as well as verifying that the hashed public key matches the
             *  specified key from the crypto object register
             *
             *  @param[in] hashGenesis The genesis hash of the sig chain to read the crypto object register for
             *  @param[in] strKey The name of the signing key from the crypto object register
-            *  @param[in] vchData The data to base the verification from 
+            *  @param[in] vchData The data to base the verification from
             *  @param[in] vchPubKey The public key of the private key used to sign the data
             *  @param[in] vchSig The signature bytes
             *
             *  @return True if the signature is successfully verified
             *
             **/
-            static bool Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData, 
+            static bool Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData,
                         const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchSig);
 
 
