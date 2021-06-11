@@ -223,7 +223,7 @@ API Error Codes
 | -68 | Amount too small |
 | -69 | Insufficient funds |
 | -70 | Trust account not found |
-| -71 | |
+| -71 | Fieldname [name] doesn't exist |
 | -72 | Register is not a trust account |
 | -73 | Trust account is not a NXS account |
 | -74 | No registers found |

@@ -2362,7 +2362,8 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 
         uint64_t nAmount = LLC::GetRand(1000);
         nBalance += nAmount;
-        params["amount"] = debug::safe_printstr(nAmount);
+
+        params["amount"]  = nAmount;
         params["name_to"] = strAccount1;
 
         /* Invoke the API */
@@ -2444,7 +2445,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 
       uint64_t nAmount = LLC::GetRand(1000);
       nBalance += nAmount;
-      params["amount"] = debug::safe_printstr(nAmount);
+      params["amount"] = nAmount;
       params["name_to"] = strAccount3;
 
       /* Invoke the API */
@@ -2485,7 +2486,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 
        uint64_t nAmount = LLC::GetRand(1000);
        nBalance += nAmount;
-       params["amount"] = debug::safe_printstr(nAmount);
+       params["amount"]  = nAmount;
        params["name_to"] = strAccount4;
 
        /* Invoke the API */
@@ -2526,7 +2527,8 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 
         uint64_t nAmount = LLC::GetRand(1000);
         nBalance += nAmount;
-        params["amount"] = debug::safe_printstr(nAmount);
+
+        params["amount"]  = nAmount;
         params["name_to"] = strAccount5;
 
         /* Invoke the API */
@@ -2568,7 +2570,8 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 
         uint64_t nAmount = LLC::GetRand(1000);
         nBalance += nAmount;
-        params["amount"] = debug::safe_printstr(nAmount);
+
+        params["amount"]  = nAmount;
         params["name_to"] = strAccount5;
 
         /* Invoke the API */
@@ -2640,7 +2643,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["session"]    = SESSION1;
          params["token_name"] = strToken;
          params["name_to"]    = strAccount6;
-         params["amount"]     = debug::safe_printstr(nBalance);
+         params["amount"]     = nBalance;
 
          /* Invoke the API */
          ret = APICall("tokens/debit/all", params);
@@ -2676,8 +2679,6 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 
          /* Invoke the API */
          ret = APICall("tokens/get/account/unconfirmed", params);
-
-         debug::log(0, ret.dump(4));
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["unconfirmed"].get<double>() == nBalance);

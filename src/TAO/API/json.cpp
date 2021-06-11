@@ -1294,8 +1294,6 @@ namespace TAO::API
                     /* Handle digit conversion. */
                     const uint8_t  nDecimals = GetDecimals(object);
 
-
-
                     /* Get disk state so we can find unconfirmed. */
                     TAO::Register::Object objDisk;
                     if(LLD::Register->ReadObject(hashRegister, objDisk, TAO::Ledger::FLAGS::BLOCK))

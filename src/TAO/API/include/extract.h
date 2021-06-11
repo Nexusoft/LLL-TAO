@@ -77,23 +77,25 @@ namespace TAO::API
      *
      *  @param[in] jParams The parameters that contain requesting value.
      *  @param[in] strKey The key that we are checking parameters for.
+     *  @param[in] fRequired Determines if given parameter is required.
      *  @param[in] nLimit The numeric limits to bound this type to, that may be less than type's value.
      *
      *  @return The extracted integer value.
      *
      **/
     template<typename Type>
-    Type ExtractInteger(const encoding::json& jParams, const char* strKey, const Type nLimit = std::numeric_limits<Type>::max())
+    Type ExtractInteger(const encoding::json& jParams, const char* strKey,
+                        const bool fRequired = true, const Type nLimit = std::numeric_limits<Type>::max())
     {
+        /* Build our return value. */
+        Type nRet = 0;
+
         /* Check for missing parameter. */
         if(jParams.find(strKey) != jParams.end())
         {
             /* Catch parsing exceptions. */
             try
             {
-                /* Build our return value. */
-                Type nRet = 0;
-
                 /* Convert to value if in string form. */
                 if(jParams[strKey].is_string())
                     nRet = std::stoull(jParams[strKey].get<std::string>());
@@ -116,6 +118,10 @@ namespace TAO::API
             catch(const std::invalid_argument& e)       { throw APIException(-57, "Invalid Parameter [", strKey, "]");           }
             catch(const std::out_of_range& e)           { throw APIException(-60, "[", strKey, "] out of range [", nLimit, "]"); }
         }
+
+        /* Return value if we aren't throwing missing. */
+        if(!fRequired)
+            return nRet;
 
         throw APIException(-56, "Missing Parameter [", strKey, "]");
     }

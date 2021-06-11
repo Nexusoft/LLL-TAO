@@ -84,9 +84,50 @@ namespace TAO::API
             /* Grab our field string to rebuild response. */
             const std::string strField = jParams["fieldname"].get<std::string>();
 
-            /* Copy over our new field. */
-            const encoding::json jRet = { strField, jResponse[strField].get<std::string>() };
-            jResponse = jRet;
+            /* Check that our filter is valid. */
+            if(jResponse.find(strField) == jResponse.end())
+                throw APIException(-71, "Fieldname ", strField, " doesn't exist");
+
+            /* Check for a return value of string. */
+            if(jResponse[strField].is_string())
+            {
+                /* Copy over our new field. */
+                const encoding::json jRet = { { strField, jResponse[strField].get<std::string>() } };
+                jResponse = jRet;
+
+                return;
+            }
+
+            /* Check for a return value of unsigned integer. */
+            if(jResponse[strField].is_number_unsigned())
+            {
+                /* Copy over our new field. */
+                const encoding::json jRet = { { strField, jResponse[strField].get<uint64_t>() } };
+                jResponse = jRet;
+
+                return;
+            }
+
+            /* Check for a return value of signed integer. */
+            if(jResponse[strField].is_number_integer())
+            {
+                /* Copy over our new field. */
+                const encoding::json jRet = { { strField, jResponse[strField].get<int64_t>() } };
+                jResponse = jRet;
+
+                return;
+            }
+
+
+            /* Check for a return value of double. */
+            if(jResponse[strField].is_number_float())
+            {
+                /* Copy over our new field. */
+                const encoding::json jRet = { { strField, jResponse[strField].get<double>() } };
+                jResponse = jRet;
+
+                return;
+            }
         }
     }
 
