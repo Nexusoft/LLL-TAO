@@ -300,7 +300,7 @@ TEST_CASE("Test Finance API - get stakeinfo", "[finance]")
         REQUIRE(result.find("balance") != result.end());
         REQUIRE(result.find("stake") != result.end());
         REQUIRE(result.find("trust") != result.end());
-        REQUIRE(result.find("new") != result.end());
+        //REQUIRE(result.find("new") != result.end());
         REQUIRE(result.find("staking") != result.end());
         REQUIRE(result.find("stakerate") != result.end());
         REQUIRE(result.find("trustweight") != result.end());
