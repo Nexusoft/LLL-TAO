@@ -58,6 +58,19 @@ namespace TAO::API
     uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures);
 
 
+
+    /** ExtractVerbose
+     *
+     *  Extract a verbose argument from input parameters in either string or integer format.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *
+     *  @return the integer representation of verbose argument.
+     *
+     **/
+    uint32_t ExtractVerbose(const encoding::json& jParams);
+
+
     /** ExtractList
      *
      *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result

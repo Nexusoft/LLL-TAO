@@ -106,6 +106,13 @@ namespace TAO::API
         uint32_t nTotal = 0;
         for(const auto& rAccount : vActive)
         {
+            /* Populate the response */
+            encoding::json jAccount = ObjectToJSON(rAccount);
+
+            /* Check that we match our filters. */
+            if(!FilterResults(jParams, jAccount))
+                continue;
+
             /* Check the offset. */
             if(++nTotal <= nOffset)
                 continue;
@@ -113,13 +120,6 @@ namespace TAO::API
             /* Check the limit */
             if(nTotal - nOffset > nLimit)
                 break;
-
-            /* Populate the response */
-            const encoding::json jAccount = ObjectToJSON(rAccount);
-
-            /* Check that we match our filters. */
-            if(!FilterResults(jParams, jAccount))
-                continue;
 
             jRet.push_back(jAccount);
         }

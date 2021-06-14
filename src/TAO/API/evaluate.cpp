@@ -70,7 +70,7 @@ namespace TAO::API
 
 
     /* Determines if an JSON object should be included in a list based on given clause. */
-    bool EvaluateResults(const encoding::json& jClause, const encoding::json& jCheck)
+    bool EvaluateResults(const encoding::json& jClause, encoding::json &jCheck)
     {
         /* Check that we are operating on a json object. */
         if(jClause["class"].get<std::string>() != "results")
@@ -240,12 +240,37 @@ namespace TAO::API
                 return true;
         }
 
+
+        /* Check now for arrays we need to recurse and reduce. */
+        if(jCheck[strName].is_array())
+        {
+            /* Grab a copy of array to iterate. */
+            encoding::json jValues = jCheck[strName];
+
+            /* Now we need to build our return value. */
+            encoding::json jRet = encoding::json::array();
+            for(auto& jValue : jValues)
+            {
+                /* Check our values recursively. */
+                if(EvaluateResults(jClause, jValue))
+                    jRet.push_back(jValue);
+            }
+
+            /* Check that we added values. */
+            if(!jRet.empty())
+            {
+                /* Copy our new filtered array to current key. */
+                jCheck[strName] = jRet;
+                return true;
+            }
+        }
+
         return false;
     }
 
 
     /* Determines if an object should be included in a list based on given clause. */
-    bool EvaluateObject(const encoding::json& jClause, const TAO::Register::Object& objCheck)
+    bool EvaluateObject(const encoding::json& jClause, TAO::Register::Object &objCheck)
     {
         /* Check that we are operating object. */
         if(jClause["class"].get<std::string>() != "object")

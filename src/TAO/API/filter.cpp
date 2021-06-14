@@ -23,8 +23,8 @@ namespace TAO::API
 {
     /* Recursive handle for any type of filter by passing in function and type to filter. */
     template<typename ObjectType>
-    bool FilterStatement(const encoding::json& jStatement, const ObjectType& rCheck,
-                         const std::function<bool (const encoding::json&, const ObjectType&)>& rFunc)
+    bool FilterStatement(const encoding::json& jStatement, ObjectType& rCheck,
+                         const std::function<bool (const encoding::json&, ObjectType&)>& rFunc)
     {
         /* Check for final depth and call our object filter there. */
         if(jStatement.find("statement") == jStatement.end())
@@ -133,7 +133,7 @@ namespace TAO::API
 
 
     /* Determines if an object should be included in a list based on input parameters. */
-    bool FilterObject(const encoding::json& jParams, const TAO::Register::Object& objCheck)
+    bool FilterObject(const encoding::json& jParams, TAO::Register::Object &objCheck)
     {
         /* Check for a where clause. */
         if(jParams.find("where") == jParams.end())
@@ -144,7 +144,7 @@ namespace TAO::API
 
 
     /* Determines if an object should be included in results list if they match parameters. */
-    bool FilterResults(const encoding::json& jParams, const encoding::json& jCheck)
+    bool FilterResults(const encoding::json& jParams, encoding::json &jCheck)
     {
         /* Check for a where clause. */
         if(jParams.find("where") == jParams.end())

@@ -32,8 +32,8 @@ namespace TAO::API
      *
      **/
     template<typename ObjectType>
-    bool FilterStatement(const encoding::json& jStatement, const ObjectType& rCheck,
-                         const std::function<bool (const encoding::json&, const ObjectType&)>& rFunct);
+    bool FilterStatement(const encoding::json& jStatement, ObjectType& rCheck,
+                         const std::function<bool (const encoding::json&, ObjectType&)>& rFunct);
 
 
     /** FilterFieldname
@@ -52,12 +52,12 @@ namespace TAO::API
      *  Determines if an object should be included in a list based on input parameters.
      *
      *  @param[in] jParams The input parameters for the command.
-     *  @param[in] objCheck The object we are checking for.
+     *  @param[out] objCheck The object we are checking for.
      *
      *  @return true if the object should be included in the results.
      *
      **/
-    bool FilterObject(const encoding::json& jParams, const TAO::Register::Object& objCheck);
+    bool FilterObject(const encoding::json& jParams, TAO::Register::Object &objCheck);
 
 
     /** FilterResults
@@ -65,11 +65,11 @@ namespace TAO::API
      *  Determines if an object should be included in results list if they match parameters.
      *
      *  @param[in] jParams The input parameters for the command.
-     *  @param[in] jCheck The json object we are checking for.
+     *  @param[out] jCheck The json object we are checking for.
      *
      *  @return true if the object should be included in the results.
      *
      **/
-    bool FilterResults(const encoding::json& jParams, const encoding::json& jCheck);
+    bool FilterResults(const encoding::json& jParams, encoding::json &jCheck);
 
 }

@@ -194,6 +194,45 @@ namespace TAO::API
     }
 
 
+    /* Extract a verbose argument from input parameters in either string or integer format. */
+    uint32_t ExtractVerbose(const encoding::json& jParams)
+    {
+        /* If verbose not supplied, use default parameter. */
+        if(jParams.find("verbose") == jParams.end())
+            return 1;
+
+        /* Extract paramter if in integer form. */
+        if(jParams["verbose"].is_number_unsigned())
+            return jParams["verbose"].get<uint64_t>();
+
+        /* Extract parameter if in string form. */
+        std::string strVerbose = "default";
+        if(jParams["verbose"].is_string())
+        {
+            /* Grab a copy of the string now. */
+            strVerbose = jParams["verbose"].get<std::string>();
+
+            /* Check if it is an integer. */
+            if(IsAllDigit(strVerbose))
+                return std::stoull(strVerbose);
+        }
+
+        /* Otherwise check our base verbose levels. */
+        if(strVerbose == "default")
+            return 1;
+
+        /* Summary maps to verbose level 2. */
+        if(strVerbose == "summary")
+            return 2;
+
+        /* Detail maps to verbose level 3. */
+        else if(strVerbose == "detail")
+            return 3;
+
+        throw APIException(-57, "Invalid Parameter [verbose]");
+    }
+
+
     /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
     void ExtractList(const encoding::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
     {
