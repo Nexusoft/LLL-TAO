@@ -143,6 +143,33 @@ namespace TAO::API
     }
 
 
+    /* Extract a genesis-id from input parameters which could be either username or genesis keys. */
+    uint256_t ExtractGenesis(const encoding::json& jParams)
+    {
+        /* Check to see if specific genesis has been supplied */
+        if(jParams.find("genesis") != jParams.end())
+        {
+            /* Check for empty parameter. */
+            if(jParams["genesis"].empty())
+                throw APIException(-58, "Empty Parameter [genesis]");
+
+            return uint256_t(jParams["genesis"].get<std::string>());
+        }
+
+        /* Check if username has been supplied instead. */
+        if(jParams.find("username") != jParams.end())
+        {
+            /* Check for empty parameter. */
+            if(jParams["genesis"].empty())
+                throw APIException(-58, "Empty Parameter [username]");
+
+            return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());
+        }
+
+        return Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+    }
+
+
     /* Extract an amount value from either string or integer and convert to its final value. */
     uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures)
     {

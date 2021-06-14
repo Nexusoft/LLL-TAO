@@ -210,7 +210,7 @@ API Error Codes
 | -55 | Must have at least two recipients to debit from any |
 | -56 | Missing Parameter [name] |
 | -57 | Invalid Parameter [name] |
-| -58 | Debit transaction is not from a NXS account |
+| -58 | Empty Parameter [name] |
 | -59 | Account to credit is not a NXS account |
 | -60 | [name] out of range [max] |
 | -61 | Proof account is for a different token than the asset token |

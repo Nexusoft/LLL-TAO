@@ -45,6 +45,18 @@ namespace TAO::API
     uint256_t ExtractToken(const encoding::json& jParams);
 
 
+    /** ExtractGenesis
+     *
+     *  Extract a genesis-id from input parameters which could be either username or genesis keys.
+     *
+     *  @param[in] jParams The parameters to find address in.
+     *
+     *  @return The genesis-id that was extracted.
+     *
+     **/
+    uint256_t ExtractGenesis(const encoding::json& jParams);
+
+
     /** ExtractAmount
      *
      *  Extract an amount value from either string or integer and convert to its final value.
