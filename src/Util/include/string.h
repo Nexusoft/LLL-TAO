@@ -97,7 +97,7 @@ bool ParseMoney(const std::string& str, int64_t& nRet);
 *  @return The string with all leading spaces removed.
 *
 **/
-std::string &ltrim(std::string &strValue);
+std::string ltrim(std::string strValue);
 
 
 /** rtrim
@@ -109,7 +109,7 @@ std::string &ltrim(std::string &strValue);
 *  @return The string with all trailing spaces removed.
 *
 **/
-std::string &rtrim(std::string &strValue);
+std::string rtrim(std::string strValue);
 
 
 /** trim
@@ -121,7 +121,7 @@ std::string &rtrim(std::string &strValue);
 *  @return The string with all leading and trailing spaces removed.
 *
 **/
-std::string &trim(std::string &strValue);
+std::string trim(std::string strValue);
 
 
 /** EqualsNoCase

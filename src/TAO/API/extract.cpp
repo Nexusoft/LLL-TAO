@@ -292,6 +292,10 @@ namespace TAO::API
                 std::vector<std::string> vParts;
                 ParseString(strLimit, ',', vParts);
 
+                /* Check for expected sizes. */
+                if(vParts.size() < 2)
+                    throw APIException(-57, "Invalid Parameter [limit] [", strLimit, "]");
+
                 /* Get the limit */
                 nLimit = std::stoul(trim(vParts[0]));
 

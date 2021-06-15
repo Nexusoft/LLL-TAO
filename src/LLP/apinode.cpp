@@ -298,11 +298,10 @@ namespace LLP
             return debug::error(FUNCTION, "incorrect authorization type");
 
         /* Get the encoded content */
-        std::string strUserPass64 = strAuth.substr(6);
-        trim(strUserPass64);
+        const std::string strUserPass64 = trim(strAuth.substr(6));
 
         /* Decode from base64 */
-        std::string strUserPass = (config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", ""));
+        const std::string strUserPass = (config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", ""));
         return encoding::DecodeBase64(strUserPass64) == strUserPass;
     }
 }
