@@ -143,7 +143,7 @@ DSL Error Codes
 | 4 | Query Syntax Error: must use <key>=<value> with no extra characters. |
 | 5 | Query Syntax Error: must use '(' and ')' to mix AND/OR statements |
 | 6 | Query Syntax Error: missing logical operator for group |
-| 7 |  |
+| 7 | Query Syntax Error: empty where clause at [clause] |
 | 8 |  |
 | 9 |  |
 

@@ -112,17 +112,7 @@ namespace TAO
                 vParams.push_back(argv[i]);
 
             /* Build the JSON request object. */
-            encoding::json jParameters = TAO::API::ParamsToJSON(vParams);
-            if(jParameters.find("where") != jParameters.end())
-            {
-                /* Grab a copy of our where string. */
-                const std::string strWhere = jParameters["where"].get<std::string>();
-                if(strWhere.empty())
-                    jParameters.erase("where");
-
-                /* Build our query string now. */
-                jParameters["where"] = TAO::API::QueryToJSON(strWhere);
-            }
+            const encoding::json jParameters = TAO::API::ParamsToJSON(vParams);
 
             /* Build the HTTP Header. */
             const std::string strContent = jParameters.dump();

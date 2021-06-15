@@ -1596,9 +1596,8 @@ namespace TAO::API
         jRet = StatementToJSON(vWhere, n, jRet);
 
         /* Check for logical operator. */
-        if(jRet["logical"].get<std::string>() == "NONE" && jRet["statement"].size() > 1)
-            throw APIException(-120, "Query Syntax Error: missing logical operator for base group, too many '()' maybe?");
-
+        //if(jRet["logical"].get<std::string>() == "NONE" && jRet["statement"].size() > 1)
+        //    throw APIException(-120, "Query Syntax Error: missing logical operator for base group, too many '()' maybe?");
 
         return jRet;
     }
@@ -1698,8 +1697,8 @@ namespace TAO::API
                     }
 
                     /* Check if we have empty WHERE. */
-                    if(n + 1 >= vParams.size())
-                        throw APIException(-60, "Query Syntax Error: malformed where clause at ", strValue);
+                    if(n + 1 >= vParams.size() && strParam == "WHERE")
+                        throw APIException(7, "Query Syntax Error: empty WHERE clause at [", strValue, "]");
 
                     /* Build a single where string for parsing. */
                     for(uint32_t i = n + 1; i < vParams.size(); ++i)
@@ -1715,9 +1714,6 @@ namespace TAO::API
                         if(i < vParams.size() - 1)
                             strWhere += std::string(" ");
                     }
-
-                    /* Build where clause for return value from string. */
-                    jRet["where"] = strWhere;
 
                     break;
                 }
@@ -1739,6 +1735,10 @@ namespace TAO::API
             else
                 throw APIException(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
         }
+
+        /* Build our query string now. */
+        if(!strWhere.empty())
+            jRet["where"] = TAO::API::QueryToJSON(strWhere);
 
         return jRet;
     }

@@ -124,9 +124,6 @@ namespace TAO::API
             jRet.push_back(jAccount);
         }
 
-        /* Add totals count. */
-        debug::warning("size is ", vActive.size());
-
         return jRet;
     }
 }
