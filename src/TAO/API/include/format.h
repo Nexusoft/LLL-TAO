@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/API/include/constants.h>
+
 namespace TAO::API
 {
     /** FormatBalance
@@ -40,7 +42,7 @@ namespace TAO::API
      *  @return a double representation of the whole formatting.
      *
      **/
-    double FormatBalance(const uint64_t nBalance, const uint256_t& hashToken);
+    double FormatBalance(const uint64_t nBalance, const uint256_t& hashToken = TOKEN::NXS);
 
 
 }

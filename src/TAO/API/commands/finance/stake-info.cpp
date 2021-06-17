@@ -65,8 +65,8 @@ namespace TAO
             /* Set trust account values for return data */
             encoding::json jRet;
             jRet["address"] = hashRegister.ToString();
-            jRet["balance"] = FormatBalance(objTrust.get<uint64_t>("balance"), 0);
-            jRet["stake"]   = FormatBalance(objTrust.get<uint64_t>("stake"),   0);
+            jRet["balance"] = FormatBalance(objTrust.get<uint64_t>("balance"));
+            jRet["stake"]   = FormatBalance(objTrust.get<uint64_t>("stake"));
             jRet["trust"]   = nTrustScore;
 
             /* Need the stake minter running for accessing current staking metrics.*/
@@ -106,7 +106,7 @@ namespace TAO
             {
                 /* Populate our stake change values. */
                 jRet["change"]    = true;
-                jRet["amount"]    = FormatBalance(tStakeChange.nAmount, 0);
+                jRet["amount"]    = FormatBalance(tStakeChange.nAmount);
                 jRet["requested"] = tStakeChange.nTime;
                 jRet["expires"]   = tStakeChange.nExpires;
             }
