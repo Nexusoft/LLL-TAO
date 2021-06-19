@@ -36,87 +36,81 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Get staking metrics for a trust account */
+    encoding::json Finance::GetStakeInfo(const encoding::json& jParams, const bool fHelp)
     {
+        /* The user genesis hash */
+        const uint256_t hashGenesis =
+            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
-        /* Get staking metrics for a trust account */
-        encoding::json Finance::GetStakeInfo(const encoding::json& params, const bool fHelp)
+        /* Retrieve the trust register address, which is based on the users genesis */
+        const TAO::Register::Address hashRegister =
+            TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+        /* Attempt to read our trust register. */
+        TAO::Register::Object objTrust;
+        if(!LLD::Register->ReadObject(hashRegister, objTrust, TAO::Ledger::FLAGS::MEMPOOL))
+            throw APIException(-70, "Trust account not found");
+
+        /* Grab our trust score since we will use in further calculations. */
+        const uint64_t nTrustScore = objTrust.get<uint64_t>("trust");
+
+        /* Set trust account values for return data */
+        encoding::json jRet;
+        jRet["address"] = hashRegister.ToString();
+        jRet["balance"] = FormatBalance(objTrust.get<uint64_t>("balance"));
+        jRet["stake"]   = FormatBalance(objTrust.get<uint64_t>("stake"));
+        jRet["trust"]   = nTrustScore;
+
+        /* Need the stake minter running for accessing current staking metrics.*/
+        const TAO::Ledger::StakeMinter& rStakeMinter = TAO::Ledger::StakeMinter::GetInstance();
+        if(rStakeMinter.IsStarted())
         {
-            /* The user genesis hash */
-            const uint256_t hashGenesis =
-                Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
+            /* The trust account is on hold when it does not have genesis, and is waiting to reach minimum age to stake */
+            const bool fOnHold = (!LLD::Register->HasTrust(hashGenesis) || rStakeMinter.IsWaitPeriod());
 
-            /* Retrieve the trust register address, which is based on the users genesis */
-            const TAO::Register::Address hashRegister =
-                TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+            /* When trust account is on hold pending minimum age return the time remaining in hold period. */
+            jRet["onhold"] = fOnHold;
+            if(fOnHold)
+                jRet["holdtime"] = (uint64_t)rStakeMinter.GetWaitTime();
 
-            /* Attempt to read our trust register. */
-            TAO::Register::Object objTrust;
-            if(!LLD::Register->ReadObject(hashRegister, objTrust, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-70, "Trust account not found");
-
-            /* Grab our trust score since we will use in further calculations. */
-            const uint64_t nTrustScore = objTrust.get<uint64_t>("trust");
-
-            /* Set trust account values for return data */
-            encoding::json jRet;
-            jRet["address"] = hashRegister.ToString();
-            jRet["balance"] = FormatBalance(objTrust.get<uint64_t>("balance"));
-            jRet["stake"]   = FormatBalance(objTrust.get<uint64_t>("stake"));
-            jRet["trust"]   = nTrustScore;
-
-            /* Need the stake minter running for accessing current staking metrics.*/
-            const TAO::Ledger::StakeMinter& rStakeMinter = TAO::Ledger::StakeMinter::GetInstance();
-            if(rStakeMinter.IsStarted())
-            {
-                /* The trust account is on hold when it does not have genesis, and is waiting to reach minimum age to stake */
-                const bool fOnHold = (!LLD::Register->HasTrust(hashGenesis) || rStakeMinter.IsWaitPeriod());
-
-                /* When trust account is on hold pending minimum age return the time remaining in hold period. */
-                jRet["onhold"] = fOnHold;
-                if(fOnHold)
-                    jRet["holdtime"] = (uint64_t)rStakeMinter.GetWaitTime();
-
-                /* Populate our running statistics. */
-                jRet["stakerate"]   = rStakeMinter.GetStakeRatePercent();
-                jRet["trustweight"] = rStakeMinter.GetTrustWeightPercent();
-                jRet["blockweight"] = rStakeMinter.GetBlockWeightPercent();
-                jRet["stakeweight"] = rStakeMinter.GetTrustWeight() + rStakeMinter.GetBlockWeight();
-                jRet["staking"]     = true;
-            }
-            else
-            {
-                /* When stake minter not running, return latest known value calculated from trust score (as an annual percent). */
-                jRet["stakerate"] = TAO::Ledger::StakeRate(nTrustScore, (nTrustScore == 0)) * 100.0;
-
-                /* Other staking metrics not available if stake minter not running */
-                jRet["trustweight"] = 0.0;
-                jRet["blockweight"] = 0.0;
-                jRet["stakeweight"] = 0.0;
-                jRet["staking"]     = false;
-            }
-
-            /* Check if we have any pending stake changes. */
-            TAO::Ledger::StakeChange tStakeChange;
-            if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange) && !tStakeChange.fProcessed)
-            {
-                /* Populate our stake change values. */
-                jRet["change"]    = true;
-                jRet["amount"]    = FormatBalance(tStakeChange.nAmount);
-                jRet["requested"] = tStakeChange.nTime;
-                jRet["expires"]   = tStakeChange.nExpires;
-            }
-            else
-                jRet["change"] = false;
-
-            /* Filter based on requested fieldname. */
-            FilterFieldname(params, jRet);
-
-            return jRet;
+            /* Populate our running statistics. */
+            jRet["stakerate"]   = rStakeMinter.GetStakeRatePercent();
+            jRet["trustweight"] = rStakeMinter.GetTrustWeightPercent();
+            jRet["blockweight"] = rStakeMinter.GetBlockWeightPercent();
+            jRet["stakeweight"] = rStakeMinter.GetTrustWeight() + rStakeMinter.GetBlockWeight();
+            jRet["staking"]     = true;
         }
+        else
+        {
+            /* When stake minter not running, return latest known value calculated from trust score (as an annual percent). */
+            jRet["stakerate"] = TAO::Ledger::StakeRate(nTrustScore, (nTrustScore == 0)) * 100.0;
+
+            /* Other staking metrics not available if stake minter not running */
+            jRet["trustweight"] = 0.0;
+            jRet["blockweight"] = 0.0;
+            jRet["stakeweight"] = 0.0;
+            jRet["staking"]     = false;
+        }
+
+        /* Check if we have any pending stake changes. */
+        TAO::Ledger::StakeChange tStakeChange;
+        if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange) && !tStakeChange.fProcessed)
+        {
+            /* Populate our stake change values. */
+            jRet["change"]    = true;
+            jRet["amount"]    = FormatBalance(tStakeChange.nAmount);
+            jRet["requested"] = tStakeChange.nTime;
+            jRet["expires"]   = tStakeChange.nExpires;
+        }
+        else
+            jRet["change"] = false;
+
+        /* Filter based on requested fieldname. */
+        FilterFieldname(jParams, jRet);
+
+        return jRet;
     }
 }

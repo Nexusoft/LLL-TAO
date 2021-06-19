@@ -30,7 +30,7 @@ namespace math
      *  @return the integer value of nBase^nExp
      *
      **/
-    inline uint64_t pow(const uint64_t nBase, const uint64_t nExp) //XXX: maybe use uint8_t for nExp? 64 is maximum size
+    inline __attribute__((const)) uint64_t pow(const uint64_t nBase, const uint64_t nExp) //XXX: maybe use uint8_t for nExp? 64 is maximum size
     {
         /* We just do a simple for loop here for repeated multiplication. */
         uint64_t nRet = 1;
@@ -52,7 +52,7 @@ namespace math
      *  @return the integer value of log on value
      *
      **/
-    inline uint64_t log(const uint64_t nBase, const uint64_t nValue)
+    inline __attribute__((const)) uint64_t log(const uint64_t nBase, const uint64_t nValue)
     {
         /* We just do a simple for loop here for repeated multiplication. */
         uint64_t nRet = 0, nCurrent = nValue;
