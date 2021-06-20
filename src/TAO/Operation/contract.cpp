@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/constants.h>
+#include <TAO/Register/include/enum.h>
+#include <TAO/Register/types/state.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/timelocks.h>
@@ -579,6 +581,31 @@ namespace TAO::Operation
     const std::vector<uint8_t>& Contract::Conditions() const
     {
         return ssCondition.Bytes();
+    }
+
+
+    /* Get the register's pre-state from the register script. */
+    const TAO::Register::State Contract::Register() const
+    {
+        /* Seek to first byte. */
+        ssRegister.seek(0, STREAM::BEGIN);
+
+        /* Verify the first register code. */
+        uint8_t nState = 0;
+        ssRegister >> nState;
+
+        /* Check the state is prestate. */
+        if(nState != TAO::Register::STATES::PRESTATE)
+            return debug::error(FUNCTION, "register state not in pre-state");
+
+        /* Verify the register's prestate. */
+        TAO::Register::State tPreState;
+        ssRegister >> tPreState;
+
+        /* Return stream to first. */
+        ssRegister.seek(0, STREAM::BEGIN);
+
+        return tPreState;
     }
 
 

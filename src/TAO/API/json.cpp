@@ -517,7 +517,7 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]         = "CLAIM";
                     jRet["txid"]       = hashTx.ToString();
-                    jRet["contract"]     = nContract;
+                    jRet["contract"]   = nContract;
                     jRet["address"]    = hashAddress.ToString();
 
 

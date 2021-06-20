@@ -24,7 +24,8 @@ namespace Legacy
     class Transaction;
 }
 
-namespace TAO::Ledger { class Transaction; }
+namespace TAO::Ledger   { class Transaction; }
+namespace TAO::Register { class State;       }
 
 
 /* Operation Layer namespace. */
@@ -321,6 +322,16 @@ namespace TAO::Operation
          *
          **/
         const std::vector<uint8_t>& Conditions() const;
+
+
+        /** Register
+         *
+         *  Get the register's pre-state from the register script.
+         *
+         *  @return the state register pre-state.
+         *
+         **/
+        const TAO::Register::State Register() const;
 
 
         /** Seek
