@@ -560,12 +560,29 @@ namespace TAO::API
                                 default:
                                     return debug::error(FUNCTION, "malformed stream (unexpected type ", uint32_t(nType), "");
                             }
+
+                            /* Add our write operation to arrays. */
+                            jWrite.push_back(jGroup);
                         }
+
+                        jRet["updated"] = jWrite;
                     }
 
                     /* Regular hexadecimal dump of data. */
                     else
-                        jRet["data"]    = HexStr(vchData.begin(), vchData.end());
+                    {
+                        /* Get a copy of our old data. */
+                        const std::vector<uint8_t> vOld = object.GetState();
+
+                        /* Create our updated field. */
+                        jRet["updated"] = encoding::json::array();
+                        jRet["updated"].push_back
+                        ({
+                            { "name", "state" },
+                            { "old",  HexStr(vOld.begin(), vOld.end()) },
+                            { "new",  HexStr(vchData.begin(), vchData.end()) },
+                        });
+                    }
 
                     break;
                 }
