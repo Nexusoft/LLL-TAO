@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/format.h>
 #include <TAO/API/include/list.h>
 
 #include <TAO/API/types/commands.h>
@@ -304,7 +305,7 @@ namespace TAO
                 encoding::json entry;
                 entry["account"] = strAccount;
                 entry["address"] = hashAccount.ToString();
-                entry["amount"]  = (nAmount / (double)TAO::Ledger::NXS_COIN);
+                entry["amount"]  = FormatBalance(nAmount);
 
                 if(!strException.empty())
                     entry["error"] = strException;
