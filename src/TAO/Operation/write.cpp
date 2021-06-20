@@ -87,7 +87,6 @@ namespace TAO
                     /* Switch between supported types. */
                     switch(nType)
                     {
-
                         /* Standard type for C++ uint8_t. */
                         case OP::TYPES::UINT8_T:
                         {

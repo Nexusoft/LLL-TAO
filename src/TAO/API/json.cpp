@@ -387,7 +387,185 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]      = "WRITE";
                     jRet["address"] = hashAddress.ToString();
-                    jRet["data"]    = HexStr(vchData.begin(), vchData.end());
+
+                    /* Get the token/account we are debiting from so that we can output the token address / name. */
+                    TAO::Register::Object object = contract.Register();
+                    if(!object.Parse())
+                        throw APIException(-15, "Object is not an account or token");
+
+                    /* Format write operation for different register types. */
+                    if(object.nType == TAO::Register::REGISTER::OBJECT)
+                    {
+                        /* Build a response object. */
+                        encoding::json jWrite = encoding::json::array();
+
+                        /*  Loop through our OP::WRITE script. */
+                        TAO::Operation::Stream stream = TAO::Operation::Stream(vchData);
+                        while(!stream.end())
+                        {
+                            /* Deserialize the named value. */
+                            std::string strName;
+                            stream >> strName;
+
+                            /* Deserialize the type. */
+                            uint8_t nType;
+                            stream >> nType;
+
+                            /* Start the group check. */
+                            encoding::json jGroup = { { "name", strName } };
+
+                            /* Switch between supported types. */
+                            switch(nType)
+                            {
+                                /* Standard type for C++ uint8_t. */
+                                case TAO::Operation::OP::TYPES::UINT8_T:
+                                {
+                                    /* Get the byte from the stream. */
+                                    uint8_t nValue;
+                                    stream >> nValue;
+
+                                    /* Add to our group object. */
+                                    jGroup["old"] = object.get<uint8_t>(strName);
+                                    jGroup["new"] = nValue;
+
+                                    break;
+                                }
+
+
+                                /* Standard type for C++ uint16_t. */
+                                case TAO::Operation::OP::TYPES::UINT16_T:
+                                {
+                                    /* Get the byte from the stream. */
+                                    uint16_t nValue;
+                                    stream >> nValue;
+
+                                    /* Add to our group object. */
+                                    jGroup["old"] = object.get<uint16_t>(strName);
+                                    jGroup["new"] = nValue;
+
+                                    break;
+                                }
+
+
+                                /* Standard type for C++ uint32_t. */
+                                case TAO::Operation::OP::TYPES::UINT32_T:
+                                {
+                                    /* Get the byte from the stream. */
+                                    uint32_t nValue;
+                                    stream >> nValue;
+
+                                    /* Add to our group object. */
+                                    jGroup["old"] = object.get<uint32_t>(strName);
+                                    jGroup["new"] = nValue;
+
+                                    break;
+                                }
+
+
+                                /* Standard type for C++ uint64_t. */
+                                case TAO::Operation::OP::TYPES::UINT64_T:
+                                {
+                                    /* Get the byte from the stream. */
+                                    uint64_t nValue;
+                                    stream >> nValue;
+
+                                    /* Add to our group object. */
+                                    jGroup["old"] = object.get<uint64_t>(strName);
+                                    jGroup["new"] = nValue;
+
+                                    break;
+                                }
+
+
+                                /* Standard type for Custom uint256_t */
+                                case TAO::Operation::OP::TYPES::UINT256_T:
+                                {
+                                    /* Get the byte from the stream. */
+                                    uint256_t nValue;
+                                    stream >> nValue;
+
+                                    /* Add to our group object. */
+                                    jGroup["old"] = object.get<uint256_t>(strName).ToString();
+                                    jGroup["new"] = nValue.ToString();
+
+                                    break;
+                                }
+
+
+                                /* Standard type for Custom uint512_t */
+                                case TAO::Operation::OP::TYPES::UINT512_T:
+                                {
+                                    /* Get the byte from the stream. */
+                                    uint512_t nValue;
+                                    stream >> nValue;
+
+                                    /* Add to our group object. */
+                                    jGroup["old"] = object.get<uint512_t>(strName).ToString();
+                                    jGroup["new"] = nValue.ToString();
+
+                                    break;
+                                }
+
+
+                                /* Standard type for Custom uint1024_t */
+                                case TAO::Operation::OP::TYPES::UINT1024_T:
+                                {
+                                    /* Get the byte from the stream. */
+                                    uint1024_t nValue;
+                                    stream >> nValue;
+
+                                    /* Add to our group object. */
+                                    jGroup["old"] = object.get<uint1024_t>(strName).ToString();
+                                    jGroup["new"] = nValue.ToString();
+
+                                    break;
+                                }
+
+
+                                /* Standard type for STL string */
+                                case TAO::Operation::OP::TYPES::STRING:
+                                {
+                                    /* Get the byte from the stream. */
+                                    std::string strValue;
+                                    stream >> strValue;
+
+                                    /* Add to our group object. */
+                                    jGroup["old"] = object.get<std::string>(strName);
+                                    jGroup["new"] = strValue;
+
+                                    break;
+                                }
+
+
+                                /* Standard type for STL vector with C++ type uint8_t */
+                                case TAO::Operation::OP::TYPES::BYTES:
+                                {
+                                    /* Get the byte from the stream. */
+                                    std::vector<uint8_t> vNew;
+                                    stream >> vNew;
+
+                                    /* Grab the old data from pre-state. */
+                                    const std::vector<uint8_t> vOld =
+                                        object.get<std::vector<uint8_t>>(strName);
+
+                                    /* Add to our group object. */
+                                    jGroup["old"] = HexStr(vOld.begin(), vOld.end());
+                                    jGroup["new"] = HexStr(vNew.begin(), vNew.end());
+
+                                    break;
+                                }
+
+
+                                /* Fail if types are unknown. */
+                                default:
+                                    return debug::error(FUNCTION, "malformed stream (unexpected type ", uint32_t(nType), "");
+                            }
+                        }
+                    }
+
+                    /* Regular hexadecimal dump of data. */
+                    else
+                        jRet["data"]    = HexStr(vchData.begin(), vchData.end());
 
                     break;
                 }
@@ -437,20 +615,20 @@ namespace TAO::API
                     if(nType == TAO::Register::REGISTER::OBJECT)
                     {
                         /* Create the register object. */
-                        TAO::Register::Object state;
-                        state.nVersion   = 1;
-                        state.nType      = nType;
-                        state.hashOwner  = contract.Caller();
+                        TAO::Register::Object object;
+                        object.nVersion   = 1;
+                        object.nType      = nType;
+                        object.hashOwner  = contract.Caller();
 
-                        /* Calculate the new operation. */
-                        if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
-                            throw APIException(-110, "Contract execution failed");
+                        /* Set our state to parse. */
+                        object.SetState(vchData);
 
                         /* parse object so that the data fields can be accessed */
-                        if(!state.Parse())
+                        if(!object.Parse())
                             throw APIException(-36, "Failed to parse object register");
 
-                        jRet["object_type"] = GetObjectType(state.Standard());
+                        /* Add object standard if available. */
+                        jRet["standard"] = GetObjectType(object.Standard());
                     }
 
                     jRet["data"]    = HexStr(vchData.begin(), vchData.end());
@@ -475,25 +653,10 @@ namespace TAO::API
                     contract >> nType;
 
                     /* Output the json information. */
-                    jRet["OP"]       = "TRANSFER";
-                    jRet["address"]  = hashAddress.ToString();
+                    jRet["OP"]          = "TRANSFER";
+                    jRet["address"]     = hashAddress.ToString();
                     jRet["destination"] = hashTransfer.ToString();
-
-                    /* If this is a register object then decode the object type */
-                    if(nType == TAO::Register::REGISTER::OBJECT)
-                    {
-                        TAO::Register::Object object;
-                        if(LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
-                        {
-                            /* parse object so that the data fields can be accessed */
-                            if(!object.Parse())
-                                throw APIException(-36, "Failed to parse object register");
-
-                            jRet["object_type"] = GetObjectType(object.Standard());
-                        }
-                    }
-
-                    jRet["force"]    = nType == TAO::Operation::TRANSFER::FORCE;
+                    jRet["forced"]      = (nType == TAO::Operation::TRANSFER::FORCE);
 
                     break;
                 }
@@ -520,7 +683,6 @@ namespace TAO::API
                     jRet["contract"]   = nContract;
                     jRet["address"]    = hashAddress.ToString();
 
-
                     break;
                 }
 
@@ -544,14 +706,7 @@ namespace TAO::API
                     jRet["OP"]      = "COINBASE";
                     jRet["genesis"] = hashGenesis.ToString();
                     jRet["nonce"]   = nExtraNonce;
-                    jRet["amount"]  = (double) nCredit / TAO::Ledger::NXS_COIN;;
-
-                    if(nVerbose > 0)
-                    {
-                        uint32_t nConfirms = 0;
-                        LLD::Ledger->ReadConfirmations(contract.Hash(), nConfirms);
-                        jRet["confirms"] = nConfirms;
-                    }
+                    jRet["amount"]  = FormatBalance(nCredit);
 
                     break;
                 }
@@ -576,20 +731,20 @@ namespace TAO::API
                     uint64_t nReward = 0;
                     contract >> nReward;
 
-                    TAO::Register::Address address("trust", contract.Caller(), TAO::Register::Address::TRUST);
-
                     /* Output the json information. */
-                    jRet["OP"]     = "TRUST";
-                    jRet["address"] = address.ToString();
-                    jRet["last"]   = hashLastTrust.ToString();
-                    jRet["score"]  = nScore;
-                    jRet["amount"] = (double) nReward / TAO::Ledger::NXS_COIN;
+                    jRet["OP"]      = "TRUST";
+                    jRet["address"] = TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST).ToString();
+                    jRet["last"]    = hashLastTrust.ToString();
+                    jRet["score"]   = nScore;
+                    jRet["amount"]  = FormatBalance(nReward);
 
+                    /* Handle for add stake. */
                     if(nStakeChange > 0)
-                        jRet["add_stake"] = (double) nStakeChange / TAO::Ledger::NXS_COIN;
+                        jRet["add_stake"] = FormatStake(nStakeChange);
 
-                    else if (nStakeChange < 0)
-                        jRet["unstake"] = (double) (0 - nStakeChange) / TAO::Ledger::NXS_COIN;
+                    /* Handle for remove stake. */
+                    if(nStakeChange < 0)
+                        jRet["unstake"]   = FormatStake(0 - nStakeChange);
 
                     break;
                 }
@@ -602,12 +757,10 @@ namespace TAO::API
                     uint64_t nReward = 0;
                     contract >> nReward;
 
-                    TAO::Register::Address address("trust", contract.Caller(), TAO::Register::Address::TRUST);
-
                     /* Output the json information. */
                     jRet["OP"]        = "GENESIS";
-                    jRet["address"]   = address.ToString();
-                    jRet["amount"]    = (double) nReward / TAO::Ledger::NXS_COIN;;
+                    jRet["address"]   = TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST).ToString();
+                    jRet["amount"]    = FormatBalance(nReward);
 
                     break;
                 }
@@ -635,54 +788,27 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]       = "DEBIT";
                     jRet["from"]     = hashFrom.ToString();
-
-                    /* Resolve the name of the token/account that the debit is from */
-                    std::string strFrom = Names::ResolveName(hashCaller, hashFrom);
-                    if(!strFrom.empty())
-                        jRet["from_name"] = strFrom;
-
                     jRet["to"]       = hashTo.ToString();
 
-                    /* Resolve the name of the token/account/register that the debit is to */
-                    std::string strTo = Names::ResolveName(hashCaller, hashTo);
-                    if(!strTo.empty())
-                        jRet["to_name"] = strTo;
-
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
-                    TAO::Register::Object object;
-                    if(!LLD::Register->ReadState(hashFrom, object))
-                        throw APIException(-13, "Object not found");
-
-                    /* Parse the object register. */
+                    TAO::Register::Object object = contract.Register();
                     if(!object.Parse())
-                        throw APIException(-14, "Object failed to parse");
+                        throw APIException(-15, "Object is not an account or token");
+
+                    /* Get the current token's address.  */
+                    const TAO::Register::Address hashToken = object.get<uint256_t>("token");
 
                     /* Add the amount to the response */
-                    jRet["amount"]  = (double) nAmount / pow(10, GetDecimals(object));
+                    jRet["amount"]  = FormatBalance(nAmount, hashToken);
+
+                    /* Add the token-id if not available. */
+                    if(hashToken != TOKEN::NXS)
+                        jRet["token"]   = hashToken.ToString();
+                    else
+                        jRet["token"]   = "NXS";
 
                     /* Add the reference to the response */
                     jRet["reference"] = nReference;
-
-                    /* Get the object standard. */
-                    uint8_t nStandard = object.Standard();
-
-                    /* Check the object standard. */
-                    if(nStandard != TAO::Register::OBJECTS::ACCOUNT
-                    && nStandard != TAO::Register::OBJECTS::TRUST
-                    && nStandard != TAO::Register::OBJECTS::TOKEN)
-                        throw APIException(-15, "Object is not an account or token");
-
-                    /* Get the token address */
-                    TAO::Register::Address hashToken = object.get<uint256_t>("token");
-
-                    /* Add the token address to the response */
-                    jRet["token"]   = hashToken.ToString();
-
-                    /* Resolve the name of the token name */
-                    std::string strToken = hashToken != 0 ? Names::ResolveName(hashCaller, hashToken) : "NXS";
-                    if(!strToken.empty())
-                        jRet["token_name"] = strToken;
-
 
                     break;
                 }
@@ -717,97 +843,34 @@ namespace TAO::API
                     /* Determine the transaction type that this credit is made for */
                     std::string strInput;
                     if(hashTx.GetType() == TAO::Ledger::LEGACY)
-                        strInput = "LEGACY";
+                        jRet["for"] = "LEGACY";
                     else if(hashProof.IsAccount() || hashProof.IsToken() || hashProof.IsTrust())
-                        strInput = "DEBIT";
+                        jRet["for"] = "DEBIT";
                     else
-                        strInput = "COINBASE";
+                        jRet["for"] = "COINBASE";
 
-                    jRet["for"]      = strInput;
-
+                    /* Populate the rest of our data. */
                     jRet["txid"]     = hashTx.ToString();
                     jRet["contract"] = nID;
                     jRet["proof"]    = hashProof.ToString();
                     jRet["to"]       = hashAddress.ToString();
 
-                    /* Resolve the name of the account that the credit is to */
-                    std::string strAccount = Names::ResolveName(hashCaller, hashAddress);
-                    if(!strAccount.empty())
-                        jRet["to_name"] = strAccount;
-
-                    /* Get the token/account we are crediting to so that we can output the token address / name. */
-                    TAO::Register::Object account;
-                    if(!LLD::Register->ReadState(hashAddress, account))
-                        throw APIException(-13, "Object not found");
-
-                    /* Parse the object register. */
-                    if(!account.Parse())
-                        throw APIException(-14, "Object failed to parse");
-
-                    /* Add the amount to the response */
-                    jRet["amount"]  = (double) nCredit / pow(10, GetDecimals(account));
-
-                    /* Get the object standard. */
-                    uint8_t nStandard = account.Standard();
-
-                    /* Check the object standard. */
-                    if(nStandard != TAO::Register::OBJECTS::ACCOUNT
-                    && nStandard != TAO::Register::OBJECTS::TRUST
-                    && nStandard != TAO::Register::OBJECTS::TOKEN)
+                    /* Get the token/account we are debiting from so that we can output the token address / name. */
+                    TAO::Register::Object object = contract.Register();
+                    if(!object.Parse())
                         throw APIException(-15, "Object is not an account or token");
 
-                    /* Get the token address */
-                    TAO::Register::Address hashToken = account.get<uint256_t>("token");
+                    /* Get the current token's address.  */
+                    const TAO::Register::Address hashToken = object.get<uint256_t>("token");
 
-                    /* Add the token address to the response */
-                    jRet["token"]   = hashToken.ToString();
+                    /* Add the amount to the response */
+                    jRet["amount"]  = FormatBalance(nCredit, hashToken);
 
-                    /* Resolve the name of the token name */
-                    std::string strToken = hashToken != 0 ? Names::ResolveName(hashCaller, hashToken) : "NXS";
-                    if(!strToken.empty())
-                        jRet["token_name"] = strToken;
-
-                    /* Check type transaction that was credited */
-                    if(hashTx.GetType() == TAO::Ledger::TRITIUM)
-                    {
-                        /* The debit transaction being credited */
-                        TAO::Ledger::Transaction txDebit;
-
-                        /* Read the corresponding debit/coinbase transaction */
-                        if(LLD::Ledger->ReadTx(hashTx, txDebit))
-                        {
-                            /* Get the contract. */
-                            const TAO::Operation::Contract& debitContract = txDebit[nID];
-
-                            /* Only add reference if the credit is for a debit (rather than a coinbase) */
-                            if(TAO::Register::Unpack(debitContract, TAO::Operation::OP::DEBIT))
-                            {
-                                /* Get the address the debit came from */
-                                TAO::Register::Address hashFrom;
-                                TAO::Register::Unpack(debitContract, hashFrom);
-
-                                jRet["from"]     = hashFrom.ToString();
-
-                                /* Resolve the name of the token/account that the debit is from */
-                                std::string strFrom = Names::ResolveName(hashCaller, hashFrom);
-                                if(!strFrom.empty())
-                                    jRet["from_name"] = strFrom;
-
-                                /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
-                                debitContract.SeekToPrimitive();
-
-                                /* Seek to reference. */
-                                debitContract.Seek(73);
-
-                                /* The reference */
-                                uint64_t nReference = 0;
-                                debitContract >> nReference;
-
-                                jRet["reference"] = nReference;
-                            }
-                        }
-
-                    }
+                    /* Add the token-id if not available. */
+                    if(hashToken != TOKEN::NXS)
+                        jRet["token"]   = hashToken.ToString();
+                    else
+                        jRet["token"]   = "NXS";
 
                     break;
                 }
@@ -841,25 +904,11 @@ namespace TAO::API
                     contract >> hashLast;
 
                     /* Output the json information. */
-                    jRet["OP"]      = "MIGRATE";
-                    jRet["txid"]    = hashTx.ToString();
+                    jRet["OP"]       = "MIGRATE";
+                    jRet["txid"]     = hashTx.ToString();
                     jRet["account"]  = hashAccount.ToString();
-
-                    /* Resolve the name of the account that the credit is to */
-                    std::string strAccount = Names::ResolveName(hashCaller, hashAccount);
-                    if(!strAccount.empty())
-                        jRet["account_name"] = strAccount;
-
-                    Legacy::TrustKey trustKey;
-                    if(LLD::Trust->ReadTrustKey(hashTrust, trustKey))
-                    {
-                        Legacy::NexusAddress address;
-                        address.SetPubKey(trustKey.vchPubKey);
-                        jRet["trustkey"] = address.ToString();
-                    }
-
-                    jRet["amount"] = (double) nAmount / TAO::Ledger::NXS_COIN;
-                    jRet["score"] = nScore;
+                    jRet["amount"]   = FormatBalance(nAmount);
+                    jRet["score"]    = nScore;
                     jRet["hashLast"] = hashLast.ToString();
 
                     break;
@@ -885,6 +934,7 @@ namespace TAO::API
                     break;
                 }
 
+                /* A fee contract covers the computation expended, a debit essentially. */
                 case TAO::Operation::OP::FEE:
                 {
                     /* Get the address of the account the fee came from. */
@@ -897,14 +947,8 @@ namespace TAO::API
 
                     /* Output the json information. */
                     jRet["OP"]      = "FEE";
-                    jRet["from"] = hashAccount.ToString();
-
-                    /* Resolve the name of the account that the credit is to */
-                    std::string strAccount = Names::ResolveName(hashCaller, hashAccount);
-                    if(!strAccount.empty())
-                        jRet["from_name"] = strAccount;
-
-                    jRet["amount"]  = (double) nFee / TAO::Ledger::NXS_COIN;
+                    jRet["from"]    = hashAccount.ToString();
+                    jRet["amount"]  = FormatBalance(nFee);
 
                     break;
                 }
@@ -924,51 +968,20 @@ namespace TAO::API
                     Legacy::Script script;
                     contract >> script;
 
-                    /* The receiving legacy address */
-                    Legacy::NexusAddress legacyAddress;
-
-                    /* Extract the receiving legacy address */
-                    Legacy::ExtractAddress(script, legacyAddress);
-
                     /* Output the json information. */
                     jRet["OP"]       = "LEGACY";
                     jRet["from"]     = hashFrom.ToString();
 
-                    /* Resolve the name of the token/account that the debit is from */
-                    std::string strFrom = Names::ResolveName(hashCaller, hashFrom);
-                    if(!strFrom.empty())
-                        jRet["from_name"] = strFrom;
+                    /* Extract the receiving legacy address */
+                    Legacy::NexusAddress hashLegacy;
+                    Legacy::ExtractAddress(script, hashLegacy);
 
-                    jRet["to"]       = legacyAddress.ToString();
-
-                    /* Get the token/account we are debiting from so that we can output the token address / name. */
-                    TAO::Register::Object object;
-                    if(!LLD::Register->ReadState(hashFrom, object))
-                        throw APIException(-13, "Object not found");
-
-                    /* Parse the object register. */
-                    if(!object.Parse())
-                        throw APIException(-14, "Object failed to parse");
+                    /* Add to our response JSON now. */
+                    jRet["to"]       = hashLegacy.ToString();
 
                     /* Add the amount to the response */
-                    jRet["amount"]  = (double) nAmount / pow(10, GetDecimals(object));
-
-                    /* Get the object standard. */
-                    uint8_t nStandard = object.Standard();
-
-                    /* Check the object standard. */
-                    if(nStandard != TAO::Register::OBJECTS::ACCOUNT
-                    && nStandard != TAO::Register::OBJECTS::TRUST
-                    && nStandard != TAO::Register::OBJECTS::TOKEN)
-                        throw APIException(-15, "Object is not an account or token");
-
-                    /* Get the token address */
-                    TAO::Register::Address hashToken = object.get<uint256_t>("token");
-
-                    /* Add the token address to the response */
-                    jRet["token"]   = hashToken.ToString();
-                    jRet["token_name"] = "NXS";
-
+                    jRet["amount"]  = FormatBalance(nAmount);
+                    jRet["token"]   = "NXS";
 
                     break;
                 }

@@ -160,7 +160,7 @@ namespace TAO::API
         if(jParams.find("username") != jParams.end())
         {
             /* Check for empty parameter. */
-            if(jParams["genesis"].empty())
+            if(jParams["username"].empty())
                 throw APIException(-58, "Empty Parameter [username]");
 
             return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());

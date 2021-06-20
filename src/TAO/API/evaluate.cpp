@@ -97,6 +97,27 @@ namespace TAO::API
             return EvaluateResults(jAdjusted, jCheck[strKey]);
         }
 
+        /* Check now for arrays we need to recurse and reduce. */
+        if(jCheck.is_array())
+        {
+            /* Now we need to build our return value. */
+            encoding::json jRet = encoding::json::array();
+            for(auto& jValue : jCheck)
+            {
+                /* Check our values recursively. */
+                if(EvaluateResults(jClause, jValue))
+                    jRet.push_back(jValue);
+            }
+
+            /* Check that we added values. */
+            if(!jRet.empty())
+            {
+                /* Copy our new filtered array to current key. */
+                jCheck = jRet;
+                return true;
+            }
+        }
+
         /* Check that field exists in object. */
         if(jCheck.find(strName) == jCheck.end())
             return false;
@@ -238,31 +259,6 @@ namespace TAO::API
             /* Check that our values match. */
             if(strOP == "=" && fValue == fCheck)
                 return true;
-        }
-
-
-        /* Check now for arrays we need to recurse and reduce. */
-        if(jCheck[strName].is_array())
-        {
-            /* Grab a copy of array to iterate. */
-            encoding::json jValues = jCheck[strName];
-
-            /* Now we need to build our return value. */
-            encoding::json jRet = encoding::json::array();
-            for(auto& jValue : jValues)
-            {
-                /* Check our values recursively. */
-                if(EvaluateResults(jClause, jValue))
-                    jRet.push_back(jValue);
-            }
-
-            /* Check that we added values. */
-            if(!jRet.empty())
-            {
-                /* Copy our new filtered array to current key. */
-                jCheck[strName] = jRet;
-                return true;
-            }
         }
 
         return false;
