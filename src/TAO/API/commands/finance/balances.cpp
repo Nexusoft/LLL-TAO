@@ -134,6 +134,7 @@ namespace TAO::API
             jBalances["available"]    = FormatBalance(rBalances.second.at("balance") - nOutgoing,    nDecimals);
             jBalances["unclaimed"]    = FormatBalance(GetPending(hashGenesis, hashToken),            nDecimals);
             jBalances["unconfirmed"]  = FormatBalance(GetUnconfirmed(hashGenesis, hashToken, false), nDecimals);
+            jBalances["decimals"]     = nDecimals;
 
             /* Add the token identifier */
             if(!strToken.empty())
