@@ -86,15 +86,13 @@ namespace TAO::API
             /* Grab a copy of our substring. */
             const std::string strKey = strName.substr(0, nFind);
 
-            /* Check that we have nested values. */
-            if(jCheck.find(strKey) == jCheck.end())
-                return false;
-
             /* Grab a copy to pass back recursively. */
             encoding::json jAdjusted = jClause;
             jAdjusted["field"] = strName.substr(nFind + 1);
 
-            return EvaluateResults(jAdjusted, jCheck[strKey]);
+            /* Check that we have nested values. */
+            if(jCheck.find(strKey) != jCheck.end())
+                return EvaluateResults(jAdjusted, jCheck[strKey]);
         }
 
         /* Check now for arrays we need to recurse and reduce. */
@@ -118,22 +116,28 @@ namespace TAO::API
             }
         }
 
-        /* Check that field exists in object. */
-        if(jCheck.find(strName) == jCheck.end())
-            return false;
+        /* Handle checking for an object. */
+        if(jCheck.is_object())
+        {
+            /* Check that field exists in object. */
+            if(jCheck.find(strName) == jCheck.end())
+                return false;
+
+            return EvaluateResults(jClause, jCheck[strName]);
+        }
 
         /* Grab our OP code now. */
         const std::string strOP = jClause["operator"].get<std::string>();
 
         /* Check our types to compare now. */
-        if(jCheck[strName].is_string())
+        if(jCheck.is_string())
         {
             /* Check syntax to omit < and > operators for string comparisons. */
             if(strOP.find_first_of("<>") != strOP.npos)
                 throw APIException(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [string]");
 
             /* Grab our string to check. */
-            const std::string strCheck = jCheck[strName].get<std::string>();
+            const std::string strCheck = jCheck.get<std::string>();
 
             /* Grab a reference of value to check. */
             const std::string strClause = jClause["value"].get<std::string>();
@@ -161,10 +165,10 @@ namespace TAO::API
         }
 
         /* Check now for floating points. */
-        if(jCheck[strName].is_number_float())
+        if(jCheck.is_number_float())
         {
             /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
-            const double dValue  = jCheck[strName].get<double>();
+            const double dValue  = jCheck.get<double>();
             const double dCheck  = std::stod(jClause["value"].get<std::string>());
 
             /* Check our not operator. */
@@ -187,13 +191,13 @@ namespace TAO::API
         }
 
         /* Check now for integers. */
-        if(jCheck[strName].is_number_integer())
+        if(jCheck.is_number_integer())
         {
             /* Handle for unsigned integers. */
-            if(jCheck[strName].is_number_unsigned())
+            if(jCheck.is_number_unsigned())
             {
                 /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
-                const uint64_t nValue  = jCheck[strName].get<uint64_t>();
+                const uint64_t nValue  = jCheck.get<uint64_t>();
                 const uint64_t nCheck  = std::stoull(jClause["value"].get<std::string>());
 
                 /* Check our not operator. */
@@ -217,7 +221,7 @@ namespace TAO::API
             else
             {
                 /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
-                const int64_t nValue  = jCheck[strName].get<int64_t>();
+                const int64_t nValue  = jCheck.get<int64_t>();
                 const int64_t nCheck  = std::stoll(jClause["value"].get<std::string>());
 
                 /* Check our not operator. */
@@ -240,16 +244,15 @@ namespace TAO::API
             }
         }
 
-
         /* Check now for floating points. */
-        if(jCheck[strName].is_boolean())
+        if(jCheck.is_boolean())
         {
             /* Check syntax to omit < and > operators for string comparisons. */
             if(strOP.find_first_of("<>") != strOP.npos)
                 throw APIException(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [bool]");
 
             /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
-            const bool fValue  = jCheck[strName].get<bool>();
+            const bool fValue  = jCheck.get<bool>();
             const bool fCheck  = (ToLower(jClause["value"].get<std::string>()) == "true") ? true : false;
 
             /* Check our not operator. */
