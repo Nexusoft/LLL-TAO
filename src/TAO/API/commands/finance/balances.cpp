@@ -127,14 +127,13 @@ namespace TAO::API
 
             /* Poplate the json response object. */
             encoding::json jBalances;
-            if(hashToken != TOKEN::NXS)
-                jBalances["token"]    = hashToken.ToString();
 
             /* Populate the rest of the balances. */
             jBalances["available"]    = FormatBalance(rBalances.second.at("balance") - nOutgoing,    nDecimals);
             jBalances["unclaimed"]    = FormatBalance(GetPending(hashGenesis, hashToken),            nDecimals);
             jBalances["unconfirmed"]  = FormatBalance(GetUnconfirmed(hashGenesis, hashToken, false), nDecimals);
             jBalances["decimals"]     = nDecimals;
+            jBalances["token"]    = hashToken.ToString();
 
             /* Add the token identifier */
             if(!strToken.empty())
@@ -143,8 +142,8 @@ namespace TAO::API
             /* Add stake/immature for NXS only */
             if(hashToken == TOKEN::NXS)
             {
-                jBalances["stake"]    = FormatBalance(rBalances.second.at("stake"), nDecimals);
-                jBalances["immature"] = FormatBalance(GetImmature(hashGenesis),     nDecimals);
+                jBalances["stake"]    = FormatBalance(rBalances.second.at("stake"));
+                jBalances["immature"] = FormatBalance(GetImmature(hashGenesis));
             }
 
             /* Filter results now. */
