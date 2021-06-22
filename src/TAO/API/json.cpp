@@ -878,7 +878,8 @@ namespace TAO::API
                         throw APIException(-15, "Object is not an account or token");
 
                     /* Get the current token's address.  */
-                    const TAO::Register::Address hashToken = object.get<uint256_t>("token");
+                    const TAO::Register::Address hashToken =
+                        object.get<uint256_t>("token");
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nCredit, hashToken);
@@ -1545,6 +1546,36 @@ namespace TAO::API
         /* Grab a reference of our working string. */
         std::string& strClause = vWhere[nIndex];
 
+        /* Check for logical statement. */
+        if(strClause == "AND" || strClause == "OR")
+        {
+            /* Check for incorrect mixing of AND/OR. */
+            if(jStatement.find("logical") == jStatement.end())
+                throw APIException(-122, "Query Syntax Error: missing logical operator for group");
+
+            /* Grab a copy of our current logical statement. */
+            const std::string strLogical = jStatement["logical"].get<std::string>();
+            if(strLogical != "NONE" && strLogical != strClause)
+                throw APIException(-121, "Query Syntax Error, must use '(' and ')' to mix AND/OR statements");
+
+            jStatement["logical"] = strClause;
+            return StatementToJSON(vWhere, ++nIndex, jStatement);
+        }
+
+        /* Check if we have extra spaces in the statement. */
+        while(nIndex + 1 < vWhere.size())
+        {
+            /* Grab a reference of our current statement in query. */
+            const std::string& strCheck = vWhere[nIndex + 1];
+
+            /* Check if we can exit now with complete statement. */
+            if(strCheck == "AND" || strCheck == "OR")
+                break;
+
+            strClause += (std::string(" ") + strCheck);
+            vWhere.erase(vWhere.begin() + nIndex + 1); //to clear up iterations for next statement, to ensure no re-use of data
+        }
+
         /* Check if we are recursing up a level. */
         const auto nLeft = strClause.find("(");
         if(nLeft == 0)
@@ -1581,22 +1612,6 @@ namespace TAO::API
             jStatement["statement"].push_back(ClauseToJSON(strClause));
 
             return jStatement;
-        }
-
-        /* Check for logical statement. */
-        if(strClause == "AND" || strClause == "OR")
-        {
-            /* Check for incorrect mixing of AND/OR. */
-            if(jStatement.find("logical") == jStatement.end())
-                throw APIException(-122, "Query Syntax Error: missing logical operator for group");
-
-            /* Grab a copy of our current logical statement. */
-            const std::string strLogical = jStatement["logical"].get<std::string>();
-            if(strLogical != "NONE" && strLogical != strClause)
-                throw APIException(-121, "Query Syntax Error, must use '(' and ')' to mix AND/OR statements");
-
-            jStatement["logical"] = strClause;
-            return StatementToJSON(vWhere, ++nIndex, jStatement);
         }
 
         /* Regular statement adding clause. */
@@ -1768,7 +1783,7 @@ namespace TAO::API
 
         /* Build our query string now. */
         if(!strWhere.empty())
-            jRet["where"] = TAO::API::QueryToJSON(strWhere);
+            jRet["where"] = strWhere;
 
         return jRet;
     }

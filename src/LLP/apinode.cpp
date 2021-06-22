@@ -138,7 +138,10 @@ namespace LLP
 
                         /* JSON encoding. */
                         else if(INCOMING.mapHeaders["content-type"] == "application/json")
+                        {
+                            /* Parse JSON like normal. */
                             jParams = encoding::json::parse(INCOMING.strContent);
+                        }
                         else
                             throw TAO::API::APIException(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
                     }
@@ -189,6 +192,10 @@ namespace LLP
 
                 return true;
             }
+
+            /* Check if we need to parse a where query. */
+            if(jParams.find("where") != jParams.end())
+                jParams["where"] = TAO::API::QueryToJSON(jParams["where"].get<std::string>());
 
             /* Add our request information before invoking command. */
             jParams["request"] =
