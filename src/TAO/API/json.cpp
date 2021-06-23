@@ -995,7 +995,7 @@ namespace TAO::API
                     Legacy::ExtractAddress(script, hashLegacy);
 
                     /* Add to our response JSON now. */
-                    jRet["to"]       = hashLegacy.ToString();
+                    jRet["to"]      = hashLegacy.ToString();
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount);
