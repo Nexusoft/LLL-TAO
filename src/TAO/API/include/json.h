@@ -15,7 +15,6 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 #include <Util/include/json.h>
-#include <TAO/API/types/clause.h>
 
 namespace Legacy { class Transaction; }
 
@@ -47,8 +46,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        encoding::json BlockToJSON(const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
-                               const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
+        encoding::json BlockToJSON(const TAO::Ledger::BlockState& block, const uint32_t nVerbose);
 
 
         /** TransactionToJSON
@@ -65,9 +63,8 @@ namespace TAO
          *
          **/
         encoding::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
-                                     const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
-                                     const uint256_t& hashCoinbase = 0,
-                                     const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
+                                         const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
+                                         const uint256_t& hashCoinbase = 0);
 
 
         /** TransactionToJSON
@@ -81,8 +78,8 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        encoding::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
-                                     const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
+        encoding::json TransactionToJSON(const Legacy::Transaction& tx,
+                                         const TAO::Ledger::BlockState& block, const uint32_t nVerbose);
 
 
         /** ContractsToJSON
@@ -98,8 +95,7 @@ namespace TAO
          *
          **/
         encoding::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
-                                   const uint32_t nVerbose = 0, const uint256_t& hashCoinbase = 0,
-                                   const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
+                                       const uint32_t nVerbose = 0, const uint256_t& hashCoinbase = 0);
 
 
         /** ContractToJSON
@@ -115,7 +111,7 @@ namespace TAO
          *
          **/
         encoding::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract,
-                                  const uint32_t nContract, const uint32_t nVerbose = 0);
+                                      const uint32_t nContract, const uint32_t nVerbose = 0);
 
         /** ObjectToJSON
          *

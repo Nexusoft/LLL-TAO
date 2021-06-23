@@ -55,8 +55,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Converts the block to formatted JSON */
-    encoding::json BlockToJSON(const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
-                           const std::map<std::string, std::vector<Clause>>& vWhere)
+    encoding::json BlockToJSON(const TAO::Ledger::BlockState& block, const uint32_t nVerbose)
     {
         /* Decalre the response object*/
         encoding::json result;
@@ -104,7 +103,7 @@ namespace TAO::API
                     if(LLD::Ledger->ReadTx(vtx.second, tx))
                     {
                         /* add the transaction JSON.  */
-                        encoding::json jRet = TransactionToJSON(0, tx, block, nVerbose, 0, vWhere);
+                        encoding::json jRet = TransactionToJSON(0, tx, block, nVerbose, 0);
 
                         /* Only add the transaction if it has not been filtered out */
                         if(!jRet.empty())
@@ -118,7 +117,7 @@ namespace TAO::API
                     if(LLD::Legacy->ReadTx(vtx.second, tx))
                     {
                         /* add the transaction JSON.  */
-                        encoding::json jRet = TransactionToJSON(tx, block, nVerbose, vWhere);
+                        encoding::json jRet = TransactionToJSON(tx, block, nVerbose);
 
                         /* Only add the transaction if it has not been filtered out */
                         if(!jRet.empty())
@@ -140,8 +139,7 @@ namespace TAO::API
 
     /* Converts the transaction to formatted JSON */
     encoding::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
-                                 const TAO::Ledger::BlockState& block, const uint32_t nVerbose, const uint256_t& hashCoinbase,
-                                 const std::map<std::string, std::vector<Clause>>& vWhere)
+                                 const TAO::Ledger::BlockState& block, const uint32_t nVerbose, const uint256_t& hashCoinbase)
     {
         /* Declare JSON object to return */
         encoding::json jRet;
@@ -174,7 +172,7 @@ namespace TAO::API
             }
 
             /* Check to see if any contracts were returned.  If not then return an empty transaction */
-            encoding::json jContracts = ContractsToJSON(hashCaller, tx, nVerbose, hashCoinbase, vWhere);
+            encoding::json jContracts = ContractsToJSON(hashCaller, tx, nVerbose, hashCoinbase);
             if(jContracts.empty())
                 return encoding::json();
 
@@ -186,8 +184,7 @@ namespace TAO::API
     }
 
     /* Converts the transaction to formatted JSON */
-    encoding::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
-                                 const std::map<std::string, std::vector<Clause>>& vWhere)
+    encoding::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, const uint32_t nVerbose)
     {
         /* Declare JSON object to return */
         encoding::json jRet;
@@ -307,8 +304,8 @@ namespace TAO::API
 
 
     /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
-    encoding::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx, const uint32_t nVerbose,
-                               const uint256_t& hashCoinbase, const std::map<std::string, std::vector<Clause>>& vWhere)
+    encoding::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx,
+                                   const uint32_t nVerbose, const uint256_t& hashCoinbase)
     {
         /* Declare the return JSON object*/
         encoding::json jRet = encoding::json::array();
@@ -348,7 +345,8 @@ namespace TAO::API
 
 
     /* Converts a serialized operation stream to formattted JSON */
-    encoding::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract, uint32_t nContract, uint32_t nVerbose)
+    encoding::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract,
+                                  const uint32_t nContract, const uint32_t nVerbose)
     {
         /* Declare the return JSON object*/
         encoding::json jRet;
