@@ -585,7 +585,7 @@ namespace TAO::Operation
 
 
     /* Get the register's pre-state from the register script. */
-    const TAO::Register::State Contract::Register() const
+    const TAO::Register::State Contract::PreState() const
     {
         /* Seek to first byte. */
         ssRegister.seek(0, STREAM::BEGIN);

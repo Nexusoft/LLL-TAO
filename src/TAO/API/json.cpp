@@ -388,8 +388,8 @@ namespace TAO::API
                     jRet["OP"]      = "WRITE";
                     jRet["address"] = hashAddress.ToString();
 
-                    /* Get the token/account we are debiting from so that we can output the token address / name. */
-                    TAO::Register::Object object = contract.Register();
+                    /* Get the register pre-state so we can build response with old values before OP::WRITE. */
+                    TAO::Register::Object object = contract.PreState();
                     if(!object.Parse())
                         throw APIException(-15, "Object is not an account or token");
 
@@ -808,7 +808,7 @@ namespace TAO::API
                     jRet["to"]       = hashTo.ToString();
 
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
-                    TAO::Register::Object object = contract.Register();
+                    TAO::Register::Object object = contract.PreState();
                     if(!object.Parse())
                         throw APIException(-15, "Object is not an account or token");
 
@@ -873,7 +873,7 @@ namespace TAO::API
                     jRet["to"]       = hashAddress.ToString();
 
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
-                    TAO::Register::Object object = contract.Register();
+                    TAO::Register::Object object = contract.PreState();
                     if(!object.Parse())
                         throw APIException(-15, "Object is not an account or token");
 
@@ -1102,7 +1102,7 @@ namespace TAO::API
 
                         /* Add string to trust. */
                         jRet["trust"]  = nValue;
-                        jRet["times"]   = debug::safe_printstr(nDays, " days, ", nHours, " hours, ", nMinutes, " minutes");
+                        jRet["times"]  = debug::safe_printstr(nDays, " days, ", nHours, " hours, ", nMinutes, " minutes");
                     }
 
                     /* Set the return value from object register data. */

@@ -324,14 +324,14 @@ namespace TAO::Operation
         const std::vector<uint8_t>& Conditions() const;
 
 
-        /** Register
+        /** PreState
          *
          *  Get the register's pre-state from the register script.
          *
          *  @return the state register pre-state.
          *
          **/
-        const TAO::Register::State Register() const;
+        const TAO::Register::State PreState() const;
 
 
         /** Seek
