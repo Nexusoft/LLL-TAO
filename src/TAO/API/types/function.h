@@ -12,86 +12,93 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_API_TYPES_FUNCTION_H
-#define NEXUS_TAO_API_TYPES_FUNCTION_H
+
+#include <TAO/API/types/exception.h>
 
 #include <Util/include/json.h>
+#include <Util/include/version.h>
+
 #include <functional>
 #include <memory>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /** Function
+     *
+     *  Base class for all JSON based API methods
+     *  Encapsulates the function pointer to the method to process the API request
+     *
+     **/
+    class Function
     {
+        /** The function pointer to be called. */
+        std::function<encoding::json(const encoding::json&, bool)> tFunction;
 
-        /** Function
+
+        /** The activation version. **/
+        uint32_t nMinVersion;
+
+
+        /** The deprecation version. **/
+        uint32_t nMaxVersion;
+
+
+        /** The deprecation message and info. **/
+        std::string strMessage;
+
+
+    public:
+
+
+        /** Default Constructor. **/
+        Function()
+        : tFunction   ( )
+        , nMinVersion (0)
+        , nMaxVersion (0)
+        , strMessage  ( )
+        {
+        }
+
+
+        /** Base Constructor **/
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn)
+        : tFunction(tFunctionIn)
+        , nMinVersion (version::get_version(3, 0)) //default: active since tritium launch
+        , nMaxVersion (version::CLIENT_VERSION)
+        , strMessage  ( )
+        {
+        }
+
+
+        /** Constructor for Deprecation. **/
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
+                 const uint32_t nMinVersionIn, const uint32_t nMaxVersionIn, const std::string& strMessageIn)
+        : tFunction   (tFunctionIn)
+        , nMinVersion (nMinVersionIn)
+        , nMaxVersion (nMaxVersionIn)
+        , strMessage  (strMessageIn)
+        {
+        }
+
+
+        /** Execute
          *
-         *  Base class for all JSON based API methods
-         *  Encapsulates the function pointer to the method to process the API request
+         *  Executes the function pointer.
+         *
+         *  @param[in] jParams The json formatted parameters
+         *  @param[in] fHelp Flag if help is invoked
+         *
+         *  @return The json formatted response.
          *
          **/
-        class Function
+        encoding::json Execute(const encoding::json& jParams, const bool fHelp)
         {
-            /** The function pointer to be called. */
-            std::function<encoding::json(const encoding::json&, bool)> function;
+            /* Check for deprecation status. */
+            if(version::CLIENT_VERSION < nMinVersion || version::CLIENT_VERSION > nMaxVersion)
+                throw APIException(-1, "Method not available: ", strMessage);
 
-
-            /** The state being enabled or not. **/
-            bool fEnabled;
-
-
-        public:
-
-
-            /** Default Constructor. **/
-            Function()
-            : function()
-            , fEnabled(true)
-            {
-            }
-
-
-            /** Function input **/
-            Function(std::function<encoding::json(const encoding::json&, bool)> functionIn)
-            : function(functionIn)
-            , fEnabled(true)
-            {
-            }
-
-
-            /** Execute
-             *
-             *  Executes the function pointer.
-             *
-             *  @param[in] fHelp Flag if help is invoked
-             *  @param[in] params The json formatted parameters
-             *
-             *  @return The json formatted response.
-             *
-             **/
-            encoding::json Execute(const encoding::json& jsonParams, const bool fHelp)
-            {
-                if(!fEnabled)
-                    return encoding::json::object({"error", "method disabled"});
-
-                return function(jsonParams, fHelp);
-            }
-
-
-            /** Disable
-             *
-             *  Disables the method from executing.
-             *
-             **/
-            void Disable()
-            {
-                fEnabled = false;
-            }
-        };
-    }
+            return tFunction(jParams, fHelp);
+        }
+    };
 }
-
-#endif

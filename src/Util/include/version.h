@@ -53,6 +53,11 @@ namespace version
 	extern const std::string CLIENT_DATE;
 
 
+	/** Little helper function for calculating our version integer. **/
+	__attribute__((const)) inline uint32_t get_version(const uint32_t nMajor, const uint32_t nMinor, const uint32_t nPatch = 0)
+	{
+		return (10000 * nMajor) + (100 * nMinor) + nPatch;
+	}
 }
 
 #endif
