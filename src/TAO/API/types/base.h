@@ -67,6 +67,18 @@ namespace TAO::API
         virtual Base* Get() = 0;
 
 
+        /** Status
+         *
+         *  Get the current status of a given command.
+         *
+         *  @param[in] strMethod The method we are checking for.
+         *
+         *  @return a string with status message.
+         *
+         **/
+        std::string Status(const std::string& strMethod) const;
+
+
         /** Standard
          *
          *  Checks an object's standard if it has been standardized for this command-set.

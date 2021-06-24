@@ -22,6 +22,16 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /* Get the current status of a given command. */
+    std::string Base::Status(const std::string& strMethod) const
+    {
+        /* Check that the functions map contains status. */
+        if(mapFunctions.find(strMethod) == mapFunctions.end())
+            return debug::safe_printstr("Method not found: ", strMethod);
+
+        return mapFunctions.at(strMethod).Status();
+    }
+
     /* Checks an object's standard if it has been standardized for this command-set. */
     bool Base::Standard(const std::string& strType, const uint8_t nStandard) const
     {
@@ -48,7 +58,7 @@ namespace TAO::API
         if(mapFunctions.find(strMethod) != mapFunctions.end())
             return mapFunctions[strMethod].Execute(SanitizeParams(strMethod, jParams), fHelp);
         else
-            throw APIException(-2, FUNCTION, "Method not found: ", strMethod);
+            throw APIException(-2, "Method not found: ", strMethod);
     }
 
 
@@ -61,7 +71,7 @@ namespace TAO::API
 
         /* Check that we have all of our values. */
         if(vMethods.empty()) //we are ignoring everything past first noun on rewrite
-            throw APIException(-14, FUNCTION, "Malformed request URL: ", strMethod);
+            throw APIException(-14, "Malformed request URL: ", strMethod);
 
         /* Track if we've found an explicet type. */
         bool fStandard = false, fAddress = false, fField = false;;
@@ -116,7 +126,7 @@ namespace TAO::API
 
             /* If we get here, we need to throw for malformed URL. */
             else
-                throw APIException(-14, FUNCTION, "Malformed request URL: ", strMethod);
+                throw APIException(-14, "Malformed request URL: ", strMethod);
         }
 
         return strVerb;

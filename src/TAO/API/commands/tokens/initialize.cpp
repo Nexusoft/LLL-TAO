@@ -91,6 +91,9 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , version::get_version(3, 0)
+            , version::get_version(5, 2)
+            , "please use finance/get command instead"
         );
 
 

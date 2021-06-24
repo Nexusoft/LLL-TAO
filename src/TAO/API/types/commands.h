@@ -108,6 +108,26 @@ namespace TAO::API
         }
 
 
+        /** Status
+         *
+         *  Global helper function to access individual API by parameter for status messages.
+         *
+         *  @param[in] strAPI The current API we are checking status for.
+         *  @param[in] strMethod The current method we are checking status for.
+         *
+         *  @return a string value representing the current status.
+         *
+         **/
+        static std::string Status(const std::string& strAPI, const std::string& strMethod)
+        {
+            /* Check that requested API is registered. */
+            if(!Commands::mapTypes.count(strAPI))
+                throw TAO::API::APIException(-4, "API Not Found: ", strAPI);
+
+            return Commands::mapTypes[strAPI]->Status(strMethod);
+        }
+
+
         /** Shutdown
          *
          *  Shuts down and cleans up our command pointers.

@@ -95,10 +95,25 @@ namespace TAO::API
         encoding::json Execute(const encoding::json& jParams, const bool fHelp)
         {
             /* Check for deprecation status. */
-            if(version::CLIENT_VERSION < nMinVersion || version::CLIENT_VERSION > nMaxVersion)
+            if(version::CLIENT_VERSION < nMinVersion || version::CLIENT_VERSION >= nMaxVersion)
                 throw APIException(-1, "Method not available: ", strMessage);
 
             return tFunction(jParams, fHelp);
+        }
+
+
+        /** Status
+         *
+         *  Get status message for current function.
+         *
+         **/
+        std::string Status() const
+        {
+            /* Check for deprecation status messages ahead by one minor version increment. */
+            if(version::CLIENT_VERSION + 100 >= nMaxVersion) //+100 is one minor version increment
+                return debug::safe_printstr("WARNING: deprecated at version ", nMaxVersion, " (", strMessage, ")");
+
+            return "active";
         }
     };
 }
