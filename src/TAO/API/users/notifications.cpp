@@ -1014,7 +1014,7 @@ namespace TAO
                 const TAO::Operation::Contract& rContract = std::get<0>(contract);
 
                 /* Get contract JSON data. */
-                encoding::json obj = ContractToJSON(hashCaller, rContract, std::get<1>(contract), 1);
+                encoding::json obj = ContractToJSON(rContract, std::get<1>(contract), 1);
 
                 obj["txid"]      = rContract.Hash().ToString();
                 obj["time"]      = rContract.Timestamp();

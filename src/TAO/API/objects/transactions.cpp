@@ -56,12 +56,6 @@ namespace TAO
                 /* If no specific genesis or username have been provided then fall back to the active sig chain */
                 hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
 
-            /* The genesis hash of the API caller, if logged in */
-            uint256_t hashCaller = Commands::Get<Users>()->GetCallersGenesis(params);
-
-            if(config::fClient.load() && hashGenesis != hashCaller)
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
-
             /* The register address of the object to get the transactions for. */
             TAO::Register::Address hashRegister ;
 
@@ -278,7 +272,7 @@ namespace TAO
                     for(const auto& contract : vContracts)
                     {
                         /* JSONify the contract */
-                        encoding::json contractJSON = ContractToJSON(hashCaller, contract.first, contract.second, nVerbose);
+                        encoding::json contractJSON = ContractToJSON(contract.first, contract.second, nVerbose);
 
                         /* add the contract to the array */
                         jsonContracts.push_back(contractJSON);

@@ -82,19 +82,19 @@ namespace TAO
 
 
             /* Declare the JSON return object */
-            encoding::json ret;
+            encoding::json jRet;
 
 
             /* Get the transaction either from disk or mempool. */
             if(LLD::Ledger->ReadTx(hash, txTritium, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 if(strFormat == "JSON")
-                    ret = TAO::API::TransactionToJSON (hashCaller, txTritium, blockState, nVerbose);
+                    jRet = TAO::API::TransactionToJSON (txTritium, blockState, nVerbose);
                 else
                 {
                     DataStream ssTx(SER_NETWORK, LLP::PROTOCOL_VERSION);
                     ssTx << (uint8_t)LLP::MSG_TX_TRITIUM << txTritium;
-                    ret["data"] = HexStr(ssTx.begin(), ssTx.end());
+                    jRet["data"] = HexStr(ssTx.begin(), ssTx.end());
                 }
             }
 
@@ -102,12 +102,12 @@ namespace TAO
             else if(LLD::Legacy->ReadTx(hash, txLegacy, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 if(strFormat == "JSON")
-                    ret = TAO::API::TransactionToJSON(txLegacy, blockState, nVerbose);
+                    jRet = TAO::API::TransactionToJSON(txLegacy, blockState, nVerbose);
                 else
                 {
                     DataStream ssTx(SER_NETWORK, LLP::PROTOCOL_VERSION);
                     ssTx << (uint8_t)LLP::MSG_TX_LEGACY << txLegacy;
-                    ret["data"]  = HexStr(ssTx.begin(), ssTx.end());
+                    jRet["data"]  = HexStr(ssTx.begin(), ssTx.end());
                 }
             }
 
@@ -116,7 +116,7 @@ namespace TAO
                 throw APIException(-87, "Invalid or unknown transaction");
             }
 
-            return ret;
+            return jRet;
         }
 
 
@@ -124,7 +124,7 @@ namespace TAO
         encoding::json Ledger::Submit(const encoding::json& params, const bool fHelp)
         {
             /* Declare the JSON return object */
-            encoding::json ret;
+            encoding::json jRet;
 
             /* Check for the transaction data parameter. */
             if(params.find("data") == params.end())
@@ -150,7 +150,7 @@ namespace TAO
                 {
                     /* Add the transaction to the memory pool. */
                     if(TAO::Ledger::mempool.Accept(tx, nullptr))
-                        ret["hash"] = tx.GetHash().ToString();
+                        jRet["hash"] = tx.GetHash().ToString();
                     else
                         throw APIException(-150, "Transaction rejected.");
                 }
@@ -182,7 +182,7 @@ namespace TAO
 
                         #endif
 
-                        ret["hash"] = tx.GetHash().ToString();
+                        jRet["hash"] = tx.GetHash().ToString();
                     }
                     else
                         throw APIException(-150, "Transaction rejected.");
@@ -192,7 +192,7 @@ namespace TAO
 
             }
 
-            return ret;
+            return jRet;
 
         }
 

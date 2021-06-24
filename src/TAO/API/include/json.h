@@ -53,18 +53,15 @@ namespace TAO
          *
          *  Converts the transaction to formatted JSON
          *
-         *  @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in)
          *  @param[in] tx The transaction to convert to JSON
          *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
          *  @param[in] nVerbose determines the amount of transaction data to include in the response
-         *  @param[in] hashCoinbase Used to filter out coinbase transactions to only those belonging to hashCoinbase
          *
          *  @return the formatted JSON object
          *
          **/
-        encoding::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
-                                         const TAO::Ledger::BlockState& block, const uint32_t nVerbose,
-                                         const uint256_t& hashCoinbase = 0);
+        encoding::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block,
+                                         const uint32_t nVerbose = 0);
 
 
         /** TransactionToJSON
@@ -78,31 +75,14 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        encoding::json TransactionToJSON(const Legacy::Transaction& tx,
-                                         const TAO::Ledger::BlockState& block, const uint32_t nVerbose);
-
-
-        /** ContractsToJSON
-         *
-         *  Converts a transaction object into a formatted JSON list of contracts bound to the transaction.
-         *
-         *  @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in)
-         *  @param[in] tx The transaction with contracts to convert to JSON
-         *  @param[in] nVerbose The verbose output level.
-         *  @param[in] hashCoinbase Used to filter out coinbase transactions to only those belonging to hashCoinbase
-         *
-         *  @return the formatted JSON object
-         *
-         **/
-        encoding::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
-                                       const uint32_t nVerbose = 0, const uint256_t& hashCoinbase = 0);
+        encoding::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block,
+                                         const uint32_t nVerbose = 0);
 
 
         /** ContractToJSON
          *
          *  Converts a serialized contract stream to formattted JSON
          *
-         *  @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in)
          *  @param[in] contract The contract to de-serialize
          *  @param[in] nContract the id of the contract within the transaction
          *  @param[in] nVerbose The verbose output level.
@@ -110,7 +90,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        encoding::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract,
+        encoding::json ContractToJSON(const TAO::Operation::Contract& contract,
                                       const uint32_t nContract, const uint32_t nVerbose = 0);
 
         /** ObjectToJSON
@@ -118,11 +98,12 @@ namespace TAO
          *  Converts an Object Register to formattted JSON with no external lookups
          *
          *  @param[in] object The Object Register to convert
+         *  @param[in] hashRegister The address of the object.
          *
          *  @return the formatted JSON object
          *
          **/
-        encoding::json ObjectToJSON(const TAO::Register::Object& object);
+        encoding::json ObjectToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister = 0);
 
 
         /** ObjectToJSON

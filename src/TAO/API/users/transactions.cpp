@@ -36,15 +36,9 @@ namespace TAO::API
     /* Get a user's account. */
     encoding::json Users::Transactions(const encoding::json& jParams, const bool fHelp)
     {
-        /* Get the Genesis ID. */
+        /* Extract input parameters. */
         const uint256_t hashGenesis = ExtractGenesis(jParams);
-
-        /* The genesis hash of the API caller, if logged in */
-        const uint256_t hashCaller =
-            Commands::Get<Users>()->GetCallersGenesis(jParams);
-
-        /* Check the verbosity levels. */
-        const uint32_t nVerbose = ExtractVerbose(jParams);
+        const uint32_t  nVerbose    = ExtractVerbose(jParams);
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
@@ -96,7 +90,7 @@ namespace TAO::API
 
             /* Get the transaction JSON. */
             encoding::json jResult =
-                TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis);
+                TAO::API::TransactionToJSON(tx, blockState, nVerbose);
 
             /* Check to see whether the transaction has had all children filtered out */
             if(jResult.empty())

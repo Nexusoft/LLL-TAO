@@ -103,7 +103,7 @@ namespace TAO::API
                     if(LLD::Ledger->ReadTx(vtx.second, tx))
                     {
                         /* add the transaction JSON.  */
-                        encoding::json jRet = TransactionToJSON(0, tx, block, nVerbose, 0);
+                        const encoding::json jRet = TransactionToJSON(tx, block, nVerbose);
 
                         /* Only add the transaction if it has not been filtered out */
                         if(!jRet.empty())
@@ -138,8 +138,7 @@ namespace TAO::API
     }
 
     /* Converts the transaction to formatted JSON */
-    encoding::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
-                                 const TAO::Ledger::BlockState& block, const uint32_t nVerbose, const uint256_t& hashCoinbase)
+    encoding::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, const uint32_t nVerbose)
     {
         /* Declare JSON object to return */
         encoding::json jRet;
@@ -172,12 +171,33 @@ namespace TAO::API
             }
 
             /* Check to see if any contracts were returned.  If not then return an empty transaction */
-            encoding::json jContracts = ContractsToJSON(hashCaller, tx, nVerbose, hashCoinbase);
-            if(jContracts.empty())
-                return encoding::json();
+            jRet["contracts"] = encoding::json::array();
 
-            /* Add contracts to return json object. */
-            jRet["contracts"] = jContracts;
+            /* Add a contract to the list of contracts. */
+            const uint32_t nContracts = tx.Size();
+            for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+            {
+                /* Grab a reference of our contract. */
+                const TAO::Operation::Contract& contract = tx[nContract];
+
+                /* Unpack to read coinbase operation data. */
+                if(TAO::Register::Unpack(contract, TAO::Operation::OP::COINBASE))
+                {
+                    /* Unpack the owner from the contract */
+                    uint256_t hashProof = 0;
+                    TAO::Register::Unpack(contract, hashProof);
+
+                    /* Skip this contract if the proof is not our tx genesis. */
+                    if(hashProof != tx.hashGenesis)
+                        continue;
+                }
+
+                /* Add the contract to the array */
+                jRet["contracts"].push_back
+                (
+                    ContractToJSON(contract, nContract, nVerbose)
+                );
+            }
         }
 
         return jRet;
@@ -195,24 +215,25 @@ namespace TAO::API
         /* Basic TX info for level 1 and up */
         if(nVerbose > 0)
         {
-            jRet["type"] = tx.TypeString();
-            jRet["timestamp"] = tx.nTime;
-            jRet["amount"] = Legacy::SatoshisToAmount(tx.GetValueOut());
-            jRet["blockhash"] = block.IsNull() ? "" : block.GetHash().GetHex();
+            /* Populate our JSON object. */
+            jRet["type"]          = tx.TypeString();
+            jRet["timestamp"]     = tx.nTime;
+            jRet["amount"]        = Legacy::SatoshisToAmount(tx.GetValueOut());
+            jRet["blockhash"]     = block.IsNull() ? "" : block.GetHash().GetHex();
             jRet["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
 
             /* Don't add inputs for coinbase or coinstake transactions */
             if(!tx.IsCoinBase())
             {
                 /* Declare the inputs JSON array */
-                encoding::json inputs = encoding::json::array();
+                encoding::json jInputs = encoding::json::array();
 
                 /* Iterate through each input */
                 for (uint32_t i = (uint32_t)tx.IsCoinStake(); i < tx.vin.size(); ++i)
                 {
                     const Legacy::TxIn& txin = tx.vin[i];
 
-                    encoding::json input;
+                    encoding::json jInput;
                     bool fFound = false;
 
                     if(tx.nVersion >= 2 && txin.prevout.hash.GetType() == TAO::Ledger::TRITIUM)
@@ -228,10 +249,9 @@ namespace TAO::API
                             if(txPrev.Size() < txin.prevout.n)
                                 throw APIException(-87, "Invalid or unknown transaction");
 
-                            const uint256_t hashCaller = txPrev[txin.prevout.n].Caller();
-
-                            input = ContractToJSON(hashCaller, txPrev[txin.prevout.n], txin.prevout.n, nVerbose);
-                            inputs.push_back(input);
+                            /* We build based on contract if our input is a tritium contract . */
+                            jInput = ContractToJSON(txPrev[txin.prevout.n], txin.prevout.n, nVerbose);
+                            jInputs.push_back(jInput);
                         }
                     }
 
@@ -249,16 +269,16 @@ namespace TAO::API
                             TAO::Register::Address hashRegister;
 
                             if(Legacy::ExtractAddress(txPrev.vout[txin.prevout.n].scriptPubKey, address))
-                                input["address"] = address.ToString();
+                                jInput["address"] = address.ToString();
 
                             else if(Legacy::ExtractRegister(txPrev.vout[txin.prevout.n].scriptPubKey, hashRegister))
-                                input["address"] = hashRegister.ToString();
+                                jInput["address"] = hashRegister.ToString();
 
                             else
                                 throw APIException(-8, "Unable to Extract Input Address");
 
-                            input["amount"] = (double) txPrev.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
-                            inputs.push_back(input);
+                            jInput["amount"] = (double) txPrev.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
+                            jInputs.push_back(jInput);
                         }
                     }
 
@@ -266,7 +286,7 @@ namespace TAO::API
                             throw APIException(-7, "Invalid transaction id");
                 }
 
-                jRet["inputs"] = inputs;
+                jRet["inputs"] = jInputs;
             }
 
             /* Declare the output JSON array */
@@ -303,49 +323,8 @@ namespace TAO::API
     }
 
 
-    /* Converts a transaction object into a formatted JSON list of contracts bound to the transaction. */
-    encoding::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction &tx,
-                                   const uint32_t nVerbose, const uint256_t& hashCoinbase)
-    {
-        /* Declare the return JSON object*/
-        encoding::json jRet = encoding::json::array();
-
-        /* Add a contract to the list of contracts. */
-        const uint32_t nContracts = tx.Size();
-        for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
-        {
-            /* Grab a reference of our contract. */
-            const TAO::Operation::Contract& contract = tx[nContract];
-
-            /* If the caller has requested to filter the coinbases then we only include those where the coinbase is meant for hashCoinbase  */
-            if(hashCoinbase != 0)
-            {
-                /* Unpack to read coinbase operation data. */
-                if(TAO::Register::Unpack(contract, TAO::Operation::OP::COINBASE))
-                {
-                    /* Unpack the owner from the contract */
-                    uint256_t hashProof = 0;
-                    TAO::Register::Unpack(contract, hashProof);
-
-                    /* Skip this contract if the proof is not the hashCoinbase */
-                    if(hashProof != hashCoinbase)
-                        continue;
-                }
-            }
-
-            /* Add the contract to the array */
-            jRet.push_back
-            (
-                ContractToJSON(hashCaller, contract, nContract, nVerbose)
-            );
-        }
-
-        return jRet;
-    }
-
-
     /* Converts a serialized operation stream to formattted JSON */
-    encoding::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract,
+    encoding::json ContractToJSON(const TAO::Operation::Contract& contract,
                                   const uint32_t nContract, const uint32_t nVerbose)
     {
         /* Declare the return JSON object*/
@@ -1012,16 +991,8 @@ namespace TAO::API
     }
 
 
-    /** ObjectToJSON
-     *
-     *  Converts an Object Register to formattted JSON
-     *
-     *  @param[in] object The Object Register to convert
-     *
-     *  @return the formatted JSON object
-     *
-     **/
-    encoding::json ObjectToJSON(const TAO::Register::Object& object)
+    /* Converts an Object Register to formattted JSON */
+    encoding::json ObjectToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister)
     {
         /* Add the register owner */
         encoding::json jRet;
@@ -1147,7 +1118,6 @@ namespace TAO::API
                     break;
                 }
 
-
                 /* Check for uint1024_t type. */
                 case TAO::Register::TYPES::UINT1024_T:
                 {
@@ -1186,7 +1156,7 @@ namespace TAO::API
             }
         }
 
-        /* Check some standard types to see if we want to add addresses. */
+        /* Check some standard types to see if we want to add additional data. */
         const uint8_t nStandard = object.Standard();
         switch(nStandard)
         {
@@ -1246,6 +1216,12 @@ namespace TAO::API
                 break;
             }
         }
+
+        /* Otherwise output the address if supplied. */
+        if(hashRegister != 0)
+            jRet["address"] = TAO::Register::Address(hashRegister).ToString();
+
+
 
         return jRet;
     }
