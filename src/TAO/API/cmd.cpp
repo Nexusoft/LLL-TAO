@@ -148,13 +148,35 @@ namespace TAO
             /* Check for errors. */
             std::string strPrint = "";
             if(jRet.find("error") != jRet.end())
-                strPrint = jRet["error"]["message"];
+            {
+                /* Build our error string. */
+                strPrint = debug::safe_printstr
+                (
+                    "(", jRet["error"]["code"].get<int64_t>(), ") ",
+                     jRet["error"]["message"].get<std::string>()
+                );
+            }
             else
                 strPrint = jRet["result"].dump(4);
 
+            /* Check for status messages. */
+            const std::string strStatus = jRet["info"]["status"].get<std::string>();
+            if(strStatus.find("to be deprecated") != strStatus.npos)
+            {
+                /* Build our warning string with error message. */
+                const std::string strMessage =
+                            std::string(ANSI_COLOR_BRIGHT_YELLOW)
+                          + std::string("WARNING")
+                          + std::string(ANSI_COLOR_RESET)
+                          + std::string(": ")
+                          + jRet["info"]["status"].get<std::string>();
+
+                printf("%s\n", strMessage.c_str());
+            }
+
             /* Dump response to console. */
             printf("%s\n", strPrint.c_str());
-            printf("[%s]\n", jRet["info"]["latency"].get<std::string>().c_str());
+            printf("[Completed in %s]\n", jRet["info"]["latency"].get<std::string>().c_str());
 
             return 0;
         }

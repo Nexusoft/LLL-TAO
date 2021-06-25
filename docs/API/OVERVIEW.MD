@@ -152,11 +152,11 @@ API Error Codes
 
 | Code   | Message   |
 | :-----:| :-------- |
-| -1 | Method not available |
-| -2 | Method not found (method) |
-| -3 | Unspecified API error |
+| -1 | Method not available: [message] |
+| -2 | Method not found: [message] |
+| -3 | Method was deprecated at version [version]: [message] |
 | -4 | API not found (API name) |
-| -5 | content-type (content type) not supported |
+| -5 | content-type [content type] not supported |
 | -6 | content-type not provided when content included |
 | -7 | Invalid transaction id |
 | -8 | Unable to Extract Input Address |

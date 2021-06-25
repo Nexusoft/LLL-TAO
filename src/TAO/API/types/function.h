@@ -61,7 +61,15 @@ namespace TAO::API
         }
 
 
-        /** Base Constructor **/
+        /** Constructor
+         *
+         *  Base constructor with no deprecation data, only activation timestamp with default value to disabled.
+         *  An activation timestamp of zero means that command activates with release of update, not at hard fork time.
+         *
+         *  @param[in] tFunctionIn The function to be executed by this class.
+         *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork. default value of 0.
+         *
+         **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
         , nActivation (nActivationIn) //default: zero denotes there is no activation switch
@@ -71,7 +79,37 @@ namespace TAO::API
         }
 
 
-        /** Constructor for Deprecation. **/
+        /** Constructor
+         *
+         *  Alternative constructor following value sequence of base constructor and no default parameters
+         *
+         *  @param[in] tFunctionIn The function to be executed by this class.
+         *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork.
+         *  @param[in] nMaxVersionIn The maximum version this function can be called on.
+         *  @param[in] strMessageIn The deprecation message including info for re-routes or alternative methods.
+         *
+         **/
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
+                 const uint64_t nActivationIn, const uint32_t nMaxVersionIn, const std::string& strMessageIn)
+        : tFunction   (tFunctionIn)
+        , nActivation (nActivationIn)
+        , nMaxVersion (nMaxVersionIn)
+        , strMessage  (strMessageIn)
+        {
+        }
+
+
+        /** Constructor
+         *
+         *  Constructor for Deprecation with activation as a default parameter, generally for non-activating deprecation.
+         *  An activation timestamp of zero means that command activates with release of update, not at hard fork time.
+         *
+         *  @param[in] tFunctionIn The function to be executed by this class.
+         *  @param[in] nMaxVersionIn The maximum version this function can be called on.
+         *  @param[in] strMessageIn The deprecation message including info for re-routes or alternative methods.
+         *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork, default value of 0.
+         *
+         **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
                  const uint32_t nMaxVersionIn, const std::string& strMessageIn, const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
@@ -96,12 +134,12 @@ namespace TAO::API
         {
             /* Check for activation status. */
             const uint64_t nTimestamp = runtime::unifiedtimestamp();
-            if(nActivation > 0 && nTimestamp < nActivation)
+            if(nActivation != 0 && nTimestamp < nActivation)
                 throw APIException(-1, "Method not available: activates in ", (nActivation - nTimestamp), " seconds");
 
             /* Check for deprecation status. */
-            if(version::CLIENT_VERSION >= nMaxVersion)
-                throw APIException(-1, "Method not available: ", strMessage);
+            if(nMaxVersion != 0 && version::CLIENT_VERSION >= nMaxVersion)
+                throw APIException(-3, "Method was deprecated at version ", version::version_string(nMaxVersion), ": ", strMessage);
 
             return tFunction(jParams, fHelp);
         }
@@ -115,15 +153,15 @@ namespace TAO::API
         __attribute__((pure)) std::string Status() const
         {
             /* Check for activation status. */
-            if(nActivation > 0 && runtime::unifiedtimestamp() < nActivation)
+            if(nActivation != 0 && runtime::unifiedtimestamp() < nActivation)
                 return "inactive";
 
             /* Check for deprecation status messages ahead by one minor version increment. */
-            if(nMaxVersion > 0)
+            if(nMaxVersion != 0)
             {
                 /* Give deprecation message if in deprecation period. */
                 if(version::CLIENT_VERSION < nMaxVersion)
-                    return debug::safe_printstr("Deprecated at version ", version::version_string(nMaxVersion), ": ", strMessage);
+                    return debug::safe_printstr("Method to be deprecated at version ", version::version_string(nMaxVersion), ": ", strMessage);
 
                 return "deprecated";
             }
