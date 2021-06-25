@@ -88,7 +88,6 @@ namespace TAO::API
             , "please use finance/debit command instead"
         );
 
-
         /* Handle for all GET operations. */
         mapFunctions["get"] = Function
         (
@@ -102,7 +101,6 @@ namespace TAO::API
             , version::get_version(6, 0, 0)
             , "please use finance/get command instead"
         );
-
 
         /* Handle for all LIST operations. */
         mapFunctions["list"] = Function
@@ -118,7 +116,6 @@ namespace TAO::API
             , "please use finance/list command instead"
         );
 
-
         /* List token transactions method. */
         mapFunctions["list/token/transactions"] = Function
         (
@@ -133,7 +130,6 @@ namespace TAO::API
             , "please use finance/list/transactions command instead"
         );
 
-
         /* List accounts for given token. */
         mapFunctions["list/token/accounts"] = Function
         (
@@ -147,7 +143,6 @@ namespace TAO::API
             , version::get_version(6, 0, 0)
             , "please use finance/list/accounts command instead"
         );
-
 
         /* List all transactions for given account. */
         mapFunctions["list/account/transactions"] = Function

@@ -88,6 +88,20 @@ namespace TAO::API
             )
         );
 
+        /* Handle for all LIST operations. */
+        mapFunctions["list/balances"] = Function
+        (
+            std::bind
+            (
+                &Finance::List,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use finance/get/balances instead"
+        );
+
         /* Handle for BALANCES. */
         mapFunctions["get/balances"] = Function
         (
