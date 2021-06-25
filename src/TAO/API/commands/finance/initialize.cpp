@@ -88,20 +88,6 @@ namespace TAO::API
             )
         );
 
-        /* Handle for all LIST operations. */
-        mapFunctions["list/balances"] = Function
-        (
-            std::bind
-            (
-                &Finance::List,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-            , version::get_version(5, 1, 0)
-            , "please use finance/get/balances instead"
-        );
-
         /* Handle for BALANCES. */
         mapFunctions["get/balances"] = Function
         (
@@ -132,5 +118,33 @@ namespace TAO::API
         mapFunctions["set/stake"]       = Function(std::bind(&Finance::SetStake, this, std::placeholders::_1, std::placeholders::_2));
 
         //mapFunctions["list/trustaccounts"] = Function(std::bind(&Finance::TrustAccounts, this, std::placeholders::_1, std::placeholders::_2));
+
+        /* DEPRECATED */
+        mapFunctions["list/balances"] = Function
+        (
+            std::bind
+            (
+                &Finance::List,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use finance/get/balances instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/trustaccounts"] = Function
+        (
+            std::bind
+            (
+                &Finance::List,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use register/list/trust instead"
+        );
     }
 }
