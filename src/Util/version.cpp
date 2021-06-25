@@ -68,4 +68,16 @@ namespace version
     #endif
 
     const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + "-rc1 " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH);
+
+
+	/* Overload to decompose a integer version into string value. */
+	std::string version_string(const uint32_t nVersion)
+	{
+		/* Decompose our individual sub-versions. */
+		const uint32_t nMajor = nVersion / 10000;
+		const uint32_t nMinor = (nVersion - (nMajor * 10000)) / 100;
+		const uint32_t nPatch = (nVersion - (nMajor * 10000) - (nMinor * 100));
+
+		return debug::safe_printstr(nMajor, ".", nMinor, ".", nPatch);
+	}
 }

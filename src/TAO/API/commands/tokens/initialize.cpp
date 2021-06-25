@@ -42,6 +42,8 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , version::get_version(6, 0, 0)
+            , "please use finance/burn command instead"
         );
 
         /* Handle for all CREATE operations. */
@@ -54,6 +56,8 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , version::get_version(6, 0, 0)
+            , "please use finance/get command instead"
         );
 
         /* Handle for all CREDIT operations. */
@@ -66,6 +70,8 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , version::get_version(6, 0, 0)
+            , "please use finance/credit command instead"
         );
 
         /* Handle for all DEBIT operations. */
@@ -78,6 +84,8 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , version::get_version(6, 0, 0)
+            , "please use finance/debit command instead"
         );
 
 
@@ -91,8 +99,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , version::get_version(3, 0)
-            , version::get_version(5, 2)
+            , version::get_version(6, 0, 0)
             , "please use finance/get command instead"
         );
 
@@ -107,6 +114,8 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , version::get_version(6, 0, 0)
+            , "please use finance/list command instead"
         );
 
 

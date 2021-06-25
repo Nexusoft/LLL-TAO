@@ -36,8 +36,8 @@ namespace TAO::API
         std::function<encoding::json(const encoding::json&, bool)> tFunction;
 
 
-        /** The activation version. **/
-        uint32_t nMinVersion;
+        /** The activation timestamp. **/
+        uint64_t nActivation;
 
 
         /** The deprecation version. **/
@@ -54,7 +54,7 @@ namespace TAO::API
         /** Default Constructor. **/
         Function()
         : tFunction   ( )
-        , nMinVersion (0)
+        , nActivation (0)
         , nMaxVersion (0)
         , strMessage  ( )
         {
@@ -62,10 +62,10 @@ namespace TAO::API
 
 
         /** Base Constructor **/
-        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn)
-        : tFunction(tFunctionIn)
-        , nMinVersion (version::get_version(3, 0)) //default: active since tritium launch
-        , nMaxVersion (version::CLIENT_VERSION)
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const uint64_t nActivationIn = 0)
+        : tFunction   (tFunctionIn)
+        , nActivation (nActivationIn) //default: zero denotes there is no activation switch
+        , nMaxVersion (0)
         , strMessage  ( )
         {
         }
@@ -73,9 +73,9 @@ namespace TAO::API
 
         /** Constructor for Deprecation. **/
         Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn,
-                 const uint32_t nMinVersionIn, const uint32_t nMaxVersionIn, const std::string& strMessageIn)
+                 const uint32_t nMaxVersionIn, const std::string& strMessageIn, const uint64_t nActivationIn = 0)
         : tFunction   (tFunctionIn)
-        , nMinVersion (nMinVersionIn)
+        , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         , strMessage  (strMessageIn)
         {
@@ -94,8 +94,13 @@ namespace TAO::API
          **/
         encoding::json Execute(const encoding::json& jParams, const bool fHelp)
         {
+            /* Check for activation status. */
+            const uint64_t nTimestamp = runtime::unifiedtimestamp();
+            if(nActivation > 0 && nTimestamp < nActivation)
+                throw APIException(-1, "Method not available: activates in ", (nActivation - nTimestamp), " seconds");
+
             /* Check for deprecation status. */
-            if(version::CLIENT_VERSION < nMinVersion || version::CLIENT_VERSION >= nMaxVersion)
+            if(version::CLIENT_VERSION >= nMaxVersion)
                 throw APIException(-1, "Method not available: ", strMessage);
 
             return tFunction(jParams, fHelp);
@@ -107,11 +112,21 @@ namespace TAO::API
          *  Get status message for current function.
          *
          **/
-        std::string Status() const
+        __attribute__((pure)) std::string Status() const
         {
+            /* Check for activation status. */
+            if(nActivation > 0 && runtime::unifiedtimestamp() < nActivation)
+                return "inactive";
+
             /* Check for deprecation status messages ahead by one minor version increment. */
-            if(version::CLIENT_VERSION + 100 >= nMaxVersion) //+100 is one minor version increment
-                return debug::safe_printstr("WARNING: deprecated at version ", nMaxVersion, " (", strMessage, ")");
+            if(nMaxVersion > 0)
+            {
+                /* Give deprecation message if in deprecation period. */
+                if(version::CLIENT_VERSION < nMaxVersion)
+                    return debug::safe_printstr("Deprecated at version ", version::version_string(nMaxVersion), ": ", strMessage);
+
+                return "deprecated";
+            }
 
             return "active";
         }

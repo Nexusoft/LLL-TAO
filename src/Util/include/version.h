@@ -53,11 +53,33 @@ namespace version
 	extern const std::string CLIENT_DATE;
 
 
-	/** Little helper function for calculating our version integer. **/
+	/** get_version
+	 *
+	 *  Convert version values into aggregated version.
+	 *
+	 *  @param[in] nMajor The major version number, i.e. the leftmost value
+	 *  @param[in] nMinor The minor version number, i.e. the center value
+	 *  @param[in] nPatch The patch version number, i.e. the rightmost value
+	 *
+	 *  @return aggregated version as unsigned integer.
+	 *
+	 **/
 	__attribute__((const)) inline uint32_t get_version(const uint32_t nMajor, const uint32_t nMinor, const uint32_t nPatch = 0)
 	{
 		return (10000 * nMajor) + (100 * nMinor) + nPatch;
 	}
+
+
+	/** version_string
+	 *
+	 *  Decompose a integer version into string value.
+	 *
+	 *  @param[in] nVersion The version to decompose
+	 *
+	 *  @return string representation of version.
+	 *
+	 **/
+	__attribute__((const)) std::string version_string(const uint32_t nVersion);
 }
 
 #endif

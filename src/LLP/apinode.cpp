@@ -269,8 +269,6 @@ namespace LLP
         {
             {"method",    strAPI + "/" + strMethod},
             {"status",    TAO::API::Commands::Status(strAPI, strMethod)},
-            {"timestamp", debug::rfc1123Time() },
-            {"address",   this->addr.ToString()},
             {"latency",   debug::safe_printstr(std::fixed, nLatency, " ms") }
         };
 
