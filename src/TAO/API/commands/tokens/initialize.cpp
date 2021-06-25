@@ -119,12 +119,48 @@ namespace TAO::API
         );
 
 
+        /* List token transactions method. */
+        mapFunctions["list/token/transactions"] = Function
+        (
+            std::bind
+            (
+                &Tokens::ListTransactions,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(6, 0, 0)
+            , "please use finance/list/transactions command instead"
+        );
 
-        //XXX: we should format this better, we can't go over 132 characters in a line based on formatting guidelines.
-        mapFunctions["list/token/transactions"]   = Function(std::bind(&Tokens::ListTransactions,  this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["list/token/accounts"]       = Function(std::bind(&Tokens::ListTokenAccounts, this, std::placeholders::_1, std::placeholders::_2));
 
-        /* Temporary reroute of the account methods to the finance API equivalents XXX: this is really hacky */
-        mapFunctions["list/account/transactions"] = Function(std::bind(&Finance::ListTransactions, Commands::Get<Finance>(), std::placeholders::_1, std::placeholders::_2));
+        /* List accounts for given token. */
+        mapFunctions["list/token/accounts"] = Function
+        (
+            std::bind
+            (
+                &Tokens::ListTokenAccounts,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(6, 0, 0)
+            , "please use finance/list/accounts command instead"
+        );
+
+
+        /* List all transactions for given account. */
+        mapFunctions["list/account/transactions"] = Function
+        (
+            std::bind
+            (
+                &Finance::ListTransactions,
+                Commands::Get<Finance>(),
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(6, 0, 0)
+            , "please use finance/list/transactions command instead"
+        );
     }
 }
