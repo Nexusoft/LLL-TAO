@@ -36,45 +36,6 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Lists all transactions for a given account. */
-    encoding::json Tokens::ListTransactions(const encoding::json& params, const bool fHelp)
-    {
-        /* The account to list transactions for. */
-        TAO::Register::Address hashAccount;
-
-        /* If name is provided then use this to deduce the register address,
-         * otherwise try to find the raw hex encoded address. */
-        if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
-            hashAccount = Names::ResolveAddress(params, params["name"].get<std::string>());
-        else if(params.find("address") != params.end())
-            hashAccount.SetBase58(params["address"].get<std::string>());
-        else
-            throw APIException(-33, "Missing name or address");
-
-        /* Get the account object. */
-        TAO::Register::Object object;
-        if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
-        {
-            throw APIException(-125, "Token not found");
-        }
-
-        /* Parse the object register. */
-        if(!object.Parse())
-            throw APIException(-14, "Object failed to parse");
-
-        /* Get the object standard. */
-        uint8_t nStandard = object.Standard();
-
-        /* Check the object standard. */
-        if(nStandard != TAO::Register::OBJECTS::TOKEN)
-        {
-            throw APIException(-124, "Unknown token / account.");
-        }
-
-        return Objects::ListTransactions(params, fHelp);
-    }
-
-
     /* Lists all accounts that have been created for a particular token. */
     //XXX: this command will experience combinatoral explosion, to be deprecated in T++
     encoding::json Tokens::ListTokenAccounts(const encoding::json& params, const bool fHelp)

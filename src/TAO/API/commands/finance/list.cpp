@@ -37,110 +37,85 @@ ________________________________________________________________________________
 
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Get a list of accounts owned by a signature chain. */
+    encoding::json Finance::List(const encoding::json& jParams, const bool fHelp)
     {
+        /* Get our genesis-id for this call. */
+        const uint256_t hashGenesis =
+            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
-        /* Get a list of accounts owned by a signature chain. */
-        encoding::json Finance::List(const encoding::json& jParams, const bool fHelp)
+        /* Number of results to return. */
+        uint32_t nLimit = 100, nOffset = 0;
+
+        /* Sort order to apply */
+        std::string strOrder = "desc";
+
+        /* Get the jParams to apply to the response. */
+        ExtractList(jParams, strOrder, nLimit, nOffset);
+
+        /* The token to filter on.  Default to 0 (NXS) */
+        const uint256_t hashToken = ExtractToken(jParams);
+
+        /* Check for where clause. */
+        const bool fWhere = (jParams.find("where") != jParams.end());
+        const bool fToken = ((jParams.find("token_name") != jParams.end()) || (jParams.find("token") != jParams.end()));
+
+        /* Get the list of registers owned by this sig chain */
+        std::vector<TAO::Register::Address> vAccounts;
+        if(!ListAccounts(hashGenesis, vAccounts, false, true))
+            throw APIException(-74, "No registers found");
+
+        /* Build our response json object. */
+        encoding::json jRet;
+
+        /* Add the register data to the response */
+        uint32_t nTotal = 0;
+        for(const auto& hashRegister : vAccounts)
         {
-            /* Get our genesis-id for this call. */
-            const uint256_t hashGenesis =
-                Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            /* Check the offset. */
+            if(++nTotal <= nOffset)
+                continue;
 
-            /* Number of results to return. */
-            uint32_t nLimit = 100, nOffset = 0;
+            /* Get the token / account object. */
+            TAO::Register::Object objThis;
+            if(!LLD::Register->ReadObject(hashRegister, objThis, TAO::Ledger::FLAGS::LOOKUP))
+                continue;
 
-            /* Sort order to apply */
-            std::string strOrder = "desc";
+            /* Check that our type matches our noun. */
+            if(!CheckType(jParams, objThis))
+                continue;
 
-            /* Get the jParams to apply to the response. */
-            ExtractList(jParams, strOrder, nLimit, nOffset);
+            /* Check the account matches the parameter filter if supplied, otherwise revert to where clause. */
+            if(!fWhere && !fToken && objThis.get<uint256_t>("token") != hashToken)
+                continue;
 
-            /* The token to filter on.  Default to 0 (NXS) */
-            const uint256_t hashToken = ExtractToken(jParams);
+            /* Check the accounts match the where filter. */
+            if(!FilterObject(jParams, objThis))
+                continue;
 
-            /* Check for where clause. */
-            const bool fWhere = (jParams.find("where") != jParams.end());
-            const bool fToken = ((jParams.find("token_name") != jParams.end()) || (jParams.find("token") != jParams.end()));
+            /* Check to see whether the transaction has had all children filtered out */
+            encoding::json jObject = TAO::API::ObjectToJSON(objThis);
+            if(jObject.empty())
+                continue;
 
-            /* Get the list of registers owned by this sig chain */
-            std::vector<TAO::Register::Address> vAccounts;
-            if(!ListAccounts(hashGenesis, vAccounts, false, true))
-                throw APIException(-74, "No registers found");
+            /* Add additional data for finance call. */
+            jObject["address"] = hashRegister.ToString();
+            jObject["name"]    = Names::ResolveName(hashGenesis, hashRegister);
 
-            /* Build our response json object. */
-            encoding::json jRet;
+            /* Check results filters if supplied. */
+            if(!FilterResults(jParams, jObject))
+                continue;
 
-            /* Add the register data to the response */
-            uint32_t nTotal = 0;
-            for(const auto& hashRegister : vAccounts)
-            {
-                /* Check the offset. */
-                if(++nTotal <= nOffset)
-                    continue;
+            /* Add to our return json. */
+            jRet.push_back(jObject);
 
-                /* Get the token / account object. */
-                TAO::Register::Object objThis;
-                if(!LLD::Register->ReadObject(hashRegister, objThis, TAO::Ledger::FLAGS::LOOKUP))
-                    continue;
-
-                /* Check that our type matches our noun. */
-                if(!CheckType(jParams, objThis))
-                    continue;
-
-                /* Check the account matches the parameter filter if supplied, otherwise revert to where clause. */
-                if(!fWhere && !fToken && objThis.get<uint256_t>("token") != hashToken)
-                    continue;
-
-                /* Check the accounts match the where filter. */
-                if(!FilterObject(jParams, objThis))
-                    continue;
-
-                /* Check to see whether the transaction has had all children filtered out */
-                encoding::json jObject = TAO::API::ObjectToJSON(objThis);
-                if(jObject.empty())
-                    continue;
-
-                /* Add additional data for finance call. */
-                jObject["address"] = hashRegister.ToString();
-                jObject["name"]    = Names::ResolveName(hashGenesis, hashRegister);
-
-                /* Check results filters if supplied. */
-                if(!FilterResults(jParams, jObject))
-                    continue;
-
-                /* Add to our return json. */
-                jRet.push_back(jObject);
-
-                /* Check the limit */
-                if(nTotal - nOffset > nLimit)
-                    break;
-            }
-
-            return jRet;
+            /* Check the limit */
+            if(nTotal - nOffset > nLimit)
+                break;
         }
 
-
-        /* Lists all transactions for a given account. */
-        encoding::json Finance::ListTransactions(const encoding::json& jParams, const bool fHelp)
-        {
-            /* The account to list transactions for. */
-            const TAO::Register::Address hashAccount = ExtractAddress(jParams);
-
-            /* Get the account object. */
-            TAO::Register::Object object;
-            if(!LLD::Register->ReadObject(hashAccount, object))
-                throw APIException(-13, "Object not found");
-
-            /* Check the object standard. */
-            if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                throw APIException(-65, "Object is not an account");
-
-            return Objects::ListTransactions(jParams, fHelp);
-        }
+        return jRet;
     }
 }

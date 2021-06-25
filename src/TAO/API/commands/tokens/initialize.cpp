@@ -121,13 +121,13 @@ namespace TAO::API
         (
             std::bind
             (
-                &Tokens::ListTransactions,
+                &Finance::Deprecated,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , version::get_version(6, 0, 0)
-            , "please use finance/list/transactions command instead"
+            , version::get_version(5, 1, 0)
+            , "please use register/list/transactions command instead"
         );
 
         /* List accounts for given token. */
@@ -141,21 +141,22 @@ namespace TAO::API
                 std::placeholders::_2
             )
             , version::get_version(6, 0, 0)
-            , "please use finance/list/accounts command instead"
+            , "please use register/list/accounts WHERE results.token=<token> command instead"
         );
+        
 
-        /* List all transactions for given account. */
+        /* DEPRECATED */
         mapFunctions["list/account/transactions"] = Function
         (
             std::bind
             (
-                &Finance::ListTransactions,
+                &Finance::Deprecated,
                 Commands::Get<Finance>(),
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , version::get_version(6, 0, 0)
-            , "please use finance/list/transactions command instead"
+            , version::get_version(5, 1, 0)
+            , "please use register/list/transactions command instead"
         );
     }
 }

@@ -12,6 +12,9 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/register.h>
+#include <TAO/API/objects/types/objects.h>
+
+#include <TAO/API/types/commands.h>
 
 #include <TAO/Register/include/enum.h>
 
@@ -35,12 +38,25 @@ namespace TAO::API
         mapStandards["raw"]       = TAO::Register::REGISTER::RAW;
         mapStandards["readonly"]  = TAO::Register::REGISTER::READONLY;
 
-        /* Handle for all BURN operations. */
+
+        /* Handle for generic list operations. */
         mapFunctions["list"] = Function
         (
             std::bind
             (
                 &Register::List,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for generic list operations. */
+        mapFunctions["list/transactions"] = Function
+        (
+            std::bind
+            (
+                &Register::Transactions,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

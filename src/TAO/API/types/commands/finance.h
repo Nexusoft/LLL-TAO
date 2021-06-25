@@ -160,19 +160,6 @@ namespace TAO::API
         encoding::json List(const encoding::json& jParams, const bool fHelp);
 
 
-        /** ListTransactions
-         *
-         *  Lists all transactions for a given account
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json ListTransactions(const encoding::json& jParams, const bool fHelp);
-
-
         /** MigrateAccounts
          *
          *  Migrate all Legacy wallet accounts to corresponding accounts in the signature chain.

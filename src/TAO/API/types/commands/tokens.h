@@ -55,19 +55,6 @@ namespace TAO::API
         }
 
 
-        /** ListTransactions
-         *
-         *  Lists all transactions for a given token or account
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json ListTransactions(const encoding::json& jParams, const bool fHelp);
-
-
         /** ListTokenAccounts
          *
          *  Lists all accounts that have been created for a particular token

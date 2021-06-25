@@ -113,18 +113,16 @@ namespace TAO::API
             )
         );
 
-        mapFunctions["list/account/transactions"]  = Function(std::bind(&Finance::ListTransactions, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["migrate/accounts"]    = Function(std::bind(&Finance::MigrateAccounts, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["set/stake"]       = Function(std::bind(&Finance::SetStake, this, std::placeholders::_1, std::placeholders::_2));
 
-        //mapFunctions["list/trustaccounts"] = Function(std::bind(&Finance::TrustAccounts, this, std::placeholders::_1, std::placeholders::_2));
 
         /* DEPRECATED */
         mapFunctions["list/balances"] = Function
         (
             std::bind
             (
-                &Finance::List,
+                &Finance::Deprecated,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
@@ -138,7 +136,21 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::List,
+                &Finance::Deprecated,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use register/list/trust instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/account/transactions"] = Function
+        (
+            std::bind
+            (
+                &Finance::Deprecated,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
