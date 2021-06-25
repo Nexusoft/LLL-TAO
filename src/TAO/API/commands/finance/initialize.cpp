@@ -113,8 +113,29 @@ namespace TAO::API
             )
         );
 
-        mapFunctions["migrate/accounts"]    = Function(std::bind(&Finance::MigrateAccounts, this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["set/stake"]       = Function(std::bind(&Finance::SetStake, this, std::placeholders::_1, std::placeholders::_2));
+        /* Handle for migrate accounts. */
+        mapFunctions["migrate/accounts"] = Function //XXX: we still need to clean this method up
+        (
+            std::bind
+            (
+                &Finance::MigrateAccounts,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for set/stake. */
+        mapFunctions["set/stake"] = Function //XXX: we still need to clean this method up
+        (
+            std::bind
+            (
+                &Finance::SetStake,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
 
 
         /* DEPRECATED */
