@@ -121,6 +121,13 @@ namespace TAO::API
                     hashLast = uint512_t(jContract["txid"].get<std::string>());
                     break;
                 }
+
+                /* Check for create OP to break from loop. */
+                if(jContract["OP"] == "CREATE")
+                {
+                    hashLast = 0;
+                    break;
+                }
             }
 
             /* Check to see whether the transaction has had all children filtered out */
