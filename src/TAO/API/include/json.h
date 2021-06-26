@@ -74,7 +74,7 @@ namespace TAO::API
      *
      **/
     __attribute__((pure)) encoding::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block,
-                                     const uint32_t nVerbose = 0);
+                                                           const uint32_t nVerbose = 0);
 
 
     /** ContractToJSON

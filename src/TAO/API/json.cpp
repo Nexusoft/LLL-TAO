@@ -154,8 +154,13 @@ namespace TAO::API
             jRet["version"]   = tx.nVersion;
             jRet["sequence"]  = tx.nSequence;
             jRet["timestamp"] = tx.nTimestamp;
-            jRet["blockhash"] = block.IsNull() ? "" : block.GetHash().GetHex();
-            jRet["confirmations"] = block.IsNull() ? 0 : TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
+
+            /* Add blockchain related data if requested. */
+            if(!block.IsNull())
+            {
+                jRet["blockhash"]     = block.GetHash().GetHex();
+                jRet["confirmations"] = TAO::Ledger::ChainState::nBestHeight.load() - block.nHeight + 1;
+            }
 
             /* Genesis and hashes are verbose 3 and up. */
             if(nVerbose >= 3)

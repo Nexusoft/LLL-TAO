@@ -222,15 +222,15 @@ namespace TAO::API
 
 
     /* Extract a verbose argument from input parameters in either string or integer format. */
-    uint32_t ExtractVerbose(const encoding::json& jParams)
+    uint32_t ExtractVerbose(const encoding::json& jParams, const uint32_t nMinimum)
     {
         /* If verbose not supplied, use default parameter. */
         if(jParams.find("verbose") == jParams.end())
-            return 1;
+            return nMinimum;
 
         /* Extract paramter if in integer form. */
         if(jParams["verbose"].is_number_unsigned())
-            return jParams["verbose"].get<uint64_t>();
+            return std::max(nMinimum, jParams["verbose"].get<uint32_t>());
 
         /* Extract parameter if in string form. */
         std::string strVerbose = "default";
@@ -241,20 +241,20 @@ namespace TAO::API
 
             /* Check if it is an integer. */
             if(IsAllDigit(strVerbose))
-                return std::stoull(strVerbose);
+                return std::max(nMinimum, uint32_t(std::stoull(strVerbose)));
         }
 
         /* Otherwise check our base verbose levels. */
         if(strVerbose == "default")
-            return 1;
+            return std::max(nMinimum, uint32_t(1));
 
         /* Summary maps to verbose level 2. */
         if(strVerbose == "summary")
-            return 2;
+            return std::max(nMinimum, uint32_t(2));
 
         /* Detail maps to verbose level 3. */
         else if(strVerbose == "detail")
-            return 3;
+            return std::max(nMinimum, uint32_t(3));
 
         throw APIException(-57, "Invalid Parameter [verbose]");
     }

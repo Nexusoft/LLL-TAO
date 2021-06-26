@@ -33,7 +33,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Get a user's account. */
+    /* List the transactions from a particular sigchain. */
     encoding::json Users::Transactions(const encoding::json& jParams, const bool fHelp)
     {
         /* Extract input parameters. */

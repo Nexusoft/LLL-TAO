@@ -76,11 +76,12 @@ namespace TAO::API
      *  Extract a verbose argument from input parameters in either string or integer format.
      *
      *  @param[in] jParams The input parameters to extract from.
+     *  @param[in] nMinimum The minimum value that can be used.
      *
      *  @return the integer representation of verbose argument.
      *
      **/
-    uint32_t ExtractVerbose(const encoding::json& jParams);
+    uint32_t ExtractVerbose(const encoding::json& jParams, const uint32_t nMinimum = 1);
 
 
     /** ExtractList
