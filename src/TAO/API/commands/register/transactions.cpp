@@ -90,6 +90,7 @@ namespace TAO::API
             encoding::json& jContracts = jResult["contracts"];
             jContracts.erase
             (
+                /* Use custom lambda to sort out contracts that aren't for the address we are searching. */
                 std::remove_if
                 (
                     jContracts.begin(),
