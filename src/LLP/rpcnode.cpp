@@ -147,28 +147,28 @@ namespace LLP
         try
         {
             /* Get the parameters from the HTTP Packet. */
-            encoding::json jsonIncoming = encoding::json::parse(INCOMING.strContent);
+            encoding::json jIncoming = encoding::json::parse(INCOMING.strContent);
 
             /* Ensure the method is in the calling json. */
-            if(jsonIncoming["method"].is_null())
+            if(jIncoming["method"].is_null())
                 throw TAO::API::APIException(-32600, "Missing method");
 
             /* Ensure the method is correct type. */
-            if(!jsonIncoming["method"].is_string())
+            if(!jIncoming["method"].is_string())
                 throw TAO::API::APIException(-32600, "Method must be a string");
 
             /* Get the method string. */
-            std::string strMethod = jsonIncoming["method"].get<std::string>();
+            std::string strMethod = jIncoming["method"].get<std::string>();
 
             /* Check for parameters, if none set default value to empty array. */
-            encoding::json jsonParams = jsonIncoming["params"].is_null() ? "[]" : jsonIncoming["params"];
+            encoding::json jParams = jIncoming["params"].is_null() ? "[]" : jIncoming["params"];
 
             /* Extract the ID from the json */
-            if(!jsonIncoming["id"].is_null())
-                jsonID = jsonIncoming["id"];
+            if(!jIncoming["id"].is_null())
+                jsonID = jIncoming["id"];
 
             /* Check the parameters type for array. */
-            if(!jsonParams.is_array())
+            if(!jParams.is_array())
                 throw TAO::API::APIException(-32600, "Params must be an array");
 
             /* Check that the node is initialized. */
@@ -177,7 +177,7 @@ namespace LLP
 
             /* Execute the RPC method. */
             #ifndef NO_WALLET
-            encoding::json jsonResult = TAO::API::legacy->Execute(strMethod, jsonParams, false);
+            encoding::json jsonResult = TAO::API::legacy->Execute(strMethod, jParams, false);
 
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
