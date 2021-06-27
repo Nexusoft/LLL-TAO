@@ -22,9 +22,6 @@ ________________________________________________________________________________
 #include <Util/include/base64.h>
 #include <Util/include/string.h>
 
-// using alias to simplify using APIException liberally without having to reference the TAO:API namespace
-using APIException = TAO::API::APIException ;
-
 namespace LLP
 {
 
@@ -154,11 +151,11 @@ namespace LLP
 
             /* Ensure the method is in the calling json. */
             if(jsonIncoming["method"].is_null())
-                throw APIException(-32600, "Missing method");
+                throw TAO::API::APIException(-32600, "Missing method");
 
             /* Ensure the method is correct type. */
             if(!jsonIncoming["method"].is_string())
-                throw APIException(-32600, "Method must be a string");
+                throw TAO::API::APIException(-32600, "Method must be a string");
 
             /* Get the method string. */
             std::string strMethod = jsonIncoming["method"].get<std::string>();
@@ -172,11 +169,11 @@ namespace LLP
 
             /* Check the parameters type for array. */
             if(!jsonParams.is_array())
-                throw APIException(-32600, "Params must be an array");
+                throw TAO::API::APIException(-32600, "Params must be an array");
 
             /* Check that the node is initialized. */
             if(!config::fInitialized)
-                throw APIException(-1, "Daemon is still initializing");
+                throw TAO::API::APIException(-1, "Daemon is still initializing");
 
             /* Execute the RPC method. */
             #ifndef NO_WALLET
@@ -188,7 +185,7 @@ namespace LLP
         }
 
         /* Handle for custom API exceptions. */
-        catch(APIException& e)
+        catch(TAO::API::APIException& e)
         {
             ErrorReply(e.ToJSON(), jsonID);
 
@@ -198,7 +195,7 @@ namespace LLP
         /* Handle for JSON exceptions. */
         catch(const encoding::detail::exception& e)
         {
-            ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
+            ErrorReply(TAO::API::APIException(e.id, e.what()).ToJSON(), jsonID);
 
             return debug::error("RPC Exception: ", e.what());
         }
@@ -206,7 +203,7 @@ namespace LLP
         /* Handle for STD exceptions. */
         catch(const std::exception& e)
         {
-            ErrorReply(APIException(-32700, e.what()).ToJSON(), jsonID);
+            ErrorReply(TAO::API::APIException(-32700, e.what()).ToJSON(), jsonID);
 
             return debug::error("RPC Exception: ", e.what());
         }
