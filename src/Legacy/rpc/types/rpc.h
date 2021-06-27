@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/base.h>
 
 /* Global TAO namespace. */
-namespace TAO::API
+namespace Legacy
 {
     /** RPC
      *
@@ -23,7 +23,7 @@ namespace TAO::API
      *  Manages the function pointers for all RPC commands.
      *
      **/
-    class RPC : public Derived<RPC>
+    class RPC : public TAO::API::Derived<RPC>
     {
     public:
 

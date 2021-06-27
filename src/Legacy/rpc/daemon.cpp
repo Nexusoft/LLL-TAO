@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/rpc/types/rpc.h>
+#include <Legacy/rpc/types/rpc.h>
 
 #include <LLP/include/global.h>
 #include <LLP/include/hosts.h>
@@ -22,12 +22,9 @@ ________________________________________________________________________________
 #include <Util/include/signals.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace Legacy
 {
 
-    /* API Layer namespace. */
-    namespace API
-    {
         /* stop"
         *  Stop Nexus server */
         encoding::json RPC::Stop(const encoding::json& params, const bool fHelp)
@@ -70,7 +67,7 @@ namespace TAO
                 {
                     /* Flag indicating connection was successful */
                     bool fConnected = false;
-                    
+
                     /* First attempt SSL if configured */
                     if(LLP::TRITIUM_SERVER->SSLEnabled())
                     fConnected = LLP::TRITIUM_SERVER->AddConnection(address, LLP::TRITIUM_SERVER->GetPort(true), true, true);
@@ -87,5 +84,4 @@ namespace TAO
 
             return "success";
         }
-    }
 }

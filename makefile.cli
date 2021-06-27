@@ -613,12 +613,12 @@ OBJS+=  build/LLC_base_uint.o \
 
 
 ifndef NO_WALLET
-	OBJS+= 	build/API_types_rpc_account.o \
-			build/API_types_rpc_daemon.o \
-			build/API_types_rpc_info.o \
-			build/API_types_rpc_network.o \
-			build/API_types_rpc_rpc.o \
-			build/API_types_rpc_wallet.o \
+	OBJS+= 	build/Legacy_rpc_account.o \
+			build/Legacy_rpc_daemon.o \
+			build/Legacy_rpc_info.o \
+			build/Legacy_rpc_network.o \
+			build/Legacy_rpc_rpc.o \
+			build/Legacy_rpc_wallet.o \
 			build/Legacy_account.o \
 			build/Legacy_addressbook.o \
 			build/Legacy_basickeystore.o \
@@ -769,9 +769,6 @@ build/API_types_objects_%.o: ./src/TAO/API/objects/%.cpp $(HEADERS)
 build/API_types_p2p_%.o: ./src/TAO/API/p2p/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_rpc_%.o: ./src/TAO/API/rpc/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
 build/API_commands_register_%.o: ./src/TAO/API/commands/register/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
@@ -803,6 +800,9 @@ build/Util_%.o: ./src/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Legacy_%.o: ./src/Legacy/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/Legacy_rpc_%.o: ./src/Legacy/rpc/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Tests_%.o: ./tests/unit/%.cpp $(HEADERS)
@@ -1362,13 +1362,6 @@ build/API_types_p2p_%.o: src/TAO/API/p2p/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_rpc_%.o: src/TAO/API/rpc/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
 build/API_commands_register_%.o: src/TAO/API/commands/register/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -1440,6 +1433,13 @@ build/Util_%.o: src/Util/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/Legacy_%.o: src/Legacy/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Legacy_rpc_%.o: src/Legacy/rpc/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

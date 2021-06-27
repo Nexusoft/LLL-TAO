@@ -17,12 +17,12 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h> //XXX: temporary work-around for users being littered everywhere and dependent on this header
 
-#include <TAO/API/rpc/types/rpc.h>
+#include <Legacy/rpc/types/rpc.h>
 
 namespace TAO::API
 {
     #ifndef NO_WALLET
-    extern RPC*         legacy;
+    extern Legacy::RPC*         legacy;
     #endif
 
     /** Initialize

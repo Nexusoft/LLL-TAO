@@ -40,7 +40,7 @@ namespace TAO::API
     std::map<std::string, Base*> Commands::mapTypes;
 
     #ifndef NO_WALLET
-    RPC*        legacy;
+    Legacy::RPC*        legacy;
     #endif
 
     /*  Instantiate global instances of the API. */
@@ -65,7 +65,7 @@ namespace TAO::API
 
         /* Create RPC server if enabled. */
         #ifndef NO_WALLET
-        legacy = new RPC();
+        legacy = new Legacy::RPC();
         #endif
     }
 
