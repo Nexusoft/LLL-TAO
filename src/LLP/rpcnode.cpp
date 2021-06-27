@@ -143,7 +143,7 @@ namespace LLP
             return false;
         }
 
-        encoding::json jsonID = nullptr;
+        encoding::json jID = nullptr;
         try
         {
             /* Get the parameters from the HTTP Packet. */
@@ -165,7 +165,7 @@ namespace LLP
 
             /* Extract the ID from the json */
             if(!jIncoming["id"].is_null())
-                jsonID = jIncoming["id"];
+                jID = jIncoming["id"];
 
             /* Check the parameters type for array. */
             if(!jParams.is_array())
@@ -180,14 +180,14 @@ namespace LLP
             encoding::json jsonResult = TAO::API::legacy->Execute(strMethod, jParams, false);
 
             /* Push the response data with json payload. */
-            PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
+            PushResponse(200, JSONReply(jsonResult, nullptr, jID).dump());
             #endif
         }
 
         /* Handle for custom API exceptions. */
         catch(TAO::API::APIException& e)
         {
-            ErrorReply(e.ToJSON(), jsonID);
+            ErrorReply(e.ToJSON(), jID);
 
             return debug::error("RPC Exception: ", e.what());
         }
@@ -195,7 +195,7 @@ namespace LLP
         /* Handle for JSON exceptions. */
         catch(const encoding::detail::exception& e)
         {
-            ErrorReply(TAO::API::APIException(e.id, e.what()).ToJSON(), jsonID);
+            ErrorReply(TAO::API::APIException(e.id, e.what()).ToJSON(), jID);
 
             return debug::error("RPC Exception: ", e.what());
         }
@@ -203,7 +203,7 @@ namespace LLP
         /* Handle for STD exceptions. */
         catch(const std::exception& e)
         {
-            ErrorReply(TAO::API::APIException(-32700, e.what()).ToJSON(), jsonID);
+            ErrorReply(TAO::API::APIException(-32700, e.what()).ToJSON(), jID);
 
             return debug::error("RPC Exception: ", e.what());
         }
@@ -214,35 +214,35 @@ namespace LLP
 
 
     /* JSON Spec 1.0 Reply including error messages. */
-    encoding::json RPCNode::JSONReply(const encoding::json& jsonResponse, const encoding::json& jsonError, const encoding::json& jsonID)
+    encoding::json RPCNode::JSONReply(const encoding::json& jResponse, const encoding::json& jError, const encoding::json& jID)
     {
-        encoding::json jsonReply;
-        if(!jsonError.is_null())
+        encoding::json jReply;
+        if(!jError.is_null())
         {
-            jsonReply["result"] = nullptr;
-            jsonReply["error"] = jsonError;
+            jReply["result"] = nullptr;
+            jReply["error"] = jError;
         }
         else
         {
             //special case to handle help response so that we put the multiline help response striaght into
-            if(jsonResponse.is_string())
-                jsonReply["result"] = jsonResponse.get<std::string>();
+            if(jResponse.is_string())
+                jReply["result"] = jResponse.get<std::string>();
             else
-                jsonReply["result"] = jsonResponse;
+                jReply["result"] = jResponse;
 
-            jsonReply["error"] = nullptr;
+            jReply["error"] = nullptr;
         }
 
-        return jsonReply;
+        return jReply;
     }
 
-    void RPCNode::ErrorReply(const encoding::json& jsonError, const encoding::json& jsonID)
+    void RPCNode::ErrorReply(const encoding::json& jError, const encoding::json& jID)
     {
         /* Default error status code is 500. */
         uint16_t nStatus = 500;
 
         /* Get the error code from json. */
-        int32_t nError = jsonError["code"].get<int32_t>();
+        int32_t nError = jError["code"].get<int32_t>();
 
         /* Set status by error code. */
         switch(nError)
@@ -257,7 +257,7 @@ namespace LLP
         }
 
         /* Send the response packet. */
-        PushResponse(nStatus, JSONReply(encoding::json(nullptr), jsonError, jsonID).dump());
+        PushResponse(nStatus, JSONReply(encoding::json(nullptr), jError, jID).dump());
     }
 
     bool RPCNode::Authorized(std::map<std::string, std::string>& mapHeaders)
