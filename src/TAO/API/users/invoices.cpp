@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/user_types.h>
+#include <TAO/API/include/constants.h>
 
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>

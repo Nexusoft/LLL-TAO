@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/conditions.h>
-#include <TAO/API/types/user_types.h>
+#include <TAO/API/include/constants.h>
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>

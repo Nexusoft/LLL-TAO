@@ -31,4 +31,20 @@ namespace TAO::API
         /* Hard coded value for NXS token-id. */
         const uint256_t NXS = uint256_t(0);
     }
+
+
+    /** USER_TYPES
+     *
+     *  User-defined state register types (non object registers) allowing the data in RAW/APPEND/READONLY registers
+     *  to be identified by the leading byte in the register binary data.
+     *
+     **/
+    struct USER_TYPES
+    {
+        enum
+        {
+            SUPPLY      = 1,
+            INVOICE     = 2
+        };
+    };
 }
