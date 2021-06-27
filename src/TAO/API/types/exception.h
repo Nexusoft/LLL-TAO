@@ -17,54 +17,47 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /** Exception
+     *
+     *  Encapsulates an exception that can be converted into a valid JSON error object
+     *
+     **/
+    class Exception : public encoding::detail::exception
     {
+    public:
 
-        /** Exception
+        /** Default Constructor **/
+        Exception(const int32_t nCode, const std::string& strMessage)
+        : encoding::detail::exception(nCode, strMessage.c_str())
+        {
+        }
+
+
+        /** Variadic template constructor for building error strings. **/
+        template<class... Args>
+        Exception(const int32_t nCode, Args&&... args)
+        : encoding::detail::exception(nCode, debug::safe_printstr(args...).c_str())
+        {
+        }
+
+
+        /** ToJSON
          *
-         *  Encapsulates an exception that can be converted into a valid JSON error object
+         *  Converts this exception into a json object conforming to the JSON-RPC specification.
+         *
+         *  @return the json object containing the exception code and message.
          *
          **/
-        class Exception : public encoding::detail::exception
+        encoding::json ToJSON()
         {
-        public:
+            /* Include our global errors if applicable. */
+            std::string strMessage = std::string(what());
+            if(!debug::strLastError.empty())
+                strMessage += ". " + debug::GetLastError();
 
-            /** Default Constructor **/
-            Exception(const int32_t nCode, const std::string& strMessage)
-            : encoding::detail::exception(nCode, strMessage.c_str())
-            {
-            }
-
-
-            /** Variadic template constructor for building error strings. **/
-            template<class... Args>
-            Exception(const int32_t nCode, Args&&... args)
-            : encoding::detail::exception(nCode, debug::safe_printstr(args...).c_str())
-            {
-            }
-
-
-            /** ToJSON
-             *
-             *  Converts this exception into a json object conforming to the JSON-RPC specification.
-             *
-             *  @return the json object containing the exception code and message.
-             *
-             **/
-            encoding::json ToJSON()
-            {
-                /* Include our global errors if applicable. */
-                std::string strMessage = std::string(what());
-                if(!debug::strLastError.empty())
-                    strMessage += ". " + debug::GetLastError();
-
-                return { {"code", id }, {"message", strMessage} }; //no need to make another copy, so emplace our return value
-            }
-
-        };
-    }
+            return { {"code", id }, {"message", strMessage} }; //no need to make another copy, so emplace our return value
+        }
+    };
 }
