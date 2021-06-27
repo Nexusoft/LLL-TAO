@@ -33,7 +33,7 @@ namespace TAO::API
 
         /* Check that it was loaded correctly */
         if(session.IsNull())
-            throw APIException(-309, "Error loading session.");
+            throw Exception(-309, "Error loading session.");
 
         /* Iterate our processed vector. */
         std::vector<uint512_t> vProcessed = *session.vProcessed; //make a copy by dereferencing

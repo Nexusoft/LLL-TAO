@@ -58,7 +58,7 @@ namespace TAO::API
         if(mapFunctions.find(strMethod) != mapFunctions.end())
             return mapFunctions[strMethod].Execute(SanitizeParams(strMethod, jParams), fHelp);
         else
-            throw APIException(-2, "Method not found: ", strMethod);
+            throw Exception(-2, "Method not found: ", strMethod);
     }
 
 
@@ -71,7 +71,7 @@ namespace TAO::API
 
         /* Check that we have all of our values. */
         if(vMethods.empty()) //we are ignoring everything past first noun on rewrite
-            throw APIException(-14, "Malformed request URL: ", strMethod);
+            throw Exception(-14, "Malformed request URL: ", strMethod);
 
         /* Track if we've found an explicet type. */
         bool fStandard = false, fAddress = false, fField = false;;
@@ -126,7 +126,7 @@ namespace TAO::API
 
             /* If we get here, we need to throw for malformed URL. */
             else
-                throw APIException(-14, "Malformed request URL: ", strMethod);
+                throw Exception(-14, "Malformed request URL: ", strMethod);
         }
 
         return strVerb;

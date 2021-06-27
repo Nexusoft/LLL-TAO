@@ -50,10 +50,10 @@ namespace TAO
             else if(params.find("PIN") != params.end())
                 strPin = SecureString(params["PIN"].get<std::string>().c_str());
             else
-                throw APIException(-129, "Missing PIN");
+                throw Exception(-129, "Missing PIN");
 
             if(strPin.size() == 0)
-                throw APIException(-135, "Zero-length PIN");
+                throw Exception(-135, "Zero-length PIN");
 
             /* Check for unlock actions */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to ALL actions
@@ -71,11 +71,11 @@ namespace TAO
                 {
                     /* Can't unlock for mining in multiuser mode */
                     if(config::fMultiuser.load())
-                        throw APIException(-288, "Cannot unlock for mining in multiuser mode");
+                        throw Exception(-288, "Cannot unlock for mining in multiuser mode");
 
                      /* Check if already unlocked. */
                     if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanMine())
-                        throw APIException(-146, "Account already unlocked for mining");
+                        throw Exception(-146, "Account already unlocked for mining");
                     else
                         nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINING;
                 }
@@ -90,11 +90,11 @@ namespace TAO
                 {
                     /* Can't unlock for staking in multiuser mode */
                     if(config::fMultiuser.load())
-                        throw APIException(-289, "Cannot unlock for staking in multiuser mode");
+                        throw Exception(-289, "Cannot unlock for staking in multiuser mode");
 
                      /* Check if already unlocked. */
                     if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanStake())
-                        throw APIException(-195, "Account already unlocked for staking");
+                        throw Exception(-195, "Account already unlocked for staking");
                     else
                         nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::STAKING;
                 }
@@ -109,7 +109,7 @@ namespace TAO
                 {
                      /* Check if already unlocked. */
                     if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanTransact())
-                        throw APIException(-147, "Account already unlocked for transactions");
+                        throw Exception(-147, "Account already unlocked for transactions");
                     else
                         nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
                 }
@@ -124,7 +124,7 @@ namespace TAO
                 {
                      /* Check if already unlocked. */
                     if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->ProcessNotifications())
-                        throw APIException(-194, "Account already unlocked for notifications");
+                        throw Exception(-194, "Account already unlocked for notifications");
                     else
                         nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS;
                 }
@@ -134,7 +134,7 @@ namespace TAO
             if(nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
             {
                 if(!session.Locked())
-                    throw APIException(-148, "Account already unlocked");
+                    throw Exception(-148, "Account already unlocked");
                 else
                     nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::ALL;
             }
@@ -146,7 +146,7 @@ namespace TAO
             /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-138, "No previous transaction found");
+                throw Exception(-138, "No previous transaction found");
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
@@ -154,7 +154,7 @@ namespace TAO
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
-                throw APIException(-149, "Invalid PIN");
+                throw Exception(-149, "Invalid PIN");
 
             /* update the unlocked actions */
             session.UpdatePIN(strPin, nUnlockedActions);

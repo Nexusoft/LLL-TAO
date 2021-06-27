@@ -46,7 +46,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -61,11 +61,11 @@ namespace TAO
             else if(params.find("username") != params.end())
                 hashTo = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
             else
-                throw APIException(-112, "Missing username / destination");
+                throw Exception(-112, "Missing username / destination");
 
             /* Check that the destination exists. */
             if(!LLD::Ledger->HasGenesis(hashTo))
-                throw APIException(-113, "Destination user doesn't exist");
+                throw Exception(-113, "Destination user doesn't exist");
 
             /* Get the register address. */
             TAO::Register::Address hashRegister;
@@ -91,31 +91,31 @@ namespace TAO
                 hashRegister.SetBase58(params["address"]);
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-33, "Missing name / address");
+                throw Exception(-33, "Missing name / address");
 
 
             /* Get the object from the register DB if we haven't already. */
             if(object.IsNull())
             {
                 if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-114, strType +" not found.");
+                    throw Exception(-114, strType +" not found.");
 
                 /* Only include raw and non-standard object types (assets)*/
                 if(object.nType != TAO::Register::REGISTER::OBJECT
                 && object.nType != TAO::Register::REGISTER::APPEND
                 && object.nType != TAO::Register::REGISTER::RAW
                 && object.nType != TAO::Register::REGISTER::READONLY)
-                    throw APIException(-114, strType + "not found.");
+                    throw Exception(-114, strType + "not found.");
 
                 /* parse object so that the data fields can be accessed and check that it is an asset*/
                 if(object.nType == TAO::Register::REGISTER::OBJECT
                 && (!object.Parse() || object.Standard() != nType))
-                    throw APIException(-115, "Name / address is not of type " +strType);
+                    throw Exception(-115, "Name / address is not of type " +strType);
             }
 
             /* Edge case logic for NAME objects as these can only be transferred if they are created in a namespace */
             if(nType == TAO::Register::OBJECTS::NAME && object.get<std::string>("namespace").empty())
-                throw APIException(-116, "Cannot transfer names created without a namespace");
+                throw Exception(-116, "Cannot transfer names created without a namespace");
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
@@ -123,7 +123,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Submit the payload object.
                NOTE we pass false for the fForceTransfer parameter so that the Transfer requires a corresponding Claim */
@@ -137,15 +137,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

@@ -48,7 +48,7 @@ namespace TAO::API
         /* Check that we have designated a type to create. */
         TAO::Register::Address hashRegister;
         if(jParams["request"].find("type") == jParams["request"].end())
-            throw APIException(-118, "Missing type");
+            throw Exception(-118, "Missing type");
 
         /* Check for account or token type. */
         TAO::Register::Object object;
@@ -66,7 +66,7 @@ namespace TAO::API
             /* Sanitize the supply/decimals combination for uint64 overflow */
             const uint64_t nCoinFigures = math::pow(10, nDecimals);
             if(nDecimals > 0 && nSupply > (std::numeric_limits<uint64_t>::max() / nCoinFigures))
-                throw APIException(-178, "Invalid supply/decimals. The maximum supply/decimals cannot exceed 18446744073709551615");
+                throw Exception(-178, "Invalid supply/decimals. The maximum supply/decimals cannot exceed 18446744073709551615");
 
             /* Create a token object register. */
             object = TAO::Register::CreateToken(hashRegister, nSupply * nCoinFigures, nDecimals);
@@ -82,23 +82,23 @@ namespace TAO::API
             {
                 /* Check our address before hitting the database. */
                 if(hashToken.GetType() != TAO::Register::Address::TOKEN)
-                    throw APIException(-212, "Invalid token");
+                    throw Exception(-212, "Invalid token");
 
                 /* Get the register off the disk. */
                 TAO::Register::Object object;
                 if(!LLD::Register->ReadObject(hashToken, object, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-125, "Token not found");
+                    throw Exception(-125, "Token not found");
 
                 /* Check the standard */
                 if(object.Standard() != TAO::Register::OBJECTS::TOKEN)
-                    throw APIException(-212, "Invalid token");
+                    throw Exception(-212, "Invalid token");
             }
 
             /* Create an account object register. */
             object = TAO::Register::CreateAccount(hashToken);
         }
         else
-            throw APIException(-36, "Invalid type for command");
+            throw Exception(-36, "Invalid type for command");
 
         /* If the user has supplied the data parameter than add this to the account register */
         if(jParams.find("data") != jParams.end())
@@ -115,7 +115,7 @@ namespace TAO::API
             /* Check for empty name and alert caller of error. */
             const std::string strName = jParams["name"].get<std::string>(); //grab a copy, not reference
             if(strName.empty())
-                throw APIException(-88, "Missing or empty name.");
+                throw Exception(-88, "Missing or empty name.");
 
             /* Add an optional name if supplied. */
             vContracts.push_back

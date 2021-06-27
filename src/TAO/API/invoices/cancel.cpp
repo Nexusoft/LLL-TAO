@@ -46,13 +46,13 @@ namespace TAO
             /* First ensure that transaction version 2 active, as the conditions required for invoices were not enabled until v2 */
             const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
             if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(runtime::unifiedtimestamp(), 2)))
-                throw APIException(-254, "Invoices API not yet active.");
+                throw Exception(-254, "Invoices API not yet active.");
 
             encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -77,16 +77,16 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-33, "Missing name / address");
+                throw Exception(-33, "Missing name / address");
 
             /* Get the invoice object register . */
             TAO::Register::State state;
             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-241, "Invoice not found");
+                throw Exception(-241, "Invoice not found");
 
             /* Ensure that it is an invoice register */
             if(state.nType != TAO::Register::REGISTER::READONLY)
-                throw APIException(-242, "Data at this address is not an invoice");
+                throw Exception(-242, "Data at this address is not an invoice");
 
             /* Deserialize the leading byte of the state data to check the data type */
             uint16_t type;
@@ -94,7 +94,7 @@ namespace TAO
 
             /* Check that the state is an invoice */
             if(type != USER_TYPES::INVOICE)
-                throw APIException(-242, "Data at this address is not an invoice");
+                throw Exception(-242, "Data at this address is not an invoice");
 
             /* Deserialize the invoice */
             encoding::json invoice = InvoiceToJSON(params, state, hashRegister);
@@ -110,9 +110,9 @@ namespace TAO
 
             /* Validate the current invoice status */
             if(strStatus == "PAID")
-                throw APIException(-245, "Cannot cancel an invoice that has already been paid");
+                throw Exception(-245, "Cannot cancel an invoice that has already been paid");
             else if(strStatus == "CANCELLED")
-                throw APIException(-246, "Cannot cancel an invoice that has already been cancelled");
+                throw Exception(-246, "Cannot cancel an invoice that has already been cancelled");
 
             /* The transaction ID to cancel */
             uint512_t hashTx;
@@ -122,7 +122,7 @@ namespace TAO
 
             /* Look up the transaction ID & contract ID of the transfer so that we can void it */
             if(!get_tx(hashRecipient, hashRegister, hashTx, nContract))
-                throw APIException(-247, "Could not find invoice transfer transaction");
+                throw Exception(-247, "Could not find invoice transfer transaction");
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
@@ -130,7 +130,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* The transaction to be voided */
             TAO::Ledger::Transaction txVoid;
@@ -140,7 +140,7 @@ namespace TAO
             {
                 /* Check that the transaction belongs to the caller */
                 if(txVoid.hashGenesis != session.GetAccount()->Genesis())
-                    throw APIException(-172, "Cannot void a transaction that does not belong to you.");
+                    throw Exception(-172, "Cannot void a transaction that does not belong to you.");
 
                 /* Process the contract and attempt to void it */
                 TAO::Operation::Contract voidContract;
@@ -150,28 +150,28 @@ namespace TAO
             }
             else
             {
-                throw APIException(-40, "Previous transaction not found.");
+                throw Exception(-40, "Previous transaction not found.");
             }
 
 
             /* Check that output was found. */
             if(tx.Size() == 0)
-                throw APIException(-174, "Transaction contains no contracts that can be voided");
+                throw Exception(-174, "Transaction contains no contracts that can be voided");
 
             /* Add the fee */
             AddFee(tx);
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
+                throw Exception(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction.");
+                throw Exception(-31, "Ledger failed to sign transaction.");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept.");
+                throw Exception(-32, "Failed to accept.");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

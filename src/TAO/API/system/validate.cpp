@@ -40,7 +40,7 @@ namespace TAO
 
             /* Check for address parameter. */
             if(params.find("address") == params.end() )
-                throw APIException(-105, "Missing address");
+                throw Exception(-105, "Missing address");
 
             /* Extract the address, which will either be a legacy address or a sig chain account address */
             std::string strAddress = params["address"].get<std::string>();

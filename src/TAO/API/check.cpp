@@ -41,7 +41,7 @@ namespace TAO::API
 
 
     /*  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
-     *  Throws an appropriate APIException if it is not mature. */
+     *  Throws an appropriate Exception if it is not mature. */
     void CheckMature(const uint256_t& hashGenesis)
     {
         /* No need to check this in private mode as there is no PoS/Pow */
@@ -50,7 +50,7 @@ namespace TAO::API
             /* Get the number of blocks to maturity for this sig chain */
             const uint32_t nBlocksToMaturity = Commands::Get<Users>()->BlocksToMaturity(hashGenesis);
             if(nBlocksToMaturity > 0)
-                throw APIException(-202, "Signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");
+                throw Exception(-202, "Signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");
         }
     }
 
@@ -101,7 +101,7 @@ namespace TAO::API
         /* Let's grab our object to check against and throw if it's missing. */
         TAO::Register::Object objCheck;
         if(!LLD::Register->ReadObject(hashCheck, objCheck))
-            throw APIException(-33, "Incorrect or missing name / address");
+            throw Exception(-33, "Incorrect or missing name / address");
 
         /* Execute now that we have the object. */
         return CheckType(jParams, objCheck);

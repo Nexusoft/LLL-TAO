@@ -51,7 +51,7 @@ namespace TAO
             {
                 /* Authenticate the users credentials */
                 if(!Commands::Get<Users>()->Authenticate(params))
-                    throw APIException(-139, "Invalid credentials");
+                    throw Exception(-139, "Invalid credentials");
                 
                 /* Pin is valid so include the username */
                 fUsername = true;
@@ -93,7 +93,7 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-108, "Failed to read transaction");
+                    throw Exception(-108, "Failed to read transaction");
 
                 /* Number of transactions is the last sequence number + 1 (since the sequence is 0 based) */
                 nTransactions = tx.nSequence + 1;

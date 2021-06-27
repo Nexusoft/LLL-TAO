@@ -36,7 +36,7 @@ namespace TAO
 
             /* Check if already unlocked. */
             if(session.GetActivePIN().IsNull() || (!session.GetActivePIN().IsNull() && session.GetActivePIN()->PIN() == ""))
-                throw APIException(-132, "Account already locked");
+                throw Exception(-132, "Account already locked");
 
             /* The current unlock actions */
             uint8_t nUnlockedActions = session.GetActivePIN()->UnlockedActions();
@@ -50,7 +50,7 @@ namespace TAO
                 {
                      /* Check if already locked. */
                     if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->CanMine())
-                        throw APIException(-196, "Account already locked for mining");
+                        throw Exception(-196, "Account already locked for mining");
                     else
                         nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::MINING;
                 }
@@ -65,7 +65,7 @@ namespace TAO
                 {
                      /* Check if already locked. */
                     if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->CanStake())
-                        throw APIException(-197, "Account already locked for staking");
+                        throw Exception(-197, "Account already locked for staking");
                     else
                         nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::STAKING;
                 }
@@ -80,7 +80,7 @@ namespace TAO
                 {
                      /* Check if already unlocked. */
                     if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->CanTransact())
-                        throw APIException(-198, "Account already locked for transactions");
+                        throw Exception(-198, "Account already locked for transactions");
                     else
                         nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
                 }
@@ -95,7 +95,7 @@ namespace TAO
                 {
                      /* Check if already unlocked. */
                     if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->ProcessNotifications())
-                        throw APIException(-199, "Account already locked for notifications");
+                        throw Exception(-199, "Account already locked for notifications");
                     else
                         nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS;
                 }

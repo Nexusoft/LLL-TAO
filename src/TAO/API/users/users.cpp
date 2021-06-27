@@ -129,9 +129,9 @@ namespace TAO
                 if(fThrow)
                 {
                     if(config::fMultiuser.load())
-                        throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse.ToString(), " doesn't exist"));
+                        throw Exception(-9, debug::safe_printstr("Session ", nSessionToUse.ToString(), " doesn't exist"));
                     else
-                        throw APIException(-11, "User not logged in");
+                        throw Exception(-11, "User not logged in");
                 }
                 else
                 {
@@ -146,7 +146,7 @@ namespace TAO
         /* If the API is running in sessionless mode this method will return the currently
          * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
          * then the method will return the pin from the params.  If no pin is available then
-         * an APIException is thrown */
+         * an Exception is thrown */
         SecureString Users::GetPin(const encoding::json params, uint8_t nUnlockAction) const
         {
 
@@ -162,7 +162,7 @@ namespace TAO
             {
                 /* If we need a pin then check it is in the params */
                 if(params.find("pin") == params.end())
-                    throw APIException(-129, "Missing PIN");
+                    throw Exception(-129, "Missing PIN");
                 else
                     strPIN = params["pin"].get<std::string>().c_str();
             }
@@ -176,9 +176,9 @@ namespace TAO
 
         /* If the API is running in sessionless mode this method will return the default
          * session ID that is used to store the one and only session (ID 0). If the user is not
-         * logged in than an APIException is thrown, if fThrow is true.
+         * logged in than an Exception is thrown, if fThrow is true.
          * If not in sessionless mode then the method will return the session from the params.
-         * If the session is not is available in the params then an APIException is thrown, if fThrow is true. */
+         * If the session is not is available in the params then an Exception is thrown, if fThrow is true. */
         Session& Users::GetSession(const encoding::json params, bool fThrow, bool fLogActivity) const
         {
             /* Check for session parameter. */
@@ -189,14 +189,14 @@ namespace TAO
                 if(params.find("session") == params.end())
                 {
                     if(fThrow)
-                        throw APIException(-12, "Missing Session ID");
+                        throw Exception(-12, "Missing Session ID");
                 }
                 else
                     nSession.SetHex(params["session"].get<std::string>());
 
                 /* Check that the session ID is valid */
                 if(fThrow && !GetSessionManager().Has(nSession))
-                    throw APIException(-10, "Invalid session ID");
+                    throw Exception(-10, "Invalid session ID");
             }
 
             /* Calling SessionManager.Get() with an invalid session ID will throw an exception.  Therefore if the caller has
@@ -229,7 +229,7 @@ namespace TAO
                 }
             }
 
-            throw APIException(-11, "User not logged in");
+            throw Exception(-11, "User not logged in");
         }
 
 
@@ -320,7 +320,7 @@ namespace TAO
                 synchronized before allowing any sig chain transactions to be created */
                 bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
                 if(TAO::Ledger::ChainState::Synchronizing() || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
-                    throw APIException(-213, "Cannot create transactions whilst synchronizing");
+                    throw Exception(-213, "Cannot create transactions whilst synchronizing");
 
                 /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
                 CheckMature(user->Genesis());
@@ -344,7 +344,7 @@ namespace TAO
 
             /* Check the account. */
             if(!session.GetAccount())
-                throw APIException(-10, "Invalid session ID");
+                throw Exception(-10, "Invalid session ID");
 
             /* The logged in sig chain genesis hash */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
@@ -352,7 +352,7 @@ namespace TAO
             /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-138, "No previous transaction found");
+                throw Exception(-138, "No previous transaction found");
 
             /* Generate a temporary transaction with the next hash based on the current password/pin */
             TAO::Ledger::Transaction tx;
@@ -373,7 +373,7 @@ namespace TAO
                        processor, terminates any P2P connections, and removes the session from the session manager */
                     TerminateSession(session.ID());
 
-                    throw APIException(-290, "Invalid credentials.  User logged out due to too many password / pin attempts");
+                    throw Exception(-290, "Invalid credentials.  User logged out due to too many password / pin attempts");
 
                 }
 
@@ -389,7 +389,7 @@ namespace TAO
         {
             /* Check that the session exists */
             if(!GetSessionManager().Has(nSession))
-                throw APIException(-141, "Already logged out");
+                throw Exception(-141, "Already logged out");
 
             /* The genesis of the user logging out */
             uint256_t hashGenesis = GetSessionManager().Get(nSession).GetAccount()->Genesis();

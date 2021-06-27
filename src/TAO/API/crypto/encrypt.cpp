@@ -58,7 +58,7 @@ namespace TAO
 
             /* Check the caller included the data */
             if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
-                throw APIException(-18, "Missing data.");
+                throw Exception(-18, "Missing data.");
 
             /* Decode the data into a vector of bytes */
             std::string strData = params["data"].get<std::string>();
@@ -75,7 +75,7 @@ namespace TAO
             {
                 /* Check the caller included the key name */
                 if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
-                    throw APIException(-88, "Missing or empty name.");
+                    throw Exception(-88, "Missing or empty name.");
 
                 /* Get the requested key name */
                 std::string strName = params["name"].get<std::string>();
@@ -84,11 +84,11 @@ namespace TAO
                     as these are for signature verification only */
                 std::set<std::string> setDefaults{"auth", "lisp", "network", "sign", "verify", "cert", "app1", "app2", "app3"};
                 if(setDefaults.find(strName) != setDefaults.end())
-                    throw APIException(-293, "Invalid key name.  Keys in the crypto register cannot be used for encryption, only signature generation and verification");
+                    throw Exception(-293, "Invalid key name.  Keys in the crypto register cannot be used for encryption, only signature generation and verification");
 
                 /* Authenticate the users credentials */
                 if(!Commands::Get<Users>()->Authenticate(params))
-                    throw APIException(-139, "Invalid credentials");
+                    throw Exception(-139, "Invalid credentials");
 
                 /* Get the PIN to be used for this API call */
                 SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -111,7 +111,7 @@ namespace TAO
                     /* Decode the public key into a vector of bytes */
                     std::vector<uint8_t> vchPeerKey;
                     if(!encoding::DecodeBase58(params["peerkey"].get<std::string>(), vchPeerKey))
-                        throw APIException(-266, "Malformed public key.");
+                        throw Exception(-266, "Malformed public key.");
 
                     /* Get the secret from new key. */
                     std::vector<uint8_t> vBytes = hashSecret.GetBytes();
@@ -122,16 +122,16 @@ namespace TAO
 
                     /* Set the secret key. */
                     if(!keyPrivate.SetSecret(vchSecret, true))
-                        throw APIException(269, "Malformed private key");
+                        throw Exception(269, "Malformed private key");
 
                     /* Create an ECKey for the public key */
                     LLC::ECKey keyPublic = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
                     if(!keyPublic.SetPubKey(vchPeerKey))
-                        throw APIException(-266, "Malformed public key.");
+                        throw Exception(-266, "Malformed public key.");
 
                     /* Generate the shared symmetric key */
                     if(!LLC::ECKey::MakeShared(keyPrivate, keyPublic, vchKey))
-                        throw APIException(268, "Failed to generate shared key");
+                        throw Exception(268, "Failed to generate shared key");
 
                     /* Set the public key for our private key*/
                     vchPubKey = keyPrivate.GetPubKey();
@@ -156,7 +156,7 @@ namespace TAO
 
                         /* Set the secret key. */
                         if(!keyPrivate.SetSecret(vchSecret, true))
-                            throw APIException(269, "Malformed private key");
+                            throw Exception(269, "Malformed private key");
 
                         /* Set the public key for our private key*/
                         vchPubKey = keyPrivate.GetPubKey();
@@ -168,7 +168,7 @@ namespace TAO
 
                         /* Set the secret key. */
                         if(!keyPrivate.SetSecret(vchSecret))
-                            throw APIException(269, "Malformed private key");
+                            throw Exception(269, "Malformed private key");
 
                         /* Set the public key for our private key*/
                         vchPubKey = keyPrivate.GetPubKey();
@@ -210,7 +210,7 @@ namespace TAO
 
             /* Encrypt the data */
             if(!LLC::EncryptAES256(vchKey, vchData, vchCipherText))
-                throw APIException(-270, "Failed to encrypt data.");
+                throw Exception(-270, "Failed to encrypt data.");
 
             /* Add the ciphertext to the response, base64 encoded*/
             ret["data"] = encoding::EncodeBase64(&vchCipherText[0], vchCipherText.size());

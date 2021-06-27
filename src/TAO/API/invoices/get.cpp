@@ -39,7 +39,7 @@ namespace TAO
             /* First ensure that transaction version 2 active, as the conditions required for invoices were not enabled until v2 */
             const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
             if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(runtime::unifiedtimestamp(), 2)))
-                throw APIException(-254, "Invoices API not yet active.");
+                throw Exception(-254, "Invoices API not yet active.");
 
             encoding::json ret;
 
@@ -59,19 +59,19 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-33, "Missing name / address");
+                throw Exception(-33, "Missing name / address");
 
             /* Get the invoice object register . */
             TAO::Register::State state;
             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-241, "Invoice not found");
+                throw Exception(-241, "Invoice not found");
 
             if(config::fClient.load() && state.hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Ensure that it is an invoice register */
             if(state.nType != TAO::Register::REGISTER::READONLY)
-                throw APIException(-242, "Data at this address is not an invoice");
+                throw Exception(-242, "Data at this address is not an invoice");
 
             /* Deserialize the leading byte of the state data to check the data type */
             uint16_t type;
@@ -79,7 +79,7 @@ namespace TAO
 
             /* Check that the state is an invoice */
             if(type != USER_TYPES::INVOICE)
-                throw APIException(-242, "Data at this address is not an invoice");
+                throw Exception(-242, "Data at this address is not an invoice");
 
             /* Build the response JSON. */
             ret = InvoiceToJSON(params, state, hashRegister);

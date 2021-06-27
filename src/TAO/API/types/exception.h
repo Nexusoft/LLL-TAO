@@ -24,17 +24,17 @@ namespace TAO
     namespace API
     {
 
-        /** APIException
+        /** Exception
          *
          *  Encapsulates an exception that can be converted into a valid JSON error object
          *
          **/
-        class APIException : public encoding::detail::exception
+        class Exception : public encoding::detail::exception
         {
         public:
 
             /** Default Constructor **/
-            APIException(const int32_t nCode, const std::string& strMessage)
+            Exception(const int32_t nCode, const std::string& strMessage)
             : encoding::detail::exception(nCode, strMessage.c_str())
             {
             }
@@ -42,7 +42,7 @@ namespace TAO
 
             /** Variadic template constructor for building error strings. **/
             template<class... Args>
-            APIException(const int32_t nCode, Args&&... args)
+            Exception(const int32_t nCode, Args&&... args)
             : encoding::detail::exception(nCode, debug::safe_printstr(args...).c_str())
             {
             }

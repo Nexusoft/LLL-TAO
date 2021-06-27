@@ -49,7 +49,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -63,7 +63,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Get the Register ID. */
             TAO::Register::Address hashRegister ;
@@ -82,20 +82,20 @@ namespace TAO
 
                 /* Retrieve the name by hash */
                 if(!LLD::Register->ReadState(hashRegister, name, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-102, "Invalid address.");
+                    throw Exception(-102, "Invalid address.");
 
                 /* Check that the name object is proper type. */
                 if(name.nType != TAO::Register::REGISTER::OBJECT
                 || !name.Parse()
                 || name.Standard() != TAO::Register::OBJECTS::NAME )
-                    throw APIException(-102, "Invalid address");
+                    throw Exception(-102, "Invalid address");
             }
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-33, "Missing name / address");
+                throw Exception(-33, "Missing name / address");
 
             if(params.find("register_address") == params.end())
-                throw APIException(-103, "Missing register_address parameter");
+                throw Exception(-103, "Missing register_address parameter");
 
 
             /* Declare operation stream to serialize all of the field updates*/
@@ -116,15 +116,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

@@ -45,7 +45,7 @@ namespace TAO::API
 
         /* Check they are not using client mode */
         if(config::fClient.load())
-            throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+            throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
         /* The token to list accounts for. */
         TAO::Register::Address hashToken;
@@ -57,23 +57,23 @@ namespace TAO::API
         else if(params.find("address") != params.end())
             hashToken.SetBase58(params["address"].get<std::string>());
         else
-            throw APIException(-33, "Missing name or address");
+            throw Exception(-33, "Missing name or address");
 
         /* Get the token  */
         TAO::Register::Object object;
         if(!LLD::Register->ReadState(hashToken, object, TAO::Ledger::FLAGS::LOOKUP))
-            throw APIException(-125, "Token not found");
+            throw Exception(-125, "Token not found");
 
         /* Parse the object register. */
         if(!object.Parse())
-            throw APIException(-14, "Object failed to parse");
+            throw Exception(-14, "Object failed to parse");
 
         /* Get the object standard. */
         uint8_t nStandard = object.Standard();
 
         /* Check it is a token. */
         if(nStandard != TAO::Register::OBJECTS::TOKEN)
-            throw APIException(-123, "Object is not a token");
+            throw Exception(-123, "Object is not a token");
 
         /* Number of results to return. */
         uint32_t nLimit = 100;
@@ -135,7 +135,7 @@ namespace TAO::API
             /* Get the last transaction for this genesis.  NOTE that we include the mempool here as there may be registers that
             have been created recently but not yet included in a block*/
             if(!LLD::Ledger->ReadLast(accountsByGenesis.first, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-108, "Failed to read transaction");
+                throw Exception(-108, "Failed to read transaction");
 
             /* The previous hash in the chain */
             uint512_t hashPrev = hashLast;
@@ -146,7 +146,7 @@ namespace TAO::API
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-108, "Failed to read transaction");
+                    throw Exception(-108, "Failed to read transaction");
 
                 /* Set the next last. */
                 hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;

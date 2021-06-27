@@ -49,7 +49,7 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-33, "Missing name / address");
+                throw Exception(-33, "Missing name / address");
 
 
             /* Check to see whether the caller has requested a specific data field to return */
@@ -61,28 +61,28 @@ namespace TAO
                created as a raw format asset */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-34, "Asset not found");
+                throw Exception(-34, "Asset not found");
 
             if(config::fClient.load() && object.hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Only include raw and non-standard object types (assets)*/
             if(object.nType != TAO::Register::REGISTER::APPEND
             && object.nType != TAO::Register::REGISTER::RAW
             && object.nType != TAO::Register::REGISTER::OBJECT)
             {
-                throw APIException(-35, "Specified name/address is not an asset.");
+                throw Exception(-35, "Specified name/address is not an asset.");
             }
 
             if(object.nType == TAO::Register::REGISTER::OBJECT)
             {
                 /* parse object so that the data fields can be accessed */
                 if(!object.Parse())
-                    throw APIException(-36, "Failed to parse object register");
+                    throw Exception(-36, "Failed to parse object register");
 
                 /* Only include non standard object registers (assets) */
                 if(object.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
-                    throw APIException(-35, "Specified name/address is not an asset.");
+                    throw Exception(-35, "Specified name/address is not an asset.");
             }
 
             /* Populate the response JSON */

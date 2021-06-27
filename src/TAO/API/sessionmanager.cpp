@@ -87,7 +87,7 @@ namespace TAO
 
             /* If not in multiuser mode check that there is not already a session with ID 0 */
             if(!config::fMultiuser.load() && mapSessions.count(0) != 0)
-                throw APIException(-140, "User already logged in");
+                throw Exception(-140, "User already logged in");
 
             /* Generate a new session ID, or use ID 0 if in single user mode */
             uint256_t nSession = config::fMultiuser.load() ? LLC::GetRand256() : 0;
@@ -106,7 +106,7 @@ namespace TAO
 
             /* If not in multiuser mode check that there is not already a session with ID 0 */
             if(!config::fMultiuser.load() && mapSessions.count(0) != 0)
-                throw APIException(-140, "User already logged in");
+                throw Exception(-140, "User already logged in");
 
             /* Generate a new session ID, or use ID 0 if in single user mode */
             uint256_t nSession = config::fMultiuser.load() ? LLC::GetRand256() : 0;
@@ -134,7 +134,7 @@ namespace TAO
             LOCK(MUTEX);
 
             if(mapSessions.count(hashSession) == 0)
-                throw APIException(-11, "User not logged in");
+                throw Exception(-11, "User not logged in");
 
             mapSessions.erase(hashSession);
         }
@@ -148,7 +148,7 @@ namespace TAO
                 LOCK(MUTEX);
 
                 if(mapSessions.count(hashSession) == 0)
-                    throw APIException(-11, "User not logged in");
+                    throw Exception(-11, "User not logged in");
 
                 /* Update the activity if requested */
                 if(fLogActivity)

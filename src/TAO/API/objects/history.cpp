@@ -64,11 +64,11 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-33, "Missing name / address");
+                throw Exception(-33, "Missing name / address");
 
             /* Get the register if we haven't already loaded it. */
             if(state.IsNull() && !LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-106, "Invalid name / address");
+                throw Exception(-106, "Invalid name / address");
 
             /* The owner genesis hash, used to search for the object history */
             TAO::Register::Address hashOwner = state.hashOwner;
@@ -79,7 +79,7 @@ namespace TAO
                 /* The token that owns the object */
                 TAO::Register::Object token;
                 if(!LLD::Register->ReadState(hashOwner, token, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-125, "Token not found");
+                    throw Exception(-125, "Token not found");
 
                 /* Update the hashOwner to be the owner of the token */
                 hashOwner = token.hashOwner;
@@ -90,12 +90,12 @@ namespace TAO
                 hashOwner.SetType(TAO::Ledger::GENESIS::UserType());
 
             if(config::fClient.load() && hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Read the last hash of owner. */
             uint512_t hashLast = 0;
             if(!LLD::Ledger->ReadLast(hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-107, "No history found");
+                throw Exception(-107, "No history found");
 
             /* Iterate through sigchain for register updates. */
             while(hashLast != 0)
@@ -108,7 +108,7 @@ namespace TAO
                     if(config::fClient.load())
                         break;
                     else
-                        throw APIException(-108, "Failed to read transaction");
+                        throw Exception(-108, "Failed to read transaction");
                 }
 
                 /* Set the next last. */
@@ -158,7 +158,7 @@ namespace TAO
                             && nRegisterType != TAO::Register::REGISTER::READONLY
                             && nRegisterType != TAO::Register::REGISTER::OBJECT)
                             {
-                                throw APIException(-109, "Specified name/address is not of type " + strType);
+                                throw Exception(-109, "Specified name/address is not of type " + strType);
                             }
 
                             /* Create the register object. */
@@ -169,18 +169,18 @@ namespace TAO
 
                             /* Calculate the new operation. */
                             if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
-                                throw APIException(-110, "Contract execution failed");
+                                throw Exception(-110, "Contract execution failed");
 
                             /* If it is an object register then parse so that we can check the type */
                             if(state.nType == TAO::Register::REGISTER::OBJECT)
                             {
                                 /* parse object so that the data fields can be accessed */
                                 if(!state.Parse())
-                                    throw APIException(-36, "Failed to parse object register");
+                                    throw Exception(-36, "Failed to parse object register");
 
                                 /* Only include object registers of the specified type */
                                 if(state.Standard() != nType)
-                                    throw APIException(-109, "Specified name/address is not of type " + strType);
+                                    throw Exception(-109, "Specified name/address is not of type " + strType);
                             }
 
                             /* Generate return object. */
@@ -237,17 +237,17 @@ namespace TAO
 
                             /* Calculate the new operation. */
                             if(!TAO::Operation::Write::Execute(state, vchData, contract.Timestamp()))
-                                throw APIException(-110, "Contract execution failed");
+                                throw Exception(-110, "Contract execution failed");
 
                             if(state.nType == TAO::Register::REGISTER::OBJECT)
                             {
                                 /* parse object so that the data fields can be accessed */
                                 if(!state.Parse())
-                                    throw APIException(-36, "Failed to parse object register");
+                                    throw Exception(-36, "Failed to parse object register");
 
                                 /* Only include object registers of the specified type */
                                 if(state.Standard() != nType)
-                                    throw APIException(-109, "Specified name/address is not of type " + strType);
+                                    throw Exception(-109, "Specified name/address is not of type " + strType);
                             }
 
                             /* Complete object parameters. */
@@ -298,7 +298,7 @@ namespace TAO
 
                             /* Get the post state, as this is what we need to output for the history */
                             if(!TAO::Operation::Append::Execute(state, vchData, contract.Timestamp()))
-                                throw APIException(-110, "Contract execution failed");
+                                throw Exception(-110, "Contract execution failed");
 
                             /* Complete object parameters. */
                             obj["owner"]    = contract.Caller().ToString();
@@ -354,11 +354,11 @@ namespace TAO
                             {
                                 /* parse object so that the data fields can be accessed */
                                 if(!state.Parse())
-                                    throw APIException(-36, "Failed to parse object register");
+                                    throw Exception(-36, "Failed to parse object register");
 
                                 /* Only include object registers of the specified type */
                                 if(state.Standard() != nType)
-                                    throw APIException(-109, "Specified name/address is not of type " + strType);
+                                    throw Exception(-109, "Specified name/address is not of type " + strType);
                             }
 
                             /* Complete object parameters. */
@@ -415,11 +415,11 @@ namespace TAO
                             {
                                 /* parse object so that the data fields can be accessed */
                                 if(!state.Parse())
-                                    throw APIException(-36, "Failed to parse object register");
+                                    throw Exception(-36, "Failed to parse object register");
 
                                 /* Only include object registers of the specified type */
                                 if(state.Standard() != nType)
-                                    throw APIException(-109, "Specified name/address is not of type " + strType);
+                                    throw Exception(-109, "Specified name/address is not of type " + strType);
                             }
 
                             /* Complete object parameters. */

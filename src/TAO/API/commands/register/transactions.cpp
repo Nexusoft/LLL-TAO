@@ -38,7 +38,7 @@ namespace TAO::API
         /* Read the register from DB. */
         TAO::Register::State objCheck;
         if(!LLD::Register->ReadState(hashRegister, objCheck))
-            throw APIException(-13, "Object not found");
+            throw Exception(-13, "Object not found");
 
         /* Use this asset to get our genesis-id adjusting if it is in system state. */
         uint256_t hashGenesis = objCheck.hashOwner;
@@ -57,7 +57,7 @@ namespace TAO::API
         /* Get the last transaction. */
         uint512_t hashLast = 0;
         if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
-            throw APIException(-144, "No transactions found");
+            throw Exception(-144, "No transactions found");
 
         /* JSON return value. */
         encoding::json jRet = encoding::json::array();
@@ -69,7 +69,7 @@ namespace TAO::API
             /* Get the transaction from disk. */
             TAO::Ledger::Transaction tx;
             if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-108, "Failed to read transaction");
+                throw Exception(-108, "Failed to read transaction");
 
             /* Set the next last. */
             hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;

@@ -57,7 +57,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -67,14 +67,14 @@ namespace TAO
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
-                throw APIException(-88, "Missing or empty name.");
+                throw Exception(-88, "Missing or empty name.");
 
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
 
             /* Check they have not requested cert, as this requires a separate API method */
             if(strName == "cert")
-                throw APIException(-291, "The cert key cannot be used to create a key pair as it is reserved for a TLS certificate.  Please use the create/certificate API method instead.");
+                throw Exception(-291, "The cert key cannot be used to create a key pair as it is reserved for a TLS certificate.  Please use the create/certificate API method instead.");
 
             /* The logged in sig chain genesis hash */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
@@ -85,19 +85,19 @@ namespace TAO
             /* Read the crypto object register */
             TAO::Register::Object crypto;
             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-259, "Could not read crypto object register");
+                throw Exception(-259, "Could not read crypto object register");
 
             /* Parse the object. */
             if(!crypto.Parse())
-                throw APIException(-36, "Failed to parse object register");
+                throw Exception(-36, "Failed to parse object register");
 
             /* Check to see if the key name is valid */
             if(!crypto.Check(strName))
-                throw APIException(-260, "Invalid key name");
+                throw Exception(-260, "Invalid key name");
 
             /* Check to see if the the key already exists */
             if(crypto.get<uint256_t>(strName) != 0)
-                throw APIException(-261, "Key already exists");
+                throw Exception(-261, "Key already exists");
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
@@ -105,7 +105,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* The scheme to use to generate the key. If no specific scheme paramater has been passed in then this defaults to
                the key type set on the previous transaction */
@@ -120,7 +120,7 @@ namespace TAO
                 else if(strScheme == "brainpool")
                     nKeyType = TAO::Ledger::SIGNATURE::BRAINPOOL;
                 else
-                    throw APIException(-262, "Invalid scheme");
+                    throw Exception(-262, "Invalid scheme");
 
             }
 
@@ -141,15 +141,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
+                throw Exception(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();
@@ -186,7 +186,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -203,11 +203,11 @@ namespace TAO
             /* Read the crypto object register */
             TAO::Register::Object crypto;
             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-259, "Could not read crypto object register");
+                throw Exception(-259, "Could not read crypto object register");
 
             /* Parse the object. */
             if(!crypto.Parse())
-                throw APIException(-36, "Failed to parse object register");
+                throw Exception(-36, "Failed to parse object register");
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
@@ -215,7 +215,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* X509 certificate instance*/
             LLC::X509Cert cert;
@@ -254,15 +254,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
+                throw Exception(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

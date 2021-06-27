@@ -56,11 +56,11 @@ namespace TAO
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user)
-                throw APIException(-10, "Invalid session ID");
+                throw Exception(-10, "Invalid session ID");
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
-                throw APIException(-88, "Missing or empty name.");
+                throw Exception(-88, "Missing or empty name.");
 
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
@@ -79,7 +79,7 @@ namespace TAO
                 else if(strScheme == "brainpool")
                     nKeyType = TAO::Ledger::SIGNATURE::BRAINPOOL;
                 else
-                    throw APIException(-262, "Invalid scheme");
+                    throw Exception(-262, "Invalid scheme");
             }
             else if(hashGenesis != 0)
             {
@@ -91,11 +91,11 @@ namespace TAO
                 /* Read the crypto object register */
                 TAO::Register::Object crypto;
                 if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-259, "Could not read crypto object register");
+                    throw Exception(-259, "Could not read crypto object register");
 
                 /* Parse the object. */
                 if(!crypto.Parse())
-                    throw APIException(-36, "Failed to parse object register");
+                    throw Exception(-36, "Failed to parse object register");
 
                 uint256_t hashKey = 0;
 
@@ -120,7 +120,7 @@ namespace TAO
             }
             else
             {
-                throw APIException(-275, "Missing scheme");
+                throw Exception(-275, "Missing scheme");
             }
 
             return nKeyType;

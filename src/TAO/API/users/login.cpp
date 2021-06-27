@@ -55,25 +55,25 @@ namespace TAO
 
             /* Check for username parameter. */
             if(params.find("username") == params.end())
-                throw APIException(-127, "Missing username");
+                throw Exception(-127, "Missing username");
 
             /* Parse out username. */
             SecureString strUser = SecureString(params["username"].get<std::string>().c_str());
 
             /* Check for username size. */
             if(strUser.size() == 0)
-                throw APIException(-133, "Zero-length username");
+                throw Exception(-133, "Zero-length username");
 
             /* Check for password parameter. */
             if(params.find("password") == params.end())
-                throw APIException(-128, "Missing password");
+                throw Exception(-128, "Missing password");
 
             /* Parse out password. */
             SecureString strPass = SecureString(params["password"].get<std::string>().c_str());
 
             /* Check for password size. */
             if(strPass.size() == 0)
-                throw APIException(-134, "Zero-length password");
+                throw Exception(-134, "Zero-length password");
 
             /* Check for pin parameter. Parse the pin parameter. */
             if(params.find("pin") != params.end())
@@ -81,11 +81,11 @@ namespace TAO
             else if(params.find("PIN") != params.end())
                 strPin = SecureString(params["PIN"].get<std::string>().c_str());
             else
-                throw APIException(-129, "Missing PIN");
+                throw Exception(-129, "Missing PIN");
 
             /* Check for pin size. */
             if(strPin.size() == 0)
-                throw APIException(-135, "Zero-length PIN");
+                throw Exception(-135, "Zero-length PIN");
 
             /* Create a temp sig chain for checking credentials */
             TAO::Ledger::SignatureChain user(strUser, strPass);
@@ -102,7 +102,7 @@ namespace TAO
                 /* If not using multiuser then check to see whether another user is already logged in */
                 if(GetSessionManager().Has(0) && GetSessionManager().Get(0).GetAccount()->Genesis() != hashGenesis)
                 {
-                    throw APIException(-140, "CLIENT MODE: Already logged in with a different username.");
+                    throw Exception(-140, "CLIENT MODE: Already logged in with a different username.");
                 }
                 else if(GetSessionManager().Has(0))
                 {
@@ -113,7 +113,7 @@ namespace TAO
                 }
 
                 if(TAO::Ledger::ChainState::Synchronizing())
-                    throw APIException(-297, "Cannot log in while synchronizing");
+                    throw Exception(-297, "Cannot log in while synchronizing");
 
                 /* In order to authenticate the user, at a minimum we need a transaction from the users sig chain containing the most
                    up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in
@@ -134,21 +134,21 @@ namespace TAO
                     /* Read the crypto object register.  This will fail if the caller has provided an invalid username. */
                     TAO::Register::Object crypto;
                     if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
-                        throw APIException(-139, "Invalid credentials");
+                        throw Exception(-139, "Invalid credentials");
 
                     /* Get the last transaction. */
                     uint512_t hashLast;
                     if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-138, "No previous transaction found");
+                        throw Exception(-138, "No previous transaction found");
 
                     /* Get previous transaction */
                     if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-138, "No previous transaction found");
+                        throw Exception(-138, "No previous transaction found");
                 }
                 /* If this is a new sig chain, get the genesis tx from mempool */
                 else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                 {
-                    throw APIException(-137, "Couldn't get transaction");
+                    throw Exception(-137, "Couldn't get transaction");
                 }
 
             }
@@ -160,7 +160,7 @@ namespace TAO
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
                     /* Account doesn't exist returns invalid credentials */
-                    throw APIException(-139, "Invalid credentials");
+                    throw Exception(-139, "Invalid credentials");
                 }
 
                 /* Dissallow mempool login on mainnet unless this node is runing in client mode.  This is because in client mode we
@@ -169,13 +169,13 @@ namespace TAO
                 if(!config::fTestNet.load())
                 {
                     /* After credentials verified, disallow login while in mempool and unconfirmed */
-                    throw APIException(-222, "User create pending confirmation");
+                    throw Exception(-222, "User create pending confirmation");
                 }
 
                 /* Testnet allows mempool login. Get the memory pool transaction. */
                 else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                 {
-                    throw APIException(-137, "Couldn't get transaction");
+                    throw Exception(-137, "Couldn't get transaction");
                 }
             }
             /* If we haven't looked up the txprev at this point, read the last known tx */
@@ -184,11 +184,11 @@ namespace TAO
                 /* Get the last transaction. */
                 uint512_t hashLast;
                 if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
+                    throw Exception(-138, "No previous transaction found");
 
                 /* Get previous transaction */
                 if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
+                    throw Exception(-138, "No previous transaction found");
             }
 
             /* Genesis Transaction. */
@@ -198,7 +198,7 @@ namespace TAO
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
             {
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
             }
 
             /* Check the sessions. */
@@ -224,7 +224,7 @@ namespace TAO
             /* If not using multiuser then check to see whether another user is already logged in */
             if(!config::fMultiuser.load() && GetSessionManager().Has(0) && GetSessionManager().Get(0).GetAccount()->Genesis() != hashGenesis)
             {
-                throw APIException(-140, "Already logged in with a different username.");
+                throw Exception(-140, "Already logged in with a different username.");
             }
 
             /* Create the new session */
@@ -279,7 +279,7 @@ namespace TAO
 
                     /* Check we have user/pass/pin */
                     if(strUsername.empty() || strPassword.empty() || strPin.empty())
-                        throw APIException(-203, "Autologin missing username/password/pin");
+                        throw Exception(-203, "Autologin missing username/password/pin");
 
                     /* Create a temp sig chain for checking credentials */
                     TAO::Ledger::SignatureChain user(strUsername, strPassword);
@@ -295,7 +295,7 @@ namespace TAO
                     {
                         /* In client mode, wait until we are synchronized before logging in */
                         if(TAO::Ledger::ChainState::Synchronizing())
-                            throw APIException(-297, "Cannot log in while synchronizing");
+                            throw Exception(-297, "Cannot log in while synchronizing");
 
                         /* In order to authenticate the user, at a minimum we need a transaction from the users sig chain containing the most
                         up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in
@@ -316,21 +316,21 @@ namespace TAO
                             /* Read the crypto object register */
                             TAO::Register::Object crypto;
                             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
-                                throw APIException(-259, "Could not read crypto object register");
+                                throw Exception(-259, "Could not read crypto object register");
 
                             /* Get the last transaction. */
                             uint512_t hashLast;
                             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                                throw APIException(-138, "No previous transaction found");
+                                throw Exception(-138, "No previous transaction found");
 
                             /* Get previous transaction */
                             if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                                throw APIException(-138, "No previous transaction found");
+                                throw Exception(-138, "No previous transaction found");
                         }
                         /* If this is a new sig chain, get the genesis tx from mempool */
                         else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                         {
-                            throw APIException(-137, "Couldn't get transaction");
+                            throw Exception(-137, "Couldn't get transaction");
                         }
                     }
 
@@ -365,20 +365,20 @@ namespace TAO
                                 debug::log(0, "Auto-Create Successful");
                             }
                             else
-                                throw APIException(-203, "Autologin user not found");
+                                throw Exception(-203, "Autologin user not found");
                         }
 
                         /* Get the last transaction. */
                         uint512_t hashLast;
                         if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                         {
-                            throw APIException(-138, "No previous transaction found");
+                            throw Exception(-138, "No previous transaction found");
                         }
 
                         /* Get previous transaction */
                         if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                         {
-                            throw APIException(-138, "No previous transaction found");
+                            throw Exception(-138, "No previous transaction found");
                         }
                     }
 
@@ -389,7 +389,7 @@ namespace TAO
                     /* Check the credentials match the previous tx. */
                     if(txPrev.hashNext != tx.hashNext)
                     {
-                        throw APIException(-139, "Invalid credentials");
+                        throw Exception(-139, "Invalid credentials");
                     }
 
                     /* Create the new session */
@@ -436,7 +436,7 @@ namespace TAO
                         LLD::Local->EraseSession(hashGenesis);
                 }
             }
-            catch(const APIException& e)
+            catch(const Exception& e)
             {
                 /* Log the error */
                 debug::error(FUNCTION, e.what());

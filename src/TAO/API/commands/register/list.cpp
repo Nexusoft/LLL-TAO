@@ -35,7 +35,7 @@ namespace TAO::API
     {
         /* Check that there is a type defined here. */
         if(jParams["request"].find("type") == jParams["request"].end())
-            throw APIException(-36, "Invalid type for command.");
+            throw Exception(-36, "Invalid type for command.");
 
         /* Grab our type to run some checks against. */
         const std::string strType =
@@ -81,7 +81,7 @@ namespace TAO::API
 
         /* Check that we have results. */
         if(vActive.empty())
-            throw APIException(-74, "No registers found");
+            throw Exception(-74, "No registers found");
 
         /* Sort the list */
         const bool fDesc = (strOrder == "desc");

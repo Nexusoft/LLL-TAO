@@ -52,7 +52,7 @@ namespace TAO::API
         /* Attempt to read our trust register. */
         TAO::Register::Object objTrust;
         if(!LLD::Register->ReadObject(hashRegister, objTrust, TAO::Ledger::FLAGS::MEMPOOL))
-            throw APIException(-70, "Trust account not found");
+            throw Exception(-70, "Trust account not found");
 
         /* Grab our trust score since we will use in further calculations. */
         const uint64_t nTrustScore = objTrust.get<uint64_t>("trust");

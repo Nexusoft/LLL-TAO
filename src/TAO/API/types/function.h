@@ -135,11 +135,11 @@ namespace TAO::API
             /* Check for activation status. */
             const uint64_t nTimestamp = runtime::unifiedtimestamp();
             if(nActivation != 0 && nTimestamp < nActivation)
-                throw APIException(-1, "Method not available: activates in ", (nActivation - nTimestamp), " seconds");
+                throw Exception(-1, "Method not available: activates in ", (nActivation - nTimestamp), " seconds");
 
             /* Check for deprecation status. */
             if(nMaxVersion != 0 && version::CLIENT_VERSION >= nMaxVersion)
-                throw APIException(-3, "Method was deprecated at version ", version::version_string(nMaxVersion), ": ", strMessage);
+                throw Exception(-3, "Method was deprecated at version ", version::version_string(nMaxVersion), ": ", strMessage);
 
             return tFunction(jParams, fHelp);
         }

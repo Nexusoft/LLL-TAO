@@ -646,7 +646,7 @@ namespace TAO
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vRegisters;
             if(!ListRegisters(hashGenesis, vRegisters))
-                throw APIException(-74, "No registers found");
+                throw Exception(-74, "No registers found");
 
             /* Iterate registers to find all token accounts. */
             for(const auto& hashRegister : vRegisters)
@@ -978,7 +978,7 @@ namespace TAO
             uint256_t hashCaller = Commands::Get<Users>()->GetCallersGenesis(params);
 
             if(config::fClient.load() && hashGenesis != hashCaller)
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Number of results to return. */
             uint32_t nLimit = 100;
@@ -1036,15 +1036,15 @@ namespace TAO
                     /* Read the object register, which is the token . */
                     TAO::Register::Object account;
                     if(!LLD::Register->ReadState(hashProof, account, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-13, "Object not found");
+                        throw Exception(-13, "Object not found");
 
                     /* Parse the object register. */
                     if(!account.Parse())
-                        throw APIException(-36, "Failed to parse object register");
+                        throw Exception(-36, "Failed to parse object register");
 
                     /* Check that this is an account */
                     if(account.Base() != TAO::Register::OBJECTS::ACCOUNT )
-                        throw APIException(-65, "Object is not an account");
+                        throw Exception(-65, "Object is not an account");
 
                     /* Get the token address */
                     TAO::Register::Address hashToken = account.get<uint256_t>("token");
@@ -1052,11 +1052,11 @@ namespace TAO
                     /* Read the token register. */
                     TAO::Register::Object token;
                     if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
-                        throw APIException(-125, "Token not found");
+                        throw Exception(-125, "Token not found");
 
                     /* Parse the object register. */
                     if(!token.Parse())
-                        throw APIException(-36, "Failed to parse object register");
+                        throw Exception(-36, "Failed to parse object register");
 
                     /* Get the token supply so that we an determine our share */
                     uint64_t nSupply = token.get<uint64_t>("supply");
@@ -1075,11 +1075,11 @@ namespace TAO
                     /* Get the account that made the debit, so that we can determine the decimals */
                     TAO::Register::Object accountFrom;
                     if(!LLD::Register->ReadState(hashFrom, accountFrom, TAO::Ledger::FLAGS::LOOKUP))
-                        throw APIException(-13, "Object not found");
+                        throw Exception(-13, "Object not found");
 
                     /* Parse the object register. */
                     if(!accountFrom.Parse())
-                        throw APIException(-36, "Failed to parse object register");
+                        throw Exception(-36, "Failed to parse object register");
 
                     /* Calculate the partial debit amount that this token holder is entitled to. */
                     uint64_t nPartial = (nAmount * nBalance) / nSupply;
@@ -1176,11 +1176,11 @@ namespace TAO
 
             /* Make sure the tritium server has a connection. (skip check if running local testnet) */
             if(!fLocalTestnet && LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
-                throw APIException(-255, "Cannot process notifications until peers are connected");
+                throw Exception(-255, "Cannot process notifications until peers are connected");
 
             /* Don't process events while synchronizing. */
             if(TAO::Ledger::ChainState::Synchronizing())
-                throw APIException(-256, "Cannot process notifications whilst synchronizing");
+                throw Exception(-256, "Cannot process notifications whilst synchronizing");
 
             /* Flag indicating that this call should log this call in the session activity */
             bool fLogActivity = true;
@@ -1193,7 +1193,7 @@ namespace TAO
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user)
-                throw APIException(-10, "Invalid session ID");
+                throw Exception(-10, "Invalid session ID");
 
             /* Set the hash genesis for this user. */
             uint256_t hashGenesis = user->Genesis();
@@ -1205,7 +1205,7 @@ namespace TAO
             std::string strAccount = config::GetArg("-events_account", "default");
             TAO::Register::Object objectDefault;
             if(!config::fHybrid.load() && !TAO::Register::GetNameRegister(hashGenesis, strAccount, objectDefault))
-                throw APIException(-63, "Could not retrieve default NXS account to credit");
+                throw Exception(-63, "Could not retrieve default NXS account to credit");
 
             /* Check for suppressed parameter. */
             bool fIncludeSuppressed = false;
@@ -1524,7 +1524,7 @@ namespace TAO
 
                     /* Parse the object register. */
                     if(!debit.Parse())
-                        throw APIException(-41, "Failed to parse object from debit transaction");
+                        throw Exception(-41, "Failed to parse object from debit transaction");
 
                     /* Check for the owner to make sure this was a send to the current users account */
                     if(debit.hashOwner == user->Genesis())
@@ -1533,7 +1533,7 @@ namespace TAO
                         if(debit.Base() == TAO::Register::OBJECTS::ACCOUNT)
                         {
                             if(debit.get<uint256_t>("token") != 0)
-                                throw APIException(-51, "Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts.");
+                                throw Exception(-51, "Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts.");
 
                             /* The amount to credit */
                             const uint64_t nAmount = txLegacy.nValue;
@@ -1589,7 +1589,7 @@ namespace TAO
                     }
                 }
             }
-            catch(const APIException& ex)
+            catch(const Exception& ex)
             {
                 /* Suppress this notification for 10 x the notifications interval, so by default it will be retried after 50s */
                 uint64_t nSuppress = config::GetArg("-notificationsinterval", 5) * 10;
@@ -1612,7 +1612,7 @@ namespace TAO
                 /* Create the transaction output. */
                 TAO::Ledger::Transaction txout;
                 if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
-                    throw APIException(-17, "Failed to create transaction");
+                    throw Exception(-17, "Failed to create transaction");
 
                 /* We add one less than maximum allowed to leave room for a fee contract. */
                 for(uint32_t i = 0; i < TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1; ++i)
@@ -1659,22 +1659,22 @@ namespace TAO
 
                         /* Throw exception to signify this transaction failed to be accepted due to the contract failing peer
                            validation and break out of this iteration of the process */
-                        throw APIException(-257, "Contract failed peer validation");
+                        throw Exception(-257, "Contract failed peer validation");
                     }
 
                 }
 
                 /* Execute the operations layer. */
                 if(!txout.Build())
-                    throw APIException(-30, "Failed to build register pre-states");
+                    throw Exception(-30, "Failed to build register pre-states");
 
                 /* Sign the transaction. */
                 if(!txout.Sign(session.GetAccount()->Generate(txout.nSequence, strPIN)))
-                    throw APIException(-31, "Ledger failed to sign transaction");
+                    throw Exception(-31, "Ledger failed to sign transaction");
 
                 /* Execute the operations layer. */
                 if(!TAO::Ledger::mempool.Accept(txout))
-                    throw APIException(-32, "Failed to accept");
+                    throw Exception(-32, "Failed to accept");
 
                 /* Capture the transaction ID */
                 const uint512_t hashTx = txout.GetHash();
@@ -1813,16 +1813,16 @@ namespace TAO
 
                             /* Check the hash is valid */
                             if(hashTx != tx.GetHash())
-                                throw APIException(0, "Invalid transaction ID received from RESPONSE::VALIDATED");
+                                throw Exception(0, "Invalid transaction ID received from RESPONSE::VALIDATED");
 
                             /* Check the contract ID is valid */
                             if(nContract > tx.Size() -1)
-                                throw APIException(0, "Invalid contract ID received from RESPONSE::VALIDATED");
+                                throw Exception(0, "Invalid contract ID received from RESPONSE::VALIDATED");
                         }
                     }
                     else
                     {
-                        throw APIException(0, "CLIENT MODE: timeout waiting for RESPONSE::VALIDATED");
+                        throw Exception(0, "CLIENT MODE: timeout waiting for RESPONSE::VALIDATED");
                     }
 
                 }

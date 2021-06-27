@@ -252,7 +252,7 @@ namespace TAO::API
                             fFound = true;
 
                             if(txPrev.Size() < txin.prevout.n)
-                                throw APIException(-87, "Invalid or unknown transaction");
+                                throw Exception(-87, "Invalid or unknown transaction");
 
                             /* We build based on contract if our input is a tritium contract . */
                             jInput = ContractToJSON(txPrev[txin.prevout.n], txin.prevout.n, nVerbose);
@@ -280,7 +280,7 @@ namespace TAO::API
                                 jInput["address"] = hashRegister.ToString();
 
                             else
-                                throw APIException(-8, "Unable to Extract Input Address");
+                                throw Exception(-8, "Unable to Extract Input Address");
 
                             jInput["amount"] = (double) txPrev.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
                             jInputs.push_back(jInput);
@@ -288,7 +288,7 @@ namespace TAO::API
                     }
 
                     if(!fFound)
-                            throw APIException(-7, "Invalid transaction id");
+                            throw Exception(-7, "Invalid transaction id");
                 }
 
                 jRet["inputs"] = jInputs;
@@ -314,7 +314,7 @@ namespace TAO::API
                 else if(block.nHeight == 112283) // Special case for malformed block 112283 with bad output address
                     output["address"] = "";
                 else
-                    throw APIException(-8, "Unable to Extract Output Address");
+                    throw Exception(-8, "Unable to Extract Output Address");
 
                 output["amount"] = (double) txout.nValue / TAO::Ledger::NXS_COIN;
 
@@ -373,7 +373,7 @@ namespace TAO::API
                     /* Get the register pre-state so we can build response with old values before OP::WRITE. */
                     TAO::Register::Object object = contract.PreState();
                     if(!object.Parse())
-                        throw APIException(-15, "Object is not an account or token");
+                        throw Exception(-15, "Object is not an account or token");
 
                     /* Format write operation for different register types. */
                     if(object.nType == TAO::Register::REGISTER::OBJECT)
@@ -624,7 +624,7 @@ namespace TAO::API
 
                         /* parse object so that the data fields can be accessed */
                         if(!object.Parse())
-                            throw APIException(-36, "Failed to parse object register");
+                            throw Exception(-36, "Failed to parse object register");
 
                         /* Add object standard if available. */
                         jRet["standard"] = GetObjectType(object.Standard());
@@ -792,7 +792,7 @@ namespace TAO::API
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
                     TAO::Register::Object object = contract.PreState();
                     if(!object.Parse())
-                        throw APIException(-15, "Object is not an account or token");
+                        throw Exception(-15, "Object is not an account or token");
 
                     /* Get the current token's address.  */
                     const TAO::Register::Address hashToken = object.get<uint256_t>("token");
@@ -857,7 +857,7 @@ namespace TAO::API
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
                     TAO::Register::Object object = contract.PreState();
                     if(!object.Parse())
-                        throw APIException(-15, "Object is not an account or token");
+                        throw Exception(-15, "Object is not an account or token");
 
                     /* Get the current token's address.  */
                     const TAO::Register::Address hashToken =
@@ -1530,12 +1530,12 @@ namespace TAO::API
         {
             /* Check for incorrect mixing of AND/OR. */
             if(jStatement.find("logical") == jStatement.end())
-                throw APIException(-122, "Query Syntax Error: missing logical operator for group");
+                throw Exception(-122, "Query Syntax Error: missing logical operator for group");
 
             /* Grab a copy of our current logical statement. */
             const std::string strLogical = jStatement["logical"].get<std::string>();
             if(strLogical != "NONE" && strLogical != strClause)
-                throw APIException(-121, "Query Syntax Error, must use '(' and ')' to mix AND/OR statements");
+                throw Exception(-121, "Query Syntax Error, must use '(' and ')' to mix AND/OR statements");
 
             jStatement["logical"] = strClause;
             return StatementToJSON(vWhere, ++nIndex, jStatement);
@@ -1621,7 +1621,7 @@ namespace TAO::API
 
         /* Check for logical operator. */
         //if(jRet["logical"].get<std::string>() == "NONE" && jRet["statement"].size() > 1)
-        //    throw APIException(-120, "Query Syntax Error: missing logical operator for base group, too many '()' maybe?");
+        //    throw Exception(-120, "Query Syntax Error: missing logical operator for base group, too many '()' maybe?");
 
         return jRet;
     }
@@ -1633,7 +1633,7 @@ namespace TAO::API
         /* Check for a set to compare. */
         const auto nBegin = strClause.find_first_of("!=<>");
         if(nBegin == strClause.npos)
-            throw APIException(-120, "Query Syntax Error: must use <key>=<value> with no extra characters. ", strClause);
+            throw Exception(-120, "Query Syntax Error: must use <key>=<value> with no extra characters. ", strClause);
 
         /* Grab our current key. */
         const std::string strKey = strClause.substr(0, nBegin);
@@ -1641,7 +1641,7 @@ namespace TAO::API
         /* Check for our incoming parameter. */
         const std::string::size_type nDot = strKey.find('.');
         if(nDot == strKey.npos)
-            throw APIException(-60, "Query Syntax Error: malformed where clause at ", strKey);
+            throw Exception(-60, "Query Syntax Error: malformed where clause at ", strKey);
 
         /* Build our current json value. */
         encoding::json jClause =
@@ -1667,7 +1667,7 @@ namespace TAO::API
 
         /* Check for valid values and parameters. */
         if(jClause["value"].get<std::string>().empty())
-            throw APIException(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
+            throw Exception(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
 
         return jClause;
     }
@@ -1700,7 +1700,7 @@ namespace TAO::API
 
                     /* Check for empty value, due to ' ' or bad input. */
                     if(strValue.empty())
-                        throw APIException(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
+                        throw Exception(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
                 }
 
                 /* Check for where clauses. */
@@ -1708,28 +1708,28 @@ namespace TAO::API
                 {
                     /* Check if we have operated before. */
                     if(!strWhere.empty()) //check for double WHERE
-                        throw APIException(-60, "Query Syntax Error: malformed where clause at ", strValue);
+                        throw Exception(-60, "Query Syntax Error: malformed where clause at ", strValue);
 
                     /* If where as key/value, append the value we parsed out. */
                     if(strKey == "where")
                     {
                         /* Check that our where clause is a proper conditional statement. */
                         if(strValue.find_first_of("!=<>") == strValue.npos)
-                            throw APIException(-60, "Query Syntax Error: malformed where clause at ", strValue);
+                            throw Exception(-60, "Query Syntax Error: malformed where clause at ", strValue);
 
                         strWhere += std::string(strValue);
                     }
 
                     /* Check if we have empty WHERE. */
                     if(n + 1 >= vParams.size() && strParam == "WHERE")
-                        throw APIException(7, "Query Syntax Error: empty WHERE clause at [", strValue, "]");
+                        throw Exception(7, "Query Syntax Error: empty WHERE clause at [", strValue, "]");
 
                     /* Build a single where string for parsing. */
                     for(uint32_t i = n + 1; i < vParams.size(); ++i)
                     {
                         /* Check if we have operated before. */
                         if(vParams[i] == "WHERE" && strKey == "where") //check for double WHERE
-                            throw APIException(-60, "Query Syntax Error: malformed where clause at ", strValue);
+                            throw Exception(-60, "Query Syntax Error: malformed where clause at ", strValue);
 
                         /* Append the string with remaining arguments. */
                         strWhere += vParams[i];
@@ -1757,7 +1757,7 @@ namespace TAO::API
                 }
             }
             else
-                throw APIException(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
+                throw Exception(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
         }
 
         /* Build our query string now. */

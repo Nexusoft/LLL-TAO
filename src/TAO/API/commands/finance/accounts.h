@@ -131,11 +131,11 @@ namespace TAO::API
         {
             /* If we have exhausted our list of address, otherwise throw here. */
             if(nIterator >= vAddresses.size())
-                throw APIException(-52, "No more available accounts for debit");
+                throw Exception(-52, "No more available accounts for debit");
 
             /* Check that we don't underflow here. */
             if(vAddresses[nIterator].second < nBalance)
-                throw APIException(-69, "Insufficient funds");
+                throw Exception(-69, "Insufficient funds");
 
             /* Adjust the balance for designated account. */
             vAddresses[nIterator].second -= nBalance;
@@ -153,7 +153,7 @@ namespace TAO::API
         {
             /* If we have exhausted our list of address, otherwise throw here. */
             if(++nIterator >= vAddresses.size())
-                throw APIException(-52, "No more available accounts for debit");
+                throw Exception(-52, "No more available accounts for debit");
 
             return *this;
         }
@@ -212,7 +212,7 @@ namespace TAO::API
         {
             /* If we have exhausted our list of address, otherwise throw here. */
             if(nIterator >= vAddresses.size())
-                throw APIException(-52, "No more available accounts for debit");
+                throw Exception(-52, "No more available accounts for debit");
 
             return vAddresses[nIterator].second;
         }
@@ -227,7 +227,7 @@ namespace TAO::API
         {
             /* If we have exhausted our list of address, otherwise throw here. */
             if(nIterator >= vAddresses.size())
-                throw APIException(-52, "No more available accounts for debit");
+                throw Exception(-52, "No more available accounts for debit");
 
             return vAddresses[nIterator].first;
         }

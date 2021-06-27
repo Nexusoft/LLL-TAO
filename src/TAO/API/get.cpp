@@ -80,13 +80,13 @@ namespace TAO::API
                 /* Read the token register from the DB. */
                 TAO::Register::Object object;
                 if(!LLD::Register->ReadObject(hashIdentifier, object, TAO::Ledger::FLAGS::LOOKUP))
-                    throw APIException(-125, "Token not found");
+                    throw Exception(-125, "Token not found");
 
                 return object.get<uint8_t>("decimals");
             }
 
             default:
-                throw APIException(-124, "Unknown token / account.");
+                throw Exception(-124, "Unknown token / account.");
         }
 
         return 0;
@@ -588,7 +588,7 @@ namespace TAO::API
                     if(config::fClient.load())
                         break;
                     else
-                        throw APIException(-108, "Failed to read transaction");
+                        throw Exception(-108, "Failed to read transaction");
                 }
 
                 /* Skip this transaction if it is mature. */
@@ -660,7 +660,7 @@ namespace TAO::API
             /* Get the account from the register DB. */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-13, "Object not found");
+                throw Exception(-13, "Object not found");
 
             /* Check that this is a non-standard object type so that we can parse it and check the type*/
             if(object.nType != TAO::Register::REGISTER::OBJECT)
@@ -668,7 +668,7 @@ namespace TAO::API
 
             /* parse object so that the data fields can be accessed */
             if(!object.Parse())
-                throw APIException(-36, "Failed to parse object register");
+                throw Exception(-36, "Failed to parse object register");
 
             /* Check that this is an account or token */
             if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
@@ -688,11 +688,11 @@ namespace TAO::API
             /* Retrieve the token itself so we can get the supply */
             TAO::Register::Object token;
             if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-125, "Token not found");
+                throw Exception(-125, "Token not found");
 
             /* Parse the object register. */
             if(!token.Parse())
-                throw APIException(-14, "Object failed to parse");
+                throw Exception(-14, "Object failed to parse");
 
             /* Get the total supply */
             uint64_t nSupply = token.get<uint64_t>("supply");
@@ -717,7 +717,7 @@ namespace TAO::API
             /* Get the state from the register DB. */
             TAO::Register::State state;
             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-104, "Object not found");
+                throw Exception(-104, "Object not found");
 
             vStates.push_back(std::make_pair(hashRegister, state));
         }
@@ -745,7 +745,7 @@ namespace TAO::API
         /* Get the list of registers owned by this sig chain */
         std::vector<TAO::Register::Address> vAccounts;
         if(!ListAccounts(hashGenesis, vAccounts, false, false))
-            throw APIException(-74, "No registers found");
+            throw Exception(-74, "No registers found");
 
         /* Read all the registers to that they are sorted by creation time */
         std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vRegisters;
@@ -767,7 +767,7 @@ namespace TAO::API
 
             /* parse object so that the data fields can be accessed */
             if(!object.Parse())
-                throw APIException(-36, "Failed to parse object register");
+                throw Exception(-36, "Failed to parse object register");
 
             /* Check that this is an account */
             uint8_t nStandard = object.Standard();

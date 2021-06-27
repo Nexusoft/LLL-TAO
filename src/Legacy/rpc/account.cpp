@@ -49,7 +49,7 @@ namespace Legacy
     std::string AccountFromValue(const std::string& value)
     {
         if(value == "*")
-            throw TAO::API::APIException(-11, "Invalid account name");
+            throw TAO::API::Exception(-11, "Invalid account name");
         return value;
     }
 
@@ -79,7 +79,7 @@ namespace Legacy
         // Generate a new key that is added to wallet
         std::vector<unsigned char> newKey;
         if(!wallet.GetKeyPool().GetKeyFromPool(newKey, false))
-            throw TAO::API::APIException(-12, "Error: Keypool ran out, please call keypoolrefill first");
+            throw TAO::API::Exception(-12, "Error: Keypool ran out, please call keypoolrefill first");
 
         Legacy::NexusAddress address(newKey);
         wallet.GetAddressBook().SetAddressBookName(address, strAccount);
@@ -120,7 +120,7 @@ namespace Legacy
 
         Legacy::NexusAddress address(params[0].get<std::string>());
         if(!address.IsValid())
-            throw TAO::API::APIException(-5, "Invalid Nexus address");
+            throw TAO::API::Exception(-5, "Invalid Nexus address");
 
 
         std::string strAccount;
@@ -154,7 +154,7 @@ namespace Legacy
 
         Legacy::NexusAddress address(params[0].get<std::string>());
         if(!address.IsValid())
-            throw TAO::API::APIException(-5, "Invalid Nexus address");
+            throw TAO::API::Exception(-5, "Invalid Nexus address");
 
         std::string strAccount;
         std::map<Legacy::NexusAddress, std::string>::const_iterator mi = wallet.GetAddressBook().GetAddressBookMap().find(address);
@@ -228,34 +228,34 @@ namespace Legacy
             /* Get the account object. */
             TAO::Register::Object account;
             if(!LLD::Register->ReadState(hashAccount, account))
-                throw TAO::API::APIException(-5, "Invalid Nexus address");
+                throw TAO::API::Exception(-5, "Invalid Nexus address");
 
             /* Parse the object register. */
             if(!account.Parse())
-                throw TAO::API::APIException(-5, "Invalid Nexus address");
+                throw TAO::API::Exception(-5, "Invalid Nexus address");
 
             /* Get the object standard. */
             uint8_t nStandard = account.Standard();
 
             /* Check the object standard. */
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
-                throw TAO::API::APIException(-126, "Address is not for a NXS account");
+                throw TAO::API::Exception(-126, "Address is not for a NXS account");
 
             /* Check the account is a NXS account */
             if(account.get<uint256_t>("token") != 0)
-                throw TAO::API::APIException(-126, "Address is not for a NXS account");
+                throw TAO::API::Exception(-126, "Address is not for a NXS account");
 
             scriptPubKey.SetRegisterAddress(hashAccount);
         }
         else if(hashAccount.IsValid() && hashAccount.IsLegacy())
             scriptPubKey.SetNexusAddress(address);
         else
-            throw TAO::API::APIException(-5, "Invalid Nexus address");
+            throw TAO::API::Exception(-5, "Invalid Nexus address");
 
         /* Amount */
         int64_t nAmount = Legacy::AmountToSatoshis(params[1]);
         if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
-            throw TAO::API::APIException(-101, "Send amount too small");
+            throw TAO::API::Exception(-101, "Send amount too small");
 
         /* Wallet comments (allow for empty strings as placeholders when only want to provide passphrase) */
         Legacy::WalletTx wtx;
@@ -280,7 +280,7 @@ namespace Legacy
         if(wallet.IsCrypted() && (fLocked || fMintOnly))
         {
             if(strWalletPass.length() == 0)
-                throw TAO::API::APIException(-13, "Error: Wallet is locked.");
+                throw TAO::API::Exception(-13, "Error: Wallet is locked.");
 
             /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
             if(fMintOnly)
@@ -293,7 +293,7 @@ namespace Legacy
              * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
              */
             if(!wallet.Unlock(strWalletPass, 0, false))
-                throw TAO::API::APIException(-14, "Error: The wallet passphrase entered was incorrect.");
+                throw TAO::API::Exception(-14, "Error: The wallet passphrase entered was incorrect.");
         }
 
         std::string strError = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx);
@@ -315,7 +315,7 @@ namespace Legacy
 
         /* Check result of SendToNexusAddress only after returning to prior lock state */
         if(strError != "")
-            throw TAO::API::APIException(-3, strError);
+            throw TAO::API::Exception(-3, strError);
 
         return wtx.GetHash().GetHex();
     }
@@ -330,18 +330,18 @@ namespace Legacy
                 " - Sign a message with the private key of an address");
 
         if(Legacy::Wallet::GetInstance().IsLocked())
-            throw TAO::API::APIException(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+            throw TAO::API::Exception(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
         std::string strAddress = params[0].get<std::string>();
         std::string strMessage = params[1].get<std::string>();
 
         Legacy::NexusAddress addr(strAddress);
         if(!addr.IsValid())
-            throw TAO::API::APIException(-3, "Invalid address");
+            throw TAO::API::Exception(-3, "Invalid address");
 
         LLC::ECKey key;
         if(!Legacy::Wallet::GetInstance().GetKey(addr, key))
-            throw TAO::API::APIException(-4, "Private key not available");
+            throw TAO::API::Exception(-4, "Private key not available");
 
         DataStream ss(SER_GETHASH, 0);
         ss << Legacy::strMessageMagic;
@@ -349,7 +349,7 @@ namespace Legacy
 
         std::vector<unsigned char> vchSig;
         if(!key.SignCompact(LLC::SK256(ss.begin(), ss.end()), vchSig))
-            throw TAO::API::APIException(-5, "Sign failed");
+            throw TAO::API::Exception(-5, "Sign failed");
 
         return encoding::EncodeBase64(&vchSig[0], vchSig.size());
 
@@ -370,13 +370,13 @@ namespace Legacy
 
         Legacy::NexusAddress addr(strAddress);
         if(!addr.IsValid())
-            throw TAO::API::APIException(-3, "Invalid address");
+            throw TAO::API::Exception(-3, "Invalid address");
 
         bool fInvalid = false;
         std::vector<unsigned char> vchSig = encoding::DecodeBase64(strSign.c_str(), &fInvalid);
 
         if(fInvalid)
-            throw TAO::API::APIException(-5, "Malformed base64 encoding");
+            throw TAO::API::Exception(-5, "Malformed base64 encoding");
 
         DataStream ss(SER_GETHASH, 0);
         ss << Legacy::strMessageMagic;
@@ -403,7 +403,7 @@ namespace Legacy
         Legacy::NexusAddress address = Legacy::NexusAddress(params[0].get<std::string>());
         Legacy::Script scriptPubKey;
         if(!address.IsValid())
-            throw TAO::API::APIException(-5, "Invalid Nexus address");
+            throw TAO::API::Exception(-5, "Invalid Nexus address");
         scriptPubKey.SetNexusAddress(address);
         if(!Legacy::IsMine(Legacy::Wallet::GetInstance(),scriptPubKey))
             return (double)0.0;
@@ -587,20 +587,20 @@ namespace Legacy
             strFrom = "*"; //replace empty string with wildcard (to retrieve correct wallet balance)
 
         if(strFrom != "default" && strFrom != "*" && !Find(wallet.GetAddressBook().GetAddressBookMap(), strFrom))
-            throw TAO::API::APIException(-5, debug::safe_printstr(strFrom, " from account doesn't exist."));
+            throw TAO::API::Exception(-5, debug::safe_printstr(strFrom, " from account doesn't exist."));
 
         /* Account to MoveTo */
         std::string strTo = AccountFromValue(params[1]);
 
         if(!Find(wallet.GetAddressBook().GetAddressBookMap(), strTo))
-            throw TAO::API::APIException(-5, debug::safe_printstr(strTo, " to account doesn't exist."));
+            throw TAO::API::Exception(-5, debug::safe_printstr(strTo, " to account doesn't exist."));
 
         Legacy::NexusAddress address = wallet.GetAddressBook().GetAccountAddress(strTo);
 
         /* Amount */
         int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
         if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
-            throw TAO::API::APIException(-101, "Send amount too small");
+            throw TAO::API::Exception(-101, "Send amount too small");
 
         /* Min number of confirmations for transactions to source NXS */
         uint32_t nMinDepth = 1;
@@ -628,7 +628,7 @@ namespace Legacy
         if(wallet.IsCrypted() && (fLocked || fMintOnly))
         {
             if(strWalletPass.length() == 0)
-                throw TAO::API::APIException(-13, "Error: Wallet is locked.");
+                throw TAO::API::Exception(-13, "Error: Wallet is locked.");
 
             /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
             if(fMintOnly)
@@ -641,7 +641,7 @@ namespace Legacy
              * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
              */
             if(!wallet.Unlock(strWalletPass, 0, false))
-                throw TAO::API::APIException(-14, "Error: The wallet passphrase entered was incorrect.");
+                throw TAO::API::Exception(-14, "Error: The wallet passphrase entered was incorrect.");
         }
 
         bool fInsufficientBalance = false;
@@ -683,10 +683,10 @@ namespace Legacy
 
         /* Only throw errors from insufficient balance or SendToNexusAddress after returning to prior lock state */
         if(fInsufficientBalance)
-            throw TAO::API::APIException(-6, "Account has insufficient funds");
+            throw TAO::API::Exception(-6, "Account has insufficient funds");
 
         if(strError != "")
-            throw TAO::API::APIException(-3, strError);
+            throw TAO::API::Exception(-3, strError);
 
         return wtx.GetHash().GetHex();
     }
@@ -718,7 +718,7 @@ namespace Legacy
             strFrom = "*"; //replace empty string with wildcard (to retrieve correct wallet balance)
 
         if(strFrom != "default" && strFrom != "*" && !Find(wallet.GetAddressBook().GetAddressBookMap(), strFrom))
-            throw TAO::API::APIException(-5, debug::safe_printstr(strFrom, " from account doesn't exist."));
+            throw TAO::API::Exception(-5, debug::safe_printstr(strFrom, " from account doesn't exist."));
 
         /* Nexus Address (supports register addresses) */
         std::string strAddress = params[1].get<std::string>();
@@ -737,34 +737,34 @@ namespace Legacy
             /* Get the account object. */
             TAO::Register::Object account;
             if(!LLD::Register->ReadState(hashAccount, account))
-                throw TAO::API::APIException(-5, "Invalid Nexus address");
+                throw TAO::API::Exception(-5, "Invalid Nexus address");
 
             /* Parse the object register. */
             if(!account.Parse())
-                throw TAO::API::APIException(-5, "Invalid Nexus address");
+                throw TAO::API::Exception(-5, "Invalid Nexus address");
 
             /* Get the object standard. */
             uint8_t nStandard = account.Standard();
 
             /* Check the object standard. */
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
-                throw TAO::API::APIException(-126, "Address is not for a NXS account");
+                throw TAO::API::Exception(-126, "Address is not for a NXS account");
 
             /* Check the account is a NXS account */
             if(account.get<uint256_t>("token") != 0)
-                throw TAO::API::APIException(-126, "Address is not for a NXS account");
+                throw TAO::API::Exception(-126, "Address is not for a NXS account");
 
             scriptPubKey.SetRegisterAddress(hashAccount);
         }
         else if(hashAccount.IsValid() && hashAccount.IsLegacy())
             scriptPubKey.SetNexusAddress(address);
         else
-            throw TAO::API::APIException(-5, "Invalid Nexus address");
+            throw TAO::API::Exception(-5, "Invalid Nexus address");
 
         /* Amount */
         int64_t nAmount = Legacy::AmountToSatoshis(params[2]);
         if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
-            throw TAO::API::APIException(-101, "Send amount too small");
+            throw TAO::API::Exception(-101, "Send amount too small");
 
         /* Min number of confirmations for transactions to source NXS */
         uint32_t nMinDepth = 1;
@@ -795,7 +795,7 @@ namespace Legacy
         if(wallet.IsCrypted() && (fLocked || fMintOnly))
         {
             if(strWalletPass.length() == 0)
-                throw TAO::API::APIException(-13, "Error: Wallet is locked.");
+                throw TAO::API::Exception(-13, "Error: Wallet is locked.");
 
             /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
             if(fMintOnly)
@@ -808,7 +808,7 @@ namespace Legacy
              * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
              */
             if(!wallet.Unlock(strWalletPass, 0, false))
-                throw TAO::API::APIException(-14, "Error: The wallet passphrase entered was incorrect.");
+                throw TAO::API::Exception(-14, "Error: The wallet passphrase entered was incorrect.");
         }
 
         bool fInsufficientBalance = false;
@@ -842,10 +842,10 @@ namespace Legacy
 
         /* Only throw errors from insufficient balance or SendToNexusAddress after returning to prior lock state */
         if(fInsufficientBalance)
-            throw TAO::API::APIException(-6, "Account has insufficient funds");
+            throw TAO::API::Exception(-6, "Account has insufficient funds");
 
         if(strError != "")
-            throw TAO::API::APIException(-3, strError);
+            throw TAO::API::Exception(-3, strError);
 
         return wtx.GetHash().GetHex();
     }
@@ -874,7 +874,7 @@ namespace Legacy
 
         /* Recipient list with amounts */
         if(!params[1].is_object())
-            throw TAO::API::APIException(-8, std::string("Invalid recipient list format"));
+            throw TAO::API::Exception(-8, std::string("Invalid recipient list format"));
 
         encoding::json sendTo = params[1];
 
@@ -917,22 +917,22 @@ namespace Legacy
                 /* Get the account object. */
                 TAO::Register::Object account;
                 if(!LLD::Register->ReadState(hashAccount, account))
-                    throw TAO::API::APIException(-5, "Invalid Nexus address");
+                    throw TAO::API::Exception(-5, "Invalid Nexus address");
 
                 /* Parse the object register. */
                 if(!account.Parse())
-                    throw TAO::API::APIException(-5, "Invalid Nexus address");
+                    throw TAO::API::Exception(-5, "Invalid Nexus address");
 
                 /* Get the object standard. */
                 uint8_t nStandard = account.Standard();
 
                 /* Check the object standard. */
                 if(nStandard != TAO::Register::OBJECTS::ACCOUNT && nStandard != TAO::Register::OBJECTS::TRUST)
-                    throw TAO::API::APIException(-126, "Address is not for a NXS account");
+                    throw TAO::API::Exception(-126, "Address is not for a NXS account");
 
                 /* Check the account is a NXS account */
                 if(account.get<uint256_t>("token") != 0)
-                    throw TAO::API::APIException(-126, "Address is not for a NXS account");
+                    throw TAO::API::Exception(-126, "Address is not for a NXS account");
 
                 scriptPubKey.SetRegisterAddress( hashAccount );
             }
@@ -940,10 +940,10 @@ namespace Legacy
             {
                 Legacy::NexusAddress address(it.key());
                 if(!address.IsValid())
-                    throw TAO::API::APIException(-5, std::string("Invalid Nexus address:")+it.key());
+                    throw TAO::API::Exception(-5, std::string("Invalid Nexus address:")+it.key());
 
                 if(setAddress.count(address))
-                    throw TAO::API::APIException(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
+                    throw TAO::API::Exception(-8, std::string("Invalid parameter, duplicated address: ")+it.key());
 
                 setAddress.insert(address);
 
@@ -953,7 +953,7 @@ namespace Legacy
             int64_t nAmount = Legacy::AmountToSatoshis(it.value());
 
             if(nAmount < Legacy::MIN_TXOUT_AMOUNT)
-                throw TAO::API::APIException(-101, "Send amount too small");
+                throw TAO::API::Exception(-101, "Send amount too small");
 
             totalAmount += nAmount;
 
@@ -968,7 +968,7 @@ namespace Legacy
         if(wallet.IsCrypted() && (fLocked || fMintOnly))
         {
             if(strWalletPass.length() == 0)
-                throw TAO::API::APIException(-13, "Error: Wallet is locked.");
+                throw TAO::API::Exception(-13, "Error: Wallet is locked.");
 
             /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
             if(fMintOnly)
@@ -981,7 +981,7 @@ namespace Legacy
              * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
              */
             if(!wallet.Unlock(strWalletPass, 0, false))
-                throw TAO::API::APIException(-14, "Error: The wallet passphrase entered was incorrect.");
+                throw TAO::API::Exception(-14, "Error: The wallet passphrase entered was incorrect.");
         }
 
         bool fInsufficientBalance = false;
@@ -1025,13 +1025,13 @@ namespace Legacy
 
         /* Only throw errors from insufficient balance or transaction creation after returning to prior lock state */
         if(fInsufficientBalance)
-            throw TAO::API::APIException(-6, "Account has insufficient funds");
+            throw TAO::API::Exception(-6, "Account has insufficient funds");
 
         if(fCreateFailed)
-            throw TAO::API::APIException(-4, "Transaction creation failed");
+            throw TAO::API::Exception(-4, "Transaction creation failed");
 
         if(fCommitFailed)
-            throw TAO::API::APIException(-4, "Transaction commit failed");
+            throw TAO::API::Exception(-4, "Transaction commit failed");
 
         return wtx.GetHash().GetHex();
     }
@@ -1054,7 +1054,7 @@ namespace Legacy
         int nRequired = params[0];
 
         if(!params[1].is_array())
-            throw TAO::API::APIException(-8, std::string("Invalid address array format"));
+            throw TAO::API::Exception(-8, std::string("Invalid address array format"));
 
         encoding::json keys = params[1];
         std::string strAccount;
@@ -1331,7 +1331,7 @@ namespace Legacy
 
             /* For coinbase / coinstake transactions we need to extract the address from the first TxOut in vout */
             if(wtx.vout.size() == 0)
-                throw TAO::API::APIException(-8, "Invalid coinbase/coinstake transaction");
+                throw TAO::API::Exception(-8, "Invalid coinbase/coinstake transaction");
 
             const Legacy::TxOut& txout = wtx.vout[0];
             Legacy::NexusAddress address;
@@ -1565,7 +1565,7 @@ namespace Legacy
         /* Get the available addresses from the wallet */
         std::map<Legacy::NexusAddress, int64_t> mapAddresses;
         if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
-            throw TAO::API::APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
+            throw TAO::API::Exception(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
         /* Find all the addresses in the list */
         encoding::json list;
@@ -1604,7 +1604,7 @@ namespace Legacy
         /* Get the available addresses from the wallet */
         std::map<Legacy::NexusAddress, int64_t> mapAddresses;
         if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
-            throw TAO::API::APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
+            throw TAO::API::Exception(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
         /* Find all the addresses in the list */
         for(const auto& entry : mapAddresses)
@@ -1658,7 +1658,7 @@ namespace Legacy
 
             if(!LLD::Ledger->ReadBlock(blockId, block))
             {
-                throw TAO::API::APIException(-1, "Unknown blockhash parameter");
+                throw TAO::API::Exception(-1, "Unknown blockhash parameter");
                 return "";
             }
 
@@ -1670,7 +1670,7 @@ namespace Legacy
             target_confirms = params[1];
 
             if(target_confirms < 1)
-                throw TAO::API::APIException(-8, "Invalid parameter");
+                throw TAO::API::Exception(-8, "Invalid parameter");
         }
 
         int32_t depth = nBlockHeight ? (1 + TAO::Ledger::ChainState::nBestHeight.load() - nBlockHeight) : -1;
@@ -1752,7 +1752,7 @@ namespace Legacy
                 else if(ExtractRegister(out.scriptPubKey, hashRegister))
                     strAddress = hashRegister.ToString();
                 else
-                    throw TAO::API::APIException(-5, "failed to extract output address");
+                    throw TAO::API::Exception(-5, "failed to extract output address");
 
                 vOutputs.push_back(debug::safe_printstr(strAddress, ":", std::fixed, Legacy::SatoshisToAmount(out.nValue)));
             }
@@ -1778,7 +1778,7 @@ namespace Legacy
                         /* Extract the address. */
                         Legacy::NexusAddress address;
                         if(!Legacy::ExtractAddress(txPrev.vout[prevout.n].scriptPubKey, address))
-                            throw TAO::API::APIException(-5, "failed to extract input address");
+                            throw TAO::API::Exception(-5, "failed to extract input address");
 
                         /* Add inputs to json. */
                         vInputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(txPrev.vout[prevout.n].nValue)));
@@ -1812,7 +1812,7 @@ namespace Legacy
                         }
                     }
                     else
-                        throw TAO::API::APIException(-5, debug::safe_printstr("tx ", prevout.hash.SubString(), " not found"));
+                        throw TAO::API::Exception(-5, debug::safe_printstr("tx ", prevout.hash.SubString(), " not found"));
 
                 }
 
@@ -1872,13 +1872,13 @@ namespace Legacy
                 }
                 else
                 {
-                    throw TAO::API::APIException(-1, "This is a Tritium transaction.  Please use the Tritium API to retrieve data for this transaction" );
+                    throw TAO::API::Exception(-1, "This is a Tritium transaction.  Please use the Tritium API to retrieve data for this transaction" );
                 }
             }
         }
         else
         {
-            throw TAO::API::APIException(-5, "No information available about transaction" );
+            throw TAO::API::Exception(-5, "No information available about transaction" );
         }
 
         return ret;
@@ -1901,7 +1901,7 @@ namespace Legacy
         encoding::json ret;
 
         if(!wallet.mapWallet.count(hash))
-            throw TAO::API::APIException(-5, "Invalid or non-wallet transaction id");
+            throw TAO::API::Exception(-5, "Invalid or non-wallet transaction id");
         const Legacy::WalletTx& wtx = wallet.mapWallet[hash];
 
         /* Coinstake is "from me" so stake reward ends up in nFee. Need to handle that type of tx separately */
@@ -1956,7 +1956,7 @@ namespace Legacy
         if(!TAO::Ledger::mempool.Get(hash, tx))
         {
             if(!LLD::Legacy->ReadTx(hash, tx))
-                throw TAO::API::APIException(-5, "No information available about transaction");
+                throw TAO::API::Exception(-5, "No information available about transaction");
         }
 
         DataStream ssTx(SER_NETWORK, LLP::PROTOCOL_VERSION);
@@ -1988,7 +1988,7 @@ namespace Legacy
     //         ssData >> tx;
     //     }
     //     catch (const std::exception &e) {
-    //         throw TAO::API::APIException(-22, "TX decode failed");
+    //         throw TAO::API::Exception(-22, "TX decode failed");
     //     }
     //     uint512 hashTx = tx.GetHash();
 
@@ -1999,7 +1999,7 @@ namespace Legacy
     //     if(Core::GetTransaction(hashTx, existingTx, hashBlock))
     //     {
     //         if(hashBlock != 0)
-    //             throw TAO::API::APIException(-5, std::string("transaction already in block ")+hashBlock.GetHex());
+    //             throw TAO::API::Exception(-5, std::string("transaction already in block ")+hashBlock.GetHex());
     //         // Not in block, but already in the memory pool; will drop
     //         // through to re-relay it.
     //     }
@@ -2008,7 +2008,7 @@ namespace Legacy
     //         // push to local node
     //         LLD::CIndexDB txdb("r");
     //         if(!tx.AcceptToMemoryPool(txdb, fCheckInputs))
-    //             throw TAO::API::APIException(-22, "TX rejected");
+    //             throw TAO::API::Exception(-22, "TX rejected");
 
     //         SyncWithWallets(tx, NULL, true);
     //     }
@@ -2175,11 +2175,11 @@ namespace Legacy
                 Legacy::NexusAddress address(params[i].get<std::string>());
                 if(!address.IsValid())
                 {
-                    throw TAO::API::APIException(-5, std::string("Invalid Nexus address: ")+params[i].get<std::string>());
+                    throw TAO::API::Exception(-5, std::string("Invalid Nexus address: ")+params[i].get<std::string>());
                 }
                 if(setAddresses.count(address))
                 {
-                    throw TAO::API::APIException(-8, std::string("Invalid parameter, duplicated address: ")+params[i].get<std::string>());
+                    throw TAO::API::Exception(-8, std::string("Invalid parameter, duplicated address: ")+params[i].get<std::string>());
                 }
                setAddresses.insert(address);
             }
@@ -2250,17 +2250,17 @@ namespace Legacy
         if(params.size() > 2)
         {
             if(!params[2].is_array())
-                throw TAO::API::APIException(-8, std::string("Invalid address array format"));
+                throw TAO::API::Exception(-8, std::string("Invalid address array format"));
 
             encoding::json inputs = params[2];
             for(uint32_t i = 0; i < inputs.size(); ++i)
             {
                 Legacy::NexusAddress address(inputs[i].get<std::string>());
                 if(!address.IsValid())
-                    throw TAO::API::APIException(-5, std::string("Invalid Nexus address: ")+inputs[i].get<std::string>());
+                    throw TAO::API::Exception(-5, std::string("Invalid Nexus address: ")+inputs[i].get<std::string>());
 
                 if(setAddress.count(address))
-                    throw TAO::API::APIException(-8, std::string("Invalid parameter, duplicated address: ")+inputs[i].get<std::string>());
+                    throw TAO::API::Exception(-8, std::string("Invalid parameter, duplicated address: ")+inputs[i].get<std::string>());
 
                setAddress.insert(address);
             }

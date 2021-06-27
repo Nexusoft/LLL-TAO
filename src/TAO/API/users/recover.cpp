@@ -37,19 +37,19 @@ namespace TAO
 
             /* Check for username parameter. */
             if(params.find("username") == params.end())
-                throw APIException(-127, "Missing username");
+                throw Exception(-127, "Missing username");
 
             /* Check for recovery parameter. */
             if(params.find("recovery") == params.end())
-                throw APIException(-220, "Missing recovery seed");
+                throw Exception(-220, "Missing recovery seed");
 
             /* Check for password parameter. */
             if(params.find("password") == params.end())
-                throw APIException(-128, "Missing password");
+                throw Exception(-128, "Missing password");
 
             /* Check for pin parameter. Extract the pin. */
             if(params.find("pin") == params.end())
-                throw APIException(-129, "Missing PIN");
+                throw Exception(-129, "Missing PIN");
 
             /* Extract username. */
             SecureString strUsername = SecureString(params["username"].get<std::string>().c_str());
@@ -69,33 +69,33 @@ namespace TAO
 
             /* Check the new password length */
             if(strPassword.length() < 8)
-                throw APIException(-192, "Password must be a minimum of 8 characters");
+                throw Exception(-192, "Password must be a minimum of 8 characters");
 
             /* Check pin length */
             if(strPin.length() < 4)
-                throw APIException(-193, "Pin must be a minimum of 4 characters");
+                throw Exception(-193, "Pin must be a minimum of 4 characters");
 
             /* Check that the genesis exists. */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->HasGenesis(hashGenesis))
             {
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
             }
             else
             {
                 /* Get the last transaction. */
                 uint512_t hashLast;
                 if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
+                    throw Exception(-138, "No previous transaction found");
 
                 /* Get previous transaction */
                 if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
+                    throw Exception(-138, "No previous transaction found");
             }
 
             /* Check that the recovery hash has been set on this signature chain */
             if(txPrev.hashRecovery == 0)
-                throw APIException(-223, "Recovery seed not set on this signature chain");
+                throw Exception(-223, "Recovery seed not set on this signature chain");
 
             /* When signing with the recovery seed we need to set the transaction key type to be the same type that was used
                 to generate the current recovery hash.  To obtain this we iterate back through the sig chain until we find where
@@ -113,7 +113,7 @@ namespace TAO
                 nKeyType = txPrev.nKeyType;
 
                 if(!LLD::Ledger->ReadTx(txPrev.hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
+                    throw Exception(-138, "No previous transaction found");
             }
 
             /* Create sig chain based on the new credentials */
@@ -122,14 +122,14 @@ namespace TAO
             /* Validate the recovery seed is correct.  We do this at this stage so that we can return a helpful error response
                from the API call, rather than waiting for mempool::Accept to fail  */
             if(user->RecoveryHash(strRecovery, nKeyType ) != hashRecovery)
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Create the update transaction */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(user, strPin, tx))
             {
                 user.free();
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
             }
 
             /* Now set the new credentials */
@@ -142,7 +142,7 @@ namespace TAO
             if(!tx.Build())
             {
                 user.free();
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
             }
 
             /* Set the key type */
@@ -152,14 +152,14 @@ namespace TAO
             if(!tx.Sign(user->Generate(strRecovery)))
             {
                 user.free();
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
             }
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
             {
                 user.free();
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
             }
 
             /* Free the sigchain. */

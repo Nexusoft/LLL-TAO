@@ -48,19 +48,19 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-33, "Missing name / address");
+                throw Exception(-33, "Missing name / address");
 
             /* Get the history. */
             TAO::Register::State state;
             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-117, "Item not found");
+                throw Exception(-117, "Item not found");
 
             if(config::fClient.load() && state.hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Ensure that it is an append register */
             if(state.nType != TAO::Register::REGISTER::APPEND)
-                throw APIException(-117, "Item not found");
+                throw Exception(-117, "Item not found");
 
             /* Deserialize the leading byte of the state data to check the data type */
             uint16_t type;
@@ -68,7 +68,7 @@ namespace TAO
 
             /* Check that the state is an invoice */
             if(type != USER_TYPES::SUPPLY)
-                throw APIException(-243, "Data at this address is not a supply item");
+                throw Exception(-243, "Data at this address is not a supply item");
 
             /* Build the response JSON. */
             ret = ObjectToJSON(params, state, hashRegister);

@@ -69,7 +69,7 @@ namespace TAO
                 hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
 
             if(config::fClient.load() && hashGenesis != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Number of results to return. */
             uint32_t nLimit = 100;
@@ -90,7 +90,7 @@ namespace TAO
             /* Get list of tokenized assets owned by this sig chain */
             ListPartial(hashGenesis, vAddresses);
             if(vAddresses.size() == 0)
-                throw APIException(-74, "No registers found");
+                throw Exception(-74, "No registers found");
 
             /* Read all the registers to that they are sorted by creation time */
             std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vRegisters;
@@ -116,7 +116,7 @@ namespace TAO
                 {
                     /* parse object so that the data fields can be accessed */
                     if(!object.Parse())
-                        throw APIException(-36, "Failed to parse object register");
+                        throw Exception(-36, "Failed to parse object register");
 
                     /* Only included requested object types. */
                     if(!(TAO::Register::OBJECTS::BITWISE(object.Standard()) & TAO::Register::OBJECTS::BITWISE(nObjectType)))

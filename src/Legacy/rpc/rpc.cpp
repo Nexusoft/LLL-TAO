@@ -152,7 +152,7 @@ namespace Legacy
                 " - Test function that echo's back the parameters supplied in the call.");
 
         if(jsonParams.size() == 0)
-            throw TAO::API::APIException(-11, "Not enough parameters");
+            throw TAO::API::Exception(-11, "Not enough parameters");
 
         encoding::json ret;
         ret["echo"] = jsonParams;
@@ -178,7 +178,7 @@ namespace Legacy
         if(strCommand.length() > 0)
         {
             if(mapFunctions.find(strCommand) == mapFunctions.end())
-                throw TAO::API::APIException(-32601, debug::safe_printstr("Method not found: ", strCommand));
+                throw TAO::API::Exception(-32601, debug::safe_printstr("Method not found: ", strCommand));
             else
                 ret = mapFunctions[strCommand].Execute(jsonParams, true).get<std::string>();
         }

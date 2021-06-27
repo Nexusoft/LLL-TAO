@@ -47,7 +47,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -57,11 +57,11 @@ namespace TAO
 
             /* Check for data parameter. */
             if(params.find("data") == params.end())
-                throw APIException(-18, "Missing data");
+                throw Exception(-18, "Missing data");
 
             /* Check that the data is a string */
             if(!params["data"].is_string())
-                throw APIException(-19, "Data must be a string");
+                throw Exception(-19, "Data must be a string");
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
@@ -69,7 +69,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Get the register address. */
             TAO::Register::Address hashRegister ;
@@ -93,16 +93,16 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-33, "Missing name / address");
+                throw Exception(-33, "Missing name / address");
 
             /* Check the address */
             TAO::Register::State state;
             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-117, "Item not found");
+                throw Exception(-117, "Item not found");
 
             /* Ensure that it is an append register */
             if(state.nType != TAO::Register::REGISTER::APPEND)
-                throw APIException(-117, "Item not found");
+                throw Exception(-117, "Item not found");
 
             /* Declare the register stream for the update. */
             DataStream ssData(SER_REGISTER, 1);
@@ -121,15 +121,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

@@ -27,7 +27,7 @@ namespace TAO::API
     {
         /* Check for multiple asterisk which will break our splitting logic. */
         if(strWildcard.find("**") != strWildcard.npos)
-            throw APIException(-56, "Query Syntax Error: duplicate wildcard not allowed ", strWildcard);
+            throw Exception(-56, "Query Syntax Error: duplicate wildcard not allowed ", strWildcard);
 
         /* Check for single asterisk. */
         if(strWildcard == "*")
@@ -134,7 +134,7 @@ namespace TAO::API
         {
             /* Check syntax to omit < and > operators for string comparisons. */
             if(strOP.find_first_of("<>") != strOP.npos)
-                throw APIException(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [string]");
+                throw Exception(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [string]");
 
             /* Grab our string to check. */
             const std::string strCheck = jCheck.get<std::string>();
@@ -249,7 +249,7 @@ namespace TAO::API
         {
             /* Check syntax to omit < and > operators for string comparisons. */
             if(strOP.find_first_of("<>") != strOP.npos)
-                throw APIException(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [bool]");
+                throw Exception(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [bool]");
 
             /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
             const bool fValue  = jCheck.get<bool>();
@@ -461,7 +461,7 @@ namespace TAO::API
             {
                 /* Check syntax to omit < and > operators for string comparisons. */
                 if(strOP.find_first_of("<>") != strOP.npos)
-                    throw APIException(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [string]");
+                    throw Exception(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [string]");
 
                 /* Grab our value from object */
                 const std::string strValue = objCheck.get<std::string>(strName);

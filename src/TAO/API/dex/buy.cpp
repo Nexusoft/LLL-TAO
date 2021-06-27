@@ -49,7 +49,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -59,7 +59,7 @@ namespace TAO
 
             /* Check for txid parameter. */
             if(params.find("txid") == params.end())
-                throw APIException(-50, "Missing txid.");
+                throw Exception(-50, "Missing txid.");
 
             /* Check for from parameter. */
             TAO::Register::Address hashFrom;
@@ -68,7 +68,7 @@ namespace TAO
             else if(params.find("address_from") != params.end())
                 hashFrom.SetBase58(params["address_from"].get<std::string>());
             else
-                throw APIException(-39, "Missing name_from / address_from");
+                throw Exception(-39, "Missing name_from / address_from");
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
@@ -76,7 +76,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Get the transaction id. */
             uint512_t hashTx;
@@ -85,7 +85,7 @@ namespace TAO
             /* Read the previous transaction. */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->ReadTx(hashTx, txPrev))
-                throw APIException(-40, "Previous transaction not found.");
+                throw Exception(-40, "Previous transaction not found.");
 
             /* Loop through all transactions. */
             bool fFound = false;
@@ -133,28 +133,28 @@ namespace TAO
                     }
 
                     default:
-                        throw APIException(-42, "No valid debits to buy from");
+                        throw Exception(-42, "No valid debits to buy from");
                 }
             }
 
             /* Check that output was found. */
             if(!fFound)
-                throw APIException(-43, "No valid contracts in debit tx.");
+                throw Exception(-43, "No valid contracts in debit tx.");
 
             /* Add the fee */
             AddFee(tx);
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-44, "Transaction failed to build");
+                throw Exception(-44, "Transaction failed to build");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction.");
+                throw Exception(-31, "Ledger failed to sign transaction.");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept.");
+                throw Exception(-32, "Failed to accept.");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

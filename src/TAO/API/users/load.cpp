@@ -46,10 +46,10 @@ namespace TAO
             else if(params.find("PIN") != params.end())
                 strPin = SecureString(params["PIN"].get<std::string>().c_str());
             else
-                throw APIException(-129, "Missing PIN");
+                throw Exception(-129, "Missing PIN");
 
             if(strPin.size() == 0)
-                throw APIException(-135, "Zero-length PIN");
+                throw Exception(-135, "Zero-length PIN");
 
 
             /* Get the Genesis ID. */
@@ -65,14 +65,14 @@ namespace TAO
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
 
             else
-                throw APIException(-111, "Missing genesis / username");
+                throw Exception(-111, "Missing genesis / username");
 
             /* Load the session */
             Session& session = GetSessionManager().Load(hashGenesis, strPin);
 
             /* Check that it was loaded correctly */
             if(session.IsNull())
-                throw APIException(-309, "Error loading session.");
+                throw Exception(-309, "Error loading session.");
 
             /* Add the session to the notifications processor if it is not already in there*/
             if(NOTIFICATIONS_PROCESSOR && NOTIFICATIONS_PROCESSOR->FindThread(session.ID()) == nullptr)

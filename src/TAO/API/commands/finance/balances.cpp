@@ -60,7 +60,7 @@ namespace TAO::API
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
         std::vector<TAO::Register::Address> vRegisters;
         if(!ListRegisters(hashGenesis, vRegisters))
-            throw APIException(-74, "No registers found");
+            throw Exception(-74, "No registers found");
 
         /* Keep a map to track our aggregated balance, we use a second map for better readability. */
         std::map<uint256_t, std::map<std::string, uint64_t>> mapBalances;

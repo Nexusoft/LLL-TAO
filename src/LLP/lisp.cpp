@@ -49,7 +49,7 @@ namespace LLP
 
         if(!coreNode.Connect(addr))
         {
-            throw TAO::API::APIException(-1, "Couldn't Connect to lispers.net API");
+            throw TAO::API::Exception(-1, "Couldn't Connect to lispers.net API");
         }
 
         /* Write the buffer to the socket. */
@@ -62,13 +62,13 @@ namespace LLP
             /* Catch if the connection was closed. */
             if(!coreNode.Connected())
             {
-                throw TAO::API::APIException(-1, "lispers.net API Connection Terminated");
+                throw TAO::API::Exception(-1, "lispers.net API Connection Terminated");
             }
 
             /* Catch if the socket experienced errors. */
             if(coreNode.Errors())
             {
-                throw TAO::API::APIException(-1, "lispers.net API Socket Error");
+                throw TAO::API::Exception(-1, "lispers.net API Socket Error");
             }
 
             /* Read the response packet. */
@@ -84,7 +84,7 @@ namespace LLP
         }
         else
         {
-            throw TAO::API::APIException(-1, "lispers.net Invalid response");
+            throw TAO::API::Exception(-1, "lispers.net Invalid response");
             return "";
         }
     }

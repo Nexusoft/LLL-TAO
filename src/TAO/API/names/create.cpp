@@ -56,7 +56,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -70,11 +70,11 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Check caller has provided the name parameter */
             if(params.find("name") == params.end())
-                throw APIException(-88, "Missing or empty name.");
+                throw Exception(-88, "Missing or empty name.");
 
             /* The name */
             std::string strName = "";
@@ -96,7 +96,7 @@ namespace TAO
             {
                 /* Check that the register address is a valid address */
                 if(!CheckAddress(params["register_address"].get<std::string>()))
-                    throw APIException(-89, "Invalid register_address");
+                    throw Exception(-89, "Invalid register_address");
 
 
                 hashRegister.SetBase58(params["register_address"].get<std::string>());
@@ -112,11 +112,11 @@ namespace TAO
 
             /* If the caller has specified the fGlobal flag then the namespace must have been specified as blank */
             if(fGlobal && strNamespace.length() > 0)
-                throw APIException(-170, "Global names cannot be created in a namespace");
+                throw Exception(-170, "Global names cannot be created in a namespace");
 
             /* Check for reserved global names. */
             if(fGlobal && TAO::Register::NAME::Reserved(strName) )
-                throw APIException(-201, "Global names can't be created with reserved name");
+                throw Exception(-201, "Global names can't be created with reserved name");
 
             /* If the caller has specified the global flag then set the namespace to the reserved global namespace name */
             if(fGlobal)
@@ -131,15 +131,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();
@@ -166,7 +166,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -180,11 +180,11 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Check caller has provided the name parameter */
             if(params.find("name") == params.end())
-                throw APIException(-88, "Missing or empty name.");
+                throw Exception(-88, "Missing or empty name.");
 
             /* Get the namespace name */
             std::string strNamespace = params["name"].get<std::string>();
@@ -198,12 +198,12 @@ namespace TAO
                 }
                 ))
             {
-                throw APIException(-162, "Namespace can only contain lowercase letters, numbers, periods (.)");
+                throw Exception(-162, "Namespace can only contain lowercase letters, numbers, periods (.)");
             }
 
             /* Check for reserved names. */
             if(TAO::Register::NAMESPACE::Reserved(strNamespace) )
-                throw APIException(-200, "Namespaces can't contain reserved names");
+                throw Exception(-200, "Namespaces can't contain reserved names");
 
 
             /* Generate register address for namespace, which must be a hash of the name */
@@ -214,7 +214,7 @@ namespace TAO
 
             /* Read the Name Object */
             if(LLD::Register->ReadState(hashRegister, namespaceObject, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-90, "Namespace already exists");
+                throw Exception(-90, "Namespace already exists");
 
             /* Create the new namespace object */
             namespaceObject = TAO::Register::CreateNamespace(strNamespace);
@@ -227,15 +227,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

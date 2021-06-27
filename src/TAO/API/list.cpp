@@ -84,7 +84,7 @@ namespace TAO::API
                 if(config::fClient.load())
                     break;
                 else
-                    throw APIException(-108, "Failed to read transaction");
+                    throw Exception(-108, "Failed to read transaction");
             }
 
             /* Set the next last. */
@@ -187,7 +187,7 @@ namespace TAO::API
                             /* Retrieve the object so we can see whether it has been claimed or not */
                             TAO::Register::Object object;
                             if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
-                                throw APIException(-104, "Object not found");
+                                throw Exception(-104, "Object not found");
 
                             /* If we are transferring to someone else but it has not yet been claimed then we ignore the
                                transfer and still show it as ours */
@@ -307,7 +307,7 @@ namespace TAO::API
             /* Get the account from the register DB. */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashAccount, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-13, "Object not found");
+                throw Exception(-13, "Object not found");
 
             /* Check that this is a non-standard object type so that we can parse it and check the type*/
             if(object.nType != TAO::Register::REGISTER::OBJECT)
@@ -315,7 +315,7 @@ namespace TAO::API
 
             /* parse object so that the data fields can be accessed */
             if(!object.Parse())
-                throw APIException(-36, "Failed to parse object register");
+                throw Exception(-36, "Failed to parse object register");
 
             /* Check that this is an account or token */
             if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
@@ -359,7 +359,7 @@ namespace TAO::API
             /* First grab the token object */
             TAO::Register::Object token;
             if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
-                throw APIException(-125, "Token not found");
+                throw Exception(-125, "Token not found");
 
             /* Now check the owner.  We should already be subscribed to events for any tokens that the caller owns, so if this
                token owner is not the caller then we need to synchronize to the events of the token */

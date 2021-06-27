@@ -81,7 +81,7 @@ namespace TAO::API
     {
         /* Authenticate the users credentials */
         if(!Commands::Get<Users>()->Authenticate(jParams))
-            throw APIException(-139, "Invalid credentials");
+            throw Exception(-139, "Invalid credentials");
 
         /* Get the PIN to be used for this API call */
         const SecureString strPIN =
@@ -106,7 +106,7 @@ namespace TAO::API
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;
         if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-            throw APIException(-17, "Failed to create transaction");
+            throw Exception(-17, "Failed to create transaction");
 
         /* Add the contracts. */
         for(const auto& contract : vContracts)
@@ -117,15 +117,15 @@ namespace TAO::API
 
         /* Execute the operations layer. */
         if(!tx.Build())
-            throw APIException(-44, "Transaction failed to build");
+            throw Exception(-44, "Transaction failed to build");
 
         /* Sign the transaction. */
         if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-            throw APIException(-31, "Ledger failed to sign transaction");
+            throw Exception(-31, "Ledger failed to sign transaction");
 
         /* Execute the operations layer. */
         if(!TAO::Ledger::mempool.Accept(tx))
-            throw APIException(-32, "Failed to accept");
+            throw Exception(-32, "Failed to accept");
 
         //TODO: we want to add a localdb index here, so it can be re-broadcast on restart
         return tx.GetHash();
@@ -159,7 +159,7 @@ namespace TAO::API
                 /* Otherwise we need to look up the default fee account */
                 TAO::Register::Object objectDefaultName;
                 if(!TAO::Register::GetNameRegister(tx.hashGenesis, std::string("default"), objectDefaultName))
-                    throw TAO::API::APIException(-163, "Could not retrieve default NXS account to debit fees.");
+                    throw TAO::API::Exception(-163, "Could not retrieve default NXS account to debit fees.");
 
                 /* Get the address of the default account */
                 hashRegister = objectDefaultName.get<uint256_t>("address");
@@ -168,29 +168,29 @@ namespace TAO::API
             /* Retrieve the account */
             TAO::Register::Object object;
             if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                throw TAO::API::APIException(-13, "Object not found");
+                throw TAO::API::Exception(-13, "Object not found");
 
             /* Parse the object register. */
             if(!object.Parse())
-                throw TAO::API::APIException(-14, "Object failed to parse");
+                throw TAO::API::Exception(-14, "Object failed to parse");
 
             /* Get the object standard. */
             uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT)
-                throw TAO::API::APIException(-65, "Object is not an account");
+                throw TAO::API::Exception(-65, "Object is not an account");
 
             /* Check the account is a NXS account */
             if(object.get<uint256_t>("token") != 0)
-                throw TAO::API::APIException(-164, "Fee account is not a NXS account.");
+                throw TAO::API::Exception(-164, "Fee account is not a NXS account.");
 
             /* Get the account balance */
             uint64_t nCurrentBalance = object.get<uint64_t>("balance");
 
             /* Check that there is enough balance to pay the fee */
             if(nCurrentBalance < nCost)
-                throw TAO::API::APIException(-214, "Insufficient funds to pay fee");
+                throw TAO::API::Exception(-214, "Insufficient funds to pay fee");
 
             /* Add the fee contract */
             uint32_t nContractPos = tx.Size();
@@ -215,7 +215,7 @@ namespace TAO::API
             /* Read the debit transaction that is being credited. */
             TAO::Ledger::Transaction tx;
             if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-40, "Previous transaction not found.");
+                throw Exception(-40, "Previous transaction not found.");
 
             /* Loop through all transactions. */
             for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
@@ -233,7 +233,7 @@ namespace TAO::API
             /* Read the debit transaction that is being credited. */
             Legacy::Transaction tx;
             if(!LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-40, "Previous transaction not found.");
+                throw Exception(-40, "Previous transaction not found.");
 
             /* Iterate through all TxOut's in the legacy transaction to see which are sends to a sig chain  */
             for(uint32_t nContract = 0; nContract < tx.vout.size(); ++nContract)
@@ -247,7 +247,7 @@ namespace TAO::API
             }
         }
         else
-            throw APIException(-41, "Invalid transaction-id");
+            throw Exception(-41, "Invalid transaction-id");
 
         return (vContracts.size() > nContracts);
     }
@@ -326,11 +326,11 @@ namespace TAO::API
 
                 /* Let's check our credit account is correct token. */
                 if(objCredit.get<uint256_t>("token") != 0)
-                    throw APIException(-59, "Account to credit is not a NXS account");
+                    throw Exception(-59, "Account to credit is not a NXS account");
 
                 /* Now lets check our expected types match. */
                 if(!CheckType(jParams, objCredit))
-                    throw APIException(-49, "Unexpected type for name / address");
+                    throw Exception(-49, "Unexpected type for name / address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract contract;
@@ -371,15 +371,15 @@ namespace TAO::API
                 /* Read our crediting account. */
                 TAO::Register::Object objCredit;
                 if(!LLD::Register->ReadObject(hashCredit, objCredit, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-33, "Incorrect or missing name / address");
+                    throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Let's check our credit account is correct token. */
                 if(objFrom.get<uint256_t>("token") != objCredit.get<uint256_t>("token"))
-                    throw APIException(-33, "Incorrect or missing name / address");
+                    throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Now lets check our expected types match. */
                 if(!CheckType(jParams, objCredit))
-                    throw APIException(-49, "Unexpected type for name / address");
+                    throw Exception(-49, "Unexpected type for name / address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract contract;
@@ -407,7 +407,7 @@ namespace TAO::API
 
                 /* Now lets check our expected types match. */
                 if(!CheckType(jParams, objTo))
-                    throw APIException(-49, "Unexpected type for name / address");
+                    throw Exception(-49, "Unexpected type for name / address");
 
                 /* Create our new contract now. */
                 TAO::Operation::Contract contract;
@@ -444,7 +444,7 @@ namespace TAO::API
 
                 /* Check that the proof is an account for the same token as the asset owner */
                 if(objProof.get<uint256_t>("token") != objOwner.get<uint256_t>("token"))
-                    throw APIException(-61, "Proof account is for a different token than the asset token.");
+                    throw Exception(-61, "Proof account is for a different token than the asset token.");
 
                 /* Retrieve the account to debit from. */
                 TAO::Register::Object objFrom;
@@ -454,15 +454,15 @@ namespace TAO::API
                 /* Read our crediting account. */
                 TAO::Register::Object objCredit;
                 if(!LLD::Register->ReadObject(hashCredit, objCredit, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-33, "Incorrect or missing name / address");
+                    throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Check that the account being debited from is the same token type as credit. */
                 if(objFrom.get<uint256_t>("token") != objCredit.get<uint256_t>("token"))
-                    throw APIException(-33, "Incorrect or missing name / address");
+                    throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Now lets check our expected types match. */
                 if(!CheckType(jParams, objCredit))
-                    throw APIException(-49, "Unexpected type for name / address");
+                    throw Exception(-49, "Unexpected type for name / address");
 
                 /* Calculate the partial amount we want to claim based on our share of the proof tokens */
                 const uint64_t nPartial = (objProof.get<uint64_t>("balance") * nAmount) / objOwner.get<uint64_t>("supply");

@@ -132,24 +132,24 @@ namespace TAO::API
 
                 /* Otherwise we have an invalid parameter. */
                 else
-                    throw APIException(-57, "Invalid Parameter [", strKey, "]");
+                    throw Exception(-57, "Invalid Parameter [", strKey, "]");
 
                 /* Check our numeric limits now. */
                 if(nRet > nLimit)
-                    throw APIException(-60, "[", strKey, "] out of range [", nLimit, "]");
+                    throw Exception(-60, "[", strKey, "] out of range [", nLimit, "]");
 
                 return nRet;
             }
-            catch(const encoding::detail::exception& e) { throw APIException(-57, "Invalid Parameter [", strKey, "]");           }
-            catch(const std::invalid_argument& e)       { throw APIException(-57, "Invalid Parameter [", strKey, "]");           }
-            catch(const std::out_of_range& e)           { throw APIException(-60, "[", strKey, "] out of range [", nLimit, "]"); }
+            catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [", strKey, "]");           }
+            catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [", strKey, "]");           }
+            catch(const std::out_of_range& e)           { throw Exception(-60, "[", strKey, "] out of range [", nLimit, "]"); }
         }
 
         /* Return value if we aren't throwing missing. */
         if(!fRequired)
             return nRet;
 
-        throw APIException(-56, "Missing Parameter [", strKey, "]");
+        throw Exception(-56, "Missing Parameter [", strKey, "]");
     }
 
 }

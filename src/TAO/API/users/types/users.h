@@ -122,7 +122,7 @@ namespace TAO::API
          *  If the API is running in sessionless mode this method will return the currently
          *  active PIN (if logged in and unlocked for the requested action) or the pin from the params.
          *  If not in sessionless mode then the method will return the pin from the params.  If no pin is available for the
-         *  given unlock action then an appropriate APIException is thrown
+         *  given unlock action then an appropriate Exception is thrown
          *
          *  @param[in] params The API method parameters.
          *  @param[in] nUnlockAction The unlock
@@ -137,9 +137,9 @@ namespace TAO::API
          *
          *  If the API is running in sessionless mode this method will return the default
          *  session that is used to store the one and only session (ID 0). If the user is not
-         *  logged in than an APIException is thrown.
+         *  logged in than an Exception is thrown.
          *  If not in sessionless mode then the method will return the session from the params.
-         *  If the session is not is available in the params then an APIException is thrown.
+         *  If the session is not is available in the params then an Exception is thrown.
          *
          *  @param[in] jsonParams The json array of parameters being passed to this method.
          *  @param[in] fThrow Flag to indicate whether this method should throw an exception

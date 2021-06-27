@@ -65,7 +65,7 @@ namespace TAO::API
         /* Get the list of registers owned by this sig chain */
         std::vector<TAO::Register::Address> vAccounts;
         if(!ListAccounts(hashGenesis, vAccounts, false, true))
-            throw APIException(-74, "No registers found");
+            throw Exception(-74, "No registers found");
 
         /* Build our response json object. */
         encoding::json jRet;

@@ -46,7 +46,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -70,21 +70,21 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-37, "Missing token name / address");
+                throw Exception(-37, "Missing token name / address");
 
             /* Validate the token requested */
             /* Get the token object. */
             TAO::Register::Object token;
             if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
-                throw APIException(-125, "Token not found");
+                throw Exception(-125, "Token not found");
 
             /* Parse the object register. */
             if(!token.Parse())
-                throw APIException(-14, "Object failed to parse");
+                throw Exception(-14, "Object failed to parse");
 
             /* Check the object standard. */
             if(token.Standard() != TAO::Register::OBJECTS::TOKEN)
-                throw APIException(-123, "Object is not a token");
+                throw Exception(-123, "Object is not a token");
 
             /* Get the register address of the asset. */
             TAO::Register::Address hashRegister ;
@@ -102,39 +102,39 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-38, "Missing asset name / address");
+                throw Exception(-38, "Missing asset name / address");
 
             /* Validate the asset */
             TAO::Register::Object asset;
             if(!LLD::Register->ReadState(hashRegister, asset, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-34, "Asset not found");
+                throw Exception(-34, "Asset not found");
 
             if(config::fClient.load() && asset.hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Only include raw and non-standard object types (assets)*/
             if(asset.nType != TAO::Register::REGISTER::APPEND
             && asset.nType != TAO::Register::REGISTER::RAW
             && asset.nType != TAO::Register::REGISTER::OBJECT)
             {
-                throw APIException(-35, "Specified name/address is not an asset.");
+                throw Exception(-35, "Specified name/address is not an asset.");
             }
 
             if(asset.nType == TAO::Register::REGISTER::OBJECT)
             {
                 /* parse object so that the data fields can be accessed */
                 if(!asset.Parse())
-                    throw APIException(-36, "Failed to parse object register");
+                    throw Exception(-36, "Failed to parse object register");
 
                 /* Only include non standard object registers (assets) */
                 if(asset.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
-                    throw APIException(-35, "Specified name/address is not an asset.");
+                    throw Exception(-35, "Specified name/address is not an asset.");
             }
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user)
-                throw APIException(-10, "Invalid session ID");
+                throw Exception(-10, "Invalid session ID");
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
@@ -142,7 +142,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(user, strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Submit the payload object.
                NOTE we pass true for the fForceTransfer parameter so that the transfer is made immediately to the
@@ -154,15 +154,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

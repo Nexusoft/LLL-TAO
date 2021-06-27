@@ -64,7 +64,7 @@ namespace TAO::API
 
             /* Check that this is in our map. */
             if(!Commands::mapTypes.count(strAPI))
-                throw TAO::API::APIException(-4, "API Not Found: ", strAPI);
+                throw TAO::API::Exception(-4, "API Not Found: ", strAPI);
 
             return static_cast<Type*>(Commands::mapTypes[Type::Name()]->Get());
         }
@@ -102,7 +102,7 @@ namespace TAO::API
         {
             /* Check that requested API is registered. */
             if(!Commands::mapTypes.count(strAPI))
-                throw TAO::API::APIException(-4, "API Not Found: ", strAPI);
+                throw TAO::API::Exception(-4, "API Not Found: ", strAPI);
 
             return Commands::mapTypes[strAPI]->Execute(strMethod, jParams);
         }
@@ -122,7 +122,7 @@ namespace TAO::API
         {
             /* Check that requested API is registered. */
             if(!Commands::mapTypes.count(strAPI))
-                throw TAO::API::APIException(-4, "API Not Found: ", strAPI);
+                throw TAO::API::Exception(-4, "API Not Found: ", strAPI);
 
             return Commands::mapTypes[strAPI]->Status(strMethod);
         }

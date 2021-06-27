@@ -33,7 +33,7 @@ namespace TAO::API
 
         /* Check that it was loaded correctly */
         if(session.IsNull())
-            throw APIException(-309, "Error loading session.");
+            throw Exception(-309, "Error loading session.");
 
         /* Return the total processed in results. */
         jRet["total"] = session.vProcessed->size();

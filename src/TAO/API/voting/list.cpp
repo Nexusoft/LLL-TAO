@@ -52,23 +52,23 @@ namespace TAO
             else if(params.find("address") != params.end())
                 hashAccount.SetBase58(params["address"].get<std::string>());
             else
-                throw APIException(-33, "Missing name or address");
+                throw Exception(-33, "Missing name or address");
 
             /* Get the account . */
             TAO::Register::Object account;
             if(!LLD::Register->ReadState(hashAccount, account))
-                throw APIException(-13, "Object not found");
+                throw Exception(-13, "Object not found");
 
             /* Get the Genesis ID of the account owner. */
             uint256_t hashGenesis = account.hashOwner;
 
             /* Parse the object register. */
             if(!account.Parse())
-                throw APIException(-14, "Object failed to parse");
+                throw Exception(-14, "Object failed to parse");
 
             /* Check that the object is an account. */
             if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                throw APIException(-65, "Object is not an account");
+                throw Exception(-65, "Object is not an account");
 
             /* Check for paged parameter. */
             uint32_t nPage = 0;
@@ -83,7 +83,7 @@ namespace TAO
             /* Get the last transaction. */
             uint512_t hashLast = 0;
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
-                throw APIException(-144, "No transactions found");
+                throw Exception(-144, "No transactions found");
 
             /* vector of votes by sig chain so we can detect dupes */
             std::vector<uint256_t> vVotes;
@@ -98,7 +98,7 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx))
-                    throw APIException(-108, "Failed to read transaction");
+                    throw Exception(-108, "Failed to read transaction");
 
                 /* Check all contracts in the transaction to see if any of them relates to the requested vote account. */
                 uint32_t nContracts = tx.Size();
@@ -167,7 +167,7 @@ namespace TAO
 
                     /* Parse the object. */
                     if(!trust.Parse())
-                        throw APIException(-71, "Unable to parse trust account.");
+                        throw Exception(-71, "Unable to parse trust account.");
 
                     /* The amount staked */
                     uint64_t nStake = trust.get<uint64_t>("stake") ;

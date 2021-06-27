@@ -143,10 +143,10 @@ namespace LLP
                             jParams = encoding::json::parse(INCOMING.strContent);
                         }
                         else
-                            throw TAO::API::APIException(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
+                            throw TAO::API::Exception(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
                     }
                     else
-                        throw TAO::API::APIException(-6, "content-type not provided when content included");
+                        throw TAO::API::Exception(-6, "content-type not provided when content included");
                 }
             }
             else if(INCOMING.strType == "GET")
@@ -209,7 +209,7 @@ namespace LLP
         }
 
         /* Handle for custom API exceptions. */
-        catch(TAO::API::APIException& e)
+        catch(TAO::API::Exception& e)
         {
             /* Get error from exception. */
             encoding::json jError = e.ToJSON();

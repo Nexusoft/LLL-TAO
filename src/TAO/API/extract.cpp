@@ -46,7 +46,7 @@ namespace TAO::API
             {
                 /* Check for send to all */
                 if(strSuffix == "to")
-                    throw APIException(-310, "Cannot sent to ANY/ALL accounts");
+                    throw Exception(-310, "Cannot sent to ANY/ALL accounts");
 
                 return TAO::API::ADDRESS_ALL;
             }
@@ -57,7 +57,7 @@ namespace TAO::API
             {
                 /* Check for send to all */
                 if(strSuffix == "to")
-                    throw APIException(-310, "Cannot sent to ANY/ALL accounts");
+                    throw Exception(-310, "Cannot sent to ANY/ALL accounts");
 
                 return TAO::API::ADDRESS_ANY;
             }
@@ -74,7 +74,7 @@ namespace TAO::API
 
             /* Check that it is valid */
             if(!hashRet.IsValid())
-                throw APIException(-165, "Invalid " + strAddr);
+                throw Exception(-165, "Invalid " + strAddr);
 
             return hashRet;
         }
@@ -101,14 +101,14 @@ namespace TAO::API
 
         /* This exception is for name_to/address_to */
         else if(strSuffix == "to")
-            throw APIException(-64, "Missing recipient account name_to / address_to");
+            throw Exception(-64, "Missing recipient account name_to / address_to");
 
         /* This exception is for name_proof/address_proof */
         else if(strSuffix == "proof")
-            throw APIException(-54, "Missing name_proof / address_proof to credit");
+            throw Exception(-54, "Missing name_proof / address_proof to credit");
 
         /* This exception is for name/address */
-        throw APIException(-33, "Missing name / address");
+        throw Exception(-33, "Missing name / address");
     }
 
 
@@ -134,7 +134,7 @@ namespace TAO::API
 
             /* Check that it is valid */
             if(!hashRet.IsValid())
-                throw APIException(-165, "Invalid token");
+                throw Exception(-165, "Invalid token");
 
             return hashRet;
         }
@@ -151,7 +151,7 @@ namespace TAO::API
         {
             /* Check for empty parameter. */
             if(jParams["genesis"].empty())
-                throw APIException(-58, "Empty Parameter [genesis]");
+                throw Exception(-58, "Empty Parameter [genesis]");
 
             return uint256_t(jParams["genesis"].get<std::string>());
         }
@@ -161,7 +161,7 @@ namespace TAO::API
         {
             /* Check for empty parameter. */
             if(jParams["username"].empty())
-                throw APIException(-58, "Empty Parameter [username]");
+                throw Exception(-58, "Empty Parameter [username]");
 
             return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());
         }
@@ -199,25 +199,25 @@ namespace TAO::API
 
                 /* Otherwise we have an invalid parameter. */
                 else
-                    throw APIException(-57, "Invalid Parameter [amount]");
+                    throw Exception(-57, "Invalid Parameter [amount]");
 
                 /* Check our minimum range. */
                 if(dValue <= 0)
-                    throw APIException(-68, "[amount] too small [", dValue, "]");
+                    throw Exception(-68, "[amount] too small [", dValue, "]");
 
                 /* Check our limits and ranges now. */
                 if(uint64_t(dValue) > (nLimit / nFigures))
-                    throw APIException(-60, "[amount] out of range [", nLimit, "]");
+                    throw Exception(-60, "[amount] out of range [", nLimit, "]");
 
                 /* Final compute of our figures. */
                 return uint64_t(dValue * nFigures);
             }
-            catch(const encoding::detail::exception& e) { throw APIException(-57, "Invalid Parameter [amount]");           }
-            catch(const std::invalid_argument& e)       { throw APIException(-57, "Invalid Parameter [amount]");           }
-            catch(const std::out_of_range& e)           { throw APIException(-60, "[amount] out of range [", nLimit, "]"); }
+            catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [amount]");           }
+            catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [amount]");           }
+            catch(const std::out_of_range& e)           { throw Exception(-60, "[amount] out of range [", nLimit, "]"); }
         }
 
-        throw APIException(-56, "Missing Parameter [amount]");
+        throw Exception(-56, "Missing Parameter [amount]");
     }
 
 
@@ -256,7 +256,7 @@ namespace TAO::API
         else if(strVerbose == "detail")
             return std::max(nMinimum, uint32_t(3));
 
-        throw APIException(-57, "Invalid Parameter [verbose]");
+        throw Exception(-57, "Invalid Parameter [verbose]");
     }
 
 
@@ -294,7 +294,7 @@ namespace TAO::API
 
                 /* Check for expected sizes. */
                 if(vParts.size() < 2)
-                    throw APIException(-57, "Invalid Parameter [limit] [", strLimit, "]");
+                    throw Exception(-57, "Invalid Parameter [limit] [", strLimit, "]");
 
                 /* Get the limit */
                 nLimit = std::stoul(trim(vParts[0]));

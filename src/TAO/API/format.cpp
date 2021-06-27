@@ -39,11 +39,11 @@ namespace TAO::API
         /* Otherwise let's lookup our token object. */
         TAO::Register::Object objToken;
         if(!LLD::Register->ReadObject(hashToken, objToken))
-            throw APIException(-13, "Object not found");
+            throw Exception(-13, "Object not found");
 
         /* Let's check that a token was passed in. */
         if(objToken.Standard() != TAO::Register::OBJECTS::TOKEN)
-            throw APIException(-15, "Object is not a token");
+            throw Exception(-15, "Object is not a token");
 
         return (nBalance / math::pow(10, objToken.get<uint8_t>("decimals")));
     }

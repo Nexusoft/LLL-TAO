@@ -52,7 +52,7 @@ namespace TAO
             {
                 /* Check that the caller has passed a valid register address */
                 if(!CheckAddress(params["register_address"].get<std::string>()))
-                    throw APIException(-89, "Invalid register_address");
+                    throw Exception(-89, "Invalid register_address");
 
                 /* Get the session to be used for this API call. */
                 Session& session = Commands::Get<Users>()->GetSession(params, true);
@@ -69,11 +69,11 @@ namespace TAO
             }
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-91, "Missing name / register_address");
+                throw Exception(-91, "Missing name / register_address");
 
             /* Ensure we found a name object */
             if(name.IsNull())
-                throw APIException(-92, "Name not found.");
+                throw Exception(-92, "Name not found.");
 
             /* Populate the json response */
             jsonRet["owner"]    = TAO::Register::Address(name.hashOwner).ToString();
@@ -105,7 +105,7 @@ namespace TAO
 
             /* If the caller has provided a name parameter then retrieve it by name */
             if(params.find("name") == params.end())
-                throw APIException(-93, "Missing namespace name");
+                throw Exception(-93, "Missing namespace name");
 
             /* Get the namespace name */
             std::string strNamespace = params["name"].get<std::string>();
@@ -116,7 +116,7 @@ namespace TAO
             /* Retrieve the namespace object */
             TAO::Register::Object namespaceObject;
             if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
-                throw APIException(-94, "Invalid namespace");
+                throw Exception(-94, "Invalid namespace");
 
             /* Populate the json response */
             jsonRet["owner"]    = TAO::Register::Address(namespaceObject.hashOwner).ToString();

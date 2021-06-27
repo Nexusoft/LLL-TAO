@@ -42,11 +42,11 @@ namespace TAO
 
             /* Sync only applicable in client mode */
             if(!config::fClient.load())
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Check number of connections */
             if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
-                throw APIException(-306, "No connections available");
+                throw Exception(-306, "No connections available");
 
             /* Get the session to be used for this API call */
             Session& session = Commands::Get<Users>()->GetSession(params, true, false);
@@ -56,7 +56,7 @@ namespace TAO
 
             /* Sync the sig chain */
             if(!Users::DownloadSigChain(hashGenesis, true))
-                throw APIException(-307, "Failed to download signature chain");
+                throw Exception(-307, "Failed to download signature chain");
 
             /* Add the genesis */
             ret["genesis"] = hashGenesis.GetHex();
@@ -70,7 +70,7 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-108, "Failed to read transaction");
+                    throw Exception(-108, "Failed to read transaction");
 
                 /* Number of transactions is the last sequence number + 1 (since the sequence is 0 based) */
                 nTransactions = tx.nSequence + 1;
@@ -105,7 +105,7 @@ namespace TAO
 
             /* Sync only applicable in client mode */
             if(!config::fClient.load())
-                throw APIException(-308, "API method only available in client mode");
+                throw Exception(-308, "API method only available in client mode");
 
             /* Reset the global synchronized flag */
             LLP::TritiumNode::fSynchronized.store(false);
@@ -122,7 +122,7 @@ namespace TAO
             }
             else
             {
-                throw APIException(-306, "No connections available");
+                throw Exception(-306, "No connections available");
             }
 
             return ret;

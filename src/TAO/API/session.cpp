@@ -331,7 +331,7 @@ namespace TAO
             /* Encrypt the data */
             std::vector<uint8_t> vchCipherText;
             if(!LLC::EncryptAES256(hashKey.GetBytes(), ssData.Bytes(), vchCipherText))
-                throw APIException(-270, "Failed to encrypt data.");
+                throw Exception(-270, "Failed to encrypt data.");
 
             /* Write the session to local DB */
             LLD::Local->WriteSession(hashGenesis, vchCipherText);
@@ -346,7 +346,7 @@ namespace TAO
 
             /* Load the encrypted data from the local DB */
             if(!LLD::Local->ReadSession(hashGenesis, vchEncrypted))
-                throw APIException(-309, "Error loading session.");
+                throw Exception(-309, "Error loading session.");
 
             /* Generate a symmetric key to encrypt it based on the session ID and pin */
             std::vector<uint8_t> vchKey;
@@ -370,7 +370,7 @@ namespace TAO
 
             /* Encrypt the data */
             if(!LLC::DecryptAES256(vchKey, vchEncrypted, vchSession))
-                throw APIException(-309, "Error loading session."); // generic message callers can't brute force session id's
+                throw Exception(-309, "Error loading session."); // generic message callers can't brute force session id's
 
             try
             {
@@ -414,7 +414,7 @@ namespace TAO
             }
             catch(const std::exception& e)
             {
-                throw APIException(-309, "Error loading session."); // generic message callers can't brute force session id's
+                throw Exception(-309, "Error loading session."); // generic message callers can't brute force session id's
             }
         }
 

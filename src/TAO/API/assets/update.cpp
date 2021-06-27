@@ -50,7 +50,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -64,7 +64,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
 
             /* Get the Register ID. */
@@ -83,7 +83,7 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-33, "Missing name / address");
+                throw Exception(-33, "Missing name / address");
 
 
             /* Check for format parameter. */
@@ -96,15 +96,15 @@ namespace TAO
                created as a raw format asset */
             TAO::Register::Object asset;
             if(!LLD::Register->ReadState(hashRegister, asset, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-34, "Asset not found");
+                throw Exception(-34, "Asset not found");
 
             /* Check that this is an updatable object, i.e. not a raw / append obejct */
             if(asset.nType != TAO::Register::REGISTER::OBJECT) //NOTE: this is incorrect, only readonly registers cannot be updated
-                throw APIException(-155, "Raw assets can not be updated");
+                throw Exception(-155, "Raw assets can not be updated");
 
             /* Ensure that the object is an asset */
             if(!asset.Parse() || asset.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
-                throw APIException(-35, "Specified name/address is not an asset");
+                throw Exception(-35, "Specified name/address is not an asset");
 
             /* Declare operation stream to serialize all of the field updates*/
             TAO::Operation::Stream ssOperationStream;
@@ -134,10 +134,10 @@ namespace TAO
                         /* Check that the data field exists in the asset */
                         uint8_t nType = TAO::Register::TYPES::UNSUPPORTED;
                         if(!asset.Type(strDataField, nType))
-                            throw APIException(-156, debug::safe_printstr("Field not found in asset ", strDataField));
+                            throw Exception(-156, debug::safe_printstr("Field not found in asset ", strDataField));
 
                         if(!asset.Check(strDataField, nType, true))
-                            throw APIException(-157, debug::safe_printstr("Field not mutable in asset ", strDataField));
+                            throw Exception(-157, debug::safe_printstr("Field not mutable in asset ", strDataField));
 
                         /* Convert the incoming value to the correct type and write it into the asset object */
                         if(nType == TAO::Register::TYPES::UINT8_T)
@@ -159,7 +159,7 @@ namespace TAO
                             /* Check that the incoming value is not longer than the current value */
                             size_t nMaxLength = asset.Size(strDataField);
                             if(strValue.length() > nMaxLength)
-                                throw APIException(-158, debug::safe_printstr("Value longer than maximum length ", strDataField));
+                                throw Exception(-158, debug::safe_printstr("Value longer than maximum length ", strDataField));
 
                             /* Ensure that the serialized value is padded out to the max length */
                             strValue.resize(nMaxLength);
@@ -173,12 +173,12 @@ namespace TAO
 
 
                             if(fInvalid)
-                                throw APIException(-5, "Malformed base64 encoding");
+                                throw Exception(-5, "Malformed base64 encoding");
 
                             /* Check that the incoming value is not longer than the current value */
                             size_t nMaxLength = asset.Size(strDataField);
                             if(vchBytes.size() > nMaxLength)
-                                throw APIException(-158, debug::safe_printstr("Value longer than maximum length ", strDataField));
+                                throw Exception(-158, debug::safe_printstr("Value longer than maximum length ", strDataField));
 
                             /* Ensure that the serialized value is padded out to the max length */
                             vchBytes.resize(nMaxLength);
@@ -188,7 +188,7 @@ namespace TAO
                     }
                     else
                     {
-                        throw APIException(-159, "Values must be passed in as strings");
+                        throw Exception(-159, "Values must be passed in as strings");
                     }
                 }
             }
@@ -201,15 +201,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

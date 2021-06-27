@@ -42,7 +42,7 @@ namespace TAO::API
     /** CheckMature
      *
      *  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
-     *  Throws an appropriate APIException if it is not mature
+     *  Throws an appropriate Exception if it is not mature
      *
      *  @param[in] hashGenesis The genesis hash of the signature chain to check
      *

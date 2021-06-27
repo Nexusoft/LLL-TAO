@@ -70,15 +70,15 @@ namespace TAO
 
             /* Prevent foreign data lookup in client mode */
             if(config::fClient.load() && hashGenesis != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Check genesis exists */
             if(!LLD::Ledger->HasGenesis(hashGenesis))
-                throw APIException(-258, "Unknown genesis");
+                throw Exception(-258, "Unknown genesis");
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
-                throw APIException(-88, "Missing or empty name.");
+                throw Exception(-88, "Missing or empty name.");
 
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
@@ -89,15 +89,15 @@ namespace TAO
             /* Read the crypto object register */
             TAO::Register::Object crypto;
             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-259, "Could not read crypto object register");
+                throw Exception(-259, "Could not read crypto object register");
 
             /* Parse the object. */
             if(!crypto.Parse())
-                throw APIException(-36, "Failed to parse object register");
+                throw Exception(-36, "Failed to parse object register");
 
             /* Check the key exists */
             if(!crypto.Check(strName))
-                throw APIException(-260, "Invalid key name");
+                throw Exception(-260, "Invalid key name");
 
             /* Get List of key names in the crypto object */
             std::vector<std::string> vKeys = crypto.ListFields();
@@ -140,7 +140,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -150,7 +150,7 @@ namespace TAO
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
-                throw APIException(-88, "Missing or empty name.");
+                throw Exception(-88, "Missing or empty name.");
 
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
@@ -193,7 +193,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -203,7 +203,7 @@ namespace TAO
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
-                throw APIException(-88, "Missing or empty name.");
+                throw Exception(-88, "Missing or empty name.");
 
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
@@ -212,7 +212,7 @@ namespace TAO
                as these are for signature verification only */
             std::set<std::string> setDefaults{"auth", "lisp", "network", "sign", "verify", "cert", "app1", "app2", "app3"};
             if(setDefaults.find(strName) != setDefaults.end())
-                throw APIException(-263, "Private keys cannot only be retrieved for keys in the crypto register");
+                throw Exception(-263, "Private keys cannot only be retrieved for keys in the crypto register");
 
             /* Generate the private key */
             uint512_t hashPrivate = session.GetAccount()->Generate(strName, 0, strPIN);
@@ -231,7 +231,7 @@ namespace TAO
 
             /* Check the caller included the data */
             if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
-                throw APIException(-18, "Missing data.");
+                throw Exception(-18, "Missing data.");
 
             /* Decode the data into a vector of bytes */
             std::string strData = params["data"].get<std::string>();
@@ -264,7 +264,7 @@ namespace TAO
             }
             else
             {
-                throw APIException(-277, "Invalid hash function");
+                throw Exception(-277, "Invalid hash function");
             }
 
 
@@ -281,7 +281,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -298,18 +298,18 @@ namespace TAO
             /* Read the crypto object register */
             TAO::Register::Object crypto;
             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-259, "Could not read crypto object register");
+                throw Exception(-259, "Could not read crypto object register");
 
             /* Parse the object. */
             if(!crypto.Parse())
-                throw APIException(-36, "Failed to parse object register");
+                throw Exception(-36, "Failed to parse object register");
 
             /* Get the existing certificate hash */
             uint256_t hashCert = crypto.get<uint256_t>("cert");
 
             /* Check that the certificate has been created */
             if(hashCert == 0)
-                throw APIException(-294, "Certificate has not yet been created for this signature chain.  Please use crypto/create/key to create the certificate first.");
+                throw Exception(-294, "Certificate has not yet been created for this signature chain.  Please use crypto/create/key to create the certificate first.");
 
             /* The vertificate valid from timestamp, which is taken from the transaction time when the cert was last updated*/
             uint64_t nCertValid = 0;
@@ -331,7 +331,7 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-108, "Failed to read transaction");
+                    throw Exception(-108, "Failed to read transaction");
 
                 /* Set the next last. */
                 hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
@@ -431,7 +431,7 @@ namespace TAO
             uint256_t hashCertCheck = cert.Hash();
 
             if(hashCertCheck != hashCert)
-                throw APIException(-295, "Unable to generate certificate");
+                throw Exception(-295, "Unable to generate certificate");
 
             /* Include the certificate data. This is a multiline string containing base64-encoded data, therefore we must base64
                encode it again in order to write it into a single JSON field*/

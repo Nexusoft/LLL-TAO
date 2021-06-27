@@ -71,11 +71,11 @@ namespace TAO::API
 
             /* Check for correct JSON types. */
             if(!jRecipients.is_array())
-                throw APIException(-216, "recipients field must be an array.");
+                throw Exception(-216, "recipients field must be an array.");
 
             /* Check that there are recipient objects in the array */
             if(jRecipients.size() == 0)
-                throw APIException(-217, "recipients array is empty");
+                throw Exception(-217, "recipients array is empty");
 
             /* We need to copy session here to get the name. */
             const bool fSession = (jParams.find("session") != jParams.end());
@@ -98,7 +98,7 @@ namespace TAO::API
         {
             /* Check for amount parameter. */
             if(jParams.find("amount") == jParams.end())
-                throw APIException(-46, "Missing amount");
+                throw Exception(-46, "Missing amount");
 
             /* Build a recipeint object from parameters. */
             encoding::json jRecipient;
@@ -138,7 +138,7 @@ namespace TAO::API
             /* Get the token / account object. */
             TAO::Register::Object objToken;
             if(!LLD::Register->ReadObject(hashToken, objToken, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-48, "Token not found");
+                throw Exception(-48, "Token not found");
 
             /* Let's now push our account to vector. */
             std::vector<TAO::Register::Address> vAccounts;
@@ -174,7 +174,7 @@ namespace TAO::API
         {
             /* To send to ANY we need to have more than one recipient. */
             if(vRecipients.size() <= 1)
-                throw APIException(-55, "Must have at least two recipients to debit from any");
+                throw Exception(-55, "Must have at least two recipients to debit from any");
 
             /* Loop through our recipients to get the tokens that we are sending to. */
             for(const auto& jRecipient : vRecipients)
@@ -226,11 +226,11 @@ namespace TAO::API
             /* Get the token / account object. */
             TAO::Register::Object objFrom;
             if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-13, "Object not found");
+                throw Exception(-13, "Object not found");
 
             /* Now lets check our expected types match. */
             if(!CheckType(jParams, objFrom))
-                throw APIException(-49, "Unexpected type for name / address");
+                throw Exception(-49, "Unexpected type for name / address");
 
             /* Extract a token name from our from parameter. */
             const uint256_t hashToken = objFrom.get<uint256_t>("token");
@@ -243,7 +243,7 @@ namespace TAO::API
 
         /* Check that there are not too many recipients to fit into one transaction */
         if(vRecipients.size() > 99)
-            throw APIException(-215, "Max number of recipients (99) exceeded");
+            throw Exception(-215, "Max number of recipients (99) exceeded");
 
         /* Build our list of contracts. */
         std::vector<TAO::Operation::Contract> vContracts;
@@ -251,11 +251,11 @@ namespace TAO::API
         {
             /* Double check that there are not too many recipients to fit into one transaction */
             if(vContracts.size() >= 99)
-                throw APIException(-215, "Max number of recipients (99) exceeded");
+                throw Exception(-215, "Max number of recipients (99) exceeded");
 
             /* Check for amount parameter. */
             if(jRecipient.find("amount") == jRecipient.end())
-                throw APIException(-46, "Missing amount");
+                throw Exception(-46, "Missing amount");
 
             /* The register address of the recipient acccount. */
             const TAO::Register::Address hashTo =
@@ -266,7 +266,7 @@ namespace TAO::API
             {
                 /* Check that we have an available account to debit. */
                 if(!mapAccounts.count(0))
-                    throw APIException(-51, "No available accounts for recipient");
+                    throw Exception(-51, "No available accounts for recipient");
 
                 /* Grab a reference of our token struct. */
                 Accounts& tAccounts = mapAccounts[0];
@@ -283,7 +283,7 @@ namespace TAO::API
                     {
                         /* Check if we have another account on hand. */
                         if(!tAccounts.HasNext())
-                            throw APIException(-69, "Insufficient funds");
+                            throw Exception(-69, "Insufficient funds");
 
                         /* Adjust our debit amount. */
                         nDebit = tAccounts.GetBalance();
@@ -317,14 +317,14 @@ namespace TAO::API
                 /* Get the recipent token / account object. */
                 TAO::Register::Object objTo;
                 if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::LOOKUP))
-                    throw APIException(-209, "Recipient is not a valid account");
+                    throw Exception(-209, "Recipient is not a valid account");
 
                 /* Track our token we will be using. */
                 const uint256_t hashToken = objTo.get<uint256_t>("token");
 
                 /* Check that we have an available account to debit. */
                 if(!mapAccounts.count(hashToken))
-                    throw APIException(-51, "No available token accounts for recipient");
+                    throw Exception(-51, "No available token accounts for recipient");
 
                 /* Grab a reference of our token struct. */
                 Accounts& tAccounts = mapAccounts[hashToken];
@@ -341,7 +341,7 @@ namespace TAO::API
                     {
                         /* Check if we have another account on hand. */
                         if(!tAccounts.HasNext())
-                            throw APIException(-69, "Insufficient funds");
+                            throw Exception(-69, "Insufficient funds");
 
                         /* Adjust our debit amount. */
                         nDebit = tAccounts.GetBalance();
@@ -367,7 +367,7 @@ namespace TAO::API
                         {
                             /* For payments to objects, they must be owned by a token */
                             if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
-                                throw APIException(-211, "Recipient object has not been tokenized.");
+                                throw Exception(-211, "Recipient object has not been tokenized.");
 
                             /* Set the flag for this debit. */
                             fTokenizedDebit = true;
@@ -376,7 +376,7 @@ namespace TAO::API
                         }
 
                         default:
-                            throw APIException(-209, "Recipient is not a valid account.");
+                            throw Exception(-209, "Recipient is not a valid account.");
                     }
 
                     /* The optional payment reference */

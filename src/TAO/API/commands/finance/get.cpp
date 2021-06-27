@@ -33,15 +33,15 @@ namespace TAO::API
         /* Get the token / account object. */
         TAO::Register::Object objThis;
         if(!LLD::Register->ReadObject(hashRegister, objThis, TAO::Ledger::FLAGS::LOOKUP))
-            throw APIException(-13, "Object not found");
+            throw Exception(-13, "Object not found");
 
         /* Check the object standard. */
         if(objThis.Base() != TAO::Register::OBJECTS::ACCOUNT)
-            throw APIException(-15, "Object is not an account or token");
+            throw Exception(-15, "Object is not an account or token");
 
         /* Now lets check our expected types match. */
         if(!CheckType(jParams, objThis))
-            throw APIException(-49, "Unexpected type for name / address");
+            throw Exception(-49, "Unexpected type for name / address");
 
         /* Build our response object. */
         encoding::json jRet  = ObjectToJSON(jParams, objThis, hashRegister);

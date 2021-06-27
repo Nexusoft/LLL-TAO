@@ -151,11 +151,11 @@ namespace LLP
 
             /* Ensure the method is in the calling json. */
             if(jIncoming["method"].is_null())
-                throw TAO::API::APIException(-32600, "Missing method");
+                throw TAO::API::Exception(-32600, "Missing method");
 
             /* Ensure the method is correct type. */
             if(!jIncoming["method"].is_string())
-                throw TAO::API::APIException(-32600, "Method must be a string");
+                throw TAO::API::Exception(-32600, "Method must be a string");
 
             /* Get the method string. */
             std::string strMethod = jIncoming["method"].get<std::string>();
@@ -169,11 +169,11 @@ namespace LLP
 
             /* Check the parameters type for array. */
             if(!jParams.is_array())
-                throw TAO::API::APIException(-32600, "Params must be an array");
+                throw TAO::API::Exception(-32600, "Params must be an array");
 
             /* Check that the node is initialized. */
             if(!config::fInitialized)
-                throw TAO::API::APIException(-1, "Daemon is still initializing");
+                throw TAO::API::Exception(-1, "Daemon is still initializing");
 
             /* Execute the RPC method. */
             #ifndef NO_WALLET
@@ -185,7 +185,7 @@ namespace LLP
         }
 
         /* Handle for custom API exceptions. */
-        catch(TAO::API::APIException& e)
+        catch(TAO::API::Exception& e)
         {
             ErrorReply(e.ToJSON(), jID);
 
@@ -195,7 +195,7 @@ namespace LLP
         /* Handle for JSON exceptions. */
         catch(const encoding::detail::exception& e)
         {
-            ErrorReply(TAO::API::APIException(e.id, e.what()).ToJSON(), jID);
+            ErrorReply(TAO::API::Exception(e.id, e.what()).ToJSON(), jID);
 
             return debug::error("RPC Exception: ", e.what());
         }
@@ -203,7 +203,7 @@ namespace LLP
         /* Handle for STD exceptions. */
         catch(const std::exception& e)
         {
-            ErrorReply(TAO::API::APIException(-32700, e.what()).ToJSON(), jID);
+            ErrorReply(TAO::API::Exception(-32700, e.what()).ToJSON(), jID);
 
             return debug::error("RPC Exception: ", e.what());
         }

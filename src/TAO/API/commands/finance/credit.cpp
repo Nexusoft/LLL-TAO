@@ -48,7 +48,7 @@ namespace TAO::API
     {
         /* Check for txid parameter. */
         if(jParams.find("txid") == jParams.end())
-            throw APIException(-50, "Missing txid.");
+            throw Exception(-50, "Missing txid.");
 
         /* Extract some parameters from input data. */
         const TAO::Register::Address hashCredit = ExtractAddress(jParams, "", "default");
@@ -60,7 +60,7 @@ namespace TAO::API
         /* Check for tritium credits. */
         std::vector<TAO::Operation::Contract> vContracts(0);
         if(!BuildCredits(jParams, hashTx, vContracts))
-            throw APIException(-43, "No valid contracts in debit tx.");
+            throw Exception(-43, "No valid contracts in debit tx.");
 
         /* Build response JSON boilerplate. */
         return BuildResponse(jParams, hashCredit, vContracts);

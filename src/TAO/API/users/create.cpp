@@ -53,11 +53,11 @@ namespace TAO
 
             /* Check for username parameter. */
             if(params.find("username") == params.end())
-                throw APIException(-127, "Missing username");
+                throw Exception(-127, "Missing username");
 
             /* Check for password parameter. */
             if(params.find("password") == params.end())
-                throw APIException(-128, "Missing password");
+                throw Exception(-128, "Missing password");
 
             /* Check for pin parameter. Extract the pin. */
             if(params.find("pin") != params.end())
@@ -65,7 +65,7 @@ namespace TAO
             else if(params.find("PIN") != params.end())
                 strPin = SecureString(params["PIN"].get<std::string>().c_str());
             else
-                throw APIException(-129, "Missing PIN");
+                throw Exception(-129, "Missing PIN");
 
             /* Extract the username  */
             SecureString strUsername = params["username"].get<std::string>().c_str();
@@ -75,15 +75,15 @@ namespace TAO
 
             /* Check username length */
             if(strUsername.length() < 2)
-                throw APIException(-191, "Username must be a minimum of 2 characters");
+                throw Exception(-191, "Username must be a minimum of 2 characters");
 
             /* Check password length */
             if(strPassword.length() < 8)
-                throw APIException(-192, "Password must be a minimum of 8 characters");
+                throw Exception(-192, "Password must be a minimum of 8 characters");
 
             /* Check pin length */
             if(strPin.length() < 4)
-                throw APIException(-193, "Pin must be a minimum of 4 characters");
+                throw Exception(-193, "Pin must be a minimum of 4 characters");
 
             /* The genesis transaction  */
             TAO::Ledger::Transaction tx;
@@ -142,14 +142,14 @@ namespace TAO
             if(LLD::Ledger->HasGenesis(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
             {
                 user.free();
-                throw APIException(-130, "Account already exists");
+                throw Exception(-130, "Account already exists");
             }
 
             /* Create the transaction. */
             if(!Users::CreateTransaction(user, strPin, tx))
             {
                 user.free();
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
             }
 
             TAO::Register::Address hashRegister;
@@ -209,14 +209,14 @@ namespace TAO
             if(!tx.Build())
             {
                 user.free();
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
             }
 
             /* Sign the transaction. */
             if(!tx.Sign(user->Generate(tx.nSequence, strPin)))
             {
                 user.free();
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
             }
 
             /* Free the sigchain. */
@@ -224,7 +224,7 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
         }
 
 

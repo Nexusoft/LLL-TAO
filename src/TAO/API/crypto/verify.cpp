@@ -49,17 +49,17 @@ namespace TAO
 
             /* Check if public key has been provided */
             if(params.find("publickey") == params.end())
-                throw APIException(-265, "Missing public key");
+                throw Exception(-265, "Missing public key");
 
             /* Check that scheme has been provided */
             if(params.find("scheme") == params.end())
-                throw APIException(-275, "Missing scheme");
+                throw Exception(-275, "Missing scheme");
 
 
             /* Decode the public key into a vector of bytes */
             std::vector<uint8_t> vchPubKey;
             if(!encoding::DecodeBase58(params["publickey"].get<std::string>(), vchPubKey))
-                throw APIException(-266, "Malformed public key.");
+                throw Exception(-266, "Malformed public key.");
 
             /* Get the scheme string */
             std::string strScheme = ToLower(params["scheme"].get<std::string>());
@@ -70,12 +70,12 @@ namespace TAO
             else if(strScheme == "brainpool")
                 nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL;
             else
-                throw APIException(-262, "Invalid scheme.");
+                throw Exception(-262, "Invalid scheme.");
 
 
             /* Check the caller included the signature */
             if(params.find("signature") == params.end() || params["signature"].get<std::string>().empty())
-                throw APIException(-274, "Missing signature");
+                throw Exception(-274, "Missing signature");
 
             /* Decode the data into a vector of bytes */
             std::vector<uint8_t> vchSig;
@@ -85,12 +85,12 @@ namespace TAO
             }
             catch(const std::exception& e)
             {
-                throw APIException(-27, "Malformed base64 encoding");
+                throw Exception(-27, "Malformed base64 encoding");
             }
 
             /* Check the caller included the data */
             if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
-                throw APIException(-18, "Missing data");
+                throw Exception(-18, "Missing data");
 
             /* Decode the data into a vector of bytes */
             std::string strData = params["data"].get<std::string>();
@@ -146,7 +146,7 @@ namespace TAO
 
             /* Check the caller included the certificate cert */
             if(params.find("certificate") == params.end() || params["certificate"].get<std::string>().empty())
-                throw APIException(-296, "Missing certificate");
+                throw Exception(-296, "Missing certificate");
 
             /* Decode the certificate data into a vector of bytes */
             std::vector<uint8_t> vchCert;
@@ -156,7 +156,7 @@ namespace TAO
             }
             catch(const std::exception& e)
             {
-                throw APIException(-27, "Malformed base64 encoding");
+                throw Exception(-27, "Malformed base64 encoding");
             }
 
             /* flag indicating the certificate is verified */
@@ -167,7 +167,7 @@ namespace TAO
 
             /* Load the certificate data */
             if(!x509.Load(vchCert))
-                throw APIException(-296, "Invalid certificate data");
+                throw Exception(-296, "Invalid certificate data");
 
             /* Verify the certificate signature*/
             if(x509.Verify(false))
@@ -182,18 +182,18 @@ namespace TAO
                 /* Read the crypto object register */
                 TAO::Register::Object crypto;
                 if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-259, "Could not read crypto object register");
+                    throw Exception(-259, "Could not read crypto object register");
 
                 /* Parse the object. */
                 if(!crypto.Parse())
-                    throw APIException(-36, "Failed to parse object register");
+                    throw Exception(-36, "Failed to parse object register");
 
                 /* Get the cert key from their crypto register */
                 uint256_t hashCert = crypto.get<uint256_t>("cert");
 
                 /* Check that the certificate has been created */
                 if(hashCert == 0)
-                    throw APIException(-294, "Certificate has not yet been created for this signature chain.  Please use crypto/create/key to create the certificate first.");
+                    throw Exception(-294, "Certificate has not yet been created for this signature chain.  Please use crypto/create/key to create the certificate first.");
 
                 /* Compare this to a hash of the cert */
                 fVerified = hashCert == x509.Hash();

@@ -50,7 +50,7 @@ namespace TAO::API
         /* Get the last transaction. */
         uint512_t hashLast = 0;
         if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-            throw APIException(-144, "No transactions found");
+            throw Exception(-144, "No transactions found");
 
         /* Loop until genesis, storing all tx into a vector (these will be in descending order). */
         std::vector<TAO::Ledger::Transaction> vtx;
@@ -64,7 +64,7 @@ namespace TAO::API
                 if(config::fClient.load())
                     break;
                 else
-                    throw APIException(-108, "Failed to read transaction");
+                    throw Exception(-108, "Failed to read transaction");
             }
 
             /* Set the next last. */

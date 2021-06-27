@@ -36,14 +36,14 @@ namespace TAO
 
             /* to make this logic clear to callers we will return an error if they have provided a username parameter */
             if(params.find("username") != params.end())
-                throw APIException(-142, "Username parameter not supported for this method.  Names can only be obtained for the logged in user.");
+                throw Exception(-142, "Username parameter not supported for this method.  Names can only be obtained for the logged in user.");
 
             /* Get the callers hashGenesis */
             uint256_t hashGenesis = Commands::Get<Users>()->GetCallersGenesis(params);
 
             /* Ensure the hashGenesis is valid */
             if(hashGenesis == 0)
-                throw APIException(-11, "User not logged in");
+                throw Exception(-11, "User not logged in");
 
             /* Copy of the callers parmaters so that we can modify them */
             encoding::json paramsCopy = params;

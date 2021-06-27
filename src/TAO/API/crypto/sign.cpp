@@ -45,7 +45,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -55,18 +55,18 @@ namespace TAO
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
-                throw APIException(-88, "Missing or empty name.");
+                throw Exception(-88, "Missing or empty name.");
 
             /* Get the requested key name */
             std::string strName = params["name"].get<std::string>();
 
             /* Check they have not requested cert, as this is a TLS certificate and not intended for signature verification  */
             if(strName == "cert")
-                throw APIException(-292, "The cert key cannot be used to sign data as it is reserved for a TLS certificate.");
+                throw Exception(-292, "The cert key cannot be used to sign data as it is reserved for a TLS certificate.");
 
             /* Check the caller included the data */
             if(params.find("data") == params.end() || params["data"].get<std::string>().empty())
-                throw APIException(-18, "Missing data.");
+                throw Exception(-18, "Missing data.");
 
             /* Decode the data into a vector of bytes */
             std::string strData = params["data"].get<std::string>();
@@ -86,7 +86,7 @@ namespace TAO
 
             /* Generate the signature */
             if(!session.GetAccount()->Sign(nScheme, vchData, hashSecret, vchPubKey, vchSig))
-                throw APIException(-273, "Failed to generate signature");
+                throw Exception(-273, "Failed to generate signature");
 
             ret["publickey"] = encoding::EncodeBase58(vchPubKey);
 

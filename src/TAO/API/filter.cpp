@@ -71,7 +71,7 @@ namespace TAO::API
         }
 
         /* If we reach here, the generated JSON was malformed in some way. */
-        throw APIException(-60, "Query Syntax Error, malformed where clause at ", jStatement.dump(4));
+        throw Exception(-60, "Query Syntax Error, malformed where clause at ", jStatement.dump(4));
     }
 
 
@@ -86,7 +86,7 @@ namespace TAO::API
 
             /* Check that our filter is valid. */
             if(jResponse.find(strField) == jResponse.end())
-                throw APIException(-71, "Fieldname ", strField, " doesn't exist");
+                throw Exception(-71, "Fieldname ", strField, " doesn't exist");
 
             /* Check for a return value of string. */
             if(jResponse[strField].is_string())

@@ -52,11 +52,11 @@ namespace TAO
         {
             /* Check name length */
             if(strName.length() == 0)
-                throw APIException(-88, "Missing or empty name.");
+                throw Exception(-88, "Missing or empty name.");
 
             /* Name can't start with : */
             if(strName[0]== ':' )
-                throw APIException(-161, "Names cannot start with a colon");
+                throw Exception(-161, "Names cannot start with a colon");
 
             /* Declare the contract for the response */
             TAO::Operation::Contract contract;
@@ -82,17 +82,17 @@ namespace TAO
 
                     /* Retrieve the Namespace object by name */
                     if(!TAO::Register::GetNamespaceRegister(strNamespace, namespaceObject))
-                        throw APIException(-95, "Namespace does not exist: " + strNamespace);
+                        throw Exception(-95, "Namespace does not exist: " + strNamespace);
 
                     /* Check the owner is the hashGenesis */
                     if(namespaceObject.hashOwner != hashGenesis)
-                        throw APIException(-96, "Cannot create a name in namespace " + strNamespace + " as you are not the owner.");
+                        throw Exception(-96, "Cannot create a name in namespace " + strNamespace + " as you are not the owner.");
                 }
                 else
                 {
                     /* If it is a global name then check it doesn't contain any colons */
                     if(strNamespace.find(":") != strNamespace.npos )
-                        throw APIException(-171, "Global names cannot cannot contain a colon");
+                        throw Exception(-171, "Global names cannot cannot contain a colon");
                 }
             }
             else
@@ -108,9 +108,9 @@ namespace TAO
             if(LLD::Register->ReadState(hashNameAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 if(!strNamespace.empty())
-                    throw APIException(-97, "An object with this name already exists in this namespace.");
+                    throw Exception(-97, "An object with this name already exists in this namespace.");
                 else
-                    throw APIException(-98, "An object with this name already exists for this user.");
+                    throw Exception(-98, "An object with this name already exists for this user.");
             }
 
 
@@ -136,7 +136,7 @@ namespace TAO
 
             /* Check disk of writing new block. */
             if(!LLD::Ledger->ReadTx(hashTransfer, txTransfer, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-99, "Transfer transaction not found.");
+                throw Exception(-99, "Transfer transaction not found.");
 
             /* Ensure we are not claiming our own Transfer.  If we are then no need to create a Name object as we already have one */
             if(txTransfer.hashGenesis != hashGenesis)
@@ -265,7 +265,7 @@ namespace TAO
 
             /* If it wasn't resolved then error */
             if(!fFound && fThrow)
-                throw APIException(-101, debug::safe_printstr("Unknown name: ", strObjectName));
+                throw Exception(-101, debug::safe_printstr("Unknown name: ", strObjectName));
 
             /* Get the address of the Name object to return */
             if(fFound)
@@ -319,13 +319,13 @@ namespace TAO
                         to determine whether or not it is a Name. */
                         TAO::Register::Object object;
                         if(!LLD::Register->ReadState(hashNameObject, object, TAO::Ledger::FLAGS::MEMPOOL))
-                            throw APIException(-92, "Name not found.");
+                            throw Exception(-92, "Name not found.");
 
                         if(object.nType == TAO::Register::REGISTER::OBJECT)
                         {
                             /* parse object so that the data fields can be accessed */
                             if(!object.Parse())
-                                throw APIException(-36, "Failed to parse object register");
+                                throw Exception(-36, "Failed to parse object register");
 
                             /* Set the return values */
                             nameObject = object;
@@ -366,7 +366,7 @@ namespace TAO
                     {
                         /* parse object so that the data fields can be accessed */
                         if(!object.Parse())
-                            throw APIException(-36, "Failed to parse object register");
+                            throw Exception(-36, "Failed to parse object register");
 
                         /* Check the object register standards. */
                         if(object.Standard() != TAO::Register::OBJECTS::NAME)
@@ -518,7 +518,7 @@ namespace TAO
                 }
             }
             else
-                throw APIException(-65, "Object is not an account.");
+                throw Exception(-65, "Object is not an account.");
 
             return strTokenName;
         }

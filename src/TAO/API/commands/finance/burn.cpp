@@ -37,30 +37,30 @@ namespace TAO::API
 
         /* First let's check for our type noun. */
         if(jParams["request"].find("type") == jParams["request"].end())
-            throw APIException(-118, "Missing type");
+            throw Exception(-118, "Missing type");
 
         /* Now let's do some checks here to prevent burning something you don't want */
         if(jParams["request"]["type"] != "token")
-            throw APIException(-36, "Invalid type for command");
+            throw Exception(-36, "Invalid type for command");
 
         /* Get the token / account object. */
         TAO::Register::Object object;
         if(!LLD::Register->ReadObject(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-            throw APIException(-122, "Token/account not found");
+            throw Exception(-122, "Token/account not found");
 
         /* Check that we are operating on an account. */
         if(object.Standard() != TAO::Register::OBJECTS::ACCOUNT)
-            throw APIException(-65, "Object is not an account");
+            throw Exception(-65, "Object is not an account");
 
         /* Make sure we aren't burning any NXS, no need to burn it, ever! */
         const uint256_t hashToken = object.get<uint256_t>("token");
         if(hashToken == 0)
-            throw APIException(-212, "Invalid token");
+            throw Exception(-212, "Invalid token");
 
         /* Check they have the required funds */
         const uint64_t nAmount = ExtractAmount(jParams, GetFigures(object));
         if(nAmount > object.get<uint64_t>("balance"))
-            throw APIException(-69, "Insufficient funds");
+            throw Exception(-69, "Insufficient funds");
 
         /* The optional payment reference */
         const uint64_t nReference = ExtractInteger<uint64_t>(jParams, "reference", false); //false for not required parameter

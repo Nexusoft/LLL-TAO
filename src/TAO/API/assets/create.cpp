@@ -52,7 +52,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -66,7 +66,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
             TAO::Register::Address hashRegister;
@@ -84,11 +84,11 @@ namespace TAO
 
                 /* If format = raw then use a raw state register rather than an object */
                 if(params.find("data") == params.end())
-                    throw APIException(-18, "Missing data");
+                    throw Exception(-18, "Missing data");
 
                 /* Check data is in a string field */
                 if(!params["data"].is_string())
-                    throw APIException(-19, "Data must be a string with this asset format.");
+                    throw Exception(-19, "Data must be a string with this asset format.");
 
                 /* Serialise the incoming data into a state register*/
                 DataStream ssData(SER_REGISTER, 1);
@@ -135,11 +135,11 @@ namespace TAO
                         asset << it.key() << uint8_t(TAO::Register::TYPES::STRING) << strValue;
                     }
                     else
-                        throw APIException(-19, "Data must be a string with this asset format.");
+                        throw Exception(-19, "Data must be a string with this asset format.");
                 }
 
                 if(nFieldCount == 0)
-                    throw APIException(-20, "Missing asset value fields.");
+                    throw Exception(-20, "Missing asset value fields.");
 
                 /* Submit the payload object. */
                 tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
@@ -151,10 +151,10 @@ namespace TAO
 
                 /* If format = JSON then grab the asset definition from the json field */
                 if(params.find("json") == params.end())
-                    throw APIException(-21, "Missing json parameter.");
+                    throw Exception(-21, "Missing json parameter.");
 
                 if(!params["json"].is_array())
-                    throw APIException(-22, "json field must be an array.");
+                    throw Exception(-22, "json field must be an array.");
 
                 /* declare the object register to hold the asset data*/
                 TAO::Register::Object asset = TAO::Register::CreateAsset();
@@ -169,16 +169,16 @@ namespace TAO
                 {
                     /* Check that the required fields have been provided*/
                     if(it->find("name") == it->end())
-                        throw APIException(-22, "Missing name field in json definition.");
+                        throw Exception(-22, "Missing name field in json definition.");
 
                     if(it->find("type") == it->end())
-                        throw APIException(-23, "Missing type field in json definition.");
+                        throw Exception(-23, "Missing type field in json definition.");
 
                     if(it->find("value") == it->end())
-                        throw APIException(-24, "Missing value field in json definition.");
+                        throw Exception(-24, "Missing value field in json definition.");
 
                     if(it->find("mutable") == it->end())
-                        throw APIException(-25, "Missing mutable field in json definition.");
+                        throw Exception(-25, "Missing mutable field in json definition.");
 
                     /* Parse the values out of the definition json*/
                     std::string strName =  (*it)["name"].get<std::string>();
@@ -225,7 +225,7 @@ namespace TAO
 
                                 /* If they specify a value less than the data length then error */
                                 if(nMaxLength < nDataLength)
-                                    throw APIException(-26, "maxlength value is less than the specified data length.");
+                                    throw Exception(-26, "maxlength value is less than the specified data length.");
                             }
                             else
                             {
@@ -279,7 +279,7 @@ namespace TAO
                     else if(strType == "bytes")
                     {
                         if(fBytesInvalid)
-                            throw APIException(-27, "Malformed base64 encoding");
+                            throw Exception(-27, "Malformed base64 encoding");
 
                         /* Ensure that the serialized value is padded out to the max length */
                         vchBytes.resize(nMaxLength);
@@ -288,7 +288,7 @@ namespace TAO
                     }
                     else
                     {
-                        throw APIException(-154, "Invalid field type " + strType);
+                        throw Exception(-154, "Invalid field type " + strType);
                     }
 
 
@@ -297,14 +297,14 @@ namespace TAO
                 }
 
                 if(nFieldCount == 0)
-                    throw APIException(-28, "Missing asset field definitions");
+                    throw Exception(-28, "Missing asset field definitions");
 
                 /* Submit the payload object. */
                 tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
             }
             else
             {
-                throw APIException(-29, "Unsupported format specified");
+                throw Exception(-29, "Unsupported format specified");
             }
 
             /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
@@ -316,15 +316,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

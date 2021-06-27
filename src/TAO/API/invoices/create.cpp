@@ -56,14 +56,14 @@ namespace TAO
             /* First ensure that transaction version 2 active, as the conditions required for invoices were not enabled until v2 */
             const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
             if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(runtime::unifiedtimestamp(), 2)))
-                throw APIException(-254, "Invoices API not yet active.");
+                throw Exception(-254, "Invoices API not yet active.");
 
             /* The response JSON */
             encoding::json ret;
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* The JSON representation of the invoice that we store in the register */
             encoding::json invoice;
@@ -93,21 +93,21 @@ namespace TAO
 
             /* Fail if no required parameters supplied. */
             else
-                throw APIException(-227, "Missing payment account name / address");
+                throw Exception(-227, "Missing payment account name / address");
 
             /* Validate the payment account */
             /* Get the account object. */
             TAO::Register::Object account;
             if(!LLD::Register->ReadState(hashAccount, account))
-                throw APIException(-13, "Object not found");
+                throw Exception(-13, "Object not found");
 
             /* Parse the account object register. */
             if(!account.Parse())
-                throw APIException(-14, "Object failed to parse");
+                throw Exception(-14, "Object failed to parse");
 
             /* Check the object standard. */
             if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                throw APIException(-65, "Object is not an account");
+                throw Exception(-65, "Object is not an account");
 
             /* The token that this invoice should be transacted in */
             TAO::Register::Address hashToken = account.get<uint256_t>("token");
@@ -124,7 +124,7 @@ namespace TAO
                 hashRecipient.SetHex(params["recipient"].get<std::string>());
 
             else
-                throw APIException(-229, "Missing recipient");
+                throw Exception(-229, "Missing recipient");
 
             /* If in client mode and the recipient genesis does not exist in our DB we should ask a peer for the genesis */
             if(config::fClient.load() && !LLD::Ledger->HasGenesis(hashRecipient))
@@ -148,11 +148,11 @@ namespace TAO
 
             /* Check that the recipient genesis hash exists */
             if(!LLD::Ledger->HasGenesis(hashRecipient))
-                throw APIException(-230, "Recipient user does not exist");
+                throw Exception(-230, "Recipient user does not exist");
 
             /* Check that the recipient isn't the sender */
             if(hashRecipient == session.GetAccount()->Genesis())
-                throw APIException(-244, "Cannot send invoice to self");
+                throw Exception(-244, "Cannot send invoice to self");
 
             /* Add the mandatroy invoice fields to the invoice JSON */
             invoice["account"]   = hashAccount.ToString();
@@ -183,22 +183,22 @@ namespace TAO
 
             /* Parse the invoice items details */
             if(params.find("items") == params.end() || !params["items"].is_array())
-                throw APIException(-232, "Missing items");
+                throw Exception(-232, "Missing items");
 
             /* Check items is not empty */
             encoding::json items = params["items"];
             if(items.empty())
-                throw APIException(-233, "Invoice must include at least one item");
+                throw Exception(-233, "Invoice must include at least one item");
 
             /* Iterate the items to validate them*/
             for(auto it = items.begin(); it != items.end(); ++it)
             {
                 /* check that mandatory fields have been provided */
                 if(it->find("unit_amount") == it->end())
-                    throw APIException(-235, "Missing item unit amount.");
+                    throw Exception(-235, "Missing item unit amount.");
 
                 if(it->find("units") == it->end())
-                    throw APIException(-238, "Missing item number of units.");
+                    throw Exception(-238, "Missing item number of units.");
 
                 /* Parse the values out of the definition json*/
                 std::string strUnitAmount =  (*it)["unit_amount"].get<std::string>();
@@ -217,11 +217,11 @@ namespace TAO
                 }
                 catch(const std::exception& e)
                 {
-                    throw APIException(-236, "Invalid item unit amount.");
+                    throw Exception(-236, "Invalid item unit amount.");
                 }
 
                 if(dUnitAmount == 0)
-                    throw APIException(-237, "Item unit amount must be greater than 0.");
+                    throw Exception(-237, "Item unit amount must be greater than 0.");
 
                 /* Attempt to convert the supplied value to a 64-bit unsigned integer, catching argument/range exceptions */
                 try
@@ -230,11 +230,11 @@ namespace TAO
                 }
                 catch(const std::exception& e)
                 {
-                    throw APIException(-239, "Invalid item number of units.");
+                    throw Exception(-239, "Invalid item number of units.");
                 }
 
                 if(nUnits == 0)
-                    throw APIException(-240, "Item units must be greater than 0.");
+                    throw Exception(-240, "Item units must be greater than 0.");
 
                 /* work out the total for this item */
                 double dItemTotal = dUnitAmount * nUnits;
@@ -263,7 +263,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Generate a random hash for this objects register address */
             TAO::Register::Address hashRegister = TAO::Register::Address(TAO::Register::Address::READONLY);
@@ -277,7 +277,7 @@ namespace TAO
 
             /* Check the data size */
             if(ssData.size() > TAO::Register::MAX_REGISTER_SIZE)
-                throw APIException(-242, "Data exceeds max register size");
+                throw Exception(-242, "Data exceeds max register size");
 
             /* Add the invoice creation contract. */
             uint32_t nContract = 0;
@@ -319,15 +319,15 @@ namespace TAO
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["txid"]  = tx.GetHash().ToString();

@@ -178,7 +178,7 @@ namespace TAO
                     /* Invoke the process notifications method to process all oustanding */
                     TAO::API::Commands::Get<Users>()->ProcessNotifications(params, false);
                 }
-                catch(const APIException& ex)
+                catch(const Exception& ex)
                 {
                     /* Absorb certain errors and write them to the log instead */
                     switch (ex.id)

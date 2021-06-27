@@ -63,7 +63,7 @@ namespace TAO
                 hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
 
             if(config::fClient.load() && hashGenesis != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Number of results to return. */
             uint32_t nLimit = 100;

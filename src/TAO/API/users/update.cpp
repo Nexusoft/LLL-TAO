@@ -42,11 +42,11 @@ namespace TAO
 
             /* Check for password parameter. */
             if(params.find("password") == params.end())
-                throw APIException(-128, "Missing password");
+                throw Exception(-128, "Missing password");
 
             /* Check for pin parameter. Extract the pin. */
             if(params.find("pin") == params.end())
-                throw APIException(-129, "Missing PIN");
+                throw Exception(-129, "Missing PIN");
 
             /* Extract the existing password */
             SecureString strPassword = SecureString(params["password"].get<std::string>().c_str());
@@ -70,7 +70,7 @@ namespace TAO
 
                 /* Check password length */
                 if(strNewPassword.length() < 8)
-                    throw APIException(-192, "Password must be a minimum of 8 characters");
+                    throw Exception(-192, "Password must be a minimum of 8 characters");
             }
 
             /* Check for new pin parameter. */
@@ -80,7 +80,7 @@ namespace TAO
 
                 /* Check pin length */
                 if(strNewPin.length() < 4)
-                    throw APIException(-193, "Pin must be a minimum of 4 characters");
+                    throw Exception(-193, "Pin must be a minimum of 4 characters");
             }
 
             /* Check for recovery seed parameter. */
@@ -90,12 +90,12 @@ namespace TAO
 
                 /* Check recovery seed length */
                 if(strNewRecovery.length() < 40)
-                    throw APIException(-221, "Recovery seed must be a minimum of 40 characters");
+                    throw Exception(-221, "Recovery seed must be a minimum of 40 characters");
             }
 
             /* Check something is being changed */
             if(strNewRecovery.empty() && strNewPassword == strPassword && strNewPin == strPin)
-                throw APIException(-218, "User password / pin not changed");
+                throw Exception(-218, "User password / pin not changed");
 
 
             /* Validate the existing credentials again */
@@ -105,7 +105,7 @@ namespace TAO
             /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-138, "No previous transaction found");
+                throw Exception(-138, "No previous transaction found");
 
             /* Flag indicating that the recovery seed should be used to sign the transaction */
             bool fRecovery = false;
@@ -117,7 +117,7 @@ namespace TAO
             {
                 /* Check that the caller has supplied the previous recovery seed */
                 if(params.find("recovery") == params.end())
-                    throw APIException(-220, "Missing recovery seed. ");
+                    throw Exception(-220, "Missing recovery seed. ");
 
                 /* Get the previous recovery seed from the params */
                 strRecovery = SecureString(params["recovery"].get<std::string>().c_str());
@@ -151,15 +151,15 @@ namespace TAO
                        processor, terminates any P2P connections, and removes the session from the session manager */
                     TerminateSession(session.ID());
 
-                    throw APIException(-290, "Invalid credentials.  User logged out due to too many password / pin attempts");
+                    throw Exception(-290, "Invalid credentials.  User logged out due to too many password / pin attempts");
                 }
 
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
             }
 
             /* Create the update transaction */
             if(!Users::CreateTransaction(session.GetAccount(), strPin, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Now set the new credentials */
             tx.NextHash(userUpdated->Generate(tx.nSequence + 1, strNewPassword, strNewPin), txPrev.nNextType);
@@ -182,7 +182,7 @@ namespace TAO
             if(!tx.Build())
             {
                 userUpdated.free();
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
             }
 
             /* The private key to sign with.  This will either be a key based on the previous pin, OR if the recovery is being changed
@@ -211,7 +211,7 @@ namespace TAO
                     nKeyType = txPrev.nKeyType;
 
                     if(!LLD::Ledger->ReadTx(txPrev.hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-138, "No previous transaction found");
+                        throw Exception(-138, "No previous transaction found");
                 }
 
                 /* Set the key type */
@@ -227,7 +227,7 @@ namespace TAO
             if(!tx.Sign(hashSecret))
             {
                 userUpdated.free();
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
             }
 
 
@@ -235,7 +235,7 @@ namespace TAO
             if(!TAO::Ledger::mempool.Accept(tx))
             {
                 userUpdated.free();
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
             }
 
             {
@@ -279,11 +279,11 @@ namespace TAO
 
             /* Retrieve the existing Crypto register so that we can update the keys. */
             if(!LLD::Register->ReadState(hashCrypto, crypto))
-                throw APIException(-219, "Could not retrieve Crypto object");
+                throw Exception(-219, "Could not retrieve Crypto object");
 
             /* Parse the crypto object register so that we can read the current fields. */
             if(!crypto.Parse())
-                throw APIException(-14, "Object failed to parse");
+                throw Exception(-14, "Object failed to parse");
 
             /* Declare operation stream to serialize all of the field updates*/
             TAO::Operation::Stream ssOperationStream;

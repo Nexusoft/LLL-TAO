@@ -46,10 +46,10 @@ namespace TAO
             else if(params.find("PIN") != params.end())
                 strPin = SecureString(params["PIN"].get<std::string>().c_str());
             else
-                throw APIException(-129, "Missing PIN");
+                throw Exception(-129, "Missing PIN");
 
             if(strPin.size() == 0)
-                throw APIException(-135, "Zero-length PIN");
+                throw Exception(-135, "Zero-length PIN");
 
             /* Get the genesis ID. */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
@@ -57,7 +57,7 @@ namespace TAO
             /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-138, "No previous transaction found");
+                throw Exception(-138, "No previous transaction found");
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
@@ -65,7 +65,7 @@ namespace TAO
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
-                throw APIException(-149, "Invalid PIN");
+                throw Exception(-149, "Invalid PIN");
             
             /* Save the session */
             session.Save(strPin);

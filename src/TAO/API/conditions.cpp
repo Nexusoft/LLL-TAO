@@ -173,7 +173,7 @@ namespace TAO::API
             /* Check that the expiration time contains only numeric characters and that it can be converted to a uint64
                before attempting to convert it */
             if(!IsAllDigit(strExpires) || !IsUINT64(strExpires))
-                throw APIException(-168, "Invalid expiration time");
+                throw Exception(-168, "Invalid expiration time");
 
             /* Convert the expiration time to uint64 */
             nExpires = stoull(strExpires);
@@ -312,7 +312,7 @@ namespace TAO::API
 
             /* Parse the object register. */
             if(!debit.Parse())
-                throw APIException(-41, "Failed to parse object from debit transaction");
+                throw Exception(-41, "Failed to parse object from debit transaction");
 
             /* Check to see whether there are any partial credits already claimed against the debit */
             uint64_t nClaimed = 0;
@@ -321,7 +321,7 @@ namespace TAO::API
 
             /* Check that there is something to be claimed */
             if(nClaimed == nAmount)
-                throw APIException(-173, "Cannot void debit transaction as it has already been fully credited by all recipients");
+                throw Exception(-173, "Cannot void debit transaction as it has already been fully credited by all recipients");
 
             /* Reduce the amount to credit by the amount already claimed */
             nAmount -= nClaimed;

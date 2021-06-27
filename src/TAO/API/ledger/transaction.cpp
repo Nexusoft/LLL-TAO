@@ -44,7 +44,7 @@ namespace TAO
             else if(params.find("txid") != params.end())
                 hash.SetHex(params["txid"].get<std::string>());
             else
-                throw APIException(-86, "Missing hash or txid");
+                throw Exception(-86, "Missing hash or txid");
 
 
             /* Get the transaction verbosity level from the request*/
@@ -113,7 +113,7 @@ namespace TAO
 
             else
             {
-                throw APIException(-87, "Invalid or unknown transaction");
+                throw Exception(-87, "Invalid or unknown transaction");
             }
 
             return jRet;
@@ -128,7 +128,7 @@ namespace TAO
 
             /* Check for the transaction data parameter. */
             if(params.find("data") == params.end())
-                throw APIException(-18, "Missing data");
+                throw Exception(-18, "Missing data");
 
             /* Extract the data out of the JSON params*/
             std::vector<uint8_t> vData = ParseHex(params["data"].get<std::string>());
@@ -152,10 +152,10 @@ namespace TAO
                     if(TAO::Ledger::mempool.Accept(tx, nullptr))
                         jRet["hash"] = tx.GetHash().ToString();
                     else
-                        throw APIException(-150, "Transaction rejected.");
+                        throw Exception(-150, "Transaction rejected.");
                 }
                 else
-                    throw APIException(-151, "Transaction already in database.");
+                    throw Exception(-151, "Transaction already in database.");
 
             }
             else if(nType == LLP::MSG_TX_LEGACY)
@@ -169,7 +169,7 @@ namespace TAO
                 {
                     /* Check if tx is valid. */
                     if(!tx.CheckTransaction())
-                        throw APIException(-150, "Transaction rejected.");
+                        throw Exception(-150, "Transaction rejected.");
 
                     /* Add the transaction to the memory pool. */
                     if(TAO::Ledger::mempool.Accept(tx))
@@ -185,10 +185,10 @@ namespace TAO
                         jRet["hash"] = tx.GetHash().ToString();
                     }
                     else
-                        throw APIException(-150, "Transaction rejected.");
+                        throw Exception(-150, "Transaction rejected.");
                 }
                 else
-                    throw APIException(-151, "Transaction already in database.");
+                    throw Exception(-151, "Transaction already in database.");
 
             }
 

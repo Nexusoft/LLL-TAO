@@ -44,7 +44,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -54,7 +54,7 @@ namespace TAO
 
             /* Check for txid parameter. */
             if(params.find("txid") == params.end())
-                throw APIException(-50, "Missing txid.");
+                throw Exception(-50, "Missing txid.");
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
@@ -62,7 +62,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* Get the transaction id. */
             uint512_t hashTx;
@@ -71,7 +71,7 @@ namespace TAO
             /* Read the Transfer transaction being claimed. */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->ReadTx(hashTx, txPrev))
-                throw APIException(-99, "Transfer transaction not found.");
+                throw Exception(-99, "Transfer transaction not found.");
 
             /* Check to see whether they have provided a new name */
             std::string strName;
@@ -123,7 +123,7 @@ namespace TAO
                 /* Get the object from the register DB.   */
                 TAO::Register::Object object;
                 if(!LLD::Register->ReadState(hashAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-104, "Object not found");
+                    throw Exception(-104, "Object not found");
 
                 /* Only include raw and non-standard object types */
                 if(object.nType != TAO::Register::REGISTER::OBJECT
@@ -165,22 +165,22 @@ namespace TAO
 
             /* Error if no valid contracts found */
             if(nCurrent == -1)
-                throw APIException(-152, "Transaction contains no valid transfers.");
+                throw Exception(-152, "Transaction contains no valid transfers.");
 
             /* Add the fee */
             AddFee(tx);
 
             /* Execute the operations layer. */
             if(!tx.Build())
-                throw APIException(-30, "Operations failed to execute");
+                throw Exception(-30, "Operations failed to execute");
 
             /* Sign the transaction. */
             if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw APIException(-31, "Ledger failed to sign transaction");
+                throw Exception(-31, "Ledger failed to sign transaction");
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
-                throw APIException(-32, "Failed to accept");
+                throw Exception(-32, "Failed to accept");
 
             /* Build a JSON response object. */
             ret["claimed"]  = jsonClaimed;

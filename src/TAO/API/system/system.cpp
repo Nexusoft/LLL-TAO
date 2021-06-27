@@ -68,11 +68,11 @@ namespace TAO
             {
                 /* Check that we have a password. */
                 if(params.find("password") == params.end())
-                    throw APIException(-128, "Missing password");
+                    throw Exception(-128, "Missing password");
 
                 /* Check our shutdown credentials. */
                 if(params["password"] != strPassword)
-                    throw APIException(-139, "Invalid credentials");
+                    throw Exception(-139, "Invalid credentials");
             }
 
             // Shutdown will take long enough that the response should get back

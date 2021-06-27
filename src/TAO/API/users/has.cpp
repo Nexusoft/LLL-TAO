@@ -45,7 +45,7 @@ namespace TAO
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
 
             else
-                throw APIException(-111, "Missing genesis / username");
+                throw Exception(-111, "Missing genesis / username");
 
             bool bHas = LLD::Local->HasSession(hashGenesis);
 

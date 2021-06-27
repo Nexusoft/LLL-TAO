@@ -59,11 +59,11 @@ namespace TAO
 
             /* Prevent foreign data lookup in client mode */
             if(config::fClient.load() && hashGenesis != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Check genesis exists */
             if(!LLD::Ledger->HasGenesis(hashGenesis))
-                throw APIException(-258, "Unknown genesis");
+                throw Exception(-258, "Unknown genesis");
 
             /* The address of the crypto object register, which is deterministic based on the genesis */
             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
@@ -71,11 +71,11 @@ namespace TAO
             /* Read the crypto object register */
             TAO::Register::Object crypto;
             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-259, "Could not read crypto object register");
+                throw Exception(-259, "Could not read crypto object register");
 
             /* Parse the object. */
             if(!crypto.Parse())
-                throw APIException(-36, "Failed to parse object register");
+                throw Exception(-36, "Failed to parse object register");
 
             /* Get List of key names in the crypto object */
             std::vector<std::string> vKeys = crypto.ListFields();

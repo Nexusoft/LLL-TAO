@@ -66,7 +66,7 @@ namespace TAO
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
-                throw APIException(-139, "Invalid credentials");
+                throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
             SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -94,7 +94,7 @@ namespace TAO
             if(wallet.IsCrypted() && (fLocked || fMintOnly))
             {
                 if(strWalletPass.length() == 0)
-                    throw APIException(-179, "Legacy wallet is locked. walletpassphrase required");
+                    throw Exception(-179, "Legacy wallet is locked. walletpassphrase required");
 
                 /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
                 if(fMintOnly)
@@ -107,7 +107,7 @@ namespace TAO
                  * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
                  */
                 if(!wallet.Unlock(strWalletPass, 0, false))
-                    throw APIException(-180, "Incorrect walletpassphrase for Legacy wallet");
+                    throw Exception(-180, "Incorrect walletpassphrase for Legacy wallet");
             }
 
             /* Get a map of all account balances from the legacy wallet */
@@ -126,7 +126,7 @@ namespace TAO
             /* Get the available addresses from the wallet */
             std::map<Legacy::NexusAddress, int64_t> mapAddresses;
             if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
-                throw APIException(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
+                throw Exception(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
             /* Find all the addresses in the list */
             for(const auto& entry : mapAddresses)
@@ -157,7 +157,7 @@ namespace TAO
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw APIException(-17, "Failed to create transaction");
+                throw Exception(-17, "Failed to create transaction");
 
             /* tracks how many contracts we have added to the current transaction */
             uint8_t nContracts = 0;
@@ -185,11 +185,11 @@ namespace TAO
                             /* Retrieve the account */
                             TAO::Register::Object object;
                             if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                                throw TAO::API::APIException(-13, "Object not found");
+                                throw TAO::API::Exception(-13, "Object not found");
 
                             /* Parse the object register. */
                             if(!object.Parse())
-                                throw TAO::API::APIException(-14, "Object failed to parse");
+                                throw TAO::API::Exception(-14, "Object failed to parse");
 
                             /* Check to see if it is a NXS account the data matches the account name */
                             if(object.get<uint256_t>("token") == 0
@@ -214,20 +214,20 @@ namespace TAO
 
                         /* Execute the operations layer. */
                         if(!tx.Build())
-                            throw APIException(-44, "Transaction failed to build");
+                            throw Exception(-44, "Transaction failed to build");
 
                         /* Sign the transaction. */
                         if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                            throw APIException(-31, "Ledger failed to sign transaction");
+                            throw Exception(-31, "Ledger failed to sign transaction");
 
                         /* Execute the operations layer. */
                         if(!TAO::Ledger::mempool.Accept(tx))
-                            throw APIException(-32, "Failed to accept");
+                            throw Exception(-32, "Failed to accept");
 
                         /* Create the next transaction and reset the counter */
                         tx = TAO::Ledger::Transaction();
                         if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                            throw APIException(-17, "Failed to create transaction");
+                            throw Exception(-17, "Failed to create transaction");
 
 
                         nContracts = 0;
@@ -262,15 +262,15 @@ namespace TAO
 
                 /* Execute the operations layer. */
                 if(!tx.Build())
-                    throw APIException(-44, "Transaction failed to build");
+                    throw Exception(-44, "Transaction failed to build");
 
                 /* Sign the transaction. */
                 if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                    throw APIException(-31, "Ledger failed to sign transaction");
+                    throw Exception(-31, "Ledger failed to sign transaction");
 
                 /* Execute the operations layer. */
                 if(!TAO::Ledger::mempool.Accept(tx))
-                    throw APIException(-32, "Failed to accept");
+                    throw Exception(-32, "Failed to accept");
             }
 
             /* Once the accounts have been created transfer the balance from the legacy account to the new ones */
