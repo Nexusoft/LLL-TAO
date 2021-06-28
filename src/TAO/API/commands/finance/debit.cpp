@@ -229,7 +229,7 @@ namespace TAO::API
                 throw Exception(-13, "Object not found");
 
             /* Now lets check our expected types match. */
-            if(!CheckObject(jParams, objFrom))
+            if(!CheckStandard(jParams, objFrom))
                 throw Exception(-49, "Unexpected type for name / address");
 
             /* Extract a token name from our from parameter. */

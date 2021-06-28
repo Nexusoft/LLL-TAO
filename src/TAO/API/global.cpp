@@ -39,10 +39,6 @@ namespace TAO::API
 {
     std::map<std::string, Base*> Commands::mapTypes;
 
-    #ifndef NO_WALLET
-    Legacy::RPC*        legacy;
-    #endif
-
     /*  Instantiate global instances of the API. */
     void Initialize()
     {
@@ -62,11 +58,6 @@ namespace TAO::API
         Commands::Register<Tokens>();
         Commands::Register<Users>();
         Commands::Register<Voting>();
-
-        /* Create RPC server if enabled. */
-        #ifndef NO_WALLET
-        legacy = new Legacy::RPC();
-        #endif
     }
 
 
@@ -74,12 +65,6 @@ namespace TAO::API
     void Shutdown()
     {
         debug::log(0, FUNCTION, "Shutting down API");
-
-        /* Shutdown our RPC server if enabled. */
-        #ifndef NO_WALLET
-        if(legacy)
-            delete legacy;
-        #endif
 
         /* Shut down our subsequent API's */
         Commands::Shutdown();

@@ -40,7 +40,7 @@ namespace TAO::API
             throw Exception(-15, "Object is not an account or token");
 
         /* Now lets check our expected types match. */
-        if(!CheckObject(jParams, objThis))
+        if(!CheckStandard(jParams, objThis))
             throw Exception(-49, "Unexpected type for name / address");
 
         /* Build our response object. */

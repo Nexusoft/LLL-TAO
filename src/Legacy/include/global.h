@@ -13,18 +13,20 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <TAO/API/types/commands.h>
+#include <Legacy/rpc/types/rpc.h>
 
-#include <TAO/API/users/types/users.h> //XXX: temporary work-around for users being littered everywhere and dependent on this header
-
-namespace TAO::API
+namespace Legacy
 {
+    #ifndef NO_WALLET
+    extern Legacy::RPC* Commands;
+    #endif
+
     /** Initialize
      *
      *  Instantiate global instances of the API.
      *
      **/
-    void Initialize();
+    bool Initialize();
 
 
     /** Shutdown

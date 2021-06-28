@@ -62,7 +62,7 @@ namespace TAO::API
     bool CheckContract(const TAO::Operation::Contract& rContract);
 
 
-    /** CheckObject
+    /** CheckStandard
      *
      *  Checks if the designated object matches the explicet type specified in parameters.
      *  We have no return value since this command is meant to throw on errors for API calls.
@@ -73,10 +73,10 @@ namespace TAO::API
      *  @return True if the object type is what was specified.
      *
      **/
-    bool CheckObject(const encoding::json& jParams, const uint256_t& hashCheck);
+    bool CheckStandard(const encoding::json& jParams, const uint256_t& hashCheck);
 
 
-    /** CheckObject
+    /** CheckStandard
      *
      *  Checks if the designated object matches the explicet type specified in parameters.
      *  Doesn't do a register database lookup like prior overload does.
@@ -87,7 +87,7 @@ namespace TAO::API
      *  @return True if the object type is what was specified.
      *
      **/
-    bool CheckObject(const encoding::json& jParams, const TAO::Register::Object& objCheck);
+    bool CheckStandard(const encoding::json& jParams, const TAO::Register::Object& objCheck);
 
 
 }

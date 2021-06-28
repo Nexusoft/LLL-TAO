@@ -11,11 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/include/global.h>
 
 #include <LLP/types/rpcnode.h>
 #include <LLP/templates/events.h>
 
-#include <TAO/API/include/global.h>
 #include <TAO/API/types/exception.h>
 
 #include <Util/include/config.h>
@@ -177,7 +177,7 @@ namespace LLP
 
             /* Execute the RPC method. */
             #ifndef NO_WALLET
-            encoding::json jsonResult = TAO::API::legacy->Execute(strMethod, jParams, false);
+            encoding::json jsonResult = Legacy::Commands->Execute(strMethod, jParams, false);
 
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jID).dump());

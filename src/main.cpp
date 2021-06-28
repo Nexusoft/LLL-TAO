@@ -11,7 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-
 #include <LLP/include/global.h>
 #include <LLP/include/port.h>
 #include <LLP/types/apinode.h>
@@ -36,6 +35,7 @@ ________________________________________________________________________________
 #include <Util/include/daemon.h>
 
 #include <Legacy/include/ambassador.h>
+#include <Legacy/include/global.h>
 #include <Legacy/wallet/wallet.h>
 
 #ifndef WIN32
@@ -116,11 +116,7 @@ int main(int argc, char** argv)
     }
 
 
-    /* Startup timer stats. */
-    uint32_t nElapsed = 0;
-
-
-    /* Check for failures. */
+    /* Check for failures or shutdown. */
     bool fFailed = config::fShutdown.load();
     if(!fFailed)
     {
@@ -132,69 +128,20 @@ int main(int argc, char** argv)
         TAO::Ledger::ChainState::Initialize();
 
 
-        /* We don't need the wallet in client mode. */
-        if(!config::fClient.load())
-        {
-            #ifndef NO_WALLET
-
-            /* Load the Wallet Database. NOTE this needs to be done before ChainState::Initialize as that can disconnect blocks causing
-               the wallet to be accessed if they contain any legacy stake transactions */
-            bool fFirstRun;
-            if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
-                return debug::error("Failed initializing wallet");
-
-
-            /* Initialize the scripts for legacy mode. */
-            Legacy::InitializeScripts();
-
-
-            /* Check the wallet loading for errors. */
-            uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
-            if (nLoadWalletRet != Legacy::DB_LOAD_OK)
-            {
-                if (nLoadWalletRet == Legacy::DB_CORRUPT)
-                    return debug::error("Failed loading wallet.dat: Wallet corrupted");
-                else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
-                    return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
-                else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
-                {
-                    debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning now");
-
-                    Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
-                }
-                else
-                    return debug::error("Failed loading wallet.dat");
-            }
-
-
-            /* Handle Rescanning. */
-            if(config::GetBoolArg(std::string("-rescan")))
-                Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
-
-
-            /* Relay transactions. */
-            Legacy::Wallet::GetInstance().ResendWalletTransactions();
-
-            #else
-
-            /* Initialize the scripts for legacy mode. */
-            Legacy::InitializeScripts();
-
-            #endif
-        }
-
-
         /* Initialize the Lower Level Protocol. */
         LLP::Initialize();
 
 
-        /* Elapsed Milliseconds from timer. */
-        nElapsed = timer.ElapsedMilliseconds();
-        timer.Stop();
+        /* Initialize Legacy Environment. */
+        if(!Legacy::Initialize())
+        {
+            config::fShutdown.store(true);
+            fFailed = true;
+        }
 
 
         /* Startup performance metric. */
-        debug::log(0, FUNCTION, "Started up in ", nElapsed, "ms");
+        debug::log(0, FUNCTION, "Started up in ", timer.ElapsedMilliseconds(), "ms");
 
 
         /* Set the initialized flags. */
@@ -241,39 +188,22 @@ int main(int argc, char** argv)
     timer.Reset();
 
 
-    /* After all servers shut down, clean up underlying networking resources */
-    LLP::Shutdown();
-
-
-    /* Shutdown the API. */
+    /* Shutdown the API subsystems. */
     TAO::API::Shutdown();
 
 
-    /* Shutdown database instances. */
+    /* Shutdown LLL sub-systems. */
+    LLP::Shutdown();
     LLD::Shutdown();
 
 
-    /* Shutdown these subsystems if nothing failed. */
-    if(!fFailed && !config::fClient.load())
-    {
-        #ifndef NO_WALLET
-
-        /* Shut down wallet database environment. */
-        if (config::GetBoolArg(std::string("-flushwallet"), true))
-            Legacy::WalletDB::ShutdownFlushThread();
-
-        Legacy::BerkeleyDB::GetInstance().Shutdown();
-
-        #endif
-    }
-
-
-    /* Elapsed Milliseconds from timer. */
-    nElapsed = timer.ElapsedMilliseconds();
+    /* We check failed here as wallet could have cause failed startup via the fShutdown flag. */
+    if(!fFailed)
+        Legacy::Shutdown();
 
 
     /* Startup performance metric. */
-    debug::log(0, FUNCTION, "Closed in ", nElapsed, "ms");
+    debug::log(0, FUNCTION, "Closed in ", timer.ElapsedMilliseconds(), "ms");
 
 
     /* Close the debug log file once and for all. */

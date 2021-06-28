@@ -596,6 +596,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_create.o \
 		build/Legacy_enum.o \
 		build/Legacy_evaluate.o \
+		build/Legacy_global.o \
 		build/Legacy_legacy.o \
 		build/Legacy_masterkey.o \
 		build/Legacy_mempool.o \

@@ -84,7 +84,7 @@ namespace TAO::API
                 continue;
 
             /* Check that our type matches our noun. */
-            if(!CheckObject(jParams, objThis))
+            if(!CheckStandard(jParams, objThis))
                 continue;
 
             /* Check the account matches the parameter filter if supplied, otherwise revert to where clause. */

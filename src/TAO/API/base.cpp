@@ -31,6 +31,7 @@ namespace TAO::API
 
         return mapFunctions.at(strMethod).Status();
     }
+    
 
     /* Checks an object's standard if it has been standardized for this command-set. */
     bool Base::Standard(const std::string& strType, const uint8_t nStandard) const
