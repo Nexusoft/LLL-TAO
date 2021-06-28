@@ -31,17 +31,17 @@ namespace TAO::API
 
         return mapFunctions.at(strMethod).Status();
     }
-    
 
-    /* Checks an object's standard if it has been standardized for this command-set. */
-    bool Base::Standard(const std::string& strType, const uint8_t nStandard) const
+
+    /* Checks an object's type if it has been standardized for this command-set. */
+    bool Base::Check(const std::string& strType, const uint16_t nType) const
     {
         /* Let's check against the types required now. */
         if(!mapStandards.count(strType))
             return false;
 
         /* Now let's check that the enum values match. */
-        if(mapStandards.at(strType) != nStandard)
+        if(mapStandards.at(strType) != nType)
             return false;
 
         return true;

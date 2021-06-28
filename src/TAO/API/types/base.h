@@ -79,17 +79,17 @@ namespace TAO::API
         std::string Status(const std::string& strMethod) const;
 
 
-        /** Standard
+        /** Check
          *
-         *  Checks an object's standard if it has been standardized for this command-set.
+         *  Checks an object's type if it has been standardized for this command-set.
          *
          *  @param[in] strType The object standard name we are checking for.
-         *  @param[in] nStandard The object's standard enum value to check against.
+         *  @param[in] nType The object's standard enum value to check against.
          *
          *  @return true if standard exists and matches, false otherwise.
          *
          **/
-        bool Standard(const std::string& strType, const uint8_t nStandard) const;
+        bool Check(const std::string& strType, const uint16_t nType) const;
 
 
         /** Execute
@@ -168,7 +168,7 @@ namespace TAO::API
 
 
         /** Map of standard nouns to check for standard object types. **/
-        std::map<std::string, uint8_t>  mapStandards;
+        std::map<std::string, uint16_t>  mapStandards;
     };
 
 

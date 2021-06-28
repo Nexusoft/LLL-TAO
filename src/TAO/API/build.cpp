@@ -65,7 +65,6 @@ namespace TAO::API
         /* Build a JSON response object. */
         encoding::json jRet;
         jRet["success"] = true; //just a little response for if using -autotx
-        jRet["status"]  = "active"; //XXX: we wnat this to check a functions map for status, this also allows disabling some methods.
 
         /* Handle passing txid if not in -autotx mode. */
         const uint512_t hashTx = BuildAndAccept(jParams, vContracts);

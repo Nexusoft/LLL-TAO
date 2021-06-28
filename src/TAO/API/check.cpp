@@ -126,7 +126,37 @@ namespace TAO::API
             return true;
 
         /* Grab a copy of our type to check against. */
-        if(!pBase->Standard(jParams["request"]["type"].get<std::string>(), objCheck.Standard()))
+        if(!pBase->Check(jParams["request"]["type"].get<std::string>(), objCheck.Standard()))
+            return false; //we only fail here, as we want to isolate returns based on the standards, not parameters
+
+        return true;
+    }
+
+    /* Checks if the designated state matches the explicet type specified in parameters. */
+    bool CheckState(const encoding::json& jParams, const TAO::Register::State& steCheck)
+    {
+        /* Check for our request parameters first, since this method can be called without */
+        if(jParams.find("request") == jParams.end())
+            return true;
+
+        /* Check for our type we are checking against. */
+        if(jParams["request"].find("type") == jParams["request"].end())
+            return true;
+
+        /* Check that we have the commands set. */
+        const Base* pBase = Commands::Get(jParams["request"]["commands"].get<std::string>());
+        if(!pBase)
+            return true;
+
+        /* Reset our object's read position. */
+        steCheck.nReadPos = 0;
+
+        /* Deserialize the leading byte of the state data to check the data type */
+        uint16_t nType;
+        steCheck >> nType;
+
+        /* Grab a copy of our type to check against. */
+        if(!pBase->Check(jParams["request"]["type"].get<std::string>(), nType))
             return false; //we only fail here, as we want to isolate returns based on the standards, not parameters
 
         return true;
