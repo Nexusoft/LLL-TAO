@@ -20,16 +20,13 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Lists the currently processed notifications. */
-    encoding::json Users::Clear(const encoding::json& params, const bool fHelp)
+    encoding::json Users::Clear(const encoding::json& jParams, const bool fHelp)
     {
         /* JSON return value. */
         encoding::json jRet;
 
-        /* Get the Genesis ID. */
-        const uint256_t hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
-
         /* Load the session */
-        Session& session = Commands::Get<Users>()->GetSession(params);
+        Session& session = Commands::Get<Users>()->GetSession(jParams);
 
         /* Check that it was loaded correctly */
         if(session.IsNull())

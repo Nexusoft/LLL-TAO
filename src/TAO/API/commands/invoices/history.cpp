@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/invoices/types/invoices.h>
+#include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/objects/types/objects.h>
 
 #include <TAO/Ledger/include/timelocks.h>

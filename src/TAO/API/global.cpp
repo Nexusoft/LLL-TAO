@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <TAO/API/names/types/names.h>
 #include <TAO/API/objects/types/objects.h>
 #include <TAO/API/voting/types/voting.h>
-#include <TAO/API/invoices/types/invoices.h>
+#include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/crypto/types/crypto.h>
 
 

@@ -287,7 +287,7 @@ namespace TAO::API
             rContract >> nAmount;
 
             /* Now lets check our expected types match. */
-            if(!CheckType(jParams, hashCredit))
+            if(!CheckObject(jParams, hashCredit))
                 return false;
 
             /* if we passed all of these checks then insert the credit contract into the tx */
@@ -329,7 +329,7 @@ namespace TAO::API
                     throw Exception(-59, "Account to credit is not a NXS account");
 
                 /* Now lets check our expected types match. */
-                if(!CheckType(jParams, objCredit))
+                if(!CheckObject(jParams, objCredit))
                     throw Exception(-49, "Unexpected type for name / address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
@@ -378,7 +378,7 @@ namespace TAO::API
                     throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Now lets check our expected types match. */
-                if(!CheckType(jParams, objCredit))
+                if(!CheckObject(jParams, objCredit))
                     throw Exception(-49, "Unexpected type for name / address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
@@ -406,7 +406,7 @@ namespace TAO::API
                     return false;
 
                 /* Now lets check our expected types match. */
-                if(!CheckType(jParams, objTo))
+                if(!CheckObject(jParams, objTo))
                     throw Exception(-49, "Unexpected type for name / address");
 
                 /* Create our new contract now. */
@@ -461,7 +461,7 @@ namespace TAO::API
                     throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Now lets check our expected types match. */
-                if(!CheckType(jParams, objCredit))
+                if(!CheckObject(jParams, objCredit))
                     throw Exception(-49, "Unexpected type for name / address");
 
                 /* Calculate the partial amount we want to claim based on our share of the proof tokens */

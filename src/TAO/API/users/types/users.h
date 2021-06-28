@@ -34,7 +34,6 @@ ________________________________________________________________________________
 #include <atomic>
 #include <vector>
 
-
 /* Global TAO namespace. */
 namespace TAO::API
 {

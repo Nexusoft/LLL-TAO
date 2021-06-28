@@ -15,8 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
-#include <TAO/Register/types/address.h>
-#include <TAO/Register/types/state.h>
+namespace TAO::Register { class Address; class State; }
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -57,102 +56,97 @@ namespace TAO::API
         }
 
 
-        /** RewriteURL
-         *
-         *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-         *  map directly to a function in the target API.  Insted this method can be overriden to
-         *  parse the incoming URL and route to a different/generic method handler, adding parameter
-         *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-         *  added to the jsonParams
-         *  The return json contains the modifed method URL to be called.
-         *
-         *  @param[in] strMethod The name of the method being invoked.
-         *  @param[in] jsonParams The json array of parameters being passed to this method.
-         *
-         *  @return the API method URL
-         *
-         **/
-        std::string RewriteURL(const std::string& strMethod, encoding::json& jsonParams) override;
-
-
         /** Create
          *
          *  Creates a new invoice.
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Create(const encoding::json& params, const bool fHelp);
+        encoding::json Create(const encoding::json& jParams, const bool fHelp);
 
 
         /** Get
          *
          *  Returns information about a single invoice .
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Get(const encoding::json& params, const bool fHelp);
+        encoding::json Get(const encoding::json& jParams, const bool fHelp);
+
+
+        /** List
+         *
+         *  Returns all current invoices for this user.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json List(const encoding::json& jParams, const bool fHelp);
 
 
         /** Pay
          *
          *  Pay an invoice and take ownership of it
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Pay(const encoding::json& params, const bool fHelp);
+        encoding::json Pay(const encoding::json& jParams, const bool fHelp);
 
 
         /** Cancel
          *
          *  Cancels (voids) an invoice that has been sent
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Cancel(const encoding::json& params, const bool fHelp);
+        encoding::json Cancel(const encoding::json& jParams, const bool fHelp);
 
 
         /** History
          *
          *  Gets the history of an invoice.
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json History(const encoding::json& params, const bool fHelp);
+        encoding::json History(const encoding::json& jParams, const bool fHelp);
 
 
         /** InvoiceToJSON
         *
         *  Returns the JSON representation of this invoice
         *
-        *  @param[in] params The parameters from the API call.
+        *  @param[in] jParams The parameters from the API call.
         *  @param[in] state The state register containing the invoice data
         *  @param[in] hashInvoice The register address of the invoice state register
         *
         *  @return the invoice JSON
         *
         **/
-        static encoding::json InvoiceToJSON(const encoding::json& params, const TAO::Register::State& state,
-                                   const TAO::Register::Address& hashInvoice);
+        static encoding::json InvoiceToJSON(const encoding::json& jParams, const TAO::Register::State& state,
+                                            const TAO::Register::Address& hashInvoice);
 
 
     private:

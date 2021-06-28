@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/invoices/types/invoices.h>
+#include <TAO/API/types/commands/invoices.h>
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/build.h>
@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/names/types/names.h>
-#include <TAO/API/invoices/types/invoices.h>
+#include <TAO/API/types/commands/invoices.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -43,11 +43,6 @@ namespace TAO
         /* Transfers an item. */
         encoding::json Invoices::Cancel(const encoding::json& params, const bool fHelp)
         {
-            /* First ensure that transaction version 2 active, as the conditions required for invoices were not enabled until v2 */
-            const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
-            if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(runtime::unifiedtimestamp(), 2)))
-                throw Exception(-254, "Invoices API not yet active.");
-
             encoding::json ret;
 
             /* Authenticate the users credentials */

@@ -437,12 +437,13 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_finance_migrate.o \
 		build/API_commands_finance_set-stake.o \
 		build/API_commands_finance_stake-info.o \
-		build/API_types_invoices_cancel.o \
-		build/API_types_invoices_create.o \
-		build/API_types_invoices_get.o \
-		build/API_types_invoices_history.o \
-		build/API_types_invoices_initialize.o \
-		build/API_types_invoices_pay.o \
+		build/API_commands_invoices_cancel.o \
+		build/API_commands_invoices_create.o \
+		build/API_commands_invoices_get.o \
+		build/API_commands_invoices_list.o \
+		build/API_commands_invoices_history.o \
+		build/API_commands_invoices_initialize.o \
+		build/API_commands_invoices_pay.o \
 		build/API_types_ledger_block.o \
 		build/API_types_ledger_initialize.o \
 		build/API_types_ledger_state.o \
@@ -484,7 +485,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_has.o \
         build/API_types_users_initialize.o \
 		build/API_types_users_items.o \
-		build/API_types_users_invoices.o \
 		build/API_types_users_load.o \
 		build/API_types_users_lock.o \
 		build/API_types_users_login.o \
@@ -754,7 +754,7 @@ build/API_types_dex_%.o: ./src/TAO/API/dex/%.cpp $(HEADERS)
 build/API_commands_finance_%.o: ./src/TAO/API/commands/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_invoices_%.o: ./src/TAO/API/invoices/%.cpp $(HEADERS)
+build/API_commands_invoices_%.o: ./src/TAO/API/commands/invoices/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
@@ -1327,7 +1327,7 @@ build/API_commands_finance_%.o: src/TAO/API/commands/finance/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_invoices_%.o: src/TAO/API/invoices/%.cpp $(HEADERS)
+build/API_commands_invoices_%.o: src/TAO/API/commands/invoices/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

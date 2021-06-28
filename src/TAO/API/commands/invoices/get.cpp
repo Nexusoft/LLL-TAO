@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/invoices/types/invoices.h>
+#include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/names/types/names.h>
 
 #include <TAO/API/include/filter.h>

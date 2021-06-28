@@ -143,7 +143,7 @@ namespace TAO::API
             , version::get_version(6, 0, 0)
             , "please use register/list/accounts WHERE results.token=<token> command instead"
         );
-        
+
 
         /* DEPRECATED */
         mapFunctions["list/account/transactions"] = Function
