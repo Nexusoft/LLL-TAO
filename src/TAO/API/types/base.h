@@ -14,7 +14,11 @@ ________________________________________________________________________________
 #pragma once
 
 #include <TAO/API/types/function.h>
+#include <TAO/API/types/standard.h>
 #include <TAO/API/types/exception.h>
+
+/* Forward declarations. */
+namespace TAO::Register { class Object; }
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -79,17 +83,17 @@ namespace TAO::API
         std::string Status(const std::string& strMethod) const;
 
 
-        /** Check
+        /** CheckObject
          *
          *  Checks an object's type if it has been standardized for this command-set.
          *
          *  @param[in] strType The object standard name we are checking for.
-         *  @param[in] nType The object's standard enum value to check against.
+         *  @param[in] objCheck The object to check standard against.
          *
          *  @return true if standard exists and matches, false otherwise.
          *
          **/
-        bool Check(const std::string& strType, const uint16_t nType) const;
+        bool CheckObject(const std::string& strType, const TAO::Register::Object& objCheck) const;
 
 
         /** Execute
@@ -168,7 +172,7 @@ namespace TAO::API
 
 
         /** Map of standard nouns to check for standard object types. **/
-        std::map<std::string, uint16_t>  mapStandards;
+        std::map<std::string, Standard>  mapStandards;
     };
 
 

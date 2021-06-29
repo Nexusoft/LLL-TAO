@@ -23,9 +23,33 @@ namespace TAO::API
     /* Standard initialization function. */
     void Finance::Initialize()
     {
-        /* Populate our standard objects. */
-        mapStandards["account"] = TAO::Register::OBJECTS::ACCOUNT;
-        mapStandards["token"]   = TAO::Register::OBJECTS::TOKEN;
+        /* Populate our ACCOUNT standard. */
+        mapStandards["account"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                /* Check for common standard base. */
+                if(objCheck.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                    return false;
+
+                return objCheck.Standard() == TAO::Register::OBJECTS::ACCOUNT;
+            }
+        );
+
+        /* Populate our TOKEN standard. */
+        mapStandards["token"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                /* Check for common standard base. */
+                if(objCheck.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                    return false;
+
+                return objCheck.Standard() == TAO::Register::OBJECTS::TOKEN;
+            }
+        );
 
 
         /* Handle for all CREATE operations. */

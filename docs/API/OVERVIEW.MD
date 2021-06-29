@@ -156,8 +156,8 @@ API Error Codes
 | -2 | Method not found: [message] |
 | -3 | Method was deprecated at version [version]: [message] |
 | -4 | API not found (API name) |
-| -5 | content-type [content type] not supported |
-| -6 | content-type not provided when content included |
+| -5 | Object not available: [message] |
+| -6 | content-type [content type] not supported |
 | -7 | Invalid transaction id |
 | -8 | Unable to Extract Input Address |
 | -9 | Session (session) doesn't exist |

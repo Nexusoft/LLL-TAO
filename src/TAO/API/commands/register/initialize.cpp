@@ -24,19 +24,105 @@ namespace TAO::API
     /* Standard initialization function. */
     void Register::Initialize()
     {
-        /* Populate our standard object registers. */
-        mapStandards["account"]   = TAO::Register::OBJECTS::ACCOUNT;
-        mapStandards["crypto"]    = TAO::Register::OBJECTS::CRYPTO;
-        mapStandards["name"]      = TAO::Register::OBJECTS::NAME;
-        mapStandards["namespace"] = TAO::Register::OBJECTS::NAMESPACE;
-        mapStandards["object"]    = TAO::Register::OBJECTS::NONSTANDARD;
-        mapStandards["token"]     = TAO::Register::OBJECTS::TOKEN;
-        mapStandards["trust"]     = TAO::Register::OBJECTS::TRUST;
+        /* Populate our ACCOUNT standard. */
+        mapStandards["account"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.Standard() == TAO::Register::OBJECTS::ACCOUNT;
+            }
+        );
 
-        /* Populate our standard state registers. */
-        mapStandards["append"]    = TAO::Register::REGISTER::APPEND;
-        mapStandards["raw"]       = TAO::Register::REGISTER::RAW;
-        mapStandards["readonly"]  = TAO::Register::REGISTER::READONLY;
+        /* Populate our CRYPTO standard. */
+        mapStandards["crypto"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.Standard() == TAO::Register::OBJECTS::CRYPTO;
+            }
+        );
+
+        /* Populate our NAME standard. */
+        mapStandards["name"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.Standard() == TAO::Register::OBJECTS::NAME;
+            }
+        );
+
+        /* Populate our NAMESPACE standard. */
+        mapStandards["namespace"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.Standard() == TAO::Register::OBJECTS::NAMESPACE;
+            }
+        );
+
+        /* Populate our OBJECT standard. */
+        mapStandards["object"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.Standard() == TAO::Register::OBJECTS::NONSTANDARD;
+            }
+        );
+
+        /* Populate our TOKEN standard. */
+        mapStandards["token"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.Standard() == TAO::Register::OBJECTS::TOKEN;
+            }
+        );
+
+        /* Populate our TRUST standard. */
+        mapStandards["trust"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.Standard() == TAO::Register::OBJECTS::TRUST;
+            }
+        );
+
+        /* Populate our APPEND standard. */
+        mapStandards["append"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.nType == TAO::Register::REGISTER::APPEND;
+            }
+        );
+
+        /* Populate our RAW standard. */
+        mapStandards["raw"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.nType == TAO::Register::REGISTER::RAW;
+            }
+        );
+
+        /* Populate our READONLY standard. */
+        mapStandards["readonly"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.nType == TAO::Register::REGISTER::READONLY;
+            }
+        );
 
 
         /* Handle for generic list operations. */

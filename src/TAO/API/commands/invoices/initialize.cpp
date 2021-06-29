@@ -27,7 +27,33 @@ namespace TAO
         void Invoices::Initialize()
         {
             /* Populate our standard objects. */
-            mapStandards["invoice"] = TAO::API::USER_TYPES::INVOICE;
+            /* Populate our invoice standard. */
+            mapStandards["invoice"] = Standard
+            (
+                /* Lambda expression to determine object standard. */
+                [](const TAO::Register::Object& objCheck)
+                {
+                    /* Check for correct state type. */
+                    if(objCheck.nType != TAO::Register::REGISTER::READONLY)
+                        return false;
+
+                    /* Reset read position. */
+                    objCheck.nReadPos = 0;
+
+                    /* Find our leading type byte. */
+                    uint16_t nType;
+                    objCheck >> nType;
+
+                    /* Cleanup our read position. */
+                    objCheck.nReadPos = 0;
+
+                    /* Check that this matches our user type. */
+                    if(nType != USER_TYPES::INVOICE)
+                        return false;
+
+                    return true;
+                }
+            );
 
 
             /* Handle for all CREATE operations. */

@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/check.h>
 
+#include <TAO/Register/types/object.h>
+
 #include <Util/include/string.h>
 
 /* Global TAO namespace. */
@@ -34,17 +36,14 @@ namespace TAO::API
 
 
     /* Checks an object's type if it has been standardized for this command-set. */
-    bool Base::Check(const std::string& strType, const uint16_t nType) const
+    bool Base::CheckObject(const std::string& strType, const TAO::Register::Object& objCheck) const
     {
         /* Let's check against the types required now. */
         if(!mapStandards.count(strType))
             return false;
 
         /* Now let's check that the enum values match. */
-        if(mapStandards.at(strType) != nType)
-            return false;
-
-        return true;
+        return mapStandards.at(strType).Check(objCheck);
     }
 
 

@@ -143,10 +143,10 @@ namespace LLP
                             jParams = encoding::json::parse(INCOMING.strContent);
                         }
                         else
-                            throw TAO::API::Exception(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
+                            throw TAO::API::Exception(-5, "content-type [", INCOMING.mapHeaders["content-type"], "] not supported");
                     }
                     else
-                        throw TAO::API::Exception(-6, "content-type not provided when content included");
+                        throw TAO::API::Exception(-5, "content-type [null or misisng] not supported");
                 }
             }
             else if(INCOMING.strType == "GET")
