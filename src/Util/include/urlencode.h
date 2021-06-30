@@ -30,7 +30,7 @@ namespace encoding
      *  @return The encoded string.
      *
      **/
-    inline std::string urlencode(const std::string& strValue)
+    __attribute__((const)) inline std::string urlencode(const std::string& strValue)
     {
         //RFC 3986 section 2.3 Unreserved Characters (January 2005)
         const std::string strUnreserved = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.~";
@@ -59,7 +59,7 @@ namespace encoding
      *  @return The encoded string.
      *
      **/
-    inline std::string urldecode(const std::string& strValue)
+    __attribute__((const)) inline std::string urldecode(const std::string& strValue)
     {
         /* Loop and convert each hex value to given character. */
         std::string strRet = "";

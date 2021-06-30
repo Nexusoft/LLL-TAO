@@ -30,12 +30,18 @@ namespace math
      *  @return the integer value of nBase^nExp
      *
      **/
-    __attribute__((const)) inline uint64_t pow(const uint64_t nBase, const uint64_t nExp) //XXX: maybe use uint8_t for nExp? 64 is maximum size
+    __attribute__((const)) inline uint64_t pow(const uint64_t nBase, const uint8_t nExp)
     {
         /* We just do a simple for loop here for repeated multiplication. */
         uint64_t nRet = 1;
         for(uint32_t n = 0; n < nExp; ++n)
-            nRet *= nBase; //XXX: maybe check for overflows and throw exception here?
+        {
+            /* Check for an overflow here and throw an exception. */
+            if(nRet > (std::numeric_limits<uint64_t>::max() / nBase))
+                throw debug::exception(FUNCTION, "computation result is greater than 64-bits");
+
+            nRet *= nBase;
+        }
 
         return nRet;
     }
@@ -52,13 +58,14 @@ namespace math
      *  @return the integer value of log on value
      *
      **/
-    __attribute__((const)) inline uint64_t log(const uint64_t nBase, const uint64_t nValue)
+    __attribute__((const)) inline uint8_t log(const uint64_t nBase, const uint64_t nValue)
     {
         /* We just do a simple for loop here for repeated multiplication. */
         uint64_t nRet = 0, nCurrent = nValue;
         while(nCurrent >= nBase)
         {
             nCurrent /= nBase;
+
             ++nRet;
         }
 
