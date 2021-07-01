@@ -20,8 +20,8 @@ ________________________________________________________________________________
 #include <string.h>
 
 /* Forward declarations */
-namespace TAO::Operation { class Contract;              }
-namespace TAO::Register  { class Object; class State;   }
+namespace TAO::Operation { class Contract; }
+namespace TAO::Register  { class Object;   }
 
 
 /* Global TAO namespace. */
@@ -69,11 +69,12 @@ namespace TAO::API
      *
      *  @param[in] jParams The json parameters to check against.
      *  @param[in] hashCheck The register that we are checking against.
+     *  @param[in] fParse Flag to tell if we want to parse as an object.
      *
      *  @return True if the object type is what was specified.
      *
      **/
-    bool CheckStandard(const encoding::json& jParams, const uint256_t& hashCheck);
+    bool CheckStandard(const encoding::json& jParams, const uint256_t& hashCheck, const bool fParse = true);
 
 
     /** CheckStandard
@@ -88,19 +89,6 @@ namespace TAO::API
      *
      **/
     bool CheckStandard(const encoding::json& jParams, const TAO::Register::Object& objCheck);
-
-
-    /** CheckState
-     *
-     *  Checks if the designated state matches the explicet type specified in parameters.
-     *
-     *  @param[in] jParams The json parameters to check against.
-     *  @param[in] steCheck The object that we are checking for.
-     *
-     *  @return True if the object type is what was specified.
-     *
-     **/
-    bool CheckState(const encoding::json& jParams, const TAO::Register::State& steCheck);
 
 
 }

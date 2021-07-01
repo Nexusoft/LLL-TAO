@@ -110,7 +110,7 @@ namespace TAO
 
         /* Looks up the transaction ID and Contract ID for the transfer transaction that needs to be paid */
         bool Invoices::get_tx(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice,
-                              uint512_t& txid, uint32_t& contractID)
+                              uint512_t &hashTx, uint32_t &nContract)
         {
             /* Get all registers that have been transferred to the recipient but not yet paid (claimed) */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
@@ -118,13 +118,16 @@ namespace TAO
 
             /* search the vector of unclaimed to see if this invoice is in there */
             const auto& itt = std::find_if(vUnclaimed.begin(), vUnclaimed.end(),
-                                            [&](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& unclaimed) { return std::get<2>(unclaimed) == hashInvoice; });
+                                [&](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& unclaimed)
+                                {
+                                    return std::get<2>(unclaimed) == hashInvoice;
+                                });
 
             /* If found set the txid from the contract */
             if(itt != vUnclaimed.end())
             {
-                txid = std::get<0>(*itt).Hash();
-                contractID = std::get<1>(*itt);
+                hashTx = std::get<0>(*itt).Hash();
+                nContract = std::get<1>(*itt);
 
                 return true;
             }

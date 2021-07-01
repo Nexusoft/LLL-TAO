@@ -11,167 +11,76 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/commands/invoices.h>
 #include <LLD/include/global.h>
 
-#include <TAO/API/include/build.h>
-#include <TAO/API/include/conditions.h>
-#include <TAO/API/include/constants.h>
-#include <TAO/API/types/commands.h>
-
-#include <TAO/API/users/types/users.h>
-#include <TAO/API/names/types/names.h>
 #include <TAO/API/types/commands/invoices.h>
 
-#include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/execute.h>
-
-#include <TAO/Ledger/include/create.h>
-#include <TAO/Ledger/include/timelocks.h>
-#include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
-
+#include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
+#include <TAO/API/include/conditions.h>
+#include <TAO/API/include/extract.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Transfers an item. */
+    encoding::json Invoices::Cancel(const encoding::json& jParams, const bool fHelp)
     {
+        /* Get the Register ID. */
+        const TAO::Register::Address hashRegister = ExtractAddress(jParams);
 
-        /* Transfers an item. */
-        encoding::json Invoices::Cancel(const encoding::json& params, const bool fHelp)
-        {
-            encoding::json ret;
+        /* Get the invoice object register . */
+        TAO::Register::State steCheck;
+        if(!LLD::Register->ReadState(hashRegister, steCheck, TAO::Ledger::FLAGS::MEMPOOL))
+            throw Exception(-241, "Invoice not found");
 
-            /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(params))
-                throw Exception(-139, "Invalid credentials");
+        /* Now lets check our expected types match. */
+        if(!CheckStandard(jParams, steCheck))
+            throw Exception(-49, "Unexpected type for name / address");
 
-            /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        /* Serialize the invoice into JSON. */
+        const encoding::json jInvoice =
+            InvoiceToJSON(jParams, steCheck, hashRegister);
 
-            /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+        /* The recipient genesis hash */
+        const uint256_t hashRecipient =
+            uint256_t(jInvoice["recipient"].get<std::string>());
 
+        /* Get the invoice status so that we can validate that we are allowed to cancel it */
+        const std::string strStatus = get_status(steCheck, hashRecipient);
 
-            /* Get the Register ID. */
-            TAO::Register::Address hashRegister ;
+        /* Check if invoice has been paid already. */
+        if(strStatus == "PAID")
+            throw Exception(-245, "Cannot cancel an invoice that has already been paid");
 
-            /* Check whether the caller has provided the asset name parameter. */
-            if(params.find("name") != params.end())
-            {
-                /* If name is provided then use this to deduce the register address */
-                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
-            }
+        /* Check if invoice has been cancelled. */
+        if(strStatus == "CANCELLED")
+            throw Exception(-246, "Cannot cancel an invoice that has already been cancelled");
 
-            /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("address") != params.end())
-                hashRegister.SetBase58(params["address"].get<std::string>());
+        /* The transaction ID to cancel */
+        uint512_t hashTx;
 
-            /* Fail if no required parameters supplied. */
-            else
-                throw Exception(-33, "Missing name / address");
+        /* The contract ID to cancel */
+        uint32_t nContract = 0;  //XXX: THIS SECTION COULD STILL DO WITH SOME WORK
 
-            /* Get the invoice object register . */
-            TAO::Register::State state;
-            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw Exception(-241, "Invoice not found");
+        /* Look up the transaction ID & contract ID of the transfer so that we can void it */
+        if(!get_tx(hashRecipient, hashRegister, hashTx, nContract))
+            throw Exception(-247, "Could not find invoice transfer transaction");
 
-            /* Ensure that it is an invoice register */
-            if(state.nType != TAO::Register::REGISTER::READONLY)
-                throw Exception(-242, "Data at this address is not an invoice");
+        /* Read the debit transaction. */
+        TAO::Ledger::Transaction tx;
+        if(!LLD::Ledger->ReadTx(hashTx, tx))
+            throw Exception(-40, "Previous transaction not found.");
 
-            /* Deserialize the leading byte of the state data to check the data type */
-            uint16_t type;
-            state >> type;
+        /* Build our vector of contracts to submit. */
+        std::vector<TAO::Operation::Contract> vContracts;
 
-            /* Check that the state is an invoice */
-            if(type != USER_TYPES::INVOICE)
-                throw Exception(-242, "Data at this address is not an invoice");
+        /* Process the contract and attempt to void it */
+        TAO::Operation::Contract tContract;
+        if(AddVoid(tx[nContract], nContract, tContract))
+            vContracts.push_back(tContract);
 
-            /* Deserialize the invoice */
-            encoding::json invoice = InvoiceToJSON(params, state, hashRegister);
-
-            /* The recipient genesis hash */
-            uint256_t hashRecipient;
-
-            /* Deserialize the recipient hash from the invoice data */
-            hashRecipient.SetHex(invoice["recipient"].get<std::string>());
-
-            /* Get the invoice status so that we can validate that we are allowed to cancel it */
-            std::string strStatus = get_status(state, hashRecipient);
-
-            /* Validate the current invoice status */
-            if(strStatus == "PAID")
-                throw Exception(-245, "Cannot cancel an invoice that has already been paid");
-            else if(strStatus == "CANCELLED")
-                throw Exception(-246, "Cannot cancel an invoice that has already been cancelled");
-
-            /* The transaction ID to cancel */
-            uint512_t hashTx;
-
-            /* The contract ID to cancel */
-            uint32_t nContract = 0;
-
-            /* Look up the transaction ID & contract ID of the transfer so that we can void it */
-            if(!get_tx(hashRecipient, hashRegister, hashTx, nContract))
-                throw Exception(-247, "Could not find invoice transfer transaction");
-
-            /* Lock the signature chain. */
-            LOCK(session.CREATE_MUTEX);
-
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw Exception(-17, "Failed to create transaction");
-
-            /* The transaction to be voided */
-            TAO::Ledger::Transaction txVoid;
-
-            /* Read the debit transaction. */
-            if(LLD::Ledger->ReadTx(hashTx, txVoid))
-            {
-                /* Check that the transaction belongs to the caller */
-                if(txVoid.hashGenesis != session.GetAccount()->Genesis())
-                    throw Exception(-172, "Cannot void a transaction that does not belong to you.");
-
-                /* Process the contract and attempt to void it */
-                TAO::Operation::Contract voidContract;
-
-                if(AddVoid(txVoid[nContract], nContract, voidContract))
-                    tx[tx.Size()] = voidContract;
-            }
-            else
-            {
-                throw Exception(-40, "Previous transaction not found.");
-            }
-
-
-            /* Check that output was found. */
-            if(tx.Size() == 0)
-                throw Exception(-174, "Transaction contains no contracts that can be voided");
-
-            /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw Exception(-44, "Transaction failed to build");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw Exception(-31, "Ledger failed to sign transaction.");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw Exception(-32, "Failed to accept.");
-
-            /* Build a JSON response object. */
-            ret["txid"]  = tx.GetHash().ToString();
-
-            return ret;
-        }
+        /* Build response JSON boilerplate. */
+        return BuildResponse(jParams, hashRegister, vContracts);
     }
 }
