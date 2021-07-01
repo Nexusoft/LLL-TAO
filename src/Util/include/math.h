@@ -34,11 +34,11 @@ namespace math
     {
         /* We just do a simple for loop here for repeated multiplication. */
         uint64_t nRet = 1;
-        for(uint32_t n = 0; n < nExp; ++n)
+        for(uint8_t n = 0; n < nExp; ++n)
         {
             /* Check for an overflow here and throw an exception. */
             if(nRet > (std::numeric_limits<uint64_t>::max() / nBase))
-                throw debug::exception(FUNCTION, "computation result is greater than 64-bits");
+                throw debug::exception(FUNCTION, "computation result greater than 64-bits");
 
             nRet *= nBase;
         }

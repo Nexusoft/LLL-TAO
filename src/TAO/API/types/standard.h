@@ -28,7 +28,7 @@ namespace TAO::API
     /** Standard
      *
      *  Base class for all standard objects per API commandset
-     *  Encapsulates the function pointer to the method to process the API request
+     *  Encapsulates the function pointer that verifies object's standard.
      *
      **/
     class Standard
