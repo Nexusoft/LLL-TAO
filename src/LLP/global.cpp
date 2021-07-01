@@ -203,6 +203,8 @@ namespace LLP
     /*  Shutdown the LLP. */
     void Shutdown()
     {
+        debug::log(0, FUNCTION, "Shutting down LLP");
+
         /* Shutdown the tritium server and its subsystems. */
         Shutdown<TritiumNode>(TRITIUM_SERVER);
 

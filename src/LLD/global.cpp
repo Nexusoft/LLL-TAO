@@ -72,7 +72,7 @@ namespace LLD
         /* Create the local database instance. */
         Local    = new LocalDB(
                         FLAGS::CREATE | FLAGS::FORCE);
-        
+
 
         if(config::fClient.load())
         {
@@ -94,57 +94,31 @@ namespace LLD
 
         /* Cleanup the contract database. */
         if(Contract)
-        {
-            debug::log(2, FUNCTION, "Shutting down ContractDB");
             delete Contract;
-        }
 
         /* Cleanup the ledger database. */
         if(Ledger)
-        {
-            debug::log(2, FUNCTION, "Shutting down LedgerDB");
             delete Ledger;
-        }
-
 
         /* Cleanup the register database. */
         if(Register)
-        {
-            debug::log(2, FUNCTION, "Shutting down RegisterDB");
             delete Register;
-        }
-
 
         /* Cleanup the local database. */
         if(Local)
-        {
-            debug::log(2, FUNCTION, "Shutting down LocalDB");
             delete Local;
-        }
-
 
         /* Cleanup the client database. */
         if(Client)
-        {
-            debug::log(2, FUNCTION, "Shutting down ClientDB");
             delete Client;
-        }
-
 
         /* Cleanup the legacy database. */
         if(Legacy)
-        {
-            debug::log(2, FUNCTION, "Shutting down LegacyDB");
             delete Legacy;
-        }
-
 
         /* Cleanup the trust database. */
         if(Trust)
-        {
-            debug::log(2, FUNCTION, "Shutting down TrustDB");
             delete Trust;
-        }
     }
 
 

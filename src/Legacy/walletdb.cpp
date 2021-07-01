@@ -851,7 +851,7 @@ namespace Legacy
         uint32_t nLastFlushed = 0;
         uint64_t nLastWalletUpdate = runtime::unifiedtimestamp();
 
-        debug::log(1, FUNCTION, "Wallet flush thread started");
+        //debug::log(1, FUNCTION, "Wallet flush thread started");
 
         while(!WalletDB::fShutdownFlushThread.load())
         {
@@ -892,8 +892,6 @@ namespace Legacy
                 }
             }
         }
-
-        debug::log(0, FUNCTION, "Shutting down wallet flush thread");
 
         /* Reset flags */
         WalletDB::fShutdownFlushThread.store(false);

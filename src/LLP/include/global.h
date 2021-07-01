@@ -108,10 +108,7 @@ namespace LLP
     void Shutdown(Server<ProtocolType> *pServer)
     {
         if(pServer)
-        {
             delete pServer;
-            debug::log(0, FUNCTION, ProtocolType::Name());
-        }
     }
 
 }
