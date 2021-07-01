@@ -140,127 +140,196 @@ const uint256_t hashSeed = 55;
 #include <TAO/API/types/function.h>
 #include <TAO/API/types/exception.h>
 
+#include <TAO/Operation/include/enum.h>
+
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    
-    return 0;
-
-    config::mapArgs["-datadir"] = "/public/SYNC";
+    config::mapArgs["-datadir"] = "/database/SYNC1";
 
     /* Initialize LLD. */
     LLD::Initialize();
 
+    uint32_t nScannedCount = 0;
 
-    uint1024_t hashBlock = uint1024_t("0x9e804d2d1e1d3f64629939c6f405f15bdcf8cd18688e140a43beb2ac049333a230d409a1c4172465b6642710ba31852111abbd81e554b4ecb122bdfeac9f73d4f1570b6b976aa517da3c1ff753218e1ba940a5225b7366b0623e4200b8ea97ba09cb93be7d473b47b5aa75b593ff4b8ec83ed7f3d1b642b9bba9e6eda653ead9");
+    uint512_t hashLast = 0;
 
+    /* If started from a Legacy block, read the first Tritium tx to set hashLast */
+    std::vector<TAO::Ledger::Transaction> vtx;
+    if(LLD::Ledger->BatchRead("tx", vtx, 1))
+        hashLast = vtx[0].GetHash();
 
-    TAO::Ledger::BlockState state = TAO::Ledger::TritiumGenesis();
-    debug::log(0, state.hashMerkleRoot.ToString());
-
-    return 0;
-
-    if(!LLD::Ledger->ReadBlock(hashBlock, state))
-        return debug::error("failed to read block");
-
-    printf("block.hashPrevBlock = uint1024_t(\"0x%s\");\n", state.hashPrevBlock.ToString().c_str());
-    printf("block.nVersion = %u;\n", state.nVersion);
-    printf("block.nHeight = %u;\n", state.nHeight);
-    printf("block.nChannel = %u;\n", state.nChannel);
-    printf("block.nTime = %lu;\n",    state.nTime);
-    printf("block.nBits = %u;\n", state.nBits);
-    printf("block.nNonce = %lu;\n", state.nNonce);
-
-    for(int i = 0; i < state.vtx.size(); ++i)
-    {
-        printf("/* Hardcoded VALUE for INDEX %i. */\n", i);
-        printf("vHashes.push_back(uint512_t(\"0x%s\"));\n\n", state.vtx[i].second.ToString().c_str());
-        //printf("block.vtx.push_back(std::make_pair(%u, uint512_t(\"0x%s\")));\n\n", state.vtx[i].first, state.vtx[i].second.ToString().c_str());
-    }
-
-    for(int i = 0; i < state.vOffsets.size(); ++i)
-        printf("block.vOffsets.push_back(%u);\n", state.vOffsets[i]);
-
-
-    return 0;
-
-    //config::mapArgs["-datadir"] = "/public/tests";
-
-    //TestDB* db = new TestDB();
-
-    uint1024_t hashLast = 0;
-    //db->ReadLast(hashLast);
-
-    std::fstream stream1(config::GetDataDir() + "/test1.txt", std::ios::in | std::ios::out | std::ios::binary);
-    std::fstream stream2(config::GetDataDir() + "/test2.txt", std::ios::in | std::ios::out | std::ios::binary);
-    std::fstream stream3(config::GetDataDir() + "/test3.txt", std::ios::in | std::ios::out | std::ios::binary);
-    std::fstream stream4(config::GetDataDir() + "/test4.txt", std::ios::in | std::ios::out | std::ios::binary);
-    std::fstream stream5(config::GetDataDir() + "/test5.txt", std::ios::in | std::ios::out | std::ios::binary);
-
-    std::vector<uint8_t> vBlank(1024, 0); //1 kb
-
-    stream1.write((char*)&vBlank[0], vBlank.size());
-    stream2.write((char*)&vBlank[0], vBlank.size());
-    stream3.write((char*)&vBlank[0], vBlank.size());
-    stream4.write((char*)&vBlank[0], vBlank.size());
-    stream5.write((char*)&vBlank[0], vBlank.size());
+    bool fFirst = true;
 
     runtime::timer timer;
     timer.Start();
-    for(uint64_t n = 0; n < 100000; ++n)
+
+    uint32_t nTransactionCount = 0;
+
+    debug::log(0, FUNCTION, "Scanning Tritium from tx ", hashLast.SubString());
+    while(!config::fShutdown.load())
     {
-        stream1.seekp(0, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
+        /* Read the next batch of inventory. */
+        std::vector<TAO::Ledger::Transaction> vtx;
+        if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, !fFirst))
+            break;
 
-        stream1.seekp(8, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
+        /* Loop through found transactions. */
+        TAO::Ledger::BlockState state;
+        for(const auto& tx : vtx)
+        {
+            //_unused(tx);
 
-        stream1.seekp(16, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
+            for(uint32_t n = 0; n < tx.Size(); ++n)
+            {
+                uint8_t nOP = 0;
+                tx[n] >> nOP;
 
-        stream1.seekp(32, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
+                if(nOP == TAO::Operation::OP::CONDITION || nOP == TAO::Operation::OP::VALIDATE)
+                    ++nTransactionCount;
+            }
 
-        stream1.seekp(64, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
-        stream1.flush();
+            /* Update the scanned count for meters. */
+            ++nScannedCount;
 
-        //db->WriteKey(n, n);
+            /* Meter for output. */
+            if(nScannedCount % 100000 == 0)
+            {
+                /* Get the time it took to rescan. */
+                uint32_t nElapsedSeconds = timer.Elapsed();
+                debug::log(0, FUNCTION, "Processed ", nTransactionCount, " of ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                    std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+            }
+        }
+
+        /* Set hash Last. */
+        hashLast = vtx.back().GetHash();
+
+        /* Check for end. */
+        if(vtx.size() != 1000)
+            break;
+
+        /* Set first flag. */
+        fFirst = false;
     }
 
-    debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
+    return 0;
 
 
-    timer.Reset();
-    for(uint64_t n = 0; n < 100000; ++n)
     {
-        stream1.seekp(0, std::ios::beg);
-        stream1.write((char*)&vBlank[0], vBlank.size());
-        stream1.flush();
+        uint1024_t hashBlock = uint1024_t("0x9e804d2d1e1d3f64629939c6f405f15bdcf8cd18688e140a43beb2ac049333a230d409a1c4172465b6642710ba31852111abbd81e554b4ecb122bdfeac9f73d4f1570b6b976aa517da3c1ff753218e1ba940a5225b7366b0623e4200b8ea97ba09cb93be7d473b47b5aa75b593ff4b8ec83ed7f3d1b642b9bba9e6eda653ead9");
 
-        stream2.seekp(8, std::ios::beg);
+
+        TAO::Ledger::BlockState state = TAO::Ledger::TritiumGenesis();
+        debug::log(0, state.hashMerkleRoot.ToString());
+
+        return 0;
+
+        if(!LLD::Ledger->ReadBlock(hashBlock, state))
+            return debug::error("failed to read block");
+
+        printf("block.hashPrevBlock = uint1024_t(\"0x%s\");\n", state.hashPrevBlock.ToString().c_str());
+        printf("block.nVersion = %u;\n", state.nVersion);
+        printf("block.nHeight = %u;\n", state.nHeight);
+        printf("block.nChannel = %u;\n", state.nChannel);
+        printf("block.nTime = %lu;\n",    state.nTime);
+        printf("block.nBits = %u;\n", state.nBits);
+        printf("block.nNonce = %lu;\n", state.nNonce);
+
+        for(int i = 0; i < state.vtx.size(); ++i)
+        {
+            printf("/* Hardcoded VALUE for INDEX %i. */\n", i);
+            printf("vHashes.push_back(uint512_t(\"0x%s\"));\n\n", state.vtx[i].second.ToString().c_str());
+            //printf("block.vtx.push_back(std::make_pair(%u, uint512_t(\"0x%s\")));\n\n", state.vtx[i].first, state.vtx[i].second.ToString().c_str());
+        }
+
+        for(int i = 0; i < state.vOffsets.size(); ++i)
+            printf("block.vOffsets.push_back(%u);\n", state.vOffsets[i]);
+
+
+        return 0;
+
+        //config::mapArgs["-datadir"] = "/public/tests";
+
+        //TestDB* db = new TestDB();
+
+        uint1024_t hashLast = 0;
+        //db->ReadLast(hashLast);
+
+        std::fstream stream1(config::GetDataDir() + "/test1.txt", std::ios::in | std::ios::out | std::ios::binary);
+        std::fstream stream2(config::GetDataDir() + "/test2.txt", std::ios::in | std::ios::out | std::ios::binary);
+        std::fstream stream3(config::GetDataDir() + "/test3.txt", std::ios::in | std::ios::out | std::ios::binary);
+        std::fstream stream4(config::GetDataDir() + "/test4.txt", std::ios::in | std::ios::out | std::ios::binary);
+        std::fstream stream5(config::GetDataDir() + "/test5.txt", std::ios::in | std::ios::out | std::ios::binary);
+
+        std::vector<uint8_t> vBlank(1024, 0); //1 kb
+
+        stream1.write((char*)&vBlank[0], vBlank.size());
         stream2.write((char*)&vBlank[0], vBlank.size());
-        stream2.flush();
-
-        stream3.seekp(16, std::ios::beg);
         stream3.write((char*)&vBlank[0], vBlank.size());
-        stream3.flush();
-
-        stream4.seekp(32, std::ios::beg);
         stream4.write((char*)&vBlank[0], vBlank.size());
-        stream4.flush();
-
-        stream5.seekp(64, std::ios::beg);
         stream5.write((char*)&vBlank[0], vBlank.size());
-        stream5.flush();
-        //db->WriteKey(n, n);
+
+        runtime::timer timer;
+        timer.Start();
+        for(uint64_t n = 0; n < 100000; ++n)
+        {
+            stream1.seekp(0, std::ios::beg);
+            stream1.write((char*)&vBlank[0], vBlank.size());
+
+            stream1.seekp(8, std::ios::beg);
+            stream1.write((char*)&vBlank[0], vBlank.size());
+
+            stream1.seekp(16, std::ios::beg);
+            stream1.write((char*)&vBlank[0], vBlank.size());
+
+            stream1.seekp(32, std::ios::beg);
+            stream1.write((char*)&vBlank[0], vBlank.size());
+
+            stream1.seekp(64, std::ios::beg);
+            stream1.write((char*)&vBlank[0], vBlank.size());
+            stream1.flush();
+
+            //db->WriteKey(n, n);
+        }
+
+        debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
+
+
+        timer.Reset();
+        for(uint64_t n = 0; n < 100000; ++n)
+        {
+            stream1.seekp(0, std::ios::beg);
+            stream1.write((char*)&vBlank[0], vBlank.size());
+            stream1.flush();
+
+            stream2.seekp(8, std::ios::beg);
+            stream2.write((char*)&vBlank[0], vBlank.size());
+            stream2.flush();
+
+            stream3.seekp(16, std::ios::beg);
+            stream3.write((char*)&vBlank[0], vBlank.size());
+            stream3.flush();
+
+            stream4.seekp(32, std::ios::beg);
+            stream4.write((char*)&vBlank[0], vBlank.size());
+            stream4.flush();
+
+            stream5.seekp(64, std::ios::beg);
+            stream5.write((char*)&vBlank[0], vBlank.size());
+            stream5.flush();
+            //db->WriteKey(n, n);
+        }
+        timer.Stop();
+
+        debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
+
+        //db->WriteLast(hashLast + 100000);
     }
-    timer.Stop();
 
-    debug::log(0, "Wrote 100k records in ", timer.ElapsedMicroseconds(), " micro-seconds");
 
-    //db->WriteLast(hashLast + 100000);
+
 
     return 0;
 }
