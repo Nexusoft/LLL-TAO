@@ -12,12 +12,11 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/invoices.h>
-#include <TAO/API/names/types/names.h>
+#include <TAO/API/users/types/users.h>
 
+#include <TAO/API/include/check.h>
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/filter.h>
-#include <TAO/API/include/global.h>
-#include <TAO/API/include/json.h>
-#include <TAO/API/include/constants.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -27,170 +26,123 @@ ________________________________________________________________________________
 
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Get's the description of an item. */
+    encoding::json Invoices::Get(const encoding::json& jParams, const bool fHelp)
     {
-        /* Get's the description of an item. */
-        encoding::json Invoices::Get(const encoding::json& params, const bool fHelp)
+        /* Get the Register ID. */
+        const TAO::Register::Address hashRegister = ExtractAddress(jParams);
+
+        /* Validate the payment account */
+        TAO::Register::State steCheck;
+        if(!LLD::Register->ReadState(hashRegister, steCheck))
+            throw Exception(-13, "Object not found");
+
+        /* Check our standard types here. */
+        if(!CheckStandard(jParams, steCheck))
+            throw Exception(-242, "Data at this address is not an invoice");
+
+        /* Build the response JSON. */
+        encoding::json jRet = InvoiceToJSON(jParams, steCheck, hashRegister);
+
+        /* Filter a fieldname if supplied. */
+        FilterFieldname(jParams, jRet);
+
+        return jRet;
+    }
+
+
+    /* Returns a status for the invoice (outstanding/paid/cancelled) */
+    std::string Invoices::get_status(const TAO::Register::State& state, const uint256_t& hashRecipient)
+    {
+        /* If the Invoice currently has no owner then we know it is outstanding */
+        if(state.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+            return "OUTSTANDING";
+
+        /* If register is owned by recipient, then it is paid. */
+        if(state.hashOwner == hashRecipient)
+            return "PAID";
+
+        /* Otherwise treat as cancelled. */
+        return "CANCELLED";
+    }
+
+
+    /* Looks up the transaction ID and Contract ID for the transfer transaction that needs to be paid */
+    bool Invoices::get_tx(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice,
+                          uint512_t &hashTx, uint32_t &nContract)
+    {
+        /* Get all registers that have been transferred to the recipient but not yet paid (claimed) */
+        std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
+        Users::get_unclaimed(hashRecipient, vUnclaimed);
+
+        /* search the vector of unclaimed to see if this invoice is in there */
+        const auto& itt = std::find_if(vUnclaimed.begin(), vUnclaimed.end(),
+                            [&](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& tUnclaimed)
+                            {
+                                return std::get<2>(tUnclaimed) == hashInvoice;
+                            });
+
+        /* If found set the txid from the contract */
+        if(itt != vUnclaimed.end())
         {
-            /* First ensure that transaction version 2 active, as the conditions required for invoices were not enabled until v2 */
-            const uint32_t nCurrent = TAO::Ledger::CurrentTransactionVersion();
-            if(nCurrent < 2 || (nCurrent == 2 && !TAO::Ledger::TransactionVersionActive(runtime::unifiedtimestamp(), 2)))
-                throw Exception(-254, "Invoices API not yet active.");
+            hashTx = std::get<0>(*itt).Hash();
+            nContract = std::get<1>(*itt);
 
-            encoding::json ret;
+            return true;
+        }
 
-            /* Get the Register ID. */
-            TAO::Register::Address hashRegister ;
+        /* If we haven't found the transation then return false */
+        return false;
+    }
 
-            /* Check whether the caller has provided the asset name parameter. */
-            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
+
+    /* Returns the JSON representation of this invoice */
+    encoding::json Invoices::InvoiceToJSON(const encoding::json& jParams, const TAO::Register::State& state,
+                                           const TAO::Register::Address& hashInvoice)
+    {
+        /* The JSON to return */
+        encoding::json jRet;
+
+        /* Add standard register details */
+        jRet["address"]    = hashInvoice.ToString();
+        jRet["created"]    = state.nCreated;
+        jRet["modified"]   = state.nModified;
+        jRet["owner"]      = TAO::Register::Address(state.hashOwner).ToString();
+
+        /* Deserialize the invoice data */
+        std::string strJSON;
+        state >> strJSON;
+
+        /* parse the serialized invoice JSON so that we can easily add the fields to the response */
+        const encoding::json jInvoice = encoding::json::parse(strJSON);
+
+        /* Add each of the invoice fields to the response */
+        for(auto it = jInvoice.begin(); it != jInvoice.end(); ++it)
+            jRet[it.key()] = it.value();
+
+        /* Get the recipient genesis hash from the invoice data so that we can use it to calculate the status*/
+        const uint256_t hashRecipient =
+            uint256_t(jInvoice["recipient"].get<std::string>());
+
+        /* Add status */
+        jRet["status"] = get_status(state, hashRecipient);
+
+        /* Add the payment txid and contract, if it is unclaimed (unpaid) */
+        if(state.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+        {
+            uint512_t hashTx   = 0;
+            uint32_t nContract = 0;
+
+            if(get_tx(hashRecipient, hashInvoice, hashTx, nContract))
             {
-                /* If name is provided then use this to deduce the register address */
-                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
+                jRet["txid"]     = hashTx.ToString();
+                jRet["contract"] = nContract;
             }
 
-            /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("address") != params.end())
-                hashRegister.SetBase58(params["address"].get<std::string>());
-
-            /* Fail if no required parameters supplied. */
-            else
-                throw Exception(-33, "Missing name / address");
-
-            /* Get the invoice object register . */
-            TAO::Register::State state;
-            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw Exception(-241, "Invoice not found");
-
-            if(config::fClient.load() && state.hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
-
-            /* Ensure that it is an invoice register */
-            if(state.nType != TAO::Register::REGISTER::READONLY)
-                throw Exception(-242, "Data at this address is not an invoice");
-
-            /* Deserialize the leading byte of the state data to check the data type */
-            uint16_t type;
-            state >> type;
-
-            /* Check that the state is an invoice */
-            if(type != USER_TYPES::INVOICE)
-                throw Exception(-242, "Data at this address is not an invoice");
-
-            /* Build the response JSON. */
-            ret = InvoiceToJSON(params, state, hashRegister);
-
-            /* If the caller has requested to filter on a fieldname then filter out the json response to only include that field */
-            FilterFieldname(params, ret);
-
-            return ret;
         }
 
-
-        /* Returns a status for the invoice (outstanding/paid/cancelled) */
-        std::string Invoices::get_status(const TAO::Register::State& state, const uint256_t& hashRecipient)
-        {
-            /* The return value string */
-            std::string strStatus;
-
-            /* If the Invoice currently has no owner then we know it is outstanding */
-            if(state.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
-                strStatus = "OUTSTANDING";
-            else if(state.hashOwner == hashRecipient)
-                strStatus = "PAID";
-            else
-                strStatus = "CANCELLED";
-
-            return strStatus;
-        }
-
-        /* Looks up the transaction ID and Contract ID for the transfer transaction that needs to be paid */
-        bool Invoices::get_tx(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice,
-                              uint512_t &hashTx, uint32_t &nContract)
-        {
-            /* Get all registers that have been transferred to the recipient but not yet paid (claimed) */
-            std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
-            Users::get_unclaimed(hashRecipient, vUnclaimed);
-
-            /* search the vector of unclaimed to see if this invoice is in there */
-            const auto& itt = std::find_if(vUnclaimed.begin(), vUnclaimed.end(),
-                                [&](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& unclaimed)
-                                {
-                                    return std::get<2>(unclaimed) == hashInvoice;
-                                });
-
-            /* If found set the txid from the contract */
-            if(itt != vUnclaimed.end())
-            {
-                hashTx = std::get<0>(*itt).Hash();
-                nContract = std::get<1>(*itt);
-
-                return true;
-            }
-
-            /* If we haven't found the transation then return false */
-            return false;
-        }
-
-        /* Returns the JSON representation of this invoice */
-        encoding::json Invoices::InvoiceToJSON(const encoding::json& params, const TAO::Register::State& state,
-                                             const TAO::Register::Address& hashInvoice)
-        {
-            /* The JSON to return */
-            encoding::json ret;
-
-            /* Build the response JSON. */
-            /* Look up the object name based on the Name records in the caller's sig chain */
-            std::string strName = Names::ResolveName(Commands::Get<Users>()->GetCallersGenesis(params), hashInvoice);
-
-            /* Add the name to the response if one is found. */
-            if(!strName.empty())
-                ret["name"] = strName;
-
-            /* Add standard register details */
-            ret["address"]    = hashInvoice.ToString();
-            ret["created"]    = state.nCreated;
-            ret["modified"]   = state.nModified;
-            ret["owner"]      = TAO::Register::Address(state.hashOwner).ToString();
-
-            /* Deserialize the invoice data */
-            std::string strJSON;
-            state >> strJSON;
-
-            /* parse the serialized invoice JSON so that we can easily add the fields to the response */
-            encoding::json invoice = encoding::json::parse(strJSON);
-
-            /* Add each of the invoice fields to the response */
-            for(auto it = invoice.begin(); it != invoice.end(); ++it)
-                ret[it.key()] = it.value();
-
-            /* Get the recipient genesis hash from the invoice data so that we can use it to calculate the status*/
-            uint256_t hashRecipient;
-            hashRecipient.SetHex(invoice["recipient"].get<std::string>());
-
-            /* Add status */
-            ret["status"] = get_status(state, hashRecipient);
-
-            /* Add the payment txid and contract, if it is unclaimed (unpaid) */
-            if(state.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
-            {
-                uint512_t txid = 0;
-                uint32_t contract = 0;
-
-                if(get_tx(hashRecipient, hashInvoice, txid, contract))
-                {
-                    ret["txid"] = txid.ToString();
-                    ret["contract"] = contract;
-                }
-
-            }
-            /* return the JSON */
-            return ret;
-
-        }
+        return jRet;
     }
 }

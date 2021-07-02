@@ -29,7 +29,7 @@ namespace TAO::API
      *  @return a double representation of the whole formatting.
      *
      **/
-    double FormatBalance(const uint64_t nBalance, const uint8_t nDecimals) __attribute__((const)); //we don't pass by reference for <= 8 bytes
+    __attribute__((const)) double FormatBalance(const uint64_t nBalance, const uint8_t nDecimals); //we don't pass by reference for <= 8 bytes
 
 
     /** FormatBalance
@@ -42,7 +42,7 @@ namespace TAO::API
      *  @return a double representation of the whole formatting.
      *
      **/
-    double FormatBalance(const uint64_t nBalance, const uint256_t& hashToken = TOKEN::NXS) __attribute__((pure)) ;
+    __attribute__((pure)) double FormatBalance(const uint64_t nBalance, const uint256_t& hashToken = TOKEN::NXS);
 
 
 
@@ -55,7 +55,7 @@ namespace TAO::API
      *  @return a double representation of the whole formatting.
      *
      **/
-    double FormatStake(const int64_t nStake) __attribute__((const)) ;
+    __attribute__((const)) double FormatStake(const int64_t nStake);
 
 
 }

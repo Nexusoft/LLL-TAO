@@ -109,21 +109,8 @@ namespace TAO::API
         vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister;
         vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << object.GetState();
 
-        /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
-        if(jParams.find("name") != jParams.end())
-        {
-            /* Check for empty name and alert caller of error. */
-            const std::string strName = jParams["name"].get<std::string>(); //grab a copy, not reference
-            if(strName.empty())
-                throw Exception(-88, "Missing or empty name.");
-
-            /* Add an optional name if supplied. */
-            vContracts.push_back
-            (
-                Names::CreateName(Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis(),
-                strName, "", hashRegister)
-            );
-        }
+        /* Add optional name if specified. */
+        BuildName(jParams, hashRegister, vContracts);
 
         /* Build response JSON boilerplate. */
         return BuildResponse(jParams, hashRegister, vContracts);

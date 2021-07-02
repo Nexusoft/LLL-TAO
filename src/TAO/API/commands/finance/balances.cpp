@@ -133,7 +133,7 @@ namespace TAO::API
             jBalances["unclaimed"]    = FormatBalance(GetPending(hashGenesis, hashToken),            nDecimals);
             jBalances["unconfirmed"]  = FormatBalance(GetUnconfirmed(hashGenesis, hashToken, false), nDecimals);
             jBalances["decimals"]     = nDecimals;
-            jBalances["token"]    = hashToken.ToString();
+            jBalances["token"]        = hashToken.ToString();
 
             /* Add the token identifier */
             if(!strToken.empty())

@@ -112,4 +112,16 @@ namespace TAO::API
      **/
     bool BuildCredit(const encoding::json& jParams, const uint32_t nContract,
         const TAO::Operation::Contract& rContract, std::vector<TAO::Operation::Contract> &vContracts);
+
+
+    /** BuildName
+     *
+     *  Builds a name contract based on given input parameters.
+     *
+     *  @param[in] jParams The parameters used to derive name.
+     *  @param[in] hashRegister The register address to build name for.
+     *  @param[out] vContracts The list of contracts to add name to.
+     *
+     **/
+    void BuildName(const encoding::json& jParams, const uint256_t& hashRegister, std::vector<TAO::Operation::Contract> &vContracts);
 }

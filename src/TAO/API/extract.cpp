@@ -51,7 +51,6 @@ namespace TAO::API
                 return TAO::API::ADDRESS_ALL;
             }
 
-
             /* Check for the ANY name, that debits from any account of any token, mixed */
             if(jParams[strName] == "any")
             {
@@ -170,11 +169,47 @@ namespace TAO::API
     }
 
 
-    /* Extract an amount value from either string or integer and convert to its final value. */
-    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures)
+    /* Extract a recipient genesis-id from input parameters which could be either username or genesis keys. */
+    uint256_t ExtractRecipient(const encoding::json& jParams)
     {
+        /* Check to see if specific genesis has been supplied */
+        if(jParams.find("recipient") != jParams.end())
+        {
+            /* Check for invalid types. */
+            if(!jParams["recipient"].is_string())
+                throw Exception(-57, "Invalid Parameter [recipient]");
+
+            /* Check for empty parameter. */
+            if(jParams["recipient"].empty())
+                throw Exception(-58, "Empty Parameter [recipient]");
+
+            /* Check for hex encoding. */
+            const std::string strRecipient = jParams["recipient"].get<std::string>();
+            if(IsHex(strRecipient))
+            {
+                /* Copy our genesis-id over to make a check. */
+                const uint256_t hashGenesis = uint256_t(jParams["recipient"].get<std::string>());
+
+                /* Check that this is a valid genesis-id. */
+                if(hashGenesis.GetType() == TAO::Ledger::GENESIS::UserType())
+                    return hashGenesis;
+            }
+
+            return TAO::Ledger::SignatureChain::Genesis(jParams["recipient"].get<std::string>().c_str());
+        }
+
+        throw Exception(-56, "Missing Parameter [recipient]");
+    }
+
+
+    /* Extract an amount value from either string or integer and convert to its final value. */
+    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strPrefix)
+    {
+        /* Cache our name with prefix calculated. */
+        const std::string strAmount = (strPrefix.empty() ? ("") : ("_" + strPrefix)) + "amount";
+
         /* Check for missing parameter. */
-        if(jParams.find("amount") != jParams.end())
+        if(jParams.find(strAmount) != jParams.end())
         {
             /* Watch our numeric limits. */
             const uint64_t nLimit = std::numeric_limits<uint64_t>::max();
@@ -186,38 +221,81 @@ namespace TAO::API
                 double dValue = 0;
 
                 /* Convert to value if in string form. */
-                if(jParams["amount"].is_string())
-                    dValue = std::stod(jParams["amount"].get<std::string>());
+                if(jParams[strAmount].is_string())
+                    dValue = std::stod(jParams[strAmount].get<std::string>());
 
                 /* Grab value regularly if it is integer. */
-                else if(jParams["amount"].is_number_unsigned())
-                    dValue = double(jParams["amount"].get<uint64_t>());
+                else if(jParams[strAmount].is_number_unsigned())
+                    dValue = double(jParams[strAmount].get<uint64_t>());
 
                 /* Check for a floating point value. */
-                else if(jParams["amount"].is_number_float())
-                    dValue = jParams["amount"].get<double>();
+                else if(jParams[strAmount].is_number_float())
+                    dValue = jParams[strAmount].get<double>();
 
                 /* Otherwise we have an invalid parameter. */
                 else
-                    throw Exception(-57, "Invalid Parameter [amount]");
+                    throw Exception(-57, "Invalid Parameter [", strAmount, "]");
 
                 /* Check our minimum range. */
                 if(dValue <= 0)
-                    throw Exception(-68, "[amount] too small [", dValue, "]");
+                    throw Exception(-68, "[", strAmount, "] too small [", dValue, "]");
 
                 /* Check our limits and ranges now. */
                 if(uint64_t(dValue) > (nLimit / nFigures))
-                    throw Exception(-60, "[amount] out of range [", nLimit, "]");
+                    throw Exception(-60, "[", strAmount, "] out of range [", nLimit, "]");
 
                 /* Final compute of our figures. */
                 return uint64_t(dValue * nFigures);
             }
-            catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [amount]");           }
-            catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [amount]");           }
-            catch(const std::out_of_range& e)           { throw Exception(-60, "[amount] out of range [", nLimit, "]"); }
+            catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [", strAmount, "]");           }
+            catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [", strAmount, "]");           }
+            catch(const std::out_of_range& e)           { throw Exception(-60, "[", strAmount, "] out of range [", nLimit, "]"); }
         }
 
-        throw Exception(-56, "Missing Parameter [amount]");
+        throw Exception(-56, "Missing Parameter [", strAmount, "]");
+    }
+
+
+    /* Extract an integer value from input parameters in either string or integer format. */
+    uint64_t ExtractValue(const encoding::json& jParams, const std::string& strName)
+    {
+        /* Check for missing parameter. */
+        if(jParams.find(strName) != jParams.end())
+        {
+            /* Watch our numeric limits. */
+            const uint64_t nLimit = std::numeric_limits<uint64_t>::max();
+
+            /* Catch parsing exceptions. */
+            try
+            {
+                /* Initialize our return value. */
+                uint64_t nValue = 0;
+
+                /* Convert to value if in string form. */
+                if(jParams[strName].is_string())
+                    nValue = std::stoull(jParams[strName].get<std::string>());
+
+                /* Grab value regularly if it is integer. */
+                else if(jParams[strName].is_number_unsigned())
+                    nValue = jParams[strName].get<uint64_t>();
+
+                /* Otherwise we have an invalid parameter. */
+                else
+                    throw Exception(-57, "Invalid Parameter [", strName, "]");
+
+                /* Check our minimum range. */
+                if(nValue == 0)
+                    throw Exception(-68, "[", strName, "] too small [", nValue, "]");
+
+                /* Final compute of our figures. */
+                return nValue;
+            }
+            catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [", strName, "]");           }
+            catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [", strName, "]");           }
+            catch(const std::out_of_range& e)           { throw Exception(-60, "[", strName, "] out of range [", nLimit, "]"); }
+        }
+
+        throw Exception(-56, "Missing Parameter [", strName, "]");
     }
 
 

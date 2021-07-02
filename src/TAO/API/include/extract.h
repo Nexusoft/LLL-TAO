@@ -57,17 +57,43 @@ namespace TAO::API
     uint256_t ExtractGenesis(const encoding::json& jParams);
 
 
+    /** ExtractRecipient
+     *
+     *  Extract a recipient genesis-id from input parameters which could be either username or genesis keys.
+     *
+     *  @param[in] jParams The parameters to find address in.
+     *
+     *  @return The genesis-id that was extracted.
+     *
+     **/
+    uint256_t ExtractRecipient(const encoding::json& jParams);
+
+
     /** ExtractAmount
      *
      *  Extract an amount value from either string or integer and convert to its final value.
      *
      *  @param[in] jParams The parameters to extract amount from.
      *  @param[in] nFigures The figures calculated from decimals.
+     *  @param[in] strPrefix A string prefix for prepending to amount field.
      *
      *  @return The amount represented as whole integer value.
      *
      **/
-    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures);
+    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strPrefix = "");
+
+
+    /** ExtractValue
+     *
+     *  Extract an integer value from input parameters in either string or integer format.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *  @param[in] strName The name of argument to extract.
+     *
+     *  @return the integer representation of verbose argument.
+     *
+     **/
+    uint64_t ExtractValue(const encoding::json& jParams, const std::string& strName);
 
 
 

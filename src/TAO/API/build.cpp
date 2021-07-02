@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>
+#include <TAO/API/names/types/names.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
@@ -479,5 +480,26 @@ namespace TAO::API
         }
 
         return false; //if we get this far, this contract is not creditable
+    }
+
+
+    /* Builds a name contract based on given input parameters. */
+    void BuildName(const encoding::json& jParams, const uint256_t& hashRegister, std::vector<TAO::Operation::Contract> &vContracts)
+    {
+        /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
+        if(jParams.find("name") != jParams.end())
+        {
+            /* Check for empty name and alert caller of error. */
+            const std::string strName = jParams["name"].get<std::string>(); //grab a copy, not reference
+            if(strName.empty())
+                throw Exception(-88, "Missing or empty name.");
+
+            /* Add an optional name if supplied. */
+            vContracts.push_back
+            (
+                Names::CreateName(Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis(),
+                strName, "", hashRegister)
+            );
+        }
     }
 } // End TAO namespace
