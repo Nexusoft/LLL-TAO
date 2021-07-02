@@ -33,9 +33,6 @@ namespace TAO
         /* Returns local database and other metrics */
         encoding::json System::Metrics(const encoding::json& params, const bool fHelp)
         {
-            if(fHelp || params.size() != 0)
-                return std::string("get/metrics: no parameters required");
-
             /* Build json response. */
             encoding::json jsonRet;
 
