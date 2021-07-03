@@ -13,7 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/register.h>
+#include <TAO/API/types/exception.h>
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
@@ -25,7 +26,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Get the data from a digital asset */
-    encoding::json Finance::Get(const encoding::json& jParams, const bool fHelp)
+    encoding::json Register::Get(const encoding::json& jParams, const bool fHelp)
     {
         /* Get the Register address. */
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
@@ -34,10 +35,6 @@ namespace TAO::API
         TAO::Register::Object objThis;
         if(!LLD::Register->ReadObject(hashRegister, objThis, TAO::Ledger::FLAGS::LOOKUP))
             throw Exception(-13, "Object not found");
-
-        /* Check the object standard. */
-        if(objThis.Base() != TAO::Register::OBJECTS::ACCOUNT)
-            throw Exception(-15, "Object is not an account or token");
 
         /* Now lets check our expected types match. */
         if(!CheckStandard(jParams, objThis))

@@ -1076,7 +1076,7 @@ namespace TAO::API
 
                         /* Add string to trust. */
                         jRet["trust"]  = nValue;
-                        jRet["times"]  = debug::safe_printstr(nDays, " days, ", nHours, " hours, ", nMinutes, " minutes");
+                        jRet["age"]    = debug::safe_printstr(nDays, " days, ", nHours, " hours, ", nMinutes, " minutes");
                     }
 
                     /* Set the return value from object register data. */

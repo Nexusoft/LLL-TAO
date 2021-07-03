@@ -126,6 +126,18 @@ namespace TAO::API
 
 
         /* Handle for generic list operations. */
+        mapFunctions["get"] = Function
+        (
+            std::bind
+            (
+                &Register::Get,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for generic list operations. */
         mapFunctions["list"] = Function
         (
             std::bind

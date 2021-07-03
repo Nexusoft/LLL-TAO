@@ -60,6 +60,19 @@ namespace TAO::API
         }
 
 
+        /** Get
+         *
+         *  Get any register in the global scope
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Get(const encoding::json& jParams, const bool fHelp);
+
+
         /** List
          *
          *  Lists all registers of supported type in global scope.

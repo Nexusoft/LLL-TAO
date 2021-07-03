@@ -317,7 +317,7 @@ namespace LLD
             return false;
 
         /* Attempt to parse the object. */
-        if(!object.Parse())
+        if(object.nType == TAO::Register::REGISTER::OBJECT && !object.Parse())
             return false;
 
         return true;

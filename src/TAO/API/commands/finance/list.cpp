@@ -96,12 +96,11 @@ namespace TAO::API
                 continue;
 
             /* Check to see whether the transaction has had all children filtered out */
-            encoding::json jObject = TAO::API::ObjectToJSON(objThis);
+            encoding::json jObject = TAO::API::ObjectToJSON(objThis, hashRegister);
             if(jObject.empty())
                 continue;
 
             /* Add additional data for finance call. */
-            jObject["address"] = hashRegister.ToString();
             jObject["name"]    = Names::ResolveName(hashGenesis, hashRegister);
 
             /* Check results filters if supplied. */
