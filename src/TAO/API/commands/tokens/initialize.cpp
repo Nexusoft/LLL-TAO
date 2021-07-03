@@ -33,7 +33,7 @@ namespace TAO::API
             /* Lambda expression to determine object standard. */
             [](const TAO::Register::Object& objCheck)
             {
-                return objCheck.Base() == TAO::Register::OBJECTS::ACCOUNT;
+                return objCheck.Standard() == TAO::Register::OBJECTS::ACCOUNT;
             }
         );
 
@@ -43,11 +43,17 @@ namespace TAO::API
             /* Lambda expression to determine object standard. */
             [](const TAO::Register::Object& objCheck)
             {
-                /* Check for common standard base. */
-                if(objCheck.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                    return false;
-
                 return objCheck.Standard() == TAO::Register::OBJECTS::TOKEN;
+            }
+        );
+
+        /* Populate our TRUST standard. */
+        mapStandards["trust"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                return objCheck.Standard() == TAO::Register::OBJECTS::TRUST;
             }
         );
 

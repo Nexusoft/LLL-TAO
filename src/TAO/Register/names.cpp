@@ -33,25 +33,21 @@ namespace TAO
     namespace Register
     {
         /* Retrieve the name register for a namespace/name combination. */
-        bool GetNameRegister(const uint256_t& hashNamespace, const std::string& strName, Object& nameRegister)
+        bool GetNameRegister(const uint256_t& hashNamespace, const std::string& strName, Object& objName)
         {
             /* Get the register address for the Name object */
             Address hashAddress = Address(strName, hashNamespace, Address::NAME);
 
             /* Read the Name Object */
-            if(!LLD::Register->ReadState(hashAddress, nameRegister, TAO::Ledger::FLAGS::LOOKUP))
+            if(!LLD::Register->ReadObject(hashAddress, objName, TAO::Ledger::FLAGS::LOOKUP))
                 return false; /* Don't log an error if it is not in the DB as the caller might have provided an invalid name */
 
             /* Check that the name object is proper type. */
-            if(nameRegister.nType != TAO::Register::REGISTER::OBJECT)
+            if(objName.nType != TAO::Register::REGISTER::OBJECT)
                 return debug::error(FUNCTION, "Name register not an object: ", strName);
 
-            /* Parse the object. */
-            if(!nameRegister.Parse())
-                return debug::error(FUNCTION, "Unable to parse name register: ", strName);
-
             /* Check that this is a Name register */
-            if(nameRegister.Standard() != TAO::Register::OBJECTS::NAME)
+            if(objName.Standard() != TAO::Register::OBJECTS::NAME)
                 return debug::error(FUNCTION, "Register is not a name register: ", strName);
 
             return true;
