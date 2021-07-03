@@ -1793,7 +1793,7 @@ namespace TAO::API
                 else
                 {
                     /* Parse if the parameter is a json object or array. */
-                    if(strValue.find_first_of("{}") != strValue.npos || strValue.find_first_of("[]") != strValue.npos)
+                    if(encoding::json::accept(strValue))
                     {
                         jRet[strKey] = encoding::json::parse(strValue);
                         continue;
