@@ -29,7 +29,7 @@ namespace TAO::API
             /* Lambda expression to determine object standard. */
             [](const TAO::Register::Object& objCheck)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::ACCOUNT;
+                return objCheck.Base() == TAO::Register::OBJECTS::ACCOUNT;
             }
         );
 
