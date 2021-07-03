@@ -91,7 +91,7 @@ namespace TAO::API
     __attribute__((pure)) encoding::json ContractToJSON(const TAO::Operation::Contract& contract,
                                                         const uint32_t nContract, const uint32_t nVerbose = 0);
 
-    /** ObjectToJSON
+    /** RegisterToJSON
      *
      *  Converts an Object Register to formattted JSON with no external lookups
      *
@@ -101,7 +101,7 @@ namespace TAO::API
      *  @return the formatted JSON object
      *
      **/
-    __attribute__((pure)) encoding::json ObjectToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister = 0);
+    __attribute__((const)) encoding::json RegisterToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister = 0);
 
 
     /** ObjectToJSON

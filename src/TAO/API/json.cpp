@@ -999,7 +999,7 @@ namespace TAO::API
 
 
     /* Converts an Register to formattted JSON */
-    encoding::json ObjectToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister)
+    encoding::json RegisterToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister)
     {
         /* Add the register owner */
         encoding::json jRet;
@@ -1038,8 +1038,22 @@ namespace TAO::API
                 /* Grab our state from register. */
                 const std::vector<uint8_t>& vState = object.GetState();
 
-                /* Dump our register's state as a hex string. */
-                jRet["data"] = HexStr(vState.begin(), vState.end());
+                /* Let's check if our first few bytes are valid. */
+                if(encoding::utf8::is_valid(vState.begin(), vState.end()))
+                {
+                    /* Copy our results into a utf-8 encoded string. */
+                    const std::string strResults = std::string(vState.begin(), vState.end());
+
+                    /* Check if we can format as JSON. */
+                    if(encoding::json::accept(strResults))
+                        jRet["json"] = encoding::json::parse(strResults);
+                    else
+                        jRet["data"] = strResults;
+                }
+
+                /* Otherwise represent our register's state as a hex string. */
+                else
+                    jRet["data"] = HexStr(vState.begin(), vState.end());
             }
 
             return jRet;

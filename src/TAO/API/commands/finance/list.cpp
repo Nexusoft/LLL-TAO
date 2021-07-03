@@ -96,7 +96,7 @@ namespace TAO::API
                 continue;
 
             /* Check to see whether the transaction has had all children filtered out */
-            encoding::json jObject = TAO::API::ObjectToJSON(objThis, hashRegister);
+            encoding::json jObject = TAO::API::RegisterToJSON(objThis, hashRegister);
             if(jObject.empty())
                 continue;
 

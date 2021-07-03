@@ -111,7 +111,7 @@ namespace TAO::API
         for(const auto& rAccount : vActive)
         {
             /* Populate the response */
-            encoding::json jAccount = ObjectToJSON(rAccount);
+            encoding::json jAccount = RegisterToJSON(rAccount);
 
             /* Check that we match our filters. */
             if(!FilterResults(jParams, jAccount))
