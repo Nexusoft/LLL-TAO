@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/include/config.h>
 
-#include <Util/include/memory.h>
+#include <Util/types/lock_shared_ptr.h>
 
 #include <map>
 #include <condition_variable>
@@ -52,19 +52,16 @@ namespace LLP
     template <class ProtocolType>
     class Server
     {
-    private:
-
+    public:
 
         /** The internal server configuration variables. **/
         const Config CONFIG;
 
-
-        /** The DDOS variables. **/
-        memory::atomic_ptr< std::map<BaseAddress, DDOS_Filter *> > DDOS_MAP;
+    private:
 
 
         /** The data type to keep track of current running threads. **/
-        std::vector<DataThread<ProtocolType> *> THREADS_DATA;
+        std::vector<DataThread<ProtocolType>*> THREADS_DATA;
 
 
         /** Listener Thread for accepting incoming connections. **/
@@ -92,6 +89,10 @@ namespace LLP
 
 
     public:
+
+
+        /** The DDOS variables. **/
+        memory::lock_shared_ptr< std::map<BaseAddress, DDOS_Filter*>> DDOS_MAP;
 
 
         /** Constructor **/
@@ -176,7 +177,7 @@ namespace LLP
                     DDOS_MAP->emplace(std::make_pair(addrConnect, new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
 
                 /* DDOS Operations: Only executed when DDOS is enabled. */
-                if(DDOS_MAP->at(addrConnect)->Banned())
+                if(!addrConnect.IsLocal() && DDOS_MAP->at(addrConnect)->Banned())
                     return false;
             }
 

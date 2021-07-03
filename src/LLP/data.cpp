@@ -244,8 +244,14 @@ namespace LLP
                         continue;
                     }
 
+                    /* Generic event for Connection. */
+                    CONNECTION->Event(EVENTS::GENERIC);
+
+                    /* Work on Reading a Packet. **/
+                    CONNECTION->ReadPacket();
+
                     /* Handle any DDOS Filters. */
-                    if(fDDOS.load() && CONNECTION->DDOS)
+                    if(fDDOS.load() && CONNECTION->DDOS && !CONNECTION->addr.IsLocal())
                     {
                         /* Ban a node if it has too many Requests per Second. **/
                         if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE
@@ -253,19 +259,13 @@ namespace LLP
                             CONNECTION->DDOS->Ban();
 
                         /* Remove a connection if it was banned by DDOS Protection. */
-                        if(CONNECTION->DDOS->Banned())
+                        if(!CONNECTION->GetAddress().IsLocal() && CONNECTION->DDOS->Banned())
                         {
                             debug::log(0, ProtocolType::Name(), " BANNED: ", CONNECTION->GetAddress().ToString());
                             remove_connection_with_event(nIndex, DISCONNECT::DDOS);
                             continue;
                         }
                     }
-
-                    /* Generic event for Connection. */
-                    CONNECTION->Event(EVENTS::GENERIC);
-
-                    /* Work on Reading a Packet. **/
-                    CONNECTION->ReadPacket();
 
                     /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
                     if(CONNECTION->PacketComplete())
@@ -282,16 +282,16 @@ namespace LLP
                         if(fMETER)
                             ++ProtocolType::REQUESTS;
 
-                        /* Increment rScore. */
-                        if(fDDOS.load() && CONNECTION->DDOS)
-                            CONNECTION->DDOS->rSCORE += 1;
-
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
                         if(!CONNECTION->ProcessPacket())
                         {
                             remove_connection_with_event(nIndex, DISCONNECT::FORCE);
                             continue;
                         }
+
+                        /* Increment rScore. */
+                        if(fDDOS.load() && CONNECTION->DDOS)
+                            CONNECTION->DDOS->rSCORE += 1;
 
                         /* Run procssed event for connection triggers. */
                         CONNECTION->Event(EVENTS::PROCESSED);

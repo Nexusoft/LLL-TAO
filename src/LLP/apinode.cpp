@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLP/include/global.h>
 
 #include <LLP/types/apinode.h>
 #include <LLP/templates/events.h>
@@ -69,6 +70,31 @@ namespace LLP
 
             return;
         }
+
+        /* Handle for a HEADER event. */
+        if(EVENT == EVENTS::HEADER)
+        {
+            /* Check for forward DDOS filter. */
+            if(INCOMING.mapHeaders.count("x-forwarded-for"))
+            {
+                /* Grab our forwarded address from headers. */
+                const std::string strAddress = INCOMING.mapHeaders["x-forwarded-for"];
+
+                /* Check for existing record. */
+                if(API_SERVER->DDOS_MAP->count(this->addr))
+
+                /* Update the address inside this connection. */
+                this->addr = LLP::BaseAddress(strAddress);
+
+                /* Swap our new address back into DDOS map */
+                if(!API_SERVER->DDOS_MAP->count(this->addr))
+                    API_SERVER->DDOS_MAP->insert(std::make_pair(this->addr, new DDOS_Filter(API_SERVER->CONFIG.DDOS_TIMESPAN)));
+
+                /* Add a connection to score. */
+                this->DDOS = API_SERVER->DDOS_MAP->at(this->addr);
+                this->DDOS->cSCORE += 1;
+            }
+        }
     }
 
 
@@ -94,7 +120,7 @@ namespace LLP
         }
 
         /* Parse the packet request. */
-        std::string::size_type nPos = INCOMING.strRequest.find('/', 1);
+        const std::string::size_type nPos = INCOMING.strRequest.find('/', 1);
 
         /* Extract the API requested. */
         std::string strAPI    = INCOMING.strRequest.substr(1, nPos - 1);
@@ -200,7 +226,7 @@ namespace LLP
             /* Add our request information before invoking command. */
             jParams["request"] =
             {
-                {"commands", strAPI},
+                {"commands", strAPI },
                 {"method", strMethod},
             };
 
@@ -267,8 +293,9 @@ namespace LLP
         /* Add some micro-benchamrks to response data. */
         jRet["info"] =
         {
-            {"method",    strAPI + "/" + strMethod},
-            {"status",    TAO::API::Commands::Status(strAPI, strMethod)},
+            {"method",    strAPI + "/" + strMethod                          },
+            {"status",    TAO::API::Commands::Status(strAPI, strMethod)     },
+            {"address",   this->addr.ToString()                             },
             {"latency",   debug::safe_printstr(std::fixed, nLatency, " ms") }
         };
 

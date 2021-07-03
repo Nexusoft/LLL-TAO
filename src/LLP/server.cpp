@@ -49,7 +49,6 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::Server(const Config& config)
     : CONFIG            (config)
-    , DDOS_MAP          ( )
     , THREADS_DATA      ( )
     , THREAD_LISTEN     (std::bind(&Server::ListeningThread, this, true, false))
     , THREAD_METER      (std::bind(&Server::Meter, this))
@@ -57,6 +56,7 @@ namespace LLP
     , hListenBase       (-1, -1)
     , hListenSSL        (-1, -1)
     , pAddressManager   (nullptr)
+    , DDOS_MAP          (new std::map<BaseAddress, DDOS_Filter*>())
     {
         /* Add the individual data threads to the vector that will be holding their state. */
         for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
@@ -81,9 +81,6 @@ namespace LLP
 
             THREAD_MANAGER = std::thread((std::bind(&Server::Manager, this)));
         }
-
-        /* Configure the DDOS pointer. */
-        DDOS_MAP.store(new std::map<BaseAddress, DDOS_Filter*>());
 
         /* Open listeners if enabled. */
         if(CONFIG.ENABLE_LISTEN)
@@ -121,7 +118,6 @@ namespace LLP
             if(it->second)
                 delete it->second;
         }
-        DDOS_MAP.free();
 
         /* Clear the address manager. */
         if(pAddressManager)
