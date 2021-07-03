@@ -80,9 +80,6 @@ namespace LLP
                 /* Grab our forwarded address from headers. */
                 const std::string strAddress = INCOMING.mapHeaders["x-forwarded-for"];
 
-                /* Check for existing record. */
-                if(API_SERVER->DDOS_MAP->count(this->addr))
-
                 /* Update the address inside this connection. */
                 this->addr = LLP::BaseAddress(strAddress);
 
