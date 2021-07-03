@@ -49,6 +49,8 @@ ________________________________________________________________________________
 #include <Util/include/string.h>
 #include <Util/include/math.h>
 
+#include <Util/encoding/include/utf-8.h>
+
 #include <LLD/include/global.h>
 
 /* Global TAO namespace. */
@@ -996,14 +998,52 @@ namespace TAO::API
     }
 
 
-    /* Converts an Object Register to formattted JSON */
+    /* Converts an Register to formattted JSON */
     encoding::json ObjectToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister)
     {
         /* Add the register owner */
         encoding::json jRet;
         jRet["owner"]    = TAO::Register::Address(object.hashOwner).ToString();
+        jRet["version"]  = object.nVersion;
         jRet["created"]  = object.nCreated;
         jRet["modified"] = object.nModified;
+        jRet["type"]     = GetRegisterType(object.nType);
+
+        /* Handle if register isn't an object. */
+        if(object.nType != TAO::Register::REGISTER::OBJECT)
+        {
+            /* Get our state type. */
+            uint16_t nType;
+            object >> nType;
+
+            /* Check for a valid known user-type. */
+            if(USER_TYPES::Valid(nType))
+            {
+                /* Now get our state string. */
+                std::string strResults;
+                object >> strResults;
+
+                /* Let's check if our first few bytes are valid. */
+                if(encoding::utf8::is_valid(strResults.begin(), strResults.end()))
+                {
+                    /* Check if we can format as JSON. */
+                    if(encoding::json::accept(strResults))
+                        jRet["json"] = encoding::json::parse(strResults);
+                    else
+                        jRet["data"] = strResults;
+                }
+            }
+            else
+            {
+                /* Grab our state from register. */
+                const std::vector<uint8_t>& vState = object.GetState();
+
+                /* Dump our register's state as a hex string. */
+                jRet["data"] = HexStr(vState.begin(), vState.end());
+            }
+
+            return jRet;
+        }
 
         /* Declare type and data variables for unpacking the Object fields */
         const std::vector<std::string> vFieldNames = object.ListFields();
@@ -1138,8 +1178,15 @@ namespace TAO::API
                     /* Remove trailing nulls from the data, which are padding to maxlength on mutable fields */
                     const std::string strRet = object.get<std::string>(strName);
 
+                    /* Check for json encoding. */
+                    if(encoding::json::accept(strRet))
+                    {
+                        jRet[strName] = encoding::json::parse(strRet);
+                        break;
+                    }
+
                     /* Set the return value from object register data. */
-                    jRet[strName] = strRet.substr(0, strRet.find_last_not_of('\0') + 1);
+                    jRet[strName] = strRet;
 
                     break;
                 }

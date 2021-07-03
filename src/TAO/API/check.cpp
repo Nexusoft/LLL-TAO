@@ -97,24 +97,13 @@ namespace TAO::API
     /* Checks if the designated object matches the explicet type specified in parameters. */
     bool CheckStandard(const encoding::json& jParams, const uint256_t& hashCheck, const bool fParse)
     {
-        /* Handle if this is an object. */
-        if(fParse)
-        {
-            /* Let's grab our object to check against and throw if it's missing. */
-            TAO::Register::Object objCheck;
-            if(!LLD::Register->ReadObject(hashCheck, objCheck))
-                throw Exception(-13, "Object not found");
-
-            /* Execute now that we have the object. */
-            return CheckStandard(jParams, objCheck);
-        }
-
-        /* Handle regular non-parsed object here. */
-        TAO::Register::State steCheck;
-        if(!LLD::Register->ReadState(hashCheck, steCheck))
+        /* Let's grab our object to check against and throw if it's missing. */
+        TAO::Register::Object objCheck;
+        if(!LLD::Register->ReadObject(hashCheck, objCheck))
             throw Exception(-13, "Object not found");
 
-        return CheckStandard(jParams, steCheck);
+        /* Execute now that we have the object. */
+        return CheckStandard(jParams, objCheck);
     }
 
 

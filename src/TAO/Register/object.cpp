@@ -455,7 +455,7 @@ namespace TAO
 
             /* Check the map for empty. */
             if(mapData.empty()) //TODO: this should either throw, or this method should return by reference
-                debug::error(FUNCTION, "object is not parsed");
+                throw debug::exception(FUNCTION, "object is not parsed");
 
             /* Iterate data map and pull field names out into return vector */
             for(const auto& fieldName : mapData)
@@ -468,6 +468,10 @@ namespace TAO
         /* Get the type enumeration from the object register. */
         bool Object::Type(const std::string& strName, uint8_t& nType) const
         {
+            /* Check for non-objects. */
+            if(this->nType != TAO::Register::REGISTER::OBJECT)
+                return debug::error(FUNCTION, "called on non-object");
+
             /* Check the map for empty. */
             if(mapData.empty())
                 return debug::error(FUNCTION, "object is not parsed");
@@ -493,6 +497,10 @@ namespace TAO
         /* Check the type enumeration from the object register. */
         bool Object::Check(const std::string& strName, const uint8_t nType, bool fMutable) const
         {
+            /* Check for non-objects. */
+            if(this->nType != TAO::Register::REGISTER::OBJECT)
+                return false;
+
             /* Check the map for empty. */
             if(mapData.empty())
                 return debug::error(FUNCTION, "object is not parsed");
@@ -519,6 +527,10 @@ namespace TAO
         /* Check that given field name exists in the object. */
         bool Object::Check(const std::string& strName) const
         {
+            /* Check for non-objects. */
+            if(this->nType != TAO::Register::REGISTER::OBJECT)
+                return false;
+
             /* Check the map for empty. */
             if(mapData.empty())
                 return debug::error(FUNCTION, "object is not parsed");
@@ -531,6 +543,10 @@ namespace TAO
         /*  Get the size of value in object register. */
         uint64_t Object::Size(const std::string& strName) const
         {
+            /* Check for non-objects. */
+            if(this->nType != TAO::Register::REGISTER::OBJECT)
+                return debug::error(FUNCTION, "called on non-object");
+
             /* Check the map for empty. */
             if(mapData.empty())
                 return debug::error(FUNCTION, "object is not parsed");

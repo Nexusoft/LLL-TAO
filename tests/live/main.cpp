@@ -142,11 +142,24 @@ const uint256_t hashSeed = 55;
 
 #include <TAO/Operation/include/enum.h>
 
+#include <Util/encoding/include/utf-8.h>
+
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
     config::mapArgs["-datadir"] = "/database/SYNC1";
+
+    std::string strTest = "This is a test unicode string";
+
+    std::vector<uint8_t> vHash = LLC::GetRand256().GetBytes();
+
+    debug::log(0, strTest);
+    debug::log(0, "VALID: ", encoding::utf8::is_valid(strTest.begin(), strTest.end()) ? "TRUE" : "FALSE");
+    debug::log(0, HexStr(vHash.begin(), vHash.end()));
+    debug::log(0, "VALID: ", encoding::utf8::is_valid(vHash.begin(), vHash.end()) ? "TRUE" : "FALSE");
+
+    return 0;
 
     /* Initialize LLD. */
     LLD::Initialize();

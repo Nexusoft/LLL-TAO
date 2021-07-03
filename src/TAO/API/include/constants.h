@@ -43,8 +43,29 @@ namespace TAO::API
     {
         enum
         {
+            //for range checks
+            RESERVED1   = 0,
+
+            //valid state types
             SUPPLY      = 1,
-            INVOICE     = 2
+            INVOICE     = 2,
+
+            //for range checks
+            RESERVED2   = 3
         };
+
+        /** Valid
+         *
+         *  Detect if a type short is within our valid user types range.
+         *
+         *  @param[in] nType The type we are checking to
+         *
+         *  @return true if in range, false otherwise.
+         *
+         **/
+        static bool Valid(const uint16_t nType)
+        {
+            return (nType > RESERVED1 && nType < RESERVED2);
+        }
     };
 }
