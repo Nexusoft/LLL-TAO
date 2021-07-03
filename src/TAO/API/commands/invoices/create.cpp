@@ -95,17 +95,20 @@ namespace TAO::API
             throw Exception(-233, "Invoice must include at least one item");
 
         /* Grab the digits for this token type. */
-        const uint8_t nDigits = GetDecimals(objCheck);
+        const uint8_t nDigits =
+            GetDecimals(objCheck);
 
         /* Iterate the items to validate them */
         uint64_t nTotal = 0;
         for(auto it = jItems.begin(); it != jItems.end(); ++it)
         {
             /* The item Unit Amount */
-            const uint64_t nUnitAmount = ExtractAmount((*it), nDigits, " unit");
+            const uint64_t nUnitAmount =
+                ExtractAmount((*it), nDigits, "unit");
 
             /* The item number of units */
-            const uint64_t nUnits = ExtractValue((*it), "units");
+            const uint64_t nUnits =
+                ExtractValue((*it), "units");
 
             /* Rebuild our JSON to use correct formatting. */
             const encoding::json jItem =
@@ -122,10 +125,11 @@ namespace TAO::API
         }
 
         /* The token that this invoice should be transacted in */
-        const TAO::Register::Address hashToken = objCheck.get<uint256_t>("token");
+        const TAO::Register::Address hashToken =
+            objCheck.get<uint256_t>("token");
 
         /* Add the invoice amount and token */
-        jInvoice["amount"] = nTotal;
+        jInvoice["amount"] = FormatBalance(nTotal, nDigits);
         jInvoice["token"]  = hashToken.ToString();
 
         /* DataStream to help us serialize the data. */

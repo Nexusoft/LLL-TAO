@@ -41,10 +41,8 @@ namespace TAO::API
             throw Exception(-49, "Unexpected type for name / address");
 
         /* Build our response object. */
-        encoding::json jRet  = RegisterToJSON(objThis, hashRegister);
-        jRet["owner"]        = TAO::Register::Address(objThis.hashOwner).ToString();
-        jRet["created"]      = objThis.nCreated;
-        jRet["modified"]     = objThis.nModified;
+        encoding::json jRet =
+            RegisterToJSON(objThis, hashRegister);
 
         /* Filter out our expected fieldnames if specified. */
         FilterFieldname(jParams, jRet);

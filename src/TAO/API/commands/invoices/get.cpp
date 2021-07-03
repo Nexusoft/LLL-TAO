@@ -44,7 +44,8 @@ namespace TAO::API
             throw Exception(-242, "Data at this address is not an invoice");
 
         /* Build the response JSON. */
-        encoding::json jRet = InvoiceToJSON(jParams, steCheck, hashRegister);
+        encoding::json jRet =
+            InvoiceToJSON(jParams, steCheck, hashRegister);
 
         /* Filter a fieldname if supplied. */
         FilterFieldname(jParams, jRet);
