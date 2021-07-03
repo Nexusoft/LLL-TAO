@@ -73,9 +73,6 @@ namespace TAO::API
         if(vMethods.empty()) //we are ignoring everything past first noun on rewrite
             throw Exception(-14, "Malformed request URL: ", strMethod);
 
-        /* Track if we've found an explicet type. */
-        bool fStandard = false, fAddress = false, fField = false;;
-
         /* Grab the components of this URL. */
         const std::string& strVerb = vMethods[0];
         for(uint32_t n = 1; n < vMethods.size(); ++n)
@@ -86,19 +83,19 @@ namespace TAO::API
                 : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
             /* Now lets do some rules for the different nouns. */
-            if(!fStandard && mapStandards.count(strNoun))
+            if(n == 1)
             {
-                jParams["request"]["type"] = strNoun;
+                /* Check for unexpected types. */
+                if(!mapStandards.count(strNoun))
+                    throw Exception(-36, "Invalid type [", strNoun, "] for command");
 
-                /* Set our explicet flag now. */
-                fStandard = true;
-                fAddress  = true; //we set this here so that first noun slot can't be either/or, it breaks our fieldname
+                jParams["request"]["type"] = strNoun;
 
                 continue;
             }
 
             /* If we have reached here, we know we are an address or name. */
-            else if(!fAddress)
+            if(n == 2)
             {
                 /* Check if this value is an address. */
                 if(CheckAddress(strNoun))
@@ -108,19 +105,14 @@ namespace TAO::API
                 else
                     jParams["name"] = strNoun;
 
-                /* Set both address and noun to handle ommiting the noun if desired. */
-                fAddress  = true;
-                fStandard = true;
-
                 continue;
             }
 
             /* If we have reached here, we know we are a fieldname. */
-            else if(!fField)
+            if(n == 3)
             {
                 jParams["fieldname"] = strNoun;
 
-                fField = true;
                 continue;
             }
 

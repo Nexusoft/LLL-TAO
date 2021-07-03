@@ -41,7 +41,7 @@ namespace TAO::API
 
         /* Now let's do some checks here to prevent burning something you don't want */
         if(jParams["request"]["type"] != "token")
-            throw Exception(-36, "Invalid type for command");
+            throw Exception(-36, "Invalid type [token] for command");
 
         /* Get the token / account object. */
         TAO::Register::Object object;

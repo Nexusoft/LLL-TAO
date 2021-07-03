@@ -35,7 +35,7 @@ namespace TAO::API
     {
         /* Check that there is a type defined here. */
         if(jParams["request"].find("type") == jParams["request"].end())
-            throw Exception(-36, "Invalid type for command.");
+            throw Exception(-36, "Invalid type [missing] for command.");
 
         /* Grab our type to run some checks against. */
         const std::string strType =
@@ -66,13 +66,17 @@ namespace TAO::API
             /* Make sure they are all parsed so that we can sort them */
             for(auto& rAccount : vAccounts)
             {
-                /* Parse so we can access the data */
-                if(!rAccount.Parse())
-                    continue;
+                /* Check for object or state. */
+                if(rAccount.nType == TAO::Register::REGISTER::OBJECT)
+                {
+                    /* Parse so we can access the data */
+                    if(!rAccount.Parse())
+                        continue;
 
-                /* Check that we match our filters. */
-                if(!FilterObject(jParams, rAccount))
-                    continue;
+                    /* Check that we match our filters. */
+                    if(!FilterObject(jParams, rAccount))
+                        continue;
+                }
 
                 /* Add the account to our active list */
                 vActive.push_back(rAccount); //XXX: we really shouldn't copy everything again here

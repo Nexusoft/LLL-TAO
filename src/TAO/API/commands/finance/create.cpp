@@ -98,7 +98,7 @@ namespace TAO::API
             object = TAO::Register::CreateAccount(hashToken);
         }
         else
-            throw Exception(-36, "Invalid type for command");
+            throw Exception(-36, "Invalid type [", jParams["request"]["type"].get<std::string>() ,"] for command");
 
         /* If the user has supplied the data parameter than add this to the account register */
         if(jParams.find("data") != jParams.end())
