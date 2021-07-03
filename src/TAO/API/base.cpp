@@ -118,7 +118,7 @@ namespace TAO::API
 
             /* If we get here, we need to throw for malformed URL. */
             else
-                throw Exception(-14, "Malformed request URL: ", strMethod);
+                throw Exception(-14, "Malformed request URL at: ", strNoun);
         }
 
         return strVerb;
