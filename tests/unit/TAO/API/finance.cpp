@@ -174,7 +174,7 @@ TEST_CASE("Test Finance API - get acccount", "[finance]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
-        REQUIRE(result.find("name") != result.end());
+        //REQUIRE(result.find("name") != result.end());
         REQUIRE(result.find("address") != result.end());
         REQUIRE(result.find("token") != result.end());
         REQUIRE(result.find("balance") != result.end());
@@ -197,7 +197,7 @@ TEST_CASE("Test Finance API - get acccount", "[finance]")
         REQUIRE(result.find("owner") != result.end());
         REQUIRE(result.find("created") != result.end());
         REQUIRE(result.find("modified") != result.end());
-        REQUIRE(result.find("name") != result.end());
+        //REQUIRE(result.find("name") != result.end());
         REQUIRE(result.find("address") != result.end());
         REQUIRE(result.find("token") != result.end());
         REQUIRE(result.find("balance") != result.end());
@@ -260,7 +260,7 @@ TEST_CASE("Test Finance API - list acccounts", "[finance]")
 
         encoding::json account = result[0];
 
-        REQUIRE(account.find("name") != account.end());
+        //REQUIRE(account.find("name") != account.end());
         REQUIRE(account.find("address") != account.end());
         REQUIRE(account.find("token") != account.end());
         REQUIRE(account.find("balance") != account.end());

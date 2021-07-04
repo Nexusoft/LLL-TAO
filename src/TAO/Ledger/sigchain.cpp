@@ -121,13 +121,11 @@ namespace TAO
                 /* Handle cache to stop exhaustive hash key generation. */
                 if(fCache && nKeyID == pairCache.first)
                 {
-                    /* Create the hash key object. */
-                    uint512_t hashKey;
-
                     /* Get the bytes from secure allocator. */
-                    std::vector<uint8_t> vBytes(pairCache.second.begin(), pairCache.second.end());
+                    const std::vector<uint8_t> vBytes = std::vector<uint8_t>(pairCache.second.begin(), pairCache.second.end());
 
                     /* Set the bytes of return value. */
+                    uint512_t hashKey;
                     hashKey.SetBytes(vBytes);
 
                     return hashKey;
@@ -161,8 +159,12 @@ namespace TAO
 
                 if(fCache)
                 {
+                    /* Grab our key's binary data. */
+                    const std::vector<uint8_t> vBytes = hashKey.GetBytes();
+
+                    /* Set our cache record now with it. */
                     pairCache.first  = nKeyID;
-                    pairCache.second = SecureString(hashKey.begin(), hashKey.end());
+                    pairCache.second = SecureString(vBytes.begin(), vBytes.end());
                 }
             }
 

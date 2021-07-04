@@ -240,6 +240,7 @@ void InitializeUser(const std::string& strUsername, const std::string& strPasswo
 
     /* Invoke the API to create the user */
     ret = APICall("users/login/user", params);
+
     result = ret["result"];
 
     if(config::fMultiuser)

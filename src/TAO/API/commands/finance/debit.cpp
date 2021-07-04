@@ -137,7 +137,7 @@ namespace TAO::API
 
             /* Get the token / account object. */
             TAO::Register::Object objToken;
-            if(!LLD::Register->ReadObject(hashToken, objToken, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadObject(hashToken, objToken))
                 throw Exception(-48, "Token not found");
 
             /* Let's now push our account to vector. */
@@ -148,16 +148,16 @@ namespace TAO::API
             for(const auto& hashRegister : vAccounts)
             {
                 /* Get the token / account object. */
-                TAO::Register::Object objFrom; //XXX: we may not want to use MEMPOOL flag for debits
-                if(!LLD::Register->ReadObject(hashRegister, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object objFrom;
+                if(!LLD::Register->ReadObject(hashRegister, objFrom))
                      continue;
 
                 /* Check for a valid token, otherwise skip it. */
                 if(objFrom.get<uint256_t>("token") != hashToken)
                     continue;
 
-                /* Check for an available balance, otherwise skip it. */
-                if(objFrom.get<uint64_t>("balance") == 0)
+                /* Check our standard fuction that will filter out balances. */
+                if(!CheckStandard(jParams, objFrom))
                     continue;
 
                 /* Initialize our map if required. */
@@ -185,7 +185,7 @@ namespace TAO::API
 
                 /* Get the token / account object. */
                 TAO::Register::Object objTo;
-                if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadObject(hashTo, objTo))
                      continue;
 
                  /* Initialize our map if required. */
@@ -202,13 +202,13 @@ namespace TAO::API
             for(const auto& hashRegister : vAccounts)
             {
                 /* Get the token / account object. */
-                TAO::Register::Object objFrom; //XXX: we may not want to use MEMPOOL flag for debits
-                if(!LLD::Register->ReadObject(hashRegister, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
-                     continue;
-
-                /* Check for an available balance, otherwise skip it. */
-                if(objFrom.get<uint64_t>("balance") == 0)
+                TAO::Register::Object objFrom;
+                if(!LLD::Register->ReadObject(hashRegister, objFrom))
                     continue;
+
+                 /* Check our standard fuction that will filter out balances. */
+                 if(!CheckStandard(jParams, objFrom))
+                     continue;
 
                 /* Check for a valid token, otherwise skip it. */
                 const uint256_t hashToken = objFrom.get<uint256_t>("token");
@@ -225,7 +225,7 @@ namespace TAO::API
         {
             /* Get the token / account object. */
             TAO::Register::Object objFrom;
-            if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadObject(hashFrom, objFrom))
                 throw Exception(-13, "Object not found");
 
             /* Now lets check our expected types match. */

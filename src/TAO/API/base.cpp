@@ -73,6 +73,10 @@ namespace TAO::API
         if(vMethods.empty()) //we are ignoring everything past first noun on rewrite
             throw Exception(-14, "Malformed request URL: ", strMethod);
 
+        /* Detect whether fieldname or a resolved name. */
+        const bool fAddress =
+            (jParams.find("address") != jParams.end() || jParams.find("name") != jParams.end());
+
         /* Grab the components of this URL. */
         const std::string& strVerb = vMethods[0];
         for(uint32_t n = 1; n < vMethods.size(); ++n)
@@ -89,13 +93,14 @@ namespace TAO::API
                 if(!mapStandards.count(strNoun))
                     throw Exception(-36, "Invalid type [", strNoun, "] for command");
 
+                /* Add our type to request object. */
                 jParams["request"]["type"] = strNoun;
 
                 continue;
             }
 
             /* If we have reached here, we know we are an address or name. */
-            if(n == 2)
+            if(n == 2 && !fAddress)
             {
                 /* Check if this value is an address. */
                 if(CheckAddress(strNoun))
@@ -109,7 +114,7 @@ namespace TAO::API
             }
 
             /* If we have reached here, we know we are a fieldname. */
-            if(n == 3)
+            if(n >= 2 && fAddress)
             {
                 jParams["fieldname"] = strNoun;
 

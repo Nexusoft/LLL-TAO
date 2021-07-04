@@ -53,6 +53,50 @@ namespace TAO::API
             }
         );
 
+        /* Populate our ANY standard. */
+        mapStandards["any"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                /* Check that base object is account. */
+                if(objCheck.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                    return false;
+
+                /* Make sure not a token. */
+                if(objCheck.Standard() == TAO::Register::OBJECTS::TOKEN)
+                    return false;
+
+                /* Ensure we have balance, since any is for DEBIT. */
+                if(objCheck.get<uint64_t>("balance") == 0)
+                    return false;
+
+                return true;
+            }
+        );
+
+        /* Populate our ALL standard. */
+        mapStandards["all"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                /* Check that base object is account. */
+                if(objCheck.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                    return false;
+
+                /* Make sure not a token. */
+                if(objCheck.Standard() == TAO::Register::OBJECTS::TOKEN)
+                    return false;
+
+                /* Ensure we have balance, since all is for DEBIT. */
+                if(objCheck.get<uint64_t>("balance") == 0)
+                    return false;
+
+                return true;
+            }
+        );
+
 
         /* Handle for all CREATE operations. */
         mapFunctions["create"] = Function

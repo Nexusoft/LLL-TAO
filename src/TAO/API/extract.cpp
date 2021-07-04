@@ -38,29 +38,25 @@ namespace TAO::API
         const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
         const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
 
+        /* Check for any/all request types. */
+        if(jParams.find("request") != jParams.end() && jParams["request"].find("type") != jParams["request"].end())
+        {
+            /* Grab a copy of our request type. */
+            const std::string strType =
+                jParams["request"]["type"].get<std::string>();
+
+            /* Check for the ALL name, that debits from all relevant accounts. */
+            if(strType == "all")
+                return TAO::API::ADDRESS_ALL;
+
+            /* Check for the ANY name, that debits from any account of any token, mixed */
+            if(strType == "any")
+                return TAO::API::ADDRESS_ANY;
+        }
+
         /* If name is provided then use this to deduce the register address, */
         if(jParams.find(strName) != jParams.end())
         {
-            /* Check for the ALL name, that debits from all relevant accounts. */
-            if(jParams[strName] == "all")
-            {
-                /* Check for send to all */
-                if(strSuffix == "to")
-                    throw Exception(-310, "Cannot sent to ANY/ALL accounts");
-
-                return TAO::API::ADDRESS_ALL;
-            }
-
-            /* Check for the ANY name, that debits from any account of any token, mixed */
-            if(jParams[strName] == "any")
-            {
-                /* Check for send to all */
-                if(strSuffix == "to")
-                    throw Exception(-310, "Cannot sent to ANY/ALL accounts");
-
-                return TAO::API::ADDRESS_ANY;
-            }
-
             return Names::ResolveAddress(jParams, jParams[strName].get<std::string>());
         }
 

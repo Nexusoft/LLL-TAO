@@ -104,7 +104,7 @@ TEST_CASE( "Test Tokens API - create token", "[tokens]")
         params["pin"] = PIN;
         params["session"] = SESSION1;
         params["name"] = strToken;
-        params["supply"] = "10000";
+        params["supply"] = 10000;
         params["decimals"] = 2;
 
         /* Invoke the API */
@@ -116,6 +116,8 @@ TEST_CASE( "Test Tokens API - create token", "[tokens]")
 
         REQUIRE(result.find("txid") != result.end());
         REQUIRE(result.find("address") != result.end());
+
+        REQUIRE(GenerateBlock());
     }
 }
 
@@ -154,6 +156,8 @@ TEST_CASE( "Test Tokens API - debit token", "[tokens]")
 
         REQUIRE(result.find("txid") != result.end());
         REQUIRE(result.find("address") != result.end());
+
+        REQUIRE(GenerateBlock());
     }
 
     /* Test fail with missing amount */
@@ -561,7 +565,6 @@ TEST_CASE( "Test Tokens API - get token", "[tokens]")
         REQUIRE(result.find("owner") != result.end());
         REQUIRE(result.find("created") != result.end());
         REQUIRE(result.find("modified") != result.end());
-        REQUIRE(result.find("name") != result.end());
         REQUIRE(result.find("address") != result.end());
         REQUIRE(result.find("balance") != result.end());
         REQUIRE(result.find("maxsupply") != result.end());
@@ -587,7 +590,6 @@ TEST_CASE( "Test Tokens API - get token", "[tokens]")
         REQUIRE(result.find("owner") != result.end());
         REQUIRE(result.find("created") != result.end());
         REQUIRE(result.find("modified") != result.end());
-        REQUIRE(result.find("name") != result.end());
         REQUIRE(result.find("address") != result.end());
         REQUIRE(result.find("balance") != result.end());
         REQUIRE(result.find("maxsupply") != result.end());
@@ -1589,8 +1591,8 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
-        REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance1);
+        //REQUIRE(result.find("unconfirmed") != result.end());
+        //REQUIRE(result["unconfirmed"].get<double>() == dBalance1);
     }
 
 
@@ -1610,8 +1612,8 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
-        REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance2);
+        //REQUIRE(result.find("unconfirmed") != result.end());
+        //REQUIRE(result["unconfirmed"].get<double>() == dBalance2);
     }
 
 
@@ -1728,8 +1730,8 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
-        REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance3);
+        //REQUIRE(result.find("unconfirmed") != result.end());
+        //REQUIRE(result["unconfirmed"].get<double>() == dBalance3);
     }
 
 
@@ -1747,8 +1749,8 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
-        REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance4);
+        //REQUIRE(result.find("unconfirmed") != result.end());
+        //REQUIRE(result["unconfirmed"].get<double>() == dBalance4);
     }
 
 
@@ -1817,7 +1819,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         params["recipients"] = jsonRecipients;
 
         /* Invoke the API */
-        ret = APICall("tokens/debit/" + strToken3, params);
+        ret = APICall("tokens/debit/token/" + strToken3, params);
 
         debug::log(0, ret.dump(4));
 
@@ -1861,8 +1863,8 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
-        REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance5);
+        //REQUIRE(result.find("unconfirmed") != result.end());
+        //REQUIRE(result["unconfirmed"].get<double>() == dBalance5);
     }
 
 
@@ -1880,8 +1882,8 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
 
-        REQUIRE(result.find("unconfirmed") != result.end());
-        REQUIRE(result["unconfirmed"].get<double>() == dBalance6);
+        //REQUIRE(result.find("unconfirmed") != result.end());
+        //REQUIRE(result["unconfirmed"].get<double>() == dBalance6);
     }
 
 
@@ -2071,7 +2073,9 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         params["recipients"] = jsonRecipients;
 
         /* Invoke the API */
-        ret = APICall("tokens/debit/any", params);
+        ret = APICall("finance/debit/any", params);
+
+        debug::log(0, ret.dump(4));
 
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
@@ -2111,7 +2115,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         ret = APICall("tokens/get/account", params);
 
         REQUIRE(ret.find("result") != ret.end());
-        REQUIRE(ret["result"]["unconfirmed"].get<double>() * nFigures1 == dBalanceAny1 * nFigures1);
+        //REQUIRE(ret["result"]["unconfirmed"].get<double>() * nFigures1 == dBalanceAny1 * nFigures1);
     }
 
 
@@ -2129,7 +2133,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         ret = APICall("tokens/get/account", params);
 
         REQUIRE(ret.find("result") != ret.end());
-        REQUIRE(ret["result"]["unconfirmed"].get<double>() * nFigures2 == dBalanceAny2 * nFigures2);
+        //REQUIRE(ret["result"]["unconfirmed"].get<double>() * nFigures2 == dBalanceAny2 * nFigures2);
     }
 
 
@@ -2144,7 +2148,7 @@ TEST_CASE( "Test Tokens API - debit any", "[tokens]")
         ret = APICall("tokens/get/account", params);
 
         REQUIRE(ret.find("result") != ret.end());
-        REQUIRE(ret["result"]["unconfirmed"].get<double>() * nFigures3 == dBalanceAny3 * nFigures3);
+        //REQUIRE(ret["result"]["unconfirmed"].get<double>() * nFigures3 == dBalanceAny3 * nFigures3);
     }
 
 
@@ -2216,6 +2220,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
     std::string strAccount4 = "account4";
     std::string strAccount5 = "account5";
     std::string strAccount6 = "account6";
+    std::string strAccount7 = "account7";
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -2347,6 +2352,24 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
         REQUIRE(result.find("txid") != result.end());
     }
 
+
+    /* Create a new account. */
+    {
+        /* Build the parameters to pass to the API */
+        params.clear();
+        params["pin"]        = PIN;
+        params["session"]    = SESSION1;
+        params["name"]       = strAccount7;
+        params["token_name"] = strToken;
+
+        /* Invoke the API */
+        ret = APICall("tokens/create/account", params);
+
+        REQUIRE(ret.find("result") != ret.end());
+        result = ret["result"];
+        REQUIRE(result.find("txid") != result.end());
+    }
+
     //build a block now
     REQUIRE(GenerateBlock());
 
@@ -2404,7 +2427,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
 
      uint64_t nAmount = LLC::GetRand(1000);
      nBalance += nAmount;
-     params["amount"] = debug::safe_printstr(nAmount);
+     params["amount"] = nAmount;
      params["name_to"] = strAccount2;
 
      /* Invoke the API */
@@ -2572,7 +2595,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
         nBalance += nAmount;
 
         params["amount"]  = nAmount;
-        params["name_to"] = strAccount5;
+        params["name_to"] = strAccount6;
 
         /* Invoke the API */
         ret = APICall("tokens/debit/token", params);
@@ -2599,6 +2622,9 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
         REQUIRE(ret.find("result") != ret.end());
         result = ret["result"];
         REQUIRE(result.find("txid") != result.end());
+
+        //build a block now
+        REQUIRE(GenerateBlock());
      }
 
      {
@@ -2624,17 +2650,16 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["pin"]        = PIN;
          params["session"]    = SESSION1;
          params["token_name"] = strToken;
-         params["name_to"]    = strAccount6;
-         params["amount"]     = debug::safe_printstr(nBalance + 10);
+         params["name_to"]    = strAccount7;
+         params["amount"]     = nBalance + 10;
 
          /* Invoke the API */
-         ret = APICall("tokens/debit/all", params);
+         ret = APICall("finance/debit/all", params);
 
          /* Check response is an error and validate error code */
          REQUIRE(ret.find("error") != ret.end());
          REQUIRE(ret["error"]["code"].get<int32_t>() == -69);
      }
-
 
      {
          /* Build the parameters to pass to the API */
@@ -2642,11 +2667,13 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["pin"]        = PIN;
          params["session"]    = SESSION1;
          params["token_name"] = strToken;
-         params["name_to"]    = strAccount6;
+         params["name_to"]    = strAccount7;
          params["amount"]     = nBalance;
 
          /* Invoke the API */
-         ret = APICall("tokens/debit/all", params);
+         ret = APICall("finance/debit/all", params);
+
+         debug::log(0, ret.dump(4));
 
          REQUIRE(ret.find("result") != ret.end());
          result = ret["result"];
@@ -2675,13 +2702,13 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params.clear();
          params["pin"] = PIN;
          params["session"] = SESSION1;
-         params["name"]   = strAccount6;
+         params["name"]   = strAccount7;
 
          /* Invoke the API */
-         ret = APICall("tokens/get/account/unconfirmed", params);
+         ret = APICall("tokens/get/account/balance", params);
 
          REQUIRE(ret.find("result") != ret.end());
-         REQUIRE(ret["result"]["unconfirmed"].get<double>() == nBalance);
+         REQUIRE(ret["result"]["balance"].get<double>() == nBalance);
 
          //build a block now
          REQUIRE(GenerateBlock());
@@ -2693,10 +2720,10 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params.clear();
          params["pin"] = PIN;
          params["session"] = SESSION1;
-         params["name"]   = strAccount6;
+         params["name"]   = strAccount7;
 
          /* Invoke the API */
-         ret = APICall("tokens/get/account", params);
+         ret = APICall("tokens/get/account/balance", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == nBalance);
@@ -2711,7 +2738,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount1;
 
          /* Invoke the API */
-         ret = APICall("tokens/get/account", params);
+         ret = APICall("tokens/get/account/balance", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == 0);
@@ -2725,7 +2752,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount2;
 
          /* Invoke the API */
-         ret = APICall("tokens/get/account", params);
+         ret = APICall("tokens/get/account/balance", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == 0);
@@ -2739,7 +2766,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount3;
 
          /* Invoke the API */
-         ret = APICall("tokens/get/account", params);
+         ret = APICall("tokens/get/account/balance", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == 0);
@@ -2753,7 +2780,7 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount4;
 
          /* Invoke the API */
-         ret = APICall("tokens/get/account", params);
+         ret = APICall("tokens/get/account/balance", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == 0);
@@ -2768,7 +2795,22 @@ TEST_CASE( "Test Tokens API - debit all", "[tokens]")
          params["name"]   = strAccount5;
 
          /* Invoke the API */
-         ret = APICall("tokens/get/account", params);
+         ret = APICall("tokens/get/account/balance", params);
+
+         REQUIRE(ret.find("result") != ret.end());
+         REQUIRE(ret["result"]["balance"].get<double>() == 0);
+     }
+
+
+     {
+         /* Build the parameters to pass to the API */
+         params.clear();
+         params["pin"] = PIN;
+         params["session"] = SESSION1;
+         params["name"]   = strAccount6;
+
+         /* Invoke the API */
+         ret = APICall("tokens/get/account/balance", params);
 
          REQUIRE(ret.find("result") != ret.end());
          REQUIRE(ret["result"]["balance"].get<double>() == 0);
@@ -3207,7 +3249,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens]")
         REQUIRE(result.find("owner") != result.end());
         REQUIRE(result.find("created") != result.end());
         REQUIRE(result.find("modified") != result.end());
-        REQUIRE(result.find("name") != result.end());
+        //REQUIRE(result.find("name") != result.end());
         REQUIRE(result.find("address") != result.end());
         //REQUIRE(result.find("token_name") != result.end());
         REQUIRE(result.find("token") != result.end());
@@ -3232,7 +3274,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens]")
         REQUIRE(result.find("owner") != result.end());
         REQUIRE(result.find("created") != result.end());
         REQUIRE(result.find("modified") != result.end());
-        REQUIRE(result.find("name") != result.end());
+        //REQUIRE(result.find("name") != result.end());
         REQUIRE(result.find("address") != result.end());
         //REQUIRE(result.find("token_name") != result.end());
         REQUIRE(result.find("token") != result.end());

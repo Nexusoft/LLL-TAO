@@ -47,16 +47,6 @@ namespace TAO::API
             }
         );
 
-        /* Populate our TRUST standard. */
-        mapStandards["trust"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
-            {
-                return objCheck.Standard() == TAO::Register::OBJECTS::TRUST;
-            }
-        );
-
 
         /* Handle for all BURN operations. */
         mapFunctions["burn"] = Function
