@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/tokens.h>
 #include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
@@ -73,7 +74,7 @@ namespace TAO::API
                 std::placeholders::_2
             )
             , version::get_version(6, 0, 0)
-            , "please use finance/get command instead"
+            , "please use finance/create command instead"
         );
 
         /* Handle for all CREDIT operations. */
@@ -137,8 +138,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::Deprecated,
-                this,
+                &Templates::Deprecated,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -166,8 +166,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::Deprecated,
-                Commands::Get<Finance>(),
+                &Templates::Deprecated,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

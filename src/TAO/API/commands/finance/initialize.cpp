@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/check.h>
 
@@ -213,8 +214,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::Deprecated,
-                this,
+                &Templates::Deprecated,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -227,8 +227,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::Deprecated,
-                this,
+                &Templates::Deprecated,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -241,8 +240,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::Deprecated,
-                this,
+                &Templates::Deprecated,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

@@ -130,21 +130,6 @@ namespace TAO::API
         virtual std::string RewriteURL(const std::string& strMethod, encoding::json &jParams);
 
 
-        /** Deprecated
-         *
-         *  Dummy method for assigning deprecated endpoints to.
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Deprecated(const encoding::json& jParams, const bool fHelp)
-        {
-            return encoding::json::array();
-        }
-
     protected:
 
         /** Initializer Flag. */

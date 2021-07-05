@@ -37,5 +37,22 @@ namespace TAO::API
          *
          **/
         static encoding::json Get(const encoding::json& jParams, const bool fHelp);
+
+
+
+        /** Deprecated
+         *
+         *  Dummy method for assigning deprecated endpoints to.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        static encoding::json Deprecated(const encoding::json& jParams, const bool fHelp)
+        {
+            return encoding::json::array();
+        }
     };
 }
