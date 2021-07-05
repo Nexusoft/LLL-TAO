@@ -330,7 +330,7 @@ namespace TAO::API
 
                 /* Now lets check our expected types match. */
                 if(!CheckStandard(jParams, objCredit))
-                    throw Exception(-49, "Unexpected type for name / address");
+                    throw Exception(-49, "Unsupported type for name / address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract contract;
@@ -379,7 +379,7 @@ namespace TAO::API
 
                 /* Now lets check our expected types match. */
                 if(!CheckStandard(jParams, objCredit))
-                    throw Exception(-49, "Unexpected type for name / address");
+                    throw Exception(-49, "Unsupported type for name / address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract contract;
@@ -407,7 +407,7 @@ namespace TAO::API
 
                 /* Now lets check our expected types match. */
                 if(!CheckStandard(jParams, objTo))
-                    throw Exception(-49, "Unexpected type for name / address");
+                    throw Exception(-49, "Unsupported type for name / address");
 
                 /* Create our new contract now. */
                 TAO::Operation::Contract contract;
@@ -462,7 +462,7 @@ namespace TAO::API
 
                 /* Now lets check our expected types match. */
                 if(!CheckStandard(jParams, objCredit))
-                    throw Exception(-49, "Unexpected type for name / address");
+                    throw Exception(-49, "Unsupported type for name / address");
 
                 /* Calculate the partial amount we want to claim based on our share of the proof tokens */
                 const uint64_t nPartial = (objProof.get<uint64_t>("balance") * nAmount) / objOwner.get<uint64_t>("supply");

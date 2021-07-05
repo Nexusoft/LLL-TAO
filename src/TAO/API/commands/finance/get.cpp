@@ -37,7 +37,7 @@ namespace TAO::API
 
         /* Now lets check our expected types match. */
         if(!CheckStandard(jParams, objThis))
-            throw Exception(-49, "Unexpected type for name / address");
+            throw Exception(-49, "Unsupported type for name / address");
 
         /* Build our response object. */
         encoding::json jRet =
