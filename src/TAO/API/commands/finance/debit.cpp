@@ -230,7 +230,7 @@ namespace TAO::API
 
             /* Now lets check our expected types match. */
             if(!CheckStandard(jParams, objFrom))
-                throw Exception(-49, "Unsupported type for name / address");
+                throw Exception(-49, "Unsupported type for name/address");
 
             /* Extract a token name from our from parameter. */
             const uint256_t hashToken = objFrom.get<uint256_t>("token");

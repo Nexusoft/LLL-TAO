@@ -105,7 +105,7 @@ namespace TAO
 
             /* Now lets check our expected types match. */
             if(!CheckStandard(jParams, asset))
-                throw Exception(-49, "Unsupported type for name / address");
+                throw Exception(-49, "Unsupported type for name/address");
 
             /* Declare operation stream to serialize all of the field updates*/
             TAO::Operation::Stream ssOperationStream;

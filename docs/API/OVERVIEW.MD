@@ -200,7 +200,7 @@ API Error Codes
 | -46 | Missing amount |
 | -47 | Missing price |
 | -48 | Token not found |
-| -49 | Unsupported type for name / address |
+| -49 | Unsupported type for name/address |
 | -50 | Missing txid |
 | -51 | No available token accounts for recipient |
 | -52 | No more available accounts for debit |

@@ -110,7 +110,7 @@ namespace TAO
 
             /* Now lets check our expected types match. */
             if(!CheckStandard(jParams, asset))
-                throw Exception(-49, "Unsupported type for name / address");
+                throw Exception(-49, "Unsupported type for name/address");
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();

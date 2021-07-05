@@ -36,7 +36,7 @@ namespace TAO::API
 
         /* Now lets check our expected types match. */
         if(!CheckStandard(jParams, steCheck))
-            throw Exception(-49, "Unsupported type for name / address");
+            throw Exception(-49, "Unsupported type for name/address");
 
         /* Serialize the invoice into JSON. */
         const encoding::json jInvoice =

@@ -64,7 +64,7 @@ namespace TAO
 
             /* Now lets check our expected types match. */
             if(!CheckStandard(jParams, object))
-                throw Exception(-49, "Unsupported type for name / address");
+                throw Exception(-49, "Unsupported type for name/address");
 
             /* Populate the response JSON */
             /* Get List of field names in this asset object */
