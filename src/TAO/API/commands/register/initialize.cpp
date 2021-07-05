@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/register.h>
+#include <TAO/API/types/commands/templates.h>
 #include <TAO/API/objects/types/objects.h>
 
 #include <TAO/API/types/commands.h>
@@ -130,8 +131,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Register::Get,
-                this,
+                &Templates::Get,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
