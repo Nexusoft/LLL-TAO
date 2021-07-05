@@ -56,7 +56,7 @@ namespace TAO::API
 
         /* Execute the function map if method is found. */
         if(mapFunctions.find(strMethod) != mapFunctions.end())
-            return mapFunctions[strMethod].Execute(SanitizeParams(strMethod, jParams), fHelp);
+            return mapFunctions[strMethod].Execute(jParams, fHelp);
         else
             throw Exception(-2, "Method not found: ", strMethod);
     }
@@ -127,33 +127,5 @@ namespace TAO::API
         }
 
         return strVerb;
-    }
-
-
-
-    /* Allows derived API's to check the values in the parameters array for the method being called. */
-    encoding::json Base::SanitizeParams(const std::string& strMethod, const encoding::json& jParams)
-    {
-        /* Some 3rd party apps such as bubble do not handle dynamic values very well
-         * and will insert the text null if not populated */
-        if(config::GetBoolArg("-apiremovenullstring", false))
-        {
-            /* Make a copy of the params to parse */
-            encoding::json jsonSanitizedParams = jParams;
-
-            /* Iterate all parameters */
-            for(auto param = jParams.begin(); param != jParams.end(); ++param)
-            {
-                if((*param).is_string() && (*param).get<std::string>() == "null")
-                {
-                    jsonSanitizedParams[param.key()] = nullptr;
-                }
-            }
-
-            return jsonSanitizedParams;
-
-        }
-        else
-            return jParams;
     }
 }

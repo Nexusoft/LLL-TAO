@@ -130,22 +130,6 @@ namespace TAO::API
         virtual std::string RewriteURL(const std::string& strMethod, encoding::json &jParams);
 
 
-
-        /** SanitizeParams
-         *
-         *  Allows derived API's to check the values in the parameters array for the method being called.
-         *  The return json contains the sanitized parameter values, which derived implementations might convert to the correct type
-         *  for the method being called.
-         *
-         *  @param[in] strMethod The name of the method being invoked.
-         *  @param[in] jParams The json array of parameters being passed to this method.
-         *
-         *  @return the sanitized json parameters array.
-         *
-         **/
-        virtual encoding::json SanitizeParams(const std::string& strMethod, const encoding::json& jParams);
-
-
         /** Deprecated
          *
          *  Dummy method for assigning deprecated endpoints to.

@@ -52,7 +52,7 @@ namespace TAO::API
 
         /* Check for expected type. */
         if(strType.find(jParams[strKey].type_name()) == strType.npos)
-            throw Exception(-35, "Invalid parameter [", strKey, "=", jParams[strKey].type_name(), "], expecting [", strType, "]");
+            throw Exception(-35, "Invalid parameter [", strKey, "=", jParams[strKey].type_name(), "], expecting [", strKey, "=", strType, "]");
 
         return true;
     }
