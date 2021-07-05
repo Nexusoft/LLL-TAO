@@ -32,12 +32,8 @@ namespace TAO::API
 
         /* Get the token / account object. */
         TAO::Register::Object objThis;
-        if(!LLD::Register->ReadObject(hashRegister, objThis, TAO::Ledger::FLAGS::LOOKUP))
-            throw Exception(-13, "Object not found");
-
-        /* Check the object standard. */
-        if(objThis.Base() != TAO::Register::OBJECTS::ACCOUNT)
-            throw Exception(-15, "Object is not an account or token");
+        if(!LLD::Register->ReadObject(hashRegister, objThis, TAO::Ledger::FLAGS::MEMPOOL))
+            throw Exception(-13, "Object not found ", hashRegister.ToString());
 
         /* Now lets check our expected types match. */
         if(!CheckStandard(jParams, objThis))

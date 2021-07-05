@@ -38,22 +38,6 @@ namespace TAO::API
         const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
         const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
 
-        /* Check for any/all request types. */
-        if(jParams.find("request") != jParams.end() && jParams["request"].find("type") != jParams["request"].end())
-        {
-            /* Grab a copy of our request type. */
-            const std::string strType =
-                jParams["request"]["type"].get<std::string>();
-
-            /* Check for the ALL name, that debits from all relevant accounts. */
-            if(strType == "all")
-                return TAO::API::ADDRESS_ALL;
-
-            /* Check for the ANY name, that debits from any account of any token, mixed */
-            if(strType == "any")
-                return TAO::API::ADDRESS_ANY;
-        }
-
         /* If name is provided then use this to deduce the register address, */
         if(jParams.find(strName) != jParams.end())
         {
@@ -94,12 +78,28 @@ namespace TAO::API
                 return object.get<uint256_t>("address");
         }
 
+        /* Check for any/all request types. */
+        if(jParams.find("request") != jParams.end() && jParams["request"].find("type") != jParams["request"].end())
+        {
+            /* Grab a copy of our request type. */
+            const std::string strType =
+                jParams["request"]["type"].get<std::string>();
+
+            /* Check for the ALL name, that debits from all relevant accounts. */
+            if(strType == "all")
+                return TAO::API::ADDRESS_ALL;
+
+            /* Check for the ANY name, that debits from any account of any token, mixed */
+            if(strType == "any")
+                return TAO::API::ADDRESS_ANY;
+        }
+
         /* This exception is for name_to/address_to */
-        else if(strSuffix == "to")
+        if(strSuffix == "to")
             throw Exception(-64, "Missing recipient account name_to / address_to");
 
         /* This exception is for name_proof/address_proof */
-        else if(strSuffix == "proof")
+        if(strSuffix == "proof")
             throw Exception(-54, "Missing name_proof / address_proof to credit");
 
         /* This exception is for name/address */

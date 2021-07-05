@@ -412,6 +412,8 @@ TEST_CASE( "Test Tokens API - credit token", "[tokens]")
 
         REQUIRE(result.find("txid") != result.end());
         strTXID = result["txid"].get<std::string>();
+
+        REQUIRE(GenerateBlock());
      }
 
     /* Test fail with missing txid */
@@ -3084,6 +3086,8 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens]")
         REQUIRE(result.find("txid") != result.end());
 
         strBurnID = result["txid"];
+
+        REQUIRE(GenerateBlock());
     }
 
 

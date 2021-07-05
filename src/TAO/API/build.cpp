@@ -175,18 +175,18 @@ namespace TAO::API
                 throw TAO::API::Exception(-14, "Object failed to parse");
 
             /* Get the object standard. */
-            uint8_t nStandard = object.Standard();
+            const uint8_t nStandard = object.Standard();
 
             /* Check the object standard. */
             if(nStandard != TAO::Register::OBJECTS::ACCOUNT)
                 throw TAO::API::Exception(-65, "Object is not an account");
 
             /* Check the account is a NXS account */
-            if(object.get<uint256_t>("token") != 0)
+            if(object.get<uint256_t>("token") != TOKEN::NXS)
                 throw TAO::API::Exception(-164, "Fee account is not a NXS account.");
 
             /* Get the account balance */
-            uint64_t nCurrentBalance = object.get<uint64_t>("balance");
+            const uint64_t nCurrentBalance = object.get<uint64_t>("balance");
 
             /* Check that there is enough balance to pay the fee */
             if(nCurrentBalance < nCost)
@@ -214,7 +214,7 @@ namespace TAO::API
         {
             /* Read the debit transaction that is being credited. */
             TAO::Ledger::Transaction tx;
-            if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Ledger->ReadTx(hashTx, tx))
                 throw Exception(-40, "Previous transaction not found.");
 
             /* Loop through all transactions. */
@@ -232,7 +232,7 @@ namespace TAO::API
         {
             /* Read the debit transaction that is being credited. */
             Legacy::Transaction tx;
-            if(!LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Legacy->ReadTx(hashTx, tx))
                 throw Exception(-40, "Previous transaction not found.");
 
             /* Iterate through all TxOut's in the legacy transaction to see which are sends to a sig chain  */

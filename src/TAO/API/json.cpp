@@ -1056,6 +1056,10 @@ namespace TAO::API
                     jRet["data"] = HexStr(vState.begin(), vState.end());
             }
 
+            /* Otherwise output the address if supplied. */
+            if(hashRegister != 0)
+                jRet["address"] = TAO::Register::Address(hashRegister).ToString();
+
             return jRet;
         }
 
@@ -1286,8 +1290,6 @@ namespace TAO::API
         /* Otherwise output the address if supplied. */
         if(hashRegister != 0)
             jRet["address"] = TAO::Register::Address(hashRegister).ToString();
-
-
 
         return jRet;
     }

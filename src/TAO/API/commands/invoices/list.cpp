@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/constants.h>
 
 #include <TAO/API/include/get.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/list.h>
 
 #include <TAO/API/include/extract.h>
@@ -97,20 +98,13 @@ namespace TAO::API
         uint32_t nTotal = 0;
         for(const auto& state : vRegisters)
         {
-            /* Only include read only register type */
-            if(state.second.nType != TAO::Register::REGISTER::READONLY)
-                continue;
-
-            /* Deserialize the leading byte of the state data to check that it is an invoice */
-            uint16_t nType = 0;
-            state.second >> nType;
-
-            /* Check that we are filtering the correct registers denoted by type value. */
-            if(nType != TAO::API::USER_TYPES::INVOICE)
+            /* Check our standards. */
+            if(!CheckStandard(params, state.second))
                 continue;
 
             /* The invoice JSON data */
-            encoding::json invoice = Invoices::InvoiceToJSON(params, state.second, state.first);
+            encoding::json invoice =
+                RegisterToJSON(state.second, state.first);
 
             /* Check the offset. */
             if(++nTotal <= nOffset)

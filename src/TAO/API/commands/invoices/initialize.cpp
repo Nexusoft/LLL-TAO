@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
 
+#include <TAO/Ledger/include/enum.h>
+
 /* Global TAO namespace. */
 namespace TAO
 {
@@ -26,7 +28,6 @@ namespace TAO
         /* Standard initialization function. */
         void Invoices::Initialize()
         {
-            /* Populate our standard objects. */
             /* Populate our invoice standard. */
             mapStandards["invoice"] = Standard
             (
@@ -54,6 +55,36 @@ namespace TAO
                     return true;
                 }
             );
+
+            /* Subset of invoice standard, to find outstanding invoices. */
+            mapStandards["outstanding"] = Standard
+            (
+                /* Lambda expression to determine object standard. */
+                [this](const TAO::Register::Object& objCheck)
+                {
+                    /* Check for correct state type. */
+                    if(!CheckObject("invoice", objCheck))
+                        return false;
+
+                    return (objCheck.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM);
+                }
+            );
+
+            /* Subset of invoice standard, to find outstanding invoices. */
+            mapStandards["paid"] = Standard
+            (
+                /* Lambda expression to determine object standard. */
+                [this](const TAO::Register::Object& objCheck)
+                {
+                    /* Check for correct state type. */
+                    if(!CheckObject("invoice", objCheck))
+                        return false;
+
+                    return (objCheck.hashOwner.GetType() == TAO::Ledger::GENESIS::UserType());
+                }
+            );
+
+
 
 
             /* Handle for all CREATE operations. */
