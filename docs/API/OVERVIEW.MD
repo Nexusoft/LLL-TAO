@@ -172,7 +172,6 @@ API Error Codes
 | -18 | Missing data |
 | -19 | Data must be a string with this asset format |
 | -20 | Missing asset value fields |
-| -21 | Missing json parameter |
 | -21 | json field must be an array |
 | -22 | Missing name field in json definition |
 | -23 | Missing type field in json definition |
@@ -187,7 +186,7 @@ API Error Codes
 | -32 | Failed to accept |
 | -33 | Incorrect or missing name / address |
 | -34 | Asset not found |
-| -35 | Specified name/address is not an asset |
+| -35 | Invalid parameter [key=type], expecting [type] |
 | -36 | Invalid type [name] for command |
 | -37 | Missing token name / address |
 | -38 | Missing asset name / address |

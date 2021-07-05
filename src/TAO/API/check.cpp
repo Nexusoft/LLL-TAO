@@ -39,6 +39,25 @@ namespace TAO::API
     }
 
 
+    /* Determines if given parameter is what is correct expected type. Will throw exception if invalid. */
+    bool CheckParameter(const encoding::json& jParams, const std::string& strKey, const std::string& strType)
+    {
+        /* Check that given parameter exists first. */
+        if(jParams.find(strKey) == jParams.end())
+            return false;
+
+        /* Now let's check for empty parameters. */
+        if(jParams[strKey].empty()) //XXX: this is extra check just in case, we may be able to remove
+            throw Exception(-58, "Empty Parameter [", strKey, "]");
+
+        /* Check for expected type. */
+        if(strType.find(jParams[strKey].type_name()) == strType.npos)
+            throw Exception(-35, "Invalid parameter [", strKey, "=", jParams[strKey].type_name(), "], expecting [", strType, "]");
+
+        return true;
+    }
+
+
     /*  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
      *  Throws an appropriate Exception if it is not mature. */
     void CheckMature(const uint256_t& hashGenesis)
@@ -74,8 +93,8 @@ namespace TAO::API
             TAO::Operation::Contract tContract = rContract; //XXX: assess how much this copy costs us in cycles, compare with ref
 
             /* Track if contract succeeded execution and bulding. */
-            fSanitized = TAO::Register::Build(tContract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
-                         && TAO::Operation::Execute(tContract, TAO::Ledger::FLAGS::MEMPOOL);
+            fSanitized = TAO::Register::Build(tContract, mapStates, TAO::Ledger::FLAGS::MINER)
+                         && TAO::Operation::Execute(tContract, TAO::Ledger::FLAGS::MINER);
 
             /* Reenable error logging. */
             debug::fLogError = true;

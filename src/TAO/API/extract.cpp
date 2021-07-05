@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/address.h>
 
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/constants.h>
 #include <TAO/API/types/exception.h>
@@ -39,13 +40,11 @@ namespace TAO::API
         const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
 
         /* If name is provided then use this to deduce the register address, */
-        if(jParams.find(strName) != jParams.end())
-        {
+        if(CheckParameter(jParams, strName, "string"))
             return Names::ResolveAddress(jParams, jParams[strName].get<std::string>());
-        }
 
         /* Otherwise let's check for the raw address format. */
-        else if(jParams.find(strAddr) != jParams.end())
+        else if(CheckParameter(jParams, strAddr, "string"))
         {
             /* Declare our return value. */
             const TAO::Register::Address hashRet =
@@ -111,17 +110,17 @@ namespace TAO::API
     uint256_t ExtractToken(const encoding::json& jParams)
     {
         /* If name is provided then use this to deduce the register address, */
-        if(jParams.find("token_name") != jParams.end())
+        if(CheckParameter(jParams, "token_name", "string"))
         {
             /* Check for default NXS token or empty name fields. */
-            if(jParams["token_name"] == "NXS" || jParams["token_name"].empty())
+            if(jParams["token_name"].get<std::string>() == "NXS")
                 return 0;
 
             return Names::ResolveAddress(jParams, jParams["token_name"].get<std::string>());
         }
 
         /* Otherwise let's check for the raw address format. */
-        else if(jParams.find("token") != jParams.end())
+        else if(CheckParameter(jParams, "token", "string"))
         {
             /* Declare our return value. */
             const TAO::Register::Address hashRet =
@@ -142,17 +141,11 @@ namespace TAO::API
     uint256_t ExtractGenesis(const encoding::json& jParams)
     {
         /* Check to see if specific genesis has been supplied */
-        if(jParams.find("genesis") != jParams.end())
-        {
-            /* Check for empty parameter. */
-            if(jParams["genesis"].empty())
-                throw Exception(-58, "Empty Parameter [genesis]");
-
+        if(CheckParameter(jParams, "genesis", "string"))
             return uint256_t(jParams["genesis"].get<std::string>());
-        }
 
         /* Check if username has been supplied instead. */
-        if(jParams.find("username") != jParams.end())
+        if(CheckParameter(jParams, "username", "string"))
         {
             /* Check for empty parameter. */
             if(jParams["username"].empty())
@@ -169,16 +162,8 @@ namespace TAO::API
     uint256_t ExtractRecipient(const encoding::json& jParams)
     {
         /* Check to see if specific genesis has been supplied */
-        if(jParams.find("recipient") != jParams.end())
+        if(CheckParameter(jParams, "recipient", "string"))
         {
-            /* Check for invalid types. */
-            if(!jParams["recipient"].is_string())
-                throw Exception(-57, "Invalid Parameter [recipient]");
-
-            /* Check for empty parameter. */
-            if(jParams["recipient"].empty())
-                throw Exception(-58, "Empty Parameter [recipient]");
-
             /* Check for hex encoding. */
             const std::string strRecipient = jParams["recipient"].get<std::string>();
             if(IsHex(strRecipient))
@@ -205,7 +190,7 @@ namespace TAO::API
         const std::string strAmount = (strPrefix.empty() ? ("") : ("_" + strPrefix)) + "amount";
 
         /* Check for missing parameter. */
-        if(jParams.find(strAmount) != jParams.end())
+        if(CheckParameter(jParams, strAmount, "string, number"))
         {
             /* Watch our numeric limits. */
             const uint64_t nLimit = std::numeric_limits<uint64_t>::max();
@@ -256,7 +241,7 @@ namespace TAO::API
     uint64_t ExtractValue(const encoding::json& jParams, const std::string& strName)
     {
         /* Check for missing parameter. */
-        if(jParams.find(strName) != jParams.end())
+        if(CheckParameter(jParams, strName, "string, number"))
         {
             /* Watch our numeric limits. */
             const uint64_t nLimit = std::numeric_limits<uint64_t>::max();
@@ -339,17 +324,17 @@ namespace TAO::API
     {
         /* Check for page parameter. */
         uint32_t nPage = 0;
-        if(jParams.find("page") != jParams.end())
+        if(CheckParameter(jParams, "page", "string"))
             nPage = std::stoul(jParams["page"].get<std::string>());
 
         /* Check for offset parameter. */
         nOffset = 0;
-        if(jParams.find("offset") != jParams.end())
+        if(CheckParameter(jParams, "offset", "string"))
             nOffset = std::stoul(jParams["offset"].get<std::string>());
 
         /* Check for limit and offset parameter. */
         nLimit = 100;
-        if(jParams.find("limit") != jParams.end())
+        if(CheckParameter(jParams, "limit", "string"))
         {
             /* Grab our limit from parameters. */
             const std::string strLimit = jParams["limit"].get<std::string>();
@@ -387,7 +372,7 @@ namespace TAO::API
             nOffset = nLimit * nPage;
 
         /* Get sort order*/
-        if(jParams.find("order") != jParams.end())
+        if(CheckParameter(jParams, "order", "string"))
             strOrder = jParams["order"].get<std::string>();
     }
 

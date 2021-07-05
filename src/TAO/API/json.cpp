@@ -1763,7 +1763,7 @@ namespace TAO::API
 
                     /* Check for empty value, due to ' ' or bad input. */
                     if(strValue.empty())
-                        throw Exception(-120, "Query Syntax Error: must use <key>=<value> with no extra characters.");
+                        throw Exception(-58, "Empty Parameter [", strKey, "]");
                 }
 
                 /* Check for where clauses. */
@@ -1815,7 +1815,7 @@ namespace TAO::API
                         continue;
                     }
 
-                    /* Set our return value */
+                    /* Otherwise just copy string argument over. */
                     jRet[strKey] = strValue;
                 }
             }

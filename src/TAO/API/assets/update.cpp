@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>
@@ -44,19 +45,19 @@ namespace TAO
     {
 
         /* Update the data in an asset */
-        encoding::json Assets::Update(const encoding::json& params, const bool fHelp)
+        encoding::json Assets::Update(const encoding::json& jParams, const bool fHelp)
         {
             encoding::json ret;
 
             /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(params))
+            if(!Commands::Get<Users>()->Authenticate(jParams))
                 throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+            Session& session = Commands::Get<Users>()->GetSession(jParams);
 
             /* Lock the signature chain. */
             LOCK(session.CREATE_MUTEX);
@@ -71,15 +72,15 @@ namespace TAO
             TAO::Register::Address hashRegister ;
 
             /* Check whether the caller has provided the asset name parameter. */
-            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
+            if(jParams.find("name") != jParams.end() && !jParams["name"].get<std::string>().empty())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(jParams, jParams["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw base58 encoded address. */
-            else if(params.find("address") != params.end())
-                hashRegister.SetBase58(params["address"].get<std::string>());
+            else if(jParams.find("address") != jParams.end())
+                hashRegister.SetBase58(jParams["address"].get<std::string>());
 
             /* Fail if no required parameters supplied. */
             else
@@ -88,23 +89,23 @@ namespace TAO
 
             /* Check for format parameter. */
             std::string strFormat = "JSON"; // default to json format if no foramt is specified
-            if(params.find("format") != params.end())
-                strFormat = params["format"].get<std::string>();
+            if(jParams.find("format") != jParams.end())
+                strFormat = jParams["format"].get<std::string>();
 
             /* Get the asset from the register DB.  We can read it as an Object.
                If this fails then we try to read it as a base State type and assume it was
                created as a raw format asset */
             TAO::Register::Object asset;
-            if(!LLD::Register->ReadState(hashRegister, asset, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadObject(hashRegister, asset, TAO::Ledger::FLAGS::MEMPOOL))
                 throw Exception(-34, "Asset not found");
 
             /* Check that this is an updatable object, i.e. not a raw / append obejct */
             if(asset.nType != TAO::Register::REGISTER::OBJECT) //NOTE: this is incorrect, only readonly registers cannot be updated
                 throw Exception(-155, "Raw assets can not be updated");
 
-            /* Ensure that the object is an asset */
-            if(!asset.Parse() || asset.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
-                throw Exception(-35, "Specified name/address is not an asset");
+            /* Now lets check our expected types match. */
+            if(!CheckStandard(jParams, asset))
+                throw Exception(-49, "Unsupported type for name / address");
 
             /* Declare operation stream to serialize all of the field updates*/
             TAO::Operation::Stream ssOperationStream;
@@ -112,7 +113,7 @@ namespace TAO
             if(strFormat == "JSON")
             {
                 /* Iterate through each field definition */
-                for(auto it = params.begin(); it != params.end(); ++it)
+                for(auto it = jParams.begin(); it != jParams.end(); ++it)
                 {
                     /* Skip any incoming parameters that are keywords used by this API method*/
                     if(it.key() == "pin"

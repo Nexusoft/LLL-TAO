@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/assets/types/assets.h>
 #include <TAO/API/names/types/names.h>
+
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 
@@ -29,7 +31,7 @@ namespace TAO
     {
 
         /* Get the schema for an asset */
-        encoding::json Assets::GetSchema(const encoding::json& params, const bool fHelp)
+        encoding::json Assets::GetSchema(const encoding::json& jParams, const bool fHelp)
         {
             /* The response JSON array */
             encoding::json ret = encoding::json::array();
@@ -38,15 +40,15 @@ namespace TAO
             TAO::Register::Address hashRegister ;
 
             /* Check whether the caller has provided the asset name parameter. */
-            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
+            if(jParams.find("name") != jParams.end() && !jParams["name"].get<std::string>().empty())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(jParams, jParams["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("address") != params.end())
-                hashRegister.SetBase58(params["address"].get<std::string>());
+            else if(jParams.find("address") != jParams.end())
+                hashRegister.SetBase58(jParams["address"].get<std::string>());
 
             /* Fail if no required parameters supplied. */
             else
@@ -57,26 +59,12 @@ namespace TAO
                If this fails then we try to read it as a base State type and assume it was
                created as a raw format asset */
             TAO::Register::Object object;
-            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadObject(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
                 throw Exception(-34, "Asset not found");
 
-            if(config::fClient.load() && object.hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
-                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
-
-
-            /* Only include non-standard object types */
-            if(object.nType == TAO::Register::REGISTER::OBJECT)
-            {
-                /* parse object so that the data fields can be accessed */
-                if(!object.Parse())
-                    throw Exception(-36, "Failed to parse object register");
-
-                /* Only include non standard object registers (assets) */
-                if(object.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
-                    throw Exception(-35, "Specified name/address is not an asset.");
-            }
-            else
-                throw Exception(-35, "Specified name/address is not an asset.");
+            /* Now lets check our expected types match. */
+            if(!CheckStandard(jParams, object))
+                throw Exception(-49, "Unsupported type for name / address");
 
             /* Populate the response JSON */
             /* Get List of field names in this asset object */

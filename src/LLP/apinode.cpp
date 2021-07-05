@@ -120,7 +120,7 @@ namespace LLP
         const std::string::size_type nPos = INCOMING.strRequest.find('/', 1);
 
         /* Extract the API requested. */
-        std::string strAPI    = INCOMING.strRequest.substr(1, nPos - 1);
+        std::string strCommands    = INCOMING.strRequest.substr(1, nPos - 1);
         std::string strMethod = INCOMING.strRequest.substr(nPos + 1);
 
         /* The JSON response */
@@ -223,12 +223,12 @@ namespace LLP
             /* Add our request information before invoking command. */
             jParams["request"] =
             {
-                {"commands", strAPI },
-                {"method", strMethod},
+                {"commands", strCommands },
+                {"method",   strMethod   },
             };
 
             /* Execute the api and methods. */
-            jRet = { {"result", TAO::API::Commands::Invoke(strAPI, strMethod, jParams) } };
+            jRet = { {"result", TAO::API::Commands::Invoke(strCommands, strMethod, jParams) } };
         }
 
         /* Handle for custom API exceptions. */
@@ -290,8 +290,8 @@ namespace LLP
         /* Add some micro-benchamrks to response data. */
         jRet["info"] =
         {
-            {"method",    strAPI + "/" + strMethod                          },
-            {"status",    TAO::API::Commands::Status(strAPI, strMethod)     },
+            {"method",    strCommands + "/" + strMethod                          },
+            {"status",    TAO::API::Commands::Status(strCommands, strMethod)     },
             {"address",   this->addr.ToString()                             },
             {"latency",   debug::safe_printstr(std::fixed, nLatency, " ms") }
         };

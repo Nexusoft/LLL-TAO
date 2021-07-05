@@ -40,33 +40,33 @@ namespace TAO
     namespace API
     {
         /* Tokenize an asset into fungible tokens that represent ownership. */
-        encoding::json Assets::Tokenize(const encoding::json& params, const bool fHelp)
+        encoding::json Assets::Tokenize(const encoding::json& jParams, const bool fHelp)
         {
             encoding::json ret;
 
             /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(params))
+            if(!Commands::Get<Users>()->Authenticate(jParams))
                 throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+            Session& session = Commands::Get<Users>()->GetSession(jParams);
 
             /* Get the register address. */
             TAO::Register::Address hashToken;
 
             /* Check for data parameter. */
-            if(params.find("token_name") != params.end() && !params["token_name"].get<std::string>().empty())
+            if(jParams.find("token_name") != jParams.end() && !jParams["token_name"].get<std::string>().empty())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashToken = Names::ResolveAddress(params, params["token_name"].get<std::string>());
+                hashToken = Names::ResolveAddress(jParams, jParams["token_name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("token") != params.end() && CheckAddress(params["token"]))
-                hashToken.SetBase58(params["token"]);
+            else if(jParams.find("token") != jParams.end() && CheckAddress(jParams["token"]))
+                hashToken.SetBase58(jParams["token"]);
 
             /* Fail if no required parameters supplied. */
             else
@@ -75,12 +75,8 @@ namespace TAO
             /* Validate the token requested */
             /* Get the token object. */
             TAO::Register::Object token;
-            if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
+            if(!LLD::Register->ReadObject(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
                 throw Exception(-125, "Token not found");
-
-            /* Parse the object register. */
-            if(!token.Parse())
-                throw Exception(-14, "Object failed to parse");
 
             /* Check the object standard. */
             if(token.Standard() != TAO::Register::OBJECTS::TOKEN)
@@ -90,15 +86,15 @@ namespace TAO
             TAO::Register::Address hashRegister ;
 
             /* Check whether the caller has provided the asset name parameter. */
-            if(params.find("name") != params.end() && !params["name"].get<std::string>().empty())
+            if(jParams.find("name") != jParams.end() && !jParams["name"].get<std::string>().empty())
             {
                 /* If name is provided then use this to deduce the register address */
-                hashRegister = Names::ResolveAddress(params, params["name"].get<std::string>());
+                hashRegister = Names::ResolveAddress(jParams, jParams["name"].get<std::string>());
             }
 
             /* Otherwise try to find the raw hex encoded address. */
-            else if(params.find("address") != params.end())
-                hashRegister.SetBase58(params["address"]);
+            else if(jParams.find("address") != jParams.end())
+                hashRegister.SetBase58(jParams["address"]);
 
             /* Fail if no required parameters supplied. */
             else
@@ -109,27 +105,12 @@ namespace TAO
             if(!LLD::Register->ReadState(hashRegister, asset, TAO::Ledger::FLAGS::MEMPOOL))
                 throw Exception(-34, "Asset not found");
 
-            if(config::fClient.load() && asset.hashOwner != Commands::Get<Users>()->GetCallersGenesis(params))
+            if(config::fClient.load() && asset.hashOwner != Commands::Get<Users>()->GetCallersGenesis(jParams))
                 throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
-            /* Only include raw and non-standard object types (assets)*/
-            if(asset.nType != TAO::Register::REGISTER::APPEND
-            && asset.nType != TAO::Register::REGISTER::RAW
-            && asset.nType != TAO::Register::REGISTER::OBJECT)
-            {
-                throw Exception(-35, "Specified name/address is not an asset.");
-            }
-
-            if(asset.nType == TAO::Register::REGISTER::OBJECT)
-            {
-                /* parse object so that the data fields can be accessed */
-                if(!asset.Parse())
-                    throw Exception(-36, "Failed to parse object register");
-
-                /* Only include non standard object registers (assets) */
-                if(asset.Standard() != TAO::Register::OBJECTS::NONSTANDARD)
-                    throw Exception(-35, "Specified name/address is not an asset.");
-            }
+            /* Now lets check our expected types match. */
+            if(!CheckStandard(jParams, asset))
+                throw Exception(-49, "Unsupported type for name / address");
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
