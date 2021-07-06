@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/register.h>
 
+#include <TAO/API/include/compare.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/include/filter.h>
@@ -45,87 +47,64 @@ namespace TAO::API
         uint32_t nLimit = 100, nOffset = 0;
 
         /* Get the params to apply to the response. */
-        std::string strOrder = "desc";
-        ExtractList(jParams, strOrder, nLimit, nOffset);
+        std::string strOrder = "desc", strColumn = "modified";
+        ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
-        /* Sort order to apply */
-        std::string strSort = "trust";
-        if(jParams.find("sort") != jParams.end())
-            strSort = jParams["sort"].get<std::string>();
-
-        /* Timestamp of 30 days ago, to use to include active accounts */
-        //const uint64_t nActive = runtime::unifiedtimestamp() - (60 * 60 * 24 * 30);
-
-        /* The vector of active accounts */
-        std::vector<TAO::Register::Object> vActive;
+        /* Build our object list and sort on insert. */
+        std::set<encoding::json, CompareResults> setRegisters({}, CompareResults(strOrder, strColumn));
 
         /* Batch read up to 1000 at a time */
-        std::vector<TAO::Register::Object> vAccounts;
-        if(LLD::Register->BatchRead(strType, vAccounts, -1))
+        std::vector<TAO::Register::Object> vObjects;
+        if(LLD::Register->BatchRead(strType, vObjects, -1))
         {
-            /* Make sure they are all parsed so that we can sort them */
-            for(auto& rAccount : vAccounts)
+            /* Add the register data to the response */
+            for(auto& rObject : vObjects)
             {
-                /* Check for object or state. */
-                if(rAccount.nType == TAO::Register::REGISTER::OBJECT)
-                {
-                    /* Parse so we can access the data */
-                    if(!rAccount.Parse())
-                        continue;
+                /* Parse our object now. */
+                if(!rObject.Parse())
+                    continue;
 
-                    /* Check that we match our filters. */
-                    if(!FilterObject(jParams, rAccount))
-                        continue;
-                }
+                /* Check our object standards. */
+                if(!CheckStandard(jParams, rObject))
+                    continue;
 
-                /* Add the account to our active list */
-                vActive.push_back(rAccount); //XXX: we really shouldn't copy everything again here
+                /* Populate the response */
+                encoding::json jRegister =
+                    StandardToJSON(jParams, rObject);
+
+                /* Check that we match our filters. */
+                if(!FilterObject(jParams, jRegister, rObject))
+                    continue;
+
+                /* Insert into set and automatically sort. */
+                setRegisters.insert(jRegister);
+
+                /* Check our offset boundaries to short circuit. */
+                if(setRegisters.size() > nLimit + nOffset)
+                    break;
             }
         }
 
         /* Check that we have results. */
-        if(vActive.empty())
+        if(setRegisters.empty())
             throw Exception(-74, "No registers found");
 
-        /* Sort the list */
-        const bool fDesc = (strOrder == "desc");
-        if(vActive[0].Check(strSort))
-        {
-            /* Sort in decending/ascending order based on order param */
-            std::sort(vActive.begin(), vActive.end(), [strSort, fDesc]
-                    (const TAO::Register::Object &a, const TAO::Register::Object &b)
-            {
-                if(fDesc)
-                    return ( a.get<uint64_t>(strSort) > b.get<uint64_t>(strSort) );
-                else
-                    return ( a.get<uint64_t>(strSort) < b.get<uint64_t>(strSort) );
-            });
-        }
-
-
-        /* The return json array */
+        /* Build our return value. */
         encoding::json jRet = encoding::json::array();
 
-        /* Iterate the list and build the response */
+        /* Handle paging and offsets. */
         uint32_t nTotal = 0;
-        for(const auto& rAccount : vActive)
+        for(const auto& jRegister : setRegisters)
         {
-            /* Populate the response */
-            encoding::json jAccount = RegisterToJSON(rAccount);
-
-            /* Check that we match our filters. */
-            if(!FilterResults(jParams, jAccount))
-                continue;
-
             /* Check the offset. */
             if(++nTotal <= nOffset)
                 continue;
 
             /* Check the limit */
-            if(nTotal - nOffset > nLimit)
+            if(jRet.size() == nLimit)
                 break;
 
-            jRet.push_back(jAccount);
+            jRet.push_back(jRegister);
         }
 
         return jRet;
