@@ -135,18 +135,16 @@ namespace TAO::API
 
 
         /** InvoiceToJSON
-        *
-        *  Returns the JSON representation of this invoice
-        *
-        *  @param[in] jParams The parameters from the API call.
-        *  @param[in] state The state register containing the invoice data
-        *  @param[in] hashInvoice The register address of the invoice state register
-        *
-        *  @return the invoice JSON
-        *
-        **/
-        static encoding::json InvoiceToJSON(const encoding::json& jParams, const TAO::Register::State& state,
-                                            const TAO::Register::Address& hashInvoice);
+         *
+         *  Returns the JSON representation of this invoice
+         *
+         *  @param[in] rObject The state register containing the invoice data
+         *  @param[in] hashRegister The register address of the invoice state register
+         *
+         *  @return the invoice JSON
+         *
+         **/
+        static encoding::json InvoiceToJSON(const TAO::Register::Object& rObject, const uint256_t& hashRegister);
 
 
     private:

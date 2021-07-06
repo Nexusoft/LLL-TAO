@@ -40,7 +40,7 @@ namespace TAO::API
 
         /* Serialize the invoice into JSON. */
         const encoding::json jInvoice =
-            InvoiceToJSON(jParams, steCheck, hashRegister);
+            InvoiceToJSON(steCheck, hashRegister);
 
         /* The recipient genesis hash */
         const uint256_t hashRecipient =

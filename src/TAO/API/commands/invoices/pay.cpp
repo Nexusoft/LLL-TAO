@@ -97,7 +97,7 @@ namespace TAO
                 throw Exception(-242, "Data at this address is not an invoice");
 
             /* Deserialize the invoice */
-            encoding::json invoice = InvoiceToJSON(params, state, hashRegister);
+            encoding::json invoice = RegisterToJSON(state, hashRegister);
 
             /* The recipient genesis hash */
             uint256_t hashRecipient;

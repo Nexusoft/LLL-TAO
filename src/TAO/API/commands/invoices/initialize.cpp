@@ -116,6 +116,14 @@ namespace TAO
 
                     return (objCheck.hashOwner != uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
                 }
+
+                /* Our custom encoding function for this type. */
+                , std::bind
+                (
+                    &Invoices::InvoiceToJSON,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
             );
 
 

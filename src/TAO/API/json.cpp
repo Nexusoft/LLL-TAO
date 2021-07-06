@@ -1012,6 +1012,9 @@ namespace TAO::API
         /* Handle if register isn't an object. */
         if(object.nType != TAO::Register::REGISTER::OBJECT)
         {
+            /* Reset our read position. */
+            object.nReadPos = 0;
+
             /* Get our state type. */
             uint16_t nType;
             object >> nType;
