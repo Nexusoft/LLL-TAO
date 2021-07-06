@@ -69,32 +69,6 @@ namespace TAO::API
         encoding::json Create(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Get
-         *
-         *  Returns information about a single invoice .
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Get(const encoding::json& jParams, const bool fHelp);
-
-
-        /** List
-         *
-         *  Returns all current invoices for this user.
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json List(const encoding::json& jParams, const bool fHelp);
-
-
         /** Pay
          *
          *  Pay an invoice and take ownership of it

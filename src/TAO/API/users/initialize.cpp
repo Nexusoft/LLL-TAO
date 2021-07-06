@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/users.h>
 
 #include <TAO/API/types/commands/invoices.h>
+#include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>
@@ -28,12 +29,11 @@ namespace TAO::API
         (
             std::bind
             (
-                &Invoices::List,
-                Commands::Get<TAO::API::Invoices>(),
+                &Templates::List,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , version::get_version(6, 0, 0)
+            , version::get_version(5, 1, 0)
             , "please use invoices/list/invoices command instead"
         );
 

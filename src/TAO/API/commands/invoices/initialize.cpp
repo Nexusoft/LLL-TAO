@@ -167,8 +167,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Invoices::Get,
-                this,
+                &Templates::Get,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

@@ -28,32 +28,6 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Get's the description of an item. */
-    encoding::json Invoices::Get(const encoding::json& jParams, const bool fHelp)
-    {
-        /* Get the Register ID. */
-        const TAO::Register::Address hashRegister = ExtractAddress(jParams);
-
-        /* Validate the payment account */
-        TAO::Register::Object tObject;
-        if(!LLD::Register->ReadObject(hashRegister, tObject))
-            throw Exception(-13, "Object not found");
-
-        /* Check our standard types here. */
-        if(!CheckStandard(jParams, tObject))
-            throw Exception(-242, "Data at this address is not an invoice");
-
-        /* Build the response JSON. */
-        encoding::json jRet =
-            StandardToJSON(jParams, tObject, hashRegister);
-
-        /* Filter a fieldname if supplied. */
-        FilterFieldname(jParams, jRet);
-
-        return jRet;
-    }
-
-
     /* Returns a status for the invoice (outstanding/paid/cancelled) */
     std::string Invoices::get_status(const TAO::Register::State& state, const uint256_t& hashRecipient)
     {
