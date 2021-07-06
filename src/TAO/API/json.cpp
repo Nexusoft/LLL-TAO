@@ -1298,6 +1298,27 @@ namespace TAO::API
     }
 
 
+    /* Encodes the object based on the given command-set standards. */
+    encoding::json StandardToJSON(const encoding::json& jParams, const TAO::Register::Object& rObject, const uint256_t& hashRegister)
+    {
+        /* Check for our request parameters first, since this method can be called without */
+        if(jParams.find("request") == jParams.end())
+            throw Exception(-28, "Missing parameter [request] for command");
+
+        /* Check for our type we are checking against. */
+        if(jParams["request"].find("type") == jParams["request"].end())
+            throw Exception(-28, "Missing parameter [request::type] for command");
+
+        /* Check that we have the commands set. */
+        const Base* pBase = Commands::Get(jParams["request"]["commands"].get<std::string>());
+        if(!pBase)
+            throw Exception(-28, "Missing parameter [request::commands] for command");
+
+        /* We only fail here, as we want to isolate returns based on the standards, not parameters. */
+        return pBase->EncodeObject(jParams["request"]["type"].get<std::string>(), rObject, hashRegister);
+    }
+
+
     /* Converts an Object Register to formattted JSON */
     encoding::json ObjectToJSON(const encoding::json& params,
                             const TAO::Register::Object& object,

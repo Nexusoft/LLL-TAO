@@ -83,12 +83,11 @@ namespace TAO::API
      *
      *  @param[in] jParams The json parameters to check against.
      *  @param[in] hashCheck The register that we are checking against.
-     *  @param[in] fParse Flag to tell if we want to parse as an object.
      *
      *  @return True if the object type is what was specified.
      *
      **/
-    bool CheckStandard(const encoding::json& jParams, const uint256_t& hashCheck, const bool fParse = true);
+    bool CheckStandard(const encoding::json& jParams, const uint256_t& hashCheck);
 
 
     /** CheckStandard

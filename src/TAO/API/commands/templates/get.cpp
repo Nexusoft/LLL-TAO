@@ -32,17 +32,17 @@ namespace TAO::API
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
 
         /* Get the token / account object. */
-        TAO::Register::Object objThis;
-        if(!LLD::Register->ReadObject(hashRegister, objThis, TAO::Ledger::FLAGS::MEMPOOL))
+        TAO::Register::Object tObject;
+        if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::MEMPOOL))
             throw Exception(-13, "Object not found");
 
         /* Now lets check our expected types match. */
-        if(!CheckStandard(jParams, objThis))
+        if(!CheckStandard(jParams, tObject))
             throw Exception(-49, "Unsupported type for name/address");
 
         /* Build our response object. */
         encoding::json jRet =
-            RegisterToJSON(objThis, hashRegister);
+            StandardToJSON(jParams, tObject, hashRegister);
 
         /* Filter out our expected fieldnames if specified. */
         FilterFieldname(jParams, jRet);

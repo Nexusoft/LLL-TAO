@@ -88,12 +88,26 @@ namespace TAO::API
          *  Checks an object's type if it has been standardized for this command-set.
          *
          *  @param[in] strType The object standard name we are checking for.
-         *  @param[in] objCheck The object to check standard against.
+         *  @param[in] tObject The object to check standard against.
          *
          *  @return true if standard exists and matches, false otherwise.
          *
          **/
-        bool CheckObject(const std::string& strType, const TAO::Register::Object& objCheck) const;
+        bool CheckObject(const std::string& strType, const TAO::Register::Object& tObject) const;
+
+
+        /** EncodeObject
+         *
+         *  Encode a standard object into json using custom encoding function.
+         *
+         *  @param[in] strType The object type we are encoding.
+         *  @param[in] tObject The object we are encoding for.
+         *  @param[in] hashRegister The register's address we are encoding for.
+         *
+         *  @return the json encoded object
+         *
+         **/
+        encoding::json EncodeObject(const std::string& strType, const TAO::Register::Object& tObject, const uint256_t& hashRegister) const;
 
 
         /** Execute
@@ -110,6 +124,9 @@ namespace TAO::API
          *
          **/
         encoding::json Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp = false);
+
+
+
 
 
         /** RewriteURL

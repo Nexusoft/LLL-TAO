@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <TAO/API/include/json.h>
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Register/types/object.h>
@@ -33,8 +34,12 @@ namespace TAO::API
      **/
     class Standard
     {
-        /** The function pointer to be called. */
-        std::function<bool(const TAO::Register::Object&)> tFunction;
+        /** The standard function to be called. */
+        std::function<bool(const TAO::Register::Object&)> xFunction;
+
+
+        /** The encoding function to be called. */
+        std::function<encoding::json(const TAO::Register::Object&, const TAO::Register::Address&)> xEncoding;
 
 
         /** The activation timestamp. **/
@@ -50,7 +55,8 @@ namespace TAO::API
 
         /** Default Constructor. **/
         Standard      ( )
-        : tFunction   ( )
+        : xFunction   ( )
+        , xEncoding   (std::bind(&RegisterToJSON, std::placeholders::_1, std::placeholders::_2))
         , nActivation (0)
         , nMaxVersion (0)
         {
@@ -59,16 +65,37 @@ namespace TAO::API
 
         /** Constructor
          *
-         *  Alternative constructor following value sequence of base constructor and no default parameters
+         *  Base constructor that requires function but has activation and version as default disabled.
          *
          *  @param[in] tFunctionIn The function to be executed by this class.
          *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork.
          *  @param[in] nMaxVersionIn The maximum version this function can be called on.
          *
          **/
-        Standard(const std::function<bool(const TAO::Register::Object&)> tFunctionIn,
+        Standard(const std::function<bool(const TAO::Register::Object&)> xFunctionIn,
                  const uint64_t nActivationIn = 0, const uint32_t nMaxVersionIn = 0)
-        : tFunction   (tFunctionIn)
+        : xFunction   (xFunctionIn)
+        , xEncoding   (std::bind(&RegisterToJSON, std::placeholders::_1, std::placeholders::_2))
+        , nActivation (nActivationIn)
+        , nMaxVersion (nMaxVersionIn)
+        {
+        }
+
+
+        /** Constructor
+         *
+         *  Alternative constructor that requires function and encoding but has activation and version as default disabled.
+         *
+         *  @param[in] tFunctionIn The function to be executed by this class.
+         *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork.
+         *  @param[in] nMaxVersionIn The maximum version this function can be called on.
+         *
+         **/
+        Standard(const std::function<bool(const TAO::Register::Object&)> xFunctionIn,
+                 const std::function<encoding::json(const TAO::Register::Object&, const TAO::Register::Address&)> xEncodingIn,
+                 const uint64_t nActivationIn = 0, const uint32_t nMaxVersionIn = 0)
+        : xFunction   (xFunctionIn)
+        , xEncoding   (xEncodingIn)
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         {
@@ -95,7 +122,23 @@ namespace TAO::API
             if(nMaxVersion != 0 && version::CLIENT_VERSION >= nMaxVersion)
                 throw Exception(-5, "Object not available: deprecated at version ", version::version_string(nMaxVersion));
 
-            return tFunction(objCheck);
+            return xFunction(objCheck);
+        }
+
+
+        /** Encode
+         *
+         *  Encode this standard object into json using custom encoding function.
+         *
+         *  @param[in] object The object we are encoding for.
+         *  @param[in] hashRegister The register's address we are encoding for.
+         *
+         *  @return the json encoded object
+         *
+         **/
+        __attribute__((pure)) encoding::json Encode(const TAO::Register::Object& object, const uint256_t& hashRegister) const
+        {
+            return xEncoding(object, hashRegister);
         }
     };
 }

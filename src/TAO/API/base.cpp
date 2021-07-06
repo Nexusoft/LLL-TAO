@@ -36,14 +36,26 @@ namespace TAO::API
 
 
     /* Checks an object's type if it has been standardized for this command-set. */
-    bool Base::CheckObject(const std::string& strType, const TAO::Register::Object& objCheck) const
+    bool Base::CheckObject(const std::string& strType, const TAO::Register::Object& tObject) const
     {
         /* Let's check against the types required now. */
         if(!mapStandards.count(strType))
             return false;
 
         /* Now let's check that the enum values match. */
-        return mapStandards.at(strType).Check(objCheck);
+        return mapStandards.at(strType).Check(tObject);
+    }
+
+
+    /* Encode a standard object into json using custom encoding function. */
+    encoding::json Base::EncodeObject(const std::string& strType, const TAO::Register::Object& tObject, const uint256_t& hashRegister) const
+    {
+        /* Let's check against the types required now. */
+        if(!mapStandards.count(strType))
+            throw Exception(-12, "Malformed or missing object encoding for [", strType, "]");
+
+        /* Now let's encoding by our encoding function. */
+        return mapStandards.at(strType).Encode(tObject, hashRegister);
     }
 
 

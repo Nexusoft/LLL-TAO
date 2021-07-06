@@ -104,6 +104,21 @@ namespace TAO::API
     __attribute__((const)) encoding::json RegisterToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister = 0);
 
 
+    /** StandardToJSON
+     *
+     *  Encodes the object based on the given command-set standards.
+     *
+     *  @param[in] jParams The json parameters to check against.
+     *  @param[in] rObject The object that we are checking for.
+     *  @param[in] hashRegister The address of standard we are encoding for.
+     *
+     *  @return True if the object type is what was specified.
+     *
+     **/
+    __attribute__((pure)) encoding::json StandardToJSON(const encoding::json& jParams, const TAO::Register::Object& rObject,
+                                                        const uint256_t& hashRegister = 0);
+
+
     /** ObjectToJSON
      *
      *  Converts an Object Register to formattted JSON

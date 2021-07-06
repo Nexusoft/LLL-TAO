@@ -163,7 +163,7 @@ API Error Codes
 | -9 | Session (session) doesn't exist |
 | -10 | Invalid session ID |
 | -11 | User not logged in |
-| -12 | Missing Session ID |
+| -12 | Malformed or missing object encoding for [type] |
 | -13 | Object not found |
 | -14 | Malformed request URL |
 | -15 | Object is not an account or token |
@@ -179,7 +179,7 @@ API Error Codes
 | -25 | Missing mutable field in json definition |
 | -26 | maxlength value is less than the specified data length |
 | -27 | Malformed base64 encoding |
-| -28 | Missing asset field definitions |
+| -28 | Missing parameter [name] for command |
 | -29 | Unsupported format specified |
 | -30 | Operations failed to execute |
 | -31 | Ledger failed to sign transaction |

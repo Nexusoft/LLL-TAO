@@ -70,11 +70,11 @@ namespace TAO::API
                 continue;
 
             /* Populate the response */
-            encoding::json jAccount =
-                RegisterToJSON(tObject, hashRegister);
+            encoding::json jObject =
+                StandardToJSON(jParams, tObject, hashRegister);
 
             /* Check that we match our filters. */
-            if(!FilterResults(jParams, jAccount))
+            if(!FilterResults(jParams, jObject))
                 continue;
 
             /* Check the offset. */
@@ -85,7 +85,7 @@ namespace TAO::API
             if(nTotal - nOffset > nLimit)
                 break;
 
-            jRet.push_back(jAccount);
+            jRet.push_back(jObject);
         }
 
         return jRet;

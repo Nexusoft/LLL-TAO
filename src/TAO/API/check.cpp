@@ -114,7 +114,7 @@ namespace TAO::API
 
 
     /* Checks if the designated object matches the explicet type specified in parameters. */
-    bool CheckStandard(const encoding::json& jParams, const uint256_t& hashCheck, const bool fParse)
+    bool CheckStandard(const encoding::json& jParams, const uint256_t& hashCheck)
     {
         /* Let's grab our object to check against and throw if it's missing. */
         TAO::Register::Object objCheck;
