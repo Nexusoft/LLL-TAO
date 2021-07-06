@@ -34,7 +34,7 @@ namespace TAO::API
     {
         /* Check for NXS as a value. */
         if(hashToken == 0)
-            return (nBalance / TAO::Ledger::NXS_COIN);
+            return double(nBalance) / TAO::Ledger::NXS_COIN;
 
         /* Otherwise let's lookup our token object. */
         TAO::Register::Object objToken;
@@ -45,13 +45,13 @@ namespace TAO::API
         if(objToken.Standard() != TAO::Register::OBJECTS::TOKEN)
             throw Exception(-15, "Object is not a token");
 
-        return (nBalance / math::pow(10, objToken.get<uint8_t>("decimals")));
+        return double(nBalance) / math::pow(10, objToken.get<uint8_t>("decimals"));
     }
 
 
     /* Outputs the correct stake change in terms of a double that can be formatted for output. */
     double FormatStake(const int64_t nStake)
     {
-        return (nStake / TAO::Ledger::NXS_COIN);
+        return double(nStake) / TAO::Ledger::NXS_COIN;
     }
 }
