@@ -45,14 +45,15 @@ namespace TAO::API
     /* Create a NXS account. */
     encoding::json Finance::Create(const encoding::json& jParams, const bool fHelp)
     {
+        /* Extract our type parameter. */
+        const std::string strType = ExtractType(jParams);
+
         /* Check that we have designated a type to create. */
         TAO::Register::Address hashRegister;
-        if(jParams["request"].find("type") == jParams["request"].end())
-            throw Exception(-118, "Missing type");
 
         /* Check for account or token type. */
         TAO::Register::Object object;
-        if(jParams["request"]["type"] == "token")
+        if(strType == "token")
         {
             /* Generate register address for token. */
             hashRegister = TAO::Register::Address(TAO::Register::Address::TOKEN);
@@ -71,7 +72,7 @@ namespace TAO::API
             /* Create a token object register. */
             object = TAO::Register::CreateToken(hashRegister, nSupply * nCoinFigures, nDecimals);
         }
-        else if(jParams["request"]["type"] == "account")
+        else if(strType == "account")
         {
             /* Generate register address for account. */
             hashRegister = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
@@ -98,7 +99,7 @@ namespace TAO::API
             object = TAO::Register::CreateAccount(hashToken);
         }
         else
-            throw Exception(-36, "Invalid type [", jParams["request"]["type"].get<std::string>() ,"] for command");
+            throw Exception(-36, "Invalid type [", strType ,"] for command");
 
         /* If the user has supplied the data parameter than add this to the account register */
         if(jParams.find("data") != jParams.end())

@@ -274,6 +274,53 @@ namespace TAO::API
     }
 
 
+    /* Extract the type string value from input parameters as only string. */
+    std::string ExtractType(const encoding::json& jParams)
+    {
+        /* Check for our request parameters first, since this method can be called without */
+        if(jParams.find("request") == jParams.end())
+            throw Exception(-28, "Missing parameter [request] for command");
+
+        /* Check for our type we are checking against. */
+        if(jParams["request"].find("type") == jParams["request"].end())
+            throw Exception(-28, "Missing parameter [request::type] for command");
+
+        /* Check for array to iterate. */
+        const encoding::json jType = jParams["request"]["type"];
+        if(!jType.is_string())
+            throw Exception(-35, "Invalid parameter [request::type=", jType.type_name(), "], expecting [requst::type=string]");
+
+        return jType.get<std::string>();
+    }
+
+
+    /* Extract the type string value from input parameters as either array or string. */
+    std::vector<std::string> ExtractTypes(const encoding::json& jParams)
+    {
+        /* Check for our request parameters first, since this method can be called without */
+        if(jParams.find("request") == jParams.end())
+            throw Exception(-28, "Missing parameter [request] for command");
+
+        /* Check for our type we are checking against. */
+        if(jParams["request"].find("type") == jParams["request"].end())
+            throw Exception(-28, "Missing parameter [request::type] for command");
+
+        /* Check for array to iterate. */
+        const encoding::json jTypes = jParams["request"]["type"];
+        if(jTypes.is_array())
+        {
+            /* Loop through standards. */
+            std::vector<std::string> vRet;
+            for(const auto& jCheck : jTypes)
+                vRet.push_back(jCheck.get<std::string>());
+
+            return vRet;
+        }
+
+        return std::vector<std::string>(1, jTypes.get<std::string>());
+    }
+
+
     /* Extract a verbose argument from input parameters in either string or integer format. */
     uint32_t ExtractVerbose(const encoding::json& jParams, const uint32_t nMinimum)
     {

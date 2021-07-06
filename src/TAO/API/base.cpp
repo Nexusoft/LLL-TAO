@@ -93,14 +93,47 @@ namespace TAO::API
         const std::string& strVerb = vMethods[0];
         for(uint32_t n = 1; n < vMethods.size(); ++n)
         {
-            /* Grab our current noun. */
-            const std::string strNoun = ((vMethods[n].back() == 's' && strVerb == "list")
-                ? vMethods[n].substr(0, vMethods[n].size() - 1)
-                : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
-
             /* Now lets do some rules for the different nouns. */
             if(n == 1)
             {
+                /* Check if we are mapping multiple types. */
+                if(vMethods[n].find(",") != vMethods[n].npos)
+                {
+                    /* Check that this is for a list command. */
+                    if(strVerb != "list")
+                        throw Exception(-36, "Invalid type [", vMethods[n], "] for ", strVerb);
+
+                    /* Grab our components of the URL to rewrite. */
+                    std::vector<std::string> vNouns;
+                    ParseString(vMethods[n], ',', vNouns);
+
+                    /* Build our request type as an array. */
+                    jParams["request"]["type"] = encoding::json::array();
+
+                    /* Loop through our nouns now. */
+                    for(auto& strCheck : vNouns)
+                    {
+                        /* Grab our current noun. */
+                        const std::string strNoun = ((strCheck.back() == 's' && strVerb == "list")
+                            ? strCheck.substr(0, strCheck.size() - 1)
+                            : strCheck);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
+
+                        /* Check for unexpected types. */
+                        if(!mapStandards.count(strNoun))
+                            throw Exception(-36, "Invalid type [", strNoun, "] for command");
+
+                        /* Add our type to request object. */
+                        jParams["request"]["type"].push_back(strNoun);
+                    }
+
+                    continue;
+                }
+
+                /* Grab our current noun. */
+                const std::string strNoun = ((vMethods[n].back() == 's' && strVerb == "list")
+                    ? vMethods[n].substr(0, vMethods[n].size() - 1)
+                    : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
+
                 /* Check for unexpected types. */
                 if(!mapStandards.count(strNoun))
                     throw Exception(-36, "Invalid type [", strNoun, "] for command");
@@ -115,12 +148,12 @@ namespace TAO::API
             if(n == 2 && !fAddress)
             {
                 /* Check if this value is an address. */
-                if(CheckAddress(strNoun))
-                    jParams["address"] = strNoun;
+                if(CheckAddress(vMethods[n]))
+                    jParams["address"] = vMethods[n];
 
                 /* If not address it must be a name. */
                 else
-                    jParams["name"] = strNoun;
+                    jParams["name"] = vMethods[n];
 
                 continue;
             }
@@ -128,14 +161,14 @@ namespace TAO::API
             /* If we have reached here, we know we are a fieldname. */
             if(n >= 2 && fAddress)
             {
-                jParams["fieldname"] = strNoun;
+                jParams["fieldname"] = vMethods[n];
 
                 continue;
             }
 
             /* If we get here, we need to throw for malformed URL. */
             else
-                throw Exception(-14, "Malformed request URL at: ", strNoun);
+                throw Exception(-14, "Malformed request URL at: ", vMethods[n]);
         }
 
         return strVerb;

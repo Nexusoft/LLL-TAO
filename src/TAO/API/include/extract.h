@@ -96,6 +96,30 @@ namespace TAO::API
     uint64_t ExtractValue(const encoding::json& jParams, const std::string& strName);
 
 
+    /** ExtractType
+     *
+     *  Extract the type string value from input parameters as only string.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *
+     *  @return a string list of types submitted to API
+     *
+     **/
+    std::string ExtractType(const encoding::json& jParams);
+
+
+    /** ExtractTypes
+     *
+     *  Extract the type string value from input parameters as either array or string.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *
+     *  @return a string list of types submitted to API
+     *
+     **/
+    std::vector<std::string> ExtractTypes(const encoding::json& jParams);
+
+
 
     /** ExtractVerbose
      *

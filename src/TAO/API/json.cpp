@@ -1319,6 +1319,19 @@ namespace TAO::API
         if(!pBase)
             throw Exception(-28, "Missing parameter [request::commands] for command");
 
+        /* Check for array to iterate. */
+        const encoding::json jTypes = jParams["request"]["type"];
+        if(jTypes.is_array())
+        {
+            /* Loop through standards. */
+            for(const auto& jCheck : jTypes)
+            {
+                /* Check if at least one standard is correct. */
+                if(pBase->CheckObject(jCheck.get<std::string>(), rObject))
+                    return pBase->EncodeObject(jCheck.get<std::string>(), rObject, hashRegister);
+            }
+        }
+
         /* We only fail here, as we want to isolate returns based on the standards, not parameters. */
         return pBase->EncodeObject(jParams["request"]["type"].get<std::string>(), rObject, hashRegister);
     }

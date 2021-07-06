@@ -35,12 +35,8 @@ namespace TAO::API
         /* The sending account or token. */
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
 
-        /* First let's check for our type noun. */
-        if(jParams["request"].find("type") == jParams["request"].end())
-            throw Exception(-118, "Missing type");
-
         /* Now let's do some checks here to prevent burning something you don't want */
-        if(jParams["request"]["type"] != "token")
+        if(ExtractType(jParams) != "token")
             throw Exception(-36, "Invalid type [token] for command");
 
         /* Get the token / account object. */

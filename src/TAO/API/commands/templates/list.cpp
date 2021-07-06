@@ -34,7 +34,6 @@ namespace TAO::API
         /* Get the Genesis ID. */
         const uint256_t hashGenesis = ExtractGenesis(jParams);
 
-
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
 

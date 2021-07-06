@@ -3027,7 +3027,7 @@ TEST_CASE( "Test Tokens API - credit account", "[tokens]")
 
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -118);
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -28);
     }
 
 
