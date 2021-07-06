@@ -96,7 +96,10 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        static encoding::json List(const encoding::json& params, const uint8_t nRegisterType, const uint8_t nObjectType);
+        static encoding::json List(const encoding::json& params, const uint8_t nRegisterType, const uint8_t nObjectType)
+        {
+            return encoding::json::array();
+        }
 
 
         /** ListTransactions

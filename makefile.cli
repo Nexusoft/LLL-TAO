@@ -460,7 +460,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_names_update.o \
 		build/API_types_objects_claim.o \
 		build/API_types_objects_history.o \
-		build/API_types_objects_list.o \
 		build/API_types_objects_transfer.o \
 		build/API_commands_register_initialize.o \
 		build/API_commands_register_get.o \
@@ -478,6 +477,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_system_metrics.o \
 		build/API_types_system_validate.o \
 		build/API_commands_templates_get.o \
+		build/API_commands_templates_list.o \
 		build/API_commands_tokens_list.o \
 		build/API_commands_tokens_initialize.o \
 		build/API_types_users_accounts.o \

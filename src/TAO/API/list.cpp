@@ -32,7 +32,7 @@ namespace TAO::API
 
     /* XXX: we don't want to use O(n) here because any nested data such as 'count' will make it O(n^2)
      */
-    bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters, uint512_t hashLast)
+    bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters)
     {
         /* LRU register cache by genesis hash.  This caches the vector of register addresses along with the last txid of the
            sig chain, so that we can determine whether any new transactions have been added, invalidating the cache.  */
@@ -40,7 +40,8 @@ namespace TAO::API
 
         /* Get the last transaction for this genesis.  NOTE that we include the mempool here as there may be registers that
            have been created recently but not yet included in a block*/
-        if(hashLast == 0 && !LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+        uint512_t hashLast = 0;
+        if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
             return false;
 
         /* Check the cache to see if we have already cached the registers for this sig chain and it is still valid. */

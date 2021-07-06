@@ -146,13 +146,7 @@ namespace TAO::API
 
         /* Check if username has been supplied instead. */
         if(CheckParameter(jParams, "username", "string"))
-        {
-            /* Check for empty parameter. */
-            if(jParams["username"].empty())
-                throw Exception(-58, "Empty Parameter [username]");
-
             return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());
-        }
 
         return Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
     }

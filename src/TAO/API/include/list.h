@@ -21,20 +21,6 @@ namespace TAO::Register { class Address; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /** ListEvents
-     *
-     *  Scans the sigchain's external events to determine if there are unclaimed transactions.
-     *
-     *  @param[in] hashGenesis The genesis hash of the signature chain to scan
-     *  @param[out] vTx The list of txid's for the event
-     *  @param[in] hashLast The txid to list registers from.
-     *
-     *  @return A vector of register addresses owned by the sig chain
-     *
-     **/
-    bool ListEvents(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters,
-        uint512_t hashLast = 0); //this isn't const& because we need to read into it and thus would need to copy it anyway
-
     /** ListRegisters
      *
      *  Scans a signature chain to work out all registers that it owns
@@ -46,8 +32,7 @@ namespace TAO::API
      *  @return A vector of register addresses owned by the sig chain
      *
      **/
-    bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters,
-        uint512_t hashLast = 0); //this isn't const& because we need to read into it and thus would need to copy it anyway
+    bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters);
 
 
     /** ListObjects

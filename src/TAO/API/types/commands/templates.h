@@ -40,6 +40,20 @@ namespace TAO::API
 
 
 
+        /** List
+         *
+         *  Gets a list of registers that match given standard noun.
+         *
+         *  @param[in] jParams The input parameters to the command.
+         *  @param[in] fHelp Flag to determine if help was requested for command.
+         *
+         *  @return the json list of given object(s).
+         *
+         **/
+        static encoding::json List(const encoding::json& jParams, const bool fHelp);
+
+
+
         /** Deprecated
          *
          *  Dummy method for assigning deprecated endpoints to.
