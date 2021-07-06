@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/invoices.h>
+#include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
@@ -144,8 +145,7 @@ namespace TAO
             (
                 std::bind
                 (
-                    &Invoices::List,
-                    this,
+                    &Templates::List,
                     std::placeholders::_1,
                     std::placeholders::_2
                 )
