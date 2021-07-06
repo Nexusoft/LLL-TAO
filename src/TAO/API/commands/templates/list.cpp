@@ -34,6 +34,7 @@ namespace TAO::API
         /* Get the Genesis ID. */
         const uint256_t hashGenesis = ExtractGenesis(jParams);
 
+
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
 
@@ -82,6 +83,10 @@ namespace TAO::API
 
             /* Insert into set and automatically sort. */
             setRegisters.insert(jRegister);
+
+            /* Check our offset boundaries to short circuit. */
+            if(setRegisters.size() > nLimit + nOffset)
+                break;
         }
 
         /* Build our return value. */
@@ -96,7 +101,7 @@ namespace TAO::API
                 continue;
 
             /* Check the limit */
-            if(nTotal - nOffset > nLimit)
+            if(jRet.size() == nLimit)
                 break;
 
             jRet.push_back(jRegister);

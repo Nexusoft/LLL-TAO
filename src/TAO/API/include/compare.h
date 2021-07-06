@@ -105,10 +105,10 @@ namespace TAO::API
             {
                 /* Regular descending sort. */
                 if(fDesc)
-                    return a[strColumn].get<uint64_t>() < b[strColumn].get<uint64_t>();
+                    return a[strColumn].get<uint64_t>() > b[strColumn].get<uint64_t>();
 
                 /* Ascending sorting. */
-                return a[strColumn].get<uint64_t>() > b[strColumn].get<uint64_t>();
+                return a[strColumn].get<uint64_t>() < b[strColumn].get<uint64_t>();
             }
 
             /* Handle based on integer type. */
@@ -116,10 +116,10 @@ namespace TAO::API
             {
                 /* Regular descending sort. */
                 if(fDesc)
-                    return a[strColumn].get<std::string>() < b[strColumn].get<std::string>();
+                    return a[strColumn].get<std::string>() > b[strColumn].get<std::string>();
 
                 /* Ascending sorting. */
-                return a[strColumn].get<std::string>() > b[strColumn].get<std::string>();
+                return a[strColumn].get<std::string>() < b[strColumn].get<std::string>();
             }
 
             throw Exception(-57, "Invalid Parameter [", strColumn, "=", a[strColumn].type_name(), "]");
