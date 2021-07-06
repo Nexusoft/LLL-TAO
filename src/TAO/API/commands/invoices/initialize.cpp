@@ -21,214 +21,209 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Standard initialization function. */
+    void Invoices::Initialize()
     {
-        /* Standard initialization function. */
-        void Invoices::Initialize()
-        {
-            /* Populate our invoice standard. */
-            mapStandards["invoice"] = Standard
+        /* Populate our invoice standard. */
+        mapStandards["invoice"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& objCheck)
+            {
+                /* Check for correct state type. */
+                if(objCheck.nType != TAO::Register::REGISTER::READONLY)
+                    return false;
+
+                /* Reset read position. */
+                objCheck.nReadPos = 0;
+
+                /* Find our leading type byte. */
+                uint16_t nType;
+                objCheck >> nType;
+
+                /* Cleanup our read position. */
+                objCheck.nReadPos = 0;
+
+                /* Check that this matches our user type. */
+                if(nType != USER_TYPES::INVOICE)
+                    return false;
+
+                return true;
+            }
+
+            /* Our custom encoding function for this type. */
+            , std::bind
             (
-                /* Lambda expression to determine object standard. */
-                [](const TAO::Register::Object& objCheck)
-                {
-                    /* Check for correct state type. */
-                    if(objCheck.nType != TAO::Register::REGISTER::READONLY)
-                        return false;
+                &Invoices::InvoiceToJSON,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
 
-                    /* Reset read position. */
-                    objCheck.nReadPos = 0;
+        /* Subset of invoice standard, to find outstanding invoices. */
+        mapStandards["outstanding"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [this](const TAO::Register::Object& objCheck)
+            {
+                /* Check for correct state type. */
+                if(!CheckObject("invoice", objCheck))
+                    return false;
 
-                    /* Find our leading type byte. */
-                    uint16_t nType;
-                    objCheck >> nType;
+                return (objCheck.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM);
+            }
 
-                    /* Cleanup our read position. */
-                    objCheck.nReadPos = 0;
-
-                    /* Check that this matches our user type. */
-                    if(nType != USER_TYPES::INVOICE)
-                        return false;
-
-                    return true;
-                }
-
-                /* Our custom encoding function for this type. */
-                , std::bind
-                (
-                    &Invoices::InvoiceToJSON,
-                    std::placeholders::_1,
-                    std::placeholders::_2
-                )
-            );
-
-            /* Subset of invoice standard, to find outstanding invoices. */
-            mapStandards["outstanding"] = Standard
+            /* Our custom encoding function for this type. */
+            , std::bind
             (
-                /* Lambda expression to determine object standard. */
-                [this](const TAO::Register::Object& objCheck)
-                {
-                    /* Check for correct state type. */
-                    if(!CheckObject("invoice", objCheck))
-                        return false;
+                &Invoices::InvoiceToJSON,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
 
-                    return (objCheck.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM);
-                }
+        /* Subset of invoice standard, to find outstanding invoices. */
+        mapStandards["paid"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [this](const TAO::Register::Object& objCheck)
+            {
+                /* Check for correct state type. */
+                if(!CheckObject("invoice", objCheck))
+                    return false;
 
-                /* Our custom encoding function for this type. */
-                , std::bind
-                (
-                    &Invoices::InvoiceToJSON,
-                    std::placeholders::_1,
-                    std::placeholders::_2
-                )
-            );
+                /* Get our recipient. */
+                encoding::json jInvoice = RegisterToJSON(objCheck);
+                if(jInvoice.find("json") == jInvoice.end())
+                    return false;
 
-            /* Subset of invoice standard, to find outstanding invoices. */
-            mapStandards["paid"] = Standard
+                /* Check for recipient now. */
+                if(jInvoice["json"].find("recipient") == jInvoice["json"].end())
+                    return false;
+
+                return (objCheck.hashOwner == uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
+            }
+
+            /* Our custom encoding function for this type. */
+            , std::bind
             (
-                /* Lambda expression to determine object standard. */
-                [this](const TAO::Register::Object& objCheck)
-                {
-                    /* Check for correct state type. */
-                    if(!CheckObject("invoice", objCheck))
-                        return false;
+                &Invoices::InvoiceToJSON,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
 
-                    /* Get our recipient. */
-                    encoding::json jInvoice = RegisterToJSON(objCheck);
-                    if(jInvoice.find("json") == jInvoice.end())
-                        return false;
+        /* Subset of invoice standard, to find outstanding invoices. */
+        mapStandards["cancelled"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [this](const TAO::Register::Object& objCheck)
+            {
+                /* Check for correct state type. */
+                if(!CheckObject("invoice", objCheck))
+                    return false;
 
-                    /* Check for recipient now. */
-                    if(jInvoice["json"].find("recipient") == jInvoice["json"].end())
-                        return false;
+                /* Get our recipient. */
+                encoding::json jInvoice = RegisterToJSON(objCheck);
+                if(jInvoice.find("json") == jInvoice.end())
+                    return false;
 
-                    return (objCheck.hashOwner == uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
-                }
+                /* Check for recipient now. */
+                if(jInvoice["json"].find("recipient") == jInvoice["json"].end())
+                    return false;
 
-                /* Our custom encoding function for this type. */
-                , std::bind
-                (
-                    &Invoices::InvoiceToJSON,
-                    std::placeholders::_1,
-                    std::placeholders::_2
-                )
-            );
+                return (objCheck.hashOwner != uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
+            }
 
-            /* Subset of invoice standard, to find outstanding invoices. */
-            mapStandards["cancelled"] = Standard
+            /* Our custom encoding function for this type. */
+            , std::bind
             (
-                /* Lambda expression to determine object standard. */
-                [this](const TAO::Register::Object& objCheck)
-                {
-                    /* Check for correct state type. */
-                    if(!CheckObject("invoice", objCheck))
-                        return false;
-
-                    /* Get our recipient. */
-                    encoding::json jInvoice = RegisterToJSON(objCheck);
-                    if(jInvoice.find("json") == jInvoice.end())
-                        return false;
-
-                    /* Check for recipient now. */
-                    if(jInvoice["json"].find("recipient") == jInvoice["json"].end())
-                        return false;
-
-                    return (objCheck.hashOwner != uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
-                }
-
-                /* Our custom encoding function for this type. */
-                , std::bind
-                (
-                    &Invoices::InvoiceToJSON,
-                    std::placeholders::_1,
-                    std::placeholders::_2
-                )
-            );
+                &Invoices::InvoiceToJSON,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
 
 
 
 
-            /* Handle for all CREATE operations. */
-            mapFunctions["create"] = Function
+        /* Handle for all CREATE operations. */
+        mapFunctions["create"] = Function
+        (
+            std::bind
             (
-                std::bind
-                (
-                    &Invoices::Create,
-                    this,
-                    std::placeholders::_1,
-                    std::placeholders::_2
-                )
-                , TAO::Ledger::StartTransactionTimelock(2)
-            );
+                &Invoices::Create,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , TAO::Ledger::StartTransactionTimelock(2)
+        );
 
-            /* Handle for all GET operations. */
-            mapFunctions["get"] = Function
+        /* Handle for all GET operations. */
+        mapFunctions["get"] = Function
+        (
+            std::bind
             (
-                std::bind
-                (
-                    &Invoices::Get,
-                    this,
-                    std::placeholders::_1,
-                    std::placeholders::_2
-                )
-                , TAO::Ledger::StartTransactionTimelock(2)
-            );
+                &Invoices::Get,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , TAO::Ledger::StartTransactionTimelock(2)
+        );
 
-            /* Handle for all PAY operations. */
-            mapFunctions["pay"] = Function
+        /* Handle for all PAY operations. */
+        mapFunctions["pay"] = Function
+        (
+            std::bind
             (
-                std::bind
-                (
-                    &Invoices::Pay,
-                    this,
-                    std::placeholders::_1,
-                    std::placeholders::_2
-                )
-                , TAO::Ledger::StartTransactionTimelock(2)
-            );
+                &Invoices::Pay,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , TAO::Ledger::StartTransactionTimelock(2)
+        );
 
-            /* Handle for all CANCEL operations. */
-            mapFunctions["cancel"] = Function
+        /* Handle for all CANCEL operations. */
+        mapFunctions["cancel"] = Function
+        (
+            std::bind
             (
-                std::bind
-                (
-                    &Invoices::Cancel,
-                    this,
-                    std::placeholders::_1,
-                    std::placeholders::_2
-                )
-                , TAO::Ledger::StartTransactionTimelock(2)
-            );
+                &Invoices::Cancel,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , TAO::Ledger::StartTransactionTimelock(2)
+        );
 
-            /* Handle for all LIST operations. */
-            mapFunctions["list"] = Function
+        /* Handle for all LIST operations. */
+        mapFunctions["list"] = Function
+        (
+            std::bind
             (
-                std::bind
-                (
-                    &Templates::List,
-                    std::placeholders::_1,
-                    std::placeholders::_2
-                )
-                , TAO::Ledger::StartTransactionTimelock(2)
-            );
+                &Templates::List,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , TAO::Ledger::StartTransactionTimelock(2)
+        );
 
-            /* Handle for all LIST operations. */
-            mapFunctions["list/history"] = Function
+        /* Handle for all LIST operations. */
+        mapFunctions["list/history"] = Function
+        (
+            std::bind
             (
-                std::bind
-                (
-                    &Invoices::History,
-                    this,
-                    std::placeholders::_1,
-                    std::placeholders::_2
-                )
-                , TAO::Ledger::StartTransactionTimelock(2)
-            );
-        }
+                &Invoices::History,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , TAO::Ledger::StartTransactionTimelock(2)
+        );
     }
 }
