@@ -100,11 +100,24 @@ namespace TAO::API
                     [&](const encoding::json& jValue)
                     {
                         /* Check for missing value key. */
-                        if(jValue.find("address") == jValue.end())
+                        std::string strAddress;
+                        if(jValue.find("address") != jValue.end())
+                            strAddress = jValue["address"].get<std::string>();
+
+                        /* Check for from value key. */
+                        if(jValue.find("from") != jValue.end())
+                            strAddress = jValue["from"].get<std::string>();
+
+                        /* Check for to value key. */
+                        if(jValue.find("to") != jValue.end())
+                            strAddress = jValue["to"].get<std::string>();
+
+                        /* Check that we found parameters. */
+                        if(strAddress.empty())
                             return true;
 
                         /* Check for mismatched address. */
-                        if(TAO::Register::Address(jValue["address"].get<std::string>()) != hashRegister)
+                        if(TAO::Register::Address(strAddress) != hashRegister)
                             return true;
 
                         return false;
@@ -132,7 +145,7 @@ namespace TAO::API
             }
 
             /* Check to see whether the transaction has had all children filtered out */
-            if(jResult.empty())
+            if(jContracts.empty())
                 continue;
 
             /* Apply our where filters now. */

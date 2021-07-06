@@ -797,7 +797,8 @@ namespace TAO::API
                         throw Exception(-15, "Object is not an account or token");
 
                     /* Get the current token's address.  */
-                    const TAO::Register::Address hashToken = object.get<uint256_t>("token");
+                    const TAO::Register::Address hashToken =
+                        object.get<uint256_t>("token");
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount, hashToken);
@@ -908,7 +909,7 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]       = "MIGRATE";
                     jRet["txid"]     = hashTx.ToString();
-                    jRet["account"]  = hashAccount.ToString();
+                    jRet["address"]  = hashAccount.ToString();
                     jRet["amount"]   = FormatBalance(nAmount);
                     jRet["score"]    = nScore;
                     jRet["hashLast"] = hashLast.ToString();
