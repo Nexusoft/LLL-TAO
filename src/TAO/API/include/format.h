@@ -58,4 +58,17 @@ namespace TAO::API
     __attribute__((const)) double FormatStake(const int64_t nStake);
 
 
+
+    /** FormatStakeRate
+     *
+     *  Outputs the correct stake rate in terms of a double that can be formatted for output.
+     *
+     *  @param[in] nBalance The stake change to encode for output.
+     *
+     *  @return a double representation of the whole formatting.
+     *
+     **/
+    __attribute__((const)) double FormatStakeRate(const uint64_t nTrust);
+
+
 }

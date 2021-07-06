@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/stake.h>
 
 #include <Util/include/math.h>
 
@@ -53,5 +54,17 @@ namespace TAO::API
     double FormatStake(const int64_t nStake)
     {
         return double(nStake) / TAO::Ledger::NXS_COIN;
+    }
+
+
+    /* Outputs the correct stake rate in terms of a double that can be formatted for output. */
+    double FormatStakeRate(const uint64_t nTrust)
+    {
+        /* Flag to detect if genesis tx. */
+        const bool fGenesis = (nTrust == 0);
+
+        /* Grab our stake-rate from ledger. */
+        const uint64_t nRate = (TAO::Ledger::StakeRate(nTrust, fGenesis) * 100 * TAO::Ledger::NXS_COIN);
+        return double(nRate) / TAO::Ledger::NXS_COIN;
     }
 }

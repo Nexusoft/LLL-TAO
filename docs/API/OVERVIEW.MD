@@ -226,7 +226,7 @@ API Error Codes
 | -72 | Register is not a trust account |
 | -73 | Trust account is not a NXS account |
 | -74 | No registers found |
-| -75 | Unable to retrieve trust account |
+| -75 | Value [key=value] exceeds dataset size [size] |
 | -76 | Cannot set stake for trust account until after Genesis transaction |
 | -77 | Insufficient trust account balance to add to stake |
 | -78 | Stake not changed |

@@ -85,6 +85,10 @@ namespace TAO::API
         if(setRegisters.empty())
             throw Exception(-74, "No registers found");
 
+        /* Check that our offset is in range. */
+        if(nOffset > setRegisters.size())
+            throw Exception(-75, "Value [offset=", nOffset, "] exceeds dataset size [", setRegisters.size(), "]");
+
         /* Build our return value. */
         encoding::json jRet = encoding::json::array();
 
@@ -102,6 +106,10 @@ namespace TAO::API
 
             jRet.push_back(jRegister);
         }
+
+        /* Check for over paging. */
+        if(jRet.empty())
+            throw Exception(-75, "Value [offset=", nOffset, "] + [limit=", nLimit, "] exceeds dataset size [", setRegisters.size(), "]");
 
         return jRet;
     }
