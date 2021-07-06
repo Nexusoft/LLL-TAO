@@ -50,6 +50,10 @@ namespace TAO::API
         if(jParams[strKey].empty()) //XXX: this is extra check just in case, we may be able to remove
             throw Exception(-58, "Empty Parameter [", strKey, "]");
 
+        /* If no type specified, return now. */
+        if(strType.empty())
+            return true;
+
         /* Check for expected type. */
         if(strType.find(jParams[strKey].type_name()) == strType.npos)
             throw Exception(-35, "Invalid parameter [", strKey, "=", jParams[strKey].type_name(), "], expecting [", strKey, "=", strType, "]");

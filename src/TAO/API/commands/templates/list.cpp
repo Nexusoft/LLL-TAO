@@ -15,7 +15,11 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/templates.h>
 
+//XXX: these static methods should be moved GetOutstanding, GetExpired, get_tokenized_debits, get_coinbases, etc
+#include <TAO/API/users/types/users.h>
+
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/compare.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/filter.h>
 #include <TAO/API/include/list.h>
@@ -34,30 +38,29 @@ namespace TAO::API
         uint32_t nLimit = 100, nOffset = 0;
 
         /* Get the parameters to apply to the response. */
-        std::string strOrder = "desc";
-        ExtractList(jParams, strOrder, nLimit, nOffset);
+        std::string strOrder = "desc", strColumn = "modified";
+        ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
         /* Get the list of registers owned by this sig chain */
         std::vector<TAO::Register::Address> vAddresses;
         ListRegisters(hashGenesis, vAddresses);
 
         /* Get any registers that have been transferred to this user but not yet paid (claimed) */
-        //std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
-        //Users::get_unclaimed(hashGenesis, vUnclaimed);
+        std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
+        Users::get_unclaimed(hashGenesis, vUnclaimed);
 
         /* Add the unclaimed register addresses to the list */
-        //for(const auto& unclaimed : vUnclaimed)
-        //vAddresses.push_back(std::get<2>(unclaimed));
+        for(const auto& tUnclaimed : vUnclaimed)
+            vAddresses.push_back(std::get<2>(tUnclaimed));
 
         /* Check for empty return. */
         if(vAddresses.size() == 0)
             throw Exception(-74, "No registers found");
 
-        /* Build our return value. */
-        encoding::json jRet = encoding::json::array();
+        /* Build our object list and sort on insert. */
+        std::set<encoding::json, CompareResults> setRegisters({}, CompareResults(strOrder, strColumn));
 
         /* Add the register data to the response */
-        uint32_t nTotal = 0;
         for(const auto& hashRegister : vAddresses)
         {
             /* Grab our object from disk. */
@@ -70,13 +73,24 @@ namespace TAO::API
                 continue;
 
             /* Populate the response */
-            encoding::json jObject =
+            encoding::json jRegister =
                 StandardToJSON(jParams, tObject, hashRegister);
 
             /* Check that we match our filters. */
-            if(!FilterResults(jParams, jObject))
+            if(!FilterObject(jParams, jRegister, tObject))
                 continue;
 
+            /* Insert into set and automatically sort. */
+            setRegisters.insert(jRegister);
+        }
+
+        /* Build our return value. */
+        encoding::json jRet = encoding::json::array();
+
+        /* Handle paging and offsets. */
+        uint32_t nTotal = 0;
+        for(const auto& jRegister : setRegisters)
+        {
             /* Check the offset. */
             if(++nTotal <= nOffset)
                 continue;
@@ -85,7 +99,7 @@ namespace TAO::API
             if(nTotal - nOffset > nLimit)
                 break;
 
-            jRet.push_back(jObject);
+            jRet.push_back(jRegister);
         }
 
         return jRet;

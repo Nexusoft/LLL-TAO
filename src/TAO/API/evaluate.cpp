@@ -74,7 +74,7 @@ namespace TAO::API
     {
         /* Check that we are operating on a json object. */
         if(jClause["class"].get<std::string>() != "results")
-            return true;
+            throw Exception(-56, "Query Syntax Error: cannot mix [results] with [", jClause["class"].get<std::string>(),"]");
 
         /* Grab a copy of our current name we are processing. */
         const std::string strName = jClause["field"].get<std::string>();
@@ -273,24 +273,129 @@ namespace TAO::API
     {
         /* Check that we are operating object. */
         if(jClause["class"].get<std::string>() != "object")
-            return true;
+            throw Exception(-56, "Query Syntax Error: cannot mix [object] with [", jClause["class"].get<std::string>(),"]");
 
-        /* Grab a copy of our field to check. */
-        const std::string strName = jClause["field"].get<std::string>();
+        /* Grab a copy of our field and OP to check. */
+        const std::string strName    = jClause["field"].get<std::string>();
+        const std::string strOP      = jClause["operator"].get<std::string>();
+
+        /* Grab a reference of value to check. */
+        const encoding::json& jCheck = jClause["value"];
+
+        /* Check the register's version header. */
+        if(strName == "version")
+        {
+            /* Check for correct types. */
+            if(!jCheck.is_string())
+                return false;
+
+            /* Grab a copy of our owner to check. */
+            const uint32_t nCheck = std::stoull(jCheck.get<std::string>());
+
+            /* Check our not operator. */
+            if(strOP == "!=" && objCheck.nVersion != nCheck)
+                return true;
+            else
+            {
+                /* Check that our values match. */
+                if(strOP.find("=") != strOP.npos && objCheck.nVersion == nCheck)
+                    return true;
+
+                /* Check our less than operator. */
+                if(strOP.find("<") != strOP.npos && objCheck.nVersion < nCheck)
+                    return true;
+
+                /* Check our greater than operator. */
+                if(strOP.find(">") != strOP.npos && objCheck.nVersion > nCheck)
+                    return true;
+            }
+        }
+
+        /* Check the register's created header. */
+        if(strName == "created")
+        {
+            /* Check for correct types. */
+            if(!jCheck.is_string())
+                return false;
+
+            /* Grab a copy of our owner to check. */
+            const uint64_t nCheck = std::stoull(jCheck.get<std::string>());
+
+            /* Check our not operator. */
+            if(strOP == "!=" && objCheck.nCreated != nCheck)
+                return true;
+            else
+            {
+                /* Check that our values match. */
+                if(strOP.find("=") != strOP.npos && objCheck.nCreated == nCheck)
+                    return true;
+
+                /* Check our less than operator. */
+                if(strOP.find("<") != strOP.npos && objCheck.nCreated < nCheck)
+                    return true;
+
+                /* Check our greater than operator. */
+                if(strOP.find(">") != strOP.npos && objCheck.nCreated > nCheck)
+                    return true;
+            }
+        }
+
+        /* Check the register's created header. */
+        if(strName == "modified")
+        {
+            /* Check for correct types. */
+            if(!jCheck.is_string())
+                return false;
+
+            /* Grab a copy of our owner to check. */
+            const uint64_t nCheck = std::stoull(jCheck.get<std::string>());
+
+            /* Check our not operator. */
+            if(strOP == "!=" && objCheck.nModified != nCheck)
+                return true;
+            else
+            {
+                /* Check that our values match. */
+                if(strOP.find("=") != strOP.npos && objCheck.nModified == nCheck)
+                    return true;
+
+                /* Check our less than operator. */
+                if(strOP.find("<") != strOP.npos && objCheck.nModified < nCheck)
+                    return true;
+
+                /* Check our greater than operator. */
+                if(strOP.find(">") != strOP.npos && objCheck.nModified > nCheck)
+                    return true;
+            }
+        }
+
+        /* Check the register's owner header. */
+        if(strName == "owner")
+        {
+            /* Check for correct types. */
+            if(!jCheck.is_string())
+                return false;
+
+            /* Grab a copy of our owner to check. */
+            const uint256_t hashCheck =
+                uint256_t(jCheck.get<std::string>());
+
+            /* Check for not operator. */
+            if(strOP == "!=" && objCheck.hashOwner != hashCheck)
+                return true;
+
+            /* Check the rest of our combinations. */
+            if(strOP == "=" && objCheck.hashOwner == hashCheck)
+                return true;
+        }
 
         /* Check for the available type. */
         if(!objCheck.Check(strName))
             return false;
 
-        /* Grab a reference of value to check. */
-        const encoding::json& jCheck = jClause["value"];
-
         /* Now let's check our type. */
         uint8_t nType = 0;
         objCheck.Type(strName, nType);
-
-        /* Grab our OP code now. */
-        const std::string strOP = jClause["operator"].get<std::string>();
 
         /* Switch based on type. */
         switch(nType)

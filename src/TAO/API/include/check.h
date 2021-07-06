@@ -50,7 +50,7 @@ namespace TAO::API
      *  @return true if the parameter is valid and ready for extracting.
      *
      **/
-    bool CheckParameter(const encoding::json& jParam, const std::string& strKey, const std::string& strType);
+    bool CheckParameter(const encoding::json& jParam, const std::string& strKey, const std::string& strType = "");
 
 
     /** CheckMature

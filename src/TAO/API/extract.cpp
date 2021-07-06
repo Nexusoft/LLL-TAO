@@ -318,47 +318,81 @@ namespace TAO::API
     {
         /* Check for page parameter. */
         uint32_t nPage = 0;
-        if(CheckParameter(jParams, "page", "string"))
-            nPage = std::stoul(jParams["page"].get<std::string>());
+        if(CheckParameter(jParams, "page", "string, number"))
+        {
+            /* Check for string. */
+            if(jParams["page"].is_string())
+                nPage = std::stoul(jParams["page"].get<std::string>());
+
+            /* Check for number. */
+            else if(jParams["page"].is_number_integer())
+                nPage = jParams["page"].get<uint32_t>();
+
+            /* Otherwise we have an invalid parameter. */
+            else
+                throw Exception(-57, "Invalid Parameter [page]");
+        }
 
         /* Check for offset parameter. */
         nOffset = 0;
-        if(CheckParameter(jParams, "offset", "string"))
-            nOffset = std::stoul(jParams["offset"].get<std::string>());
+        if(CheckParameter(jParams, "offset", "string, number"))
+        {
+            /* Check for string. */
+            if(jParams["offset"].is_string())
+                nOffset = std::stoul(jParams["offset"].get<std::string>());
+
+            /* Check for number. */
+            else if(jParams["offset"].is_number_integer())
+                nOffset = jParams["offset"].get<uint32_t>();
+
+            /* Otherwise we have an invalid parameter. */
+            else
+                throw Exception(-57, "Invalid Parameter [offset=", jParams["offset"].type_name(), "]");
+        }
 
         /* Check for limit and offset parameter. */
         nLimit = 100;
-        if(CheckParameter(jParams, "limit", "string"))
+        if(CheckParameter(jParams, "limit", "string, number"))
         {
-            /* Grab our limit from parameters. */
-            const std::string strLimit = jParams["limit"].get<std::string>();
-
-            /* Check to see whether the limit includes an offset comma separated */
-            if(IsAllDigit(strLimit))
+            /* Check for string. */
+            if(jParams["limit"].is_string())
             {
-                /* No offset included in the limit */
-                nLimit = std::stoul(strLimit);
+                /* Grab our limit from parameters. */
+                const std::string strLimit = jParams["limit"].get<std::string>();
+
+                /* Check to see whether the limit includes an offset comma separated */
+                if(IsAllDigit(strLimit))
+                {
+                    /* No offset included in the limit */
+                    nLimit = std::stoul(strLimit);
+                }
+                else if(strLimit.find(","))
+                {
+                    /* Parse the limit and offset */
+                    std::vector<std::string> vParts;
+                    ParseString(strLimit, ',', vParts);
+
+                    /* Check for expected sizes. */
+                    if(vParts.size() < 2)
+                        throw Exception(-57, "Invalid Parameter [limit.size() < 2]");
+
+                    /* Get the limit */
+                    nLimit = std::stoul(trim(vParts[0]));
+
+                    /* Get the offset */
+                    nOffset = std::stoul(trim(vParts[1]));
+                }
+                else
+                    throw Exception(-57, "Invalid Parameter [limit=", jParams["limit"].type_name(), "]");
             }
-            else if(strLimit.find(","))
-            {
-                /* Parse the limit and offset */
-                std::vector<std::string> vParts;
-                ParseString(strLimit, ',', vParts);
 
-                /* Check for expected sizes. */
-                if(vParts.size() < 2)
-                    throw Exception(-57, "Invalid Parameter [limit] [", strLimit, "]");
+            /* Check for number. */
+            else if(jParams["limit"].is_number_integer())
+                nLimit = jParams["limit"].get<uint32_t>();
 
-                /* Get the limit */
-                nLimit = std::stoul(trim(vParts[0]));
-
-                /* Get the offset */
-                nOffset = std::stoul(trim(vParts[1]));
-            }
+            /* Otherwise we have an invalid parameter. */
             else
-            {
-                /* Invalid limit */
-            }
+                throw Exception(-57, "Invalid Parameter [limit=", jParams["limit"].type_name(), "]");
         }
 
         /* If no offset explicitly included calculate it from the limit + page */
@@ -367,7 +401,27 @@ namespace TAO::API
 
         /* Get sort order*/
         if(CheckParameter(jParams, "order", "string"))
-            strOrder = jParams["order"].get<std::string>();
+        {
+            /* Grab a copy of the string to check against valid types. */
+            const std::string strCheck = jParams["order"].get<std::string>();
+            if(strCheck != "asc" && strCheck != "desc")
+                throw Exception(-57, "Invalid Parameter [sort=", strCheck, "]");
+
+            /* Now assign to proper orders. */
+            strOrder = strCheck;
+        }
+    }
+
+
+    /* Extracts the paramers applicable to a List API call in order to apply a filter. This overload includes a sort field. */
+    void ExtractList(const encoding::json& jParams, std::string &strOrder, std::string &strSort, uint32_t &nLimit, uint32_t &nOffset)
+    {
+        /* Extract the previous parameters. */
+        ExtractList(jParams, strOrder, nLimit, nOffset);
+
+        /* Check for sort ordering */
+        if(CheckParameter(jParams, "sort", "string"))
+            strSort = jParams["sort"].get<std::string>();
     }
 
 } // End TAO namespace

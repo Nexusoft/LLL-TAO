@@ -36,6 +36,23 @@ namespace TAO::API
                          const std::function<bool (const encoding::json&, ObjectType&)>& rFunct);
 
 
+     /** FilterStatement
+      *
+      *  Recursive handle for any type of filter by passing in function and type to filter.
+      *  Can process any depth of logical recursion required.
+      *
+      *  @param[in] jStatement The statement to filter by, in JSON encoding.
+      *  @param[in] rCheck The object that we are checking on.
+      *  @param[in] rFunct The function that executes the final clause filter.
+      *
+      *  @return true if the object passes filter checks, false if it shouldn't be included.
+      *
+      **/
+     template<typename ObjectType>
+     bool FilterStatement(const encoding::json& jStatement, encoding::json &jCheck, ObjectType& rCheck,
+                          const std::function<bool (const encoding::json&, ObjectType&)>& xObject);
+
+
     /** FilterFieldname
      *
      *  If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field
@@ -45,6 +62,19 @@ namespace TAO::API
      *
      **/
     void FilterFieldname(const encoding::json& jParams, encoding::json &jResponse);
+
+
+    /** FilterObject
+     *
+     *  Determines if an object or it's results should be included in list.
+     *
+     *  @param[in] jParams The input parameters for the command.
+     *  @param[out] objCheck The object we are checking for.
+     *
+     *  @return true if the object should be included in the results.
+     *
+     **/
+    bool FilterObject(const encoding::json& jParams, encoding::json &jCheck, TAO::Register::Object &rCheck);
 
 
     /** FilterObject
