@@ -41,6 +41,14 @@ namespace TAO::API
         std::vector<TAO::Register::Address> vAddresses;
         ListRegisters(hashGenesis, vAddresses);
 
+        /* Get any registers that have been transferred to this user but not yet paid (claimed) */
+        //std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
+        //Users::get_unclaimed(hashGenesis, vUnclaimed);
+
+        /* Add the unclaimed register addresses to the list */
+        //for(const auto& unclaimed : vUnclaimed)
+        //vAddresses.push_back(std::get<2>(unclaimed));
+
         /* Check for empty return. */
         if(vAddresses.size() == 0)
             throw Exception(-74, "No registers found");

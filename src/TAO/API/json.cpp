@@ -1060,6 +1060,9 @@ namespace TAO::API
             if(hashRegister != 0)
                 jRet["address"] = TAO::Register::Address(hashRegister).ToString();
 
+            /* Reset our read position. */
+            object.nReadPos = 0;
+
             return jRet;
         }
 

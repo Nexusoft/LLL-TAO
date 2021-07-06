@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
+#include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/include/enum.h>
 
@@ -81,7 +82,39 @@ namespace TAO
                     if(!CheckObject("invoice", objCheck))
                         return false;
 
-                    return (objCheck.hashOwner.GetType() == TAO::Ledger::GENESIS::UserType());
+                    /* Get our recipient. */
+                    encoding::json jInvoice = RegisterToJSON(objCheck);
+                    if(jInvoice.find("json") == jInvoice.end())
+                        return false;
+
+                    /* Check for recipient now. */
+                    if(jInvoice["json"].find("recipient") == jInvoice["json"].end())
+                        return false;
+
+                    return (objCheck.hashOwner == uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
+                }
+            );
+
+            /* Subset of invoice standard, to find outstanding invoices. */
+            mapStandards["cancelled"] = Standard
+            (
+                /* Lambda expression to determine object standard. */
+                [this](const TAO::Register::Object& objCheck)
+                {
+                    /* Check for correct state type. */
+                    if(!CheckObject("invoice", objCheck))
+                        return false;
+
+                    /* Get our recipient. */
+                    encoding::json jInvoice = RegisterToJSON(objCheck);
+                    if(jInvoice.find("json") == jInvoice.end())
+                        return false;
+
+                    /* Check for recipient now. */
+                    if(jInvoice["json"].find("recipient") == jInvoice["json"].end())
+                        return false;
+
+                    return (objCheck.hashOwner != uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
                 }
             );
 
