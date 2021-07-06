@@ -83,10 +83,6 @@ namespace TAO::API
 
             /* Insert into set and automatically sort. */
             setRegisters.insert(jRegister);
-
-            /* Check our offset boundaries to short circuit. */
-            if(setRegisters.size() > nLimit + nOffset)
-                break;
         }
 
         /* Build our return value. */
