@@ -56,6 +56,14 @@ namespace TAO
 
                     return true;
                 }
+
+                /* Our custom encoding function for this type. */
+                , std::bind
+                (
+                    &Invoices::InvoiceToJSON,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
             );
 
             /* Subset of invoice standard, to find outstanding invoices. */
@@ -70,6 +78,14 @@ namespace TAO
 
                     return (objCheck.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM);
                 }
+
+                /* Our custom encoding function for this type. */
+                , std::bind
+                (
+                    &Invoices::InvoiceToJSON,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
             );
 
             /* Subset of invoice standard, to find outstanding invoices. */
@@ -93,6 +109,14 @@ namespace TAO
 
                     return (objCheck.hashOwner == uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
                 }
+
+                /* Our custom encoding function for this type. */
+                , std::bind
+                (
+                    &Invoices::InvoiceToJSON,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
             );
 
             /* Subset of invoice standard, to find outstanding invoices. */
