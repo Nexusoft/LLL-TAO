@@ -51,25 +51,15 @@ namespace TAO
                 throw Exception(-79, "getblockhash requires the daemon to be started with the -indexheight flag.");
             }
 
-            /* Check for the block height parameter. */
-            if(params.find("height") == params.end())
-                throw Exception(-80, "Missing height");
-
-            /* Check that the height parameter is numeric*/
-            std::string strHeight = params["height"].get<std::string>();
-
-            if(!IsAllDigit(strHeight))
-                throw Exception(-81, "Invalid height parameter");
-
             /* Convert the incoming height string to an int*/
-            uint32_t nHeight = std::stoul(strHeight);
+            const uint32_t nHeight = ExtractValue(params, "height");
 
             /* Check that the requested height is within our chain range*/
             if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
                 throw Exception(-82, "Block number out of range.");
 
-            TAO::Ledger::BlockState blockState;
             /* Read the block state from the the ledger DB using the height index */
+            TAO::Ledger::BlockState blockState;
             if(!LLD::Ledger->ReadBlock(nHeight, blockState))
                 throw Exception(-83, "Block not found");
 
@@ -100,14 +90,8 @@ namespace TAO
                 if(!config::GetBoolArg("-indexheight"))
                     throw Exception(-85, "getblock by height requires the daemon to be started with the -indexheight flag.");
 
-                /* Check that the height parameter is numeric*/
-                std::string strHeight = params["height"].get<std::string>();
-
-                if(!IsAllDigit(strHeight))
-                    throw Exception(-81, "Invalid height parameter");
-
                 /* Convert the incoming height string to an int*/
-                uint32_t nHeight = std::stoul(strHeight);
+                const uint32_t nHeight = ExtractValue(params, "height");
 
                 /* Check that the requested height is within our chain range*/
                 if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
@@ -178,14 +162,8 @@ namespace TAO
                 if(!config::GetBoolArg("-indexheight"))
                     throw Exception(-85, "getblock by height requires the daemon to be started with the -indexheight flag.");
 
-                /* Check that the height parameter is numeric*/
-                std::string strHeight = params["height"].get<std::string>();
-
-                if(!IsAllDigit(strHeight))
-                    throw Exception(-81, "Invalid height parameter");
-
                 /* Convert the incoming height string to an int*/
-                uint32_t nHeight = std::stoul(strHeight);
+                const uint32_t nHeight = ExtractValue(params, "height");
 
                 /* Check that the requested height is within our chain range*/
                 if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
