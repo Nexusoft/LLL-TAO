@@ -739,7 +739,7 @@ namespace LLP
     void Server<ProtocolType>::Meter()
     {
         /* Exit if not enabled. */
-        if(!config::GetBoolArg("-meters", false))
+        if(!CONFIG.ENABLE_METERS)
             return;
 
         /* Keep track of elapsed time. */
