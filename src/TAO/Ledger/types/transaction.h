@@ -165,7 +165,7 @@ namespace TAO
              *  Add contracts to the internal vector.
              *
              **/
-            Transaction& operator<<(const TAO::Operation::Contract& contract);
+            Transaction& operator<<(const TAO::Operation::Contract& rContract);
 
 
             /** Operator Overload >

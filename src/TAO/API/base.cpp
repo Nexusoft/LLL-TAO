@@ -100,8 +100,8 @@ namespace TAO::API
                 if(vMethods[n].find(",") != vMethods[n].npos)
                 {
                     /* Check that this is for a list command. */
-                    if(strVerb != "list")
-                        throw Exception(-36, "Invalid type [", vMethods[n], "] for ", strVerb);
+                    if(strVerb != "list" && strVerb != "get")
+                        throw Exception(-36, "Aggregated type [", vMethods[n], "] not allowed for [", strVerb, "]");
 
                     /* Grab our components of the URL to rewrite. */
                     std::vector<std::string> vNouns;

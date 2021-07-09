@@ -261,10 +261,6 @@ namespace TAO::API
         std::vector<TAO::Operation::Contract> vContracts;
         for(const auto& jRecipient : vRecipients)
         {
-            /* Double check that there are not too many recipients to fit into one transaction */
-            if(vContracts.size() >= 99)
-                throw Exception(-215, "Max number of recipients (99) exceeded");
-
             /* Check for amount parameter. */
             if(jRecipient.find("amount") == jRecipient.end())
                 throw Exception(-46, "Missing amount");

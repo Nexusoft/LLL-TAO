@@ -26,20 +26,24 @@ namespace TAO::API
         encoding::json jRet =
             RegisterToJSON(rObject, hashRegister);
 
-        /* Get our figures to multiply by. */
-        const uint64_t nFigures = GetFigures(rObject);
+        /* Check for balance field. */
+        if(jRet.find("balance") != jRet.end())
+        {
+            /* Get our figures to multiply by. */
+            const uint64_t nFigures = GetFigures(rObject);
 
-        /* Build an aggregate balance for accounts. */
-        uint64_t nAggregate = (jRet["balance"].get<double>() * nFigures);
-        if(jRet.find("stake") != jRet.end())
-            nAggregate += uint64_t(jRet["stake"].get<double>() * nFigures);
+            /* Build an aggregate balance for accounts. */
+            uint64_t nAggregate = (jRet["balance"].get<double>() * nFigures);
+            if(jRet.find("stake") != jRet.end())
+                nAggregate += uint64_t(jRet["stake"].get<double>() * nFigures);
 
-        /* Check for unconfirmed aggregate balance. */
-        if(jRet.find("unconfirmed") != jRet.end())
-            nAggregate += uint64_t(jRet["unconfirmed"].get<double>() * nFigures);
+            /* Check for unconfirmed aggregate balance. */
+            if(jRet.find("unconfirmed") != jRet.end())
+                nAggregate += uint64_t(jRet["unconfirmed"].get<double>() * nFigures);
 
-        /* Add our aggregate value key now. */
-        jRet["total"] = FormatBalance(nAggregate, rObject.get<uint256_t>("token"));
+            /* Add our aggregate value key now. */
+            jRet["total"] = FormatBalance(nAggregate, rObject.get<uint256_t>("token"));
+        }
 
         return jRet;
     }

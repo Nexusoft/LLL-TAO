@@ -100,6 +100,10 @@ namespace TAO::API
             return 0;
         }
 
+        /* Let's check our contract size isn't out of bounds. */
+        if(vContracts.size() >= 99)
+            throw Exception(-120, "Maximum number of contracts exceeded (99), please try again or use -autotx mode.");
+
         /* Otherwise let's lock the session to generate the tx. */
         LOCK(session.CREATE_MUTEX);
 
@@ -109,8 +113,8 @@ namespace TAO::API
             throw Exception(-17, "Failed to create transaction");
 
         /* Add the contracts. */
-        for(const auto& contract : vContracts)
-            tx << contract;
+        for(const auto& rContract : vContracts)
+            tx << rContract;
 
         /* Add the contract fees. */
         AddFee(tx); //XXX: this returns true/false if fee was added, don't think we need this since it doesn't appear to be used

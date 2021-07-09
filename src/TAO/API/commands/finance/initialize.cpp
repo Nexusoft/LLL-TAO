@@ -86,10 +86,6 @@ namespace TAO::API
                 if(objCheck.Standard() == TAO::Register::OBJECTS::TOKEN)
                     return false;
 
-                /* Ensure we have balance, since all is for DEBIT. */
-                if(objCheck.get<uint64_t>("balance") == 0)
-                    return false;
-
                 return true;
             }
         );

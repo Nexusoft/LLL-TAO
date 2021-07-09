@@ -271,8 +271,8 @@ API Error Codes
 | -117 | Item not found |
 | -118 | Missing type |
 | -119 | Missing supply |
-| -120 |  |
-| -121 |  |
+| -120 | Maximum number of contracts exceeded (99), please try again or use -autotx mode. |
+| -121 | Aggregated type [noun] not allowed for [verb] |
 | -122 |  |
 | -123 | Object is not a token |
 | -124 | Unknown token / account |

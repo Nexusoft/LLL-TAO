@@ -142,7 +142,7 @@ namespace TAO::API
         );
 
 
-        /* Handle for generic list operations. */
+        /* Handle for generic get operations. */
         mapFunctions["get"] = Function
         (
             std::bind

@@ -239,10 +239,10 @@ namespace TAO
 
 
         /* Add contracts to the internal vector. */
-        Transaction& Transaction::operator<<(const TAO::Operation::Contract& contract)
+        Transaction& Transaction::operator<<(const TAO::Operation::Contract& rContract)
         {
             /* We just push to internal vector here. */
-            vContracts.push_back(contract);
+            vContracts.push_back(rContract);
 
             return *this;
         }
