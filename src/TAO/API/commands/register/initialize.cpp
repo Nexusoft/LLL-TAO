@@ -101,7 +101,7 @@ namespace TAO::API
             {
                 return objCheck.Standard() == TAO::Register::OBJECTS::TRUST;
             }
-            
+
             /* Our custom encoding function for this type. */
             , std::bind
             (

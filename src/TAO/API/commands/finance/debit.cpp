@@ -156,6 +156,10 @@ namespace TAO::API
                 if(objFrom.get<uint256_t>("token") != hashToken)
                     continue;
 
+                /* Ensure we have balance, since any is for DEBIT. */
+                if(objFrom.get<uint64_t>("balance") == 0)
+                    continue;
+
                 /* Check our standard fuction that will filter out balances. */
                 if(!CheckStandard(jParams, objFrom))
                     continue;
@@ -206,6 +210,10 @@ namespace TAO::API
                 if(!LLD::Register->ReadObject(hashRegister, objFrom))
                     continue;
 
+                /* Ensure we have balance, since any is for DEBIT. */
+                if(objFrom.get<uint64_t>("balance") == 0)
+                    continue;
+
                  /* Check our standard fuction that will filter out balances. */
                  if(!CheckStandard(jParams, objFrom))
                      continue;
@@ -227,6 +235,10 @@ namespace TAO::API
             TAO::Register::Object objFrom;
             if(!LLD::Register->ReadObject(hashFrom, objFrom))
                 throw Exception(-13, "Object not found");
+
+            /* Ensure we have balance, since any is for DEBIT. */
+            if(objFrom.get<uint64_t>("balance") == 0)
+                throw Exception(-69, "Insufficient funds");
 
             /* Now lets check our expected types match. */
             if(!CheckStandard(jParams, objFrom))

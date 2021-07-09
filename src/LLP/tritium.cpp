@@ -232,10 +232,6 @@ namespace LLP
                 /* Set the laset ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
 
-                /* We need to set flag based on ChainState::Synchronizing() as this will vary based on testnet settings */
-                if(!fSynchronized.load())
-                    fSynchronized.store(!TAO::Ledger::ChainState::Synchronizing());
-
                 /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
                 {
