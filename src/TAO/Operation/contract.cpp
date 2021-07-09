@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <Legacy/types/transaction.h>
+#include <Legacy/types/txout.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>

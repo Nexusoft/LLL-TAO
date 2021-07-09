@@ -27,7 +27,6 @@ namespace Legacy
 namespace TAO::Ledger   { class Transaction; }
 namespace TAO::Register { class State;       }
 
-
 /* Operation Layer namespace. */
 namespace TAO::Operation
 {
@@ -110,7 +109,7 @@ namespace TAO::Operation
          *  @param[in] nOutput The output to build contract from.
          *
          **/
-        Contract(const Legacy::Transaction& tx, const uint32_t& nOutput);
+        Contract(const ::Legacy::Transaction& tx, const uint32_t& nOutput);
 
 
         IMPLEMENT_SERIALIZE
@@ -249,7 +248,7 @@ namespace TAO::Operation
          *  @return True if there is value in the contract.
          *
          **/
-        bool Legacy(Legacy::TxOut &txout) const;
+        bool Legacy(::Legacy::TxOut &txout) const;
 
 
         /** Empty

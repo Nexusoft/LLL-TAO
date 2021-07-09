@@ -180,7 +180,7 @@ API Error Codes
 | -26 | maxlength value is less than the specified data length |
 | -27 | Malformed base64 encoding |
 | -28 | Missing parameter [name] for command |
-| -29 | Unsupported format specified |
+| -29 | Unsupported format [type] specified |
 | -30 | Operations failed to execute |
 | -31 | Ledger failed to sign transaction |
 | -32 | Failed to accept |

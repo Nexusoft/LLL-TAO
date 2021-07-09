@@ -516,6 +516,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_cmd.o \
 		build/API_conditions.o \
 		build/API_evaluate.o \
+		build/API_execute.o \
 		build/API_extract.o \
 		build/API_filter.o \
 		build/API_format.o \

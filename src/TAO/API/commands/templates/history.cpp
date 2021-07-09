@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
+#include <TAO/API/include/execute.h>
 #include <TAO/API/include/filter.h>
 #include <TAO/API/include/json.h>
 
@@ -94,13 +95,7 @@ namespace TAO::API
                 const uint8_t nPrimitive = rContract.Primitive();
 
                 /* Grab our register's pre-state. */
-                TAO::Register::Object tObject = rContract.PreState();
-
-                /* Parse if an object. */
-                if(tObject.nType == TAO::Register::REGISTER::OBJECT)
-                    tObject.Parse();
-
-                //we want to execute our operations here.
+                TAO::Register::Object tObject = ExecuteContract(rContract);
 
                 /* Let's start building our json object. */
                 encoding::json jRegister =
