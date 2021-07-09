@@ -58,7 +58,7 @@ namespace TAO
             jsonRet["address"] = strAddress;
 
             /* handle recipient being a register address */
-            if(hashAddress.IsValid() )
+            if(hashAddress.IsValid())
             {
                 /* Check to see if this is a legacy address */
                 if(hashAddress.IsLegacy())
