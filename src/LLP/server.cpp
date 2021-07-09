@@ -696,7 +696,7 @@ namespace LLP
                     return debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error )",  nErr);
             }
 
-            debug::log(0, FUNCTION,"(v4) Bound to port ", ntohs(sockaddr.sin_port));
+            debug::log(0, FUNCTION, "(v4) Bound to port ", ntohs(sockaddr.sin_port));
         }
         else
         {
