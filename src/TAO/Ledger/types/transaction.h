@@ -200,6 +200,16 @@ namespace TAO
             TAO::Operation::Contract& operator[](const uint32_t n);
 
 
+            /** Contracts
+             *
+             *  Gets the list of contracts internal to transaction.
+             *
+             *  @return a reference of internal contracts list.
+             *
+             **/
+            const std::vector<TAO::Operation::Contract>& Contracts() const;
+
+
             /** Size
              *
              *  Get the total contracts in transaction.
@@ -419,22 +429,22 @@ namespace TAO
 
 
              /** ToString
-             *
-             *  Create a transaction string
-             *
-             *  @return The string value to return;
-             *
-             **/
+              *
+              *  Create a transaction string
+              *
+              *  @return The string value to return;
+              *
+              **/
             std::string ToString() const;
 
 
              /** ToStringShort
-             *
-             *  Short form of the debug output.
-             *
-             *  @return The string value to return;
-             *
-             **/
+              *
+              *  Short form of the debug output.
+              *
+              *  @return The string value to return;
+              *
+              **/
             std::string ToStringShort() const;
 
 
@@ -449,12 +459,12 @@ namespace TAO
 
 
             /** Fees
-            *
-            *  Calculates and returns the total fee included in this transaction
-            *
-            *  @return The sum of all OP::FEE contracts in the transaction
-            *
-            **/
+             *
+             *  Calculates and returns the total fee included in this transaction
+             *
+             *  @return The sum of all OP::FEE contracts in the transaction
+             *
+             **/
             uint64_t Fees() const;
 
         };

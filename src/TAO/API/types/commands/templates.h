@@ -39,7 +39,6 @@ namespace TAO::API
         static encoding::json Get(const encoding::json& jParams, const bool fHelp);
 
 
-
         /** List
          *
          *  Gets a list of registers that match given standard noun.
@@ -51,6 +50,19 @@ namespace TAO::API
          *
          **/
         static encoding::json List(const encoding::json& jParams, const bool fHelp);
+
+
+        /** History
+         *
+         *  Gets a history of register states over the course of its lifetime.
+         *
+         *  @param[in] jParams The input parameters to the command.
+         *  @param[in] fHelp Flag to determine if help was requested for command.
+         *
+         *  @return the json list of given object(s).
+         *
+         **/
+        static encoding::json History(const encoding::json& jParams, const bool fHelp);
 
 
 

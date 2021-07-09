@@ -42,1023 +42,1018 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 #include <TAO/Register/types/address.h>
 
-namespace TAO
+namespace TAO::Operation
 {
-
-    namespace Operation
+    /* Executes a given contract. */
+    bool Execute(const Contract& contract, const uint8_t nFlags)
     {
-        /* Executes a given contract. */
-        bool Execute(const Contract& contract, const uint8_t nFlags)
+        uint64_t nCost = 0;
+        return Execute(contract, nFlags, nCost);
+    }
+
+
+    /* Executes a given contract and calculates its cost. */
+    bool Execute(const Contract& contract, const uint8_t nFlags, uint64_t &nCost)
+    {
+        /* Reset the contract streams. */
+        contract.Reset();
+
+        /* Make sure no exceptions are thrown. */
+        bool fValidate = false;
+        try
         {
-            uint64_t nCost = 0;
-            return Execute(contract, nFlags, nCost);
-        }
+            /* Get the contract OP. */
+            uint8_t nOP = 0;
+            contract >> nOP;
 
-
-        /* Executes a given contract and calculates its cost. */
-        bool Execute(const Contract& contract, const uint8_t nFlags, uint64_t &nCost)
-        {
-            /* Reset the contract streams. */
-            contract.Reset();
-
-            /* Make sure no exceptions are thrown. */
-            bool fValidate = false;
-            try
+            /* Check the current opcode. */
+            switch(nOP)
             {
-                /* Get the contract OP. */
-                uint8_t nOP = 0;
-                contract >> nOP;
-
-                /* Check the current opcode. */
-                switch(nOP)
+                /* Condition that allows a validation to occur. */
+                case OP::CONDITION:
                 {
-                    /* Condition that allows a validation to occur. */
-                    case OP::CONDITION:
+                    /* Condition has no parameters. */
+                    contract >> nOP;
+
+                    /* Check for valid primitives that can have a condition. */
+                    switch(nOP)
                     {
-                        /* Condition has no parameters. */
-                        contract >> nOP;
-
-                        /* Check for valid primitives that can have a condition. */
-                        switch(nOP)
+                        /* Transfer and debit are the only permitted. */
+                        case OP::TRANSFER:
+                        case OP::DEBIT:
                         {
-                            /* Transfer and debit are the only permitted. */
-                            case OP::TRANSFER:
-                            case OP::DEBIT:
-                            {
-                                //transfer and debit are permitted
-                                break;
-                            }
-
-                            default:
-                                return debug::error(FUNCTION, "unsupported OP for condition");
+                            //transfer and debit are permitted
+                            break;
                         }
 
-                        break;
+                        default:
+                            return debug::error(FUNCTION, "unsupported OP for condition");
                     }
 
-
-                    /* Validate a previous contract's conditions */
-                    case OP::VALIDATE:
-                    {
-                        /* Extract the transaction from contract. */
-                        uint512_t hashTx = 0;
-                        contract >> hashTx;
-
-                        /* Extract the contract-id. */
-                        uint32_t nContract = 0;
-                        contract >> nContract;
-
-                        /* DISABLED for -client mode. */
-                        //if(!config::fClient.load()) XXX: this shouldn't be disabled for client mode
-                        {
-                            /* Verify the operation rules. */
-                            const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
-                            if(!Validate::Verify(contract, condition, nCost))
-                                return false;
-                        }
-
-                        /* Commit the validation to disk. */
-                        if(!Validate::Commit(hashTx, nContract, contract.Caller(), nFlags))
-                            return false;
-
-                        /* Get next OP. */
-                        contract >> nOP;
-
-                        /* Set validate flag. */
-                        fValidate = true;
-
-                        break;
-                    }
+                    break;
                 }
 
 
-                /* Check the current opcode after checking for conditions or validation. */
-                switch(nOP)
+                /* Validate a previous contract's conditions */
+                case OP::VALIDATE:
                 {
+                    /* Extract the transaction from contract. */
+                    uint512_t hashTx = 0;
+                    contract >> hashTx;
 
-                    /* Generate pre-state to database. */
-                    case OP::WRITE:
+                    /* Extract the contract-id. */
+                    uint32_t nContract = 0;
+                    contract >> nContract;
+
+                    /* DISABLED for -client mode. */
+                    //if(!config::fClient.load()) XXX: this shouldn't be disabled for client mode
                     {
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::WRITE: conditions not allowed on write");
-
                         /* Verify the operation rules. */
-                        if(!Write::Verify(contract))
+                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
+                        if(!Validate::Verify(contract, condition, nCost))
                             return false;
-
-                        /* Get the Address of the Register. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
-
-                        /* Get the state data. */
-                        std::vector<uint8_t> vchData;
-                        contract >> vchData;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::WRITE: register pre-state doesn't exist");
-
-                        /* Read the register from database. */
-                        TAO::Register::State state;
-                        contract >>= state;
-
-                        /* Calculate the new operation. */
-                        if(!Write::Execute(state, vchData, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::WRITE: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != state.GetHash())
-                            return debug::error(FUNCTION, "OP::WRITE: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Write::Commit(state, hashAddress, nFlags))
-                            return false;
-
-                        break;
                     }
 
+                    /* Commit the validation to disk. */
+                    if(!Validate::Commit(hashTx, nContract, contract.Caller(), nFlags))
+                        return false;
 
-                    /* Generate pre-state to database. */
-                    case OP::APPEND:
+                    /* Get next OP. */
+                    contract >> nOP;
+
+                    /* Set validate flag. */
+                    fValidate = true;
+
+                    break;
+                }
+            }
+
+
+            /* Check the current opcode after checking for conditions or validation. */
+            switch(nOP)
+            {
+
+                /* Generate pre-state to database. */
+                case OP::WRITE:
+                {
+                    /* Make sure there are no conditions. */
+                    if(!contract.Empty(Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "OP::WRITE: conditions not allowed on write");
+
+                    /* Verify the operation rules. */
+                    if(!Write::Verify(contract))
+                        return false;
+
+                    /* Get the Address of the Register. */
+                    uint256_t hashAddress = 0;
+                    contract >> hashAddress;
+
+                    /* Get the state data. */
+                    std::vector<uint8_t> vchData;
+                    contract >> vchData;
+
+                    /* Deserialize the pre-state byte from the contract. */
+                    uint8_t nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::WRITE: register pre-state doesn't exist");
+
+                    /* Read the register from database. */
+                    TAO::Register::State state;
+                    contract >>= state;
+
+                    /* Calculate the new operation. */
+                    if(!Write::Execute(state, vchData, contract.Timestamp()))
+                        return false;
+
+                    /* Deserialize the pre-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::WRITE: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != state.GetHash())
+                        return debug::error(FUNCTION, "OP::WRITE: invalid register post-state");
+
+                    /* Commit the register to disk. */
+                    if(!Write::Commit(state, hashAddress, nFlags))
+                        return false;
+
+                    break;
+                }
+
+
+                /* Generate pre-state to database. */
+                case OP::APPEND:
+                {
+                    /* Make sure there are no conditions. */
+                    if(!contract.Empty(Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "OP::APPEND: conditions not allowed on append");
+
+                    /* Verify the operation rules. */
+                    if(!Append::Verify(contract))
+                        return false;
+
+                    /* Get the Address of the Register. */
+                    uint256_t hashAddress = 0;
+                    contract >> hashAddress;
+
+                    /* Get the state data. */
+                    std::vector<uint8_t> vchData;
+                    contract >> vchData;
+
+                    /* Deserialize the pre-state byte from the contract. */
+                    uint8_t nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::APPEND: register pre-state doesn't exist");
+
+                    /* Read the register from database. */
+                    TAO::Register::State state;
+                    contract >>= state;
+
+                    /* Calculate the new operation. */
+                    if(!Append::Execute(state, vchData, contract.Timestamp()))
+                        return false;
+
+                    /* Check for maximum register size. */
+                    if(state.GetState().size() > TAO::Register::MAX_REGISTER_SIZE)
+                        return debug::error(FUNCTION, "OP::APPEND: register size out of bounds ", vchData.size());
+
+                    /* Deserialize the pre-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::APPEND: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != state.GetHash())
+                        return debug::error(FUNCTION, "OP::APPEND: invalid register post-state");
+
+                    /* Commit the register to disk. */
+                    if(!Append::Commit(state, hashAddress, nFlags))
+                        return false;
+
+                    break;
+                }
+
+
+                /* This does not contain any prestates. */
+                case OP::CREATE:
+                {
+                    /* Make sure there are no conditions. */
+                    if(!contract.Empty(Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "OP::CREATE: conditions not allowed on create");
+
+                    /* Verify the operation rules. */
+                    if(!Create::Verify(contract))
+                        return false;
+
+                    /* Get the Address of the Register. */
+                    TAO::Register::Address hashAddress;
+                    contract >> hashAddress;
+
+                    /* Get the Register Type. */
+                    uint8_t nType = 0;
+                    contract >> nType;
+
+                    /* Get the register data. */
+                    std::vector<uint8_t> vchData;
+                    contract >> vchData;
+
+                    /* Check for maximum register size. */
+                    if(vchData.size() > TAO::Register::MAX_REGISTER_SIZE)
+                        return debug::error(FUNCTION, "OP::CREATE: register size out of bounds ", vchData.size());
+
+                    /* Create the register object. */
+                    TAO::Register::State state;
+                    state.nVersion   = 1;
+                    state.nType      = nType;
+                    state.hashOwner  = contract.Caller();
+
+                    /* Calculate the new operation. */
+                    if(!Create::Execute(state, vchData, contract.Timestamp()))
+                        return false;
+
+                    /* Deserialize the pre-state byte from contract. */
+                    uint8_t nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::CREATE: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != state.GetHash())
+                        return debug::error(FUNCTION, "OP::CREATE: invalid register post-state");
+
+                    /* Commit the register to disk. */
+                    if(!Create::Commit(state, hashAddress, nCost, nFlags))
+                        return false;
+
+                    break;
+                }
+
+
+                /* Transfer ownership of a register to another signature chain. */
+                case OP::TRANSFER:
+                {
+                    /* Verify the operation rules. */
+                    if(!Transfer::Verify(contract))
+                        return false;
+
+                    /* Extract the address from the contract. */
+                    uint256_t hashAddress = 0;
+                    contract >> hashAddress;
+
+                    /* Read the register transfer recipient. */
+                    uint256_t hashTransfer = 0;
+                    contract >> hashTransfer;
+
+                    /* Read the force transfer flag */
+                    uint8_t nType = 0;
+                    contract >> nType;
+
+                    /* Register custody in SYSTEM ownership until claimed, unless the ForceTransfer flag has been set */
+                    uint256_t hashNewOwner = 0; //default to SYSTEM
+                    if(nType == TRANSFER::FORCE)
+                        hashNewOwner = hashTransfer;
+
+                    /* Handle version switch for contract to transfer to 0x00 leading genesis-id. */
+                    else if(contract.Version() > 1) //this allows us to iterate history while getting properties of transfer to system
                     {
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::APPEND: conditions not allowed on append");
-
-                        /* Verify the operation rules. */
-                        if(!Append::Verify(contract))
-                            return false;
-
-                        /* Get the Address of the Register. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
-
-                        /* Get the state data. */
-                        std::vector<uint8_t> vchData;
-                        contract >> vchData;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::APPEND: register pre-state doesn't exist");
-
-                        /* Read the register from database. */
-                        TAO::Register::State state;
-                        contract >>= state;
-
-                        /* Calculate the new operation. */
-                        if(!Append::Execute(state, vchData, contract.Timestamp()))
-                            return false;
-
-                        /* Check for maximum register size. */
-                        if(state.GetState().size() > TAO::Register::MAX_REGISTER_SIZE)
-                            return debug::error(FUNCTION, "OP::APPEND: register size out of bounds ", vchData.size());
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::APPEND: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != state.GetHash())
-                            return debug::error(FUNCTION, "OP::APPEND: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Append::Commit(state, hashAddress, nFlags))
-                            return false;
-
-                        break;
+                        /* Set the new owner to transfer recipient. */
+                        hashNewOwner = contract.Caller();
+                        hashNewOwner.SetType(Ledger::GENESIS::SYSTEM); //this byte (0x00) means there is no valid owner during transfer
                     }
 
+                    /* Deserialize the pre-state byte from the contract. */
+                    uint8_t nState = 0;
+                    contract >>= nState;
 
-                    /* This does not contain any prestates. */
-                    case OP::CREATE:
-                    {
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::CREATE: conditions not allowed on create");
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::TRANSFER: register pre-state doesn't exist");
 
-                        /* Verify the operation rules. */
-                        if(!Create::Verify(contract))
-                            return false;
+                    /* Read the register from database. */
+                    TAO::Register::State state;
+                    contract >>= state;
 
-                        /* Get the Address of the Register. */
-                        TAO::Register::Address hashAddress;
-                        contract >> hashAddress;
+                    /* Calculate the new operation. */
+                    if(!Transfer::Execute(state, hashNewOwner, contract.Timestamp()))
+                        return false;
 
-                        /* Get the Register Type. */
-                        uint8_t nType = 0;
-                        contract >> nType;
+                    /* Deserialize the pre-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
 
-                        /* Get the register data. */
-                        std::vector<uint8_t> vchData;
-                        contract >> vchData;
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::TRANSFER: register post-state doesn't exist");
 
-                        /* Check for maximum register size. */
-                        if(vchData.size() > TAO::Register::MAX_REGISTER_SIZE)
-                            return debug::error(FUNCTION, "OP::CREATE: register size out of bounds ", vchData.size());
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
 
-                        /* Create the register object. */
-                        TAO::Register::State state;
-                        state.nVersion   = 1;
-                        state.nType      = nType;
-                        state.hashOwner  = contract.Caller();
+                    /* Check the post-state to register state. */
+                    if(nChecksum != state.GetHash())
+                        return debug::error(FUNCTION, "OP::TRANSFER: invalid register post-state");
 
-                        /* Calculate the new operation. */
-                        if(!Create::Execute(state, vchData, contract.Timestamp()))
-                            return false;
+                    /* Commit the register to disk. */
+                    if(!Transfer::Commit(state, contract.Hash(), hashAddress, hashTransfer, nFlags))
+                        return false;
 
-                        /* Deserialize the pre-state byte from contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::CREATE: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != state.GetHash())
-                            return debug::error(FUNCTION, "OP::CREATE: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Create::Commit(state, hashAddress, nCost, nFlags))
-                            return false;
-
-                        break;
-                    }
+                    break;
+                }
 
 
-                    /* Transfer ownership of a register to another signature chain. */
-                    case OP::TRANSFER:
+                /* Transfer ownership of a register to another signature chain. */
+                case OP::CLAIM:
+                {
+                    /* Make sure there are no conditions. */
+                    if(!contract.Empty(Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "OP::CLAIM: conditions not allowed on claim");
+
+                    /* Extract the transaction from contract. */
+                    uint512_t hashTx = 0;
+                    contract >> hashTx;
+
+                    /* Extract the contract-id. */
+                    uint32_t nContract = 0;
+                    contract >> nContract;
+
+                    /* Extract the address from the contract. */
+                    uint256_t hashAddress = 0;
+                    contract >> hashAddress;
+
+                    /* DISABLED for -client mode. */
+                    //if(!config::fClient.load()) XXX: this shouldn't be disabled for client mode
                     {
                         /* Verify the operation rules. */
-                        if(!Transfer::Verify(contract))
+                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
+                        if(!Claim::Verify(contract, transfer))
                             return false;
 
-                        /* Extract the address from the contract. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
-
-                        /* Read the register transfer recipient. */
-                        uint256_t hashTransfer = 0;
-                        contract >> hashTransfer;
-
-                        /* Read the force transfer flag */
-                        uint8_t nType = 0;
-                        contract >> nType;
-
-                        /* Register custody in SYSTEM ownership until claimed, unless the ForceTransfer flag has been set */
-                        uint256_t hashNewOwner = 0; //default to SYSTEM
-                        if(nType == TRANSFER::FORCE)
-                            hashNewOwner = hashTransfer;
-
-                        /* Handle version switch for contract to transfer to 0x00 leading genesis-id. */
-                        else if(contract.Version() > 1) //this allows us to iterate history while getting properties of transfer to system
+                        /* Check for conditions. */
+                        if(!transfer.Empty(Contract::CONDITIONS))
                         {
-                            /* Set the new owner to transfer recipient. */
-                            hashNewOwner = contract.Caller();
-                            hashNewOwner.SetType(Ledger::GENESIS::SYSTEM); //this byte (0x00) means there is no valid owner during transfer
-                        }
+                            /* Get the condition. */
+                            uint8_t nType = 0;
+                            transfer >> nType;
 
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::TRANSFER: register pre-state doesn't exist");
-
-                        /* Read the register from database. */
-                        TAO::Register::State state;
-                        contract >>= state;
-
-                        /* Calculate the new operation. */
-                        if(!Transfer::Execute(state, hashNewOwner, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::TRANSFER: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != state.GetHash())
-                            return debug::error(FUNCTION, "OP::TRANSFER: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Transfer::Commit(state, contract.Hash(), hashAddress, hashTransfer, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Transfer ownership of a register to another signature chain. */
-                    case OP::CLAIM:
-                    {
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::CLAIM: conditions not allowed on claim");
-
-                        /* Extract the transaction from contract. */
-                        uint512_t hashTx = 0;
-                        contract >> hashTx;
-
-                        /* Extract the contract-id. */
-                        uint32_t nContract = 0;
-                        contract >> nContract;
-
-                        /* Extract the address from the contract. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
-
-                        /* DISABLED for -client mode. */
-                        //if(!config::fClient.load()) XXX: this shouldn't be disabled for client mode
-                        {
-                            /* Verify the operation rules. */
-                            const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
-                            if(!Claim::Verify(contract, transfer))
-                                return false;
-
-                            /* Check for conditions. */
-                            if(!transfer.Empty(Contract::CONDITIONS))
+                            /* Check for condition. */
+                            Condition conditions = Condition(transfer, contract);
+                            if(nType == OP::CONDITION)
                             {
-                                /* Get the condition. */
-                                uint8_t nType = 0;
-                                transfer >> nType;
-
-                                /* Check for condition. */
-                                Condition conditions = Condition(transfer, contract);
-                                if(nType == OP::CONDITION)
+                                /* Read the contract database. */
+                                uint256_t hashValidator = 0;
+                                if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
                                 {
-                                    /* Read the contract database. */
-                                    uint256_t hashValidator = 0;
-                                    if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
-                                    {
-                                        /* Check that the caller is the claimant. */
-                                        if(hashValidator != contract.Caller())
-                                            return debug::error(FUNCTION, "OP::CLAIM: caller is not authorized to claim validation");
-                                    }
-
-                                    /* If no validate fulfilled, try to exeucte conditions. */
-                                    else if(!conditions.Execute())
-                                        return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
+                                    /* Check that the caller is the claimant. */
+                                    if(hashValidator != contract.Caller())
+                                        return debug::error(FUNCTION, "OP::CLAIM: caller is not authorized to claim validation");
                                 }
+
+                                /* If no validate fulfilled, try to exeucte conditions. */
                                 else if(!conditions.Execute())
                                     return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
-
-                                /* Assess the fees for the computation limits. */
-                                if(conditions.nCost > CONDITION_LIMIT_FREE)
-                                    nCost += conditions.nCost - CONDITION_LIMIT_FREE;
                             }
+                            else if(!conditions.Execute())
+                                return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
+
+                            /* Assess the fees for the computation limits. */
+                            if(conditions.nCost > CONDITION_LIMIT_FREE)
+                                nCost += conditions.nCost - CONDITION_LIMIT_FREE;
                         }
-
-                        /* Get the state byte. */
-                        uint8_t nState = 0; //RESERVED
-                        contract >>= nState;
-
-                        /* Check for the pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::CLAIM: register script not in pre-state");
-
-                        /* Get the pre-state. */
-                        TAO::Register::State state;
-                        contract >>= state;
-
-                        /* Calculate the new operation. */
-                        if(!Claim::Execute(state, contract.Caller(), contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::CLAIM: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != state.GetHash())
-                            return debug::error(FUNCTION, "OP::CLAIM: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Claim::Commit(state, hashAddress, hashTx, nContract, nFlags))
-                            return false;
-
-                        break;
                     }
 
-
-                    /* Coinbase operation. Creates an account if none exists. */
-                    case OP::COINBASE:
-                    {
-                        /* Check for validate. */
-                        if(fValidate)
-                            return debug::error(FUNCTION, "OP::COINBASE: cannot use OP::VALIDATE with coinbase");
-
-                        /* Check for valid coinbase. */
-                        if(!Coinbase::Verify(contract))
-                            return false;
-
-                        /* Get the genesis. */
-                        uint256_t hashGenesis;
-                        contract >> hashGenesis;
-
-                        /* Seek to end. */
-                        contract.Seek(16);
-
-                        /* Commit to disk. */
-                        if(contract.Caller() != hashGenesis && !Coinbase::Commit(hashGenesis, contract.Hash(), nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Coinstake operation. Requires an account. */
-                    case OP::TRUST:
-                    {
-                        /* Check for validate. */
-                        if(fValidate)
-                            return debug::error(FUNCTION, "OP::TRUST: cannot use OP::VALIDATE with trust");
-
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::TRUST: conditions not allowed on trust");
-
-                        /* Verify the operation rules. */
-                        if(!Trust::Verify(contract))
-                            return false;
-
-                        /* Seek to scores. */
-                        contract.Seek(64);
-
-                        /* Get the trust score. */
-                        uint64_t nScore = 0;
-                        contract >> nScore;
-
-                        /* Get the stake change. */
-                        int64_t nStakeChange = 0;
-                        contract >> nStakeChange;
-
-                        /* Get the stake reward. */
-                        uint64_t nReward = 0;
-                        contract >> nReward;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::TRUST: register pre-state doesn't exist");
-
-                        /* Read the register prestate. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Trust::Execute(object, nReward, nScore, nStakeChange, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for post-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::TRUST: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::TRUST: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Trust::Commit(object, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Coinstake operation. Requires an account. */
-                    case OP::GENESIS:
-                    {
-                        /* Check for validate. */
-                        if(fValidate)
-                            return debug::error(FUNCTION, "OP::GENESIS: cannot use OP::VALIDATE with genesis");
-
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::GENESIS: conditions not allowed on genesis");
-
-                        /* Verify the operation rules. */
-                        if(!Genesis::Verify(contract))
-                            return false;
-
-                        /* Get the stake reward. */
-                        uint64_t nReward = 0;
-                        contract >> nReward;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::GENESIS: register pre-state doesn't exist");
-
-                        /* Read the register prestate. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Genesis::Execute(object, nReward, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for post-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::GENESIS: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::GENESIS: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Genesis::Commit(object, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Debit tokens from an account you own. */
-                    case OP::DEBIT:
-                    {
-                        /* Verify the operation rules. */
-                        if(!Debit::Verify(contract))
-                            return false;
-
-                        /* Get the register address. */
-                        uint256_t hashFrom = 0;
-                        contract >> hashFrom;
-
-                        /* Get the transfer address. */
-                        uint256_t hashTo = 0;
-                        contract >> hashTo;
-
-                        /* Get the transfer amount. */
-                        uint64_t  nAmount = 0;
-                        contract >> nAmount;
-
-                        /* Get the reference. */
-                        uint64_t nReference = 0;
-                        contract >> nReference;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::DEBIT: register pre-state doesn't exist");
-
-                        /* Read the register from database. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Debit::Execute(object, nAmount, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::DEBIT: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::DEBIT: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Debit::Commit(object, contract.Hash(), hashFrom, hashTo, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Credit tokens to an account you own. */
-                    case OP::CREDIT:
-                    {
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::CREDIT: conditions not allowed on credit");
-
-                        /* Extract the transaction from contract. */
-                        uint512_t hashTx = 0;
-                        contract >> hashTx;
-
-                        /* Extract the contract-id. */
-                        uint32_t nContract = 0;
-                        contract >> nContract;
-
-                        /* Get the transfer address. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
-
-                        /* Get the proof address. */
-                        uint256_t hashProof = 0;
-                        contract >> hashProof;
-
-                        /* Get the transfer amount. */
-                        uint64_t  nAmount = 0;
-                        contract >> nAmount;
-
-                        /* DISABLED for -client mode. */
-                        Contract debit = Contract();
-                        //if(!config::fClient.load()) XXX: this shouldn't need to be disabled
-                        {
-                            /* Verify the operation rules. */
-                            debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
-                            if(!Credit::Verify(contract, debit, nFlags))
-                                return false;
-
-                            /* Check for conditions. */
-                            if(!debit.Empty(Contract::CONDITIONS))
-                            {
-                                /* Get the condition. */
-                                uint8_t nType = 0;
-                                debit >> nType;
-
-                                /* Check for condition. */
-                                Condition conditions = Condition(debit, contract);
-                                if(nType == OP::CONDITION)
-                                {
-                                    /* Read the contract database. */
-                                    uint256_t hashValidator = 0;
-                                    if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
-                                    {
-                                        /* Check that the caller is the claimant. */
-                                        if(hashValidator != contract.Caller())
-                                            return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
-                                    }
-
-                                    /* If no validate fulfilled, try to exeucte conditions. */
-                                    else if(!conditions.Execute())
-                                        return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
-                                }
-                                else if(!conditions.Execute())
-                                    return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
-
-                                /* Assess the fees for the computation limits. */
-                                if(conditions.nCost > CONDITION_LIMIT_FREE)
-                                    nCost += conditions.nCost - CONDITION_LIMIT_FREE;
-                            }
-                        }
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::CREDIT: register pre-state doesn't exist");
-
-                        /* Read the register from database. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Credit::Execute(object, nAmount, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::CREDIT: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::CREDIT: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Credit::Commit(object, debit, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Migrate a trust key to a trust account register. */
-                    case OP::MIGRATE:
-                    {
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::MIGRATE: conditions not allowed on migrate");
-
-                        /* Extract the transaction from contract. */
-                        uint512_t hashTx = 0;
-                        contract >> hashTx;
-
-                        /* DISABLED for -client mode. */
-                        //if(!config::fClient.load()) XXX: this shouldn't bi disabled for -client mode
-                        {
-                            /* Retrieve a debit for the Legacy tx output. Migrate tx will only have one output (index 0) */
-                            Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
-
-                            /* Add migrate data from Legacy tx to debit (base ReadContract returns generic Legacy send to register) */
-                            if(!::Legacy::BuildMigrateDebit(debit, hashTx))
-                                return false;
-
-                            /* Verify the operation rules. */
-                            if(!Migrate::Verify(contract, debit))
-                                return false;
-                        }
-
-                        /* After Verify, reset streams */
-                        contract.Reset();
-                        contract.Seek(65);
-
-                        /* Get the trust register address. (hash to) */
-                        uint256_t hashAccount;
-                        contract >> hashAccount;
-
-                        /* Get the Legacy trust key */
-                        uint576_t hashTrust;
-                        contract >> hashTrust;
-
-                        /* Get the amount to migrate. */
-                        uint64_t nAmount;
-                        contract >> nAmount;
-
-                        /* Get the trust score to migrate. */
-                        uint32_t nScore;
-                        contract >> nScore;
-
-                        /* Get the hash last stake. */
-                        uint512_t hashLast;
-                        contract >> hashLast;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::MIGRATE: register pre-state doesn't exist");
-
-                        /* Retrieve the register pre-state. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Migrate::Execute(object, nAmount, nScore, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the post-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::MIGRATE: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::MIGRATE: invalid register post-state");
-
-                        /* Commit the migration updates to disk. */
-                        if(!Migrate::Commit(object, hashAccount, contract.Caller(), hashTx, hashTrust, hashLast, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Debit tokens from an account you own. */
-                    case OP::FEE:
-                    {
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::FEE: conditions not allowed on fees");
-
-                        /* Verify the operation rules. */
-                        if(!Fee::Verify(contract))
-                            return false;
-
-                        /* Get the register address. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
-
-                        /* Get the fee amount. */
-                        uint64_t  nFees = 0;
-                        contract >> nFees;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::FEE: register pre-state doesn't exist");
-
-                        /* Read the register from database. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Fee::Execute(object, nFees, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::FEE: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::FEE: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Fee::Commit(object, hashAddress, nFlags))
-                            return false;
-
-                        break;
-                    }
-
-
-                    /* Authorize is enabled in private mode only. */
-                    case OP::AUTHORIZE:
-                    {
-                        //TODO: decide more details on the use of authorize.
-
-                        /* Seek to address. */
-                        contract.Seek(96);
-
-                        break;
-                    }
-
-
-                    /* Create unspendable legacy script, that acts to debit from the account and make this unspendable. */
-                    case OP::LEGACY:
-                    {
-                        /* Make sure there are no conditions. */
-                        if(!contract.Empty(Contract::CONDITIONS))
-                            return debug::error(FUNCTION, "OP::LEGACY: conditions not allowed on legacy");
-
-                        /* Verify the operation rules. */
-                        if(!Legacy::Verify(contract))
-                            return false;
-
-                        /* Get the register address. */
-                        uint256_t hashAddress = 0;
-                        contract >> hashAddress;
-
-                        /* Get the transfer amount. */
-                        uint64_t  nAmount = 0;
-                        contract >> nAmount;
-
-                        /* Deserialize the pre-state byte from the contract. */
-                        uint8_t nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::LEGACY: register pre-state doesn't exist");
-
-                        /* Read the register from database. */
-                        TAO::Register::Object object;
-                        contract >>= object;
-
-                        /* Calculate the new operation. */
-                        if(!Legacy::Execute(object, nAmount, contract.Timestamp()))
-                            return false;
-
-                        /* Deserialize the pre-state byte from contract. */
-                        nState = 0;
-                        contract >>= nState;
-
-                        /* Check for pre-state. */
-                        if(nState != TAO::Register::STATES::POSTSTATE)
-                            return debug::error(FUNCTION, "OP::LEGACY: register post-state doesn't exist");
-
-                        /* Deserialize the checksum from contract. */
-                        uint64_t nChecksum = 0;
-                        contract >>= nChecksum;
-
-                        /* Check the post-state to register state. */
-                        if(nChecksum != object.GetHash())
-                            return debug::error(FUNCTION, "OP::LEGACY: invalid register post-state");
-
-                        /* Commit the register to disk. */
-                        if(!Legacy::Commit(object, hashAddress, nFlags))
-                            return false;
-
-                        /* Get the script data. */
-                        ::Legacy::Script script;
-                        contract >> script;
-
-                        /* Check for OP_DUP OP_HASH256 <hash> OP_EQUALVERIFY. */
-
-                        break;
-                    }
-
-                    default:
-                        return debug::error(FUNCTION, "invalid code for contract execution ", uint32_t(nOP));
+                    /* Get the state byte. */
+                    uint8_t nState = 0; //RESERVED
+                    contract >>= nState;
+
+                    /* Check for the pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::CLAIM: register script not in pre-state");
+
+                    /* Get the pre-state. */
+                    TAO::Register::State state;
+                    contract >>= state;
+
+                    /* Calculate the new operation. */
+                    if(!Claim::Execute(state, contract.Caller(), contract.Timestamp()))
+                        return false;
+
+                    /* Deserialize the pre-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::CLAIM: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != state.GetHash())
+                        return debug::error(FUNCTION, "OP::CLAIM: invalid register post-state");
+
+                    /* Commit the register to disk. */
+                    if(!Claim::Commit(state, hashAddress, hashTx, nContract, nFlags))
+                        return false;
+
+                    break;
                 }
 
-                /* Check for end of stream. */
-                if(!contract.End())
-                    return debug::error(FUNCTION, "contract can only have one PRIMITIVE");
-            }
-            catch(const std::exception& e)
-            {
-                return debug::error(FUNCTION, "exception encountered ", e.what());
+
+                /* Coinbase operation. Creates an account if none exists. */
+                case OP::COINBASE:
+                {
+                    /* Check for validate. */
+                    if(fValidate)
+                        return debug::error(FUNCTION, "OP::COINBASE: cannot use OP::VALIDATE with coinbase");
+
+                    /* Check for valid coinbase. */
+                    if(!Coinbase::Verify(contract))
+                        return false;
+
+                    /* Get the genesis. */
+                    uint256_t hashGenesis;
+                    contract >> hashGenesis;
+
+                    /* Seek to end. */
+                    contract.Seek(16);
+
+                    /* Commit to disk. */
+                    if(contract.Caller() != hashGenesis && !Coinbase::Commit(hashGenesis, contract.Hash(), nFlags))
+                        return false;
+
+                    break;
+                }
+
+
+                /* Coinstake operation. Requires an account. */
+                case OP::TRUST:
+                {
+                    /* Check for validate. */
+                    if(fValidate)
+                        return debug::error(FUNCTION, "OP::TRUST: cannot use OP::VALIDATE with trust");
+
+                    /* Make sure there are no conditions. */
+                    if(!contract.Empty(Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "OP::TRUST: conditions not allowed on trust");
+
+                    /* Verify the operation rules. */
+                    if(!Trust::Verify(contract))
+                        return false;
+
+                    /* Seek to scores. */
+                    contract.Seek(64);
+
+                    /* Get the trust score. */
+                    uint64_t nScore = 0;
+                    contract >> nScore;
+
+                    /* Get the stake change. */
+                    int64_t nStakeChange = 0;
+                    contract >> nStakeChange;
+
+                    /* Get the stake reward. */
+                    uint64_t nReward = 0;
+                    contract >> nReward;
+
+                    /* Deserialize the pre-state byte from the contract. */
+                    uint8_t nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::TRUST: register pre-state doesn't exist");
+
+                    /* Read the register prestate. */
+                    TAO::Register::Object object;
+                    contract >>= object;
+
+                    /* Calculate the new operation. */
+                    if(!Trust::Execute(object, nReward, nScore, nStakeChange, contract.Timestamp()))
+                        return false;
+
+                    /* Deserialize the pre-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
+
+                    /* Check for post-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::TRUST: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != object.GetHash())
+                        return debug::error(FUNCTION, "OP::TRUST: invalid register post-state");
+
+                    /* Commit the register to disk. */
+                    if(!Trust::Commit(object, nFlags))
+                        return false;
+
+                    break;
+                }
+
+
+                /* Coinstake operation. Requires an account. */
+                case OP::GENESIS:
+                {
+                    /* Check for validate. */
+                    if(fValidate)
+                        return debug::error(FUNCTION, "OP::GENESIS: cannot use OP::VALIDATE with genesis");
+
+                    /* Make sure there are no conditions. */
+                    if(!contract.Empty(Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "OP::GENESIS: conditions not allowed on genesis");
+
+                    /* Verify the operation rules. */
+                    if(!Genesis::Verify(contract))
+                        return false;
+
+                    /* Get the stake reward. */
+                    uint64_t nReward = 0;
+                    contract >> nReward;
+
+                    /* Deserialize the pre-state byte from the contract. */
+                    uint8_t nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::GENESIS: register pre-state doesn't exist");
+
+                    /* Read the register prestate. */
+                    TAO::Register::Object object;
+                    contract >>= object;
+
+                    /* Calculate the new operation. */
+                    if(!Genesis::Execute(object, nReward, contract.Timestamp()))
+                        return false;
+
+                    /* Deserialize the pre-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
+
+                    /* Check for post-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::GENESIS: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != object.GetHash())
+                        return debug::error(FUNCTION, "OP::GENESIS: invalid register post-state");
+
+                    /* Commit the register to disk. */
+                    if(!Genesis::Commit(object, nFlags))
+                        return false;
+
+                    break;
+                }
+
+
+                /* Debit tokens from an account you own. */
+                case OP::DEBIT:
+                {
+                    /* Verify the operation rules. */
+                    if(!Debit::Verify(contract))
+                        return false;
+
+                    /* Get the register address. */
+                    uint256_t hashFrom = 0;
+                    contract >> hashFrom;
+
+                    /* Get the transfer address. */
+                    uint256_t hashTo = 0;
+                    contract >> hashTo;
+
+                    /* Get the transfer amount. */
+                    uint64_t  nAmount = 0;
+                    contract >> nAmount;
+
+                    /* Get the reference. */
+                    uint64_t nReference = 0;
+                    contract >> nReference;
+
+                    /* Deserialize the pre-state byte from the contract. */
+                    uint8_t nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::DEBIT: register pre-state doesn't exist");
+
+                    /* Read the register from database. */
+                    TAO::Register::Object object;
+                    contract >>= object;
+
+                    /* Calculate the new operation. */
+                    if(!Debit::Execute(object, nAmount, contract.Timestamp()))
+                        return false;
+
+                    /* Deserialize the pre-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::DEBIT: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != object.GetHash())
+                        return debug::error(FUNCTION, "OP::DEBIT: invalid register post-state");
+
+                    /* Commit the register to disk. */
+                    if(!Debit::Commit(object, contract.Hash(), hashFrom, hashTo, nFlags))
+                        return false;
+
+                    break;
+                }
+
+
+                /* Credit tokens to an account you own. */
+                case OP::CREDIT:
+                {
+                    /* Make sure there are no conditions. */
+                    if(!contract.Empty(Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "OP::CREDIT: conditions not allowed on credit");
+
+                    /* Extract the transaction from contract. */
+                    uint512_t hashTx = 0;
+                    contract >> hashTx;
+
+                    /* Extract the contract-id. */
+                    uint32_t nContract = 0;
+                    contract >> nContract;
+
+                    /* Get the transfer address. */
+                    uint256_t hashAddress = 0;
+                    contract >> hashAddress;
+
+                    /* Get the proof address. */
+                    uint256_t hashProof = 0;
+                    contract >> hashProof;
+
+                    /* Get the transfer amount. */
+                    uint64_t  nAmount = 0;
+                    contract >> nAmount;
+
+                    /* DISABLED for -client mode. */
+                    Contract debit = Contract();
+                    //if(!config::fClient.load()) XXX: this shouldn't need to be disabled
+                    {
+                        /* Verify the operation rules. */
+                        debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
+                        if(!Credit::Verify(contract, debit, nFlags))
+                            return false;
+
+                        /* Check for conditions. */
+                        if(!debit.Empty(Contract::CONDITIONS))
+                        {
+                            /* Get the condition. */
+                            uint8_t nType = 0;
+                            debit >> nType;
+
+                            /* Check for condition. */
+                            Condition conditions = Condition(debit, contract);
+                            if(nType == OP::CONDITION)
+                            {
+                                /* Read the contract database. */
+                                uint256_t hashValidator = 0;
+                                if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
+                                {
+                                    /* Check that the caller is the claimant. */
+                                    if(hashValidator != contract.Caller())
+                                        return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
+                                }
+
+                                /* If no validate fulfilled, try to exeucte conditions. */
+                                else if(!conditions.Execute())
+                                    return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+                            }
+                            else if(!conditions.Execute())
+                                return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+
+                            /* Assess the fees for the computation limits. */
+                            if(conditions.nCost > CONDITION_LIMIT_FREE)
+                                nCost += conditions.nCost - CONDITION_LIMIT_FREE;
+                        }
+                    }
+
+                    /* Deserialize the pre-state byte from the contract. */
+                    uint8_t nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::CREDIT: register pre-state doesn't exist");
+
+                    /* Read the register from database. */
+                    TAO::Register::Object object;
+                    contract >>= object;
+
+                    /* Calculate the new operation. */
+                    if(!Credit::Execute(object, nAmount, contract.Timestamp()))
+                        return false;
+
+                    /* Deserialize the pre-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::CREDIT: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != object.GetHash())
+                        return debug::error(FUNCTION, "OP::CREDIT: invalid register post-state");
+
+                    /* Commit the register to disk. */
+                    if(!Credit::Commit(object, debit, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
+                        return false;
+
+                    break;
+                }
+
+
+                /* Migrate a trust key to a trust account register. */
+                case OP::MIGRATE:
+                {
+                    /* Make sure there are no conditions. */
+                    if(!contract.Empty(Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "OP::MIGRATE: conditions not allowed on migrate");
+
+                    /* Extract the transaction from contract. */
+                    uint512_t hashTx = 0;
+                    contract >> hashTx;
+
+                    /* DISABLED for -client mode. */
+                    //if(!config::fClient.load()) XXX: this shouldn't bi disabled for -client mode
+                    {
+                        /* Retrieve a debit for the Legacy tx output. Migrate tx will only have one output (index 0) */
+                        Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
+
+                        /* Add migrate data from Legacy tx to debit (base ReadContract returns generic Legacy send to register) */
+                        if(!::Legacy::BuildMigrateDebit(debit, hashTx))
+                            return false;
+
+                        /* Verify the operation rules. */
+                        if(!Migrate::Verify(contract, debit))
+                            return false;
+                    }
+
+                    /* After Verify, reset streams */
+                    contract.Reset();
+                    contract.Seek(65);
+
+                    /* Get the trust register address. (hash to) */
+                    uint256_t hashAccount;
+                    contract >> hashAccount;
+
+                    /* Get the Legacy trust key */
+                    uint576_t hashTrust;
+                    contract >> hashTrust;
+
+                    /* Get the amount to migrate. */
+                    uint64_t nAmount;
+                    contract >> nAmount;
+
+                    /* Get the trust score to migrate. */
+                    uint32_t nScore;
+                    contract >> nScore;
+
+                    /* Get the hash last stake. */
+                    uint512_t hashLast;
+                    contract >> hashLast;
+
+                    /* Deserialize the pre-state byte from the contract. */
+                    uint8_t nState;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::MIGRATE: register pre-state doesn't exist");
+
+                    /* Retrieve the register pre-state. */
+                    TAO::Register::Object object;
+                    contract >>= object;
+
+                    /* Calculate the new operation. */
+                    if(!Migrate::Execute(object, nAmount, nScore, contract.Timestamp()))
+                        return false;
+
+                    /* Deserialize the post-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::MIGRATE: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != object.GetHash())
+                        return debug::error(FUNCTION, "OP::MIGRATE: invalid register post-state");
+
+                    /* Commit the migration updates to disk. */
+                    if(!Migrate::Commit(object, hashAccount, contract.Caller(), hashTx, hashTrust, hashLast, nFlags))
+                        return false;
+
+                    break;
+                }
+
+
+                /* Debit tokens from an account you own. */
+                case OP::FEE:
+                {
+                    /* Make sure there are no conditions. */
+                    if(!contract.Empty(Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "OP::FEE: conditions not allowed on fees");
+
+                    /* Verify the operation rules. */
+                    if(!Fee::Verify(contract))
+                        return false;
+
+                    /* Get the register address. */
+                    uint256_t hashAddress = 0;
+                    contract >> hashAddress;
+
+                    /* Get the fee amount. */
+                    uint64_t  nFees = 0;
+                    contract >> nFees;
+
+                    /* Deserialize the pre-state byte from the contract. */
+                    uint8_t nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::FEE: register pre-state doesn't exist");
+
+                    /* Read the register from database. */
+                    TAO::Register::Object object;
+                    contract >>= object;
+
+                    /* Calculate the new operation. */
+                    if(!Fee::Execute(object, nFees, contract.Timestamp()))
+                        return false;
+
+                    /* Deserialize the pre-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::FEE: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != object.GetHash())
+                        return debug::error(FUNCTION, "OP::FEE: invalid register post-state");
+
+                    /* Commit the register to disk. */
+                    if(!Fee::Commit(object, hashAddress, nFlags))
+                        return false;
+
+                    break;
+                }
+
+
+                /* Authorize is enabled in private mode only. */
+                case OP::AUTHORIZE:
+                {
+                    //TODO: decide more details on the use of authorize.
+
+                    /* Seek to address. */
+                    contract.Seek(96);
+
+                    break;
+                }
+
+
+                /* Create unspendable legacy script, that acts to debit from the account and make this unspendable. */
+                case OP::LEGACY:
+                {
+                    /* Make sure there are no conditions. */
+                    if(!contract.Empty(Contract::CONDITIONS))
+                        return debug::error(FUNCTION, "OP::LEGACY: conditions not allowed on legacy");
+
+                    /* Verify the operation rules. */
+                    if(!Legacy::Verify(contract))
+                        return false;
+
+                    /* Get the register address. */
+                    uint256_t hashAddress = 0;
+                    contract >> hashAddress;
+
+                    /* Get the transfer amount. */
+                    uint64_t  nAmount = 0;
+                    contract >> nAmount;
+
+                    /* Deserialize the pre-state byte from the contract. */
+                    uint8_t nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::PRESTATE)
+                        return debug::error(FUNCTION, "OP::LEGACY: register pre-state doesn't exist");
+
+                    /* Read the register from database. */
+                    TAO::Register::Object object;
+                    contract >>= object;
+
+                    /* Calculate the new operation. */
+                    if(!Legacy::Execute(object, nAmount, contract.Timestamp()))
+                        return false;
+
+                    /* Deserialize the pre-state byte from contract. */
+                    nState = 0;
+                    contract >>= nState;
+
+                    /* Check for pre-state. */
+                    if(nState != TAO::Register::STATES::POSTSTATE)
+                        return debug::error(FUNCTION, "OP::LEGACY: register post-state doesn't exist");
+
+                    /* Deserialize the checksum from contract. */
+                    uint64_t nChecksum = 0;
+                    contract >>= nChecksum;
+
+                    /* Check the post-state to register state. */
+                    if(nChecksum != object.GetHash())
+                        return debug::error(FUNCTION, "OP::LEGACY: invalid register post-state");
+
+                    /* Commit the register to disk. */
+                    if(!Legacy::Commit(object, hashAddress, nFlags))
+                        return false;
+
+                    /* Get the script data. */
+                    ::Legacy::Script script;
+                    contract >> script;
+
+                    /* Check for OP_DUP OP_HASH256 <hash> OP_EQUALVERIFY. */
+
+                    break;
+                }
+
+                default:
+                    return debug::error(FUNCTION, "invalid code for contract execution ", uint32_t(nOP));
             }
 
-            /* If nothing failed, return true for evaluation. */
-            return true;
+            /* Check for end of stream. */
+            if(!contract.End())
+                return debug::error(FUNCTION, "contract can only have one PRIMITIVE");
+        }
+        catch(const std::exception& e)
+        {
+            return debug::error(FUNCTION, "exception encountered ", e.what());
         }
 
+        /* If nothing failed, return true for evaluation. */
+        return true;
     }
 }

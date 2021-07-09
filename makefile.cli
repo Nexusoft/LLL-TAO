@@ -479,6 +479,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_system_validate.o \
 		build/API_commands_templates_get.o \
 		build/API_commands_templates_list.o \
+		build/API_commands_templates_history.o \
 		build/API_commands_tokens_list.o \
 		build/API_commands_tokens_initialize.o \
 		build/API_types_users_accounts.o \

@@ -294,6 +294,13 @@ namespace TAO
         }
 
 
+        /* Gets the list of contracts internal to transaction. */
+        const std::vector<TAO::Operation::Contract>& Transaction::Contracts() const
+        {
+            return vContracts;
+        }
+
+
         /* Get the total contracts in transaction. */
         uint32_t Transaction::Size() const
         {
