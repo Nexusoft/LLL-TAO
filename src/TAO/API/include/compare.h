@@ -13,7 +13,8 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <TAO/API
+#include <TAO/API/types/exception.h>
+
 #include <Util/include/json.h>
 
 /* Global TAO namespace. */
@@ -21,7 +22,7 @@ namespace TAO::API
 {
     /** @class CompareResults
      *
-     *  Basic functor for handling sort operations in generic register lists.
+     *  Basic functor for handling sort operations in generic json lists.
      *
      **/
     class CompareResults final
