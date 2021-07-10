@@ -266,7 +266,7 @@ namespace TAO
         {
             /* Check the map for empty. */
             if(!mapData.empty())
-                return debug::error(FUNCTION, "object is already parsed");
+                return false;
 
             /* Ensure that object register is of proper type. */
             if(this->nType != REGISTER::OBJECT

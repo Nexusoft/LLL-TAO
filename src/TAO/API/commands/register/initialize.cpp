@@ -13,7 +13,6 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/templates.h>
-#include <TAO/API/objects/types/objects.h>
 
 #include <TAO/API/types/commands.h>
 
@@ -74,7 +73,7 @@ namespace TAO::API
         );
 
         /* Populate our OBJECT standard. */
-        mapStandards["object"] = Standard
+        mapStandards["asset"] = Standard
         (
             /* Lambda expression to determine object standard. */
             [](const TAO::Register::Object& objCheck)
@@ -166,12 +165,22 @@ namespace TAO::API
         );
 
         /* Handle for generic list operations. */
-        mapFunctions["list/transactions"] = Function
+        mapFunctions["history"] = Function
         (
             std::bind
             (
-                &Register::Transactions,
-                this,
+                &Templates::History,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for generic list operations. */
+        mapFunctions["transactions"] = Function
+        (
+            std::bind
+            (
+                &Templates::Transactions,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

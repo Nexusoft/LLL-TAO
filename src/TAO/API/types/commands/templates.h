@@ -65,6 +65,19 @@ namespace TAO::API
         static encoding::json History(const encoding::json& jParams, const bool fHelp);
 
 
+        /** Transactions
+         *
+         *  Lists all transactions of supported type in any scope.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        static encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
+
+
 
         /** Deprecated
          *

@@ -86,19 +86,6 @@ namespace TAO::API
         encoding::json List(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Transactions
-         *
-         *  Lists all transactions of supported type in global scope.
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
-
-
         /** AccountToJSON
          *
          *  Returns the JSON representation of an account, either trust or account

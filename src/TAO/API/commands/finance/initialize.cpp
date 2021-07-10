@@ -151,6 +151,29 @@ namespace TAO::API
             )
         );
 
+
+        /* Handle for all LIST operations. */
+        mapFunctions["history"] = Function
+        (
+            std::bind
+            (
+                &Templates::History,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for generic list operations. */
+        mapFunctions["transactions"] = Function
+        (
+            std::bind
+            (
+                &Templates::Transactions,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Handle for BALANCES. */
         mapFunctions["get/balances"] = Function
         (

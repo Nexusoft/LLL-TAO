@@ -100,7 +100,7 @@ namespace TAO::API
                 if(vMethods[n].find(",") != vMethods[n].npos)
                 {
                     /* Check that this is for a list command. */
-                    if(strVerb != "list" && strVerb != "get")
+                    if(strVerb != "list" && strVerb != "get" && strVerb != "history")
                         throw Exception(-36, "Aggregated type [", vMethods[n], "] not allowed for [", strVerb, "]");
 
                     /* Grab our components of the URL to rewrite. */

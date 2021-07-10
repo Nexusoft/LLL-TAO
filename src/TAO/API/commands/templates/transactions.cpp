@@ -13,12 +13,14 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/check.h>
+#include <TAO/API/include/compare.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/filter.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/API/types/exception.h>
-#include <TAO/API/types/commands/register.h>
+#include <TAO/API/types/commands/templates.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/constants.h>
@@ -27,7 +29,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Lists all transactions for a given register. */
-    encoding::json Register::Transactions(const encoding::json& jParams, const bool fHelp)
+    encoding::json Templates::Transactions(const encoding::json& jParams, const bool fHelp)
     {
         /* The register address of the object to get the transactions for. */
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
@@ -36,12 +38,16 @@ namespace TAO::API
         const uint32_t nVerbose = ExtractVerbose(jParams, 2);
 
         /* Read the register from DB. */
-        TAO::Register::State objCheck;
-        if(!LLD::Register->ReadState(hashRegister, objCheck))
+        TAO::Register::Object tObject;
+        if(!LLD::Register->ReadObject(hashRegister, tObject))
             throw Exception(-13, "Object not found");
 
+        /* Now lets check our expected types match. */
+        if(!CheckStandard(jParams, tObject))
+            throw Exception(-49, "Unsupported type for name/address");
+
         /* Use this asset to get our genesis-id adjusting if it is in system state. */
-        uint256_t hashGenesis = objCheck.hashOwner;
+        uint256_t hashGenesis = tObject.hashOwner;
         if(hashGenesis.GetType() == TAO::Ledger::GENESIS::SYSTEM)
             hashGenesis.SetType(TAO::Ledger::GENESIS::UserType());
 
@@ -49,21 +55,20 @@ namespace TAO::API
         uint32_t nLimit = 100, nOffset = 0;
 
         /* Sort order to apply */
-        std::string strOrder = "desc";
+        std::string strOrder = "desc", strColumn = "timestamp";
 
         /* Get the params to apply to the response. */
-        ExtractList(jParams, strOrder, nLimit, nOffset);
+        ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
         /* Get the last transaction. */
         uint512_t hashLast = 0;
         if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
             throw Exception(-144, "No transactions found");
 
-        /* JSON return value. */
-        encoding::json jRet = encoding::json::array();
+        /* Build our object list and sort on insert. */
+        std::set<encoding::json, CompareResults> setTransactions({}, CompareResults(strOrder, strColumn));
 
         /* Loop until genesis. */
-        uint32_t nTotal = 0;
         while(hashLast != 0)
         {
             /* Get the transaction from disk. */
@@ -79,15 +84,15 @@ namespace TAO::API
             LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
 
             /* Get the transaction JSON. */
-            encoding::json jResult =
+            encoding::json jTransaction =
                 TAO::API::TransactionToJSON(tx, blockState, nVerbose);
 
             /* Check for missing contracts to adjust. */
-            if(jResult.find("contracts") == jResult.end())
+            if(jTransaction.find("contracts") == jTransaction.end())
                 continue;
 
             /* Erase based on having available address. */
-            encoding::json& jContracts = jResult["contracts"];
+            encoding::json& jContracts = jTransaction["contracts"];
             jContracts.erase
             (
                 /* Use custom lambda to sort out contracts that aren't for the address we are searching. */
@@ -126,6 +131,17 @@ namespace TAO::API
                 jContracts.end()
             );
 
+            /* Check to see whether the transaction has had all children filtered out */
+            if(jContracts.empty())
+                continue;
+
+            /* Apply our where filters now. */
+            if(!FilterResults(jParams, jTransaction))
+                continue;
+
+            /* Insert into set and automatically sort. */
+            setTransactions.insert(jTransaction);
+
             /* Check for a claim that would iterate to another sigchain. */
             for(const auto& jContract : jContracts)
             {
@@ -143,24 +159,24 @@ namespace TAO::API
                     break;
                 }
             }
+        }
 
-            /* Check to see whether the transaction has had all children filtered out */
-            if(jContracts.empty())
-                continue;
+        /* Build our return value. */
+        encoding::json jRet = encoding::json::array();
 
-            /* Apply our where filters now. */
-            if(!FilterResults(jParams, jResult))
-                continue;
-
+        /* Handle paging and offsets. */
+        uint32_t nTotal = 0;
+        for(const auto& jTransaction : setTransactions)
+        {
             /* Check the offset. */
             if(++nTotal <= nOffset)
                 continue;
 
             /* Check the limit */
-            if(nTotal - nOffset > nLimit)
+            if(jRet.size() == nLimit)
                 break;
 
-            jRet.push_back(jResult);
+            jRet.push_back(jTransaction);
         }
 
         return jRet;

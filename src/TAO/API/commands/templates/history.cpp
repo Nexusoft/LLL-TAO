@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/compare.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/execute.h>
 #include <TAO/API/include/filter.h>
@@ -52,18 +53,18 @@ namespace TAO::API
         uint32_t nLimit = 100, nOffset = 0;
 
         /* Sort order to apply */
-        std::string strOrder = "desc", strSort = "modified";
+        std::string strOrder = "desc", strColumn = "modified";
 
         /* Get the params to apply to the response. */
-        ExtractList(jParams, strOrder, strSort, nLimit, nOffset);
+        ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
         /* Get the last transaction. */
         uint512_t hashLast = 0;
         if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
             throw Exception(-144, "No transactions found");
 
-        /* Our contract return JSON. */
-        std::set<encoding::json> setHistory;
+        /* Build our object list and sort on insert. */
+        std::set<encoding::json, CompareResults> setHistory({}, CompareResults(strOrder, strColumn));
 
         /* Loop until genesis. */
         while(hashLast != 0)
@@ -97,6 +98,10 @@ namespace TAO::API
                 /* Grab our register's pre-state. */
                 TAO::Register::Object tObject = ExecuteContract(rContract);
 
+                /* Check if object needs to be parsed. */
+                if(tObject.nType == TAO::Register::REGISTER::OBJECT)
+                    tObject.Parse();
+
                 /* Let's start building our json object. */
                 encoding::json jRegister =
                     RegisterToJSON(tObject, hashContract);
@@ -107,7 +112,7 @@ namespace TAO::API
                     /* Handle for CREATE modifier type. */
                     case TAO::Operation::OP::CREATE:
                     {
-                        jRegister["type"] = "CREATE";
+                        jRegister["action"] = "CREATE";
                         break;
                     }
 
@@ -116,21 +121,21 @@ namespace TAO::API
                     case TAO::Operation::OP::APPEND:
                     case TAO::Operation::OP::FEE:
                     {
-                        jRegister["type"] = "MODIFY";
+                        jRegister["action"] = "MODIFY";
                         break;
                     }
 
                     /* Handle for TRANSFER modifier type. */
                     case TAO::Operation::OP::TRANSFER:
                     {
-                        jRegister["type"] = "TRANSFER";
+                        jRegister["action"] = "TRANSFER";
                         break;
                     }
 
                     /* Handle for CLAIM modifier type. */
                     case TAO::Operation::OP::CLAIM:
                     {
-                        jRegister["type"] = "CLAIM";
+                        jRegister["action"] = "CLAIM";
                         break;
                     }
 
@@ -138,14 +143,14 @@ namespace TAO::API
                     case TAO::Operation::OP::DEBIT:
                     case TAO::Operation::OP::LEGACY:
                     {
-                        jRegister["type"] = "DEBIT";
+                        jRegister["action"] = "DEBIT";
                         break;
                     }
 
                     /* Handle for CREDIT modifier type. */
                     case TAO::Operation::OP::CREDIT:
                     {
-                        jRegister["type"] = "CREDIT";
+                        jRegister["action"] = "CREDIT";
                         break;
                     }
 
@@ -154,7 +159,7 @@ namespace TAO::API
                     case TAO::Operation::OP::TRUST:
                     case TAO::Operation::OP::MIGRATE:
                     {
-                        jRegister["type"] = "TRUST";
+                        jRegister["action"] = "TRUST";
                         break;
                     }
                 }

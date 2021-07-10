@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <TAO/API
 #include <Util/include/json.h>
 
 /* Global TAO namespace. */
