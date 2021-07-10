@@ -15936,9 +15936,9 @@ char* to_chars(char* first, const char* last, FloatType value)
     JSON_ASSERT(len <= std::numeric_limits<FloatType>::max_digits10);
 
     // Format the buffer like printf("%.*g", prec, value)
-    constexpr int kMinExp = -4;
+    constexpr int kMinExp = -16;//-4;
     // Use digits10 here to increase compatibility with version 2.
-    constexpr int kMaxExp = std::numeric_limits<FloatType>::digits10;
+    constexpr int kMaxExp = 16; //std::numeric_limits<FloatType>::digits10;
 
     JSON_ASSERT(last - first >= kMaxExp + 2);
     JSON_ASSERT(last - first >= 2 + (-kMinExp - 1) + std::numeric_limits<FloatType>::max_digits10);
