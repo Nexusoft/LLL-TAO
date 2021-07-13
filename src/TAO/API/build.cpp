@@ -208,7 +208,8 @@ namespace TAO::API
 
 
     /* Builds a credit contract based on given txid. */
-    bool BuildCredits(const encoding::json& jParams, const uint512_t& hashTx, std::vector<TAO::Operation::Contract> &vContracts)
+    bool BuildContracts(const encoding::json& jParams, const uint512_t& hashTx, std::vector<TAO::Operation::Contract> &vContracts,
+                        const build_function_t& xBuild)
     {
         /* Track contracts added to compare values for return */
         const uint32_t nContracts = vContracts.size();
@@ -228,7 +229,7 @@ namespace TAO::API
                 const TAO::Operation::Contract& rContract = tx[nContract];
 
                 /* Build the credit contract within the contract loop. */
-                if(!BuildCredit(jParams, nContract, rContract, vContracts))
+                if(!xBuild(jParams, nContract, rContract, vContracts))
                     continue;
             }
         }
@@ -246,7 +247,7 @@ namespace TAO::API
                 const TAO::Operation::Contract tContract = TAO::Operation::Contract(tx, nContract);
 
                 /* Build the credit contract within the contract loop. */
-                if(!BuildCredit(jParams, nContract, tContract, vContracts))
+                if(!xBuild(jParams, nContract, tContract, vContracts))
                     continue;
             }
         }
@@ -258,7 +259,7 @@ namespace TAO::API
 
 
     /* Builds a credit contract based on given contract and related parameters. */
-    bool BuildCredit(const encoding::json& jParams, const uint32_t nContract, const TAO::Operation::Contract& rContract,
+    bool BuildCredit(const encoding::json& jParams, const uint32_t nContract, const TAO::Operation::Contract& rDebit,
         std::vector<TAO::Operation::Contract> &vContracts)
     {
         /* Extract some parameters from input data. */
@@ -269,18 +270,18 @@ namespace TAO::API
             Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
         /* Copy our txid out of the contract. */
-        const uint512_t hashTx = rContract.Hash();
+        const uint512_t hashTx = rDebit.Hash();
 
         /* Reset the contract to the position of the primitive. */
-        const uint8_t nPrimitive = rContract.Primitive();
-        rContract.SeekToPrimitive(false); //false to skip our primitive
+        const uint8_t nPrimitive = rDebit.Primitive();
+        rDebit.SeekToPrimitive(false); //false to skip our primitive
 
         /* Check for coinbase credits first. */
         if(nPrimitive == TAO::Operation::OP::COINBASE)
         {
             /* Get the genesisHash of the user who mined the coinbase*/
             uint256_t hashMiner = 0;
-            rContract >> hashMiner;
+            rDebit >> hashMiner;
 
             /* Check that the coinbase was mined by the caller */
             if(hashMiner != hashGenesis)
@@ -288,7 +289,7 @@ namespace TAO::API
 
             /* Get the amount from the coinbase transaction. */
             uint64_t nAmount = 0;
-            rContract >> nAmount;
+            rDebit >> nAmount;
 
             /* Now lets check our expected types match. */
             if(!CheckStandard(jParams, hashCredit))
@@ -310,15 +311,15 @@ namespace TAO::API
         {
             /* Get the hashFrom from the debit transaction. */
             TAO::Register::Address hashFrom;
-            rContract >> hashFrom;
+            rDebit >> hashFrom;
 
             /* Get the hashCredit from the debit transaction. */
             TAO::Register::Address hashTo;
-            rContract >> hashTo;
+            rDebit >> hashTo;
 
             /* Get the amount to respond to. */
             uint64_t nAmount = 0;
-            rContract >> nAmount;
+            rDebit >> nAmount;
 
             /* Check for a legacy output debit. */
             if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
@@ -351,10 +352,10 @@ namespace TAO::API
             if(hashTo == TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Check for conditions. */
-                if(!rContract.Empty(TAO::Operation::Contract::CONDITIONS)) //XXX: unit tests for this scope in finance unit tests
+                if(!rDebit.Empty(TAO::Operation::Contract::CONDITIONS)) //XXX: unit tests for this scope in finance unit tests
                 {
                     /* Check for condition. */
-                    if(rContract.Operations()[0] == TAO::Operation::OP::CONDITION)
+                    if(rDebit.Operations()[0] == TAO::Operation::OP::CONDITION)
                     {
                         /* Read the contract database. */
                         uint256_t hashValidator = 0;
@@ -482,6 +483,25 @@ namespace TAO::API
                 return true;
             }
         }
+
+        return false; //if we get this far, this contract is not creditable
+    }
+
+
+    /* Builds a claim contract based on given contract and related parameters. */
+    bool BuildClaim(const encoding::json& jParams, const uint32_t nContract,
+        const TAO::Operation::Contract& rTransfer, std::vector<TAO::Operation::Contract> &vContracts)
+    {
+        /* Copy our txid out of the contract. */
+        const uint512_t hashTx = rTransfer.Hash();
+
+        /* Reset the contract to the position of the primitive. */
+        const uint8_t nPrimitive = rTransfer.Primitive();
+        rTransfer.SeekToPrimitive(false); //false to skip our primitive
+
+        /* Check that primitive is correct. */
+        if(nPrimitive != TAO::Operation::OP::TRANSFER)
+            return false;
 
         return false; //if we get this far, this contract is not creditable
     }

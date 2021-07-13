@@ -26,6 +26,9 @@ namespace TAO::Ledger    { class Transaction; }
 namespace TAO::API
 {
 
+    /* Alias for our build function types. */
+    using build_function_t = std::function<bool (const encoding::json&, const uint32_t,
+                                                 const TAO::Operation::Contract&, std::vector<TAO::Operation::Contract>&)>;
 
     /** BuildResponse
      *
@@ -84,18 +87,20 @@ namespace TAO::API
     //XXX: this is hacky to use an empty address for default parameter
 
 
-    /** BuildCredits
+    /** BuildContracts
      *
-     *  Builds a credit contract based on given txid.
+     *  Builds contracts based on given txid and function.
      *
      *  @param[in] jParams The parameters to use for this call.
      *  @param[in] hashTx The txid to check credit against.
-     *  @param[out] vContracts The contracts built based on this credit.
+     *  @param[out] vContracts The contracts built based on the received contract.
+     *  @param[in] xBuild The function specializing for this contract.
      *
      *  @return true if contracts were generated, false if credit has no contracts available.
      *
      **/
-    bool BuildCredits(const encoding::json& jParams, const uint512_t& hashTx, std::vector<TAO::Operation::Contract> &vContracts);
+    bool BuildContracts(const encoding::json& jParams, const uint512_t& hashTx, std::vector<TAO::Operation::Contract> &vContracts,
+                        const build_function_t& xBuild);
 
 
     /** BuildCredit
@@ -111,7 +116,23 @@ namespace TAO::API
      *
      **/
     bool BuildCredit(const encoding::json& jParams, const uint32_t nContract,
-        const TAO::Operation::Contract& rContract, std::vector<TAO::Operation::Contract> &vContracts);
+        const TAO::Operation::Contract& rDebit, std::vector<TAO::Operation::Contract> &vContracts);
+
+
+    /** BuildClaim
+     *
+     *  Builds a claim contract based on given contract and related parameters.
+     *
+     *  @param[in] jParams The parameters to use for this call.
+     *  @param[in] nContract The contract we are building for.
+     *  @param[in] rContract The transfer contract to claim from.
+     *  @param[out] vContracts The contracts built based on this claim.
+     *
+     *  @return true if contracts were generated, false if credit has no contracts available.
+     *
+     **/
+    bool BuildClaim(const encoding::json& jParams, const uint32_t nContract,
+        const TAO::Operation::Contract& rTransfer, std::vector<TAO::Operation::Contract> &vContracts);
 
 
     /** BuildName

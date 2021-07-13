@@ -25,6 +25,18 @@ namespace TAO::API
      **/
     struct Templates
     {
+        /** Claim
+         *
+         *  Claims an incoming transfer from recipient.
+         *
+         *  @param[in] jParams The input parameters to the command.
+         *  @param[in] fHelp Flag to determine if help was requested for command.
+         *
+         *  @return the json representation of given object.
+         *
+         **/
+        static encoding::json Claim(const encoding::json& jParams, const bool fHelp);
+
 
         /** Get
          *

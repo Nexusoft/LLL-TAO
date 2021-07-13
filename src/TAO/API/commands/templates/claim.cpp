@@ -14,15 +14,15 @@ ________________________________________________________________________________
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/extract.h>
 
-#include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/templates.h>
 
 #include <TAO/Operation/types/contract.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Credit an incoming debit from recipient. */
-    encoding::json Finance::Credit(const encoding::json& jParams, const bool fHelp)
+    /* Claim an incoming transfer from recipient. */
+    encoding::json Templates::Claim(const encoding::json& jParams, const bool fHelp)
     {
         /* Check for txid parameter. */
         if(jParams.find("txid") == jParams.end())
@@ -37,7 +37,7 @@ namespace TAO::API
 
         /* Check for tritium credits. */
         std::vector<TAO::Operation::Contract> vContracts(0);
-        if(!BuildContracts(jParams, hashTx, vContracts, BuildCredit))
+        if(!BuildContracts(jParams, hashTx, vContracts, BuildClaim))
             throw Exception(-43, "No valid contracts in debit tx.");
 
         /* Build response JSON boilerplate. */
