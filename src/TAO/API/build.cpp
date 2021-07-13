@@ -296,12 +296,12 @@ namespace TAO::API
                 return false;
 
             /* if we passed all of these checks then insert the credit contract into the tx */
-            TAO::Operation::Contract contract;
-            contract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-            contract << hashCredit << hashGenesis << nAmount;
+            TAO::Operation::Contract tContract;
+            tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
+            tContract << hashCredit << hashGenesis << nAmount;
 
             /* Push to our contract queue. */
-            vContracts.push_back(contract);
+            vContracts.push_back(tContract);
 
             return true;
         }
@@ -338,12 +338,12 @@ namespace TAO::API
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
-                TAO::Operation::Contract contract;
-                contract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                contract << hashCredit << hashFrom << nAmount;
+                TAO::Operation::Contract tContract;
+                tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
+                tContract << hashCredit << hashFrom << nAmount;
 
                 /* Push to our contract queue. */
-                vContracts.push_back(contract);
+                vContracts.push_back(tContract);
 
                 return true;
             }
@@ -387,12 +387,12 @@ namespace TAO::API
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
-                TAO::Operation::Contract contract;
-                contract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                contract << hashCredit << hashFrom << nAmount;
+                TAO::Operation::Contract tContract;
+                tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
+                tContract << hashCredit << hashFrom << nAmount;
 
                 /* Push to our contract queue. */
-                vContracts.push_back(contract);
+                vContracts.push_back(tContract);
 
                 return true;
             }
@@ -415,12 +415,12 @@ namespace TAO::API
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* Create our new contract now. */
-                TAO::Operation::Contract contract;
-                contract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                contract << hashTo << hashFrom << nAmount; //we use hashTo from our debit contract instead of hashCredit
+                TAO::Operation::Contract tContract;
+                tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
+                tContract << hashTo << hashFrom << nAmount; //we use hashTo from our debit contract instead of hashCredit
 
                 /* Push to our contract queue. */
-                vContracts.push_back(contract);
+                vContracts.push_back(tContract);
             }
 
             /* If addressed to non-standard object, this could be a tokenized debit, so do some checks to find out. */
@@ -473,12 +473,12 @@ namespace TAO::API
                 const uint64_t nPartial = (objProof.get<uint64_t>("balance") * nAmount) / objOwner.get<uint64_t>("supply");
 
                 /* Create our new contract now. */
-                TAO::Operation::Contract contract;
-                contract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                contract << hashCredit << hashProof << nPartial;
+                TAO::Operation::Contract tContract;
+                tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
+                tContract << hashCredit << hashProof << nPartial;
 
                 /* Push to our contract queue. */
-                vContracts.push_back(contract);
+                vContracts.push_back(tContract);
 
                 return true;
             }
@@ -503,7 +503,30 @@ namespace TAO::API
         if(nPrimitive != TAO::Operation::OP::TRANSFER)
             return false;
 
-        return false; //if we get this far, this contract is not creditable
+        /* Skip over our address for now. */
+        uint256_t hashAddress;
+        rTransfer >> hashAddress;
+
+        /* Deserialize some values. */
+        uint256_t hashRecipient;
+        rTransfer >> hashRecipient;
+
+        /* Get our genesis-id for this call. */
+        const uint256_t hashGenesis =
+            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+
+        /* Check that recipient is current session. */
+        if(hashRecipient != hashGenesis)
+            return false;
+
+        /* Create our new contract now. */
+        TAO::Operation::Contract tContract;
+        tContract << uint8_t(TAO::Operation::OP::CLAIM) << hashTx << uint32_t(nContract) << hashAddress;
+
+        /* Push to our contract queue. */
+        vContracts.push_back(tContract);
+
+        return true; //if we get this far, this claim was a success
     }
 
 
