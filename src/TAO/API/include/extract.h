@@ -188,7 +188,7 @@ namespace TAO::API
                     throw Exception(-57, "Invalid Parameter [", strKey, "]");
 
                 /* Check our numeric limits now. */
-                if(nRet >= nLimit - 1)
+                if(nRet > nLimit)
                     throw Exception(-60, "[", strKey, "] out of range [", nLimit, "]");
 
                 return nRet;
