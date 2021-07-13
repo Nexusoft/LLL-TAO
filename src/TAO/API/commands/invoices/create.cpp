@@ -108,7 +108,7 @@ namespace TAO::API
 
             /* The item number of units */
             const uint64_t nUnits =
-                ExtractValue((*it), "units");
+                ExtractInteger<uint64_t>((*it), "units");
 
             /* Rebuild our JSON to use correct formatting. */
             const encoding::json jItem =

@@ -231,49 +231,6 @@ namespace TAO::API
     }
 
 
-    /* Extract an integer value from input parameters in either string or integer format. */
-    uint64_t ExtractValue(const encoding::json& jParams, const std::string& strName)
-    {
-        /* Check for missing parameter. */
-        if(CheckParameter(jParams, strName, "string, number"))
-        {
-            /* Watch our numeric limits. */
-            const uint64_t nLimit = std::numeric_limits<uint64_t>::max();
-
-            /* Catch parsing exceptions. */
-            try
-            {
-                /* Initialize our return value. */
-                uint64_t nValue = 0;
-
-                /* Convert to value if in string form. */
-                if(jParams[strName].is_string())
-                    nValue = std::stoull(jParams[strName].get<std::string>());
-
-                /* Grab value regularly if it is integer. */
-                else if(jParams[strName].is_number_unsigned())
-                    nValue = jParams[strName].get<uint64_t>();
-
-                /* Otherwise we have an invalid parameter. */
-                else
-                    throw Exception(-57, "Invalid Parameter [", strName, "]");
-
-                /* Check our minimum range. */
-                if(nValue == 0)
-                    throw Exception(-68, "[", strName, "] too small [", nValue, "]");
-
-                /* Final compute of our figures. */
-                return nValue;
-            }
-            catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [", strName, "]");           }
-            catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [", strName, "]");           }
-            catch(const std::out_of_range& e)           { throw Exception(-60, "[", strName, "] out of range [", nLimit, "]"); }
-        }
-
-        throw Exception(-56, "Missing Parameter [", strName, "]");
-    }
-
-
     /* Extract the type string value from input parameters as only string. */
     std::string ExtractType(const encoding::json& jParams)
     {

@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/list.h>
 
@@ -158,31 +159,8 @@ namespace TAO::API
     {
         using namespace TAO::Operation;
 
-        /* Flag indicating the condition was added */
-        bool fAdded = false;
-
         /* The optional expiration time */
-        uint64_t nExpires = 0;
-
-        /* Check that the caller has supplied the 'expires' parameter */
-        if(params.find("expires") != params.end())
-        {
-            /* The expiration time as a string */
-            std::string strExpires = params["expires"].get<std::string>();
-
-            /* Check that the expiration time contains only numeric characters and that it can be converted to a uint64
-               before attempting to convert it */
-            if(!IsAllDigit(strExpires) || !IsUINT64(strExpires))
-                throw Exception(-168, "Invalid expiration time");
-
-            /* Convert the expiration time to uint64 */
-            nExpires = stoull(strExpires);
-        }
-        else
-        {
-            /* Default Expiration of 7 days (604800 seconds) */
-            nExpires = 604800;
-        }
+        const uint64_t nExpires = ExtractInteger<uint64_t>(params, "expires", 604800);
 
         /* Check if there is an expiry set for the contract */
         if(nExpires > 0)
@@ -246,10 +224,7 @@ namespace TAO::API
             }
         }
 
-        fAdded = true;
-
-        return fAdded;
-
+        return true;
     }
 
     /* Determines if a contract has an expiration condition.  The method searches the nBytes of the conditions stream to see if

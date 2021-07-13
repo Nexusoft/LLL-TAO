@@ -83,19 +83,6 @@ namespace TAO::API
     uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strPrefix = "");
 
 
-    /** ExtractValue
-     *
-     *  Extract an integer value from input parameters in either string or integer format.
-     *
-     *  @param[in] jParams The input parameters to extract from.
-     *  @param[in] strName The name of argument to extract.
-     *
-     *  @return the integer representation of verbose argument.
-     *
-     **/
-    uint64_t ExtractValue(const encoding::json& jParams, const std::string& strName);
-
-
     /** ExtractType
      *
      *  Extract the type string value from input parameters as only string.
@@ -176,17 +163,18 @@ namespace TAO::API
      **/
     template<typename Type>
     Type ExtractInteger(const encoding::json& jParams, const char* strKey,
-                        const bool fRequired = true, const Type nLimit = std::numeric_limits<Type>::max())
+                        const Type nDefault = std::numeric_limits<Type>::max(),
+                        const uint64_t nLimit = std::numeric_limits<Type>::max())
     {
-        /* Build our return value. */
-        Type nRet = 0;
-
         /* Check for missing parameter. */
         if(jParams.find(strKey) != jParams.end())
         {
             /* Catch parsing exceptions. */
             try
             {
+                /* Build our return value. */
+                uint64_t nRet = 0;
+
                 /* Convert to value if in string form. */
                 if(jParams[strKey].is_string())
                     nRet = std::stoull(jParams[strKey].get<std::string>());
@@ -200,7 +188,7 @@ namespace TAO::API
                     throw Exception(-57, "Invalid Parameter [", strKey, "]");
 
                 /* Check our numeric limits now. */
-                if(nRet > nLimit)
+                if(nRet >= nLimit - 1)
                     throw Exception(-60, "[", strKey, "] out of range [", nLimit, "]");
 
                 return nRet;
@@ -210,11 +198,10 @@ namespace TAO::API
             catch(const std::out_of_range& e)           { throw Exception(-60, "[", strKey, "] out of range [", nLimit, "]"); }
         }
 
-        /* Return value if we aren't throwing missing. */
-        if(!fRequired)
-            return nRet;
+        /* Check for default parameter and throw if none supplied. */
+        if(nDefault == std::numeric_limits<Type>::max())
+            throw Exception(-56, "Missing Parameter [", strKey, "]");
 
-        throw Exception(-56, "Missing Parameter [", strKey, "]");
+        return nDefault;
     }
-
 }

@@ -42,7 +42,7 @@ namespace TAO::API
      *
      **/
     encoding::json BuildResponse(const encoding::json& jParams, const TAO::Register::Address& hashRegister,
-                              const std::vector<TAO::Operation::Contract>& vContracts);
+                                 const std::vector<TAO::Operation::Contract>& vContracts);
 
 
     /** BuildResponse

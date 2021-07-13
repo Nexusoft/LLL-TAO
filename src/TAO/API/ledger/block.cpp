@@ -52,7 +52,7 @@ namespace TAO
             }
 
             /* Convert the incoming height string to an int*/
-            const uint32_t nHeight = ExtractValue(params, "height");
+            const uint32_t nHeight = ExtractInteger<uint32_t>(params, "height");
 
             /* Check that the requested height is within our chain range*/
             if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
@@ -91,7 +91,7 @@ namespace TAO
                     throw Exception(-85, "getblock by height requires the daemon to be started with the -indexheight flag.");
 
                 /* Convert the incoming height string to an int*/
-                const uint32_t nHeight = ExtractValue(params, "height");
+                const uint32_t nHeight = ExtractInteger<uint32_t>(params, "height");
 
                 /* Check that the requested height is within our chain range*/
                 if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
@@ -163,7 +163,7 @@ namespace TAO
                     throw Exception(-85, "getblock by height requires the daemon to be started with the -indexheight flag.");
 
                 /* Convert the incoming height string to an int*/
-                const uint32_t nHeight = ExtractValue(params, "height");
+                const uint32_t nHeight = ExtractInteger<uint32_t>(params, "height");
 
                 /* Check that the requested height is within our chain range*/
                 if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())

@@ -28,9 +28,6 @@ namespace TAO::API
         if(jParams.find("txid") == jParams.end())
             throw Exception(-50, "Missing txid.");
 
-        /* Extract some parameters from input data. */
-        const TAO::Register::Address hashCredit = ExtractAddress(jParams, "", "default");
-
         /* Get the transaction id. */
         const uint512_t hashTx =
             uint512_t(jParams["txid"].get<std::string>());
@@ -41,6 +38,6 @@ namespace TAO::API
             throw Exception(-43, "No valid contracts in debit tx.");
 
         /* Build response JSON boilerplate. */
-        return BuildResponse(jParams, hashCredit, vContracts);
+        return BuildResponse(jParams, vContracts);
     }
 }

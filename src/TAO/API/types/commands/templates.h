@@ -90,6 +90,19 @@ namespace TAO::API
         static encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
 
 
+        /** Transfer
+         *
+         *  Transfers an object to another user's signature chain
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        static encoding::json Transfer(const encoding::json& jParams, const bool fHelp);
+
+
 
         /** Deprecated
          *

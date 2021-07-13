@@ -62,7 +62,7 @@ namespace TAO::API
             const uint64_t nSupply  = ExtractInteger<uint64_t>(jParams, "supply");
 
             /* Check for nDecimals parameter. */
-            const uint8_t nDecimals = ExtractInteger<uint64_t>(jParams, "decimals", true, 8);
+            const uint8_t nDecimals = ExtractInteger<uint64_t>(jParams, "decimals", 2, 8); //2, 8: default of 2 decimals, max of 8
 
             /* Sanitize the supply/decimals combination for uint64 overflow */
             const uint64_t nCoinFigures = math::pow(10, nDecimals);

@@ -388,7 +388,7 @@ namespace TAO::API
                     }
 
                     /* The optional payment reference */
-                    const uint64_t nReference = ExtractInteger<uint64_t>(jRecipient, "reference", false);
+                    const uint64_t nReference = ExtractInteger<uint64_t>(jRecipient, "reference", 0); //0: default reference of 0
 
                     /* Submit the payload object. */
                     TAO::Operation::Contract tContract;
@@ -396,7 +396,7 @@ namespace TAO::API
 
                     /* Add expiration condition unless sending to self */
                     if(!fSendToSelf)
-                        AddExpires(jRecipient, hashGenesis, tContract, fTokenizedDebit);
+                        AddExpires(jParams, hashGenesis, tContract, fTokenizedDebit);
 
                     /* Add this contract to our processing queue. */
                     vContracts.push_back(tContract);
