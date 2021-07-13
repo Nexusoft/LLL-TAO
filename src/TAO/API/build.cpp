@@ -503,7 +503,7 @@ namespace TAO::API
         if(nPrimitive != TAO::Operation::OP::TRANSFER)
             return false;
 
-        /* Skip over our address for now. */
+        /* Grab our address to pass back. */
         uint256_t hashAddress;
         rTransfer >> hashAddress;
 
@@ -518,6 +518,15 @@ namespace TAO::API
         /* Check that recipient is current session. */
         if(hashRecipient != hashGenesis)
             return false;
+
+        /* Check out our object now. */
+        TAO::Register::Object tObject;
+        if(!LLD::Register->ReadObject(hashAddress, tObject))
+            throw Exception(-13, "Object not found");
+
+        /* Now lets check our expected types match. */
+        if(!CheckStandard(jParams, tObject))
+            throw Exception(-49, "Unsupported type for name/address");
 
         /* Create our new contract now. */
         TAO::Operation::Contract tContract;

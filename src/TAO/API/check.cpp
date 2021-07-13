@@ -161,7 +161,7 @@ namespace TAO::API
             return false;
         }
 
-        /* We only fail here, as we want to isolate returns based on the standards, not parameters. */
+        /* Catch-all here will treat input as a string. */
         return pBase->CheckObject(jTypes.get<std::string>(), objCheck);
     }
 } // End TAO namespace

@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
 
 #include <TAO/API/types/commands/templates.h>

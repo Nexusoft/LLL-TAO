@@ -43,6 +43,10 @@ namespace TAO::API
         if(!LLD::Register->ReadObject(hashRegister, tObject))
             throw Exception(-13, "Object not found");
 
+        /* Now lets check our expected types match. */
+        if(!CheckStandard(jParams, tObject))
+            throw Exception(-49, "Unsupported type for name/address");
+
         /* Build our contract now that we've validated. */
         std::vector<TAO::Operation::Contract> vContracts(1);
         vContracts[0] << uint8_t(TAO::Operation::OP::TRANSFER) << hashRegister << hashRecipient
