@@ -792,64 +792,70 @@ namespace TAO::API
     /* Returns a type string for the register type */
     std::string GetRegisterType(const uint8_t nType)
     {
-        std::string strRegisterType = "UNKNOWN";
-
+        /* Switch based on register type. */
         switch(nType)
         {
-            case TAO::Register::REGISTER::RESERVED :
-                strRegisterType = "RESERVED";
-                break;
-            case TAO::Register::REGISTER::READONLY :
-                strRegisterType = "READONLY";
-                break;
-            case TAO::Register::REGISTER::APPEND :
-                strRegisterType = "APPEND";
-                break;
-            case TAO::Register::REGISTER::RAW :
-                strRegisterType = "RAW";
-                break;
-            case TAO::Register::REGISTER::OBJECT :
-                strRegisterType = "OBJECT";
-                break;
-            case TAO::Register::REGISTER::SYSTEM :
-                strRegisterType = "SYSTEM";
+            /* State type is READONLY. */
+            case TAO::Register::REGISTER::READONLY:
+                return "READONLY";
 
+            /* State type is APPEND. */
+            case TAO::Register::REGISTER::APPEND:
+                return "APPEND";
+
+            /* State type is RAW. */
+            case TAO::Register::REGISTER::RAW:
+                return "RAW";
+
+            /* State type is OBJECT. */
+            case TAO::Register::REGISTER::OBJECT:
+                return "OBJECT";
+
+            /* State type is SYSTEM. */
+            case TAO::Register::REGISTER::SYSTEM:
+                return "SYSTEM";
         }
 
-        return strRegisterType;
+        return "UNKNOWN";
     }
 
 
     /* Returns a type string for the register object type */
     std::string GetObjectType(const uint8_t nType)
     {
-        std::string strObjectType = "UNKNOWN";
-
+        /* Switch based on standard type. */
         switch(nType)
         {
-            case TAO::Register::OBJECTS::NONSTANDARD :
-                strObjectType = "REGISTER";
-                break;
-            case TAO::Register::OBJECTS::ACCOUNT :
-                strObjectType = "ACCOUNT";
-                break;
-            case TAO::Register::OBJECTS::NAME :
-                strObjectType = "NAME";
-                break;
-            case TAO::Register::OBJECTS::NAMESPACE :
-                strObjectType = "NAMESPACE";
-                break;
-            case TAO::Register::OBJECTS::TOKEN :
-                strObjectType = "TOKEN";
-                break;
-            case TAO::Register::OBJECTS::TRUST :
-                strObjectType = "TRUST";
-                break;
-            case TAO::Register::OBJECTS::CRYPTO :
-                strObjectType = "CRYPTO";
-                break;
+            /* Non Standard types are NONSTANDARD. */
+            case TAO::Register::OBJECTS::NONSTANDARD:
+                return "NONSTANDARD";
+                //strObjectType = "REGISTER";
+
+            /* Account standard types are ACCOUNT. */
+            case TAO::Register::OBJECTS::ACCOUNT:
+                return "ACCOUNT";
+
+            /* Name standard types are NAME. */
+            case TAO::Register::OBJECTS::NAME:
+                return "NAME";
+
+            /* Namespace standard types are NAMESPACE. */
+            case TAO::Register::OBJECTS::NAMESPACE:
+                return "NAMESPACE";
+
+            /* Token standard types are TOKEN. */
+            case TAO::Register::OBJECTS::TOKEN:
+                return "TOKEN";
+
+            /* Trust standard types are TRUST. */
+            case TAO::Register::OBJECTS::TRUST:
+                return "TRUST";
+
+            /* Crypto standard types are CRYPTO. */
+            case TAO::Register::OBJECTS::CRYPTO:
+                return "CRYPTO";
         }
 
-        return strObjectType;
+        return "UNKNOWN";
     }
 } // End TAO namespace
