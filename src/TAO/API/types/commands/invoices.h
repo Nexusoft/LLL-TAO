@@ -95,19 +95,6 @@ namespace TAO::API
         encoding::json Cancel(const encoding::json& jParams, const bool fHelp);
 
 
-        /** History
-         *
-         *  Gets the history of an invoice.
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json History(const encoding::json& jParams, const bool fHelp);
-
-
         /** InvoiceToJSON
          *
          *  Returns the JSON representation of this invoice
@@ -136,7 +123,7 @@ namespace TAO::API
         static std::string get_status(const TAO::Register::State& state, const uint256_t& hashRecipient);
 
 
-        /** get_tx
+        /** find_invoice
         *
         *  Looks up the transaction ID and Contract ID for the transfer transaction that needs to be paid
         *
@@ -148,7 +135,7 @@ namespace TAO::API
         *  @return boolean, True if the transaction info was found
         *
         **/
-        static bool get_tx(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice,
+        static bool find_invoice(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice,
                            uint512_t& txid, uint32_t& contract);
 
 

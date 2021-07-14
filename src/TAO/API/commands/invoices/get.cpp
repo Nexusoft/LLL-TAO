@@ -45,7 +45,7 @@ namespace TAO::API
 
 
     /* Looks up the transaction ID and Contract ID for the transfer transaction that needs to be paid */
-    bool Invoices::get_tx(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice,
+    bool Invoices::find_invoice(const uint256_t& hashRecipient, const TAO::Register::Address& hashInvoice,
                           uint512_t &hashTx, uint32_t &nContract)
     {
         /* Get all registers that have been transferred to the recipient but not yet paid (claimed) */

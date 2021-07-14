@@ -439,7 +439,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_invoices_create.o \
 		build/API_commands_invoices_get.o \
 		build/API_commands_invoices_json.o \
-		build/API_commands_invoices_history.o \
 		build/API_commands_invoices_initialize.o \
 		build/API_commands_invoices_pay.o \
 		build/API_types_ledger_block.o \

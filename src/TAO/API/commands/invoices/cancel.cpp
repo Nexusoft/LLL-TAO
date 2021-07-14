@@ -51,11 +51,11 @@ namespace TAO::API
 
         /* Check if invoice has been paid already. */
         if(strStatus == "PAID")
-            throw Exception(-245, "Cannot cancel an invoice that has already been paid");
+            throw Exception(-245, "Cannot [cancel] an invoice that has already been paid");
 
         /* Check if invoice has been cancelled. */
         if(strStatus == "CANCELLED")
-            throw Exception(-246, "Cannot cancel an invoice that has already been cancelled");
+            throw Exception(-246, "Cannot [cancel] an invoice that has already been cancelled");
 
         /* The transaction ID to cancel */
         uint512_t hashTx;
@@ -64,7 +64,7 @@ namespace TAO::API
         uint32_t nContract = 0;  //XXX: THIS SECTION COULD STILL DO WITH SOME WORK
 
         /* Look up the transaction ID & contract ID of the transfer so that we can void it */
-        if(!get_tx(hashRecipient, hashRegister, hashTx, nContract))
+        if(!find_invoice(hashRecipient, hashRegister, hashTx, nContract))
             throw Exception(-247, "Could not find invoice transfer transaction");
 
         /* Read the debit transaction. */
