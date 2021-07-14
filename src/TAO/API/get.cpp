@@ -821,7 +821,7 @@ namespace TAO::API
 
 
     /* Returns a type string for the register object type */
-    std::string GetObjectType(const uint8_t nType)
+    std::string GetStandardType(const uint8_t nType)
     {
         /* Switch based on standard type. */
         switch(nType)

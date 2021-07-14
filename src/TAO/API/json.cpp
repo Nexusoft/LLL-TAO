@@ -629,7 +629,7 @@ namespace TAO::API
                             throw Exception(-36, "Failed to parse object register");
 
                         /* Add object standard if available. */
-                        jRet["standard"] = GetObjectType(object.Standard());
+                        jRet["standard"] = GetStandardType(object.Standard());
 
                         /* Add our fields json data now. */
                         jRet["object"]   = encoding::json::object();

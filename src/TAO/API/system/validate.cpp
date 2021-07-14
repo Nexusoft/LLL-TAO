@@ -103,7 +103,7 @@ namespace TAO
                         {
                             /* parse object so that the data fields can be accessed */
                             if(state.Parse())
-                                jsonRet["object_type"] = GetObjectType(state.Standard());
+                                jsonRet["object_type"] = GetStandardType(state.Standard());
                             else
                                 jsonRet["is_valid"] = false;
                         }
