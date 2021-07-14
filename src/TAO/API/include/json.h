@@ -104,6 +104,30 @@ namespace TAO::API
     __attribute__((const)) encoding::json RegisterToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister = 0);
 
 
+    /** MembersToJSON
+     *
+     *  Converts an Object Register's data members to formattted JSON with no external lookups
+     *
+     *  @param[in] object The Object Register to convert
+     *  @param[out] jRet The returned encoding object.
+     *
+     *
+     **/
+    void MembersToJSON(const TAO::Register::Object& object, encoding::json &jRet);
+
+
+    /** StateToJSON
+     *
+     *  Converts an Register's state into formattted JSON with no external lookups
+     *
+     *  @param[in] vState The register's state to output.
+     *  @param[out] jRet The returned encoding object.
+     *
+     *
+     **/
+    void StateToJSON(const std::vector<uint8_t>& vState, encoding::json &jRet);
+
+
     /** StandardToJSON
      *
      *  Encodes the object based on the given command-set standards.
