@@ -139,9 +139,6 @@ namespace TAO::API
             if(!FilterResults(jParams, jTransaction))
                 continue;
 
-            /* Insert into set and automatically sort. */
-            setTransactions.insert(jTransaction);
-
             /* Check for a claim that would iterate to another sigchain. */
             for(const auto& jContract : jContracts)
             {
@@ -159,6 +156,12 @@ namespace TAO::API
                     break;
                 }
             }
+
+            /* Filter out our expected fieldnames if specified. */
+            FilterFieldname(jParams, jTransaction);
+
+            /* Insert into set and automatically sort. */
+            setTransactions.insert(jTransaction);
         }
 
         /* Build our return value. */

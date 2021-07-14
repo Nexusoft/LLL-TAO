@@ -86,7 +86,7 @@ namespace TAO::API
             throw Exception(-14, "Malformed request URL: ", strMethod);
 
         /* Detect whether fieldname or a resolved name. */
-        const bool fAddress =
+        bool fAddress =
             (jParams.find("address") != jParams.end() || jParams.find("name") != jParams.end());
 
         /* Grab the components of this URL. */
@@ -154,6 +154,9 @@ namespace TAO::API
                 /* If not address it must be a name. */
                 else
                     jParams["name"] = vMethods[n];
+
+                /* Set address flag. */
+                fAddress = true;
 
                 continue;
             }

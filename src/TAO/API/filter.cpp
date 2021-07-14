@@ -153,6 +153,16 @@ namespace TAO::API
                 throw Exception(-71, "Fieldname ", strField, " doesn't exist");
 
             /* Check for a return value of string. */
+            if(jResponse[strField].is_array() || jResponse[strField].is_object())
+            {
+                /* Copy over our new field. */
+                const encoding::json jRet = { { strField, jResponse[strField] } };
+                jResponse = jRet;
+
+                return;
+            }
+
+            /* Check for a return value of string. */
             if(jResponse[strField].is_string())
             {
                 /* Copy over our new field. */
@@ -181,7 +191,6 @@ namespace TAO::API
 
                 return;
             }
-
 
             /* Check for a return value of double. */
             if(jResponse[strField].is_number_float())
