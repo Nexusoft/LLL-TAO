@@ -239,6 +239,8 @@ TEST_CASE("Test Finance API - list acccounts", "[finance]")
         hashAccount.SetBase58(result["address"].get<std::string>());
     }
 
+    REQUIRE(GenerateBlock());
+
     /* Successful get for logged in user*/
     {
         /* Build the parameters to pass to the API */

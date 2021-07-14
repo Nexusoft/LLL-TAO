@@ -61,7 +61,6 @@ namespace TAO::API
 
                 return true;
             }
-
         }
 
         /* Keep a running list of owned and transferred registers. We use a set to store these registers because

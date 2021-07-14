@@ -132,8 +132,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::Get,
-                this,
+                &Templates::Get,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -144,8 +143,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::List,
-                this,
+                &Templates::List,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

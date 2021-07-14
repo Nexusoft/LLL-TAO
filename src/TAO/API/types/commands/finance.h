@@ -107,20 +107,6 @@ namespace TAO::API
         encoding::json Debit(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Get
-         *
-         *  Get an account or token object register
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Get(const encoding::json& jParams, const bool fHelp);
-
-
-
         /** GetBalances
          *
          *  Get balances for a particular token type including immature, stake, and unclaimed.
@@ -145,19 +131,6 @@ namespace TAO::API
          *
          **/
         encoding::json GetStakeInfo(const encoding::json& jParams, const bool fHelp);
-
-
-        /** List
-         *
-         *  List all NXS accounts
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json List(const encoding::json& jParams, const bool fHelp);
 
 
         /** MigrateAccounts

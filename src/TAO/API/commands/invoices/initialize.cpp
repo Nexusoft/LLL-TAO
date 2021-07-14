@@ -212,17 +212,42 @@ namespace TAO::API
             , TAO::Ledger::StartTransactionTimelock(2)
         );
 
-        /* Handle for all LIST operations. */
-        mapFunctions["list/history"] = Function
+        /* Handle for all HISTORY operations. */
+        mapFunctions["history"] = Function
         (
             std::bind
             (
-                &Invoices::History,
-                this,
+                &Templates::History,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
             , TAO::Ledger::StartTransactionTimelock(2)
+        );
+
+        /* Handle for all TRANSACTIONS operations. */
+        mapFunctions["transactions"] = Function
+        (
+            std::bind
+            (
+                &Templates::Transactions,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , TAO::Ledger::StartTransactionTimelock(2)
+        );
+
+        /* DEPRECATED. */
+        mapFunctions["list/history"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , TAO::Ledger::StartTransactionTimelock(2)
+            , version::get_version(5, 1, 0)
+            , "please use finance/transactions/account instead"
         );
     }
 }

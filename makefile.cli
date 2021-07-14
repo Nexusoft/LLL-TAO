@@ -431,9 +431,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_finance_create.o \
 		build/API_commands_finance_credit.o \
 		build/API_commands_finance_debit.o \
-		build/API_commands_finance_get.o \
 		build/API_commands_finance_initialize.o \
-		build/API_commands_finance_list.o \
 		build/API_commands_finance_migrate.o \
 		build/API_commands_finance_set-stake.o \
 		build/API_commands_finance_stake-info.o \

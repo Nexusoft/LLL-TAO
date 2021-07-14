@@ -110,8 +110,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::Get,
-                Commands::Get<Finance>(),
+                &Templates::Get,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -124,8 +123,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::List,
-                Commands::Get<Finance>(),
+                &Templates::List,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -143,7 +141,7 @@ namespace TAO::API
                 std::placeholders::_2
             )
             , version::get_version(5, 1, 0)
-            , "please use register/list/transactions command instead"
+            , "please use finance/transactions/token command instead"
         );
 
         /* List accounts for given token. */
