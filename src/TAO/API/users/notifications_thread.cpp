@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/notifications_thread.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 #include <TAO/API/users/types/users.h>
 
 #include <TAO/Ledger/include/chainstate.h>

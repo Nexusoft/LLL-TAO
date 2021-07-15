@@ -31,7 +31,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/tokens.h>
 
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 
 #include <Util/include/debug.h>
 

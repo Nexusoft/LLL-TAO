@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 #include <TAO/Ledger/types/stake_minter.h>
 
 #include <LLD/include/global.h>

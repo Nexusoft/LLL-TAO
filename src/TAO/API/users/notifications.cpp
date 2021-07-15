@@ -29,7 +29,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/json.h>
 #include <TAO/API/include/list.h>
 
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>

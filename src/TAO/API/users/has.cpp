@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 
 
 /* Global TAO namespace. */
