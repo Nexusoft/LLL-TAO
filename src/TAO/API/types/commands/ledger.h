@@ -72,20 +72,7 @@ namespace TAO::API
         }
 
 
-        /** Create
-         *
-         *  Creates a register with given RAW state.
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Create(const encoding::json& params, const bool fHelp);
-
-
-        /** BlockHash
+        /** GetBlockHash
          *
          *  Retrieves the blockhash for the given height.
          *
@@ -95,10 +82,10 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json BlockHash(const encoding::json& params, const bool fHelp);
+        encoding::json GetBlockHash(const encoding::json& params, const bool fHelp);
 
 
-        /** Block
+        /** GetBlock
          *
          *  Retrieves the block data for a given hash or height.
          *
@@ -108,10 +95,10 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Block(const encoding::json& params, const bool fHelp);
+        encoding::json GetBlock(const encoding::json& params, const bool fHelp);
 
 
-        /** Blocks
+        /** ListBlocks
          *
          *  Retrieves the block data for a sequential range of blocks
          *  starting at a given hash or height.
@@ -122,7 +109,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Blocks(const encoding::json& params, const bool fHelp);
+        encoding::json ListBlocks(const encoding::json& params, const bool fHelp);
 
 
         /** Transaction
@@ -135,10 +122,10 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Transaction(const encoding::json& params, const bool fHelp);
+        encoding::json GetTransaction(const encoding::json& params, const bool fHelp);
 
 
-        /** Submit
+        /** SubmitTransaction
          *
          *  Submits a raw transaction to the network
          *
@@ -148,10 +135,10 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Submit(const encoding::json& params, const bool fHelp);
+        encoding::json SubmitTransaction(const encoding::json& params, const bool fHelp);
 
 
-        /** MiningInfo
+        /** GetMiningInfo
          *
          *  Returns an object containing mining-related information
          *
@@ -161,7 +148,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json MiningInfo(const encoding::json& params, const bool fHelp);
+        encoding::json GetMiningInfo(const encoding::json& params, const bool fHelp);
 
 
         /** VoidTransaction

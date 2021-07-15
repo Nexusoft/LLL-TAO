@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/assets/types/assets.h>
 #include <TAO/API/dex/types/dex.h>
-#include <TAO/API/ledger/types/ledger.h>
+#include <TAO/API/types/commands/ledger.h>
 #include <TAO/API/supply/types/supply.h>
 #include <TAO/API/system/types/system.h>
 #include <TAO/API/users/types/users.h>
