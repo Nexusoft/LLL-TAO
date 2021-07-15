@@ -57,7 +57,23 @@ namespace LLP
         /** The internal server configuration variables. **/
         const Config CONFIG;
 
+
+        /** The DDOS variables. **/
+        util::atomic::lock_shared_ptr<std::map<BaseAddress, DDOS_Filter*>> DDOS_MAP;
+
     private:
+
+
+        /** The listener socket instance. **/
+        std::pair<int32_t, int32_t> hListenBase;
+
+
+        /** The listener socket instance. **/
+        std::pair<int32_t, int32_t> hListenSSL;
+
+
+        /** Address for handling outgoing connections **/
+        AddressManager* pAddressManager;
 
 
         /** The data type to keep track of current running threads. **/
@@ -76,23 +92,7 @@ namespace LLP
         std::thread THREAD_MANAGER;
 
 
-        /** The listener socket instance. **/
-        std::pair<int32_t, int32_t> hListenBase;
-
-
-        /** The listener socket instance. **/
-        std::pair<int32_t, int32_t> hListenSSL;
-
-
-        /** Address for handling outgoing connections **/
-        AddressManager* pAddressManager;
-
-
     public:
-
-
-        /** The DDOS variables. **/
-        util::atomic::lock_shared_ptr< std::map<BaseAddress, DDOS_Filter*>> DDOS_MAP;
 
 
         /** Constructor **/

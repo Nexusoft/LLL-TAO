@@ -49,14 +49,14 @@ namespace LLP
     template <class ProtocolType>
     Server<ProtocolType>::Server(const Config& config)
     : CONFIG            (config)
-    , THREADS_DATA      ( )
-    , THREAD_LISTEN     (std::bind(&Server::ListeningThread, this, true, false))
-    , THREAD_METER      (std::bind(&Server::Meter, this))
-    , THREAD_MANAGER    ( )
+    , DDOS_MAP          (new std::map<BaseAddress, DDOS_Filter*>())
     , hListenBase       (-1, -1)
     , hListenSSL        (-1, -1)
     , pAddressManager   (nullptr)
-    , DDOS_MAP          (new std::map<BaseAddress, DDOS_Filter*>())
+    , THREADS_DATA      ( )
+    , THREAD_LISTEN     ( )
+    , THREAD_METER      ( )
+    , THREAD_MANAGER    ( )
     {
         /* Add the individual data threads to the vector that will be holding their state. */
         for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
@@ -84,7 +84,18 @@ namespace LLP
 
         /* Open listeners if enabled. */
         if(CONFIG.ENABLE_LISTEN)
+        {
+            /* Open listening sockets. */
             OpenListening();
+
+            /* Create our listening thread now. */
+            THREAD_LISTEN =
+                std::thread(std::bind(&Server::ListeningThread, this, true, false));
+        }
+
+        /* Start meters if enabled. */
+        if(CONFIG.ENABLE_METERS)
+            THREAD_METER = std::thread(std::bind(&Server::Meter, this));
     }
 
 

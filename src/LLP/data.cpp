@@ -30,9 +30,9 @@ namespace LLP
 
     /** Default Constructor **/
     template <class ProtocolType>
-    DataThread<ProtocolType>::DataThread(uint32_t nID, bool ffDDOSIn,
-                                         uint32_t rScore, uint32_t cScore,
-                                         uint32_t nTimeout, bool fMeter)
+    DataThread<ProtocolType>::DataThread(const uint32_t nID, const bool ffDDOSIn,
+                                         const uint32_t rScore, const uint32_t cScore,
+                                         const uint32_t nTimeout, const bool fMeter)
     : fDDOS           (ffDDOSIn)
     , fMETER          (fMeter)
     , fDestruct       (false)
@@ -42,8 +42,8 @@ namespace LLP
     , TIMEOUT         (nTimeout)
     , DDOS_rSCORE     (rScore)
     , DDOS_cSCORE     (cScore)
-    , CONNECTIONS     (memory::atomic_ptr< std::vector<std::shared_ptr<ProtocolType>> >(new std::vector<std::shared_ptr<ProtocolType>>()))
-    , RELAY           (memory::atomic_ptr< std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >(new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
+    , CONNECTIONS     (util::atomic::lock_shared_ptr<std::vector<std::shared_ptr<ProtocolType>> >(new std::vector<std::shared_ptr<ProtocolType>>()))
+    , RELAY           (util::atomic::lock_shared_ptr<std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >(new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
     , CONDITION       ( )
     , DATA_THREAD     (std::bind(&DataThread::Thread, this))
     , FLUSH_CONDITION ( )
@@ -58,15 +58,16 @@ namespace LLP
     {
         fDestruct = true;
         CONDITION.notify_all();
+
+        /* Wait for all data threads. */
         if(DATA_THREAD.joinable())
             DATA_THREAD.join();
 
         FLUSH_CONDITION.notify_all();
+
+        /* Wait for any threads still flushing buffers. */
         if(FLUSH_THREAD.joinable())
             FLUSH_THREAD.join();
-
-        CONNECTIONS.free();
-        RELAY.free();
     }
 
 
