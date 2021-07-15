@@ -92,7 +92,7 @@ namespace LLP
 
 
         /** The DDOS variables. **/
-        memory::lock_shared_ptr< std::map<BaseAddress, DDOS_Filter*>> DDOS_MAP;
+        util::atomic::lock_shared_ptr< std::map<BaseAddress, DDOS_Filter*>> DDOS_MAP;
 
 
         /** Constructor **/

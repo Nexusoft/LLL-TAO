@@ -52,7 +52,7 @@ namespace TAO::API
 
 
         /** Shared processing queue for managing notifications and -autotx. **/
-        memory::lock_shared_ptr<std::queue<TAO::Operation::Contract>> vProcessQueue;
+        util::atomic::lock_shared_ptr<std::queue<TAO::Operation::Contract>> vProcessQueue;
 
 
     public:

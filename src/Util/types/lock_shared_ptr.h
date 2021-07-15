@@ -13,7 +13,12 @@ ________________________________________________________________________________
 
 #pragma once
 
-namespace memory
+#include <mutex>
+#include <inttypes.h>
+
+#include <Util/include/debug.h>
+
+namespace util::atomic
 {
 
 	/** lock_shared_ptr
@@ -40,7 +45,7 @@ namespace memory
 
 
 			/** Default Constructor. **/
-			lock_control( )
+			lock_control ( )
 			: MUTEX  ( )
 			, nCount (1)
 			{
@@ -214,7 +219,7 @@ namespace memory
 
 	        /* Check for dereferencing nullptr. */
 	        if(pData == nullptr)
-	            throw std::range_error(debug::safe_printstr(FUNCTION, "dereferencing nullptr"));
+	            throw debug::exception(FUNCTION, "dereferencing nullptr");
 
 	        return *pData == pDataIn;
 	    }
@@ -252,7 +257,7 @@ namespace memory
 	     **/
 	    bool operator!(void)
 	    {
-	        RECURSIVE(pRefs->MUTEX, pRefs->MUTEX);
+	        RECURSIVE(pRefs->MUTEX);
 
 	        return pData == nullptr;
 	    }
@@ -283,7 +288,7 @@ namespace memory
 
 	        /* Check for dereferencing nullptr. */
 	        if(pData == nullptr)
-	            throw std::range_error(debug::safe_printstr(FUNCTION, "dereferencing nullptr"));
+	            throw debug::exception(FUNCTION, "dereferencing nullptr");
 
 	        return *pData;
 	    }
