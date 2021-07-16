@@ -62,6 +62,7 @@ namespace Legacy
         {
              /* Flush log data to the dat file and detach the file */
             dbenv->txn_checkpoint(0, 0, 0);
+            //dbenv->lsn_reset(strDbFile.c_str(), 0);
 
             /* Remove log files */
             char** listp;
@@ -70,7 +71,6 @@ namespace Legacy
             /* Shut down the database environment */
             try
             {
-                //dbenv->lsn_reset(strDbFile.c_str(), 0);
                 dbenv->close(0);
             }
             catch(const DbException& e)
@@ -113,9 +113,9 @@ namespace Legacy
                 //dbenv->set_lk_max_locks(10000);
                 //dbenv->set_lk_max_objects(10000);
                 //dbenv->set_errfile(fopen(pathErrorFile.c_str(), "a")); /// debug
-                dbenv->set_flags(DB_TXN_WRITE_NOSYNC, 1);
-                dbenv->set_flags(DB_AUTO_COMMIT, 1);
-                //dbenv->log_set_config(DB_LOG_AUTO_REMOVE, 1);
+                //dbenv->set_flags(DB_TXN_WRITE_NOSYNC, 1);
+                //dbenv->set_flags(DB_AUTO_COMMIT, 1);
+                dbenv->log_set_config(DB_LOG_AUTO_REMOVE, 1);
 
                 /* Flags to enable dbenv subsystems
                  * DB_CREATE     - Create underlying files, as needed (required when DB_RECOVER present)
@@ -126,11 +126,12 @@ namespace Legacy
                  * DB_THREAD     - Enable multithreaded access
                  * DB_RECOVER    - Run recovery before opening environment, if necessary
                  */
-                uint32_t dbFlags =  DB_CREATE     |
+                uint32_t dbFlags =  DB_CREATE       |
                                     //DB_INIT_LOCK  |
                                     //DB_INIT_LOG   |
-                                    DB_INIT_MPOOL |
-                                    DB_INIT_TXN   |
+                                    DB_INIT_MPOOL   |
+                                    DB_INIT_TXN     |
+                                    DB_AUTO_COMMIT  |
                                     //DB_THREAD     |
                                     DB_RECOVER;
 
@@ -438,7 +439,7 @@ namespace Legacy
 
         /* Flush wallet file so it's self contained */
         dbenv->txn_checkpoint(0, 0, 0);
-        dbenv->lsn_reset(strDbFile.c_str(), 0);
+        //dbenv->lsn_reset(strDbFile.c_str(), 0);
 
         debug::log(0, FUNCTION, "Flushed ", strDbFile, " in ", runtime::timestamp(true) - nStart, " ms");
 

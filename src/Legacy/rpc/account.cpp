@@ -404,9 +404,10 @@ namespace Legacy
         Legacy::Script scriptPubKey;
         if(!address.IsValid())
             throw TAO::API::Exception(-5, "Invalid Nexus address");
+
         scriptPubKey.SetNexusAddress(address);
-        if(!Legacy::IsMine(Legacy::Wallet::Instance(),scriptPubKey))
-            return (double)0.0;
+        if(!Legacy::IsMine(Legacy::Wallet::Instance(), scriptPubKey))
+            throw TAO::API::Exception(-5, "Nexus address is not owned by this wallet");
 
         // Minimum confirmations
         int nMinDepth = 1;
