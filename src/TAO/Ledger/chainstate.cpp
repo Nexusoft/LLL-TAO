@@ -275,11 +275,77 @@ namespace TAO
             /* Ensure the block height index is intact */
             if(config::GetBoolArg("-indexheight"))
             {
-                /* Try and retrieve the block state for the current block height via the height index.
-                    If this fails then we know the block height index is not fully intact so we repair it*/
-                TAO::Ledger::BlockState state;
-                if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::stateBest.load().nHeight, state))
-                     LLD::Ledger->RepairIndexHeight();
+                /* Build our indexing height. */
+                TAO::Ledger::BlockState tLastBlock;
+                if(!LLD::Ledger->ReadBlock(nCheckpointHeight.load(), tLastBlock))
+                {
+                    /* Set our last block as genesis. */
+                    tLastBlock = stateGenesis;
+
+                    /* Use genesis as our hash start. */
+                    uint1024_t hashStart = tLastBlock.GetHash();
+
+                    /* Track our timing. */
+                    runtime::timer tElapsed;
+                    tElapsed.Start();
+
+                    /* Start an ACID transaction. */
+                    //LLD::Ledger->TxnBegin();
+
+                    /* List our blocks via a batch read for efficiency. */
+                    std::vector<TAO::Ledger::BlockState> vStates;
+                    while(!config::fShutdown.load() && hashStart != TAO::Ledger::ChainState::hashBestChain.load() &&
+                        LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
+                    {
+                        /* Loop through all available states. */
+                        for(auto& tBlock : vStates)
+                        {
+                            /* Update start every iteration. */
+                            hashStart = tBlock.GetHash();
+
+                            /* Skip if not in main chain. */
+                            if(!tBlock.IsInMainChain())
+                                continue;
+
+                            /* Check for matching hashes. */
+                            if(tBlock.hashPrevBlock != tLastBlock.GetHash())
+                            {
+                                /* Read the correct block from next index. */
+                                if(!LLD::Ledger->ReadBlock(tLastBlock.hashNextBlock, tBlock))
+                                    return debug::error("Block not found: ", tLastBlock.hashNextBlock.SubString());
+
+                                /* Update hashStart. */
+                                hashStart = tBlock.GetHash();
+                            }
+
+                            /* Cache the block hash. */
+                            tLastBlock = tBlock;
+
+                            /* Add a meter for progress output. */
+                            if(tLastBlock.nHeight % 10000 == 0)
+                            {
+                                /* Calculate our percentage completed. */
+                                const double dPercentage = (100.0 * tLastBlock.nHeight) / TAO::Ledger::ChainState::nBestHeight.load();
+
+                                /* Get elapsed timestamp. */
+                                const uint64_t nElapsed = tElapsed.ElapsedMilliseconds() + 1;
+
+                                /* Find remaining time. */
+                                const uint64_t nRemaining =
+                                    uint64_t(nElapsed * TAO::Ledger::ChainState::nBestHeight.load()) / tBlock.nHeight;
+
+                                /* Log status message of completion time. */
+                                debug::log(0, "Completed ", tLastBlock.nHeight, "/",
+                                    TAO::Ledger::ChainState::nBestHeight.load(), std::fixed, " [", dPercentage, " %]",
+                                    "[", (nRemaining - nElapsed) / 1000, "s remaining]");
+                            }
+
+                            /* Write the new heights to disk. */
+                            if(!LLD::Ledger->IndexBlock(tBlock.nHeight, hashStart))
+                                return debug::error("Failed to index height: ", hashStart.SubString());
+                        }
+                    }
+                }
             }
 
             stateBest.load().print();

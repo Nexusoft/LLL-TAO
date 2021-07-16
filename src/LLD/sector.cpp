@@ -759,7 +759,7 @@ namespace LLD
         stream.ignore(std::numeric_limits<std::streamsize>::max());
 
         /* Get the data buffer. */
-        uint32_t nSize = static_cast<uint32_t>(stream.gcount());
+        const uint32_t nSize = static_cast<uint32_t>(stream.gcount());
 
         /* Check journal size for 0. */
         if(nSize == 0)
@@ -768,7 +768,7 @@ namespace LLD
         /* Create buffer to read into. */
         std::vector<uint8_t> vBuffer(nSize, 0);
 
-        /* Read the keychain file. */
+        /* Read the journal file. */
         stream.seekg (0, std::ios::beg);
         stream.read((char*) &vBuffer[0], vBuffer.size());
         stream.close();

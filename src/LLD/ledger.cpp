@@ -506,42 +506,6 @@ namespace LLD
     }
 
 
-    /*  Recover the block height index.
-     *  Adds or fixes th block height index by iterating forward from the genesis block */
-    bool LedgerDB::RepairIndexHeight()
-    {
-        runtime::timer timer;
-        timer.Start();
-        debug::log(0, FUNCTION, "block height index missing or incomplete");
-
-        /* Get the best block state to start from. */
-        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateGenesis;
-
-        /* Loop until it is found. */
-        while(!config::fShutdown.load() && !state.IsNull())
-        {
-            /* Give debug output of status. */
-            if(state.nHeight % 100000 == 0)
-                debug::log(0, FUNCTION, "repairing block height index..... ", state.nHeight);
-
-            if(!IndexBlock(state.nHeight, state.GetHash()))
-                return false;
-
-            /* Move onto the next block if there is one */
-            if(state.hashNextBlock != 0)
-                state = state.Next();
-            else
-                break;
-        }
-
-        uint32_t nElapsed = timer.Elapsed();
-        timer.Stop();
-        debug::log(0, FUNCTION, "Block height indexing complete in ", nElapsed, "s");
-
-        return true;
-    }
-
-
     /* Reads a block state from disk from a tx index. */
     bool LedgerDB::ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState &state)
     {

@@ -390,17 +390,6 @@ namespace LLD
         bool RepairIndex(const uint512_t& hashTx, const TAO::Ledger::BlockState &state);
 
 
-        /** RepairIndexHeight
-         *
-         *  Recover the block height index.
-         *  Adds or fixes th block height index by iterating forward from the genesis block
-         *
-         *  @return True if the index was successfully written, false otherwise.
-         *
-         **/
-        bool RepairIndexHeight();
-
-
         /** ReadBlock
          *
          *  Reads a block state from disk from a tx index.

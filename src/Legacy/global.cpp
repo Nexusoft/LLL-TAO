@@ -32,6 +32,10 @@ namespace Legacy
 
         #ifndef NO_WALLET
 
+        /* Check for shutdown. */
+        if(config::fShutdown.load())
+            return false;
+
         debug::log(0, FUNCTION, "Initializing Legacy");
 
         /* Load the Wallet Database. NOTE this needs to be done before ChainState::Initialize as that can disconnect blocks causing

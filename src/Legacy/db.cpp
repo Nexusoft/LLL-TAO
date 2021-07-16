@@ -97,8 +97,15 @@ namespace Legacy
                 if(config::fShutdown.load())
                     return;
 
-                std::string pathDataDir(config::GetDataDir());
-                std::string pathLogDir(pathDataDir + "database");
+                /* Get our data directory now. */
+                const std::string pathDataDir =
+                    std::string(config::GetDataDir());
+
+                /* Build our log folder. */
+                const std::string pathLogDir =
+                    std::string(pathDataDir + "database");
+
+                /* Create directories if needed. */
                 filesystem::create_directory(pathLogDir);
 
                 std::string pathErrorFile(pathDataDir + "db.log");
@@ -234,10 +241,7 @@ namespace Legacy
         vTxn.clear();
 
         /* Flush database activity from memory pool to disk log */
-        uint32_t nMinutes = 0;
-
-        dbenv->txn_checkpoint(nMinutes ? config::GetArg("-dblogsize", 100) * 1024 : 0, nMinutes, 0);
-
+        dbenv->txn_checkpoint(0, 0, 0);
         pdb->close(0);
 
         /* Current pdb no longer valid. Remove it */
