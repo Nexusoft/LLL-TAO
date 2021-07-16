@@ -194,7 +194,7 @@ namespace TAO
             }
 
             /* Check RPC user/pass are set */
-            if(config::mapArgs["-rpcuser"] == "" && config::mapArgs["-rpcpassword"] == "")
+            if(config::mapArgs["-rpcuser"] == "" || config::mapArgs["-rpcpassword"] == "")
                 throw std::runtime_error(debug::safe_printstr(
                     "You must set rpcpassword=<password> in the configuration file: ",
                     config::GetConfigFile(), "\n",
