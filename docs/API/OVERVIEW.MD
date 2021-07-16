@@ -232,7 +232,7 @@ API Error Codes
 | -78 | Stake not changed |
 | -79 | getblockhash requires the daemon to be started with the -indexheight flag |
 | -80 | Missing height |
-| -81 | Invalid height parameter |
+| -81 | [command] cannot use parameter [name] combined with [name] |
 | -82 | Block number out of range |
 | -83 | Block not found |
 | -84 | Missing hash or height |
