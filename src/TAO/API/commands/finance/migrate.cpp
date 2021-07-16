@@ -62,7 +62,7 @@ namespace TAO
 
             #ifndef NO_WALLET
 
-            Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+            Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
             /* Authenticate the users credentials */
             if(!Commands::Get<Users>()->Authenticate(params))
@@ -112,9 +112,9 @@ namespace TAO
 
             /* Get a map of all account balances from the legacy wallet */
             std::map<std::string, int64_t> mapAccountBalances;
-            for(const auto& entry : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
+            for(const auto& entry : Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap())
             {
-                if(Legacy::Wallet::GetInstance().HaveKey(entry.first)) // This address belongs to me
+                if(Legacy::Wallet::Instance().HaveKey(entry.first)) // This address belongs to me
                 {
                     if(entry.second == "" || entry.second == "default")
                         mapAccountBalances["default"] = 0;
@@ -125,15 +125,15 @@ namespace TAO
 
             /* Get the available addresses from the wallet */
             std::map<Legacy::NexusAddress, int64_t> mapAddresses;
-            if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
+            if(!Legacy::Wallet::Instance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
                 throw Exception(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
             /* Find all the addresses in the list */
             for(const auto& entry : mapAddresses)
             {
-                if(Legacy::Wallet::GetInstance().GetAddressBook().HasAddress(entry.first))
+                if(Legacy::Wallet::Instance().GetAddressBook().HasAddress(entry.first))
                 {
-                    std::string strAccount = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(entry.first);
+                    std::string strAccount = Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap().at(entry.first);
 
                     /* Make sure to map blank legacy account to default */
                     if(strAccount == "")

@@ -71,8 +71,8 @@ TEST_CASE("Arguments Tests", "[args]")
 
     //load wallet
     bool fFirstRun;
-    REQUIRE(Legacy::Wallet::InitializeWallet(Legacy::WalletDB::DEFAULT_WALLET_DB));
-    REQUIRE(Legacy::Wallet::GetInstance().LoadWallet(fFirstRun) == Legacy::DB_LOAD_OK);
+    REQUIRE(Legacy::Wallet::Initialize(Legacy::WalletDB::DEFAULT_WALLET_DB));
+    REQUIRE(Legacy::Wallet::LoadWallet(fFirstRun) == Legacy::DB_LOAD_OK);
 
 
     //initialize chain state

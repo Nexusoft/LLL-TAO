@@ -37,14 +37,14 @@ namespace Legacy
         /* Load the Wallet Database. NOTE this needs to be done before ChainState::Initialize as that can disconnect blocks causing
            the wallet to be accessed if they contain any legacy stake transactions */
         bool fFirstRun;
-        if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
+        if (!Legacy::Wallet::Initialize(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
             return debug::error("Failed initializing wallet");
 
         /* Initialize the scripts for legacy mode. */
         Legacy::InitializeScripts();
 
         /* Check the wallet loading for errors. */
-        uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
+        uint32_t nLoadWalletRet = Legacy::Wallet::LoadWallet(fFirstRun);
         if (nLoadWalletRet != Legacy::DB_LOAD_OK)
         {
             if (nLoadWalletRet == Legacy::DB_CORRUPT)
@@ -55,7 +55,7 @@ namespace Legacy
             {
                 debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning now");
 
-                Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+                Legacy::Wallet::Instance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
             }
             else
                 return debug::error("Failed loading wallet.dat");
@@ -63,10 +63,10 @@ namespace Legacy
 
         /* Handle Rescanning. */
         if(config::GetBoolArg(std::string("-rescan")))
-            Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+            Legacy::Wallet::Instance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
 
         /* Relay transactions. */
-        Legacy::Wallet::GetInstance().ResendWalletTransactions();
+        Legacy::Wallet::Instance().ResendWalletTransactions();
 
         /* Create RPC server. */
         Commands = new Legacy::RPC();
@@ -82,7 +82,7 @@ namespace Legacy
     }
 
 
-    /*  Delete global instances of the API. */
+    /*  Delete global instances for legacy subsystems. */
     void Shutdown()
     {
         /* Client mode doesn't need to initialize the wallet. */
@@ -94,16 +94,12 @@ namespace Legacy
 
         debug::log(0, FUNCTION, "Shutting down Legacy");
 
-        /* Shut down wallet database environment. */
-        if(config::GetBoolArg(std::string("-flushwallet"), true))
-            Legacy::WalletDB::ShutdownFlushThread();
-
-        /* Shutdown wallet environment. */
-        Legacy::BerkeleyDB::GetInstance().Shutdown();
-
         /* Delete RPC server. */
         if(Commands)
             delete Commands;
+
+        /* Shutdown our wallet. */
+        Legacy::Wallet::Shutdown();
 
         #endif
     }

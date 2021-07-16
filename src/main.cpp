@@ -128,6 +128,10 @@ int main(int argc, char** argv)
         TAO::Ledger::ChainState::Initialize();
 
 
+        /* Initialize dispatch relays. */
+        TAO::Ledger::Dispatch::Initialize();
+
+
         /* Initialize the Lower Level Protocol. */
         LLP::Initialize();
 
@@ -181,6 +185,10 @@ int main(int argc, char** argv)
             TAO::Ledger::PRIVATE_CONDITION.notify_all();
             thread.join();
         }
+
+
+        /* Shutdown dispatch. */
+        TAO::Ledger::Dispatch::Shutdown();
     }
 
 

@@ -88,7 +88,7 @@ namespace TAO::API
 
                     /* Add tx to legacy wallet */
                     TAO::Ledger::BlockState notUsed;
-                    Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+                    Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, notUsed, true);
 
                     #endif
 

@@ -59,7 +59,7 @@ namespace Legacy
     so payments received with the address will be credited to [account] */
     encoding::json RPC::GetNewAddress(const encoding::json& params, const bool fHelp)
     {
-        Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
         if(fHelp || params.size() > 1)
             return std::string(
@@ -101,7 +101,7 @@ namespace Legacy
         std::string strAccount = AccountFromValue(params[0]);
 
         encoding::json ret;
-        ret = Legacy::Wallet::GetInstance().GetAddressBook().GetAccountAddress(strAccount).ToString();
+        ret = Legacy::Wallet::Instance().GetAddressBook().GetAccountAddress(strAccount).ToString();
 
         return ret;
     }
@@ -111,7 +111,7 @@ namespace Legacy
     Sets the account associated with the given address */
     encoding::json RPC::SetAccount(const encoding::json& params, const bool fHelp)
     {
-        Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
         if(fHelp || params.size() < 1 || params.size() > 2)
             return std::string(
@@ -145,7 +145,7 @@ namespace Legacy
     Returns the account associated with the given address */
     encoding::json RPC::GetAccount(const encoding::json& params, const bool fHelp)
     {
-        Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
         if(fHelp || params.size() != 1)
             return std::string(
@@ -176,7 +176,7 @@ namespace Legacy
 
         // Find all addresses that have the given account
         encoding::json ret;
-        for(const auto& entry : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
+        for(const auto& entry : Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap())
         {
             const Legacy::NexusAddress& address = entry.first;
             const std::string& strName = entry.second;
@@ -195,7 +195,7 @@ namespace Legacy
     *  - [passphrase] temporarily unlocks wallet for send operation only */
     encoding::json RPC::SendToAddress(const encoding::json& params, const bool fHelp)
     {
-        Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
         /* Help for encrypted wallet */
         if(wallet.IsCrypted() && (fHelp || params.size() < 2 || params.size() > 5))
@@ -329,7 +329,7 @@ namespace Legacy
                 "signmessage <Nexusaddress> <message>"
                 " - Sign a message with the private key of an address");
 
-        if(Legacy::Wallet::GetInstance().IsLocked())
+        if(Legacy::Wallet::Instance().IsLocked())
             throw TAO::API::Exception(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
 
         std::string strAddress = params[0].get<std::string>();
@@ -340,7 +340,7 @@ namespace Legacy
             throw TAO::API::Exception(-3, "Invalid address");
 
         LLC::ECKey key;
-        if(!Legacy::Wallet::GetInstance().GetKey(addr, key))
+        if(!Legacy::Wallet::Instance().GetKey(addr, key))
             throw TAO::API::Exception(-4, "Private key not available");
 
         DataStream ss(SER_GETHASH, 0);
@@ -405,7 +405,7 @@ namespace Legacy
         if(!address.IsValid())
             throw TAO::API::Exception(-5, "Invalid Nexus address");
         scriptPubKey.SetNexusAddress(address);
-        if(!Legacy::IsMine(Legacy::Wallet::GetInstance(),scriptPubKey))
+        if(!Legacy::IsMine(Legacy::Wallet::Instance(),scriptPubKey))
             return (double)0.0;
 
         // Minimum confirmations
@@ -415,7 +415,7 @@ namespace Legacy
 
         // Tally
         int64_t nAmount = 0;
-        for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+        for(const auto& entry : Legacy::Wallet::Instance().mapWallet)
         {
             const Legacy::WalletTx& wtx = entry.second;
             if(wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
@@ -434,7 +434,7 @@ namespace Legacy
 
     void GetAccountAddresses(const std::string& strAccount, std::set<Legacy::NexusAddress>& setAddress)
     {
-        for(const auto& item : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
+        for(const auto& item : Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap())
         {
             const Legacy::NexusAddress& address = item.first;
             const std::string& strName = item.second;
@@ -464,7 +464,7 @@ namespace Legacy
 
         // Tally
         int64_t nAmount = 0;
-        for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+        for(const auto& entry : Legacy::Wallet::Instance().mapWallet)
         {
             const Legacy::WalletTx& wtx = entry.second;
             if(wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
@@ -473,7 +473,7 @@ namespace Legacy
             for(const Legacy::TxOut& txout : wtx.vout)
             {
                 Legacy::NexusAddress address;
-                if(ExtractAddress(txout.scriptPubKey, address) && Legacy::Wallet::GetInstance().HaveKey(address) && setAddress.count(address))
+                if(ExtractAddress(txout.scriptPubKey, address) && Legacy::Wallet::Instance().HaveKey(address) && setAddress.count(address))
                     if(wtx.GetDepthInMainChain() >= nMinDepth)
                         nAmount += txout.nValue;
             }
@@ -486,7 +486,7 @@ namespace Legacy
     int64_t GetAccountBalance(const std::string& strAccount, int nMinDepth)
     {
         int64_t nBalance = 0;
-        Legacy::Wallet::GetInstance().BalanceByAccount(strAccount, nBalance, nMinDepth);
+        Legacy::Wallet::Instance().BalanceByAccount(strAccount, nBalance, nMinDepth);
 
         return nBalance;
     }
@@ -503,7 +503,7 @@ namespace Legacy
                 " If [account] is specified, returns the balance in the account.");
 
         if(params.size() == 0)
-            return  Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetBalance());
+            return  Legacy::SatoshisToAmount(Legacy::Wallet::Instance().GetBalance());
 
         int nMinDepth = 1;
         if(params.size() > 1)
@@ -514,7 +514,7 @@ namespace Legacy
             // (GetBalance() sums up all unspent TxOuts)
             // getbalance and getbalance '*' should always return the same number.
             int64_t nBalance = 0;
-            for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+            for(const auto& entry : Legacy::Wallet::Instance().mapWallet)
             {
                 const Legacy::WalletTx& wtx = entry.second;
                 if(!wtx.IsFinal())
@@ -561,7 +561,7 @@ namespace Legacy
     Move from one account in your wallet to another */
     encoding::json RPC::MoveCmd(const encoding::json& params, const bool fHelp)
     {
-        Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
         if(wallet.IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
             return std::string(
@@ -696,7 +696,7 @@ namespace Legacy
     * requires wallet passphrase to be set with walletpassphrase first */
     encoding::json RPC::SendFrom(const encoding::json& params, const bool fHelp)
     {
-        Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
         if(wallet.IsCrypted() && (fHelp || params.size() < 3 || params.size() > 7))
             return std::string(
@@ -855,7 +855,7 @@ namespace Legacy
     * requires wallet passphrase to be set with walletpassphrase first*/
     encoding::json RPC::SendMany(const encoding::json& params, const bool fHelp)
     {
-        Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
         if(wallet.IsCrypted() && (fHelp || params.size() < 2 || params.size() > 5))
             return std::string(
@@ -1081,7 +1081,7 @@ namespace Legacy
                     return debug::safe_printstr(ks, " is a pay-to-script address");
 
                 std::vector<unsigned char> vchPubKey;
-                if(!Legacy::Wallet::GetInstance().GetPubKey(address, vchPubKey))
+                if(!Legacy::Wallet::Instance().GetPubKey(address, vchPubKey))
                     return debug::safe_printstr("no full public key for address ", ks);
 
                 if(vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
@@ -1108,11 +1108,11 @@ namespace Legacy
         uint256_t scriptHash = LLC::SK256(inner);
         Legacy::Script scriptPubKey;
         scriptPubKey.SetPayToScriptHash(inner);
-        Legacy::Wallet::GetInstance().AddScript(inner);
+        Legacy::Wallet::Instance().AddScript(inner);
         Legacy::NexusAddress address;
         address.SetScriptHash256(scriptHash);
 
-        Legacy::Wallet::GetInstance().GetAddressBook().SetAddressBookName(address, strAccount);
+        Legacy::Wallet::Instance().GetAddressBook().SetAddressBookName(address, strAccount);
         return address.ToString();
     }
 
@@ -1142,7 +1142,7 @@ namespace Legacy
 
         // Tally
         std::map<Legacy::NexusAddress, tallyitem> mapTally;
-        for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+        for(const auto& entry : Legacy::Wallet::Instance().mapWallet)
         {
             const Legacy::WalletTx& wtx = entry.second;
 
@@ -1156,7 +1156,7 @@ namespace Legacy
             for(const Legacy::TxOut& txout : wtx.vout)
             {
                 Legacy::NexusAddress address;
-                if(!ExtractAddress(txout.scriptPubKey, address) || !Legacy::Wallet::GetInstance().HaveKey(address) || !address.IsValid())
+                if(!ExtractAddress(txout.scriptPubKey, address) || !Legacy::Wallet::Instance().HaveKey(address) || !address.IsValid())
                     continue;
 
                 tallyitem& item = mapTally[address];
@@ -1168,7 +1168,7 @@ namespace Legacy
         // Reply
         encoding::json ret = encoding::json::array();
         std::map<std::string, tallyitem> mapAccountTally;
-        for(const auto& item : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
+        for(const auto& item : Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap())
         {
             const Legacy::NexusAddress& address = item.first;
             const std::string& strAccount = item.second;
@@ -1294,11 +1294,11 @@ namespace Legacy
         if(wtx.vin.size() == 0 && !wtx.IsCoinBase() && !wtx.IsCoinStake())
         {
             /* use lamda shortcut with find_if to find the entry for this wtx */
-            auto it = std::find_if(std::begin(Legacy::Wallet::GetInstance().mapWallet),
-                                   std::end(Legacy::Wallet::GetInstance().mapWallet),
+            auto it = std::find_if(std::begin(Legacy::Wallet::Instance().mapWallet),
+                                   std::end(Legacy::Wallet::Instance().mapWallet),
                                    [&](const std::pair<uint512_t, Legacy::WalletTx> &p) { return p.second == wtx; });
 
-            if(it != std::end(Legacy::Wallet::GetInstance().mapWallet))
+            if(it != std::end(Legacy::Wallet::Instance().mapWallet))
                 entry["txid"] = it->first.GetHex();
 
         }
@@ -1318,7 +1318,7 @@ namespace Legacy
         std::list<std::pair<Legacy::Script, int64_t> > listReceived;
         std::list<std::pair<Legacy::Script, int64_t> > listSent;
 
-        Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
         wtx.GetAmounts(nGeneratedImmature, nGeneratedMature, listReceived, listSent, nFee, strSentAccount);
 
         bool fAllAccounts = (strAccount == std::string("*"));
@@ -1514,7 +1514,7 @@ namespace Legacy
 
         // Note: maintaining indices in the database of (account,time) --> txid and (account, time) --> acentry
         // would make this much faster for applications that do this a lot.
-        for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+        for(const auto& entry : Legacy::Wallet::Instance().mapWallet)
         {
             const Legacy::WalletTx* wtx = &(entry.second);
             txByTime.insert(std::make_pair(wtx->GetTxTime(), wtx));
@@ -1564,7 +1564,7 @@ namespace Legacy
 
         /* Get the available addresses from the wallet */
         std::map<Legacy::NexusAddress, int64_t> mapAddresses;
-        if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
+        if(!Legacy::Wallet::Instance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
             throw TAO::API::Exception(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
         /* Find all the addresses in the list */
@@ -1585,9 +1585,9 @@ namespace Legacy
                 " - Returns Object that has account names as keys, account balances as values.");
 
         std::map<std::string, int64_t> mapAccountBalances;
-        for(const auto& entry : Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap())
+        for(const auto& entry : Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap())
         {
-            if(Legacy::Wallet::GetInstance().HaveKey(entry.first)) // This address belongs to me
+            if(Legacy::Wallet::Instance().HaveKey(entry.first)) // This address belongs to me
             {
                 if(entry.second == "" || entry.second == "default")
                 {
@@ -1603,15 +1603,15 @@ namespace Legacy
 
         /* Get the available addresses from the wallet */
         std::map<Legacy::NexusAddress, int64_t> mapAddresses;
-        if(!Legacy::Wallet::GetInstance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
+        if(!Legacy::Wallet::Instance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
             throw TAO::API::Exception(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
         /* Find all the addresses in the list */
         for(const auto& entry : mapAddresses)
         {
-            if(Legacy::Wallet::GetInstance().GetAddressBook().HasAddress(entry.first))
+            if(Legacy::Wallet::Instance().GetAddressBook().HasAddress(entry.first))
             {
-                std::string strAccount = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(entry.first);
+                std::string strAccount = Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap().at(entry.first);
                 if(strAccount == "")
                     strAccount = "default";
 
@@ -1677,7 +1677,7 @@ namespace Legacy
 
         encoding::json transactions = encoding::json::array();
 
-        for(const auto& entry : Legacy::Wallet::GetInstance().mapWallet)
+        for(const auto& entry : Legacy::Wallet::Instance().mapWallet)
         {
             Legacy::WalletTx tx = entry.second;
 
@@ -1893,7 +1893,7 @@ namespace Legacy
                 "gettransaction <txid>"
                 " - Get detailed information about <txid>");
 
-        Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
         uint512_t hash;
         hash.SetHex(params[0].get<std::string>());
@@ -2077,22 +2077,22 @@ namespace Legacy
         {
             std::string currentAddress = address.ToString();
             ret["address"] = currentAddress;
-            if(Legacy::Wallet::GetInstance().HaveKey(address))
+            if(Legacy::Wallet::Instance().HaveKey(address))
             {
                 ret["ismine"] = true;
                 std::vector<unsigned char> vchPubKey;
-                Legacy::Wallet::GetInstance().GetPubKey(address, vchPubKey);
+                Legacy::Wallet::Instance().GetPubKey(address, vchPubKey);
                 ret["pubkey"] = HexStr(vchPubKey);
                 LLC::ECKey key;
                 key.SetPubKey(vchPubKey);
                 ret["iscompressed"] = key.IsCompressed();
             }
-            else if(Legacy::Wallet::GetInstance().HaveScript(address.GetHash256()))
+            else if(Legacy::Wallet::Instance().HaveScript(address.GetHash256()))
             {
                 ret["isscript"] = true;
                 Legacy::Script subscript;
-                Legacy::Wallet::GetInstance().GetScript(address.GetHash256(), subscript);
-                ret["ismine"] = Legacy::IsMine(Legacy::Wallet::GetInstance(), subscript);
+                Legacy::Wallet::Instance().GetScript(address.GetHash256(), subscript);
+                ret["ismine"] = Legacy::IsMine(Legacy::Wallet::Instance(), subscript);
                 std::vector<Legacy::NexusAddress> addresses;
                 Legacy::TransactionType whichType;
                 int nRequired;
@@ -2107,8 +2107,8 @@ namespace Legacy
             }
             else
                 ret["ismine"] = false;
-            if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
-                ret["account"] = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
+            if(Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap().count(address))
+                ret["account"] = Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap().at(address);
         }
         else if (isValid)
         {
@@ -2186,7 +2186,7 @@ namespace Legacy
         }
 
         std::vector<Legacy::Output> vecOutputs;
-        Legacy::Wallet::GetInstance().AvailableCoins((unsigned int)runtime::unifiedtimestamp(), vecOutputs, false);
+        Legacy::Wallet::Instance().AvailableCoins((unsigned int)runtime::unifiedtimestamp(), vecOutputs, false);
 
         int64_t nCredit = 0;
         for(const Legacy::Output& out : vecOutputs)
@@ -2268,7 +2268,7 @@ namespace Legacy
 
         encoding::json results = encoding::json::array();
         std::vector<Legacy::Output> vecOutputs;
-        Legacy::Wallet::GetInstance().AvailableCoins((uint32_t)runtime::unifiedtimestamp(), vecOutputs, false);
+        Legacy::Wallet::Instance().AvailableCoins((uint32_t)runtime::unifiedtimestamp(), vecOutputs, false);
         for(const Legacy::Output& out : vecOutputs)
         {
             if(out.nDepth < nMinDepth || out.nDepth > nMaxDepth)
@@ -2293,8 +2293,8 @@ namespace Legacy
             if(Legacy::ExtractAddress(pk, address))
             {
                 entry["address"] = address.ToString();
-                if(Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().count(address))
-                    entry["account"] = Legacy::Wallet::GetInstance().GetAddressBook().GetAddressBookMap().at(address);
+                if(Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap().count(address))
+                    entry["account"] = Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap().at(address);
             }
             entry["scriptPubKey"] = HexStr(pk.begin(), pk.end());
             entry["amount"] = Legacy::SatoshisToAmount(nValue);

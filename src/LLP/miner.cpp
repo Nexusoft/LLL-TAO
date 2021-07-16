@@ -67,7 +67,7 @@ namespace LLP
     , nHashLast(0)
     {
         #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
         #endif
     }
 
@@ -85,7 +85,7 @@ namespace LLP
     , nHashLast(0)
     {
         #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
         #endif
     }
 
@@ -103,7 +103,7 @@ namespace LLP
     , nHashLast(0)
     {
         #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
         #endif
     }
 
@@ -870,7 +870,7 @@ namespace LLP
                 pBlock->UpdateTime();
 
                 /* Sign the block with a key from wallet. */
-                if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
+                if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::Instance()))
                     return debug::error(FUNCTION, "Unable to Sign Legacy Block ", hashMerkleRoot.SubString());
 
                 #endif
@@ -972,7 +972,7 @@ namespace LLP
                 #ifndef NO_WALLET
 
                 /* Check the Proof of Work for submitted block. */
-                if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
+                if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::Instance()))
                     return false;
 
                 /* Block is valid - Tell the wallet to keep this key. */

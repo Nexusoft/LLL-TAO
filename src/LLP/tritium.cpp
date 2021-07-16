@@ -334,7 +334,7 @@ namespace LLP
                     if(!TAO::Ledger::ChainState::Synchronizing())
                     {
                         #ifndef NO_WALLET
-                        Legacy::Wallet::GetInstance().ResendWalletTransactions();
+                        Legacy::Wallet::Instance().ResendWalletTransactions();
                         #endif
                     }
                 }
@@ -2572,7 +2572,7 @@ namespace LLP
                                 Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                 /* Log that sync is complete. */
-                                debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
+                                debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
                             }
 
                             /* Debug output. */

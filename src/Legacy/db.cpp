@@ -27,11 +27,6 @@ ________________________________________________________________________________
 namespace Legacy
 {
 
-    /* Static variable initialization */
-    std::atomic<bool> BerkeleyDB::fDbInitialized(false);
-
-
-    /* Constructor */
     /* Initializes database environment on first use */
     BerkeleyDB::BerkeleyDB(const std::string& strFileIn)
     : cs_db()
@@ -58,7 +53,7 @@ namespace Legacy
     BerkeleyDB::~BerkeleyDB()
     {
         /* Destructor of instance should only be called after pdb and dbenv already invalidated, but check it here as a precaution */
-        LOCK(cs_db);
+        //LOCK(cs_db);
 
         if(pdb != nullptr)
             CloseHandle();
@@ -67,7 +62,6 @@ namespace Legacy
         {
              /* Flush log data to the dat file and detach the file */
             dbenv->txn_checkpoint(0, 0, 0);
-            dbenv->lsn_reset(strDbFile.c_str(), 0);
 
             /* Remove log files */
             char** listp;
@@ -76,6 +70,7 @@ namespace Legacy
             /* Shut down the database environment */
             try
             {
+                //dbenv->lsn_reset(strDbFile.c_str(), 0);
                 dbenv->close(0);
             }
             catch(const DbException& e)
@@ -88,8 +83,6 @@ namespace Legacy
         }
     }
 
-
-    /* Private Methods */
 
     /* Performs work of initialization for constructor. */
     void BerkeleyDB::Init()
@@ -109,7 +102,6 @@ namespace Legacy
                 filesystem::create_directory(pathLogDir);
 
                 std::string pathErrorFile(pathDataDir + "db.log");
-
                 uint32_t nDbCache = config::GetArg("-dbcache", 25);
 
                 dbenv = new DbEnv((uint32_t)0);
@@ -123,7 +115,7 @@ namespace Legacy
                 //dbenv->set_errfile(fopen(pathErrorFile.c_str(), "a")); /// debug
                 dbenv->set_flags(DB_TXN_WRITE_NOSYNC, 1);
                 dbenv->set_flags(DB_AUTO_COMMIT, 1);
-                dbenv->log_set_config(DB_LOG_AUTO_REMOVE, 1);
+                //dbenv->log_set_config(DB_LOG_AUTO_REMOVE, 1);
 
                 /* Flags to enable dbenv subsystems
                  * DB_CREATE     - Create underlying files, as needed (required when DB_RECOVER present)
@@ -135,11 +127,11 @@ namespace Legacy
                  * DB_RECOVER    - Run recovery before opening environment, if necessary
                  */
                 uint32_t dbFlags =  DB_CREATE     |
-                                    // DB_INIT_LOCK  |
-                                    DB_INIT_LOG   |
+                                    //DB_INIT_LOCK  |
+                                    //DB_INIT_LOG   |
                                     DB_INIT_MPOOL |
                                     DB_INIT_TXN   |
-                                   // DB_THREAD     |
+                                    //DB_THREAD     |
                                     DB_RECOVER;
 
                 /* Mode specifies permission settings for all Berkeley-created files on UNIX systems
@@ -166,11 +158,7 @@ namespace Legacy
                     delete dbenv;
                     dbenv = nullptr;
 
-                    debug::error(FUNCTION, "Exception initializing Berkeley database environment for ", strDbFile, ": ", e.what());
-
-                    throw std::runtime_error(
-                            debug::safe_printstr(FUNCTION, "Exception initializing Berkeley database environment for ", strDbFile, ": ", e.what()));
-
+                    throw debug::exception(FUNCTION, "Exception initializing Berkeley database environment for ", strDbFile, ": ", e.what());
                 }
 
                 if(ret != 0)
@@ -178,13 +166,8 @@ namespace Legacy
                     delete dbenv;
                     dbenv = nullptr;
 
-                    debug::error(FUNCTION, "Error ", ret, " initializing Berkeley database environment for ", strDbFile);
-
-                    throw std::runtime_error(
-                            debug::safe_printstr(FUNCTION, "Error ", ret, " initializing Berkeley database environment for ", strDbFile));
+                    throw debug::exception(FUNCTION, "Error ", ret, " initializing Berkeley database environment for ", strDbFile);
                 }
-
-                debug::log(0, FUNCTION, "Initialized Legacy Berkeley database environment for ", strDbFile);
             }
 
 
@@ -232,9 +215,7 @@ namespace Legacy
             delete pdb;
             pdb = nullptr;
 
-            debug::error(FUNCTION, "Cannot open database file ", strDbFile, ", error ", ret);
-
-            throw std::runtime_error(debug::safe_printstr(FUNCTION, "Cannot open database file ", strDbFile, ", error ", ret));
+            throw debug::exception(FUNCTION, "Cannot open database file ", strDbFile, ", error ", ret);
         }
     }
 
@@ -662,71 +643,4 @@ namespace Legacy
 
         return fProcessSuccess;
     }
-
-
-    /* Shut down the Berkeley database environment for this instance. */
-    void BerkeleyDB::Shutdown()
-    {
-        debug::log(0, FUNCTION, "Shutting down ", strDbFile);
-
-        LOCK(cs_db);
-
-        CloseHandle();
-
-        if(dbenv != nullptr)
-        {
-             /* Flush log data to the dat file and detach the file */
-            debug::log(2, FUNCTION, strDbFile, " checkpoint");
-            dbenv->txn_checkpoint(0, 0, 0);
-
-            debug::log(2, FUNCTION, strDbFile, " detach");
-            dbenv->lsn_reset(strDbFile.c_str(), 0);
-
-            debug::log(2, FUNCTION, strDbFile, " closed");
-
-            // /* Remove log files */
-            char** listp;
-            dbenv->log_archive(&listp, DB_ARCH_REMOVE);
-
-            /* Shut down the database environment */
-            try
-            {
-                dbenv->close(0);
-            }
-            catch(const DbException& e)
-            {
-                debug::log(0, FUNCTION, "Exception: ", e.what(), "(", e.get_errno(), ")");
-            }
-
-            delete dbenv;
-            dbenv = nullptr;
-        }
-    }
-
-
-    /* Static methods */
-
-    /* Retrieves the BerkeleyDB instance that corresponds to a given database file. */
-    BerkeleyDB& BerkeleyDB::GetInstance(const std::string& strFileIn)
-    {
-        if(!BerkeleyDB::fDbInitialized.load() && strFileIn.empty())
-        {
-            debug::error(FUNCTION, "Berkeley database initialization missing file name");
-            throw std::runtime_error(debug::safe_printstr(FUNCTION, "Berkeley database initialization missing file name"));
-        }
-
-        /* This will create an initialized, database instance on first call to GetInstance() */
-        static BerkeleyDB dbInstance(strFileIn);
-
-        if(BerkeleyDB::fDbInitialized.load() && !strFileIn.empty() && dbInstance.strDbFile.compare(strFileIn) != 0)
-        {
-            debug::error(FUNCTION, "Invalid attempt to change Berkeley database file name");
-            throw std::runtime_error(debug::safe_printstr(FUNCTION, "Invalid attempt to change Berkeley database file name"));
-        }
-
-        BerkeleyDB::fDbInitialized.store(true);
-
-        return dbInstance;
-    }
-
 }

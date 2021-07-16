@@ -56,12 +56,12 @@ namespace Legacy
         encoding::json obj;
         obj["version"] = version::CLIENT_VERSION_BUILD_STRING;
         obj["protocolversion"] = LLP::PROTOCOL_VERSION;
-        obj["walletversion"] = Legacy::Wallet::GetInstance().GetVersion();
+        obj["walletversion"] = Legacy::Wallet::Instance().GetVersion();
         obj["testnet"] = config::fTestNet.load();
-        obj["balance"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetBalance());
-        obj["unconfirmedbalance"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetUnconfirmedBalance());
-        obj["newmint"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetNewMint());
-        obj["stake"] = Legacy::SatoshisToAmount(Legacy::Wallet::GetInstance().GetStake());
+        obj["balance"] = Legacy::SatoshisToAmount(Legacy::Wallet::Instance().GetBalance());
+        obj["unconfirmedbalance"] = Legacy::SatoshisToAmount(Legacy::Wallet::Instance().GetUnconfirmedBalance());
+        obj["newmint"] = Legacy::SatoshisToAmount(Legacy::Wallet::Instance().GetNewMint());
+        obj["stake"] = Legacy::SatoshisToAmount(Legacy::Wallet::Instance().GetStake());
 
         /* Staking metrics */
         obj["staking"] = "Not Started";
@@ -70,7 +70,7 @@ namespace Legacy
         obj["trustweight"] = 0.0;
         obj["blockweight"] = 0.0;
         obj["stakeweight"] = 0.0;
-        obj["txtotal"] = (int32_t)Legacy::Wallet::GetInstance().mapWallet.size();
+        obj["txtotal"] = (int32_t)Legacy::Wallet::Instance().mapWallet.size();
 
         obj["blocks"] = (int32_t)TAO::Ledger::ChainState::nBestHeight.load();
 
@@ -94,17 +94,17 @@ namespace Legacy
         }
 
         obj["testnet"]       = config::fTestNet.load();
-        obj["keypoololdest"] = (int64_t)Legacy::Wallet::GetInstance().GetKeyPool().GetOldestKeyPoolTime();
-        obj["keypoolsize"]   = Legacy::Wallet::GetInstance().GetKeyPool().GetKeyPoolSize();
+        obj["keypoololdest"] = (int64_t)Legacy::Wallet::Instance().GetKeyPool().GetOldestKeyPoolTime();
+        obj["keypoolsize"]   = Legacy::Wallet::Instance().GetKeyPool().GetKeyPoolSize();
         obj["paytxfee"]      = Legacy::SatoshisToAmount(Legacy::TRANSACTION_FEE);
 
-        if(Legacy::Wallet::GetInstance().IsCrypted())
+        if(Legacy::Wallet::Instance().IsCrypted())
         {
-            obj["locked"] = Legacy::Wallet::GetInstance().IsLocked();
-            if(!Legacy::Wallet::GetInstance().IsLocked())
+            obj["locked"] = Legacy::Wallet::Instance().IsLocked();
+            if(!Legacy::Wallet::Instance().IsLocked())
             {
-                if((uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime() > 0)
-                    obj["unlocked_until"] = (uint64_t) Legacy::Wallet::GetInstance().GetWalletUnlockTime();
+                if((uint64_t) Legacy::Wallet::Instance().GetWalletUnlockTime() > 0)
+                    obj["unlocked_until"] = (uint64_t) Legacy::Wallet::Instance().GetWalletUnlockTime();
 
                 obj["minting_only"] = Legacy::fWalletUnlockMintOnly;
             }

@@ -100,21 +100,25 @@ namespace Legacy
      *
      *  Implemented as a Singleton where GetInstance is used wherever the wallet instance is needed.
      *
-     *  To use the wallet, first call InitializeWallet followed by LoadWallet. The following
+     *  To use the wallet, first call Initialize followed by LoadWallet. The following
      *  example will use the default wallet database file name:
      *
-     *  if(!Wallet::InitializeWallet())
+     *  if(!Wallet::Initialize())
      *      //initialization not successful
      *
-     *  if(Wallet::GetInstance().LoadWallet() != Legacy::DB_LOAD_OK)
+     *  if(Wallet::Instance().LoadWallet() != Legacy::DB_LOAD_OK)
      *      //load not successful
      *
-     *  Wallet& wallet = Wallet::GetInstance();
+     *  Wallet& wallet = Wallet::Instance();
      *  //use wallet
      *
      **/
     class Wallet : public CryptoKeyStore
     {
+        /** Internal pointer for this class's instance. */
+        static std::atomic<Wallet*> INSTANCE;
+
+
         /** WalletDB declared friend so it can use private Load methods within LoadWallet() process. **/
         friend class WalletDB;
 
@@ -144,7 +148,7 @@ namespace Legacy
         virtual ~Wallet();
 
 
-        /** InitializeWallet
+        /** Initialize
          *
          *  Initializes the wallet instance backed by a wallet database file with the provided
          *  file name. Only call this method once (returns false on subsequent calls).
@@ -160,26 +164,38 @@ namespace Legacy
          *  @see LoadWallet
          *
          **/
-        static bool InitializeWallet(const std::string& strWalletFileIn = Legacy::WalletDB::DEFAULT_WALLET_DB);
+        static bool Initialize(const std::string& strWalletFileIn = Legacy::WalletDB::DEFAULT_WALLET_DB);
 
 
-        /** GetInstance
+        /** Instance
          *
          *  Retrieves the wallet.
          *
-         *  If the wallet is not yet initialized, this will call InitializeWallet using the
+         *  If the wallet is not yet initialized, this will call Initialize using the
          *  default setting.
          *
          *  @return reference to the Wallet instance
          *
-         *  @see InitializeWallet
+         *  @see Initialize
          *  @see LoadWallet
          *
          **/
-        static Wallet& GetInstance();
+        static Wallet& Instance();
+
+
+        /** Shutdown
+         *
+         *  Shutdown the wallet subsystems.
+         *
+         *  @see Initialize
+         *  @see LoadWallet
+         *
+         **/
+        static void Shutdown();
 
 
     private:
+
         using CryptoKeyStore::Unlock;
 
 
@@ -196,18 +212,14 @@ namespace Legacy
 
 
         /** Flag indicating whether or not wallet is backed by a wallet database. When true, strWalletFile contains database file name. **/
-        bool fFileBacked;
+        static bool fFileBacked;
 
 
         /** Flag indicating whether or not a file backed wallet has been loaded.
          *  Set true after successful call to Wallet::LoadWallet().
          *  Prevents LoadWallet() from executing more than once.
          **/
-        bool fLoaded;
-
-
-        /** File name of database file backing this wallet when fFileBacked is true. **/
-        std::string strWalletFile;
+        static bool fLoaded;
 
 
         /** Map of master keys. Map has one master key per passphrase. **/
@@ -338,19 +350,6 @@ namespace Legacy
         }
 
 
-        /** GetWalletFile
-         *
-         *  Retrieves the database file name for a file backed wallet.
-         *
-         *  @return the wallet database file name, or empty string if not file backed
-         *
-         */
-        inline std::string GetWalletFile() const
-        {
-            return strWalletFile;
-        }
-
-
         /** LoadWallet
          *
          *  Loads all data for a file backed wallet from the database.
@@ -367,7 +366,7 @@ namespace Legacy
          *  @return Value from Legacy::DBErrors, DB_LOAD_OK on success
          *
          */
-        uint32_t LoadWallet(bool& fFirstRunRet);
+        static uint32_t LoadWallet(bool& fFirstRunRet);
 
 
         /** GetWalletUnlockTime

@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_DISPATCH_H
-#define NEXUS_TAO_LEDGER_INCLUDE_DISPATCH_H
 
 #include <LLC/types/uint1024.h>
 
@@ -23,69 +21,69 @@ ________________________________________________________________________________
 #include <condition_variable>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Ledger Layer namespace. */
-    namespace Ledger
+    /** @class
+     *
+     *  This class is responsible for dispatching events triggered by a new block.
+     *  These events could be best chain pointers, transactions, contracts, or other relevant data.
+     *
+     **/
+    class Dispatch
     {
+        /** Queue to handle dispatch requests. **/
+        util::atomic::lock_shared_ptr<std::queue<uint1024_t>> DISPATCH_QUEUE;
 
-        /** @class
+
+        /** Thread for running dispatch. **/
+        std::thread DISPATCH_THREAD;
+
+
+        /** Condition variable to wake up the relay thread. **/
+        std::condition_variable CONDITION;
+
+
+        /** Static instance pointer. **/
+        static std::atomic<Dispatch*> INSTANCE;
+
+
+    public:
+
+        /** Default Constructor. **/
+        Dispatch();
+
+
+        /** Default Destructor. **/
+        ~Dispatch();
+
+
+        /** Singleton instance. **/
+        static Dispatch& Instance();
+
+
+        /** Singleton initialize instance. **/
+        static void Initialize();
+
+
+        /** Singleton shutdown instance. **/
+        static void Shutdown();
+
+
+        /** PushRelay
          *
-         *  This class is responsible for dispatching events triggered by a new block.
-         *  These events could be best chain pointers, transactions, contracts, or other relevant data.
+         *  Dispatch a new block hash to relay thread.
+         *
+         *  @param[in] hashBlock The block hash to dispatch.
          *
          **/
-        class Dispatch
-        {
-            /** Mutex to protect the queue. **/
-            std::mutex DISPATCH_MUTEX;
+        void PushRelay(const uint1024_t& hashBlock);
 
 
-            /** Queue to handle dispatch requests. **/
-            std::queue<uint1024_t> queueDispatch;
-
-
-            /** Thread for running dispatch. **/
-            std::thread DISPATCH_THREAD;
-
-
-            /** Condition variable to wake up the relay thread. **/
-            std::condition_variable CONDITION;
-
-        public:
-
-            /** Default Constructor. **/
-            Dispatch();
-
-
-            /** Default Destructor. **/
-            ~Dispatch();
-
-
-            /** Singleton instance. **/
-            static Dispatch& GetInstance();
-
-
-            /** PushRelay
-             *
-             *  Dispatch a new block hash to relay thread.
-             *
-             *  @param[in] hashBlock The block hash to dispatch.
-             *
-             **/
-            void PushRelay(const uint1024_t& hashBlock);
-
-
-            /** Relay Thread
-             *
-             *  Handle relays of all events for LLP when processing block.
-             *
-             **/
-            void Relay();
-        };
-
-    }
+        /** Relay Thread
+         *
+         *  Handle relays of all events for LLP when processing block.
+         *
+         **/
+        void Relay();
+    };
 }
-
-#endif

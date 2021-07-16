@@ -258,7 +258,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
 
             //legacy get key
             std::vector<uint8_t> vKey;
-            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            REQUIRE(Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vKey, false));
             Legacy::NexusAddress address(vKey);
 
             //legacy payload
@@ -285,7 +285,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             txDependant1   = tx;
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
         }
 
 
@@ -338,7 +338,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
 
             //legacy get key
             std::vector<uint8_t> vKey;
-            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            REQUIRE(Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vKey, false));
             Legacy::NexusAddress address(vKey);
 
             //legacy payload
@@ -362,7 +362,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             txDependant2   = tx;
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
 
         }
 
@@ -372,7 +372,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
         {
             //legacy get key
             std::vector<uint8_t> vKey;
-            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            REQUIRE(Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vKey, false));
             Legacy::NexusAddress address(vKey);
 
             //create a transaction
@@ -384,11 +384,11 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             vecSend.push_back(make_pair(scriptPubKey, 9 * TAO::Ledger::NXS_COIN));
 
             //for change
-            Legacy::ReserveKey changeKey(Legacy::Wallet::GetInstance());
+            Legacy::ReserveKey changeKey(Legacy::Wallet::Instance());
 
             //create transaction
             int64_t nFees;
-            REQUIRE(Legacy::Wallet::GetInstance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
+            REQUIRE(Legacy::Wallet::Instance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
 
             //check the inputs
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;

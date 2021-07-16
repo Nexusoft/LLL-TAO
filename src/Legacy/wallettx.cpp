@@ -493,13 +493,8 @@ namespace Legacy
     /* Store this transaction in the database for the bound wallet */
     bool WalletTx::WriteToDisk(const uint512_t& hash)
     {
-        if (IsBound() && pWallet->IsFileBacked())
-        {
-            WalletDB walletDB(pWallet->GetWalletFile());
-            bool ret = walletDB.WriteTx(hash, *this);
-
-            return ret;
-        }
+        if(IsBound() && pWallet->IsFileBacked())
+            return WalletDB::WriteTx(hash, *this);
 
         return true;
     }

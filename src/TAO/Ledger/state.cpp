@@ -1034,7 +1034,7 @@ namespace TAO
                 /* Broadcast the block to nodes if not synchronizing. */
                 #ifndef UNIT_TESTS
                 if(!ChainState::Synchronizing())
-                    Dispatch::GetInstance().PushRelay(ChainState::hashBestChain.load());
+                    Dispatch::Instance().PushRelay(ChainState::hashBestChain.load());
                 #endif
             }
 
@@ -1097,7 +1097,7 @@ namespace TAO
 
                     /* Add legacy transactions to the wallet where appropriate */
                     #ifndef NO_WALLET
-                    Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+                    Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, *this, true);
                     #endif
 
                     /* Accumulate the fees. */
@@ -1171,7 +1171,7 @@ namespace TAO
 
                     /* Add legacy transactions to the wallet where appropriate */
                     #ifndef NO_WALLET
-                    Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+                    Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, *this, true);
                     #endif
 
                     /* Keep track of total inputs proceessed. */
@@ -1264,8 +1264,8 @@ namespace TAO
 
                     /* Wallets need to refund inputs when disonnecting coinstake */
                     #ifndef NO_WALLET
-                    if(tx.IsCoinStake() && Legacy::Wallet::GetInstance().IsFromMe(tx))
-                       Legacy::Wallet::GetInstance().DisableTransaction(tx);
+                    if(tx.IsCoinStake() && Legacy::Wallet::Instance().IsFromMe(tx))
+                       Legacy::Wallet::Instance().DisableTransaction(tx);
                     #endif
                 }
 
