@@ -185,24 +185,12 @@ namespace TAO::API
             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
             {
                 /* Grab a reference of our contract. */
-                const TAO::Operation::Contract& contract = tx[nContract];
-
-                /* Unpack to read coinbase operation data. */
-                if(TAO::Register::Unpack(contract, TAO::Operation::OP::COINBASE))
-                {
-                    /* Unpack the owner from the contract */
-                    uint256_t hashProof = 0;
-                    TAO::Register::Unpack(contract, hashProof);
-
-                    /* Skip this contract if the proof is not our tx genesis. */
-                    if(hashProof != tx.hashGenesis)
-                        continue;
-                }
+                const TAO::Operation::Contract& rContract = tx[nContract];
 
                 /* Add the contract to the array */
                 jRet["contracts"].push_back
                 (
-                    ContractToJSON(contract, nContract, nVerbose)
+                    ContractToJSON(rContract, nContract, nVerbose)
                 );
             }
         }
