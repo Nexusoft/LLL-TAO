@@ -40,8 +40,14 @@ namespace TAO::API
         /* Get the jParams to apply to the response. */
         ExtractList(jParams, strOrder, nLimit, nOffset);
 
+        /* Default to verbosity 1 which includes only the hash */
+        const uint32_t nVerbose = ExtractVerbose(jParams);
+
         /* Get our starting hash now. */
         uint1024_t hashStart = 0;
+
+        /* Build our object list and sort on insert. */
+        std::set<encoding::json, CompareResults> setBlocks({}, CompareResults(strOrder, "height"));
 
         /* Check for height parameter */
         TAO::Ledger::BlockState tLastBlock;
@@ -52,11 +58,12 @@ namespace TAO::API
                 throw Exception(-85, "getblock by height requires the daemon to be started with the -indexheight flag.");
 
             /* Convert the incoming height string to an int*/
-            const uint32_t nHeight = ExtractInteger<uint32_t>(jParams, "height") + nOffset;
+            const uint32_t nHeight =
+                ExtractInteger<uint32_t>(jParams, "height") + (strOrder == "desc" ? -nOffset : nOffset);
 
             /* Check that the requested height is within our chain range*/
             if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
-                throw Exception(-82, "Block number out of range.");
+                throw Exception(-60, "[height] out of range [", TAO::Ledger::ChainState::nBestHeight.load(), "]");
 
             /* Read the block state from the the ledger DB using the height index */
             if(!LLD::Ledger->ReadBlock(nHeight, tLastBlock))
@@ -78,25 +85,58 @@ namespace TAO::API
             if(!LLD::Ledger->ReadBlock(hashStart, tLastBlock))
                 throw Exception(-83, "Block not found");
         }
+
+        /* If no parameters are supplied, do a short regular random-read list. */
         else
         {
-            /* Grab latest checkpoint from best block. */
-            tLastBlock = TAO::Ledger::ChainState::stateBest.load();
-
-            /* Set starting based on second to last checkpoint block. */
-            while(tLastBlock.nHeight + nLimit >= TAO::Ledger::ChainState::nBestHeight.load())
+            /* Check for indexing by height. */
+            if(config::GetBoolArg("-indexheight"))
             {
-                /* Iterate backwards recording our hashes. */
-                tLastBlock = tLastBlock.Prev();
-                hashStart  = tLastBlock.GetHash();
+                /* Convert the incoming height string to an int */
+                const uint32_t nHeight =
+                    TAO::Ledger::ChainState::nBestHeight.load() + (strOrder == "desc" ? -nOffset : nOffset) - nLimit;
+
+                /* Check that the requested height is within our chain range*/
+                if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
+                    throw Exception(-60, "[height] out of range [", TAO::Ledger::ChainState::nBestHeight.load(), "]");
+
+                /* Read the block state from the the ledger DB using the height index */
+                if(!LLD::Ledger->ReadBlock(nHeight, tLastBlock))
+                    throw Exception(-83, "Block not found");
+
+                /* Get our starting hash now. */
+                hashStart = tLastBlock.GetHash();
+            }
+
+            /* Otherwise do a quick manual iteration of requested range. */
+            else
+            {
+                /* Grab latest checkpoint from best block. */
+                tLastBlock = TAO::Ledger::ChainState::stateBest.load();
+
+                /* Set starting based on second to last checkpoint block. */
+                while(tLastBlock.nHeight + nLimit > TAO::Ledger::ChainState::nBestHeight.load())
+                {
+                    /* Build JSON object. */
+                    encoding::json jBlock =
+                        BlockToJSON(tLastBlock, nVerbose);
+
+                    /* Filter our results now if desired. */
+                    if(!FilterResults(jParams, jBlock))
+                        continue;
+
+                    /* Filter out our expected fieldnames if specified. */
+                    FilterFieldname(jParams, jBlock);
+
+                    /* Add to our sorted list. */
+                    setBlocks.insert(jBlock);
+
+                    /* Iterate backwards recording our hashes. */
+                    tLastBlock = tLastBlock.Prev();
+                    hashStart  = tLastBlock.GetHash();
+                }
             }
         }
-
-        /* Default to verbosity 1 which includes only the hash */
-        const uint32_t nVerbose = ExtractVerbose(jParams);
-
-        /* Build our object list and sort on insert. */
-        std::set<encoding::json, CompareResults> setBlocks({}, CompareResults(strOrder, "height"));
 
         /* List our blocks via a batch read for efficiency. */
         std::vector<TAO::Ledger::BlockState> vStates;
@@ -115,8 +155,6 @@ namespace TAO::API
                 /* Check for matching hashes. */
                 if(tBlock.hashPrevBlock != tLastBlock.GetHash())
                 {
-                    debug::log(0, FUNCTION, "Reading block ", tLastBlock.hashNextBlock.SubString());
-
                     /* Read the correct block from next index. */
                     if(!LLD::Ledger->ReadBlock(tLastBlock.hashNextBlock, tBlock))
                         throw Exception(-83, "Block not found: ", tLastBlock.hashNextBlock.SubString());
