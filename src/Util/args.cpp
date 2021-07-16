@@ -55,6 +55,7 @@ namespace config
     /* Keeps track of the network owner hash. */
     uint256_t hashNetworkOwner;
 
+    /* Declare our arguments mutex. */
     std::mutex ARGS_MUTEX;
 
     /* Give Opposite Argument Settings */
@@ -124,6 +125,14 @@ namespace config
         return strDefault;
     }
 
+    /* Return boolean if given argument is in map. */
+    bool HasArg(const std::string& strArg)
+    {
+        LOCK(ARGS_MUTEX);
+
+        return mapArgs.count(strArg);
+    }
+
 
     /* Return integer argument or default value. */
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
@@ -148,6 +157,7 @@ namespace config
                 return true;
             return (convert::atoi32(mapArgs[strArg]) != 0);
         }
+
         return fDefault;
     }
 

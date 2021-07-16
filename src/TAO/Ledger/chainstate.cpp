@@ -273,11 +273,11 @@ namespace TAO
             }
 
             /* Ensure the block height index is intact */
-            if(config::GetBoolArg("-indexheight"))
+            if(config::GetBoolArg("-indexheight") || config::GetBoolArg("-reindexheight"))
             {
                 /* Build our indexing height. */
                 TAO::Ledger::BlockState tLastBlock;
-                if(!LLD::Ledger->ReadBlock(nCheckpointHeight.load(), tLastBlock))
+                if(config::GetBoolArg("-reindexheight") || !LLD::Ledger->ReadBlock(nCheckpointHeight.load(), tLastBlock))
                 {
                     /* Set our last block as genesis. */
                     tLastBlock = stateGenesis;
@@ -288,9 +288,6 @@ namespace TAO
                     /* Track our timing. */
                     runtime::timer tElapsed;
                     tElapsed.Start();
-
-                    /* Start an ACID transaction. */
-                    //LLD::Ledger->TxnBegin();
 
                     /* List our blocks via a batch read for efficiency. */
                     std::vector<TAO::Ledger::BlockState> vStates;
@@ -344,6 +341,32 @@ namespace TAO
                             if(!LLD::Ledger->IndexBlock(tBlock.nHeight, hashStart))
                                 return debug::error("Failed to index height: ", hashStart.SubString());
                         }
+                    }
+                }
+            }
+
+            /* Check if we need to persist the -indexheight flag. */
+            else
+            {
+                /* Build our indexing height. */
+                TAO::Ledger::BlockState tLastBlock;
+                if(LLD::Ledger->ReadBlock(nCheckpointHeight.load(), tLastBlock))
+                {
+                    /* Check there is no argument supplied. */
+                    if(!config::HasArg("-indexheight"))
+                    {
+                        /* Warn that -indexheight is persistent. */
+                        debug::log(0, FUNCTION, "-indexheight enabled from valid indexes, to disable please use -noindexheight");
+
+                        /* Set indexing argument now. */
+                        LOCK(config::ARGS_MUTEX);
+                        config::mapArgs["-indexheight"] = "1";
+                    }
+                    else
+                    {
+                        /* Check for disabled mode. */
+                        if(!config::GetBoolArg("-indexheight"))
+                            debug::warning(FUNCTION, "-indexheight disabled with valid indexes, to enable please remove -noindexheight");
                     }
                 }
             }

@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <map>
 #include <vector>
 #include <string>
+#include <mutex>
 
 #include <LLC/types/uint1024.h>
 
@@ -52,6 +53,9 @@ namespace config
 
     /* Hybrid/Sister specific configuration variables. */
     extern uint256_t hashNetworkOwner;
+
+    /* Declare our arguments mutex. */
+    extern std::mutex ARGS_MUTEX;
 
 
     /** InterpretNegativeSetting
@@ -87,6 +91,18 @@ namespace config
      *
      **/
     std::string GetArg(const std::string& strArg, const std::string& strDefault);
+
+
+    /** HasArg
+     *
+     *  Return boolean if given argument is in map.
+     *
+     *  @param strArg Argument to get. (e.g. "-foo")
+     *
+     *  @return command-line argument (0 if invalid number) or default value.
+     *
+     **/
+    bool HasArg(const std::string& strArg);
 
 
     /** GetArg
