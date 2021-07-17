@@ -145,61 +145,41 @@ namespace TAO::API
         /* Check for fieldname filters. */
         if(jParams.find("fieldname") != jParams.end())
         {
-            /* Grab our field string to rebuild response. */
-            const std::string strField = jParams["fieldname"].get<std::string>();
-
-            /* Check that our filter is valid. */
-            if(jResponse.find(strField) == jResponse.end())
-                throw Exception(-71, "Fieldname ", strField, " doesn't exist");
-
-            /* Check for a return value of string. */
-            if(jResponse[strField].is_array() || jResponse[strField].is_object())
+            /* Handle if single string. */
+            if(jParams["fieldname"].is_string())
             {
-                /* Copy over our new field. */
+                /* Grab our field string to rebuild response. */
+                const std::string strField = jParams["fieldname"].get<std::string>();
+
+                /* Check that our filter is valid. */
+                if(jResponse.find(strField) == jResponse.end())
+                    throw Exception(-71, "Fieldname ", strField, " doesn't exist");
+
+                /* Make a copy and add to return json. */
                 const encoding::json jRet = { { strField, jResponse[strField] } };
                 jResponse = jRet;
-
-                return;
             }
 
-            /* Check for a return value of string. */
-            if(jResponse[strField].is_string())
+            /* Handle if single string. */
+            if(jParams["fieldname"].is_array())
             {
-                /* Copy over our new field. */
-                const encoding::json jRet = { { strField, jResponse[strField].get<std::string>() } };
+                /* Loop through the list of strings. */
+                encoding::json jRet = encoding::json::object();
+                for(const auto& jField : jParams["fieldname"])
+                {
+                    /* Grab our field string to rebuild response. */
+                    const std::string strField = jField.get<std::string>();
+
+                    /* Check that our filter is valid. */
+                    if(jResponse.find(strField) == jResponse.end())
+                        throw Exception(-71, "Fieldname ", strField, " doesn't exist");
+
+                    /* Add to the return json. */
+                    jRet[strField] = jResponse[strField];
+                }
+
+                /* Set our response now. */
                 jResponse = jRet;
-
-                return;
-            }
-
-            /* Check for a return value of unsigned integer. */
-            if(jResponse[strField].is_number_unsigned())
-            {
-                /* Copy over our new field. */
-                const encoding::json jRet = { { strField, jResponse[strField].get<uint64_t>() } };
-                jResponse = jRet;
-
-                return;
-            }
-
-            /* Check for a return value of signed integer. */
-            if(jResponse[strField].is_number_integer())
-            {
-                /* Copy over our new field. */
-                const encoding::json jRet = { { strField, jResponse[strField].get<int64_t>() } };
-                jResponse = jRet;
-
-                return;
-            }
-
-            /* Check for a return value of double. */
-            if(jResponse[strField].is_number_float())
-            {
-                /* Copy over our new field. */
-                const encoding::json jRet = { { strField, jResponse[strField].get<double>() } };
-                jResponse = jRet;
-
-                return;
             }
         }
     }

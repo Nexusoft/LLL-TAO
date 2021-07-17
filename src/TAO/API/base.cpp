@@ -90,12 +90,25 @@ namespace TAO::API
             (jParams.find("address") != jParams.end() || jParams.find("name") != jParams.end());
 
         /* Grab the components of this URL. */
-        const std::string& strVerb = vMethods[0];
+        std::string strVerb = vMethods[0];
         for(uint32_t n = 1; n < vMethods.size(); ++n)
         {
             /* Now lets do some rules for the different nouns. */
             if(n == 1)
             {
+                /* Check for function noun for fieldname filters on top of literal function maps. */
+                const std::string& strFunction = strVerb + "/" + vMethods[n];
+                if(mapFunctions.count(strFunction))
+                {
+                    /* set this to skip over address/name */
+                    fAddress = true;
+
+                    /* Set our returned verb. */
+                    strVerb = strFunction;
+
+                    continue; //go to next fieldname
+                }
+
                 /* Check if we are mapping multiple types. */
                 if(vMethods[n].find(",") != vMethods[n].npos)
                 {
@@ -160,6 +173,23 @@ namespace TAO::API
             /* If we have reached here, we know we are a fieldname. */
             if(n >= 2 && fAddress)
             {
+                /* Check if we are mapping multiple types. */
+                if(vMethods[n].find(",") != vMethods[n].npos)
+                {
+                    /* Grab our components of the URL to rewrite. */
+                    std::vector<std::string> vFields;
+                    ParseString(vMethods[n], ',', vFields);
+
+                    /* Build our request type as an array. */
+                    jParams["fieldname"] = encoding::json::array();
+
+                    /* Loop through our nouns now. */
+                    for(auto& strField : vFields)
+                        jParams["fieldname"].push_back(strField);
+
+                    continue;
+                }
+
                 jParams["fieldname"] = vMethods[n];
 
                 continue;
