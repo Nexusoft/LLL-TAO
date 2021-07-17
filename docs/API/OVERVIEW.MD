@@ -269,12 +269,12 @@ API Error Codes
 | -115 | Name / address is not of type (type) |
 | -116 | Cannot transfer names created without a namespace |
 | -117 | Item not found |
-| -118 | Missing type |
-| -119 | Missing supply |
+| -118 | [type] operator not supported for this command-set |
+| -119 | ------------------------------------ |
 | -120 | Maximum number of contracts exceeded (99), please try again or use -autotx mode. |
 | -121 | Aggregated type [noun] not allowed for [verb] |
-| -122 |  |
-| -123 | Object is not a token |
+| -122 | Invalid operator [op] for command. |
+| -123 | [type] unsupported for operator [op] |
 | -124 | Unknown token / account |
 | -125 | Token not found |
 | -126 | Address is not for a NXS account" |

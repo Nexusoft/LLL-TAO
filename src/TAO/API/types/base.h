@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/function.h>
 #include <TAO/API/types/standard.h>
+#include <TAO/API/types/operator.h>
 #include <TAO/API/types/exception.h>
 
 /* Forward declarations. */
@@ -35,6 +36,24 @@ namespace TAO::API
      **/
     class Base
     {
+    protected:
+
+        /** Initializer Flag. */
+        bool fInitialized;
+
+
+        /** Map of method names to method function pointer objects for each method supported by this API. **/
+        std::map<std::string, Function> mapFunctions;
+
+
+        /** Map of standard nouns to check for standard object types. **/
+        std::map<std::string, Standard>  mapStandards;
+
+
+        /** Map of standard nouns to check for standard object types. **/
+        std::map<std::string, Operator>  mapOperators;
+
+
     public:
 
         /** Default Constructor **/
@@ -42,16 +61,13 @@ namespace TAO::API
         : fInitialized (false)
         , mapFunctions ( )
         , mapStandards ( )
+        , mapOperators ( )
         {
         }
 
 
         /** Default destructor **/
-        virtual ~Base()
-        {
-            mapFunctions.clear();
-            mapStandards.clear();
-        }
+        virtual ~Base();
 
 
         /** Initialize
@@ -146,19 +162,6 @@ namespace TAO::API
          **/
         virtual std::string RewriteURL(const std::string& strMethod, encoding::json &jParams);
 
-
-    protected:
-
-        /** Initializer Flag. */
-        bool fInitialized;
-
-
-        /** Map of method names to method function pointer objects for each method supported by this API. **/
-        std::map<std::string, Function> mapFunctions;
-
-
-        /** Map of standard nouns to check for standard object types. **/
-        std::map<std::string, Standard>  mapStandards;
     };
 
 

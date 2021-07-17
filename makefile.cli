@@ -462,6 +462,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_objects_claim.o \
 		build/API_types_objects_history.o \
 		build/API_types_objects_transfer.o \
+		build/API_commands_operators_sum.o \
 		build/API_commands_register_initialize.o \
 		build/API_commands_register_list.o \
 		build/API_commands_register_json.o \
@@ -783,6 +784,9 @@ build/API_types_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_templates_%.o: ./src/TAO/API/commands/templates/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_commands_operators_%.o: ./src/TAO/API/commands/operators/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_tokens_%.o: ./src/TAO/API/commands/tokens/%.cpp $(HEADERS)
@@ -1387,6 +1391,13 @@ build/API_types_supply_%.o: src/TAO/API/supply/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_commands_templates_%.o: src/TAO/API/commands/templates/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_commands_operators_%.o: src/TAO/API/commands/operators/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

@@ -24,6 +24,14 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /* Destructor. */
+    Base::~Base()
+    {
+        mapFunctions.clear();
+        mapStandards.clear();
+        mapOperators.clear();
+    }
+
     /* Get the current status of a given command. */
     std::string Base::Status(const std::string& strMethod) const
     {
@@ -68,7 +76,24 @@ namespace TAO::API
 
         /* Execute the function map if method is found. */
         if(mapFunctions.find(strMethod) != mapFunctions.end())
-            return mapFunctions[strMethod].Execute(jParams, fHelp);
+        {
+            /* Get the result of command. */
+            const encoding::json& jResults =
+                mapFunctions[strMethod].Execute(jParams, fHelp);
+
+            /* Check for operator. */
+            if(jParams.find("operator") != jParams.end())
+            {
+                /* Grab our current operator. */
+                const std::string& strOperator = jParams["operator"].get<std::string>();
+
+                /* Compute and return from our operator function. */
+                return mapOperators[strOperator].Execute(jParams, jResults);
+            }
+
+            return jResults;
+        }
+
         else
             throw Exception(-2, "Method not found: ", strMethod);
     }
@@ -88,6 +113,9 @@ namespace TAO::API
         /* Detect whether fieldname or a resolved name. */
         bool fAddress =
             (jParams.find("address") != jParams.end() || jParams.find("name") != jParams.end());
+
+        /* Track if fieldname has been set. */
+        bool fFieldname = false;
 
         /* Grab the components of this URL. */
         std::string strVerb = vMethods[0];
@@ -171,7 +199,7 @@ namespace TAO::API
             }
 
             /* If we have reached here, we know we are a fieldname. */
-            if(n >= 2 && fAddress)
+            if(n >= 2 && fAddress && !fFieldname)
             {
                 /* Check if we are mapping multiple types. */
                 if(vMethods[n].find(",") != vMethods[n].npos)
@@ -190,9 +218,27 @@ namespace TAO::API
                     continue;
                 }
 
+                /* Set our fieldname string. */
                 jParams["fieldname"] = vMethods[n];
 
+                /* Set fieldname flag. */
+                fFieldname = true;
+
                 continue;
+            }
+
+            /* Last slot could be an operator. */
+            if(n >= 3 && fFieldname)
+            {
+                /* Grab our operator. */
+                const std::string& strOperator = vMethods[n];
+
+                /* Check if the operator is available. */
+                if(!mapOperators.count(strOperator))
+                    throw Exception(-118, "[", strOperator, "] operator not supported for this command-set");
+
+                /* Add to input parameters. */
+                jParams["operator"] = strOperator;
             }
 
             /* If we get here, we need to throw for malformed URL. */
