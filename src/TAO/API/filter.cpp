@@ -139,7 +139,75 @@ namespace TAO::API
     }
 
 
-    /* If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field */
+    /* Helper filter, to handle recursion up and down levels of json. This handles only single entries at a time. */
+    bool FilterFieldname(const std::string& strField, const encoding::json& jResponse, encoding::json &jFiltered)
+    {
+        /* Check for recursion. */
+        const auto nFind = strField.find(".");
+        if(nFind != strField.npos)
+        {
+            /* Check that our filter is valid. */
+            const std::string strNext = strField.substr(0, nFind);
+            if(jResponse.find(strNext) != jResponse.end())
+            {
+                /* Adjust our new fieldname for recursion. */
+                const std::string strAdjusted = strField.substr(nFind + 1);
+
+                /* Use tail recursion to traverse json depth. */
+                return FilterFieldname(strAdjusted, jResponse[strNext], jFiltered[strNext]);
+            }
+        }
+
+        /* Check for array to iterate. */
+        if(jResponse.is_array())
+        {
+            /* Check for same size array to merge. */
+            if(jFiltered.size() == jResponse.size())
+            {
+                /* Loop through all entries and aggregate objects. */
+                for(uint32_t n = 0; n < jFiltered.size(); ++n)
+                    FilterFieldname(strField, jResponse[n], jFiltered[n]);
+            }
+
+            /* Create new items if filtering new data-set. */
+            else
+            {
+                /* Loop through all entries. */
+                for(const auto& jField : jResponse)
+                {
+                    /* Add to our return array if passed filters. */
+                    encoding::json jItem;
+                    if(FilterFieldname(strField, jField, jItem))
+                        jFiltered.push_back(jItem);
+
+                }
+            }
+
+            /* Check that we found some fieldnames. */
+            if(jFiltered.empty())
+                return false;
+
+            return true;
+        }
+
+        /* Check for object to evaluate. */
+        if(jResponse.is_object())
+        {
+            /* Check for missing field. */
+            if(jResponse.find(strField) == jResponse.end())
+                return false;
+
+            /* Build our single entry return value. */
+            jFiltered[strField] = jResponse[strField];
+
+            return true;
+        }
+
+        return false;
+    }
+
+
+    /* Main filter interface, handles json levels recursively handling multiple fields to filter. */
     bool FilterFieldname(const encoding::json& jParams, encoding::json &jResponse)
     {
         /* Check for fieldname filters. */
@@ -152,111 +220,72 @@ namespace TAO::API
             /* Grab our field string to rebuild response. */
             const std::string strField = jParams["fieldname"].get<std::string>();
 
-            /* Check for recursion. */
-            const auto nFind = strField.find(".");
-            if(nFind != strField.npos)
-            {
-                /* Get our sub-field. */
-                const std::string strNext = strField.substr(0, nFind);
+            /* Build our return value. */
+            encoding::json jRet;
+            if(!FilterFieldname(strField, jResponse, jRet))
+                throw Exception(-119, "[", strField, "] field(s) does not exist for object");
 
-                /* Check that our filter is valid. */
-                if(jResponse.find(strNext) != jResponse.end())
-                {
-                    /* Build our single entry return value. */
-                    jResponse = { { strNext, jResponse[strNext] } };
-
-                    /* Adjust our new fieldname for recursion. */
-                    encoding::json jAdjusted = jParams;
-                    jAdjusted["fieldname"] = strField.substr(nFind + 1);
-
-                    return FilterFieldname(jAdjusted, jResponse[strNext]);
-                }
-            }
-
-            /* Check for array to iterate. */
-            if(jResponse.is_array())
-            {
-                /* Loop through all entries. */
-                encoding::json jRet = encoding::json::array();
-                for(auto& jField : jResponse)
-                {
-                    /* Add to our return array if passed filters. */
-                    if(FilterFieldname(jParams, jField))
-                        jRet.push_back(jField);
-                }
-
-                /* Check that we found some fieldnames. */
-                if(jRet.empty())
-                    return false;
-
-                /* Assign response and return. */
-                jResponse = jRet;
-                return true;
-            }
-
-            /* Check for object to evaluate. */
-            if(jResponse.is_object())
-            {
-                /* Check for missing field. */
-                if(jResponse.find(strField) == jResponse.end())
-                    return false;
-
-                /* Build our single entry return value. */
-                jResponse = { {strField, jResponse[strField] } };
-
-                return true;
-            }
-
-            return false;
+            /* Set our return value. */
+            jResponse = jRet;
+            return true;
         }
 
         /* Handle if multiple fields. */
         if(jParams["fieldname"].is_array())
         {
+            /* Track our aggregates. */
+            std::vector<bool> vfActive(jParams["fieldname"].size(), false);
+
             /* Loop through our fields. */
             encoding::json jRet;
-            for(const auto& jField : jParams["fieldname"])
+            for(uint32_t n = 0; n < jParams["fieldname"].size(); ++n)
             {
                 /* Grab our field string to rebuild response. */
-                const std::string strField = jField.get<std::string>();
+                const std::string strField = jParams["fieldname"][n].get<std::string>();
 
-                /* Build a set of request parameters. */
-                const encoding::json jAdjusted =
-                    {{ "fieldname", strField }};
+                /* Build our filtered statements. */
+                encoding::json jFinal;
+                vfActive[n] = FilterFieldname(strField, jResponse, jRet);
 
                 /* Skip if no fields are added. */
-                encoding::json jFiltered = jResponse;
-                if(!FilterFieldname(jAdjusted, jFiltered))
+                if(!vfActive[n])
                     continue;
-
-                /* Check for recursion. */
-                const auto nFind = strField.find(".");
-                if(nFind != strField.npos)
-                {
-                    /* Get our sub-field. */
-                    const std::string strNext = strField.substr(0, nFind);
-
-                    /* Add to our return value by key. */
-                    jRet[strNext] = jFiltered[strNext];
-                }
-
-                /* Otherwise add by regular key. */
-                else
-                    jRet[strField] = jFiltered[strField];
             }
 
             /* Check that we found some fieldnames. */
             if(jRet.empty())
-                return false;
+            {
+                /* Grab a reference of our fields. */
+                const encoding::json& jFields = jParams["fieldname"];
+
+                /* Aggregate fields. */
+                std::string strAggregate;
+                for(uint32_t n = 0; n < jFields.size(); ++n)
+                {
+                    /* Check for failed fields for reporting. */
+                    if(!vfActive[n])
+                    {
+                        /* Add our aggregate values. */
+                        strAggregate += jFields[n].get<std::string>();
+
+                        /* Add comma if not last. */
+                        if(n < jFields.size() - 1)
+                            strAggregate += ",";
+                    }
+                }
+
+                throw Exception(-119, "[", strAggregate, "] field(s) does not exist for object");
+            }
+
 
             /* Build our single entry return value. */
             jResponse = jRet;
-
             return true;
         }
 
-        return false;
+        throw Exception(-36, "Invalid type [fieldname=", jParams["fieldname"].type_name(), "] for command");
     }
+
 
     /* Determines if an object or it's results should be included in list. */
     bool FilterObject(const encoding::json& jParams, encoding::json &jCheck, TAO::Register::Object &rCheck)

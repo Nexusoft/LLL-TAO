@@ -36,31 +36,45 @@ namespace TAO::API
                          const std::function<bool (const encoding::json&, ObjectType&)>& rFunct);
 
 
-     /** FilterStatement
-      *
-      *  Recursive handle for any type of filter by passing in function and type to filter.
-      *  Can process any depth of logical recursion required.
-      *
-      *  @param[in] jStatement The statement to filter by, in JSON encoding.
-      *  @param[in] rCheck The object that we are checking on.
-      *  @param[in] rFunct The function that executes the final clause filter.
-      *
-      *  @return true if the object passes filter checks, false if it shouldn't be included.
-      *
-      **/
-     template<typename ObjectType>
-     bool FilterStatement(const encoding::json& jStatement, encoding::json &jCheck, ObjectType& rCheck,
+    /** FilterStatement
+     *
+     *  Recursive handle for any type of filter by passing in function and type to filter.
+     *  Can process any depth of logical recursion required.
+     *
+     *  @param[in] jStatement The statement to filter by, in JSON encoding.
+     *  @param[in] rCheck The object that we are checking on.
+     *  @param[in] rFunct The function that executes the final clause filter.
+     *
+     *  @return true if the object passes filter checks, false if it shouldn't be included.
+     *
+     **/
+    template<typename ObjectType>
+    bool FilterStatement(const encoding::json& jStatement, encoding::json &jCheck, ObjectType& rCheck,
                           const std::function<bool (const encoding::json&, ObjectType&)>& xObject);
 
 
     /** FilterFieldname
      *
-     *  If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field
+     *  Helper filter, to handle recursion up and down levels of json. This handles only single entries at a time.
      *
-     *  @param[in] params The parameters passed into the request
-     *  @param[out] response The reponse JSON to be filtered.
+     *  @param[in] strField The fieldname that we are filtering for.
+     *  @param[in] jResponse The response data that we are filtering for.
+     *  @param[out] jFiltered The final filtered data returned by reference.
      *
      *  @return true if a field was found and filtered.
+     *
+     **/
+    bool FilterFieldname(const std::string& strField, const encoding::json& jResponse, encoding::json &jFiltered);
+
+
+    /** FilterFieldname
+     *
+     *  Main filter interface, handles json levels recursively handling multiple fields to filter.
+     *
+     *  @param[in] jParams The parameters passed into the request
+     *  @param[out] jResponse The reponse JSON to be filtered.
+     *
+     *  @return true if a field was found and filtered or if no filters present.
      *
      **/
     bool FilterFieldname(const encoding::json& jParams, encoding::json &jResponse);

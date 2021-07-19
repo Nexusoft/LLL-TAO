@@ -270,7 +270,7 @@ API Error Codes
 | -116 | Cannot transfer names created without a namespace |
 | -117 | Item not found |
 | -118 | [type] operator not supported for this command-set |
-| -119 | ------------------------------------ |
+| -119 | [name] field(s) does not exist for object |
 | -120 | Maximum number of contracts exceeded (99), please try again or use -autotx mode. |
 | -121 | Aggregated type [noun] not allowed for [verb] |
 | -122 | Invalid operator [op] for command. |
