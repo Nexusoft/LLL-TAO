@@ -60,8 +60,10 @@ namespace TAO::API
      *  @param[in] params The parameters passed into the request
      *  @param[out] response The reponse JSON to be filtered.
      *
+     *  @return true if a field was found and filtered.
+     *
      **/
-    void FilterFieldname(const encoding::json& jParams, encoding::json &jResponse);
+    bool FilterFieldname(const encoding::json& jParams, encoding::json &jResponse);
 
 
     /** FilterObject

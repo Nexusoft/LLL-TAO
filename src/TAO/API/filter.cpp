@@ -140,7 +140,7 @@ namespace TAO::API
 
 
     /* If the caller has requested a fieldname to filter on then this filters the response JSON to only include that field */
-    void FilterFieldname(const encoding::json& jParams, encoding::json &jResponse)
+    bool FilterFieldname(const encoding::json& jParams, encoding::json &jResponse)
     {
         /* Check for fieldname filters. */
         if(jParams.find("fieldname") != jParams.end())
@@ -151,37 +151,65 @@ namespace TAO::API
                 /* Grab our field string to rebuild response. */
                 const std::string strField = jParams["fieldname"].get<std::string>();
 
-                /* Check that our filter is valid. */
-                if(jResponse.find(strField) == jResponse.end())
-                    throw Exception(-71, "Fieldname ", strField, " doesn't exist");
-
-                /* Make a copy and add to return json. */
-                const encoding::json jRet = { { strField, jResponse[strField] } };
-                jResponse = jRet;
-            }
-
-            /* Handle if single string. */
-            if(jParams["fieldname"].is_array())
-            {
-                /* Loop through the list of strings. */
-                encoding::json jRet = encoding::json::object();
-                for(const auto& jField : jParams["fieldname"])
+                /* Check for recursion. */
+                const auto nFind = strField.find(".");
+                if(nFind != strField.npos)
                 {
-                    /* Grab our field string to rebuild response. */
-                    const std::string strField = jField.get<std::string>();
+                    /* Get our sub-field. */
+                    const std::string strNext = strField.substr(0, nFind);
 
                     /* Check that our filter is valid. */
-                    if(jResponse.find(strField) == jResponse.end())
-                        throw Exception(-71, "Fieldname ", strField, " doesn't exist");
+                    if(jResponse.find(strNext) != jResponse.end())
+                    {
+                        /* Build our single entry return value. */
+                        jResponse = { { strNext, jResponse[strNext] } };
 
-                    /* Add to the return json. */
-                    jRet[strField] = jResponse[strField];
+                        /* Adjust our new fieldname for recursion. */
+                        encoding::json jAdjusted = jParams;
+                        jAdjusted["fieldname"] = strField.substr(nFind + 1);
+
+                        return FilterFieldname(jAdjusted, jResponse[strNext]);
+                    }
                 }
 
-                /* Set our response now. */
-                jResponse = jRet;
+                /* Check for array to iterate. */
+                if(jResponse.is_array())
+                {
+                    /* Loop through all entries. */
+                    encoding::json jRet = encoding::json::array();
+                    for(auto& jField : jResponse)
+                    {
+                        /* Add to our return array if passed filters. */
+                        if(FilterFieldname(jParams, jField))
+                            jRet.push_back(jField);
+                    }
+
+                    /* Check that we found some fieldnames. */
+                    if(!jRet.empty())
+                    {
+                        jResponse = jRet;
+                        return true;
+                    }
+                }
+
+                /* Check for object to evaluate. */
+                if(jResponse.is_object())
+                {
+                    /* Check for missing field. */
+                    if(jResponse.find(strField) == jResponse.end())
+                        return false;
+
+                    /* Build our single entry return value. */
+                    jResponse = { { strField, jResponse[strField] } };
+
+                    return true;
+                }
+
+                return false;
             }
         }
+
+        return false;
     }
 
     /* Determines if an object or it's results should be included in list. */
