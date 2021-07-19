@@ -143,13 +143,91 @@ namespace TAO::API
     bool FilterFieldname(const encoding::json& jParams, encoding::json &jResponse)
     {
         /* Check for fieldname filters. */
-        if(jParams.find("fieldname") != jParams.end())
+        if(jParams.find("fieldname") == jParams.end())
+            return true;
+
+        /* Handle if single string. */
+        if(jParams["fieldname"].is_string())
         {
-            /* Handle if single string. */
-            if(jParams["fieldname"].is_string())
+            /* Grab our field string to rebuild response. */
+            const std::string strField = jParams["fieldname"].get<std::string>();
+
+            /* Check for recursion. */
+            const auto nFind = strField.find(".");
+            if(nFind != strField.npos)
+            {
+                /* Get our sub-field. */
+                const std::string strNext = strField.substr(0, nFind);
+
+                /* Check that our filter is valid. */
+                if(jResponse.find(strNext) != jResponse.end())
+                {
+                    /* Build our single entry return value. */
+                    jResponse = { { strNext, jResponse[strNext] } };
+
+                    /* Adjust our new fieldname for recursion. */
+                    encoding::json jAdjusted = jParams;
+                    jAdjusted["fieldname"] = strField.substr(nFind + 1);
+
+                    return FilterFieldname(jAdjusted, jResponse[strNext]);
+                }
+            }
+
+            /* Check for array to iterate. */
+            if(jResponse.is_array())
+            {
+                /* Loop through all entries. */
+                encoding::json jRet = encoding::json::array();
+                for(auto& jField : jResponse)
+                {
+                    /* Add to our return array if passed filters. */
+                    if(FilterFieldname(jParams, jField))
+                        jRet.push_back(jField);
+                }
+
+                /* Check that we found some fieldnames. */
+                if(jRet.empty())
+                    return false;
+
+                /* Assign response and return. */
+                jResponse = jRet;
+                return true;
+            }
+
+            /* Check for object to evaluate. */
+            if(jResponse.is_object())
+            {
+                /* Check for missing field. */
+                if(jResponse.find(strField) == jResponse.end())
+                    return false;
+
+                /* Build our single entry return value. */
+                jResponse = { {strField, jResponse[strField] } };
+
+                return true;
+            }
+
+            return false;
+        }
+
+        /* Handle if multiple fields. */
+        if(jParams["fieldname"].is_array())
+        {
+            /* Loop through our fields. */
+            encoding::json jRet;
+            for(const auto& jField : jParams["fieldname"])
             {
                 /* Grab our field string to rebuild response. */
-                const std::string strField = jParams["fieldname"].get<std::string>();
+                const std::string strField = jField.get<std::string>();
+
+                /* Build a set of request parameters. */
+                const encoding::json jAdjusted =
+                    {{ "fieldname", strField }};
+
+                /* Skip if no fields are added. */
+                encoding::json jFiltered = jResponse;
+                if(!FilterFieldname(jAdjusted, jFiltered))
+                    continue;
 
                 /* Check for recursion. */
                 const auto nFind = strField.find(".");
@@ -158,55 +236,23 @@ namespace TAO::API
                     /* Get our sub-field. */
                     const std::string strNext = strField.substr(0, nFind);
 
-                    /* Check that our filter is valid. */
-                    if(jResponse.find(strNext) != jResponse.end())
-                    {
-                        /* Build our single entry return value. */
-                        jResponse = { { strNext, jResponse[strNext] } };
-
-                        /* Adjust our new fieldname for recursion. */
-                        encoding::json jAdjusted = jParams;
-                        jAdjusted["fieldname"] = strField.substr(nFind + 1);
-
-                        return FilterFieldname(jAdjusted, jResponse[strNext]);
-                    }
+                    /* Add to our return value by key. */
+                    jRet[strNext] = jFiltered[strNext];
                 }
 
-                /* Check for array to iterate. */
-                if(jResponse.is_array())
-                {
-                    /* Loop through all entries. */
-                    encoding::json jRet = encoding::json::array();
-                    for(auto& jField : jResponse)
-                    {
-                        /* Add to our return array if passed filters. */
-                        if(FilterFieldname(jParams, jField))
-                            jRet.push_back(jField);
-                    }
-
-                    /* Check that we found some fieldnames. */
-                    if(!jRet.empty())
-                    {
-                        jResponse = jRet;
-                        return true;
-                    }
-                }
-
-                /* Check for object to evaluate. */
-                if(jResponse.is_object())
-                {
-                    /* Check for missing field. */
-                    if(jResponse.find(strField) == jResponse.end())
-                        return false;
-
-                    /* Build our single entry return value. */
-                    jResponse = { { strField, jResponse[strField] } };
-
-                    return true;
-                }
-
-                return false;
+                /* Otherwise add by regular key. */
+                else
+                    jRet[strField] = jFiltered[strField];
             }
+
+            /* Check that we found some fieldnames. */
+            if(jRet.empty())
+                return false;
+
+            /* Build our single entry return value. */
+            jResponse = jRet;
+
+            return true;
         }
 
         return false;
