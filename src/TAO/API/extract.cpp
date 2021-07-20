@@ -177,6 +177,35 @@ namespace TAO::API
     }
 
 
+    /* Extracts a hash value for reading a txid. */
+    uint512_t ExtractHash(const encoding::json& jParams)
+    {
+        /* Check for our hash parameter. */
+        if(CheckParameter(jParams, "txid", "string"))
+        {
+            /* Check for hex encoding. */
+            const std::string strHash = jParams["txid"].get<std::string>();
+            if(!IsHex(strHash))
+                throw Exception(-35, "Invalid parameter [txid], expecting [hex-string]");
+
+            return uint512_t(strHash);
+        }
+
+        /* Check for our hash parameter. */
+        if(CheckParameter(jParams, "hash", "string"))
+        {
+            /* Check for hex encoding. */
+            const std::string strHash = jParams["hash"].get<std::string>();
+            if(!IsHex(strHash))
+                throw Exception(-35, "Invalid parameter [hash], expecting [hex-string]");
+
+            return uint512_t(strHash);
+        }
+
+        throw Exception(-56, "Missing Parameter [hash or txid]");
+    }
+
+
     /* Extract an amount value from either string or integer and convert to its final value. */
     uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strPrefix)
     {
@@ -252,6 +281,31 @@ namespace TAO::API
 
         /* Otherwise return substring. */
         return strField.substr(nFind + 1);
+    }
+
+
+    /* Extract format specifier from input parameters. */
+    std::string ExtractFormat(const encoding::json& jParams, const std::string& strDefault, const std::string& strAllowed)
+    {
+        /* Check for formatting parameter. */
+        if(CheckParameter(jParams, "format", "string"))
+        {
+            /* Grab our format string. */
+            const std::string strFormat = ToLower(jParams["format"].get<std::string>());
+
+            /* Check for allowed formats. */
+            const auto nFind = strAllowed.find(strFormat);
+            if(nFind == strAllowed.npos)
+                throw Exception(-35, "Invalid parameter [format], expecting [", strAllowed, "]");
+
+            return strFormat;
+        }
+
+        /* Check for empty default parameter. */
+        if(strDefault.empty())
+            throw Exception(-28, "Missing parameter [format] for command");
+
+        return strDefault;
     }
 
 

@@ -69,6 +69,18 @@ namespace TAO::API
     uint256_t ExtractRecipient(const encoding::json& jParams);
 
 
+    /** ExtractHash
+     *
+     *  Extracts a hash value for reading a txid.
+     *
+     *  @param[in] jParams
+     *
+     *  @return the extracted txid.
+     *
+     **/
+    uint512_t ExtractHash(const encoding::json& jParams);
+
+
     /** ExtractAmount
      *
      *  Extract an amount value from either string or integer and convert to its final value.
@@ -93,6 +105,20 @@ namespace TAO::API
      *
      **/
     std::string ExtractFieldname(const encoding::json& jParams);
+
+
+    /** ExtractFormat
+     *
+     *  Extract format specifier from input parameters.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *  @param[in] strDefault The default format if no format specified.
+     *  @param[in] strAllowed The allowed formates to extract for.
+     *
+     *  @return string with format specifier.
+     *
+     **/
+    std::string ExtractFormat(const encoding::json& jParams, const std::string& strDefault, const std::string& strAllowed = "json");
 
 
     /** ExtractType
