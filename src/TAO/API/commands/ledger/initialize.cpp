@@ -44,6 +44,17 @@ namespace TAO::API
             )
         );
 
+        /* Handle for the AVERAGE operator. */
+        mapOperators["average"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Average,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
 
         /* Handle for get/blockhash. */
         mapFunctions["get/blockhash"] = Function

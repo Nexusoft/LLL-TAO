@@ -25,18 +25,6 @@ namespace TAO::API
      **/
     struct Operators
     {
-        /** Sum
-         *
-         *  Computes values list by addition.
-         *
-         *  @param[in] jParams The input parameters to the command.
-         *  @param[in] jResult The list of objects to operate on.
-         *
-         *  @return the json result of the operations.
-         *
-         **/
-        static encoding::json Sum(const encoding::json& jParams, const encoding::json& jResult);
-
 
         /** Array
          *
@@ -49,6 +37,32 @@ namespace TAO::API
          *
          **/
         static encoding::json Array(const encoding::json& jParams, const encoding::json& jResult);
+
+
+        /** Average
+         *
+         *  Computes average values into a single item array
+         *
+         *  @param[in] jParams The input parameters to the command.
+         *  @param[in] jResult The list of objects to operate on.
+         *
+         *  @return the json result of the operations.
+         *
+         **/
+        static encoding::json Average(const encoding::json& jParams, const encoding::json& jResult);
+
+
+        /** Sum
+         *
+         *  Computes values list by addition.
+         *
+         *  @param[in] jParams The input parameters to the command.
+         *  @param[in] jResult The list of objects to operate on.
+         *
+         *  @return the json result of the operations.
+         *
+         **/
+        static encoding::json Sum(const encoding::json& jParams, const encoding::json& jResult);
 
     };
 }
