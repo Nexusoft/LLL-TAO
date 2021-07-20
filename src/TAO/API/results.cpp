@@ -16,13 +16,12 @@ ________________________________________________________________________________
 
 namespace TAO::API
 {
-
     /* Convert a given json results queue into a compiled array of only values. */
-    bool ResultsToArray(const encoding::json& jParams, const encoding::json& jResponse, encoding::json &jArray)
+    void ResultsToArray(const encoding::json& jParams, const encoding::json& jResponse, encoding::json &jArray)
     {
         /* Check for fieldname filters. */
         if(jParams.find("fieldname") == jParams.end())
-            return true;
+            return;
 
         /* Handle if single string. */
         if(jParams["fieldname"].is_string())
@@ -35,14 +34,12 @@ namespace TAO::API
                 throw Exception(-119, "[", strField, "] field does not exist for result");
 
             /* Set our return value. */
-            return true;
+            return;
         }
 
         /* Handle if multiple fields. */
         if(jParams["fieldname"].is_array())
             throw Exception(-66, "Cannot use aggregate fieldnames with operations");
-
-        return false;
     }
 
 
