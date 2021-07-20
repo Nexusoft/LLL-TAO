@@ -223,7 +223,7 @@ namespace TAO::API
             /* Build our return value. */
             encoding::json jRet;
             if(!FilterFieldname(strField, jResponse, jRet))
-                throw Exception(-119, "[", strField, "] field(s) does not exist for object");
+                throw Exception(-119, "[", strField, "] field does not exist for result");
 
             /* Set our return value. */
             jResponse = jRet;
@@ -245,38 +245,9 @@ namespace TAO::API
 
                 /* Build our filtered statements. */
                 encoding::json jFinal;
-                vfActive[n] = FilterFieldname(strField, jResponse, jRet);
-
-                /* Skip if no fields are added. */
-                if(!vfActive[n])
-                    continue;
+                if(!FilterFieldname(strField, jResponse, jRet))
+                    throw Exception(-119, "[", strField, "] field does not exist for result");
             }
-
-            /* Check that we found some fieldnames. */
-            if(jRet.empty())
-            {
-                /* Grab a reference of our fields. */
-                const encoding::json& jFields = jParams["fieldname"];
-
-                /* Aggregate fields. */
-                std::string strAggregate;
-                for(uint32_t n = 0; n < jFields.size(); ++n)
-                {
-                    /* Check for failed fields for reporting. */
-                    if(!vfActive[n])
-                    {
-                        /* Add our aggregate values. */
-                        strAggregate += jFields[n].get<std::string>();
-
-                        /* Add comma if not last. */
-                        if(n < jFields.size() - 1)
-                            strAggregate += ",";
-                    }
-                }
-
-                throw Exception(-119, "[", strAggregate, "] field(s) does not exist for object");
-            }
-
 
             /* Build our single entry return value. */
             jResponse = jRet;

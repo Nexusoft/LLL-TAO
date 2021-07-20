@@ -217,8 +217,8 @@ API Error Codes
 | -63 | Could not retrieve default NXS account to credit |
 | -64 | Missing recipient account name_to / address_to |
 | -65 | Object is not an account |
-| -66 | Account is not a NXS account.  Please use the tokens API for debiting non-NXS token accounts |
-| -67 | Account is not a NXS account.  Please use the tokens API for accessing non-NXS token accounts |
+| -66 | Cannot use aggregate fieldnames with operations |
+| -67 | ------------------------ |
 | -68 | Amount too small |
 | -69 | Insufficient funds |
 | -70 | Trust account not found |
@@ -270,7 +270,7 @@ API Error Codes
 | -116 | Cannot transfer names created without a namespace |
 | -117 | Item not found |
 | -118 | [type] operator not supported for this command-set |
-| -119 | [name] field(s) does not exist for object |
+| -119 | [name] field(s) does not exist for result |
 | -120 | Maximum number of contracts exceeded (99), please try again or use -autotx mode. |
 | -121 | Aggregated type [noun] not allowed for [verb] |
 | -122 | Invalid operator [op] for command. |
