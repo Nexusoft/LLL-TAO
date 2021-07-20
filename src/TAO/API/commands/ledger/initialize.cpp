@@ -45,7 +45,7 @@ namespace TAO::API
         );
 
         /* Handle for the AVERAGE operator. */
-        mapOperators["average"] = Operator
+        mapOperators["avg"] = Operator
         (
             std::bind
             (
