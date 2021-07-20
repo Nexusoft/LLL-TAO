@@ -202,7 +202,7 @@ namespace TAO::API
             return uint512_t(strHash);
         }
 
-        throw Exception(-56, "Missing Parameter [hash or txid]");
+        throw Exception(-57, "Invalid Parameter [hash or txid]");
     }
 
 
