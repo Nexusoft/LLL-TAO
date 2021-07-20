@@ -22,12 +22,23 @@ namespace TAO::API
     /* Standard initialization function. */
     void Ledger::Initialize()
     {
-        /* Add the SUM operator. */
+        /* Handle for the SUM operator. */
         mapOperators["sum"] = Operator
         (
             std::bind
             (
                 &Operators::Sum,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the ARRAY operator. */
+        mapOperators["array"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Array,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

@@ -83,6 +83,18 @@ namespace TAO::API
     uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strPrefix = "");
 
 
+    /** ExtractFieldname
+     *
+     *  Extract the fieldname string value from input parameters as only string.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *
+     *  @return a string list of types submitted to API
+     *
+     **/
+    std::string ExtractFieldname(const encoding::json& jParams);
+
+
     /** ExtractType
      *
      *  Extract the type string value from input parameters as only string.

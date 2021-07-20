@@ -30,12 +30,25 @@ namespace TAO::API
          *  Computes values list by addition.
          *
          *  @param[in] jParams The input parameters to the command.
-         *  @param[in] jList The list of objects to add
+         *  @param[in] jResult The list of objects to operate on.
          *
          *  @return the json result of the operations.
          *
          **/
-        static encoding::json Sum(const encoding::json& jParams, const encoding::json& jList);
+        static encoding::json Sum(const encoding::json& jParams, const encoding::json& jResult);
+
+
+        /** Array
+         *
+         *  Computes values into a single item array
+         *
+         *  @param[in] jParams The input parameters to the command.
+         *  @param[in] jResult The list of objects to operate on.
+         *
+         *  @return the json result of the operations.
+         *
+         **/
+        static encoding::json Array(const encoding::json& jParams, const encoding::json& jResult);
 
     };
 }

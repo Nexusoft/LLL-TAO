@@ -24,34 +24,20 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Get the data from a digital asset */
-    encoding::json Operators::Sum(const encoding::json& jParams, const encoding::json& jList)
+    encoding::json Operators::Sum(const encoding::json& jParams, const encoding::json& jResult)
     {
-        /* Check that list is an array. */
-        if(!jList.is_array())
-            throw Exception(-123, "[", jList.type_name(), "] unsupported for operator [op]");
+        /* Build our list from Array command. */
+        const encoding::json jList = Operators::Array(jParams, jResult);
 
-        /* Check for fieldname. */
-        if(jParams.find("fieldname") == jParams.end())
-            throw Exception(-56, "Missing Parameter [fieldname]");
+        /* Extract our fieldname. */
+        const std::string strField = ExtractFieldname(jParams);
 
-        /* Only operate on single fields for now. */
-        if(!jParams["fieldname"].is_string())
-            throw Exception(-121, "Aggregated type [fieldname] not allowed for [sum]");
-
-        /* Grab the fieldname we are operating on. */
-        const std::string& strField =
-            jParams["fieldname"].get<std::string>();
-
-        /* Loop through our list. */
+        /* Loop through to calculate sum. */
         encoding::json jRet = encoding::json::object();
         for(const auto& jItem : jList)
         {
-            /* Check that field exists. */
-            if(jItem.find(strField) == jItem.end())
-                throw Exception(-71, "Fieldname [", strField, "] doesn't exist");
-
             /* Handle for strings. */
-            if(jItem[strField].is_string())
+            if(jItem.is_string())
             {
                 /* Grab our current value. */
                 std::string strCurrent = "";
@@ -59,7 +45,7 @@ namespace TAO::API
                     strCurrent = jRet[strField].get<std::string>();
 
                 /* Grab our values. */
-                const std::string strValue = jItem[strField].get<std::string>();
+                const std::string strValue = jItem.get<std::string>();
 
                 /* Add to our output value. */
                 jRet[strField] = (strCurrent + strValue);
@@ -68,7 +54,7 @@ namespace TAO::API
             }
 
             /* Handle for unsigned signed integers. */
-            if(jItem[strField].is_number_unsigned())
+            if(jItem.is_number_unsigned())
             {
                 /* Grab our current value. */
                 uint64_t nCurrent = 0;
@@ -76,7 +62,7 @@ namespace TAO::API
                     nCurrent = jRet[strField].get<uint64_t>();
 
                 /* Grab our values. */
-                const uint64_t nValue = jItem[strField].get<uint64_t>();
+                const uint64_t nValue = jItem.get<uint64_t>();
 
                 /* Add to our output value. */
                 jRet[strField] = (nCurrent + nValue);
@@ -85,7 +71,7 @@ namespace TAO::API
             }
 
             /* Handle for signed integers. */
-            if(jItem[strField].is_number_integer())
+            if(jItem.is_number_integer())
             {
                 /* Grab our current value. */
                 int64_t nCurrent = 0;
@@ -93,7 +79,7 @@ namespace TAO::API
                     nCurrent = jRet[strField].get<int64_t>();
 
                 /* Grab our values. */
-                const int64_t nValue = jItem[strField].get<int64_t>();
+                const int64_t nValue = jItem.get<int64_t>();
 
                 /* Add to our output value. */
                 jRet[strField] = (nCurrent + nValue);
@@ -102,7 +88,7 @@ namespace TAO::API
             }
 
             /* Handle for floats. */
-            if(jItem[strField].is_number_float())
+            if(jItem.is_number_float())
             {
                 /* Grab our current value. */
                 double dCurrent = 0;
@@ -110,7 +96,7 @@ namespace TAO::API
                     dCurrent = jRet[strField].get<double>();
 
                 /* Grab our values. */
-                const double dValue = jItem[strField].get<double>();
+                const double dValue = jItem.get<double>();
 
                 /* Add to our output value. */
                 jRet[strField] = (dCurrent + dValue);
@@ -119,7 +105,7 @@ namespace TAO::API
             }
 
             /* If we fall through all checks, we are an invalid type. */
-            throw Exception(-123, "[", jItem[strField].type_name(), "] unsupported for operator [sum]");
+            throw Exception(-123, "[", jItem.type_name(), "] unsupported for operator [sum]");
         }
 
         return jRet;
