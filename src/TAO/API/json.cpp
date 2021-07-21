@@ -739,7 +739,7 @@ namespace TAO::API
 
                     /* Handle for remove stake. */
                     if(nStakeChange < 0)
-                        jRet["unstake"]   = FormatStake(0 - nStakeChange);
+                        jRet["stake_change"] = FormatStake(0 - nStakeChange);
 
                     break;
                 }
