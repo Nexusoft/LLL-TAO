@@ -798,7 +798,7 @@ namespace TAO::API
                     jRet["amount"]  = FormatBalance(nAmount, hashToken);
 
                     /* Encode token in Base58 Encoding. */
-                    jRet["token"] = TAO::Register::Address(hashToken).ToString();
+                    jRet["token"]   = hashToken.ToString();
 
                     /* Handle for NXS hardcoded token name. */
                     if(hashToken == TOKEN::NXS)
@@ -865,7 +865,7 @@ namespace TAO::API
                     jRet["amount"]  = FormatBalance(nCredit, hashToken);
 
                     /* Encode token in Base58 Encoding. */
-                    jRet["token"] = TAO::Register::Address(hashToken).ToString();
+                    jRet["token"]   = hashToken.ToString();
 
                     /* Handle for NXS hardcoded token name. */
                     if(hashToken == TOKEN::NXS)
