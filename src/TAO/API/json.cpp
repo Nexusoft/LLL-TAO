@@ -797,11 +797,12 @@ namespace TAO::API
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount, hashToken);
 
-                    /* Add the token-id if not available. */
-                    if(hashToken != TOKEN::NXS)
-                        jRet["token"]   = hashToken.ToString();
-                    else
-                        jRet["token"]   = "NXS";
+                    /* Encode token in Base58 Encoding. */
+                    jRet["token"] = TAO::Register::Address(hashToken).ToString();
+
+                    /* Handle for NXS hardcoded token name. */
+                    if(hashToken == TOKEN::NXS)
+                        jRet["token_name"] = "NXS";
 
                     /* Add the reference to the response */
                     jRet["reference"] = nReference;
@@ -863,11 +864,12 @@ namespace TAO::API
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nCredit, hashToken);
 
-                    /* Add the token-id if not available. */
-                    if(hashToken != TOKEN::NXS)
-                        jRet["token"]   = hashToken.ToString();
-                    else
-                        jRet["token"]   = "NXS";
+                    /* Encode token in Base58 Encoding. */
+                    jRet["token"] = TAO::Register::Address(hashToken).ToString();
+
+                    /* Handle for NXS hardcoded token name. */
+                    if(hashToken == TOKEN::NXS)
+                        jRet["token_name"] = "NXS";
 
                     break;
                 }
@@ -901,12 +903,12 @@ namespace TAO::API
                     contract >> hashLast;
 
                     /* Output the json information. */
-                    jRet["OP"]       = "MIGRATE";
-                    jRet["txid"]     = hashTx.ToString();
-                    jRet["address"]  = hashAccount.ToString();
-                    jRet["amount"]   = FormatBalance(nAmount);
-                    jRet["score"]    = nScore;
-                    jRet["hashLast"] = hashLast.ToString();
+                    jRet["OP"]        = "MIGRATE";
+                    jRet["txid"]      = hashTx.ToString();
+                    jRet["address"]   = hashAccount.ToString();
+                    jRet["amount"]    = FormatBalance(nAmount);
+                    jRet["score"]     = nScore;
+                    jRet["hash_last"] = hashLast.ToString();
 
                     break;
                 }
@@ -1160,8 +1162,8 @@ namespace TAO::API
                             const uint64_t nCurrent = (object.get<uint64_t>("supply") - object.get<uint64_t>("balance"));
 
                             /* Populate json values. */
-                            jRet["currentsupply"] = FormatBalance(nCurrent, nDecimals);
-                            jRet["maxsupply"]     = FormatBalance(object.get<uint64_t>("supply"), nDecimals);
+                            jRet["current_supply"] = FormatBalance(nCurrent, nDecimals);
+                            jRet["max_supply"]     = FormatBalance(object.get<uint64_t>("supply"), nDecimals);
                         }
                         else
                             jRet[strName] = FormatBalance(nValue, nDecimals);

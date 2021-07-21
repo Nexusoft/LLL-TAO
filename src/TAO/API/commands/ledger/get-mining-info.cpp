@@ -50,16 +50,16 @@ namespace TAO::API
             TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest.load();
 
             /* Get the last block for the prime channel up to the latest block*/
-            bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
+            bool fLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
 
             /* Take a max of 1440 samples, which equates to ~20 hours*/
-            for(; (nTotal < 1440 && bLastStateFound); ++nTotal)
+            for(; (nTotal < 1440 && fLastStateFound); ++nTotal)
             {
                 uint64_t nLastBlockTime = blockState.GetBlockTime();
 
                 /* Move back a block and find the last prime block up to this one*/
                 blockState = blockState.Prev();
-                bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
+                fLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
 
                 nPrimeAverageTime += (nLastBlockTime - blockState.GetBlockTime());
                 nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
@@ -90,17 +90,17 @@ namespace TAO::API
             blockState = TAO::Ledger::ChainState::stateBest.load();
 
             /* Get the last block for the hash channel up to the latest block*/
-            bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
+            fLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
 
             /* Take a max of 1440 samples, which equates to ~24 hours*/
-            for(; (nHTotal < 1440 && bLastStateFound); ++nHTotal)
+            for(; (nHTotal < 1440 && fLastStateFound); ++nHTotal)
             {
                 /* Get the block time for this block so that we can work out the time between successive hash blocks */
                 uint64_t nLastBlockTime = blockState.GetBlockTime();
 
                 /* Move back a block and find the last hash block up to this one*/
                 blockState = blockState.Prev();
-                bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
+                fLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
 
                 nHashAverageTime += (nLastBlockTime - blockState.GetBlockTime());
                 nHashAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 2));
