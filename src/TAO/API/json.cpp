@@ -819,8 +819,8 @@ namespace TAO::API
                     contract >> hashTx;
 
                     /* Extract the contract-id. */
-                    uint32_t nID = 0;
-                    contract >> nID;
+                    uint32_t nContract = 0;
+                    contract >> nContract;
 
                     /* Get the account address. */
                     TAO::Register::Address hashAddress;
@@ -848,7 +848,7 @@ namespace TAO::API
 
                     /* Populate the rest of our data. */
                     jRet["txid"]     = hashTx.ToString();
-                    jRet["contract"] = nID;
+                    jRet["contract"] = nContract;
                     jRet["proof"]    = hashProof.ToString();
                     jRet["to"]       = hashAddress.ToString();
 
