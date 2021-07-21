@@ -41,20 +41,18 @@ namespace TAO::API
             throw Exception(-79, "[getblockhash] requires the daemon to be started with the -indexheight flag.");
 
         /* Convert the incoming height string to an int*/
-        const uint32_t nHeight = ExtractInteger<uint32_t>(jParams, "height");
-
-        /* Check that the requested height is within our chain range*/
-        if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
-            throw Exception(-82, "Block number out of range.");
+        const uint32_t nHeight =
+            ExtractInteger<uint32_t>(jParams, "height", TAO::Ledger::ChainState::nBestHeight.load());
 
         /* Read the block state from the the ledger DB using the height index */
-        TAO::Ledger::BlockState blockState;
-        if(!LLD::Ledger->ReadBlock(nHeight, blockState))
+        TAO::Ledger::BlockState tBlock;
+        if(!LLD::Ledger->ReadBlock(nHeight, tBlock))
             throw Exception(-83, "Block not found");
 
-        encoding::json ret;
-        ret["hash"] = blockState.GetHash().GetHex();
+        /* Build our response. */
+        const encoding::json jRet =
+            {{ "hash", tBlock.GetHash().GetHex() }};
 
-        return ret;
+        return jRet;
     }
 }
