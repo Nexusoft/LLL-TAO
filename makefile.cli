@@ -463,7 +463,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_objects_history.o \
 		build/API_types_objects_transfer.o \
 		build/API_commands_operators_array.o \
-		build/API_commands_operators_average.o \
+		build/API_commands_operators_mean.o \
 		build/API_commands_operators_sum.o \
 		build/API_commands_register_initialize.o \
 		build/API_commands_register_list.o \

@@ -21,7 +21,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Get the data from a digital asset */
-    encoding::json Operators::Average(const encoding::json& jParams, const encoding::json& jResult)
+    encoding::json Operators::Mean(const encoding::json& jParams, const encoding::json& jResult)
     {
         /* Extract our fieldname. */
         const std::string strField = ExtractFieldname(jParams);

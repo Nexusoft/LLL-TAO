@@ -39,9 +39,9 @@ namespace TAO::API
         static encoding::json Array(const encoding::json& jParams, const encoding::json& jResult);
 
 
-        /** Average
+        /** Mean
          *
-         *  Computes average values into a single item array
+         *  Computes mean or average values into a single item array
          *
          *  @param[in] jParams The input parameters to the command.
          *  @param[in] jResult The list of objects to operate on.
@@ -49,7 +49,7 @@ namespace TAO::API
          *  @return the json result of the operations.
          *
          **/
-        static encoding::json Average(const encoding::json& jParams, const encoding::json& jResult);
+        static encoding::json Mean(const encoding::json& jParams, const encoding::json& jResult);
 
 
         /** Sum

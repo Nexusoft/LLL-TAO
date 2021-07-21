@@ -44,12 +44,12 @@ namespace TAO::API
             )
         );
 
-        /* Handle for the AVERAGE operator. */
-        mapOperators["average"] = Operator
+        /* Handle for the MEAN operator. */
+        mapOperators["mean"] = Operator
         (
             std::bind
             (
-                &Operators::Average,
+                &Operators::Mean,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
