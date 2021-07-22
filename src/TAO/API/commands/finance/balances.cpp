@@ -137,7 +137,7 @@ namespace TAO::API
 
             /* Add the token identifier */
             if(!strToken.empty())
-                jBalances["token_name"] = strToken;
+                jBalances["token"] = strToken;
 
             /* Add stake/immature for NXS only */
             if(hashToken == TOKEN::NXS)
