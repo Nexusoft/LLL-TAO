@@ -57,6 +57,19 @@ namespace TAO
         void GetChainTimes(uint32_t nAge, uint32_t& nDays, uint32_t& nHours, uint32_t& nMinutes);
 
 
+        /** GetAverageTimespan
+         *
+         *  Gets the average timespan of given number of blocks.
+         *
+         *  @param[in] rBlock The block state to search from.
+         *  @param[in] nMaximum The total blocks to search back.
+         *
+         *  @return the new weighted time.
+         *
+         **/
+        uint64_t GetAverageTimespan(const BlockState& rBlock, const uint32_t nMaximum = 1440);
+
+
         /** GetWeightedTimes
          *
          *  Gets a block time from a weighted average at given depth.

@@ -31,6 +31,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/timelocks.h>
+#include <TAO/Ledger/include/retarget.h>
+#include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/tritium.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -1317,6 +1319,79 @@ namespace TAO::API
             else
                 jRet["data"] = HexStr(vState.begin(), vState.end());
         }
+    }
+
+
+    /* Generate a json object with block channel related data. */
+    encoding::json ChannelToJSON(const uint32_t nChannel)
+    {
+        /* Build our channel response object. */
+        encoding::json jRet =
+        {
+            { "height",     0 },
+            { "weight",     0 },
+            { "timespan",   0 },
+            { "fees",       0 },
+            { "difficulty", 0 },
+        };
+
+        /* Get our last block state. */
+        TAO::Ledger::BlockState tBlock = TAO::Ledger::ChainState::stateBest.load();
+        if(TAO::Ledger::GetLastState(tBlock, nChannel))
+        {
+            /* Populate our heights and weights. */
+            jRet["height"] = tBlock.nChannelHeight;
+            jRet["weight"] = tBlock.nChannelWeight[nChannel].GetHex();
+
+            /* Get our average timespan. */
+            const uint64_t nTimespan =
+                TAO::Ledger::GetAverageTimespan(tBlock, 1440);
+
+            /* Set return data. */
+            jRet["timespan"] = nTimespan;
+
+            /* Handle for mined blocks. */
+            if(nChannel != 0)
+            {
+                /* Populate our reserves and rewards. */
+                jRet["reserve"] = FormatBalance(tBlock.nReleasedReserve[0]
+                                              + tBlock.nReleasedReserve[1]
+                                              + tBlock.nReleasedReserve[2]);
+
+                /* Check for coinbase rewards. */
+                jRet["reward"]  = FormatBalance(TAO::Ledger::GetCoinbaseReward(tBlock, nChannel, 0));
+
+                /* Calculate our average prime rate. */
+                if(nChannel == 1)
+                {
+                    /* Calculate our prime rate based on constants and average times. */
+                    const uint64_t nRate = (2480 / nTimespan) //2480 is difficulty constant XXX: re-check constant
+                        * std::pow(50.0, TAO::Ledger::GetDifficulty(tBlock.nBits, nChannel) - 3.0);
+
+                    /* Add to return values. */
+                    jRet["primes"] = nRate;
+                }
+
+                /* Calculate our average hash rate. */
+                if(nChannel == 2)
+                {
+                    /* Calculate our prime rate based on constants and average times. */
+                    const uint64_t nRate = (276758250000 / nTimespan) //276758250000 is difficulty constant XXX: re-check constant
+                        * TAO::Ledger::GetDifficulty(tBlock.nBits, nChannel);
+
+                    /* Add to return values. */
+                    jRet["hashes"] = nRate;
+                }
+            }
+
+            /* Include our fee reserves. */
+            jRet["fees"]        = FormatBalance(tBlock.nFeeReserve);
+
+            /* Include our difficulty values. */
+            jRet["difficulty"]  = TAO::Ledger::GetDifficulty(tBlock.nBits, nChannel);
+        }
+
+        return jRet;
     }
 
 

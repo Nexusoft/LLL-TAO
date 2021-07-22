@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/ledger.h>
 #include <TAO/API/types/commands/operators.h>
+#include <TAO/API/types/commands/templates.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -80,6 +81,18 @@ namespace TAO::API
             )
         );
 
+        /* Handle for get/block. */
+        mapFunctions["get/info"] = Function
+        (
+            std::bind
+            (
+                &Ledger::GetInfo,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Handle for list/blocks. */
         mapFunctions["list/blocks"] = Function
         (
@@ -98,18 +111,6 @@ namespace TAO::API
             std::bind
             (
                 &Ledger::GetTransaction,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
-        /* Handle for get/mininginfo. */
-        mapFunctions["get/mininginfo"] = Function
-        (
-            std::bind
-            (
-                &Ledger::GetMiningInfo,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
@@ -162,6 +163,20 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+        );
+
+
+        /* DEPRECATED */
+        mapFunctions["get/mininginfo"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use ledger/get/info command instead"
         );
     }
 }

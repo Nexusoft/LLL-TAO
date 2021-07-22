@@ -143,6 +143,18 @@ namespace TAO::API
                                                         const uint256_t& hashRegister = 0);
 
 
+    /** ChannelToJSON
+     *
+     *  Generate a json object with channel related data.
+     *
+     *  @param[in] nChannel The block production channel.
+     *
+     *  @return encoded json object with given channel stats.
+     *
+     **/
+    encoding::json ChannelToJSON(const uint32_t nChannel);
+
+
     /** ObjectToJSON
      *
      *  Converts an Object Register to formattted JSON

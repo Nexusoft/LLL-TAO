@@ -443,7 +443,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_invoices_pay.o \
 		build/API_commands_ledger_get-block.o \
 		build/API_commands_ledger_get-block-hash.o \
-		build/API_commands_ledger_get-mining-info.o \
+		build/API_commands_ledger_get-info.o \
 		build/API_commands_ledger_get-transaction.o \
 		build/API_commands_ledger_initialize.o \
 		build/API_commands_ledger_list-blocks.o \

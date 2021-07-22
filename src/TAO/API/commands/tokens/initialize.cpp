@@ -169,7 +169,7 @@ namespace TAO::API
                 std::placeholders::_2
             )
             , version::get_version(5, 1, 0)
-            , "please use register/list/transactions command instead"
+            , "please use finance/transactions/account command instead"
         );
     }
 }

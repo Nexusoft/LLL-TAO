@@ -200,7 +200,7 @@ namespace TAO::API
      *
      **/
     template<typename Type>
-    Type ExtractInteger(const encoding::json& jParams, const char* strKey,
+    Type ExtractInteger(const encoding::json& jParams, const std::string& strKey,
                         const Type nDefault = std::numeric_limits<Type>::max(),
                         const uint64_t nLimit = std::numeric_limits<Type>::max())
     {

@@ -58,26 +58,26 @@ namespace TAO::API
          *
          *  Retrieves the blockhash for the given height.
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json GetBlockHash(const encoding::json& params, const bool fHelp);
+        encoding::json GetBlockHash(const encoding::json& jParams, const bool fHelp);
 
 
         /** GetBlock
          *
          *  Retrieves the block data for a given hash or height.
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json GetBlock(const encoding::json& params, const bool fHelp);
+        encoding::json GetBlock(const encoding::json& jParams, const bool fHelp);
 
 
         /** ListBlocks
@@ -85,78 +85,78 @@ namespace TAO::API
          *  Retrieves the block data for a sequential range of blocks
          *  starting at a given hash or height.
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json ListBlocks(const encoding::json& params, const bool fHelp);
+        encoding::json ListBlocks(const encoding::json& jParams, const bool fHelp);
 
 
         /** Transaction
          *
          *  Retrieves the transaction data for a given hash.
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json GetTransaction(const encoding::json& params, const bool fHelp);
+        encoding::json GetTransaction(const encoding::json& jParams, const bool fHelp);
 
 
         /** SubmitTransaction
          *
          *  Submits a raw transaction to the network
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json SubmitTransaction(const encoding::json& params, const bool fHelp);
+        encoding::json SubmitTransaction(const encoding::json& jParams, const bool fHelp);
 
 
-        /** GetMiningInfo
+        /** GetInfo
          *
-         *  Returns an object containing mining-related information
+         *  Returns an object containing ledger-related information
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json GetMiningInfo(const encoding::json& params, const bool fHelp);
+        encoding::json GetInfo(const encoding::json& jParams, const bool fHelp);
 
 
         /** VoidTransaction
          *
          *  Reverses a debit or transfer transaction that the caller has made
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json VoidTransaction(const encoding::json& params, const bool fHelp);
+        encoding::json VoidTransaction(const encoding::json& jParams, const bool fHelp);
 
 
         /** SyncSigChain
          *
          *  Synchronizes the signature chain for the currently logged in user.  Only applicable in lite / client mode
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json SyncSigChain(const encoding::json& params, const bool fHelp);
+        encoding::json SyncSigChain(const encoding::json& jParams, const bool fHelp);
 
 
         /** SyncHeaders
@@ -164,13 +164,13 @@ namespace TAO::API
          *  Synchronizes the block header data from a peer. NOTE: the method call will return as soon as the synchronization
          *  process is initiated with a peer, NOT when synchronization is complete.  Only applicable in lite / client mode
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json SyncHeaders(const encoding::json& params, const bool fHelp);
+        encoding::json SyncHeaders(const encoding::json& jParams, const bool fHelp);
 
 
     };

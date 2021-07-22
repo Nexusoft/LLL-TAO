@@ -34,6 +34,35 @@ namespace TAO
     namespace Ledger
     {
 
+        /* Gets the average timespan of given number of blocks. */
+        uint64_t GetAverageTimespan(const BlockState& rBlock, const uint32_t nMaximum)
+        {
+            /* Cache our last block state. */
+            BlockState tLastBlock = rBlock;
+
+            /* Loop until we have all timespans. */
+            uint64_t nTotalTime = 0, nTotal = 0;
+            do
+            {
+                /* Get the next block state. */
+                BlockState tNextBlock = tLastBlock.Prev();
+                if(!TAO::Ledger::GetLastState(tNextBlock, rBlock.nChannel))
+                    break;
+
+                /* Calculate our timespan. */
+                const uint32_t nTimespan =
+                    (tLastBlock.GetBlockTime() - tNextBlock.GetBlockTime());
+
+                /* Adjust our aggregate value. */
+                nTotalTime += nTimespan;
+                tLastBlock = tNextBlock;
+            }
+            while(++nTotal < nMaximum);
+
+            return (nTotalTime / nTotal);
+        }
+
+
         /* Gets a block time from a weighted average at given depth. */
         uint64_t GetWeightedTimes(const BlockState& state, uint32_t nDepth)
         {
