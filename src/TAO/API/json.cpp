@@ -78,11 +78,12 @@ namespace TAO::API
         result["channel"]    = (uint32_t)block.nChannel;
         result["version"]    = (uint32_t)block.nVersion;
         result["merkleroot"] = block.hashMerkleRoot.GetHex();
-        result["time"]       = convert::DateTimeStrFormat(block.GetBlockTime());
+        result["timestamp"]       = block.GetBlockTime();
+        result["date"]       = convert::DateTimeStrFormat(block.GetBlockTime());
         result["nonce"]      = (uint64_t)block.nNonce;
         result["bits"]       = HexBits(block.nBits);
         result["difficulty"] = TAO::Ledger::GetDifficulty(block.nBits, block.nChannel);
-        result["mint"]       = Legacy::SatoshisToAmount(block.nMint);
+        result["mint"]       = FormatBalance(block.nMint);
 
         /* Add previous block if not null. */
         if(block.hashPrevBlock != 0)
