@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/ledger.h>
 
 #include <TAO/API/include/extract.h>
+#include <TAO/API/include/filter.h>
 #include <TAO/API/include/format.h>
 #include <TAO/API/include/json.h>
 
@@ -43,6 +44,9 @@ namespace TAO::API
         jRet["height"]     = tBestBlock.nHeight;
         jRet["timestamp"]  = tBestBlock.GetBlockTime();
         jRet["checkpoint"] = tBestBlock.hashCheckpoint.GetHex();
+
+        /* Filter our fieldname. */
+        FilterFieldname(jParams, jRet);
 
         return jRet;
     }
