@@ -805,7 +805,7 @@ namespace TAO::API
 
                     /* Handle for NXS hardcoded token name. */
                     if(hashToken == TOKEN::NXS)
-                        jRet["token_name"] = "NXS";
+                        jRet["token"] = "NXS";
 
                     /* Add the reference to the response */
                     jRet["reference"] = nReference;
@@ -872,7 +872,7 @@ namespace TAO::API
 
                     /* Handle for NXS hardcoded token name. */
                     if(hashToken == TOKEN::NXS)
-                        jRet["token_name"] = "NXS";
+                        jRet["token"] = "NXS";
 
                     break;
                 }
@@ -1204,7 +1204,7 @@ namespace TAO::API
 
                         /* Handle for NXS hardcoded token name. */
                         if(hash == TOKEN::NXS)
-                            jRet["token_name"] = "NXS";
+                            jRet["token"] = "NXS";
                     }
 
                     /* Specific rule for register address. */
@@ -1497,7 +1497,7 @@ namespace TAO::API
                     /* Get the token names. */ //XXX: this is disabled as it is another O(n^2) algorithm for every object
                     //std::string strTokenName = Names::ResolveAccountTokenName(params, object);
                     //if(!strTokenName.empty())
-                    //    jRet["token_name"] = strTokenName;
+                    //    jRet["token"] = strTokenName;
 
                     /* Handle digit conversion. */
                     const uint8_t  nDecimals = GetDecimals(object);
