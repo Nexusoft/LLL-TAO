@@ -41,7 +41,7 @@ namespace TAO::API
         ExtractList(jParams, strOrder, nLimit, nOffset);
 
         /* Default to verbosity 1 which includes only the hash */
-        const uint32_t nVerbose = ExtractVerbose(jParams);
+        const uint32_t nVerbose = ExtractVerbose(jParams, 1);
 
         /* Get our starting hash now. */
         uint1024_t hashStart = 0;
