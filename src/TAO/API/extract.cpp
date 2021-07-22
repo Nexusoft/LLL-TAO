@@ -127,10 +127,14 @@ namespace TAO::API
                 TAO::Register::Address(jParams["token"].get<std::string>());
 
             /* Check that it is valid */
-            if(!hashRet.IsValid())
-                throw Exception(-165, "Invalid token");
+            if(hashRet.IsValid())
+                return hashRet;
 
-            return hashRet;
+            /* Check for default NXS token or empty name fields. */
+            if(jParams["token"].get<std::string>() == "NXS")
+                return 0;
+
+            return Names::ResolveAddress(jParams, jParams["token"].get<std::string>());
         }
 
         return 0;
