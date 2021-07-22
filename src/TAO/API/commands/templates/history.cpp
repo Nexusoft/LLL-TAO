@@ -169,7 +169,8 @@ namespace TAO::API
                     continue;
 
                 /* Filter out our expected fieldnames if specified. */
-                FilterFieldname(jParams, jRegister);
+                if(!FilterFieldname(jParams, jRegister))
+                    continue;
 
                 /* Insert into set and automatically sort. */
                 setHistory.insert(jRegister);

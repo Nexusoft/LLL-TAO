@@ -158,7 +158,8 @@ namespace TAO::API
             }
 
             /* Filter out our expected fieldnames if specified. */
-            FilterFieldname(jParams, jTransaction);
+            if(!FilterFieldname(jParams, jTransaction))
+                continue;
 
             /* Insert into set and automatically sort. */
             setTransactions.insert(jTransaction);
