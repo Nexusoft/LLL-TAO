@@ -51,10 +51,11 @@ namespace TAO::API
                 TAO::Register::Address(jParams[strAddr].get<std::string>());
 
             /* Check that it is valid */
-            if(!hashRet.IsValid())
-                throw Exception(-165, "Invalid " + strAddr);
+            if(hashRet.IsValid())
+                return hashRet;
 
-            return hashRet;
+            /* Allow address to be a name record as well. */
+            return Names::ResolveAddress(jParams, jParams[strAddr].get<std::string>());
         }
 
         /* Check for our default values. */

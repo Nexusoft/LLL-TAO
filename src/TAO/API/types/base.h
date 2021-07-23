@@ -36,6 +36,15 @@ namespace TAO::API
      **/
     class Base
     {
+        /* Simple enum for readability. */
+        enum URI : uint8_t
+        {
+            VERB     = 0,
+            NOUN     = 1,
+            FIELD    = 2,
+            OPERATOR = 3,
+        };
+
     protected:
 
         /** Initializer Flag. */

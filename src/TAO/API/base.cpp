@@ -108,142 +108,119 @@ namespace TAO::API
 
         /* Check that we have all of our values. */
         if(vMethods.empty()) //we are ignoring everything past first noun on rewrite
-            throw Exception(-14, "Malformed request URL: ", strMethod);
-
-        /* Detect whether fieldname or a resolved name. */
-        bool fAddress =
-            (jParams.find("address") != jParams.end() || jParams.find("name") != jParams.end());
-
-        /* Track if fieldname has been set. */
-        bool fFieldname = false;
+            throw Exception(-14, "Malformed request URI: ", strMethod);
 
         /* Grab the components of this URL. */
-        std::string strVerb = vMethods[0];
-        for(uint32_t n = 1; n < vMethods.size(); ++n)
+        std::string strVerb = vMethods[URI::VERB];
+        for(uint32_t n = URI::NOUN; n < vMethods.size(); ++n)
         {
-            /* Now lets do some rules for the different nouns. */
-            if(n == 1)
+            /* Handle different URL components. */
+            switch(n)
             {
-                /* Check for function noun for fieldname filters on top of literal function maps. */
-                const std::string& strFunction = strVerb + "/" + vMethods[n];
-                if(mapFunctions.count(strFunction))
+                /* Noun URI component. */
+                case URI::NOUN:
                 {
-                    /* set this to skip over address/name */
-                    fAddress = true;
-
-                    /* Set our returned verb. */
-                    strVerb = strFunction;
-
-                    continue; //go to next fieldname
-                }
-
-                /* Check if we are mapping multiple types. */
-                if(vMethods[n].find(",") != vMethods[n].npos)
-                {
-                    /* Grab our components of the URL to rewrite. */
-                    std::vector<std::string> vNouns;
-                    ParseString(vMethods[n], ',', vNouns);
-
-                    /* Build our request type as an array. */
-                    jParams["request"]["type"] = encoding::json::array();
-
-                    /* Loop through our nouns now. */
-                    for(auto& strCheck : vNouns)
+                    /* Check for function noun for fieldname filters on top of literal function maps. */
+                    const std::string& strFunction = strVerb + "/" + vMethods[n];
+                    if(mapFunctions.count(strFunction))
                     {
-                        /* Grab our current noun. */
-                        const std::string strNoun = ((strCheck.back() == 's' && strVerb == "list")
-                            ? strCheck.substr(0, strCheck.size() - 1)
-                            : strCheck);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
+                        /* Set our returned verb. */
+                        strVerb = strFunction;
 
-                        /* Check for unexpected types. */
-                        if(!mapStandards.count(strNoun))
-                            throw Exception(-36, "Invalid type [", strNoun, "] for command");
-
-                        /* Add our type to request object. */
-                        jParams["request"]["type"].push_back(strNoun);
+                        continue; //go to next fieldname
                     }
 
+                    /* Check if we are mapping multiple types. */
+                    if(vMethods[n].find(",") != vMethods[n].npos)
+                    {
+                        /* Grab our components of the URL to rewrite. */
+                        std::vector<std::string> vNouns;
+                        ParseString(vMethods[n], ',', vNouns);
+
+                        /* Build our request type as an array. */
+                        jParams["request"]["type"] = encoding::json::array();
+
+                        /* Loop through our nouns now. */
+                        for(auto& strCheck : vNouns)
+                        {
+                            /* Grab our current noun. */
+                            const std::string strNoun = ((strCheck.back() == 's' && strVerb == "list")
+                                ? strCheck.substr(0, strCheck.size() - 1)
+                                : strCheck);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
+
+                            /* Check for unexpected types. */
+                            if(!mapStandards.count(strNoun))
+                                throw Exception(-36, "Invalid type [", strNoun, "] for command");
+
+                            /* Add our type to request object. */
+                            jParams["request"]["type"].push_back(strNoun);
+                        }
+
+                        continue;
+                    }
+
+                    /* Grab our current noun. */
+                    const std::string strNoun = ((vMethods[n].back() == 's' && strVerb == "list")
+                        ? vMethods[n].substr(0, vMethods[n].size() - 1)
+                        : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
+
+                    /* Check for unexpected types. */
+                    if(!mapStandards.count(strNoun))
+                        throw Exception(-36, "Invalid type [", strNoun, "] for command");
+
+                    /* Add our type to request object. */
+                    jParams["request"]["type"] = strNoun;
+
                     continue;
                 }
 
-                /* Grab our current noun. */
-                const std::string strNoun = ((vMethods[n].back() == 's' && strVerb == "list")
-                    ? vMethods[n].substr(0, vMethods[n].size() - 1)
-                    : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
-
-                /* Check for unexpected types. */
-                if(!mapStandards.count(strNoun))
-                    throw Exception(-36, "Invalid type [", strNoun, "] for command");
-
-                /* Add our type to request object. */
-                jParams["request"]["type"] = strNoun;
-
-                continue;
-            }
-
-            /* If we have reached here, we know we are an address or name. */
-            if(n == 2 && !fAddress)
-            {
-                /* Check if this value is an address. */
-                if(CheckAddress(vMethods[n]))
-                    jParams["address"] = vMethods[n];
-
-                /* If not address it must be a name. */
-                else
-                    jParams["name"] = vMethods[n];
-
-                /* Set address flag. */
-                fAddress = true;
-
-                continue;
-            }
-
-            /* If we have reached here, we know we are a fieldname. */
-            if(n >= 2 && fAddress && !fFieldname)
-            {
-                /* Check if we are mapping multiple types. */
-                if(vMethods[n].find(",") != vMethods[n].npos)
+                /* Field URI component. */
+                case URI::FIELD:
                 {
-                    /* Grab our components of the URL to rewrite. */
-                    std::vector<std::string> vFields;
-                    ParseString(vMethods[n], ',', vFields);
+                    /* Check if we are mapping multiple types. */
+                    if(vMethods[n].find(",") != vMethods[n].npos)
+                    {
+                        /* Grab our components of the URL to rewrite. */
+                        std::vector<std::string> vFields;
+                        ParseString(vMethods[n], ',', vFields);
 
-                    /* Build our request type as an array. */
-                    jParams["fieldname"] = encoding::json::array();
+                        /* Build our request type as an array. */
+                        jParams["fieldname"] = encoding::json::array();
 
-                    /* Loop through our nouns now. */
-                    for(auto& strField : vFields)
-                        jParams["fieldname"].push_back(strField);
+                        /* Loop through our nouns now. */
+                        for(auto& strField : vFields)
+                            jParams["fieldname"].push_back(strField);
+
+                        continue;
+                    }
+
+                    /* Set our fieldname string. */
+                    jParams["fieldname"] = vMethods[n];
 
                     continue;
                 }
 
-                /* Set our fieldname string. */
-                jParams["fieldname"] = vMethods[n];
+                /* Operator URI component. */
+                case URI::OPERATOR:
+                {
+                    /* Grab our operator. */
+                    const std::string& strOperator = vMethods[n];
 
-                /* Set fieldname flag. */
-                fFieldname = true;
+                    /* Check if the operator is available. */
+                    if(!mapOperators.count(strOperator))
+                        throw Exception(-118, "[", strOperator, "] operator not supported for this command-set");
 
-                continue;
+                    /* Add to input parameters. */
+                    jParams["operator"] = strOperator;
+
+                    continue;
+                }
+
+                /* Check for malformed URI. */
+                default:
+                    throw Exception(-14, "Malformed request URI at: ", vMethods[n], " | ", VARIABLE(n));
+
             }
-
-            /* Last slot could be an operator. */
-            if(n >= 3 && fFieldname)
-            {
-                /* Grab our operator. */
-                const std::string& strOperator = vMethods[n];
-
-                /* Check if the operator is available. */
-                if(!mapOperators.count(strOperator))
-                    throw Exception(-118, "[", strOperator, "] operator not supported for this command-set");
-
-                /* Add to input parameters. */
-                jParams["operator"] = strOperator;
-            }
-
-            /* If we get here, we need to throw for malformed URL. */
-            else
-                throw Exception(-14, "Malformed request URL at: ", vMethods[n]);
         }
 
         return strVerb;
