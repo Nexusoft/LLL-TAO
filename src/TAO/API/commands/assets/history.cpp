@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/assets/types/assets.h>
+#include <TAO/API/types/commands/assets.h>
 #include <TAO/API/objects/types/objects.h>
 
 #include <TAO/Register/include/enum.h>
@@ -24,10 +24,11 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* Claim a transferred asset. */
-        encoding::json Assets::Claim(const encoding::json& params, const bool fHelp)
+
+        /* History of an asset and its ownership */
+        encoding::json Assets::History(const encoding::json& params, const bool fHelp)
         {
-            return Objects::Claim(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Asset"));
+            return Objects::History(params, TAO::Register::OBJECTS::NONSTANDARD, std::string("Asset"));
         }
     }
 }

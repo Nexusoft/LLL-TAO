@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/commands.h>
 
-#include <TAO/API/assets/types/assets.h>
+#include <TAO/API/types/commands/assets.h>
 #include <TAO/API/dex/types/dex.h>
 #include <TAO/API/types/commands/ledger.h>
 #include <TAO/API/supply/types/supply.h>

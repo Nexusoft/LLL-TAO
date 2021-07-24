@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/assets/types/assets.h>
+#include <TAO/API/types/commands/assets.h>
 #include <TAO/API/names/types/names.h>
 
 #include <TAO/Operation/include/enum.h>

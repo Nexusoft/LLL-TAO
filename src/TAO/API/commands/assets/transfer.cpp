@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/assets/types/assets.h>
+#include <TAO/API/types/commands/assets.h>
 #include <TAO/API/objects/types/objects.h>
 
 #include <TAO/Register/include/enum.h>
