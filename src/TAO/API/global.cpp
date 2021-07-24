@@ -46,7 +46,7 @@ namespace TAO::API
 
         /* Create the API instances. */
         Commands::Register<Assets>();
-        Commands::Register<Crypto>();
+        //Commands::Register<Crypto>();
         Commands::Register<Market>();
         Commands::Register<Finance>();
         Commands::Register<Invoices>();
@@ -57,7 +57,7 @@ namespace TAO::API
         Commands::Register<System>();
         Commands::Register<Tokens>();
         Commands::Register<Users>();
-        Commands::Register<Voting>();
+        //Commands::Register<Voting>();
     }
 
 
