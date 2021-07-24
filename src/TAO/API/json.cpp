@@ -1250,7 +1250,7 @@ namespace TAO::API
                     }
 
                     /* Set the return value from object register data. */
-                    jRet[strName] = strRet;
+                    jRet[strName] = strRet.substr(0, strRet.find_last_not_of('\0') + 1);
 
                     break;
                 }
