@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/constants.h>
+#include <TAO/API/include/get.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -39,6 +41,21 @@ namespace TAO::API
                     return false;
 
                 return rObject.Standard() == TAO::Register::OBJECTS::NONSTANDARD;
+            }
+        );
+
+        /* Populate our raw standard. */
+        mapStandards["raw"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                /* Check for correct state type. */
+                if(rObject.nType != TAO::Register::REGISTER::RAW)
+                    return false;
+
+                /* Check that this matches our user type. */
+                return GetStandardType(rObject) == USER_TYPES::ASSET;
             }
         );
 

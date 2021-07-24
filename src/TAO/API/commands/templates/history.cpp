@@ -40,12 +40,12 @@ namespace TAO::API
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
 
         /* Read the register from DB. */
-        TAO::Register::State objCheck;
-        if(!LLD::Register->ReadState(hashRegister, objCheck))
+        TAO::Register::State rObject;
+        if(!LLD::Register->ReadState(hashRegister, rObject))
             throw Exception(-13, "Object not found");
 
         /* Use this asset to get our genesis-id adjusting if it is in system state. */
-        uint256_t hashGenesis = objCheck.hashOwner;
+        uint256_t hashGenesis = rObject.hashOwner;
         if(hashGenesis.GetType() == TAO::Ledger::GENESIS::SYSTEM)
             hashGenesis.SetType(TAO::Ledger::GENESIS::UserType());
 

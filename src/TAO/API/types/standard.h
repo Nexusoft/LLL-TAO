@@ -111,7 +111,7 @@ namespace TAO::API
          *  @return The json formatted response.
          *
          **/
-        __attribute__((pure)) bool Check(const TAO::Register::Object& objCheck) const
+        __attribute__((pure)) bool Check(const TAO::Register::Object& rObject) const
         {
             /* Check for activation status. */
             const uint64_t nTimestamp = runtime::unifiedtimestamp();
@@ -122,7 +122,7 @@ namespace TAO::API
             if(nMaxVersion != 0 && version::CLIENT_VERSION >= nMaxVersion)
                 throw Exception(-5, "Object not available: deprecated at version ", version::version_string(nMaxVersion));
 
-            return xFunction(objCheck);
+            return xFunction(rObject);
         }
 
 

@@ -63,9 +63,9 @@ namespace TAO::API
         mapStandards["account"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::ACCOUNT;
+                return rObject.Standard() == TAO::Register::OBJECTS::ACCOUNT;
             }
         );
 
@@ -73,9 +73,9 @@ namespace TAO::API
         mapStandards["token"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::TOKEN;
+                return rObject.Standard() == TAO::Register::OBJECTS::TOKEN;
             }
         );
 
@@ -83,9 +83,9 @@ namespace TAO::API
         mapStandards["trust"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::TRUST;
+                return rObject.Standard() == TAO::Register::OBJECTS::TRUST;
             }
         );
 
@@ -93,14 +93,14 @@ namespace TAO::API
         mapStandards["any"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
                 /* Check that base object is account. */
-                if(objCheck.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                if(rObject.Base() != TAO::Register::OBJECTS::ACCOUNT)
                     return false;
 
                 /* Make sure not a token. */
-                if(objCheck.Standard() == TAO::Register::OBJECTS::TOKEN)
+                if(rObject.Standard() == TAO::Register::OBJECTS::TOKEN)
                     return false;
 
                 return true;
@@ -111,14 +111,14 @@ namespace TAO::API
         mapStandards["all"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
                 /* Check that base object is account. */
-                if(objCheck.Base() != TAO::Register::OBJECTS::ACCOUNT)
+                if(rObject.Base() != TAO::Register::OBJECTS::ACCOUNT)
                     return false;
 
                 /* Make sure not a token. */
-                if(objCheck.Standard() == TAO::Register::OBJECTS::TOKEN)
+                if(rObject.Standard() == TAO::Register::OBJECTS::TOKEN)
                     return false;
 
                 return true;

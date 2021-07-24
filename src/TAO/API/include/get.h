@@ -47,6 +47,18 @@ namespace TAO::API
     uint8_t GetDecimals(const TAO::Register::Object& object);
 
 
+    /** GetStandardType
+     *
+     *  Get the type standardized into object if applicable.
+     *
+     *  @param[in] rObject The object we are extracting for.
+     *
+     *  @return the given standard type.
+     *
+     **/
+    uint16_t GetStandardType(const TAO::Register::Object& rObject);
+
+
     /** GetPending
      *
      *  Get the sum of all debit notifications for the the specified token
@@ -73,10 +85,8 @@ namespace TAO::API
      *  @return The sum of all pending debits
      *
      **/
-    uint64_t GetUnconfirmed(const uint256_t& hashGenesis,
-                            const uint256_t& hashToken,
-                            bool fOutgoing,
-                            const uint256_t& hashAccount = 0);
+    uint64_t GetUnconfirmed(const uint256_t& hashGenesis, const uint256_t& hashToken,
+                            const bool fOutgoing, const uint256_t& hashAccount = 0);
 
 
     /** GetImmature
@@ -133,7 +143,7 @@ namespace TAO::API
     bool GetAccountByToken(const uint256_t& hashGenesis, const uint256_t& hashToken, TAO::Register::Address& hashAccount);
 
 
-    /** GetRegisterType
+    /** GetRegisterName
      *
      *  Returns a type string for the register type
      *
@@ -142,10 +152,10 @@ namespace TAO::API
      *  @return A string representation of the register type
      *
      **/
-    std::string GetRegisterType(const uint8_t nType);
+    std::string GetRegisterName(const uint8_t nType);
 
 
-    /** GetStandardType
+    /** GetStandardName
      *
      *  Returns a type string for the register object type
      *
@@ -154,6 +164,6 @@ namespace TAO::API
      *  @return A string representation of the object register type
      *
      **/
-    std::string GetStandardType(const uint8_t nType);
+    std::string GetStandardName(const uint8_t nType);
 
 }

@@ -601,7 +601,7 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]      = "CREATE";
                     jRet["address"] = hashAddress.ToString();
-                    jRet["type"]    = GetRegisterType(nType);
+                    jRet["type"]    = GetRegisterName(nType);
 
                     /* If this is a register object then decode the object type */
                     if(nType == TAO::Register::REGISTER::OBJECT)
@@ -620,7 +620,7 @@ namespace TAO::API
                             throw Exception(-36, "Failed to parse object register");
 
                         /* Add object standard if available. */
-                        jRet["standard"] = GetStandardType(object.Standard());
+                        jRet["standard"] = GetStandardName(object.Standard());
 
                         /* Add our fields json data now. */
                         jRet["object"]   = encoding::json::object();
@@ -1007,7 +1007,7 @@ namespace TAO::API
         jRet["version"]  = object.nVersion;
         jRet["created"]  = object.nCreated;
         jRet["modified"] = object.nModified;
-        jRet["type"]     = GetRegisterType(object.nType);
+        jRet["type"]     = GetRegisterName(object.nType);
 
         /* Handle if register isn't an object. */
         if(object.nType != TAO::Register::REGISTER::OBJECT)

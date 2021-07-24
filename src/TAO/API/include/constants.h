@@ -49,9 +49,10 @@ namespace TAO::API
             //valid state types
             SUPPLY      = 1,
             INVOICE     = 2,
+            ASSET       = 3,
 
             //for range checks
-            RESERVED2   = 3
+            RESERVED2   = 4
         };
 
         /** Valid

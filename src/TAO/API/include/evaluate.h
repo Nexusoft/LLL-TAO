@@ -50,11 +50,11 @@ namespace TAO::API
      *  Determines if an object should be included in a list based on given clause.
      *
      *  @param[in] jClause The clause to check filter for.
-     *  @param[out] objCheck The object we are checking for.
+     *  @param[out] rObject The object we are checking for.
      *
      *  @return true if the object should be included in the results.
      *
      **/
-    bool EvaluateObject(const encoding::json& jClause, TAO::Register::Object &objCheck);
+    bool EvaluateObject(const encoding::json& jClause, TAO::Register::Object &rObject);
 
 }

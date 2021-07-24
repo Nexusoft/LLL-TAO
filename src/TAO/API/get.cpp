@@ -93,6 +93,27 @@ namespace TAO::API
     }
 
 
+    /* Get the type standardized into object if applicable. */
+    uint16_t GetStandardType(const TAO::Register::Object& rObject)
+    {
+        /* Check for a regular object type. */
+        if(rObject.nType == TAO::Register::REGISTER::OBJECT)
+            return 0;
+
+        /* Reset read position. */
+        rObject.nReadPos = 0;
+
+        /* Find our leading type byte. */
+        uint16_t nType;
+        rObject >> nType;
+
+        /* Cleanup our read position. */
+        rObject.nReadPos = 0;
+
+        return nType;
+    }
+
+
     /* Get the sum of all debit notifications for the the specified token */
     uint64_t GetPending(const uint256_t& hashGenesis, const uint256_t& hashToken, const uint256_t& hashAccount)
     {
@@ -790,7 +811,7 @@ namespace TAO::API
 
 
     /* Returns a type string for the register type */
-    std::string GetRegisterType(const uint8_t nType)
+    std::string GetRegisterName(const uint8_t nType)
     {
         /* Switch based on register type. */
         switch(nType)
@@ -821,7 +842,7 @@ namespace TAO::API
 
 
     /* Returns a type string for the register object type */
-    std::string GetStandardType(const uint8_t nType)
+    std::string GetStandardName(const uint8_t nType)
     {
         /* Switch based on standard type. */
         switch(nType)

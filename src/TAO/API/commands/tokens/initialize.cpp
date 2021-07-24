@@ -32,9 +32,9 @@ namespace TAO::API
         mapStandards["account"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::ACCOUNT;
+                return rObject.Standard() == TAO::Register::OBJECTS::ACCOUNT;
             }
         );
 
@@ -42,9 +42,9 @@ namespace TAO::API
         mapStandards["token"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::TOKEN;
+                return rObject.Standard() == TAO::Register::OBJECTS::TOKEN;
             }
         );
 

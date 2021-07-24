@@ -121,17 +121,17 @@ namespace TAO::API
     bool CheckStandard(const encoding::json& jParams, const uint256_t& hashCheck)
     {
         /* Let's grab our object to check against and throw if it's missing. */
-        TAO::Register::Object objCheck;
-        if(!LLD::Register->ReadObject(hashCheck, objCheck))
+        TAO::Register::Object rObject;
+        if(!LLD::Register->ReadObject(hashCheck, rObject))
             throw Exception(-13, "Object not found");
 
         /* Execute now that we have the object. */
-        return CheckStandard(jParams, objCheck);
+        return CheckStandard(jParams, rObject);
     }
 
 
     /*  Checks if the designated object matches the explicet type specified in parameters. */
-    bool CheckStandard(const encoding::json& jParams, const TAO::Register::Object& objCheck)
+    bool CheckStandard(const encoding::json& jParams, const TAO::Register::Object& rObject)
     {
         /* Check for our request parameters first, since this method can be called without */
         if(jParams.find("request") == jParams.end())
@@ -154,7 +154,7 @@ namespace TAO::API
             for(const auto& jCheck : jTypes)
             {
                 /* Check if at least one standard is correct. */
-                if(pBase->CheckObject(jCheck.get<std::string>(), objCheck))
+                if(pBase->CheckObject(jCheck.get<std::string>(), rObject))
                     return true;
             }
 
@@ -162,6 +162,6 @@ namespace TAO::API
         }
 
         /* Catch-all here will treat input as a string. */
-        return pBase->CheckObject(jTypes.get<std::string>(), objCheck);
+        return pBase->CheckObject(jTypes.get<std::string>(), rObject);
     }
 } // End TAO namespace

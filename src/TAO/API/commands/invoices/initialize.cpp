@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/include/enum.h>
@@ -65,27 +66,14 @@ namespace TAO::API
         mapStandards["invoice"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
                 /* Check for correct state type. */
-                if(objCheck.nType != TAO::Register::REGISTER::READONLY)
+                if(rObject.nType != TAO::Register::REGISTER::READONLY)
                     return false;
-
-                /* Reset read position. */
-                objCheck.nReadPos = 0;
-
-                /* Find our leading type byte. */
-                uint16_t nType;
-                objCheck >> nType;
-
-                /* Cleanup our read position. */
-                objCheck.nReadPos = 0;
 
                 /* Check that this matches our user type. */
-                if(nType != USER_TYPES::INVOICE)
-                    return false;
-
-                return true;
+                return GetStandardType(rObject) == USER_TYPES::INVOICE;
             }
 
             /* Our custom encoding function for this type. */
@@ -101,13 +89,13 @@ namespace TAO::API
         mapStandards["outstanding"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [this](const TAO::Register::Object& objCheck)
+            [this](const TAO::Register::Object& rObject)
             {
                 /* Check for correct state type. */
-                if(!CheckObject("invoice", objCheck))
+                if(!CheckObject("invoice", rObject))
                     return false;
 
-                return (objCheck.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM);
+                return (rObject.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM);
             }
 
             /* Our custom encoding function for this type. */
@@ -123,14 +111,14 @@ namespace TAO::API
         mapStandards["paid"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [this](const TAO::Register::Object& objCheck)
+            [this](const TAO::Register::Object& rObject)
             {
                 /* Check for correct state type. */
-                if(!CheckObject("invoice", objCheck))
+                if(!CheckObject("invoice", rObject))
                     return false;
 
                 /* Get our recipient. */
-                encoding::json jInvoice = RegisterToJSON(objCheck);
+                encoding::json jInvoice = RegisterToJSON(rObject);
                 if(jInvoice.find("json") == jInvoice.end())
                     return false;
 
@@ -138,7 +126,7 @@ namespace TAO::API
                 if(jInvoice["json"].find("recipient") == jInvoice["json"].end())
                     return false;
 
-                return (objCheck.hashOwner == uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
+                return (rObject.hashOwner == uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
             }
 
             /* Our custom encoding function for this type. */
@@ -154,14 +142,14 @@ namespace TAO::API
         mapStandards["cancelled"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [this](const TAO::Register::Object& objCheck)
+            [this](const TAO::Register::Object& rObject)
             {
                 /* Check for correct state type. */
-                if(!CheckObject("invoice", objCheck))
+                if(!CheckObject("invoice", rObject))
                     return false;
 
                 /* Get our recipient. */
-                encoding::json jInvoice = RegisterToJSON(objCheck);
+                encoding::json jInvoice = RegisterToJSON(rObject);
                 if(jInvoice.find("json") == jInvoice.end())
                     return false;
 
@@ -169,7 +157,7 @@ namespace TAO::API
                 if(jInvoice["json"].find("recipient") == jInvoice["json"].end())
                     return false;
 
-                return (objCheck.hashOwner != uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
+                return (rObject.hashOwner != uint256_t(jInvoice["json"]["recipient"].get<std::string>()));
             }
 
             /* Our custom encoding function for this type. */

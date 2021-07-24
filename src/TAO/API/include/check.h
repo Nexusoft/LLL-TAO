@@ -96,12 +96,12 @@ namespace TAO::API
      *  Doesn't do a register database lookup like prior overload does.
      *
      *  @param[in] jParams The json parameters to check against.
-     *  @param[in] objCheck The object that we are checking for.
+     *  @param[in] rObject The object that we are checking for.
      *
      *  @return True if the object type is what was specified.
      *
      **/
-    bool CheckStandard(const encoding::json& jParams, const TAO::Register::Object& objCheck);
+    bool CheckStandard(const encoding::json& jParams, const TAO::Register::Object& rObject);
 
 
 }

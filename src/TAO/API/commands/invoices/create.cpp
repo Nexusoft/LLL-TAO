@@ -39,12 +39,12 @@ namespace TAO::API
         const TAO::Register::Address hashAccount = ExtractAddress(jParams);
 
         /* Validate the payment account */
-        TAO::Register::Object objCheck;
-        if(!LLD::Register->ReadObject(hashAccount, objCheck))
+        TAO::Register::Object rObject;
+        if(!LLD::Register->ReadObject(hashAccount, rObject))
             throw Exception(-13, "Object not found");
 
         /* Check the object standard. */
-        if(objCheck.Base() != TAO::Register::OBJECTS::ACCOUNT)
+        if(rObject.Base() != TAO::Register::OBJECTS::ACCOUNT)
             throw Exception(-65, "Object is not an account");
 
         /* Check for recipient by username. */
@@ -96,7 +96,7 @@ namespace TAO::API
 
         /* Grab the digits for this token type. */
         const uint8_t nDigits =
-            GetDecimals(objCheck);
+            GetDecimals(rObject);
 
         /* Iterate the items to validate them */
         uint64_t nTotal = 0;
@@ -126,7 +126,7 @@ namespace TAO::API
 
         /* The token that this invoice should be transacted in */
         const TAO::Register::Address hashToken =
-            objCheck.get<uint256_t>("token");
+            rObject.get<uint256_t>("token");
 
         /* Add the invoice amount and token */
         jInvoice["amount"] = FormatBalance(nTotal, nDigits);

@@ -28,9 +28,9 @@ namespace TAO::API
         mapStandards["account"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::ACCOUNT;
+                return rObject.Standard() == TAO::Register::OBJECTS::ACCOUNT;
             }
 
             /* Our custom encoding function for this type. */
@@ -46,9 +46,9 @@ namespace TAO::API
         mapStandards["crypto"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::CRYPTO;
+                return rObject.Standard() == TAO::Register::OBJECTS::CRYPTO;
             }
         );
 
@@ -56,9 +56,9 @@ namespace TAO::API
         mapStandards["name"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::NAME;
+                return rObject.Standard() == TAO::Register::OBJECTS::NAME;
             }
         );
 
@@ -66,9 +66,9 @@ namespace TAO::API
         mapStandards["namespace"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::NAMESPACE;
+                return rObject.Standard() == TAO::Register::OBJECTS::NAMESPACE;
             }
         );
 
@@ -76,9 +76,9 @@ namespace TAO::API
         mapStandards["asset"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::NONSTANDARD;
+                return rObject.Standard() == TAO::Register::OBJECTS::NONSTANDARD;
             }
         );
 
@@ -86,9 +86,9 @@ namespace TAO::API
         mapStandards["token"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::TOKEN;
+                return rObject.Standard() == TAO::Register::OBJECTS::TOKEN;
             }
         );
 
@@ -96,9 +96,9 @@ namespace TAO::API
         mapStandards["trust"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.Standard() == TAO::Register::OBJECTS::TRUST;
+                return rObject.Standard() == TAO::Register::OBJECTS::TRUST;
             }
 
             /* Our custom encoding function for this type. */
@@ -114,9 +114,9 @@ namespace TAO::API
         mapStandards["append"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.nType == TAO::Register::REGISTER::APPEND;
+                return rObject.nType == TAO::Register::REGISTER::APPEND;
             }
         );
 
@@ -124,9 +124,9 @@ namespace TAO::API
         mapStandards["raw"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.nType == TAO::Register::REGISTER::RAW;
+                return rObject.nType == TAO::Register::REGISTER::RAW;
             }
         );
 
@@ -134,9 +134,9 @@ namespace TAO::API
         mapStandards["readonly"] = Standard
         (
             /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& objCheck)
+            [](const TAO::Register::Object& rObject)
             {
-                return objCheck.nType == TAO::Register::REGISTER::READONLY;
+                return rObject.nType == TAO::Register::REGISTER::READONLY;
             }
         );
 

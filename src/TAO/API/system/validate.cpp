@@ -86,7 +86,7 @@ namespace TAO
                         jsonRet["is_valid"] = true;
 
                         /* Set the register type */
-                        jsonRet["type"]    = GetRegisterType(state.nType);
+                        jsonRet["type"]    = GetRegisterName(state.nType);
 
                         /* Check if address is owned by current user */
                         uint256_t hashGenesis = Commands::Get<Users>()->GetCallersGenesis(params);
@@ -103,7 +103,7 @@ namespace TAO
                         {
                             /* parse object so that the data fields can be accessed */
                             if(state.Parse())
-                                jsonRet["object_type"] = GetStandardType(state.Standard());
+                                jsonRet["object_type"] = GetStandardName(state.Standard());
                             else
                                 jsonRet["is_valid"] = false;
                         }

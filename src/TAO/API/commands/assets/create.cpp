@@ -11,14 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/hash/SK.h>
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/commands/assets.h>
-#include <TAO/API/names/types/names.h>
+
+#include <TAO/API/include/extract.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -38,301 +38,244 @@ ________________________________________________________________________________
 #include <Util/include/base64.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Create an asset or digital item. */
+    encoding::json Assets::Create(const encoding::json& jParams, const bool fHelp)
     {
+        /* Generate a random hash for this objects register address */
+        TAO::Register::Address hashRegister;
 
-        /* Create an asset or digital item. */
-        encoding::json Assets::Create(const encoding::json& params, const bool fHelp)
+        /* Check for format parameter. */
+        const std::string strFormat = ExtractFormat(jParams, "raw, basic, json");
+
+        /* Handle for the raw specifier. */
+        std::vector<TAO::Operation::Contract> vContracts(1);
+        if(strFormat == "raw")
         {
-            encoding::json ret;
+            /* Set the proper asset type. */
+            hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
 
-            /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(params))
-                throw Exception(-139, "Invalid credentials");
+            /* If format = raw then use a raw state register rather than an object */
+            if(jParams.find("data") == jParams.end())
+                throw Exception(-18, "Missing data");
 
-            /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            /* Check data is in a string field */
+            if(!jParams["data"].is_string())
+                throw Exception(-19, "Data must be a string with this asset format.");
 
-            /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+            /* Serialise the incoming data into a state register*/
+            DataStream ssData(SER_REGISTER, 1);
 
-            /* Lock the signature chain. */
-            LOCK(session.CREATE_MUTEX);
+            /* Then the raw data */
+            ssData << jParams["data"].get<std::string>();
 
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-                throw Exception(-17, "Failed to create transaction");
+            /* Submit the payload object. */
+            vContracts[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister;
+            vContracts[0] << uint8_t(TAO::Register::REGISTER::RAW) << ssData.Bytes();
+        }
+        else if(strFormat == "basic")
+        {
+            /* Set the proper asset type. */
+            hashRegister = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
-            /* Generate a random hash for this objects register address */
-            TAO::Register::Address hashRegister;
+            /* declare the object register to hold the asset data*/
+            TAO::Register::Object asset = TAO::Register::CreateAsset();
 
-            /* Check for format parameter. */
-            std::string strFormat = "basic"; // default to basic format if no foramt is specified
-            if(params.find("format") != params.end())
-                strFormat = params["format"].get<std::string>();
+            /* Track the number of fields so that we can check there is at least one */
+            uint32_t nFieldCount = 0;
 
-            // parse the incoming asset definition based on the specified format
-            if(strFormat == "raw")
+            /* Iterate through the paramers and infer the type for each value */
+            for(auto it = jParams.begin(); it != jParams.end(); ++it)
             {
-                /* Set the proper asset type. */
-                hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
-
-                /* If format = raw then use a raw state register rather than an object */
-                if(params.find("data") == params.end())
-                    throw Exception(-18, "Missing data");
-
-                /* Check data is in a string field */
-                if(!params["data"].is_string())
-                    throw Exception(-19, "Data must be a string with this asset format.");
-
-                /* Serialise the incoming data into a state register*/
-                DataStream ssData(SER_REGISTER, 1);
-
-                /* Then the raw data */
-                ssData << params["data"].get<std::string>();
-
-                /* Submit the payload object. */
-                tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::RAW) << ssData.Bytes();
-
-            }
-            else if(strFormat == "basic")
-            {
-                /* Set the proper asset type. */
-                hashRegister = TAO::Register::Address(TAO::Register::Address::OBJECT);
-
-                /* declare the object register to hold the asset data*/
-                TAO::Register::Object asset = TAO::Register::CreateAsset();
-
-                /* Track the number of fields so that we can check there is at least one */
-                uint32_t nFieldCount = 0;
-
-                /* Iterate through the paramers and infer the type for each value */
-                for(auto it = params.begin(); it != params.end(); ++it)
+                /* Skip any incoming parameters that are keywords used by this API method*/
+                if(it.key() == "pin"
+                || it.key() == "PIN"
+                || it.key() == "session"
+                || it.key() == "name"
+                || it.key() == "format"
+                || it.key() == "token_name"
+                || it.key() == "token_value")
                 {
-                    /* Skip any incoming parameters that are keywords used by this API method*/
-                    if(it.key() == "pin"
-                    || it.key() == "PIN"
-                    || it.key() == "session"
-                    || it.key() == "name"
-                    || it.key() == "format"
-                    || it.key() == "token_name"
-                    || it.key() == "token_value")
-                    {
-                        continue;
-                    }
-
-                    /* Handle switch for string types in BASIC encoding */
-                    if(it->is_string())
-                    {
-                        ++nFieldCount;
-
-                        std::string strValue = it->get<std::string>();
-                        asset << it.key() << uint8_t(TAO::Register::TYPES::STRING) << strValue;
-                    }
-                    else
-                        throw Exception(-19, "Data must be a string with this asset format.");
+                    continue;
                 }
 
-                if(nFieldCount == 0)
-                    throw Exception(-20, "Missing asset value fields.");
-
-                /* Submit the payload object. */
-                tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
-            }
-            else if(strFormat == "JSON")
-            {
-                /* Set the proper asset type. */
-                hashRegister = TAO::Register::Address(TAO::Register::Address::OBJECT);
-
-                /* If format = JSON then grab the asset definition from the json field */
-                if(params.find("json") == params.end())
-                    throw Exception(-21, "Missing json parameter.");
-
-                if(!params["json"].is_array())
-                    throw Exception(-22, "json field must be an array.");
-
-                /* declare the object register to hold the asset data*/
-                TAO::Register::Object asset = TAO::Register::CreateAsset();
-
-                encoding::json jsonAssetDefinition = params["json"];
-
-                /* Track the number of fields so that we can check there is at least one */
-                int nFieldCount = 0;
-
-                /* Iterate through each field definition */
-                for(auto it = jsonAssetDefinition.begin(); it != jsonAssetDefinition.end(); ++it)
+                /* Handle switch for string types in BASIC encoding */
+                if(it->is_string())
                 {
-                    /* Check that the required fields have been provided*/
-                    if(it->find("name") == it->end())
-                        throw Exception(-22, "Missing name field in json definition.");
+                    ++nFieldCount;
 
-                    if(it->find("type") == it->end())
-                        throw Exception(-23, "Missing type field in json definition.");
+                    std::string strValue = it->get<std::string>();
+                    asset << it.key() << uint8_t(TAO::Register::TYPES::STRING) << strValue;
+                }
+                else
+                    throw Exception(-19, "Data must be a string with this asset format.");
+            }
 
-                    if(it->find("value") == it->end())
-                        throw Exception(-24, "Missing value field in json definition.");
+            if(nFieldCount == 0)
+                throw Exception(-20, "Missing asset value fields.");
 
-                    if(it->find("mutable") == it->end())
-                        throw Exception(-25, "Missing mutable field in json definition.");
+            /* Submit the payload object. */
+            vContracts[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister;
+            vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
+        }
+        else if(strFormat == "JSON")
+        {
+            /* Set the proper asset type. */
+            hashRegister = TAO::Register::Address(TAO::Register::Address::OBJECT);
 
-                    /* Parse the values out of the definition json*/
-                    std::string strName =  (*it)["name"].get<std::string>();
-                    std::string strType =  (*it)["type"].get<std::string>();
-                    std::string strValue = (*it)["value"].get<std::string>();
-                    bool fMutable = (*it)["mutable"].get<std::string>() == "true";
-                    bool fBytesInvalid = false;
-                    std::vector<uint8_t> vchBytes;
+            /* If format = JSON then grab the asset definition from the json field */
+            if(jParams.find("json") == jParams.end())
+                throw Exception(-21, "Missing json parameter.");
 
-                    /* Convert the value to bytes if the type is bytes */
-                    if(strType == "bytes")
+            if(!jParams["json"].is_array())
+                throw Exception(-22, "json field must be an array.");
+
+            /* declare the object register to hold the asset data*/
+            TAO::Register::Object asset = TAO::Register::CreateAsset();
+
+            encoding::json jsonAssetDefinition = jParams["json"];
+
+            /* Track the number of fields so that we can check there is at least one */
+            int nFieldCount = 0;
+
+            /* Iterate through each field definition */
+            for(auto it = jsonAssetDefinition.begin(); it != jsonAssetDefinition.end(); ++it)
+            {
+                /* Check that the required fields have been provided*/
+                if(it->find("name") == it->end())
+                    throw Exception(-22, "Missing name field in json definition.");
+
+                if(it->find("type") == it->end())
+                    throw Exception(-23, "Missing type field in json definition.");
+
+                if(it->find("value") == it->end())
+                    throw Exception(-24, "Missing value field in json definition.");
+
+                if(it->find("mutable") == it->end())
+                    throw Exception(-25, "Missing mutable field in json definition.");
+
+                /* Parse the values out of the definition json*/
+                std::string strName =  (*it)["name"].get<std::string>();
+                std::string strType =  (*it)["type"].get<std::string>();
+                std::string strValue = (*it)["value"].get<std::string>();
+                bool fMutable = (*it)["mutable"].get<std::string>() == "true";
+                bool fBytesInvalid = false;
+                std::vector<uint8_t> vchBytes;
+
+                /* Convert the value to bytes if the type is bytes */
+                if(strType == "bytes")
+                {
+                    try
                     {
-                        try
-                        {
-                            vchBytes = encoding::DecodeBase64(strValue.c_str(), &fBytesInvalid);
-                        }
-                        catch(const std::exception& e)
-                        {
-                            fBytesInvalid = true;
-                        }
-
-
+                        vchBytes = encoding::DecodeBase64(strValue.c_str(), &fBytesInvalid);
                     }
-                    /* Declare the max length variable */
-                    size_t nMaxLength = 0;
+                    catch(const std::exception& e)
+                    {
+                        fBytesInvalid = true;
+                    }
 
-                    if(strType == "string" || strType == "bytes")
+
+                }
+                /* Declare the max length variable */
+                size_t nMaxLength = 0;
+
+                if(strType == "string" || strType == "bytes")
+                {
+                    /* Determine the length of the data passed in */
+                    std::size_t nDataLength = strType == "string" ? strValue.length() : vchBytes.size();
+
+                    /* If this is a mutable string or byte fields then set the length.
+                    This can either be set by the caller in a  maxlength field or we will default it
+                    based on the field data type.` */
+                    if(fMutable)
                     {
                         /* Determine the length of the data passed in */
                         std::size_t nDataLength = strType == "string" ? strValue.length() : vchBytes.size();
 
-                        /* If this is a mutable string or byte fields then set the length.
-                        This can either be set by the caller in a  maxlength field or we will default it
-                        based on the field data type.` */
-                        if(fMutable)
+                        /* If the caller specifies a maxlength then use this to set the size of the string or bytes array */
+                        if(it->find("maxlength") != it->end())
                         {
-                            /* Determine the length of the data passed in */
-                            std::size_t nDataLength = strType == "string" ? strValue.length() : vchBytes.size();
+                            nMaxLength = std::stoul((*it)["maxlength"].get<std::string>());
 
-                            /* If the caller specifies a maxlength then use this to set the size of the string or bytes array */
-                            if(it->find("maxlength") != it->end())
-                            {
-                                nMaxLength = std::stoul((*it)["maxlength"].get<std::string>());
-
-                                /* If they specify a value less than the data length then error */
-                                if(nMaxLength < nDataLength)
-                                    throw Exception(-26, "maxlength value is less than the specified data length.");
-                            }
-                            else
-                            {
-                                /* If the caller hasn't specified a maxlength then set a suitable default
-                                by rounding up the current length to the nearest 64 bytes. */
-                                nMaxLength = (((uint8_t)(nDataLength / 64)) +1) * 64;
-                            }
+                            /* If they specify a value less than the data length then error */
+                            if(nMaxLength < nDataLength)
+                                throw Exception(-26, "maxlength value is less than the specified data length.");
                         }
                         else
                         {
-                            /* If the field is not mutable then the max length is simply the data length */
-                            nMaxLength = nDataLength;
+                            /* If the caller hasn't specified a maxlength then set a suitable default
+                            by rounding up the current length to the nearest 64 bytes. */
+                            nMaxLength = (((uint8_t)(nDataLength / 64)) +1) * 64;
                         }
-
-                    }
-
-
-                    /* Add the field to the Object based on the user defined type.
-                       NOTE: all numeric values <= 64-bit are converted from string to the corresponding type.
-                       Numeric values > 64-bit are assumed to be in hex and are converted via the uintXXX constructor */
-
-                    /* Serialize the data field name */
-                    asset << strName;
-
-                    /* Add the mutable flag if defined */
-                    if(fMutable)
-                        asset << uint8_t(TAO::Register::TYPES::MUTABLE);
-
-                    /* lastly add the data type and initial value*/
-                    if(strType == "uint8")
-                        asset << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(stoul(strValue));
-                    else if(strType == "uint16")
-                        asset << uint8_t(TAO::Register::TYPES::UINT16_T) << uint16_t(stoul(strValue));
-                    else if(strType == "uint32")
-                        asset << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(stoul(strValue));
-                    else if(strType == "uint64")
-                        asset << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(stoul(strValue));
-                    else if(strType == "uint256")
-                        asset << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(strValue);
-                    else if(strType == "uint512")
-                        asset << uint8_t(TAO::Register::TYPES::UINT512_T) << uint512_t(strValue);
-                    else if(strType == "uint1024")
-                        asset << uint8_t(TAO::Register::TYPES::UINT1024_T) << uint1024_t(strValue);
-                    else if(strType == "string")
-                    {
-                        /* Ensure that the serialized value is padded out to the max length */
-                        strValue.resize(nMaxLength);
-
-                        asset << uint8_t(TAO::Register::TYPES::STRING) << strValue;
-                    }
-                    else if(strType == "bytes")
-                    {
-                        if(fBytesInvalid)
-                            throw Exception(-27, "Malformed base64 encoding");
-
-                        /* Ensure that the serialized value is padded out to the max length */
-                        vchBytes.resize(nMaxLength);
-
-                        asset << uint8_t(TAO::Register::TYPES::BYTES) << vchBytes;
                     }
                     else
                     {
-                        throw Exception(-154, "Invalid field type " + strType);
+                        /* If the field is not mutable then the max length is simply the data length */
+                        nMaxLength = nDataLength;
                     }
-
-
-                    /* Increment total fields. */
-                    ++nFieldCount;
                 }
 
-                if(nFieldCount == 0)
-                    throw Exception(-28, "Missing asset field definitions");
+                /* Serialize the data field name */
+                asset << strName;
 
-                /* Submit the payload object. */
-                tx[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
+                /* Add the mutable flag if defined */
+                if(fMutable)
+                    asset << uint8_t(TAO::Register::TYPES::MUTABLE);
+
+                /* lastly add the data type and initial value*/
+                if(strType == "uint8")
+                    asset << uint8_t(TAO::Register::TYPES::UINT8_T) << uint8_t(stoul(strValue));
+                else if(strType == "uint16")
+                    asset << uint8_t(TAO::Register::TYPES::UINT16_T) << uint16_t(stoul(strValue));
+                else if(strType == "uint32")
+                    asset << uint8_t(TAO::Register::TYPES::UINT32_T) << uint32_t(stoul(strValue));
+                else if(strType == "uint64")
+                    asset << uint8_t(TAO::Register::TYPES::UINT64_T) << uint64_t(stoul(strValue));
+                else if(strType == "uint256")
+                    asset << uint8_t(TAO::Register::TYPES::UINT256_T) << uint256_t(strValue);
+                else if(strType == "uint512")
+                    asset << uint8_t(TAO::Register::TYPES::UINT512_T) << uint512_t(strValue);
+                else if(strType == "uint1024")
+                    asset << uint8_t(TAO::Register::TYPES::UINT1024_T) << uint1024_t(strValue);
+                else if(strType == "string")
+                {
+                    /* Ensure that the serialized value is padded out to the max length */
+                    strValue.resize(nMaxLength);
+
+                    asset << uint8_t(TAO::Register::TYPES::STRING) << strValue;
+                }
+                else if(strType == "bytes")
+                {
+                    if(fBytesInvalid)
+                        throw Exception(-27, "Malformed base64 encoding");
+
+                    /* Ensure that the serialized value is padded out to the max length */
+                    vchBytes.resize(nMaxLength);
+
+                    asset << uint8_t(TAO::Register::TYPES::BYTES) << vchBytes;
+                }
+                else
+                {
+                    throw Exception(-154, "Invalid field type " + strType);
+                }
+
+
+                /* Increment total fields. */
+                ++nFieldCount;
             }
-            else
-            {
-                throw Exception(-29, "Unsupported format specified");
-            }
 
-            /* Check for name parameter. If one is supplied then we need to create a Name Object register for it. */
-            if(params.find("name") != params.end() && !params["name"].is_null() && !params["name"].get<std::string>().empty())
-                tx[1] = Names::CreateName(session.GetAccount()->Genesis(), params["name"].get<std::string>(), "", hashRegister);
+            if(nFieldCount == 0)
+                throw Exception(-28, "Missing asset field definitions");
 
-            /* Add the fee */
-            AddFee(tx);
-
-            /* Execute the operations layer. */
-            if(!tx.Build())
-                throw Exception(-30, "Operations failed to execute");
-
-            /* Sign the transaction. */
-            if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                throw Exception(-31, "Ledger failed to sign transaction");
-
-            /* Execute the operations layer. */
-            if(!TAO::Ledger::mempool.Accept(tx))
-                throw Exception(-32, "Failed to accept");
-
-            /* Build a JSON response object. */
-            ret["txid"]  = tx.GetHash().ToString();
-            ret["address"] = hashRegister.ToString();
-
-            return ret;
+            /* Submit the payload object. */
+            vContracts[0] << uint8_t(TAO::Operation::OP::CREATE) << hashRegister;
+            vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << asset.GetState();
         }
 
+        /* Add optional name if specified. */
+        BuildName(jParams, hashRegister, vContracts);
 
+        return BuildResponse(jParams, hashRegister, vContracts);
     }
 }

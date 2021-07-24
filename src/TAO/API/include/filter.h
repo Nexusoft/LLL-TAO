@@ -85,7 +85,7 @@ namespace TAO::API
      *  Determines if an object or it's results should be included in list.
      *
      *  @param[in] jParams The input parameters for the command.
-     *  @param[out] objCheck The object we are checking for.
+     *  @param[out] rObject The object we are checking for.
      *
      *  @return true if the object should be included in the results.
      *
@@ -98,12 +98,12 @@ namespace TAO::API
      *  Determines if an object should be included in a list based on input parameters.
      *
      *  @param[in] jParams The input parameters for the command.
-     *  @param[out] objCheck The object we are checking for.
+     *  @param[out] rObject The object we are checking for.
      *
      *  @return true if the object should be included in the results.
      *
      **/
-    bool FilterObject(const encoding::json& jParams, TAO::Register::Object &objCheck);
+    bool FilterObject(const encoding::json& jParams, TAO::Register::Object &rObject);
 
 
     /** FilterResults
