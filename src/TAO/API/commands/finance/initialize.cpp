@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/operators.h>
 #include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/check.h>
@@ -24,6 +25,40 @@ namespace TAO::API
     /* Standard initialization function. */
     void Finance::Initialize()
     {
+        /* Handle for the SUM operator. */
+        mapOperators["sum"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Sum,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the ARRAY operator. */
+        mapOperators["array"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Array,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the MEAN operator. */
+        mapOperators["mean"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Mean,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+
         /* Populate our ACCOUNT standard. */
         mapStandards["account"] = Standard
         (

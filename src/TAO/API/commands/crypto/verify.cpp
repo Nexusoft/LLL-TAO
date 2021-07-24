@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <TAO/API/objects/types/objects.h>
 
 #include <TAO/API/include/json.h>
-#include <TAO/API/crypto/types/crypto.h>
+#include <TAO/API/types/commands/crypto.h>
 
 #include <TAO/Register/types/object.h>
 

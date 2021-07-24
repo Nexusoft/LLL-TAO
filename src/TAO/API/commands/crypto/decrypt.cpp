@@ -22,8 +22,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/names/types/names.h>
-#include <TAO/API/crypto/types/crypto.h>
+#include <TAO/API/types/commands/crypto.h>
 
 #include <TAO/Ledger/types/mempool.h>
 
@@ -45,7 +44,7 @@ namespace TAO
     {
 
         /* Generates private key based on keyname/user/pass/pin and stores it in the keyname slot in the crypto register. */
-        encoding::json Crypto::Encrypt(const encoding::json& params, const bool fHelp)
+        encoding::json Crypto::Decrypt(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
             encoding::json ret;
@@ -61,8 +60,14 @@ namespace TAO
                 throw Exception(-18, "Missing data.");
 
             /* Decode the data into a vector of bytes */
-            std::string strData = params["data"].get<std::string>();
-            vchData.insert(vchData.begin(), strData.begin(), strData.end());
+            try
+            {
+                vchData = encoding::DecodeBase64(params["data"].get<std::string>().c_str());
+            }
+            catch(const std::exception& e)
+            {
+                throw Exception(-27, "Malformed base64 encoding.");
+            }
 
             /* Check for explicit key */
             if(params.find("key") != params.end())
@@ -81,7 +86,7 @@ namespace TAO
                 std::string strName = params["name"].get<std::string>();
 
                 /* Ensure the user has not requested to encrypt using one of the default keys
-                    as these are for signature verification only */
+                   as these are for signature verification only */
                 std::set<std::string> setDefaults{"auth", "lisp", "network", "sign", "verify", "cert", "app1", "app2", "app3"};
                 if(setDefaults.find(strName) != setDefaults.end())
                     throw Exception(-293, "Invalid key name.  Keys in the crypto register cannot be used for encryption, only signature generation and verification");
@@ -96,21 +101,16 @@ namespace TAO
                 /* Get the session to be used for this API call */
                 Session& session = Commands::Get<Users>()->GetSession(params);
 
+
                 /* Get the private key. */
                 uint512_t hashSecret = session.GetAccount()->Generate(strName, 0, strPIN);
-
-                /* The public key to return */
-                std::vector<uint8_t> vchPubKey;
-
-                /* The key type*/
-                uint8_t nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL;
 
                 /* If a peer key has been provided then generate a shared key */
                 if(params.find("peerkey") != params.end() && !params["peerkey"].get<std::string>().empty())
                 {
                     /* Decode the public key into a vector of bytes */
-                    std::vector<uint8_t> vchPeerKey;
-                    if(!encoding::DecodeBase58(params["peerkey"].get<std::string>(), vchPeerKey))
+                    std::vector<uint8_t> vchPubKey;
+                    if(!encoding::DecodeBase58(params["peerkey"].get<std::string>(), vchPubKey))
                         throw Exception(-266, "Malformed public key.");
 
                     /* Get the secret from new key. */
@@ -126,21 +126,18 @@ namespace TAO
 
                     /* Create an ECKey for the public key */
                     LLC::ECKey keyPublic = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-                    if(!keyPublic.SetPubKey(vchPeerKey))
+                    if(!keyPublic.SetPubKey(vchPubKey))
                         throw Exception(-266, "Malformed public key.");
 
                     /* Generate the shared symmetric key */
                     if(!LLC::ECKey::MakeShared(keyPrivate, keyPublic, vchKey))
                         throw Exception(268, "Failed to generate shared key");
 
-                    /* Set the public key for our private key*/
-                    vchPubKey = keyPrivate.GetPubKey();
-
                 }
                 else
                 {
                     /* Get the scheme */
-                    nScheme = get_scheme(params);
+                    uint8_t nScheme = get_scheme(params);
 
                     /* Otherwise we use the private key as the symmetric key */
                     vchKey = hashSecret.GetBytes();
@@ -157,9 +154,6 @@ namespace TAO
                         /* Set the secret key. */
                         if(!keyPrivate.SetSecret(vchSecret, true))
                             throw Exception(269, "Malformed private key");
-
-                        /* Set the public key for our private key*/
-                        vchPubKey = keyPrivate.GetPubKey();
                     }
                     else if(nScheme == TAO::Ledger::SIGNATURE::FALCON)
                     {
@@ -170,30 +164,8 @@ namespace TAO
                         if(!keyPrivate.SetSecret(vchSecret))
                             throw Exception(269, "Malformed private key");
 
-                        /* Set the public key for our private key*/
-                        vchPubKey = keyPrivate.GetPubKey();
                     }
                 }
-
-                /* Add the public key to the response */
-                ret["publickey"] = encoding::EncodeBase58(vchPubKey);
-
-                /* convert the scheme type to a string */
-                switch(nScheme)
-                {
-                    case TAO::Ledger::SIGNATURE::FALCON:
-                        ret["scheme"] = "FALCON";
-                        break;
-                    case TAO::Ledger::SIGNATURE::BRAINPOOL:
-                        ret["scheme"] = "BRAINPOOL";
-                        break;
-                    default:
-                        ret["scheme"] = "";
-
-                }
-
-                /* add the hash key */
-                ret["hashkey"] = LLC::SK256(vchPubKey).ToString();
 
                 /* For added security the actual private key is not directly used as the symmetric key.  Therefore we hash
                    the private key. NOTE: the AES256 function requires a 32-byte key, so we reduce the length if necessary by using
@@ -205,16 +177,15 @@ namespace TAO
 
             }
 
-            /* The encrypted data */
-            std::vector<uint8_t> vchCipherText;
+            /* The decrypted data */
+            std::vector<uint8_t> vchPlainText;
 
             /* Encrypt the data */
-            if(!LLC::EncryptAES256(vchKey, vchData, vchCipherText))
-                throw Exception(-270, "Failed to encrypt data.");
+            if(!LLC::DecryptAES256(vchKey, vchData, vchPlainText))
+                throw Exception(-271, "Failed to decrypt data.");
 
-            /* Add the ciphertext to the response, base64 encoded*/
-            ret["data"] = encoding::EncodeBase64(&vchCipherText[0], vchCipherText.size());
-
+            /* Add the decrypted data to the response */
+            ret["data"] = std::string(vchPlainText.begin(), vchPlainText.end());
 
             return ret;
         }

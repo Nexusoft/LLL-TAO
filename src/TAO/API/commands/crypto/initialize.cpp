@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/crypto/types/crypto.h>
+#include <TAO/API/types/commands/crypto.h>
 
 /* Global TAO namespace. */
 namespace TAO

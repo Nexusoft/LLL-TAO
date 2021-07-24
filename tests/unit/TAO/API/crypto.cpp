@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/crypto/types/crypto.h>
+#include <TAO/API/types/commands/crypto.h>
 #include <TAO/API/include/global.h>
 
 #include <Util/include/convert.h>

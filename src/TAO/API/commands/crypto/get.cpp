@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/crypto/types/crypto.h>
+#include <TAO/API/types/commands/crypto.h>
 
 #include <TAO/Operation/include/enum.h>
 

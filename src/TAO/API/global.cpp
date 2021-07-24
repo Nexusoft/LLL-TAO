@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <TAO/API/objects/types/objects.h>
 #include <TAO/API/voting/types/voting.h>
 #include <TAO/API/types/commands/invoices.h>
-#include <TAO/API/crypto/types/crypto.h>
+#include <TAO/API/types/commands/crypto.h>
 
 
 #include <TAO/API/types/commands/finance.h>
