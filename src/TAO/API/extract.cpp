@@ -296,7 +296,8 @@ namespace TAO::API
         if(CheckParameter(jParams, "format", "string"))
         {
             /* Grab our format string. */
-            const std::string strFormat = ToLower(jParams["format"].get<std::string>());
+            const std::string strFormat =
+                ToLower(jParams["format"].get<std::string>());
 
             /* Check for allowed formats. */
             const auto nFind = strAllowed.find(strFormat);
@@ -311,6 +312,34 @@ namespace TAO::API
             throw Exception(-28, "Missing parameter [format] for command");
 
         return strDefault;
+    }
+
+
+    /* Extract key scheme specifier from input parameters. */
+    uint8_t ExtractScheme(const encoding::json& jParams, const std::string& strAllowed)
+    {
+        /* Check for formatting parameter. */
+        if(!CheckParameter(jParams, "scheme", "string"))
+            return TAO::Ledger::SIGNATURE::RESERVED;
+
+        /* Grab our format string. */
+        const std::string strScheme =
+            ToLower(jParams["scheme"].get<std::string>());
+
+        /* Check for allowed formats. */
+        const auto nFind = strAllowed.find(strScheme);
+        if(nFind == strAllowed.npos)
+            throw Exception(-35, "Invalid parameter [scheme], expecting [", strAllowed, "]");
+
+        /* Grab our type from string. */
+        const uint8_t nRet =
+            TAO::Ledger::SIGNATURE::TYPE(strScheme);
+
+        /* Double check our mapping worked. */
+        if(nRet == TAO::Ledger::SIGNATURE::RESERVED)
+            throw Exception(-35, "Invalid parameter [scheme], expecting [", strAllowed, "]");
+
+        return nRet;
     }
 
 

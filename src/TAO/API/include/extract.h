@@ -121,6 +121,19 @@ namespace TAO::API
     std::string ExtractFormat(const encoding::json& jParams, const std::string& strDefault, const std::string& strAllowed = "json");
 
 
+    /** ExtractScheme
+     *
+     *  Extract key scheme specifier from input parameters.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *  @param[in] strAllowed The allowed formates to extract for.
+     *
+     *  @return the scheme translated as binary represented enum.
+     *
+     **/
+    uint8_t ExtractScheme(const encoding::json& jParams, const std::string& strAllowed = "falcon, brainpool");
+
+
     /** ExtractType
      *
      *  Extract the type string value from input parameters as only string.

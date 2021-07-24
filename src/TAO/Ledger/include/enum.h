@@ -217,6 +217,24 @@ namespace TAO
                 /** SECP256K1 ECDSA curve. **/
                 SECP256K1   = 0x03
             };
+
+            /* Track a mapping to enum. */
+            __attribute__((const)) static uint8_t TYPE(const std::string& strType)
+            {
+                /* Check for brainpool standard. */
+                if(strType == "brainpool")
+                    return SIGNATURE::BRAINPOOL;
+
+                /* Check for falcon standard. */
+                if(strType == "falcon")
+                    return SIGNATURE::FALCON;
+
+                /* Check for brainpool standard. */
+                if(strType == "secp256k1")
+                    return SIGNATURE::SECP256K1;
+
+                return SIGNATURE::RESERVED;
+            }
         };
 
 

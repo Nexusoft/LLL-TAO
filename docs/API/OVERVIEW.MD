@@ -410,7 +410,7 @@ API Error Codes
 | -256 | Cannot process notifications whilst synchronizing |
 | -257 | Contract failed peer validation |
 | -258 | Unknown genesis |
-| -259 | Could not read crypto object register |
+| -259 | -------------------------- |
 | -260 | Invalid key name |
 | -261 | Key already exists |
 | -262 | Invalid scheme |

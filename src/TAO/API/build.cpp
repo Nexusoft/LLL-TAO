@@ -112,6 +112,14 @@ namespace TAO::API
         if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
             throw Exception(-17, "Failed to create transaction");
 
+        /* The new key scheme */
+        const uint8_t nScheme =
+            ExtractScheme(jParams, "brainpool, falcon");
+
+        /* Check for scheme parameter in request. */
+        if(nScheme != TAO::Ledger::SIGNATURE::RESERVED)
+            tx.nNextType = nScheme;
+
         /* Add the contracts. */
         for(const auto& rContract : vContracts)
             tx << rContract;

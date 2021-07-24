@@ -104,20 +104,6 @@ namespace TAO
                 /* Crypto Object Register. */
                 CRYPTO       = 0x07
             };
-
-            /** BITWISE
-             *
-             *  Get's a bitwise representation of standard as a unique bit, hence an 8 bit standard has max of 256 unique bits.
-             *
-             *  @param[in] nStandard The standard enum to convert.
-             *
-             *  @return the standard represented as single unique bit.
-             *
-             **/
-            static uint256_t BITWISE(const uint8_t nStandard)
-            {
-                return (uint256_t(1) << nStandard);
-            }
         };
 
 
