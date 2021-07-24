@@ -11,36 +11,18 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/global.h>
-
 #include <TAO/API/types/commands/assets.h>
-
-#include <TAO/API/include/check.h>
-#include <TAO/API/include/extract.h>
-#include <TAO/API/include/json.h>
 
 #include <Util/include/base64.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Get the schema for an asset */
-    encoding::json Assets::GetSchema(const encoding::json& jParams, const bool fHelp)
+    /* Returns the JSON representation of this invoice */
+    encoding::json Assets::SchemaToJSON(const TAO::Register::Object& rObject, const uint256_t& hashRegister)
     {
-        /* Get the Register ID. */
-        const uint256_t hashRegister = ExtractAddress(jParams);
-
-        /* Get the asset from the register DB. */
-        TAO::Register::Object tObject;
-        if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::MEMPOOL))
-            throw Exception(-13, "Object not found");
-
-        /* Now lets check our expected types match. */
-        if(!CheckStandard(jParams, tObject))
-            throw Exception(-49, "Unsupported type for name/address");
-
         /* Get List of field names in this asset object */
-        const std::vector<std::string> vFieldNames = tObject.ListFields();
+        const std::vector<std::string> vFieldNames = rObject.ListFields();
 
         /* Declare type and data variables for unpacking the Object fields */
         encoding::json jRet = encoding::json::array();
@@ -55,7 +37,7 @@ namespace TAO::API
 
             /* Get the type */
             uint8_t nType = 0;
-            tObject.Type(strName, nType);
+            rObject.Type(strName, nType);
 
             /* Switch based on type. */
             switch(nType)
@@ -65,7 +47,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint8";
-                    jField["value"] = tObject.get<uint8_t>(strName);
+                    jField["value"] = rObject.get<uint8_t>(strName);
 
                     break;
                 }
@@ -75,7 +57,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint16";
-                    jField["value"] = tObject.get<uint16_t>(strName);
+                    jField["value"] = rObject.get<uint16_t>(strName);
 
                     break;
                 }
@@ -85,7 +67,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint32";
-                    jField["value"] = tObject.get<uint32_t>(strName);
+                    jField["value"] = rObject.get<uint32_t>(strName);
 
                     break;
                 }
@@ -95,7 +77,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint64";
-                    jField["value"] = tObject.get<uint64_t>(strName);
+                    jField["value"] = rObject.get<uint64_t>(strName);
 
                     break;
                 }
@@ -105,7 +87,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint256";
-                    jField["value"] = tObject.get<uint256_t>(strName).GetHex();
+                    jField["value"] = rObject.get<uint256_t>(strName).GetHex();
 
                     break;
                 }
@@ -115,7 +97,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint512";
-                    jField["value"] = tObject.get<uint512_t>(strName).GetHex();
+                    jField["value"] = rObject.get<uint512_t>(strName).GetHex();
 
                     break;
                 }
@@ -125,7 +107,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint1024";
-                    jField["value"] = tObject.get<uint1024_t>(strName).GetHex();
+                    jField["value"] = rObject.get<uint1024_t>(strName).GetHex();
 
                     break;
                 }
@@ -138,7 +120,7 @@ namespace TAO::API
 
                     /* Set the return value from object register data. */
                     const std::string strRet =
-                        tObject.get<std::string>(strName);
+                        rObject.get<std::string>(strName);
 
                     /* get the size */
                     nMaxSize = strRet.length();
@@ -157,7 +139,7 @@ namespace TAO::API
 
                     /* Set the return value from object register data. */
                     std::vector<uint8_t> vRet =
-                        tObject.get<std::vector<uint8_t>>(strName);
+                        rObject.get<std::vector<uint8_t>>(strName);
 
                     /* get the size */
                     nMaxSize = vRet.size();
@@ -173,10 +155,10 @@ namespace TAO::API
             }
 
             /* Add mutable flag */
-            jField["mutable"] = tObject.mapData[strName].second;
+            jField["mutable"] = rObject.mapData[strName].second;
 
             /* If mutable, add the max size */
-            if(tObject.mapData[strName].second && nMaxSize > 0)
+            if(rObject.mapData[strName].second && nMaxSize > 0)
                 jField["maxlength"] = nMaxSize;
 
             /* Add the field to the response array */

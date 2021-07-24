@@ -67,19 +67,6 @@ namespace TAO::API
         encoding::json Create(const encoding::json& params, const bool fHelp);
 
 
-        /** Get
-         *
-         *  Get the data from a digital asset
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Get(const encoding::json& params, const bool fHelp);
-
-
         /** Update
          *
          *  Update the data in an asset
@@ -91,45 +78,6 @@ namespace TAO::API
          *
          **/
         encoding::json Update(const encoding::json& params, const bool fHelp);
-
-
-        /** Transfer
-         *
-         *  Transfer an asset or digital item.
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Transfer(const encoding::json& params, const bool fHelp);
-
-
-        /** Claim
-         *
-         *  Claim a transferred asset .
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Claim(const encoding::json& params, const bool fHelp);
-
-
-        /** History
-         *
-         *  History of an asset and its ownership
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json History(const encoding::json& params, const bool fHelp);
 
 
         /** Tokenize
@@ -145,17 +93,17 @@ namespace TAO::API
         encoding::json Tokenize(const encoding::json& params, const bool fHelp);
 
 
-        /** GetSchema
+        /** SchemaToJSON
          *
-         *  Get the schema for an asset
+         *  Returns the JSON representation of a given schema
          *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
+         *  @param[in] rObject The state register containing the schema data
+         *  @param[in] hashRegister The register address of the schema register
          *
-         *  @return The return object in JSON.
+         *  @return the invoice JSON
          *
          **/
-        encoding::json GetSchema(const encoding::json& params, const bool fHelp);
+        static encoding::json SchemaToJSON(const TAO::Register::Object& rObject, const uint256_t& hashRegister);
 
     };
 }

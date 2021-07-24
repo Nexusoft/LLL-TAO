@@ -14,9 +14,16 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
+#include <TAO/API/include/conditions.h>
 #include <TAO/API/include/extract.h>
 
+#include <TAO/API/users/types/users.h>
+
 #include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/commands.h>
+
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Operation/types/contract.h>
 
@@ -49,8 +56,8 @@ namespace TAO::API
 
         /* Build our contract now that we've validated. */
         std::vector<TAO::Operation::Contract> vContracts(1);
-        vContracts[0] << uint8_t(TAO::Operation::OP::TRANSFER) << hashRegister << hashRecipient
-        vContracts[0] << uint8_t(TAO::Operation::TRANSFER::CLAIM);
+        vContracts[0] << uint8_t(TAO::Operation::OP::TRANSFER) << hashRegister;
+        vContracts[0] << hashRecipient << uint8_t(TAO::Operation::TRANSFER::CLAIM);
 
         /* Add our conditional contract. */
         AddExpires(jParams, hashGenesis, vContracts[0], false);
