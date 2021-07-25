@@ -29,6 +29,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/constants.h>
 
+#include <Util/include/string.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -65,24 +67,26 @@ namespace TAO::API
         /* Add all other non-mandatory fields that the caller has provided */
         for(auto it = jParams.begin(); it != jParams.end(); ++it)
         {
+            /* Get our keyname. */
+            const std::string strKey = ToLower(it.key());
+
             /* Skip any incoming parameters that are keywords used by this API method*/
-            if(it.key() == "pin"
-            || it.key() == "PIN"
-            || it.key() == "session"
-            || it.key() == "name"
-            || it.key() == "account"
-            || it.key() == "account_name"
-            || it.key() == "recipient"
-            || it.key() == "recipient_username"
-            || it.key() == "amount"
-            || it.key() == "token"
-            || it.key() == "items")
+            if(strKey == "pin"
+            || strKey == "session"
+            || strKey == "name"
+            || strKey == "account"
+            || strKey == "account_name"
+            || strKey == "recipient"
+            || strKey == "recipient_username"
+            || strKey == "amount"
+            || strKey == "token"
+            || strKey == "items")
             {
                 continue;
             }
 
             /* add the field to the invoice */
-            jInvoice[it.key()] = it.value();
+            jInvoice[strKey] = it.value();
         }
 
         /* Parse the invoice items details */
