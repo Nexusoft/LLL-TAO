@@ -41,10 +41,29 @@ namespace TAO::API
 
         /* Check for format parameter. */
         const std::string strFormat =
-            ExtractFormat(jParams, "", "raw, basic, json");
+            ExtractFormat(jParams, "", "readonly, raw, basic, json");
 
         /* Handle for the raw specifier. */
         std::vector<TAO::Operation::Contract> vContracts(1);
+
+        /* Handle for raw formats. */
+        if(strFormat == "readonly")
+        {
+            /* Set the proper tPayload type. */
+            hashRegister = TAO::Register::Address(TAO::Register::Address::READONLY);
+
+            /* Check for our data parameter. */
+            if(!CheckParameter(jParams, "data", "string"))
+                throw Exception(-28, "Missing parameter [data] for command");
+
+            /* Serialise the incoming data into a state register */
+            DataStream ssData(SER_REGISTER, 1);
+            ssData << uint16_t(USER_TYPES::ASSET) << jParams["data"].get<std::string>();
+
+            /* Submit the payload object. */
+            vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)   << hashRegister;
+            vContracts[0] << uint8_t(TAO::Register::REGISTER::READONLY) << ssData.Bytes();
+        }
 
         /* Handle for raw formats. */
         if(strFormat == "raw")

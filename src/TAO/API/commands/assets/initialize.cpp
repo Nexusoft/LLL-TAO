@@ -59,6 +59,21 @@ namespace TAO::API
             }
         );
 
+        /* Populate our readonly standard. */
+        mapStandards["readonly"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                /* Check for correct state type. */
+                if(rObject.nType != TAO::Register::REGISTER::READONLY)
+                    return false;
+
+                /* Check that this matches our user type. */
+                return GetStandardType(rObject) == USER_TYPES::ASSET;
+            }
+        );
+
         /* Populate our schema standard. */
         mapStandards["schema"] = Standard
         (
