@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/exception.h>
 
+#include <Util/include/hex.h>
 #include <Util/include/json.h>
 
 /* Global TAO namespace. */
@@ -198,6 +199,36 @@ namespace TAO::API
      *
      **/
     void ExtractList(const encoding::json& jParams, std::string &strOrder, std::string &strSort, uint32_t &nLimit, uint32_t &nOffset);
+
+
+    /** ExtractHash
+     *
+     *  Extracts a hash value by template deduction.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *  @param[in] strKey The key value we are extracting for.
+     *
+     *  @return the converted object from string constructors.
+     *
+     **/
+    template<typename Type>
+    Type ExtractHash(const encoding::json& jParams, const std::string& strKey)
+    {
+        /* Check for missing parameter. */
+        if(jParams.find(strKey) == jParams.end())
+            throw Exception(-56, "Missing Parameter [", strKey, "]");
+
+        /* Check for invalid type. */
+        if(!jParams[strKey].is_string())
+            throw Exception(-35, "Invalid parameter [", strKey, "], expecting [hex-string]");
+
+        /* Check for hex encoding. */
+        const std::string strHash = jParams[strKey].get<std::string>();
+        if(!IsHex(strHash))
+            throw Exception(-35, "Invalid parameter [", strKey, "], expecting [hex-string]");
+
+        return Type(strHash);
+    }
 
 
     /** ExtractInteger

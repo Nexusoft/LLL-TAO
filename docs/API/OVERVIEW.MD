@@ -169,15 +169,15 @@ API Error Codes
 | -15 | Object is not an account or token |
 | -16 | Account has not been unlocked for transactions |
 | -17 | Failed to create transaction |
-| -18 | Missing data |
-| -19 | Data must be a string with this asset format |
-| -20 | Missing asset value fields |
-| -21 | json field must be an array |
-| -22 | Missing name field in json definition |
-| -23 | Missing type field in json definition |
-| -24 | Missing value field in json definition |
-| -25 | Missing mutable field in json definition |
-| -26 | maxlength value is less than the specified data length |
+| -18 | -------------------------- |
+| -19 | -------------------------- |
+| -20 | -------------------------- |
+| -21 | -------------------------- |
+| -22 | -------------------------- |
+| -23 | -------------------------- |
+| -24 | -------------------------- |
+| -25 | -------------------------- |
+| -26 | -------------------------- |
 | -27 | Malformed base64 encoding |
 | -28 | Missing parameter [name] for command |
 | -29 | Unsupported format [type] specified |
@@ -207,7 +207,7 @@ API Error Codes
 | -53 | Missing name / address of account to credit |
 | -54 | Missing name_proof / address_proof to credit |
 | -55 | Must have at least two recipients to debit from any |
-| -56 | Missing Parameter [name] |
+| -56 | ------------------------ |
 | -57 | Invalid Parameter [name] |
 | -58 | Empty Parameter [name] |
 | -59 | Account to credit is not a NXS account |
