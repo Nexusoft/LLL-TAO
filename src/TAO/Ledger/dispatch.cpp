@@ -32,9 +32,6 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::Ledger
 {
-    /* Declare our instance pointer. */
-    std::atomic<Dispatch*> Dispatch::INSTANCE = nullptr;
-
 
     /* Default Constructor. */
     Dispatch::Dispatch()
@@ -52,40 +49,6 @@ namespace TAO::Ledger
         CONDITION.notify_all();
         if(DISPATCH_THREAD.joinable())
             DISPATCH_THREAD.join();
-    }
-
-
-    /* Singleton instance. */
-    Dispatch& Dispatch::Instance()
-    {
-        /* Check if instance needs to be initialized. */
-        if(Dispatch::INSTANCE.load() == nullptr)
-            throw debug::exception(FUNCTION, "dispatch instance not initialized");
-
-        return *INSTANCE.load();
-    }
-
-
-    /* Singleton Initialize instance. */
-    void Dispatch::Initialize()
-    {
-        /* Check if instance needs to be initialized. */
-        if(Dispatch::INSTANCE.load() == nullptr)
-            Dispatch::INSTANCE.store(new Dispatch());
-    }
-
-
-    /* Singleton shutdown instance. */
-    void Dispatch::Shutdown()
-    {
-        /* Check if instance needs to be initialized. */
-        if(Dispatch::INSTANCE.load() != nullptr)
-        {
-            /* Cleanup our pointers. */
-            delete Dispatch::INSTANCE.load();
-
-            Dispatch::INSTANCE.store(nullptr);
-        }
     }
 
 

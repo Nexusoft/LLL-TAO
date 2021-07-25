@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <Util/templates/singleton.h>
+
 #include <thread>
 #include <mutex>
 #include <queue>
@@ -29,7 +31,7 @@ namespace TAO::Ledger
      *  These events could be best chain pointers, transactions, contracts, or other relevant data.
      *
      **/
-    class Dispatch
+    class Dispatch : public Singleton<Dispatch>
     {
         /** Queue to handle dispatch requests. **/
         util::atomic::lock_shared_ptr<std::queue<uint1024_t>> DISPATCH_QUEUE;
@@ -43,10 +45,6 @@ namespace TAO::Ledger
         std::condition_variable CONDITION;
 
 
-        /** Static instance pointer. **/
-        static std::atomic<Dispatch*> INSTANCE;
-
-
     public:
 
         /** Default Constructor. **/
@@ -55,18 +53,6 @@ namespace TAO::Ledger
 
         /** Default Destructor. **/
         ~Dispatch();
-
-
-        /** Singleton instance. **/
-        static Dispatch& Instance();
-
-
-        /** Singleton initialize instance. **/
-        static void Initialize();
-
-
-        /** Singleton shutdown instance. **/
-        static void Shutdown();
 
 
         /** PushRelay
