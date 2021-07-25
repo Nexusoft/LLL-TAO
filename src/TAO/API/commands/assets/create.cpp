@@ -169,46 +169,6 @@ namespace TAO::API
                 const std::string strType =
                     (*it)["type"].get<std::string>();
 
-                /* Handle for standard binary data. */
-                if(strType == "bytes")
-                {
-                    /* Track if we have invalid encoding. */
-                    bool fInvalid = false;
-
-                    /* Grab our payload. */
-                    const std::vector<uint8_t> vPayload =
-                        encoding::DecodeBase64((*it)["value"].get<std::string>().c_str(), &fInvalid);
-
-                    /* Check for invalid payload. */
-                    if(fInvalid)
-                        throw Exception(-35, "Invalid parameter [json.value], expecting [base64]");
-
-                    /* Add to the payload now. */
-                    tPayload << uint8_t(TAO::Register::TYPES::BYTES) << vPayload;
-                }
-
-                /* Handle for string data. */
-                if(strType == "string")
-                {
-                    /* Grab our payload. */
-                    std::string strPayload =
-                        (*it)["value"].get<std::string>();
-
-                    /* If the caller specifies a maxlength then use this to set the size of the string */
-                    const uint64_t nMaxLength =
-                        ExtractInteger<uint64_t>((*it), "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000);
-
-                    /* Check for minimum ranges. */
-                    if(nMaxLength < strPayload.size())
-                        throw Exception(-60, "[", strName, "] out of range [", strPayload.size(), "]");
-
-                    /* Adjust our serialization length. */
-                    strPayload.resize(nMaxLength);
-
-                    /* Add to the payload now. */
-                    tPayload << uint8_t(TAO::Register::TYPES::STRING) << strPayload;
-                }
-
                 /* Handle for 8-bit unsigned int. */
                 if(strType == "uint8")
                     tPayload << uint8_t(TAO::Register::TYPES::UINT8_T) << ExtractInteger<uint8_t>((*it), "value");
@@ -236,6 +196,46 @@ namespace TAO::API
                 /* Handle for 1024-bit unsigned int. */
                 if(strType == "uint1024")
                     tPayload << uint8_t(TAO::Register::TYPES::UINT512_T) << ExtractHash<uint1024_t>((*it), "value");
+
+                /* Handle for string data. */
+                if(strType == "string")
+                {
+                    /* Grab our payload. */
+                    std::string strPayload =
+                        (*it)["value"].get<std::string>();
+
+                    /* If the caller specifies a maxlength then use this to set the size of the string */
+                    const uint64_t nMaxLength =
+                        ExtractInteger<uint64_t>((*it), "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000);
+
+                    /* Check for minimum ranges. */
+                    if(nMaxLength < strPayload.size())
+                        throw Exception(-60, "[", strName, "] out of range [", strPayload.size(), "]");
+
+                    /* Adjust our serialization length. */
+                    strPayload.resize(nMaxLength);
+
+                    /* Add to the payload now. */
+                    tPayload << uint8_t(TAO::Register::TYPES::STRING) << strPayload;
+                }
+
+                /* Handle for standard binary data. */
+                if(strType == "bytes")
+                {
+                    /* Track if we have invalid encoding. */
+                    bool fInvalid = false;
+
+                    /* Grab our payload. */
+                    const std::vector<uint8_t> vPayload =
+                        encoding::DecodeBase64((*it)["value"].get<std::string>().c_str(), &fInvalid);
+
+                    /* Check for invalid payload. */
+                    if(fInvalid)
+                        throw Exception(-35, "Invalid parameter [json.value], expecting [base64]");
+
+                    /* Add to the payload now. */
+                    tPayload << uint8_t(TAO::Register::TYPES::BYTES) << vPayload;
+                }
             }
 
             /* Submit the payload object. */
