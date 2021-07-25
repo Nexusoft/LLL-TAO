@@ -18,6 +18,7 @@ ________________________________________________________________________________
 
 /* Forward Declarations. */
 namespace TAO::Operation { class Contract;    }
+namespace TAO::Register  { class Object;      }
 namespace TAO::Ledger    { class Transaction; }
 //namespace TAO::Register { class Address;     }
 
@@ -145,4 +146,17 @@ namespace TAO::API
      *
      **/
     void BuildName(const encoding::json& jParams, const uint256_t& hashRegister, std::vector<TAO::Operation::Contract> &vContracts);
+
+
+    /** BuildObject
+     *
+     *  Build a blank object based on _commands string, generating register address as well.
+     *
+     *  @param[in] jParams The incoming parameters from the command.
+     *  @param[out] hashRegister The auto-generated register address.
+     *
+     *  @return the new object register.
+     *
+     **/
+    TAO::Register::Object BuildObject(const encoding::json& jParams, uint256_t &hashRegister);
 }

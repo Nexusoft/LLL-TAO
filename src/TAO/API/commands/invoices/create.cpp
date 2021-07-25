@@ -56,7 +56,7 @@ namespace TAO::API
         if(!LLD::Ledger->HasGenesis(hashRecipient))
             throw Exception(-230, "Recipient user does not exist");
 
-        /* Add the mandatroy invoice fields to the invoice JSON */
+        /* Add the mandatory invoice fields to the invoice JSON */
         encoding::json jInvoice =
         {
             { "account",   hashAccount.ToString()   },
@@ -80,7 +80,8 @@ namespace TAO::API
             || strKey == "recipient_username"
             || strKey == "amount"
             || strKey == "token"
-            || strKey == "items")
+            || strKey == "items"
+            || strKey == "request")
             {
                 continue;
             }

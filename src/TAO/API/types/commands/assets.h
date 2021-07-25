@@ -58,39 +58,39 @@ namespace TAO::API
          *
          *  Create an asset or digital item.
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Create(const encoding::json& params, const bool fHelp);
+        encoding::json Create(const encoding::json& jParams, const bool fHelp);
 
 
         /** Update
          *
          *  Update the data in an asset
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Update(const encoding::json& params, const bool fHelp);
+        encoding::json Update(const encoding::json& jParams, const bool fHelp);
 
 
         /** Tokenize
          *
          *  Tokenize an asset into fungible tokens that represent ownership.
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Tokenize(const encoding::json& params, const bool fHelp);
+        encoding::json Tokenize(const encoding::json& jParams, const bool fHelp);
 
 
         /** SchemaToJSON

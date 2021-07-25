@@ -12,11 +12,12 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands.h>
-#include <TAO/API/types/commands/assets.h>
+#include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
+#include <TAO/API/include/execute.h>
 #include <TAO/API/include/extract.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -34,14 +35,15 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Create an tPayload or digital item. */
-    encoding::json Assets::Create(const encoding::json& jParams, const bool fHelp)
+    encoding::json Templates::Create(const encoding::json& jParams, const bool fHelp,
+                                     const std::string& strAllowed, const uint16_t nType)
     {
         /* Generate our address based on formatting type. */
         uint256_t hashRegister;
 
         /* Check for format parameter. */
         const std::string strFormat =
-            ExtractFormat(jParams, "", "readonly, raw, basic, json");
+            ExtractFormat(jParams, "", strAllowed);
 
         /* Handle for the raw specifier. */
         std::vector<TAO::Operation::Contract> vContracts(1);
@@ -58,7 +60,7 @@ namespace TAO::API
 
             /* Serialise the incoming data into a state register */
             DataStream ssData(SER_REGISTER, 1);
-            ssData << uint16_t(USER_TYPES::ASSET) << jParams["data"].get<std::string>();
+            ssData << uint16_t(nType) << jParams["data"].get<std::string>();
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)   << hashRegister;
@@ -68,7 +70,7 @@ namespace TAO::API
         /* Handle for raw formats. */
         if(strFormat == "raw")
         {
-            /* Set the proper tPayload type. */
+            /* Set the proper payload type. */
             hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
 
             /* Check for our data parameter. */
@@ -77,7 +79,7 @@ namespace TAO::API
 
             /* Serialise the incoming data into a state register */
             DataStream ssData(SER_REGISTER, 1);
-            ssData << uint16_t(USER_TYPES::ASSET) << jParams["data"].get<std::string>();
+            ssData << uint16_t(nType) << jParams["data"].get<std::string>();
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)   << hashRegister;
@@ -87,12 +89,9 @@ namespace TAO::API
         /* Handle for basic formats. */
         if(strFormat == "basic")
         {
-            /* Set the proper tPayload type. */
-            hashRegister = TAO::Register::Address(TAO::Register::Address::OBJECT);
-
-            /* declare the object register to hold the tPayload data*/
+            /* Declare the object register to hold the payload data*/
             TAO::Register::Object tPayload =
-                TAO::Register::CreateAsset();
+                BuildObject(jParams, hashRegister);
 
             /* Track the number of fields */
             uint32_t nFieldCount = 0;
@@ -137,16 +136,13 @@ namespace TAO::API
         /* Handle for the json formats. */
         if(strFormat == "json")
         {
-            /* Set the proper tPayload type. */
-            hashRegister = TAO::Register::Address(TAO::Register::Address::OBJECT);
-
             /* Check for our data parameter. */
             if(!CheckParameter(jParams, "json", "array"))
                 throw Exception(-28, "Missing parameter [json] for command");
 
-            /* declare the object register to hold the tPayload data*/
+            /* Declare the object register to hold the payload data*/
             TAO::Register::Object tPayload =
-                TAO::Register::CreateAsset();
+                BuildObject(jParams, hashRegister);
 
             /* Grab our schema from input parameters. */
             encoding::json jSchema = jParams["json"];
@@ -262,6 +258,14 @@ namespace TAO::API
             vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister;
             vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << tPayload.GetState();
         }
+
+        /* Build our object first to check against our standards. */
+        TAO::Register::Object tObject =
+            ExecuteContract(vContracts[0]);
+
+        /* Check that our formatting matches our standard. */
+        if(!CheckStandard(jParams, tObject))
+            throw Exception(-18, "Invalid format for standard [", jParams["request"]["type"].get<std::string>(), "]");
 
         /* Add optional name if specified. */
         BuildName(jParams, hashRegister, vContracts);

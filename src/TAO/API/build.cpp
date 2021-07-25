@@ -566,4 +566,33 @@ namespace TAO::API
             );
         }
     }
+
+    /* Build a blank object based on _commands string, generating register address as well. */
+    TAO::Register::Object BuildObject(const encoding::json& jParams, uint256_t &hashRegister)
+    {
+        /* Check for our request parameters first, since this method can be called without */
+        if(jParams.find("request") == jParams.end())
+            throw Exception(-28, "Missing parameter [request] for command");
+
+        /* Check for our type we are checking against. */
+        if(jParams["request"].find("commands") == jParams["request"].end())
+            throw Exception(-28, "Missing parameter [request::commands] for command");
+
+        /* Check that we have the commands set. */
+        const std::string strCommands =
+            jParams["request"]["commands"].get<std::string>();
+
+        /* Start with our blank object. */
+        TAO::Register::Object tObject = TAO::Register::Object();
+
+        /* Serialize our commands name if applicable. */
+        if(strCommands != "assets")
+            tObject << std::string("_commands") << uint8_t(TAO::Register::TYPES::STRING) << strCommands;
+
+        /* Set the address return value now. */
+        hashRegister =
+            TAO::Register::Address(TAO::Register::Address::OBJECT);
+
+        return tObject;
+    }
 } // End TAO namespace

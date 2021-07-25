@@ -104,6 +104,21 @@ namespace TAO::API
             )
         );
 
+        /* Handle for all CREATE operations. */
+        mapFunctions["create"] = Function
+        (
+            std::bind
+            (
+                &Templates::Create,
+                std::placeholders::_1,
+                std::placeholders::_2,
+
+                /* Our accepted formats for this command-set. */
+                "readonly, raw, basic, json",
+                USER_TYPES::ASSET //the enumerated value for states
+            )
+        );
+
         /* Handle for all GET operations. */
         mapFunctions["get"] = Function
         (
@@ -162,7 +177,7 @@ namespace TAO::API
 
 
 
-        mapFunctions["create/asset"]             = Function(std::bind(&Assets::Create,    this, std::placeholders::_1, std::placeholders::_2));
+        //mapFunctions["create/asset"]             = Function(std::bind(&Assets::Create,    this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["update/asset"]             = Function(std::bind(&Assets::Update,    this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["tokenize/asset"]           = Function(std::bind(&Assets::Tokenize,  this, std::placeholders::_1, std::placeholders::_2));
 

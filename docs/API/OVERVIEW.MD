@@ -169,7 +169,7 @@ API Error Codes
 | -15 | Object is not an account or token |
 | -16 | Account has not been unlocked for transactions |
 | -17 | Failed to create transaction |
-| -18 | -------------------------- |
+| -18 | Invalid format for standard [name] |
 | -19 | -------------------------- |
 | -20 | -------------------------- |
 | -21 | -------------------------- |
