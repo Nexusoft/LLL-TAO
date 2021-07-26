@@ -41,7 +41,7 @@ namespace TAO::API
      **/
     struct USER_TYPES
     {
-        enum
+        enum : uint16_t
         {
             //for range checks
             RESERVED1   = 0,

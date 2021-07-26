@@ -74,6 +74,10 @@ namespace TAO::API
             if(!TAO::Operation::Create::Execute(tObject, vchData, rContract.Timestamp()))
                 throw Exception(-30, FUNCTION, "Operations failed to execute");
 
+            /* Parse object after created. */
+            if(!tObject.Parse())
+                throw Exception(-30, FUNCTION, "Object failed to parse");
+
             return tObject;
         }
 

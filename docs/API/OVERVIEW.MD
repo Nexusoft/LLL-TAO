@@ -207,7 +207,7 @@ API Error Codes
 | -53 | Missing name / address of account to credit |
 | -54 | Missing name_proof / address_proof to credit |
 | -55 | Must have at least two recipients to debit from any |
-| -56 | ------------------------ |
+| -56 | Invalid user-type enum [value] |
 | -57 | Invalid Parameter [name] |
 | -58 | Empty Parameter [name] |
 | -59 | Account to credit is not a NXS account |

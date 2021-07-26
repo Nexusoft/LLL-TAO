@@ -1131,6 +1131,10 @@ namespace TAO::API
                 /* Check for uint16_t type. */
                 case TAO::Register::TYPES::UINT16_T:
                 {
+                    /* Skip over our system usertype. */
+                    if(strName == "_usertype")
+                        break;
+
                     /* Set the return value from object register data. */
                     jRet[strName] = object.get<uint16_t>(strName);
 

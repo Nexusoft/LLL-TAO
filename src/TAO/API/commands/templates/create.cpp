@@ -37,7 +37,7 @@ namespace TAO::API
 {
     /* Create an tPayload or digital item. */
     encoding::json Templates::Create(const encoding::json& jParams, const bool fHelp,
-                                     const std::string& strAllowed, const uint16_t nType)
+                                     const std::string& strAllowed, const uint16_t nUserType)
     {
         /* Generate our address based on formatting type. */
         uint256_t hashRegister;
@@ -61,7 +61,7 @@ namespace TAO::API
 
             /* Serialise the incoming data into a state register */
             DataStream ssData(SER_REGISTER, 1);
-            ssData << uint16_t(nType) << jParams["data"].get<std::string>();
+            ssData << uint16_t(nUserType) << jParams["data"].get<std::string>();
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)   << hashRegister;
@@ -95,7 +95,7 @@ namespace TAO::API
 
             /* Serialise the incoming data into a state register */
             DataStream ssData(SER_REGISTER, 1);
-            ssData << uint16_t(nType) << strPayload;
+            ssData << uint16_t(nUserType) << strPayload;
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)   << hashRegister;
@@ -107,7 +107,7 @@ namespace TAO::API
         {
             /* Declare the object register to hold the payload data*/
             TAO::Register::Object tPayload =
-                BuildObject(jParams, hashRegister);
+                BuildObject(hashRegister, nUserType);
 
             /* Track the number of fields */
             uint32_t nFieldCount = 0;
@@ -132,6 +132,10 @@ namespace TAO::API
                 /* Make sure the name is not reserved. */
                 if(TAO::Register::Reserved(strField))
                     throw Exception(-22, "Field [", strField, "] is a reserved field name");
+
+                /* Check for user-type reserved field. */
+                if(strField == "_usertype")
+                    throw Exception(-22, "Field [_usertype] is a reserved field name");
 
                 /* Grab our value name. */
                 std::string strPayload;
@@ -197,7 +201,7 @@ namespace TAO::API
 
             /* Declare the object register to hold the payload data*/
             TAO::Register::Object tPayload =
-                BuildObject(jParams, hashRegister);
+                BuildObject(hashRegister, nUserType);
 
             /* Grab our schema from input parameters. */
             encoding::json jSchema = jParams["json"];
@@ -232,6 +236,10 @@ namespace TAO::API
                 /* Make sure the name is not reserved. */
                 if(TAO::Register::Reserved(strName))
                     throw Exception(-22, "Field [", strName, "] is a reserved field name");
+
+                /* Check for user-type reserved field. */
+                if(strName == "_usertype")
+                    throw Exception(-22, "Field [_usertype] is a reserved field name");
 
                 /* Add to the payload. */
                 tPayload << strName;
@@ -319,7 +327,7 @@ namespace TAO::API
         }
 
         /* Build our object first to check against our standards. */
-        TAO::Register::Object tObject =
+        const TAO::Register::Object tObject =
             ExecuteContract(vContracts[0]);
 
         /* Check that our formatting matches our standard. */

@@ -150,13 +150,13 @@ namespace TAO::API
 
     /** BuildObject
      *
-     *  Build a blank object based on _commands string, generating register address as well.
+     *  Build a blank object based on _usertype enum, generating register address as well.
      *
-     *  @param[in] jParams The incoming parameters from the command.
      *  @param[out] hashRegister The auto-generated register address.
+     *  @param[in] nUserType The user-type enum to put in object for identifying user-defined standards.
      *
      *  @return the new object register.
      *
      **/
-    TAO::Register::Object BuildObject(const encoding::json& jParams, uint256_t &hashRegister);
+    TAO::Register::Object BuildObject(uint256_t &hashRegister, const uint16_t nUserType);
 }

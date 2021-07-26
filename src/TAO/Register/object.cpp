@@ -455,7 +455,7 @@ namespace TAO
 
             /* Check the map for empty. */
             if(mapData.empty()) //TODO: this should either throw, or this method should return by reference
-                throw debug::exception(FUNCTION, "object is not parsed");
+                throw false;
 
             /* Iterate data map and pull field names out into return vector */
             for(const auto& fieldName : mapData)
@@ -470,11 +470,11 @@ namespace TAO
         {
             /* Check for non-objects. */
             if(this->nType != TAO::Register::REGISTER::OBJECT)
-                return debug::error(FUNCTION, "called on non-object");
+                return false;
 
             /* Check the map for empty. */
             if(mapData.empty())
-                return debug::error(FUNCTION, "object is not parsed");
+                return false;
 
             /* Check that the name exists in the object. */
             if(!mapData.count(strName))
@@ -503,7 +503,7 @@ namespace TAO
 
             /* Check the map for empty. */
             if(mapData.empty())
-                return debug::error(FUNCTION, "object is not parsed");
+                return false;
 
             /* Check that the name exists in the object. */
             if(!mapData.count(strName))
@@ -533,7 +533,7 @@ namespace TAO
 
             /* Check the map for empty. */
             if(mapData.empty())
-                return debug::error(FUNCTION, "object is not parsed");
+                return false;
 
             /* Check that the name exists in the object. */
             return mapData.count(strName) > 0;
@@ -545,11 +545,11 @@ namespace TAO
         {
             /* Check for non-objects. */
             if(this->nType != TAO::Register::REGISTER::OBJECT)
-                return debug::error(FUNCTION, "called on non-object");
+                return false;
 
             /* Check the map for empty. */
             if(mapData.empty())
-                return debug::error(FUNCTION, "object is not parsed");
+                return false;
 
             /* Get the type for given name. */
             uint8_t nType;

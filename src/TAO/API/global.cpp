@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/assets.h>
 #include <TAO/API/dex/types/dex.h>
 #include <TAO/API/types/commands/ledger.h>
-#include <TAO/API/supply/types/supply.h>
+#include <TAO/API/types/commands/supply.h>
 #include <TAO/API/system/types/system.h>
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/names/types/names.h>

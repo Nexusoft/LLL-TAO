@@ -36,7 +36,7 @@ namespace TAO::API
 {
     /* Update the data in an asset */
     encoding::json Templates::Update(const encoding::json& jParams, const bool fHelp,
-                                     const std::string& strAllowed, const uint16_t nType)
+                                     const std::string& strAllowed, const uint16_t nUserType)
     {
         /* Get the Register address. */
         const uint256_t hashRegister =
@@ -89,7 +89,7 @@ namespace TAO::API
 
             /* Serialise the incoming data into a state register */
             DataStream ssData(SER_REGISTER, 1);
-            ssData << uint16_t(nType) << strValue;
+            ssData << uint16_t(nUserType) << strValue;
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::WRITE) << hashRegister << ssData.Bytes();
@@ -205,47 +205,47 @@ namespace TAO::API
                     throw Exception(-22, "Field [", strField, "] is a reserved field name");
 
                 /* Grab our field datatype. */
-                uint8_t nType = 0;
-                if(!tObject.Type(strField, nType))
+                uint8_t nFieldType = 0;
+                if(!tObject.Type(strField, nFieldType))
                     throw Exception(-19, "Field [", strField, "] doesn't exist in object");
 
                 /* Check our object for data field. */
-                if(!tObject.Check(strField, nType, true))
+                if(!tObject.Check(strField, nFieldType, true))
                     throw Exception(-20, "Field [", strField, "] type is invalid for update, expecting [mutable]");
 
                 /* Add our fieldname payload first. */
                 ssPayload << strField;
 
                 /* Handle for 8-bit unsigned int. */
-                if(nType == TAO::Register::TYPES::UINT8_T)
+                if(nFieldType == TAO::Register::TYPES::UINT8_T)
                     ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT8_T) << ExtractInteger<uint8_t>(jParams, strField);
 
                 /* Handle for 16-bit unsigned int. */
-                if(nType == TAO::Register::TYPES::UINT16_T)
+                if(nFieldType == TAO::Register::TYPES::UINT16_T)
                     ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT16_T) << ExtractInteger<uint16_t>(jParams, strField);
 
                 /* Handle for 32-bit unsigned int. */
-                if(nType == TAO::Register::TYPES::UINT32_T)
+                if(nFieldType == TAO::Register::TYPES::UINT32_T)
                     ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT32_T) << ExtractInteger<uint32_t>(jParams, strField);
 
                 /* Handle for 64-bit unsigned int. */
-                if(nType == TAO::Register::TYPES::UINT64_T)
+                if(nFieldType == TAO::Register::TYPES::UINT64_T)
                     ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT64_T) << ExtractInteger<uint64_t>(jParams, strField);
 
                 /* Handle for 256-bit unsigned int. */
-                if(nType == TAO::Register::TYPES::UINT256_T)
+                if(nFieldType == TAO::Register::TYPES::UINT256_T)
                     ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << ExtractHash<uint256_t>(jParams, strField);
 
                 /* Handle for 512-bit unsigned int. */
-                if(nType == TAO::Register::TYPES::UINT512_T)
+                if(nFieldType == TAO::Register::TYPES::UINT512_T)
                     ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT512_T) << ExtractHash<uint512_t>(jParams, strField);
 
                 /* Handle for 1024-bit unsigned int. */
-                if(nType == TAO::Register::TYPES::UINT1024_T)
+                if(nFieldType == TAO::Register::TYPES::UINT1024_T)
                     ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT1024_T) << ExtractHash<uint1024_t>(jParams, strField);
 
                 /* Handle for regular utf-8 string. */
-                if(nType == TAO::Register::TYPES::STRING)
+                if(nFieldType == TAO::Register::TYPES::STRING)
                 {
                     /* Handle if string. */
                     if(!it->is_string())
@@ -272,7 +272,7 @@ namespace TAO::API
                 }
 
                 /* Handle for standard binary data. */
-                if(nType == TAO::Register::TYPES::BYTES)
+                if(nFieldType == TAO::Register::TYPES::BYTES)
                 {
                     /* Handle if string. */
                     if(!it->is_string())

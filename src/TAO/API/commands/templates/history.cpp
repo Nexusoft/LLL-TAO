@@ -96,11 +96,16 @@ namespace TAO::API
                 const uint8_t nPrimitive = rContract.Primitive();
 
                 /* Grab our register's pre-state. */
-                TAO::Register::Object tObject = ExecuteContract(rContract);
+                TAO::Register::Object tObject =
+                    ExecuteContract(rContract);
 
                 /* Check if object needs to be parsed. */
                 if(tObject.nType == TAO::Register::REGISTER::OBJECT)
                     tObject.Parse();
+
+                /* Check that object matches correct standard. */
+                if(!CheckStandard(jParams, tObject))
+                    throw Exception(-49, "Unsupported type for name/address");
 
                 /* Let's start building our json object. */
                 encoding::json jRegister =

@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/commands/assets.h>
+#include <TAO/API/types/commands/supply.h>
 #include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/check.h>
@@ -24,25 +24,25 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Standard initialization function. */
-    void Assets::Initialize()
+    void Supply::Initialize()
     {
-        /* Populate our asset standard. */
-        mapStandards["asset"] = Standard
+        /* Populate our item standard. */
+        mapStandards["item"] = Standard
         (
             /* Lambda expression to determine object standard. */
             [](const TAO::Register::Object& rObject)
             {
                 /* Check for correct state type. */
                 if(rObject.nType != TAO::Register::REGISTER::OBJECT)
-                    return false;
+                    return debug::error("not an object");
 
                 /* Make sure this isn't a command-set standard. */
-                if(rObject.Check("_usertype", TAO::Register::TYPES::UINT16_T, false))
-                {
-                    /* Check for user-types if specified. */
-                    if(rObject.get<uint16_t>("_usertype") != USER_TYPES::ASSET) //this is the new check
-                        return false;
-                } //we put this check inside fieldname check for backwards compatability
+                if(!rObject.Check("_usertype", TAO::Register::TYPES::UINT16_T, false))
+                    return debug::error("usertype not found");
+
+                /* Check that this is for this command-set. */
+                if(rObject.get<uint16_t>("_usertype") != USER_TYPES::SUPPLY)
+                    return debug::error("invalid supply usertype");
 
                 return rObject.Standard() == TAO::Register::OBJECTS::NONSTANDARD;
             }
@@ -59,7 +59,7 @@ namespace TAO::API
                     return false;
 
                 /* Check that this matches our user type. */
-                return GetStandardType(rObject) == USER_TYPES::ASSET;
+                return GetStandardType(rObject) == USER_TYPES::SUPPLY;
             }
         );
 
@@ -74,7 +74,7 @@ namespace TAO::API
                     return false;
 
                 /* Check that this matches our user type. */
-                return GetStandardType(rObject) == USER_TYPES::ASSET;
+                return GetStandardType(rObject) == USER_TYPES::SUPPLY;
             }
         );
 
@@ -85,7 +85,7 @@ namespace TAO::API
             [this](const TAO::Register::Object& rObject)
             {
                 /* Check for correct state type. */
-                if(CheckObject("asset", rObject))
+                if(CheckObject("item", rObject))
                     return true;
 
                 /* Check for correct state type. */
@@ -98,24 +98,6 @@ namespace TAO::API
 
                 return false;
             }
-        );
-
-        /* Populate our schema standard. */
-        mapStandards["schema"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [this](const TAO::Register::Object& rObject)
-            {
-                return CheckObject("asset", rObject);
-            }
-
-            /* Our custom encoding function for this type. */
-            , std::bind
-            (
-                &Assets::SchemaToJSON,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
         );
 
 
@@ -141,7 +123,7 @@ namespace TAO::API
 
                 /* Our accepted formats for this command-set. */
                 "readonly, raw, basic, json",
-                USER_TYPES::ASSET //the enumerated value for states
+                USER_TYPES::SUPPLY //the enumerated value for states
             )
         );
 
@@ -211,29 +193,8 @@ namespace TAO::API
 
                 /* Our accepted formats for this command-set. */
                 "raw, basic, json",
-                USER_TYPES::ASSET //the enumerated value for states
+                USER_TYPES::SUPPLY //the enumerated value for states
             )
-        );
-
-
-
-
-        //mapFunctions["create/asset"]             = Function(std::bind(&Assets::Create,    this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["update/asset"]             = Function(std::bind(&Assets::Update,    this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["tokenize/asset"]           = Function(std::bind(&Assets::Tokenize,  this, std::placeholders::_1, std::placeholders::_2));
-
-
-        /* DEPRECATED */
-        mapFunctions["list/asset/history"] = Function
-        (
-            std::bind
-            (
-                &Templates::Deprecated,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-            , version::get_version(5, 1, 0)
-            , "please use finance/transactions/account command instead"
         );
     }
 }
