@@ -345,19 +345,20 @@ namespace TAO
                 throw Exception(-10, "Invalid session ID");
 
             /* The logged in sig chain genesis hash */
-            uint256_t hashGenesis = session.GetAccount()->Genesis();
+            const uint256_t hashGenesis =
+                session.GetAccount()->Genesis();
 
             /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                 throw Exception(-138, "No previous transaction found");
 
-            /* Generate a temporary transaction with the next hash based on the current password/pin */
-            TAO::Ledger::Transaction tx;
-            tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, strPIN), txPrev.nNextType);
+            /* Calculate our next hash for auth check. */
+            const uint256_t hashNext =
+                TAO::Ledger::Transaction::NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, strPIN), txPrev.nNextType);
 
             /* Validate the credentials */
-            if(txPrev.hashNext != tx.hashNext)
+            if(txPrev.hashNext != hashNext)
             {
                 /* If the hashNext does not match then credentials are invalid, so increment the auth attempts counter */
                 session.IncrementAuthAttempts();

@@ -136,6 +136,15 @@ namespace TAO::API
         if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
             throw Exception(-31, "Ledger failed to sign transaction");
 
+        /* Double check our next hash if -safemode enabled. */
+        if(config::GetBoolArg("-safemode", false))
+        {
+            /* Grab another hash to check against. */
+            //uint256_t hashNext;
+
+
+        }
+
         /* Execute the operations layer. */
         if(!TAO::Ledger::mempool.Accept(tx))
             throw Exception(-32, "Failed to accept");

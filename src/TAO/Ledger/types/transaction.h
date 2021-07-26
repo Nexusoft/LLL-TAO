@@ -394,10 +394,22 @@ namespace TAO
              *  Sets the Next Hash from the key
              *
              *  @param[in] hashSecret The secret phrase to generate the keys.
-             *  @param[in] nType The type of key to create with.
              *
              **/
-            void NextHash(const uint512_t& hashSecret, const uint8_t nType);
+            void NextHash(const uint512_t& hashSecret);
+
+
+            /** NextHash
+             *
+             *  Calculates a next-hash from given secret key.
+             *
+             *  @param[in] hashSecret The secret phrase to generate the keys.
+             *  @param[in] nType The type of key to create with.
+             *
+             *  @return the calculated next-hash
+             *
+             **/
+            static uint256_t NextHash(const uint512_t& hashSecret, const uint8_t nType);
 
 
             /** PrevHash

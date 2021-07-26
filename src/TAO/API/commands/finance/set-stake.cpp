@@ -31,24 +31,28 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Set the stake amount for trust account (add/remove stake). */
-    encoding::json Finance::SetStake(const encoding::json& params, const bool fHelp)
+    encoding::json Finance::SetStake(const encoding::json& jParams, const bool fHelp)
     {
         encoding::json ret;
 
         /* Get the PIN to be used for this API call */
-        SecureString strPin = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        SecureString strPin = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
         /* Check for pin size. */
         if(strPin.size() == 0)
             throw Exception(-135, "Zero-length PIN");
 
         /* Get the session to be used for this API call */
-        Session& session = Commands::Get<Users>()->GetSession(params);
+        Session& session = Commands::Get<Users>()->GetSession(jParams);
 
         /* Get the user account. */
         const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
         if(!user)
             throw Exception(-10, "Invalid session ID");
+
+        /* Authenticate the users credentials */
+        if(!Commands::Get<Users>()->Authenticate(jParams))
+            throw Exception(-139, "Invalid credentials");
 
         /* Get the genesis ID. */
         uint256_t hashGenesis = user->Genesis();
@@ -64,30 +68,11 @@ namespace TAO::API
             throw Exception(-222, "User create pending confirmation");
         }
 
-        /* Validate pin by calculating hashNext and comparing to previous transaction */
-        TAO::Ledger::Transaction txPrev;
-
-        /* Get previous transaction */
-        uint512_t hashPrev;
-        if(!LLD::Ledger->ReadLast(hashGenesis, hashPrev, TAO::Ledger::FLAGS::MEMPOOL))
-            throw Exception(-138, "No previous transaction found");
-
-        if(!LLD::Ledger->ReadTx(hashPrev, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-            throw Exception(-138, "No previous transaction found");
-
-        /* Genesis Transaction. */
-        TAO::Ledger::Transaction tx;
-        tx.NextHash(user->Generate(txPrev.nSequence + 1, strPin), txPrev.nNextType);
-
-        /* Check for consistency. */
-        if(txPrev.hashNext != tx.hashNext)
-            throw Exception(-149, "Invalid PIN");
-
         /* Check for amount parameter. */
-        if(params.find("amount") == params.end())
+        if(jParams.find("amount") == jParams.end())
             throw Exception(-46, "Missing amount");
 
-        else if(std::stod(params["amount"].get<std::string>()) < 0)
+        else if(std::stod(jParams["amount"].get<std::string>()) < 0)
             throw Exception(-204, "Cannot set stake to a negative amount");
 
         /* Lock the signature chain. */
@@ -122,12 +107,12 @@ namespace TAO::API
             throw Exception(-205, "Unable to retrieve last stake");
 
         /* Get the requested amount to stake. */
-        uint64_t nAmount = std::stod(params["amount"].get<std::string>()) * TAO::Ledger::NXS_COIN;
+        uint64_t nAmount = std::stod(jParams["amount"].get<std::string>()) * TAO::Ledger::NXS_COIN;
 
         /* Get the time to expiration (optional). */
         uint64_t nExpires = 0;
-        if(params.find("expires") != params.end())
-            nExpires = std::stoull(params["expires"].get<std::string>());
+        if(jParams.find("expires") != jParams.end())
+            nExpires = std::stoull(jParams["expires"].get<std::string>());
 
         uint64_t nTime = runtime::unifiedtimestamp();
 

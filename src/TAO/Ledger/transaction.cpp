@@ -1256,7 +1256,15 @@ namespace TAO
 
 
         /* Sets the Next Hash from the key */
-        void Transaction::NextHash(const uint512_t& hashSecret, const uint8_t nType)
+        void Transaction::NextHash(const uint512_t& hashSecret)
+        {
+            /* Set the next hash if void function. */
+            hashNext = Transaction::NextHash(hashSecret, nNextType);
+        }
+
+
+        /* Calculates a next-hash from given secret key. */
+        uint256_t Transaction::NextHash(const uint512_t& hashSecret, const uint8_t nType)
         {
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
@@ -1265,7 +1273,6 @@ namespace TAO
             /* Switch based on signature type. */
             switch(nType)
             {
-
                 /* Support for the FALCON signature scheeme. */
                 case SIGNATURE::FALCON:
                 {
@@ -1274,12 +1281,10 @@ namespace TAO
 
                     /* Set the secret key. */
                     if(!key.SetSecret(vchSecret))
-                        return;
+                        return 0;
 
                     /* Calculate the next hash. */
-                    hashNext = LLC::SK256(key.GetPubKey());
-
-                    break;
+                    return LLC::SK256(key.GetPubKey());
                 }
 
                 /* Support for the BRAINPOOL signature scheme. */
@@ -1290,22 +1295,14 @@ namespace TAO
 
                     /* Set the secret key. */
                     if(!key.SetSecret(vchSecret, true))
-                        return;
+                        return 0;
 
                     /* Calculate the next hash. */
-                    hashNext = LLC::SK256(key.GetPubKey());
-
-                    break;
-                }
-
-                default:
-                {
-                    /* Unsupported (this is a failure flag). */
-                    hashNext = 0;
-
-                    break;
+                    return LLC::SK256(key.GetPubKey());
                 }
             }
+
+            return 0;
         }
 
 

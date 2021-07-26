@@ -130,7 +130,7 @@ namespace TAO
             }
 
             /* Now set the new credentials */
-            tx.NextHash(user->Generate(tx.nSequence + 1, strPassword, strPin), txPrev.nNextType);
+            tx.NextHash(user->Generate(tx.nSequence + 1, strPassword, strPin));
 
             /* Update the Crypto keys with the new pin */
             update_crypto_keys(user, strPin, tx);

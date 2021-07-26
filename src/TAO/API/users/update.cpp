@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/session-manager.h>
+#include <TAO/API/types/commands.h>
 
 #include <TAO/API/include/extract.h>
 
@@ -50,13 +51,13 @@ namespace TAO
             SecureString strPassword = SecureString(jParams["password"].get<std::string>().c_str());
 
             /* Existing pin parameter. */
-            const SecureString strPin = ExtractPIN(jParams);
+            const SecureString strPIN = ExtractPIN(jParams);
 
             /* Extract the new password - default to old password if only changing pin*/
             SecureString strNewPassword = strPassword;
 
             /* New pin parameter. Default to old pin if only changing pin*/
-            SecureString strNewPin = strPin;
+            SecureString strNewPin = strPIN;
 
             /* New recovery seed to set. */
             SecureString strNewRecovery = "";
@@ -92,7 +93,7 @@ namespace TAO
             }
 
             /* Check something is being changed */
-            if(strNewRecovery.empty() && strNewPassword == strPassword && strNewPin == strPin)
+            if(strNewRecovery.empty() && strNewPassword == strPassword && strNewPin == strPIN)
                 throw Exception(-218, "User password / pin not changed");
 
 
@@ -123,44 +124,24 @@ namespace TAO
                 fRecovery = true;
             }
 
+            /* Authenticate the users credentials */
+            if(!Commands::Get<Users>()->Authenticate(jParams))
+                throw Exception(-139, "Invalid credentials");
 
             /* Lock the signature chain in case another process attempts to create a transaction . */
             LOCK(session.CREATE_MUTEX);
 
             /* Create a temp sig chain to check the credentials again */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> userUpdated = new TAO::Ledger::SignatureChain(session.GetAccount()->UserName(), strPassword);
-
-            /* Create temp Transaction to check credentials. */
-            TAO::Ledger::Transaction tx;
-            tx.NextHash(userUpdated->Generate(txPrev.nSequence + 1, strPin), txPrev.nNextType);
-
-            /* Check for consistency. */
-            if(txPrev.hashNext != tx.hashNext)
-            {
-                /* Increment the failed auth attempts counter */
-                session.IncrementAuthAttempts();
-
-                /* If the number of failed auth attempts exceeds the configured allowed number then log this user out */
-                if(session.GetAuthAttempts() >= config::GetArg("-authattempts", 3))
-                {
-                    debug::log(0, FUNCTION, "Too many invalid password / pin attempts. Logging out user session:", session.ID().ToString() );
-
-                    /* Log the user out.  NOTE this also closes down the stake minter, removes this session from the notifications
-                       processor, terminates any P2P connections, and removes the session from the session manager */
-                    TerminateSession(session.ID());
-
-                    throw Exception(-290, "Invalid credentials.  User logged out due to too many password / pin attempts");
-                }
-
-                throw Exception(-139, "Invalid credentials");
-            }
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> userUpdated =
+                new TAO::Ledger::SignatureChain(session.GetAccount()->UserName(), strPassword);
 
             /* Create the update transaction */
-            if(!Users::CreateTransaction(session.GetAccount(), strPin, tx))
+            TAO::Ledger::Transaction tx;
+            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
                 throw Exception(-17, "Failed to create transaction");
 
             /* Now set the new credentials */
-            tx.NextHash(userUpdated->Generate(tx.nSequence + 1, strNewPassword, strNewPin), txPrev.nNextType);
+            tx.NextHash(userUpdated->Generate(tx.nSequence + 1, strNewPassword, strNewPin));
 
             /* Set the recovery hash */
             if(!strNewRecovery.empty())
@@ -218,7 +199,7 @@ namespace TAO
             else
             {
                 /* If we are not using the recovery seed then generate the private key based on the pin / last sequence */
-                hashSecret = GetKey(tx.nSequence, strPin, session);
+                hashSecret = GetKey(tx.nSequence, strPIN, session);
             }
 
             /* Sign the transaction . */
@@ -267,7 +248,7 @@ namespace TAO
 
         /* Generates new keys in the Crypto object register for a signature chain, using the specified pin, and adds the update
         *  contract to the transaction. */
-        void Users::update_crypto_keys(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPin, TAO::Ledger::Transaction& tx )
+        void Users::update_crypto_keys(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN, TAO::Ledger::Transaction& tx )
         {
             /* Generate register address for crypto register deterministically */
             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), user->Genesis(), TAO::Register::Address::CRYPTO);
@@ -288,19 +269,19 @@ namespace TAO
 
             /* Update the keys */
             if(crypto.get<uint256_t>("auth") != 0)
-                ssOperationStream << std::string("auth") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("auth", 0, strPin, tx.nKeyType);
+                ssOperationStream << std::string("auth") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("auth", 0, strPIN, tx.nKeyType);
 
             if(crypto.get<uint256_t>("lisp") != 0)
-                ssOperationStream << std::string("lisp") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("lisp", 0, strPin, tx.nKeyType);
+                ssOperationStream << std::string("lisp") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("lisp", 0, strPIN, tx.nKeyType);
 
             if(crypto.get<uint256_t>("network") != 0)
-                ssOperationStream << std::string("network") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("network", 0, strPin, tx.nKeyType);
+                ssOperationStream << std::string("network") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("network", 0, strPIN, tx.nKeyType);
 
             if(crypto.get<uint256_t>("sign") != 0)
-                ssOperationStream << std::string("sign") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("sign", 0, strPin, tx.nKeyType);
+                ssOperationStream << std::string("sign") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("sign", 0, strPIN, tx.nKeyType);
 
             if(crypto.get<uint256_t>("verify") != 0)
-                ssOperationStream << std::string("verify") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("verify", 0, strPin, tx.nKeyType);
+                ssOperationStream << std::string("verify") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("verify", 0, strPIN, tx.nKeyType);
 
             /* Add the crypto update contract. */
             tx[tx.Size()] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();

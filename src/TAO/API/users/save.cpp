@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/session-manager.h>
+#include <TAO/API/types/commands.h>
 
 #include <TAO/API/include/extract.h>
 
@@ -23,47 +24,32 @@ ________________________________________________________________________________
 
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Saves the users session into the local DB so that it can be resumed later after a crash */
+    encoding::json Users::Save(const encoding::json& jParams, const bool fHelp)
     {
+        /* Pin parameter. */
+        const SecureString strPIN =
+            ExtractPIN(jParams);
 
-        /* Saves the users session into the local DB so that it can be resumed later after a crash */
-        encoding::json Users::Save(const encoding::json& jParams, const bool fHelp)
+        /* Get the session */
+        Session& session =
+            GetSession(jParams);
+
+        /* Authenticate the users credentials */
+        if(!Commands::Get<Users>()->Authenticate(jParams))
+            throw Exception(-139, "Invalid credentials");
+
+        /* Save the session */
+        session.Save(strPIN);
+
+        /* populate reponse */;
+        const encoding::json jRet =
         {
-            /* JSON return value. */
-            encoding::json ret;
+            { "success", true}
+        };
 
-            /* Pin parameter. */
-            const SecureString strPin = ExtractPIN(jParams);
-
-            /* Get the session */
-            Session& session = GetSession(jParams);
-
-            /* Get the genesis ID. */
-            uint256_t hashGenesis = session.GetAccount()->Genesis();
-
-            /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
-            TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                throw Exception(-138, "No previous transaction found");
-
-            /* Genesis Transaction. */
-            TAO::Ledger::Transaction tx;
-            tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, strPin), txPrev.nNextType);
-
-            /* Check for consistency. */
-            if(txPrev.hashNext != tx.hashNext)
-                throw Exception(-149, "Invalid PIN");
-
-            /* Save the session */
-            session.Save(strPin);
-
-            /* populate reponse */;
-            ret["success"] = true;
-            return ret;
-        }
+        return jRet;
     }
 }

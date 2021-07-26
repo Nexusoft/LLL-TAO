@@ -156,7 +156,7 @@ namespace TAO
                 tx.nVersion = nCurrent - 1;
 
             /* Genesis Transaction. */
-            tx.NextHash(user->Generate(tx.nSequence + 1, pin), tx.nNextType);
+            tx.NextHash(user->Generate(tx.nSequence + 1, pin));
             tx.hashGenesis = user->Genesis();
 
             return true;
@@ -792,7 +792,8 @@ namespace TAO
 
                 /* Genesis Transaction. */
                 TAO::Ledger::Transaction tx;
-                tx.NextHash(user->Generate(txPrev.nSequence + 1, "1234"), txPrev.nNextType);
+                tx.nNextType = txPrev.nNextType;
+                tx.NextHash(user->Generate(txPrev.nSequence + 1, "1234"));
 
                 /* Check for consistency. */
                 if(txPrev.hashNext != tx.hashNext)

@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/session-manager.h>
+#include <TAO/API/types/commands.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -53,7 +54,7 @@ namespace TAO
             encoding::json ret;
 
             /* Pin parameter. */
-            const SecureString strPin = ExtractPIN(jParams);
+            const SecureString strPIN = ExtractPIN(jParams);
 
             /* Check for username parameter. */
             if(jParams.find("username") == jParams.end())
@@ -107,18 +108,11 @@ namespace TAO
                 if(TAO::Ledger::ChainState::Synchronizing())
                     throw Exception(-297, "Cannot log in while synchronizing");
 
-                /* In order to authenticate the user, at a minimum we need a transaction from the users sig chain containing the most
-                   up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in
-                   the mempool).  If it is not, we can lookup the users Crypto object register (since this is updated
-                   whenever the password/pin changes).  Reading the crypto register from the DB will force a remote lookup from a
-                   peer if it is missing or expired.  This process avoids us having to download the entire sig chain before logging
-                   in, so we can download it asynchronously after logging them in.  */
-
                 /* First check to see if this is a new sig chain and the genesis is in the mempool */
                 bool fNewSigchain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
 
                 /* IF this is not a new sig chain, force a lookup of the crypto register */
-                if(!fNewSigchain )
+                if(!fNewSigchain)
                 {
                     /* The address of the crypto object register, which is deterministic based on the genesis */
                     TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
@@ -183,15 +177,9 @@ namespace TAO
                     throw Exception(-138, "No previous transaction found");
             }
 
-            /* Genesis Transaction. */
-            TAO::Ledger::Transaction tx;
-            tx.NextHash(user.Generate(txPrev.nSequence + 1, strPin), txPrev.nNextType);
-
-            /* Check for consistency. */
-            if(txPrev.hashNext != tx.hashNext)
-            {
+            /* Authenticate the users credentials */
+            if(!Commands::Get<Users>()->Authenticate(jParams))
                 throw Exception(-139, "Invalid credentials");
-            }
 
             /* Check the sessions. */
             {
@@ -220,7 +208,7 @@ namespace TAO
             }
 
             /* Create the new session */
-            Session& session = GetSessionManager().Add(user, strPin);
+            Session& session = GetSessionManager().Add(user, strPIN);
 
             /* Cache the txid that was used to authenticate their login */
             session.hashAuth = txPrev.GetHash();
@@ -267,10 +255,10 @@ namespace TAO
                     /* Keep a the credentials in secure allocated strings. */
                     SecureString strUsername = config::GetArg("-username", "").c_str();
                     SecureString strPassword = config::GetArg("-password", "").c_str();
-                    SecureString strPin = config::GetArg("-pin", "").c_str();
+                    SecureString strPIN      = config::GetArg("-pin", "").c_str();
 
                     /* Check we have user/pass/pin */
-                    if(strUsername.empty() || strPassword.empty() || strPin.empty())
+                    if(strUsername.empty() || strPassword.empty() || strPIN.empty())
                         throw Exception(-203, "Autologin missing username/password/pin");
 
                     /* Create a temp sig chain for checking credentials */
@@ -288,13 +276,6 @@ namespace TAO
                         /* In client mode, wait until we are synchronized before logging in */
                         if(TAO::Ledger::ChainState::Synchronizing())
                             throw Exception(-297, "Cannot log in while synchronizing");
-
-                        /* In order to authenticate the user, at a minimum we need a transaction from the users sig chain containing the most
-                        up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in
-                        the mempool).  If it is not, we can lookup the users Crypto object register (since this is updated
-                        whenever the password/pin changes).  Reading the crypto register from the DB will force a remote lookup from a
-                        peer if it is missing or expired.  This process avoids us having to download the entire sig chain before logging
-                        in, so we can download it asynchronously after logging them in.  */
 
                         /* First check to see if this is a new sig chain and the genesis is in the mempool */
                         bool fNewSigchain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
@@ -351,7 +332,7 @@ namespace TAO
                                 TAO::Ledger::Transaction tx;
 
                                 /* Create the sig chain genesis transaction */
-                                create_sig_chain(strUsername, strPassword, strPin, tx);
+                                create_sig_chain(strUsername, strPassword, strPIN, tx);
 
                                 /* Display that login was successful. */
                                 debug::log(0, "Auto-Create Successful");
@@ -374,18 +355,16 @@ namespace TAO
                         }
                     }
 
-                    /* Genesis Transaction. */
-                    TAO::Ledger::Transaction tx;
-                    tx.NextHash(user.Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str()), txPrev.nNextType);
+                    /* Calculate our next hash for auth check. */
+                    const uint256_t hashNext =
+                        TAO::Ledger::Transaction::NextHash(user.Generate(txPrev.nSequence + 1, strPIN), txPrev.nNextType);
 
-                    /* Check the credentials match the previous tx. */
-                    if(txPrev.hashNext != tx.hashNext)
-                    {
+                    /* Validate the credentials */
+                    if(txPrev.hashNext != hashNext)
                         throw Exception(-139, "Invalid credentials");
-                    }
 
                     /* Create the new session */
-                    Session& session = GetSessionManager().Add(user, strPin);
+                    Session& session = GetSessionManager().Add(user, strPIN);
 
                     /* Cache the txid that was used to authenticate their login */
                     session.hashAuth = txPrev.GetHash();
@@ -397,7 +376,7 @@ namespace TAO
                                            | TAO::Ledger::PinUnlock::UnlockActions::STAKING;
 
                     /* Set account to unlocked. */
-                    session.UpdatePIN(config::GetArg("-pin", "").c_str(), nUnlockActions);
+                    session.UpdatePIN(strPIN.c_str(), nUnlockActions);
 
 
                     /* Display that login was successful. */

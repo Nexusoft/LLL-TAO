@@ -78,7 +78,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.nTimestamp  = runtime::timestamp();
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
-            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+            tx.NextHash(hashPrivKey2);
 
             //create object
             tx[0] << uint8_t(OP::COINBASE) << hashGenesis << uint64_t(1000 * TAO::Ledger::NXS_COIN) << (uint64_t)0;
@@ -124,7 +124,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.nTimestamp  = runtime::timestamp();
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
-            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+            tx.NextHash(hashPrivKey2);
 
             //create object
             Object account = CreateAccount(0);
@@ -171,7 +171,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.nTimestamp  = runtime::timestamp();
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
-            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+            tx.NextHash(hashPrivKey2);
 
             //payload
             tx[0] << uint8_t(OP::CREDIT) << hashCoinbaseTx << uint32_t(0) << hashAccount << hashGenesis << uint64_t(1000 * TAO::Ledger::NXS_COIN);
@@ -251,7 +251,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.nTimestamp  = runtime::timestamp();
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
-            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+            tx.NextHash(hashPrivKey2);
 
             //payload
             tx[0] << uint8_t(OP::LEGACY) << hashAccount << uint64_t(10 * TAO::Ledger::NXS_COIN);
@@ -331,7 +331,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.nTimestamp  = runtime::timestamp();
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
-            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+            tx.NextHash(hashPrivKey2);
 
             //payload
             tx[0] << uint8_t(OP::LEGACY) << hashAccount << uint64_t(10 * TAO::Ledger::NXS_COIN);
