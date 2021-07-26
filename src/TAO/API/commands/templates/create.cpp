@@ -162,7 +162,7 @@ namespace TAO::API
 
                 /* If the caller specifies a maxlength then use this to set the size of the string */
                 const uint64_t nMaxLength =
-                    ExtractInteger<uint64_t>(jParams, "maxlength", ((strPayload.size() / 32) + 1) * 32, 1000); //32 bytes default padding
+                    ExtractInteger<uint64_t>(jParams, "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000); //64 bytes default padding
 
                 /* Check for minimum ranges. */
                 if(nMaxLength < strPayload.size())

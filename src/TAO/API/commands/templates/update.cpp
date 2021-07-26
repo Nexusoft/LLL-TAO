@@ -166,7 +166,7 @@ namespace TAO::API
                 strValue.resize(nMaxLength);
 
                 /* Add our payload to the contract. */
-                ssPayload << strField << uint8_t(TAO::Register::TYPES::STRING) << strValue;
+                ssPayload << strField << uint8_t(TAO::Operation::OP::TYPES::STRING) << strValue;
             }
 
             /* Check for missing parameters. */
@@ -218,31 +218,31 @@ namespace TAO::API
 
                 /* Handle for 8-bit unsigned int. */
                 if(nType == TAO::Register::TYPES::UINT8_T)
-                    ssPayload << uint8_t(TAO::Register::TYPES::UINT8_T) << ExtractInteger<uint8_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT8_T) << ExtractInteger<uint8_t>(jParams, strField);
 
                 /* Handle for 16-bit unsigned int. */
                 if(nType == TAO::Register::TYPES::UINT16_T)
-                    ssPayload << uint8_t(TAO::Register::TYPES::UINT16_T) << ExtractInteger<uint16_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT16_T) << ExtractInteger<uint16_t>(jParams, strField);
 
                 /* Handle for 32-bit unsigned int. */
                 if(nType == TAO::Register::TYPES::UINT32_T)
-                    ssPayload << uint8_t(TAO::Register::TYPES::UINT32_T) << ExtractInteger<uint32_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT32_T) << ExtractInteger<uint32_t>(jParams, strField);
 
                 /* Handle for 64-bit unsigned int. */
                 if(nType == TAO::Register::TYPES::UINT64_T)
-                    ssPayload << uint8_t(TAO::Register::TYPES::UINT64_T) << ExtractInteger<uint64_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT64_T) << ExtractInteger<uint64_t>(jParams, strField);
 
                 /* Handle for 256-bit unsigned int. */
                 if(nType == TAO::Register::TYPES::UINT256_T)
-                    ssPayload << uint8_t(TAO::Register::TYPES::UINT256_T) << ExtractHash<uint256_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << ExtractHash<uint256_t>(jParams, strField);
 
                 /* Handle for 512-bit unsigned int. */
                 if(nType == TAO::Register::TYPES::UINT512_T)
-                    ssPayload << uint8_t(TAO::Register::TYPES::UINT512_T) << ExtractHash<uint512_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT512_T) << ExtractHash<uint512_t>(jParams, strField);
 
                 /* Handle for 1024-bit unsigned int. */
                 if(nType == TAO::Register::TYPES::UINT1024_T)
-                    ssPayload << uint8_t(TAO::Register::TYPES::UINT1024_T) << ExtractHash<uint1024_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT1024_T) << ExtractHash<uint1024_t>(jParams, strField);
 
                 /* Handle for regular utf-8 string. */
                 if(nType == TAO::Register::TYPES::STRING)
@@ -268,7 +268,7 @@ namespace TAO::API
                     strValue.resize(nMaxLength);
 
                     /* Add our payload to the contract. */
-                    ssPayload << uint8_t(TAO::Register::TYPES::STRING) << strValue;
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::STRING) << strValue;
                 }
 
                 /* Handle for standard binary data. */
@@ -294,7 +294,7 @@ namespace TAO::API
                         throw Exception(-35, "Invalid parameter [", strField, "], expecting [base64]");
 
                     /* Add our payload to the contract. */
-                    ssPayload << uint8_t(TAO::Register::TYPES::BYTES) << vPayload;
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::BYTES) << vPayload;
                 }
             }
 
