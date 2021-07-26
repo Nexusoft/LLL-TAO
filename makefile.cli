@@ -404,11 +404,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_time.o \
 		build/LLP_tritium.o \
 		build/LLP_trust_address.o \
-		build/API_commands_assets_create.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
 		build/API_commands_assets_tokenize.o \
-		build/API_commands_assets_update.o \
 		build/API_commands_crypto_change.o \
 		build/API_commands_crypto_create.o \
 		build/API_commands_crypto_crypto.o \
