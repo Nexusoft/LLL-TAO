@@ -36,7 +36,7 @@ namespace TAO::API
 
         /* Check for unlock actions */
         uint8_t nUnlockedActions =
-            TAO::Ledger::PinUnlock::UnlockActions::ALL; // default to ALL actions
+            TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
 
         /* If it has already been unlocked then set the Unlocked actions to the current unlocked actions */
         if(!rSession.Locked())
@@ -95,7 +95,7 @@ namespace TAO::API
         }
 
         /* If no unlock actions have been specifically set then default it to all */
-        if(nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::ALL)
+        if(ExtractBoolean(jParams, "all"))
         {
             /* Check if already unlocked. */
             if(rSession.CanMine() && rSession.CanStake() && rSession.CanTransact() && rSession.CanProcessNotifications())
@@ -104,6 +104,10 @@ namespace TAO::API
             /* Adjust the unlocked flags. */
             nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::ALL;
         }
+
+        /* Check for no actions. */
+        if(nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
+            throw Exception(-259, "You must specify at least one unlock action");
 
         /* Authenticate the request. */
         if(!Authenticate(jParams))
