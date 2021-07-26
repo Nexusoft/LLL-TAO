@@ -390,6 +390,45 @@ namespace TAO::API
     }
 
 
+    /* Extract the pin number from input parameters. */
+    SecureString ExtractPIN(const encoding::json& jParams)
+    {
+        /* Check for correct parameter types. */
+        if(!CheckParameter(jParams, "pin", "string, number"))
+            throw Exception(-28, "Missing parameter [pin] for command");
+
+        /* Handle for unsigned integer. */
+        if(jParams["pin"].is_number_unsigned())
+        {
+            /* Grab our secure string pin. */
+            const SecureString strPIN =
+                SecureString(debug::safe_printstr(jParams["pin"].get<uint64_t>()).c_str());
+
+            /* Check for empty values. */
+            if(strPIN.empty())
+                throw Exception(-57, "Invalid Parameter [pin.empty()]");
+
+            return strPIN;
+        }
+
+        /* Handle for string representation. */
+        if(jParams["pin"].is_string())
+        {
+            /* Grab our secure string pin. */
+            const SecureString strPIN =
+                SecureString(jParams["pin"].get<std::string>().c_str());
+
+            /* Check for empty values. */
+            if(strPIN.empty())
+                throw Exception(-57, "Invalid Parameter [pin.empty()]");
+
+            return strPIN;
+        }
+
+        throw Exception(-35, "Invalid parameter [pin=", jParams["pin"].type_name(), "], expecting [pin=string, number]");
+    }
+
+
     /* Extract a verbose argument from input parameters in either string or integer format. */
     uint32_t ExtractVerbose(const encoding::json& jParams, const uint32_t nMinimum)
     {

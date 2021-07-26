@@ -18,8 +18,10 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
 
-#include <TAO/API/users/types/users.h>
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/global.h>
+
+#include <TAO/API/users/types/users.h>
 #include <TAO/API/types/session-manager.h>
 
 #include <TAO/Register/types/object.h>
@@ -45,47 +47,37 @@ namespace TAO
         //TODO: have the authorization system build a SHA256 hash and salt on the client side as the AUTH hash.
 
         /* Login to a user account. */
-        encoding::json Users::Login(const encoding::json& params, const bool fHelp)
+        encoding::json Users::Login(const encoding::json& jParams, const bool fHelp)
         {
             /* JSON return value. */
             encoding::json ret;
 
             /* Pin parameter. */
-            SecureString strPin;
+            const SecureString strPin = ExtractPIN(jParams);
 
             /* Check for username parameter. */
-            if(params.find("username") == params.end())
+            if(jParams.find("username") == jParams.end())
                 throw Exception(-127, "Missing username");
 
             /* Parse out username. */
-            SecureString strUser = SecureString(params["username"].get<std::string>().c_str());
+            const SecureString strUser =
+                SecureString(jParams["username"].get<std::string>().c_str());
 
             /* Check for username size. */
             if(strUser.size() == 0)
                 throw Exception(-133, "Zero-length username");
 
             /* Check for password parameter. */
-            if(params.find("password") == params.end())
+            if(jParams.find("password") == jParams.end())
                 throw Exception(-128, "Missing password");
 
             /* Parse out password. */
-            SecureString strPass = SecureString(params["password"].get<std::string>().c_str());
+            const SecureString strPass =
+                SecureString(jParams["password"].get<std::string>().c_str());
 
             /* Check for password size. */
             if(strPass.size() == 0)
                 throw Exception(-134, "Zero-length password");
-
-            /* Check for pin parameter. Parse the pin parameter. */
-            if(params.find("pin") != params.end())
-                strPin = SecureString(params["pin"].get<std::string>().c_str());
-            else if(params.find("PIN") != params.end())
-                strPin = SecureString(params["PIN"].get<std::string>().c_str());
-            else
-                throw Exception(-129, "Missing PIN");
-
-            /* Check for pin size. */
-            if(strPin.size() == 0)
-                throw Exception(-135, "Zero-length PIN");
 
             /* Create a temp sig chain for checking credentials */
             TAO::Ledger::SignatureChain user(strUser, strPass);

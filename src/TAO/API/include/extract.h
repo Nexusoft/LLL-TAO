@@ -147,6 +147,18 @@ namespace TAO::API
     std::string ExtractType(const encoding::json& jParams);
 
 
+    /** ExtractPIN
+     *
+     *  Extract the pin number from input parameters.
+     *
+     *  @param[in] jParams The incoming parameters to check.
+     *
+     *  @return secure string representation of pin.
+     *
+     **/
+    SecureString ExtractPIN(const encoding::json& jParams);
+
+
     /** ExtractTypes
      *
      *  Extract the type string value from input parameters as either array or string.

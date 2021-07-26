@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/global.h>
 
 #include <TAO/API/types/session-manager.h>
@@ -147,28 +148,25 @@ namespace TAO
          * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
          * then the method will return the pin from the params.  If no pin is available then
          * an Exception is thrown */
-        SecureString Users::GetPin(const encoding::json params, uint8_t nUnlockAction) const
+        SecureString Users::GetPin(const encoding::json jParams, uint8_t nUnlockAction) const
         {
-
-            /* Check for pin parameter. */
-            SecureString strPIN;
-
             /* Get the active session */
-            Session& session = GetSession(params, true, false);
+            Session& session = GetSession(jParams, true, false);
 
             /* If we have a pin already, check we are allowed to use it for the requested action */
             bool fNeedPin = session.GetActivePIN().IsNull() || session.GetActivePIN()->PIN().empty() || !(session.GetActivePIN()->UnlockedActions() & nUnlockAction);
             if(fNeedPin)
             {
-                /* If we need a pin then check it is in the params */
-                if(params.find("pin") == params.end())
-                    throw Exception(-129, "Missing PIN");
-                else
-                    strPIN = params["pin"].get<std::string>().c_str();
+                /* Grab our pin secure string. */
+                const SecureString strPIN =
+                    ExtractPIN(jParams);
+
+                return strPIN;
             }
-            else
-                /* If we don't need the pin then use the current active one */
-                strPIN = session.GetActivePIN()->PIN();
+
+            /* If we don't need the pin then use the current active one */
+            const SecureString strPIN =
+                session.GetActivePIN()->PIN();
 
             return strPIN;
         }
