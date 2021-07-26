@@ -24,21 +24,18 @@ namespace TAO::API
     /* Credit an incoming debit from recipient. */
     encoding::json Finance::Credit(const encoding::json& jParams, const bool fHelp)
     {
-        /* Check for txid parameter. */
-        if(jParams.find("txid") == jParams.end())
-            throw Exception(-50, "Missing txid.");
-
-        /* Extract some parameters from input data. */
-        const TAO::Register::Address hashCredit = ExtractAddress(jParams, "", "default");
-
         /* Get the transaction id. */
         const uint512_t hashTx =
-            uint512_t(jParams["txid"].get<std::string>());
+            ExtractHash(jParams);
+
+        /* Extract some parameters from input data. */
+        const TAO::Register::Address hashCredit =
+            ExtractAddress(jParams, "", "default");
 
         /* Check for tritium credits. */
         std::vector<TAO::Operation::Contract> vContracts(0);
         if(!BuildContracts(jParams, hashTx, vContracts, BuildCredit))
-            throw Exception(-43, "No valid contracts in debit tx.");
+            throw Exception(-43, "No valid contracts in tx.");
 
         /* Build response JSON boilerplate. */
         return BuildResponse(jParams, hashCredit, vContracts);

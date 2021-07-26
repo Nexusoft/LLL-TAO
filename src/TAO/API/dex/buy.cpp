@@ -139,7 +139,7 @@ namespace TAO
 
             /* Check that output was found. */
             if(!fFound)
-                throw Exception(-43, "No valid contracts in debit tx.");
+                throw Exception(-43, "No valid contracts in tx.");
 
             /* Add the fee */
             AddFee(tx);

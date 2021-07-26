@@ -194,7 +194,7 @@ API Error Codes
 | -40 | Previous transaction not found |
 | -41 | Invalid transaction-id |
 | -42 | No valid debits to buy from |
-| -43 | No valid contracts in debit tx |
+| -43 | No valid contracts in tx |
 | -44 | Transaction failed to build |
 | -45 | Missing name_to / address_to |
 | -46 | Missing amount |

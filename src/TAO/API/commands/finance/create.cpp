@@ -46,7 +46,8 @@ namespace TAO::API
     encoding::json Finance::Create(const encoding::json& jParams, const bool fHelp)
     {
         /* Extract our type parameter. */
-        const std::string strType = ExtractType(jParams);
+        const std::string strType =
+            ExtractType(jParams);
 
         /* Check that we have designated a type to create. */
         TAO::Register::Address hashRegister;

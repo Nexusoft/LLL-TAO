@@ -76,9 +76,8 @@ namespace TAO::API
         std::vector<TAO::Operation::Contract> vContracts;
 
         /* Process the contract and attempt to void it */
-        TAO::Operation::Contract tContract;
-        if(AddVoid(tx[nContract], nContract, tContract))
-            vContracts.push_back(tContract);
+        if(!BuildVoid(jParams, nContract, tx[nContract], vContracts))
+            throw Exception(-43, "No valid contracts in tx.");
 
         /* Build response JSON boilerplate. */
         return BuildResponse(jParams, hashRegister, vContracts);

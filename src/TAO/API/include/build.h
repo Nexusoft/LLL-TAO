@@ -126,7 +126,7 @@ namespace TAO::API
      *
      *  @param[in] jParams The parameters to use for this call.
      *  @param[in] nContract The contract we are building for.
-     *  @param[in] rContract The transfer contract to claim from.
+     *  @param[in] rTransfer The transfer contract to claim from.
      *  @param[out] vContracts The contracts built based on this claim.
      *
      *  @return true if contracts were generated, false if credit has no contracts available.
@@ -134,6 +134,22 @@ namespace TAO::API
      **/
     bool BuildClaim(const encoding::json& jParams, const uint32_t nContract,
         const TAO::Operation::Contract& rTransfer, std::vector<TAO::Operation::Contract> &vContracts);
+
+
+    /** BuildVoid
+     *
+     *  Builds a void contract based on given contract and related parameters.
+     *
+     *  @param[in] jParams The parameters to use for this call.
+     *  @param[in] nContract The contract we are building for.
+     *  @param[in] rDependent The transfer contract to claim from.
+     *  @param[out] vContracts The contracts built based on this claim.
+     *
+     *  @return true if contracts were generated, false if credit has no contracts available.
+     *
+     **/
+    bool BuildVoid(const encoding::json& jParams, const uint32_t nContract,
+        const TAO::Operation::Contract& rDependent, std::vector<TAO::Operation::Contract> &vContracts);
 
 
     /** BuildName

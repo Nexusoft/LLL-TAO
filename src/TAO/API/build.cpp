@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
+#include <TAO/API/include/conditions.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/json.h>
 #include <TAO/API/types/exception.h>
@@ -544,6 +545,30 @@ namespace TAO::API
         vContracts.push_back(tContract);
 
         return true; //if we get this far, this claim was a success
+    }
+
+
+    /* Builds a void contract based on given contract and related parameters. */
+    bool BuildVoid(const encoding::json& jParams, const uint32_t nContract,
+        const TAO::Operation::Contract& rDependent, std::vector<TAO::Operation::Contract> &vContracts)
+    {
+        /* Get our genesis-id for this call. */
+        const uint256_t hashGenesis =
+            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+
+        /* Check that we aren't voiding a transaction not owned by us. */
+        if(rDependent.Caller() != hashGenesis)
+            return false;
+
+        /* Attempt to add our void contract now. */
+        TAO::Operation::Contract tVoided;
+        if(!AddVoid(rDependent, nContract, tVoided))
+            return false;
+
+        /* Push our void contract to outgoing queue. */
+        vContracts.push_back(tVoided);
+
+        return true;
     }
 
 
