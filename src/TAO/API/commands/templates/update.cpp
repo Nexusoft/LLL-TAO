@@ -71,7 +71,7 @@ namespace TAO::API
                 strPayload = jParams["data"].get<std::string>();
 
             /* Handle for object and array. */
-            if(jParams["data"].is_object() || jParams["data"].is_array())
+            if(jParams["data"].is_structured())
                 strPayload = jParams["data"].dump(-1);
 
             /* Build a stream to deserlialize some data. */
@@ -152,7 +152,7 @@ namespace TAO::API
                 }
 
                 /* Handle for json objects. */
-                if(it->is_object() || it->is_array())
+                if(it->is_structured())
                     strPayload = it->dump(-1);
 
                 /* Check that parameter was converted correctly. */
@@ -264,7 +264,7 @@ namespace TAO::API
                         strPayload = it->get<std::string>();
 
                     /* Handle for json objects. */
-                    if(it->is_object() || it->is_array())
+                    if(it->is_structured())
                         strPayload = it->dump(-1);
 
                     /* Check that we found some payload. */

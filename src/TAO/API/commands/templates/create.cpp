@@ -65,7 +65,7 @@ namespace TAO::API
                 strPayload = jParams["data"].get<std::string>();
 
             /* Handle for object. */
-            if(jParams["data"].is_object() || jParams["data"].is_array())
+            if(jParams["data"].is_structured())
                 strPayload = jParams["data"].dump(-1);
 
             /* Serialise the incoming data into a state register */
@@ -93,7 +93,7 @@ namespace TAO::API
                 strPayload = jParams["data"].get<std::string>();
 
             /* Handle for object. */
-            if(jParams["data"].is_object() || jParams["data"].is_array())
+            if(jParams["data"].is_structured())
                 strPayload = jParams["data"].dump(-1);
 
             /* If the caller specifies a maxlength then use this to set the size of the string */
@@ -176,7 +176,7 @@ namespace TAO::API
                 }
 
                 /* Handle for json objects. */
-                if(it->is_object() || it->is_array())
+                if(it->is_structured())
                     strPayload = it->dump(-1);
 
                 /* Flag for const fields. */
@@ -331,7 +331,7 @@ namespace TAO::API
                         strPayload = (*it)["value"].get<std::string>();
 
                     /* Handle for json objects. */
-                    if((*it)["value"].is_object() || (*it)["value"].is_array())
+                    if((*it)["value"].is_structured())
                         strPayload = (*it)["value"].dump(-1);
 
                     /* Check that we found some payload. */
