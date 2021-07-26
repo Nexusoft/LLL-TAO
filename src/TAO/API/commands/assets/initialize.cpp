@@ -74,6 +74,28 @@ namespace TAO::API
             }
         );
 
+        /* Populate our any standard. */
+        mapStandards["any"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [this](const TAO::Register::Object& rObject)
+            {
+                /* Check for correct state type. */
+                if(CheckObject("asset", rObject))
+                    return true;
+
+                /* Check for correct state type. */
+                if(CheckObject("raw", rObject))
+                    return true;
+
+                /* Check for correct state type. */
+                if(CheckObject("readonly", rObject))
+                    return true;
+
+                return false;
+            }
+        );
+
         /* Populate our schema standard. */
         mapStandards["schema"] = Standard
         (
