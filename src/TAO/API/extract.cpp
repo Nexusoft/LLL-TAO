@@ -578,5 +578,65 @@ namespace TAO::API
         if(CheckParameter(jParams, "sort", "string"))
             strSort = jParams["sort"].get<std::string>();
     }
+    
+
+    /** ExtractBoolean
+     *
+     *  Extract a boolean value from input parameters.
+     *
+     *  @param[in] jParams The input parameters passed into request
+     *  @param[in] strKey The parameter key we are extracting for.
+     *
+     *  @return true or false based on given value.
+     *
+     **/
+    bool ExtractBoolean(const encoding::json& jParams, const std::string& strKey, const bool fDefault)
+    {
+        /* Check for correct parameter types. */
+        if(!CheckParameter(jParams, strKey, "string, number, boolean"))
+            return fDefault;
+
+        /* Handle if boolean. */
+        if(jParams[strKey].is_boolean())
+            return jParams[strKey].get<bool>();
+
+        /* Handle if number. */
+        if(jParams[strKey].is_number_unsigned())
+        {
+            /* Extract the parameter. */
+            const uint64_t nValue =
+                jParams[strKey].get<uint64_t>();
+
+            /* Handle for true. */
+            if(nValue == 1)
+                return true;
+
+            /* Handle for false. */
+            if(nValue == 0)
+                return false;
+
+            throw Exception(-60, "[", strKey, "] out of range [1]");
+        }
+
+        /* Handle if string. */
+        if(jParams[strKey].is_string())
+        {
+            /* Extract the string. */
+            const std::string strValue =
+                jParams[strKey].get<std::string>();
+
+            /* Handle for true. */
+            if(strValue == "1" || strValue == "true")
+                return true;
+
+            /* Handle for false. */
+            if(strValue == "0" || strValue == "false")
+                return false;
+
+            throw Exception(-57, "Invalid Parameter [", strKey, "=", strValue, "]");
+        }
+
+        throw Exception(-57, "Invalid Parameter [", strKey, "=", jParams[strKey].type_name(), "]");
+    }
 
 } // End TAO namespace

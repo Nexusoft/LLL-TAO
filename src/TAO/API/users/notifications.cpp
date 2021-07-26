@@ -952,50 +952,31 @@ namespace TAO
 
 
         /* Get a user's notifications. */
-        encoding::json Users::Notifications(const encoding::json& params, const bool fHelp)
+        encoding::json Users::Notifications(const encoding::json& jParams, const bool fHelp)
         {
             /* JSON return value. */
             encoding::json ret = encoding::json::array();
 
             /* Get the Genesis ID. */
-            uint256_t hashGenesis = 0;
-
-            /* Get genesis by raw hex. */
-            if(params.find("genesis") != params.end())
-                hashGenesis.SetHex(params["genesis"].get<std::string>());
-
-            /* Get genesis by username. */
-            else if(params.find("username") != params.end())
-                hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-
-            /* Check for logged in user.  NOTE: we rely on the GetSession method to check for the existence of a valid session ID
-               in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession
-               method will throw an appropriate error. */
-            else
-                hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
+            const uint256_t hashGenesis =
+                ExtractGenesis(jParams);
 
             /* The genesis hash of the API caller, if logged in */
-            uint256_t hashCaller = Commands::Get<Users>()->GetCallersGenesis(params);
-
-            if(config::fClient.load() && hashGenesis != hashCaller)
-                throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+            const uint256_t hashCaller =
+                Commands::Get<Users>()->GetCallersGenesis(jParams);
 
             /* Number of results to return. */
-            uint32_t nLimit = 100;
-
-            /* Offset into the result set to return results from */
-            uint32_t nOffset = 0;
+            uint32_t nLimit = 100, nOffset = 0;
 
             /* Sort order to apply */
             std::string strOrder = "desc";
 
-            /* Get the params to apply to the response. */
-            ExtractList(params, strOrder, nLimit, nOffset);
+            /* Get the jParams to apply to the response. */
+            ExtractList(jParams, strOrder, nLimit, nOffset);
 
             /* Check for suppressed parameter. */
-            bool fIncludeSuppressed = false;
-            if(params.find("suppressed") != params.end())
-                fIncludeSuppressed = params["suppressed"].get<std::string>() == "true" || params["suppressed"].get<std::string>() == "1";
+            const bool fIncludeSuppressed =
+                ExtractBoolean(jParams, "suppressed");
 
             /* The total number of notifications. */
             uint32_t nTotal = 0;
@@ -1156,7 +1137,7 @@ namespace TAO
 
 
         /* Process any outstanding notifications for a particular sig chain */
-        encoding::json Users::ProcessNotifications(const encoding::json& params, const bool fHelp)
+        encoding::json Users::ProcessNotifications(const encoding::json& jParams, const bool fHelp)
         {
             /* JSON return value. */
             encoding::json ret;
@@ -1183,12 +1164,11 @@ namespace TAO
                 throw Exception(-256, "Cannot process notifications whilst synchronizing");
 
             /* Flag indicating that this call should log this call in the session activity */
-            bool fLogActivity = true;
-            if(params.find("logactivity") != params.end())
-                fLogActivity = params["logactivity"].get<std::string>() == "true" || params["logactivity"].get<std::string>() == "1";
+            const bool fLogActivity =
+                ExtractBoolean(jParams, "logactivity", true);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params, true, fLogActivity);
+            Session& session = Commands::Get<Users>()->GetSession(jParams, true, fLogActivity);
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
@@ -1199,7 +1179,7 @@ namespace TAO
             uint256_t hashGenesis = user->Genesis();
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::NOTIFICATIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::NOTIFICATIONS);
 
             /* Retrieve user's default NXS account. This is only relevant when not in private mode (as there is no NXS)*/
             std::string strAccount = config::GetArg("-events_account", "default");
@@ -1208,9 +1188,8 @@ namespace TAO
                 throw Exception(-63, "Could not retrieve default NXS account to credit");
 
             /* Check for suppressed parameter. */
-            bool fIncludeSuppressed = false;
-            if(params.find("suppressed") != params.end())
-                fIncludeSuppressed = params["suppressed"].get<std::string>() == "true" || params["suppressed"].get<std::string>() == "1";
+            const bool fIncludeSuppressed =
+                ExtractBoolean(jParams, "suppressed");
 
             /* Get the list of outstanding contracts. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;

@@ -55,71 +55,51 @@ namespace TAO
                 nUnlockedActions = session.GetActivePIN()->UnlockedActions();
 
             /* Check for mining flag. */
-            if(jParams.find("mining") != jParams.end())
+            if(ExtractBoolean(jParams, "mining"))
             {
-                std::string strMint = jParams["mining"].get<std::string>();
+                /* Can't unlock for mining in multiuser mode */
+                if(config::fMultiuser.load())
+                    throw Exception(-288, "Cannot unlock for mining in multiuser mode");
 
-                if(strMint == "1" || strMint == "true")
-                {
-                    /* Can't unlock for mining in multiuser mode */
-                    if(config::fMultiuser.load())
-                        throw Exception(-288, "Cannot unlock for mining in multiuser mode");
-
-                     /* Check if already unlocked. */
-                    if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanMine())
-                        throw Exception(-146, "Account already unlocked for mining");
-                    else
-                        nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINING;
-                }
+                 /* Check if already unlocked. */
+                if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanMine())
+                    throw Exception(-146, "Account already unlocked for mining");
+                else
+                    nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINING;
             }
 
             /* Check for staking flag. */
-            if(jParams.find("staking") != jParams.end())
+            if(ExtractBoolean(jParams, "staking"))
             {
-                std::string strMint = jParams["staking"].get<std::string>();
+                /* Can't unlock for staking in multiuser mode */
+                if(config::fMultiuser.load())
+                    throw Exception(-289, "Cannot unlock for staking in multiuser mode");
 
-                if(strMint == "1" || strMint == "true")
-                {
-                    /* Can't unlock for staking in multiuser mode */
-                    if(config::fMultiuser.load())
-                        throw Exception(-289, "Cannot unlock for staking in multiuser mode");
-
-                     /* Check if already unlocked. */
-                    if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanStake())
-                        throw Exception(-195, "Account already unlocked for staking");
-                    else
-                        nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::STAKING;
-                }
+                 /* Check if already unlocked. */
+                if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanStake())
+                    throw Exception(-195, "Account already unlocked for staking");
+                else
+                    nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::STAKING;
             }
 
             /* Check transactions flag. */
-            if(jParams.find("transactions") != jParams.end())
+            if(ExtractBoolean(jParams, "transactions"))
             {
-                std::string strTransactions = jParams["transactions"].get<std::string>();
-
-                if(strTransactions == "1" || strTransactions == "true")
-                {
-                     /* Check if already unlocked. */
-                    if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanTransact())
-                        throw Exception(-147, "Account already unlocked for transactions");
-                    else
-                        nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
-                }
+                 /* Check if already unlocked. */
+                if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->CanTransact())
+                    throw Exception(-147, "Account already unlocked for transactions");
+                else
+                    nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
             }
 
             /* Check for notifications. */
-            if(jParams.find("notifications") != jParams.end())
+            if(ExtractBoolean(jParams, "notifications"))
             {
-                std::string strNotifications = jParams["notifications"].get<std::string>();
-
-                if(strNotifications == "1" || strNotifications == "true")
-                {
-                     /* Check if already unlocked. */
-                    if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->ProcessNotifications())
-                        throw Exception(-194, "Account already unlocked for notifications");
-                    else
-                        nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS;
-                }
+                 /* Check if already unlocked. */
+                if(!session.GetActivePIN().IsNull() && session.GetActivePIN()->ProcessNotifications())
+                    throw Exception(-194, "Account already unlocked for notifications");
+                else
+                    nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS;
             }
 
             /* If no unlock actions have been specifically set then default it to all */

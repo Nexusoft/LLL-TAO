@@ -214,6 +214,19 @@ namespace TAO::API
     void ExtractList(const encoding::json& jParams, std::string &strOrder, std::string &strSort, uint32_t &nLimit, uint32_t &nOffset);
 
 
+    /** ExtractBoolean
+     *
+     *  Extract a boolean value from input parameters.
+     *
+     *  @param[in] jParams The input parameters passed into request
+     *  @param[in] strKey The parameter key we are extracting for.
+     *  @param[in] fDefault Default parameter if none found.
+     *
+     *  @return true or false based on given value.
+     *
+     **/
+    bool ExtractBoolean(const encoding::json& jParams, const std::string& strKey, const bool fDefault = false);
+
     /** ExtractHash
      *
      *  Extracts a hash value by template deduction.
