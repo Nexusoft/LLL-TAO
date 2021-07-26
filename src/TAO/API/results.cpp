@@ -14,20 +14,26 @@ ________________________________________________________________________________
 #include <TAO/API/include/results.h>
 #include <TAO/API/types/exception.h>
 
+#include <Util/include/string.h>
+
 namespace TAO::API
 {
     /* Convert a given json results queue into a compiled array of only values. */
     void ResultsToArray(const encoding::json& jParams, const encoding::json& jResponse, encoding::json &jArray)
     {
-        /* Check for fieldname filters. */
-        if(jParams.find("fieldname") == jParams.end())
+        /* Check for our request parameters first, since this method can be called without */
+        if(jParams.find("request") == jParams.end())
+            return;
+
+        /* Check for our type we are checking against. */
+        if(jParams["request"].find("fieldname") == jParams["request"].end())
             return;
 
         /* Handle if single string. */
-        if(jParams["fieldname"].is_string())
+        if(jParams["request"]["fieldname"].is_string())
         {
             /* Grab our field string to rebuild response. */
-            const std::string strField = jParams["fieldname"].get<std::string>();
+            const std::string strField = jParams["request"]["fieldname"].get<std::string>();
 
             /* Build our return value. */
             if(!ResultsToArray(strField, jResponse, jArray))
@@ -38,7 +44,7 @@ namespace TAO::API
         }
 
         /* Handle if multiple fields. */
-        if(jParams["fieldname"].is_array())
+        if(jParams["request"]["fieldname"].is_array())
             throw Exception(-66, "Cannot use aggregate fieldnames with operations");
     }
 
@@ -84,7 +90,20 @@ namespace TAO::API
 
             /* Check for string. */
             if(jField.is_string())
-                jArray.push_back(jField.get<std::string>());
+            {
+                /* Check if this string is a number in hiding. */
+                const std::string strValue = jField.get<std::string>();
+                if(IsAllDigit(strValue))
+                {
+                    /* If we are parse this and return. */
+                    jArray.push_back(std::stoull(strValue));
+
+                    return true;
+                }
+
+                /* Otherwise treat like regular string. */
+                jArray.push_back(strValue);
+            }
 
             /* Check for unsigned int. */
             else if(jField.is_number_unsigned())

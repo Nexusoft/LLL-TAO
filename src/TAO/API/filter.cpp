@@ -210,15 +210,19 @@ namespace TAO::API
     /* Main filter interface, handles json levels recursively handling multiple fields to filter. */
     bool FilterFieldname(const encoding::json& jParams, encoding::json &jResponse)
     {
-        /* Check for fieldname filters. */
-        if(jParams.find("fieldname") == jParams.end())
+        /* Check for our request parameters first, since this method can be called without */
+        if(jParams.find("request") == jParams.end())
+            return true;
+
+        /* Check for our type we are checking against. */
+        if(jParams["request"].find("fieldname") == jParams["request"].end())
             return true;
 
         /* Handle if single string. */
-        if(jParams["fieldname"].is_string())
+        if(jParams["request"]["fieldname"].is_string())
         {
             /* Grab our field string to rebuild response. */
-            const std::string strField = jParams["fieldname"].get<std::string>();
+            const std::string strField = jParams["request"]["fieldname"].get<std::string>();
 
             /* Build our return value. */
             encoding::json jRet;
@@ -231,17 +235,17 @@ namespace TAO::API
         }
 
         /* Handle if multiple fields. */
-        if(jParams["fieldname"].is_array())
+        if(jParams["request"]["fieldname"].is_array())
         {
             /* Track our aggregates. */
-            std::vector<bool> vfActive(jParams["fieldname"].size(), false);
+            std::vector<bool> vfActive(jParams["request"]["fieldname"].size(), false);
 
             /* Loop through our fields. */
             encoding::json jRet;
-            for(uint32_t n = 0; n < jParams["fieldname"].size(); ++n)
+            for(uint32_t n = 0; n < jParams["request"]["fieldname"].size(); ++n)
             {
                 /* Grab our field string to rebuild response. */
-                const std::string strField = jParams["fieldname"][n].get<std::string>();
+                const std::string strField = jParams["request"]["fieldname"][n].get<std::string>();
 
                 /* Build our filtered statements. */
                 encoding::json jFinal;
@@ -254,7 +258,7 @@ namespace TAO::API
             return true;
         }
 
-        throw Exception(-36, "Invalid type [fieldname=", jParams["fieldname"].type_name(), "] for command");
+        throw Exception(-36, "Invalid type [fieldname=", jParams["request"]["fieldname"].type_name(), "] for command");
     }
 
 

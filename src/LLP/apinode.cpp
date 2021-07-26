@@ -120,8 +120,8 @@ namespace LLP
         const std::string::size_type nPos = INCOMING.strRequest.find('/', 1);
 
         /* Extract the API requested. */
-        std::string strCommands    = INCOMING.strRequest.substr(1, nPos - 1);
-        std::string strMethod = INCOMING.strRequest.substr(nPos + 1);
+        std::string strCommands = INCOMING.strRequest.substr(1, nPos - 1);
+        std::string strMethod   = INCOMING.strRequest.substr(nPos + 1);
 
         /* The JSON response */
         encoding::json jRet;
@@ -137,40 +137,39 @@ namespace LLP
         encoding::json jParams;
         try
         {
+            /* Handle for the POST call. */
             if(INCOMING.strType == "POST")
             {
                 /* Only parse content if some has been provided */
-                if(INCOMING.strContent.size() > 0)
+                if(INCOMING.strContent.empty())
+                    throw TAO::API::Exception(-7, "Empty content not allowed for POST");
+
+                /* Handle different content types. */
+                if(!INCOMING.mapHeaders.count("content-type"))
+                    throw TAO::API::Exception(-5, "content-type [null or misisng] not supported");
+
+                /* Form encoding. */
+                if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
                 {
-                    /* Handle different content types. */
-                    if(INCOMING.mapHeaders.count("content-type"))
-                    {
-                        /* Form encoding. */
-                        if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
-                        {
-                            /* Decode if url-form-encoded. */
-                            INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
+                    /* Decode if url-form-encoded. */
+                    INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
 
-                            /* Split by delimiter. */
-                            std::vector<std::string> vParams;
-                            ParseString(INCOMING.strContent, '&', vParams);
+                    /* Split by delimiter. */
+                    std::vector<std::string> vParams;
+                    ParseString(INCOMING.strContent, '&', vParams);
 
-                            /* Grab our parameters. */
-                            jParams = TAO::API::ParamsToJSON(vParams);
-                        }
-
-                        /* JSON encoding. */
-                        else if(INCOMING.mapHeaders["content-type"] == "application/json")
-                        {
-                            /* Parse JSON like normal. */
-                            jParams = encoding::json::parse(INCOMING.strContent);
-                        }
-                        else
-                            throw TAO::API::Exception(-5, "content-type [", INCOMING.mapHeaders["content-type"], "] not supported");
-                    }
-                    else
-                        throw TAO::API::Exception(-5, "content-type [null or misisng] not supported");
+                    /* Grab our parameters. */
+                    jParams = TAO::API::ParamsToJSON(vParams);
                 }
+
+                /* JSON encoding. */
+                else if(INCOMING.mapHeaders["content-type"] == "application/json")
+                {
+                    /* Parse JSON like normal. */
+                    jParams = encoding::json::parse(INCOMING.strContent);
+                }
+                else
+                    throw TAO::API::Exception(-5, "content-type [", INCOMING.mapHeaders["content-type"], "] not supported");
             }
             else if(INCOMING.strType == "GET")
             {
@@ -224,7 +223,7 @@ namespace LLP
             jParams["request"] =
             {
                 {"commands", strCommands },
-                {"method",   strMethod   },
+                {"method",   strMethod   }
             };
 
             /* Execute the api and methods. */
@@ -232,7 +231,7 @@ namespace LLP
         }
 
         /* Handle for custom API exceptions. */
-        catch(TAO::API::Exception& e)
+        catch(const TAO::API::Exception& e)
         {
             /* Get error from exception. */
             encoding::json jError = e.ToJSON();
@@ -290,10 +289,10 @@ namespace LLP
         /* Add some micro-benchamrks to response data. */
         jRet["info"] =
         {
-            {"method",    strCommands + "/" + strMethod                          },
-            {"status",    TAO::API::Commands::Status(strCommands, strMethod)     },
-            {"address",   this->addr.ToString()                             },
-            {"latency",   debug::safe_printstr(std::fixed, nLatency, " ms") }
+            {"method",    strCommands + "/" + strMethod                      },
+            {"status",    TAO::API::Commands::Status(strCommands, strMethod) },
+            {"address",   this->addr.ToString()                              },
+            {"latency",   debug::safe_printstr(std::fixed, nLatency, " ms")  }
         };
 
         /* Log our response if argument is specified. */

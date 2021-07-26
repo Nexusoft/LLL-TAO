@@ -82,10 +82,10 @@ namespace TAO::API
                 mapFunctions[strMethod].Execute(jParams, fHelp);
 
             /* Check for operator. */
-            if(jParams.find("operator") != jParams.end())
+            if(jParams.find("request") != jParams.end() && jParams["request"].find("operator") != jParams["request"].end())
             {
                 /* Grab our current operator. */
-                const std::string& strOperator = jParams["operator"].get<std::string>();
+                const std::string& strOperator = jParams["request"]["operator"].get<std::string>();
 
                 /* Compute and return from our operator function. */
                 return mapOperators[strOperator].Execute(jParams, jResults);
@@ -185,17 +185,17 @@ namespace TAO::API
                         ParseString(vMethods[n], ',', vFields);
 
                         /* Build our request type as an array. */
-                        jParams["fieldname"] = encoding::json::array();
+                        jParams["request"]["fieldname"] = encoding::json::array();
 
                         /* Loop through our nouns now. */
                         for(auto& strField : vFields)
-                            jParams["fieldname"].push_back(strField);
+                            jParams["request"]["fieldname"].push_back(strField);
 
                         continue;
                     }
 
                     /* Set our fieldname string. */
-                    jParams["fieldname"] = vMethods[n];
+                    jParams["request"]["fieldname"] = vMethods[n];
 
                     continue;
                 }
@@ -211,7 +211,7 @@ namespace TAO::API
                         throw Exception(-118, "[", strOperator, "] operator not supported for this command-set");
 
                     /* Add to input parameters. */
-                    jParams["operator"] = strOperator;
+                    jParams["request"]["operator"] = strOperator;
 
                     continue;
                 }

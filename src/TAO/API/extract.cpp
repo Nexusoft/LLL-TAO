@@ -268,16 +268,21 @@ namespace TAO::API
     /* Extract the fieldname string value from input parameters as only string. */
     std::string ExtractFieldname(const encoding::json& jParams)
     {
-        /* Check for fieldname filters. */
-        if(jParams.find("fieldname") == jParams.end())
-            throw Exception(-28, "Missing parameter [fieldname] for command");
+        /* Check for our request parameters first, since this method can be called without */
+        if(jParams.find("request") == jParams.end())
+            throw Exception(-28, "Missing parameter [request] for command");
+
+        /* Check for our type we are checking against. */
+        if(jParams["request"].find("fieldname") == jParams["request"].end())
+            throw Exception(-28, "Missing parameter [request::fieldname] for command");
 
         /* Check that we don't have multiple fields. */
-        if(!jParams["fieldname"].is_string())
-            throw Exception(-35, "Invalid parameter [fieldname], expecting [string]");
+        if(!jParams["request"]["fieldname"].is_string())
+            throw Exception(-35, "Invalid parameter [request::fieldname], expecting [string]");
 
         /* Grab a reference of our string. */
-        const std::string& strField = jParams["fieldname"].get<std::string>();
+        const std::string& strField =
+            jParams["request"]["fieldname"].get<std::string>();
 
         /* Find last delimiter. */
         const auto nFind = strField.rfind(".");

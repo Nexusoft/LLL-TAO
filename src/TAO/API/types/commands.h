@@ -122,7 +122,7 @@ namespace TAO::API
         {
             /* Check that requested API is registered. */
             if(!Commands::mapTypes.count(strAPI))
-                throw TAO::API::Exception(-4, "API Not Found: ", strAPI);
+                return debug::safe_printstr("API Not Found: ", strAPI);
 
             return Commands::mapTypes[strAPI]->Status(strMethod);
         }

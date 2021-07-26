@@ -280,8 +280,8 @@ namespace TAO::API
                         }
                     }
 
-                    if(!fFound)
-                            throw Exception(-7, "Invalid transaction id");
+                    //if(!fFound)
+                    //    throw Exception(-7, "Invalid transaction id");
                 }
 
                 jRet["inputs"] = jInputs;

@@ -158,7 +158,7 @@ API Error Codes
 | -4 | API not found (API name) |
 | -5 | Object not available: [message] |
 | -6 | content-type [content type] not supported |
-| -7 | Invalid transaction id |
+| -7 | Empty content not allowed for POST |
 | -8 | Unable to Extract Input Address |
 | -9 | Session (session) doesn't exist |
 | -10 | Invalid session ID |

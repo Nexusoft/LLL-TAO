@@ -210,6 +210,6 @@ bool IsUINT64(const std::string& strIn)
 {
     char* end;
     errno = 0;
-    uint64_t v = strtoull( strIn.c_str(), &end, 10 );
+    uint64_t v = strtoull(strIn.c_str(), &end, 10);
     return errno == 0 && *end == '\0' && end != strIn.c_str() && v <= std::numeric_limits<uint64_t>::max();
 }

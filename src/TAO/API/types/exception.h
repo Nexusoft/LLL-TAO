@@ -50,7 +50,7 @@ namespace TAO::API
          *  @return the json object containing the exception code and message.
          *
          **/
-        encoding::json ToJSON()
+        encoding::json ToJSON() const
         {
             /* Include our global errors if applicable. */
             std::string strMessage = std::string(what());
