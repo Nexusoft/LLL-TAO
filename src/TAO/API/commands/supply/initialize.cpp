@@ -34,15 +34,15 @@ namespace TAO::API
             {
                 /* Check for correct state type. */
                 if(rObject.nType != TAO::Register::REGISTER::OBJECT)
-                    return debug::error("not an object");
+                    return false;
 
                 /* Make sure this isn't a command-set standard. */
                 if(!rObject.Check("_usertype", TAO::Register::TYPES::UINT16_T, false))
-                    return debug::error("usertype not found");
+                    return false;
 
                 /* Check that this is for this command-set. */
                 if(rObject.get<uint16_t>("_usertype") != USER_TYPES::SUPPLY)
-                    return debug::error("invalid supply usertype");
+                    return false;
 
                 return rObject.Standard() == TAO::Register::OBJECTS::NONSTANDARD;
             }
