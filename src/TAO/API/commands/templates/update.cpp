@@ -36,7 +36,7 @@ namespace TAO::API
 {
     /* Update the data in an asset */
     encoding::json Templates::Update(const encoding::json& jParams, const bool fHelp,
-                                     const std::string& strAllowed, const uint16_t nUserType)
+                                     const std::string& strAllowed, const uint16_t nUserType, const std::string& strDefault)
     {
         /* Get the Register address. */
         const uint256_t hashRegister =
@@ -44,7 +44,7 @@ namespace TAO::API
 
         /* Check for format parameter. */
         const std::string strFormat =
-            ExtractFormat(jParams, "", strAllowed);
+            ExtractFormat(jParams, strDefault, strAllowed);
 
         /* Get the token / account object. */
         TAO::Register::Object tObject;

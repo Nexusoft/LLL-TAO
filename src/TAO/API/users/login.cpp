@@ -201,8 +201,6 @@ namespace TAO
                     /* increment iterator */
                     ++session;
                 }
-
-
             }
 
             /* If not using multiuser then check to see whether another user is already logged in */

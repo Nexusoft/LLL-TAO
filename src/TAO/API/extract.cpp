@@ -308,7 +308,7 @@ namespace TAO::API
         }
 
         /* Check for empty default parameter. */
-        if(strDefault.empty())
+        if(strDefault.empty() || strDefault == "required")
             throw Exception(-28, "Missing parameter [format] for command");
 
         return strDefault;
@@ -578,7 +578,7 @@ namespace TAO::API
         if(CheckParameter(jParams, "sort", "string"))
             strSort = jParams["sort"].get<std::string>();
     }
-    
+
 
     /** ExtractBoolean
      *

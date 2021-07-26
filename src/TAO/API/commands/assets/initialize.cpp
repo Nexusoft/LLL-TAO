@@ -141,7 +141,8 @@ namespace TAO::API
 
                 /* Our accepted formats for this command-set. */
                 "readonly, raw, basic, json",
-                USER_TYPES::ASSET //the enumerated value for states
+                USER_TYPES::ASSET, //the enumerated value for states
+                "required"         //the default format
             )
         );
 
@@ -211,7 +212,8 @@ namespace TAO::API
 
                 /* Our accepted formats for this command-set. */
                 "raw, basic, json",
-                USER_TYPES::ASSET //the enumerated value for states
+                USER_TYPES::ASSET, //the enumerated value for states
+                "required"         //the default format
             )
         );
 

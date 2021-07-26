@@ -46,12 +46,13 @@ namespace TAO::API
          *  @param[in] fHelp Trigger for help data.
          *  @param[in] strAllowed The allowed formats for creating object.
          *  @param[in] nUserType The object type enumeration if applicable.
+         *  @param[in] strDefault The default format to use
          *
          *  @return The return object in JSON.
          *
          **/
         static encoding::json Create(const encoding::json& jParams, const bool fHelp,
-                                     const std::string& strAllowed, const uint16_t nUserType);
+                                     const std::string& strAllowed, const uint16_t nUserType, const std::string& strDefault);
 
 
         /** Get
@@ -127,12 +128,13 @@ namespace TAO::API
          *  @param[in] fHelp Trigger for help data.
          *  @param[in] strAllowed The allowed formats for creating object.
          *  @param[in] nUserType The object type enumeration if applicable.
+         *  @param[in] strDefault The default format to use
          *
          *  @return The return object in JSON.
          *
          **/
         static encoding::json Update(const encoding::json& jParams, const bool fHelp,
-                                     const std::string& strAllowed, const uint16_t nUserType);
+                                     const std::string& strAllowed, const uint16_t nUserType, const std::string& strDefault);
 
 
 

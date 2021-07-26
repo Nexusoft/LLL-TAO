@@ -549,7 +549,7 @@ namespace TAO::API
                         jRet["updated"] = jWrite;
                     }
 
-                    /* Regular hexadecimal dump of data. */
+                    /* Regular state register dump of data. */
                     else
                     {
                         /* Get a copy of our old data. */

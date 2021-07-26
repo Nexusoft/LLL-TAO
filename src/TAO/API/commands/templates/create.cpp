@@ -37,17 +37,28 @@ namespace TAO::API
 {
     /* Create an tPayload or digital item. */
     encoding::json Templates::Create(const encoding::json& jParams, const bool fHelp,
-                                     const std::string& strAllowed, const uint16_t nUserType)
+                                     const std::string& strAllowed, const uint16_t nUserType, const std::string& strDefault)
     {
         /* Generate our address based on formatting type. */
         uint256_t hashRegister;
 
         /* Check for format parameter. */
         const std::string strFormat =
-            ExtractFormat(jParams, "", strAllowed);
+            ExtractFormat(jParams, strDefault, strAllowed);
 
         /* Handle for the raw specifier. */
         std::vector<TAO::Operation::Contract> vContracts(1);
+
+        /* Handle for readonly raw format. */
+        if(strFormat == "standard")
+        {
+            /* Generate our standard object from standard functions. */
+            TAO::Register::Object tPayload;
+
+            /* Submit the payload object. */
+            vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister;
+            vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << tPayload.GetState();
+        }
 
         /* Handle for readonly raw format. */
         if(strFormat == "readonly")
