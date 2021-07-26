@@ -98,7 +98,7 @@ namespace TAO::API
         if(nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::ALL)
         {
             /* Check if already unlocked. */
-            if(!rSession.Locked())
+            if(rSession.CanMine() && rSession.CanStake() && rSession.CanTransact() && rSession.CanProcessNotifications())
                 throw Exception(-148, "Account already unlocked");
 
             /* Adjust the unlocked flags. */
