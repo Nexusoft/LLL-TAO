@@ -139,10 +139,13 @@ namespace TAO::API
         /* Double check our next hash if -safemode enabled. */
         if(config::GetBoolArg("-safemode", false))
         {
-            /* Grab another hash to check against. */
-            //uint256_t hashNext;
+            /* Re-calculate our next hash if safemode forcing not to use cache. */
+            const uint256_t hashNext =
+                TAO::Ledger::Transaction::NextHash(session.GetAccount()->Generate(tx.nSequence, strPIN, false), tx.nNextType);
 
-
+            /* Check that this next hash is what we are expecting. */
+            if(tx.hashNext != hashNext)
+                throw Exception(-67, "-safemode next hash mismatch, broadcast terminated");
         }
 
         /* Execute the operations layer. */

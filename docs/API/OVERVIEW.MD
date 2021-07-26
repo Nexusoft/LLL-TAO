@@ -218,7 +218,7 @@ API Error Codes
 | -64 | Missing recipient account name_to / address_to |
 | -65 | Object is not an account |
 | -66 | Cannot use aggregate fieldnames with operations |
-| -67 | ------------------------ |
+| -67 | -safemode next hash mismatch, broadcast terminated |
 | -68 | Amount too small |
 | -69 | Insufficient funds |
 | -70 | Trust account not found |

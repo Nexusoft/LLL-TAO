@@ -177,8 +177,12 @@ namespace TAO
                     throw Exception(-138, "No previous transaction found");
             }
 
-            /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(jParams))
+            /* Calculate our next hash for auth check. */
+            const uint256_t hashNext =
+                TAO::Ledger::Transaction::NextHash(user.Generate(txPrev.nSequence + 1, strPIN), txPrev.nNextType);
+
+            /* Validate the credentials */
+            if(txPrev.hashNext != hashNext)
                 throw Exception(-139, "Invalid credentials");
 
             /* Check the sessions. */
