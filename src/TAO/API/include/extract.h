@@ -14,6 +14,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/exception.h>
 
+#include <Util/include/allocators.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
 

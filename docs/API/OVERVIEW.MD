@@ -170,10 +170,10 @@ API Error Codes
 | -16 | Account has not been unlocked for transactions |
 | -17 | Failed to create transaction |
 | -18 | Invalid format for standard [name] |
-| -19 | -------------------------- |
-| -20 | -------------------------- |
-| -21 | -------------------------- |
-| -22 | -------------------------- |
+| -19 | Field [name] doesn't exist in object |
+| -20 | Field [name] is read-only and can't be updated |
+| -21 | Field [name] size exceeds maximum length [size] |
+| -22 | Field [name] is a reserved field name |
 | -23 | -------------------------- |
 | -24 | -------------------------- |
 | -25 | -------------------------- |

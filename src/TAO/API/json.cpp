@@ -1298,7 +1298,7 @@ namespace TAO::API
                 if(encoding::json::accept(strResults))
                     jRet["json"] = encoding::json::parse(strResults);
                 else
-                    jRet["data"] = strResults;
+                    jRet["data"] = strResults.substr(0, strResults.find_last_not_of('\0') + 1);
             }
         }
         else
@@ -1313,7 +1313,7 @@ namespace TAO::API
                 if(encoding::json::accept(strResults))
                     jRet["json"] = encoding::json::parse(strResults);
                 else
-                    jRet["data"] = strResults;
+                    jRet["data"] = strResults.substr(0, strResults.find_last_not_of('\0') + 1);
             }
 
             /* Otherwise represent our register's state as a hex string. */

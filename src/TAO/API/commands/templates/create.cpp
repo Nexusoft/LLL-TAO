@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/create.h>
+#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/address.h>
 
 #include <Util/templates/datastream.h>
@@ -48,7 +49,7 @@ namespace TAO::API
         /* Handle for the raw specifier. */
         std::vector<TAO::Operation::Contract> vContracts(1);
 
-        /* Handle for raw formats. */
+        /* Handle for readonly raw format. */
         if(strFormat == "readonly")
         {
             /* Set the proper tPayload type. */
@@ -77,9 +78,24 @@ namespace TAO::API
             if(!CheckParameter(jParams, "data", "string"))
                 throw Exception(-28, "Missing parameter [data] for command");
 
+            /* Get our payload now. */
+            std::string strPayload =
+                jParams["data"].get<std::string>();
+
+            /* If the caller specifies a maxlength then use this to set the size of the string */
+            const uint64_t nMaxLength =
+                ExtractInteger<uint64_t>(jParams, "maxlength", ((strPayload.size() / 128) + 1) * 128, 1000); //128 bytes default padding
+
+            /* Check for minimum ranges. */
+            if(nMaxLength < strPayload.size())
+                throw Exception(-60, "[data] out of range [", strPayload.size(), "]");
+
+            /* Adjust our serialization length. */
+            strPayload.resize(nMaxLength);
+
             /* Serialise the incoming data into a state register */
             DataStream ssData(SER_REGISTER, 1);
-            ssData << uint16_t(nType) << jParams["data"].get<std::string>();
+            ssData << uint16_t(nType) << strPayload;
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)   << hashRegister;
@@ -100,28 +116,67 @@ namespace TAO::API
             for(auto it = jParams.begin(); it != jParams.end(); ++it)
             {
                 /* Get our keyname. */
-                const std::string strKey = ToLower(it.key());
+                const std::string strField = it.key();
 
                 /* Skip any incoming parameters that are keywords used by this API method*/
-                if(strKey == "pin"
-                || strKey == "session"
-                || strKey == "name"
-                || strKey == "format"
-                || strKey == "request")
+                if(ToLower(strField) == "pin"
+                || ToLower(strField) == "session"
+                || ToLower(strField) == "name"
+                || ToLower(strField) == "format"
+                || ToLower(strField) == "maxlength"
+                || ToLower(strField) == "request")
                 {
                     continue;
                 }
 
-                /* Handle for string types in BASIC encoding */
-                if(it->is_string())
-                {
-                    ++nFieldCount;
+                /* Make sure the name is not reserved. */
+                if(TAO::Register::Reserved(strField))
+                    throw Exception(-22, "Field [", strField, "] is a reserved field name");
 
-                    /* Add our payload to the tPayload. */
-                    tPayload << strKey << uint8_t(TAO::Register::TYPES::STRING) << it->get<std::string>();
+                /* Grab our value name. */
+                std::string strPayload;
+
+                /* Handle if string. */
+                if(it->is_string())
+                    strPayload = it->get<std::string>();
+
+                /* Handle if number. */
+                if(it->is_number())
+                {
+                    /* Handle for unsigned. */
+                    if(it->is_number_unsigned())
+                        strPayload = debug::safe_printstr(it->get<uint64_t>());
+
+                    /* Handle for signed. */
+                    else if(it->is_number_integer())
+                        strPayload = debug::safe_printstr(it->get<int64_t>());
+
+                    /* Handle for float. */
+                    else if(it->is_number_float())
+                        strPayload = debug::safe_printstr(it->get<double>());
                 }
-                else
-                    throw Exception(-19, "Invalid type [", strKey, "=", it->type_name(), "] for command");
+
+                /* Check that parameter was converted correctly. */
+                if(strPayload.empty())
+                    throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
+
+                /* If the caller specifies a maxlength then use this to set the size of the string */
+                const uint64_t nMaxLength =
+                    ExtractInteger<uint64_t>(jParams, "maxlength", ((strPayload.size() / 32) + 1) * 32, 1000); //32 bytes default padding
+
+                /* Check for minimum ranges. */
+                if(nMaxLength < strPayload.size())
+                    throw Exception(-60, "[", strField, "] out of range [", strPayload.size(), "]");
+
+                /* Adjust our serialization length. */
+                strPayload.resize(nMaxLength);
+
+                /* Add our payload to the tPayload. */
+                tPayload << strField << uint8_t(TAO::Register::TYPES::MUTABLE);
+                tPayload << uint8_t(TAO::Register::TYPES::STRING) << strPayload;
+
+                /* Keep track of our added fields. */
+                ++nFieldCount;
             }
 
             /* Check for missing parameters. */
@@ -173,6 +228,10 @@ namespace TAO::API
                 /* Grab our name string from parameter */
                 const std::string strName =
                     (*it)["name"].get<std::string>();
+
+                /* Make sure the name is not reserved. */
+                if(TAO::Register::Reserved(strName))
+                    throw Exception(-22, "Field [", strName, "] is a reserved field name");
 
                 /* Add to the payload. */
                 tPayload << strName;

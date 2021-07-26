@@ -29,7 +29,7 @@ namespace TAO
     {
 
         /** Hold list of reserved object register values. **/
-        const std::vector<std::string> RESERVED =
+        const std::set<std::string> RESERVED =
         {
             /* Used to hold token blance. */
             "balance",
@@ -165,13 +165,13 @@ namespace TAO
             inline bool Reserved(const std::string& strValue)
             {
                 /* For namespaces the reserved word can't exist anywhere in the name.  */
-                return std::any_of(RESERVED.begin(), RESERVED.end(), 
+                return std::any_of(RESERVED.begin(), RESERVED.end(),
                     [&](std::string strReserved)
                     {
                         return strValue.find(strReserved) != std::string::npos;
                     }
                 );
-                
+
             }
         }
     }

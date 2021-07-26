@@ -119,6 +119,22 @@ namespace TAO::API
         static encoding::json Transfer(const encoding::json& jParams, const bool fHelp);
 
 
+        /** Update
+         *
+         *  Updates an object based on pre-determined allowed formats. Checks against standards.
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *  @param[in] strAllowed The allowed formats for creating object.
+         *  @param[in] nType The object type enumeration if applicable.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        static encoding::json Update(const encoding::json& jParams, const bool fHelp,
+                                     const std::string& strAllowed, const uint16_t nType);
+
+
 
         /** Deprecated
          *
