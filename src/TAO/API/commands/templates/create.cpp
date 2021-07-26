@@ -160,23 +160,45 @@ namespace TAO::API
                         strPayload = debug::safe_printstr(it->get<double>());
                 }
 
+                /* Flag for const fields. */
+                bool fMutable = true;
+
+                /* Detect if const is supplied to format. */
+                const auto nFind = strPayload.find("const:");
+                if(nFind == 0)
+                {
+                    /* Adjust our payload to omit const. */
+                    strPayload = strPayload.substr(nFind + 6);
+                    fMutable = false;
+                }
+
                 /* Check that parameter was converted correctly. */
                 if(strPayload.empty())
                     throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
 
-                /* If the caller specifies a maxlength then use this to set the size of the string */
-                const uint64_t nMaxLength =
-                    ExtractInteger<uint64_t>(jParams, "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000); //64 bytes default padding
-
-                /* Check for minimum ranges. */
-                if(nMaxLength < strPayload.size())
-                    throw Exception(-60, "[", strField, "] out of range [", strPayload.size(), "]");
-
                 /* Adjust our serialization length. */
-                strPayload.resize(nMaxLength);
+                if(fMutable) //we don't need padding if data field is const
+                {
+                    /* If the caller specifies a maxlength then use this to set the size of the string */
+                    const uint64_t nMaxLength =
+                        ExtractInteger<uint64_t>(jParams, "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000); //64 bytes default padding
+
+                    /* Check for minimum ranges. */
+                    if(nMaxLength < strPayload.size())
+                        throw Exception(-60, "[", strField, "] out of range [", strPayload.size(), "]");
+
+                    /* Add padding if mutable. */
+                    strPayload.resize(nMaxLength);
+                }
 
                 /* Add our payload to the tPayload. */
-                tPayload << strField << uint8_t(TAO::Register::TYPES::MUTABLE);
+                tPayload << strField;
+
+                /* Handle for mutable fields. */
+                if(fMutable)
+                    tPayload << uint8_t(TAO::Register::TYPES::MUTABLE);
+
+                /* Serialize the rest of the payload. */
                 tPayload << uint8_t(TAO::Register::TYPES::STRING) << strPayload;
 
                 /* Keep track of our added fields. */
@@ -226,7 +248,7 @@ namespace TAO::API
                     throw Exception(-28, "Missing parameter [value] for command");
 
                 /* Check for our mutable parameter. */
-                if(!CheckParameter((*it), "mutable", "string"))
+                if(!CheckParameter((*it), "mutable", "string, number, boolean"))
                     throw Exception(-28, "Missing parameter [mutable] for command");
 
                 /* Grab our name string from parameter */
@@ -245,7 +267,8 @@ namespace TAO::API
                 tPayload << strName;
 
                 /* Check for mutable. */
-                if(((*it)["mutable"].get<std::string>() == "true"))
+                const bool fMutable = ExtractBoolean((*it), "mutable");
+                if(fMutable)
                     tPayload << uint8_t(TAO::Register::TYPES::MUTABLE);
 
                 /* Grab our type string from parameter */
@@ -254,19 +277,19 @@ namespace TAO::API
 
                 /* Handle for 8-bit unsigned int. */
                 if(strType == "uint8")
-                    tPayload << uint8_t(TAO::Register::TYPES::UINT8_T) << ExtractInteger<uint8_t>((*it), "value");
+                    tPayload << uint8_t(TAO::Register::TYPES::UINT8_T)   << ExtractInteger<uint8_t>((*it), "value");
 
                 /* Handle for 16-bit unsigned int. */
                 if(strType == "uint16")
-                    tPayload << uint8_t(TAO::Register::TYPES::UINT16_T) << ExtractInteger<uint16_t>((*it), "value");
+                    tPayload << uint8_t(TAO::Register::TYPES::UINT16_T)  << ExtractInteger<uint16_t>((*it), "value");
 
                 /* Handle for 32-bit unsigned int. */
                 if(strType == "uint32")
-                    tPayload << uint8_t(TAO::Register::TYPES::UINT32_T) << ExtractInteger<uint32_t>((*it), "value");
+                    tPayload << uint8_t(TAO::Register::TYPES::UINT32_T)  << ExtractInteger<uint32_t>((*it), "value");
 
                 /* Handle for 64-bit unsigned int. */
                 if(strType == "uint64")
-                    tPayload << uint8_t(TAO::Register::TYPES::UINT64_T) << ExtractInteger<uint64_t>((*it), "value");
+                    tPayload << uint8_t(TAO::Register::TYPES::UINT64_T)  << ExtractInteger<uint64_t>((*it), "value");
 
                 /* Handle for 256-bit unsigned int. */
                 if(strType == "uint256")
@@ -287,16 +310,20 @@ namespace TAO::API
                     std::string strPayload =
                         (*it)["value"].get<std::string>();
 
-                    /* If the caller specifies a maxlength then use this to set the size of the string */
-                    const uint64_t nMaxLength =
-                        ExtractInteger<uint64_t>((*it), "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000);
-
-                    /* Check for minimum ranges. */
-                    if(nMaxLength < strPayload.size())
-                        throw Exception(-60, "[", strName, "] out of range [", strPayload.size(), "]");
-
                     /* Adjust our serialization length. */
-                    strPayload.resize(nMaxLength);
+                    if(fMutable) //we don't need padding if value is const
+                    {
+                        /* If the caller specifies a maxlength then use this to set the size of the string */
+                        const uint64_t nMaxLength =
+                            ExtractInteger<uint64_t>((*it), "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000);
+
+                        /* Check for minimum ranges. */
+                        if(nMaxLength < strPayload.size())
+                            throw Exception(-60, "[", strName, "] out of range [", strPayload.size(), "]");
+
+                        /* Resize payload with padding. */
+                        strPayload.resize(nMaxLength);
+                    }
 
                     /* Add to the payload now. */
                     tPayload << uint8_t(TAO::Register::TYPES::STRING) << strPayload;

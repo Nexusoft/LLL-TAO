@@ -504,9 +504,13 @@ namespace TAO::API
                                     std::string strValue;
                                     stream >> strValue;
 
+                                    /* Grab a copy of our old value. */
+                                    const std::string strOld =
+                                        object.get<std::string>(strName);
+
                                     /* Add to our group object. */
-                                    jGroup["old"] = object.get<std::string>(strName);
-                                    jGroup["new"] = strValue;
+                                    jGroup["old"] = strOld.substr(0, strOld.find_last_not_of('\0') + 1);
+                                    jGroup["new"] = strValue.substr(0, strValue.find_last_not_of('\0') + 1);
 
                                     break;
                                 }
