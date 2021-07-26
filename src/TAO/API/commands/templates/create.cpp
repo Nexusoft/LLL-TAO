@@ -66,7 +66,7 @@ namespace TAO::API
 
             /* Handle for object. */
             if(jParams["data"].is_object() || jParams["data"].is_array())
-                strPayload = jParams["data"].dump(4);
+                strPayload = jParams["data"].dump(-1);
 
             /* Serialise the incoming data into a state register */
             DataStream ssData(SER_REGISTER, 1);
@@ -94,7 +94,7 @@ namespace TAO::API
 
             /* Handle for object. */
             if(jParams["data"].is_object() || jParams["data"].is_array())
-                strPayload = jParams["data"].dump(4);
+                strPayload = jParams["data"].dump(-1);
 
             /* If the caller specifies a maxlength then use this to set the size of the string */
             const uint64_t nMaxLength =
@@ -176,7 +176,7 @@ namespace TAO::API
 
                 /* Handle for json objects. */
                 if(it->is_object() || it->is_array())
-                    strPayload = it->dump(4);
+                    strPayload = it->dump(-1);
 
                 /* Flag for const fields. */
                 bool fMutable = true;
@@ -262,7 +262,7 @@ namespace TAO::API
                     throw Exception(-28, "Missing parameter [type] for command");
 
                 /* Check for our value parameter. */
-                if(!CheckParameter((*it), "value", "string, number"))
+                if(!CheckParameter((*it), "value", "string, number, array, object"))
                     throw Exception(-28, "Missing parameter [value] for command");
 
                 /* Check for our mutable parameter. */
@@ -324,9 +324,18 @@ namespace TAO::API
                 /* Handle for string data. */
                 if(strType == "string")
                 {
-                    /* Grab our payload. */
-                    std::string strPayload =
-                        (*it)["value"].get<std::string>();
+                    /* Handle if string. */
+                    std::string strPayload;
+                    if((*it)["value"].is_string())
+                        strPayload = (*it)["value"].get<std::string>();
+
+                    /* Handle for json objects. */
+                    if((*it)["value"].is_object() || (*it)["value"].is_array())
+                        strPayload = (*it)["value"].dump(-1);
+
+                    /* Check that we found some payload. */
+                    if(strPayload.empty())
+                        throw Exception(-19, "Invalid type [", strType, "=", (*it)["value"].type_name(), "] for command");
 
                     /* Adjust our serialization length. */
                     if(fMutable) //we don't need padding if value is const

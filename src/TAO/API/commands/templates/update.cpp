@@ -72,7 +72,7 @@ namespace TAO::API
 
             /* Handle for object and array. */
             if(jParams["data"].is_object() || jParams["data"].is_array())
-                strPayload = jParams["data"].dump(4);
+                strPayload = jParams["data"].dump(-1);
 
             /* Build a stream to deserlialize some data. */
             DataStream ssObject(tObject.GetState(), SER_REGISTER, 1);
@@ -152,7 +152,7 @@ namespace TAO::API
 
                 /* Handle for json objects. */
                 if(it->is_object() || it->is_array())
-                    strPayload = it->dump(4);
+                    strPayload = it->dump(-1);
 
                 /* Check that parameter was converted correctly. */
                 if(strPayload.empty())
@@ -257,12 +257,17 @@ namespace TAO::API
                 if(nFieldType == TAO::Register::TYPES::STRING)
                 {
                     /* Handle if string. */
-                    if(!it->is_string())
-                        throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
+                    std::string strPayload;
+                    if(it->is_string())
+                        strPayload = it->get<std::string>();
 
-                    /* Grab our value string to check against. */
-                    std::string strPayload =
-                        it->get<std::string>();
+                    /* Handle for json objects. */
+                    if(it->is_object() || it->is_array())
+                        strPayload = it->dump(-1);
+
+                    /* Check that we found some payload. */
+                    if(strPayload.empty())
+                        throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
 
                     /* Check that field exists first but grab a value too. */
                     const uint64_t nMaxLength = tObject.Size(strField);
