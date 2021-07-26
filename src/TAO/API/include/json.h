@@ -128,6 +128,18 @@ namespace TAO::API
     void StateToJSON(const std::vector<uint8_t>& vState, encoding::json &jRet);
 
 
+    /** StateToJSON
+     *
+     *  Converts an Register's state into formattted string with no external lookups
+     *
+     *  @param[in] vState The register's state to output.
+     *  @param[out] jRet The returned encoding object.
+     *
+     *
+     **/
+    std::string StateToJSON(const std::vector<uint8_t>& vState);
+
+
     /** StandardToJSON
      *
      *  Encodes the object based on the given command-set standards.

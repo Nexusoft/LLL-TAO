@@ -365,12 +365,14 @@ namespace TAO::API
 
                     /* Get the register pre-state so we can build response with old values before OP::WRITE. */
                     TAO::Register::Object object = contract.PreState();
-                    if(!object.Parse())
-                        throw Exception(-15, "Object is not an account or token");
 
                     /* Format write operation for different register types. */
                     if(object.nType == TAO::Register::REGISTER::OBJECT)
                     {
+                        /* Parse our object if needed. */
+                        if(!object.Parse())
+                            throw Exception(-15, "Object failed to parse");
+
                         /* Build a response object. */
                         encoding::json jWrite = encoding::json::array();
 
@@ -551,15 +553,16 @@ namespace TAO::API
                     else
                     {
                         /* Get a copy of our old data. */
-                        const std::vector<uint8_t> vOld = object.GetState();
+                        const std::vector<uint8_t> vOld =
+                            object.GetState();
 
                         /* Create our updated field. */
                         jRet["updated"] = encoding::json::array();
                         jRet["updated"].push_back
                         ({
-                            { "name", "state" },
-                            { "old",  HexStr(vOld.begin(), vOld.end()) },
-                            { "new",  HexStr(vchData.begin(), vchData.end()) },
+                            { "name", "state"              },
+                            { "old",  StateToJSON(vOld)    },
+                            { "new",  StateToJSON(vchData) },
                         });
                     }
 
@@ -1304,9 +1307,14 @@ namespace TAO::API
             {
                 /* Check if we can format as JSON. */
                 if(encoding::json::accept(strResults))
+                {
                     jRet["json"] = encoding::json::parse(strResults);
-                else
-                    jRet["data"] = strResults.substr(0, strResults.find_last_not_of('\0') + 1);
+                    return;
+                }
+
+                /* Otherwise we format by null terminated string. */
+                jRet["data"] = strResults.substr(0, strResults.find_last_not_of('\0') + 1);
+                return;
             }
         }
         else
@@ -1319,15 +1327,39 @@ namespace TAO::API
 
                 /* Check if we can format as JSON. */
                 if(encoding::json::accept(strResults))
+                {
                     jRet["json"] = encoding::json::parse(strResults);
-                else
-                    jRet["data"] = strResults.substr(0, strResults.find_last_not_of('\0') + 1);
-            }
+                    return;
+                }
 
-            /* Otherwise represent our register's state as a hex string. */
-            else
-                jRet["data"] = HexStr(vState.begin(), vState.end());
+                /* Otherwise we format by null terminated string. */
+                jRet["data"] = strResults.substr(0, strResults.find_last_not_of('\0') + 1);
+                return;
+            }
         }
+
+        /* Fall through resort to regular hex string. */
+        jRet["data"] = HexStr(vState.begin(), vState.end());
+    }
+
+
+    /* Converts an Register's state into formattted string with no external lookups */
+    std::string StateToJSON(const std::vector<uint8_t>& vState)
+    {
+        /* Wrap this call around previous overload. */
+        encoding::json jRet;
+        StateToJSON(vState, jRet);
+
+        /* Check for json encoding. */
+        if(jRet.find("json") != jRet.end())
+            return jRet["json"].dump(-1);
+
+        /* Check for data encoding. */
+        if(jRet.find("data") != jRet.end())
+            return jRet["data"].get<std::string>();
+
+        /* Otherwise fall back to hex encoding. */
+        return HexStr(vState.begin(), vState.end());
     }
 
 

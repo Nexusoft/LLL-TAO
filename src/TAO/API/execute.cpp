@@ -75,7 +75,7 @@ namespace TAO::API
                 throw Exception(-30, FUNCTION, "Operations failed to execute");
 
             /* Parse object after created. */
-            if(!tObject.Parse())
+            if(tObject.nType == TAO::Register::REGISTER::OBJECT && !tObject.Parse())
                 throw Exception(-30, FUNCTION, "Object failed to parse");
 
             return tObject;

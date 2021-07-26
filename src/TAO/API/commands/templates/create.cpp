@@ -56,12 +56,21 @@ namespace TAO::API
             hashRegister = TAO::Register::Address(TAO::Register::Address::READONLY);
 
             /* Check for our data parameter. */
-            if(!CheckParameter(jParams, "data", "string"))
+            if(!CheckParameter(jParams, "data", "string, array, object"))
                 throw Exception(-28, "Missing parameter [data] for command");
+
+            /* Handle for string. */
+            std::string strPayload;
+            if(jParams["data"].is_string())
+                strPayload = jParams["data"].get<std::string>();
+
+            /* Handle for object. */
+            if(jParams["data"].is_object() || jParams["data"].is_array())
+                strPayload = jParams["data"].dump(4);
 
             /* Serialise the incoming data into a state register */
             DataStream ssData(SER_REGISTER, 1);
-            ssData << uint16_t(nUserType) << jParams["data"].get<std::string>();
+            ssData << uint16_t(nUserType) << strPayload;
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)   << hashRegister;
@@ -75,12 +84,17 @@ namespace TAO::API
             hashRegister = TAO::Register::Address(TAO::Register::Address::RAW);
 
             /* Check for our data parameter. */
-            if(!CheckParameter(jParams, "data", "string"))
+            if(!CheckParameter(jParams, "data", "string, array, object"))
                 throw Exception(-28, "Missing parameter [data] for command");
 
-            /* Get our payload now. */
-            std::string strPayload =
-                jParams["data"].get<std::string>();
+            /* Handle for string. */
+            std::string strPayload;
+            if(jParams["data"].is_string())
+                strPayload = jParams["data"].get<std::string>();
+
+            /* Handle for object. */
+            if(jParams["data"].is_object() || jParams["data"].is_array())
+                strPayload = jParams["data"].dump(4);
 
             /* If the caller specifies a maxlength then use this to set the size of the string */
             const uint64_t nMaxLength =
@@ -159,6 +173,10 @@ namespace TAO::API
                     else if(it->is_number_float())
                         strPayload = debug::safe_printstr(it->get<double>());
                 }
+
+                /* Handle for json objects. */
+                if(it->is_object() || it->is_array())
+                    strPayload = it->dump(4);
 
                 /* Flag for const fields. */
                 bool fMutable = true;

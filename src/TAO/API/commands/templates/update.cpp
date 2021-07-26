@@ -62,8 +62,17 @@ namespace TAO::API
         if(strFormat == "raw")
         {
             /* Check for our data parameter. */
-            if(!CheckParameter(jParams, "data", "string"))
+            if(!CheckParameter(jParams, "data", "string, array, object"))
                 throw Exception(-28, "Missing parameter [data] for command");
+
+            /* Handle for string. */
+            std::string strPayload;
+            if(jParams["data"].is_string())
+                strPayload = jParams["data"].get<std::string>();
+
+            /* Handle for object and array. */
+            if(jParams["data"].is_object() || jParams["data"].is_array())
+                strPayload = jParams["data"].dump(4);
 
             /* Build a stream to deserlialize some data. */
             DataStream ssObject(tObject.GetState(), SER_REGISTER, 1);
@@ -76,20 +85,16 @@ namespace TAO::API
             const uint32_t nMaxLength =
                 ReadCompactSize(ssObject);
 
-            /* Grab our raw data string. */
-            std::string strValue =
-                jParams["data"].get<std::string>();
-
             /* Make sure we are writing the correct size. */
-            if(strValue.length() > nMaxLength)
+            if(strPayload.length() > nMaxLength)
                 throw Exception(-158, "Field [data] size exceeds maximum length [", nMaxLength, "]");
 
             /* Resize our buffer with null data. */
-            strValue.resize(nMaxLength);
+            strPayload.resize(nMaxLength);
 
             /* Serialise the incoming data into a state register */
             DataStream ssData(SER_REGISTER, 1);
-            ssData << uint16_t(nUserType) << strValue;
+            ssData << uint16_t(nUserType) << strPayload;
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::WRITE) << hashRegister << ssData.Bytes();
@@ -123,30 +128,34 @@ namespace TAO::API
                     throw Exception(-22, "Field [", strField, "] is a reserved field name");
 
                 /* Grab our value name. */
-                std::string strValue;
+                std::string strPayload;
 
                 /* Handle if string. */
                 if(it->is_string())
-                    strValue = it->get<std::string>();
+                    strPayload = it->get<std::string>();
 
                 /* Handle if number. */
                 if(it->is_number())
                 {
                     /* Handle for unsigned. */
                     if(it->is_number_unsigned())
-                        strValue = debug::safe_printstr(it->get<uint64_t>());
+                        strPayload = debug::safe_printstr(it->get<uint64_t>());
 
                     /* Handle for signed. */
                     else if(it->is_number_integer())
-                        strValue = debug::safe_printstr(it->get<int64_t>());
+                        strPayload = debug::safe_printstr(it->get<int64_t>());
 
                     /* Handle for float. */
                     else if(it->is_number_float())
-                        strValue = debug::safe_printstr(it->get<double>());
+                        strPayload = debug::safe_printstr(it->get<double>());
                 }
 
+                /* Handle for json objects. */
+                if(it->is_object() || it->is_array())
+                    strPayload = it->dump(4);
+
                 /* Check that parameter was converted correctly. */
-                if(strValue.empty())
+                if(strPayload.empty())
                     throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
 
                 /* Check that field exists first but grab a value too. */
@@ -155,7 +164,7 @@ namespace TAO::API
                     throw Exception(-19, "Field [", strField, "] doesn't exist in object");
 
                 /* Make sure we are writing the correct size. */
-                if(strValue.length() > nMaxLength)
+                if(strPayload.length() > nMaxLength)
                     throw Exception(-158, "Field [", strField, "] size exceeds maximum length [", nMaxLength, "]");
 
                 /* Check our object for data field. */
@@ -163,10 +172,10 @@ namespace TAO::API
                     throw Exception(-20, "Field [", strField, "] type is invalid for update, expecting [mutable string]");
 
                 /* Resize our value to add the required padding. */
-                strValue.resize(nMaxLength);
+                strPayload.resize(nMaxLength);
 
                 /* Add our payload to the contract. */
-                ssPayload << strField << uint8_t(TAO::Operation::OP::TYPES::STRING) << strValue;
+                ssPayload << strField << uint8_t(TAO::Operation::OP::TYPES::STRING) << strPayload;
             }
 
             /* Check for missing parameters. */
@@ -252,7 +261,7 @@ namespace TAO::API
                         throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
 
                     /* Grab our value string to check against. */
-                    std::string strValue =
+                    std::string strPayload =
                         it->get<std::string>();
 
                     /* Check that field exists first but grab a value too. */
@@ -261,14 +270,14 @@ namespace TAO::API
                         throw Exception(-19, "Field [", strField, "] doesn't exist in object");
 
                     /* Make sure we are writing the correct size. */
-                    if(strValue.length() > nMaxLength)
+                    if(strPayload.length() > nMaxLength)
                         throw Exception(-158, "Field [", strField, "] size exceeds maximum length [", nMaxLength, "]");
 
                     /* Resize our value to add the required padding. */
-                    strValue.resize(nMaxLength);
+                    strPayload.resize(nMaxLength);
 
                     /* Add our payload to the contract. */
-                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::STRING) << strValue;
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::STRING) << strPayload;
                 }
 
                 /* Handle for standard binary data. */
@@ -279,7 +288,7 @@ namespace TAO::API
                         throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
 
                     /* Grab our value string to check against. */
-                    const std::string strValue =
+                    const std::string strPayload =
                         it->get<std::string>();
 
                     /* Track if we have invalid encoding. */
@@ -287,7 +296,7 @@ namespace TAO::API
 
                     /* Grab our payload. */
                     const std::vector<uint8_t> vPayload =
-                        encoding::DecodeBase64(strValue.c_str(), &fInvalid);
+                        encoding::DecodeBase64(strPayload.c_str(), &fInvalid);
 
                     /* Check for invalid payload. */
                     if(fInvalid)
