@@ -108,18 +108,14 @@ namespace TAO::API
         /* Otherwise let's lock the session to generate the tx. */
         LOCK(session.CREATE_MUTEX);
 
-        /* Create the transaction. */
-        TAO::Ledger::Transaction tx;
-        if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-            throw Exception(-17, "Failed to create transaction");
-
         /* The new key scheme */
         const uint8_t nScheme =
             ExtractScheme(jParams, "brainpool, falcon");
 
-        /* Check for scheme parameter in request. */
-        if(nScheme != TAO::Ledger::SIGNATURE::RESERVED)
-            tx.nNextType = nScheme;
+        /* Create the transaction. */
+        TAO::Ledger::Transaction tx;
+        if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx, nScheme))
+            throw Exception(-17, "Failed to create transaction");
 
         /* Add the contracts. */
         for(const auto& rContract : vContracts)
@@ -141,7 +137,7 @@ namespace TAO::API
         {
             /* Re-calculate our next hash if safemode forcing not to use cache. */
             const uint256_t hashNext =
-                TAO::Ledger::Transaction::NextHash(session.GetAccount()->Generate(tx.nSequence, strPIN, false), tx.nNextType);
+                TAO::Ledger::Transaction::NextHash(session.GetAccount()->Generate(tx.nSequence + 1, strPIN, false), tx.nNextType);
 
             /* Check that this next hash is what we are expecting. */
             if(tx.hashNext != hashNext)

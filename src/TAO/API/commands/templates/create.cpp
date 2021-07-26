@@ -138,7 +138,8 @@ namespace TAO::API
                 || ToLower(strField) == "name"
                 || ToLower(strField) == "format"
                 || ToLower(strField) == "maxlength"
-                || ToLower(strField) == "request")
+                || ToLower(strField) == "request"
+                || ToLower(strField) == "scheme")
                 {
                     continue;
                 }

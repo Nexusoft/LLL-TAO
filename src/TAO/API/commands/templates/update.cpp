@@ -118,7 +118,8 @@ namespace TAO::API
                 || ToLower(strField) == "name"
                 || ToLower(strField) == "address"
                 || ToLower(strField) == "format"
-                || ToLower(strField) == "request")
+                || ToLower(strField) == "request"
+                || ToLower(strField) == "scheme")
                 {
                     continue;
                 }
@@ -204,7 +205,8 @@ namespace TAO::API
                 || ToLower(strField) == "name"
                 || ToLower(strField) == "address"
                 || ToLower(strField) == "format"
-                || ToLower(strField) == "request")
+                || ToLower(strField) == "request"
+                || ToLower(strField) == "scheme")
                 {
                     continue;
                 }

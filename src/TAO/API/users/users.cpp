@@ -309,7 +309,7 @@ namespace TAO
 
         /* Create a new transaction object for signature chain, if allowed to do so */
         bool Users::CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                            TAO::Ledger::Transaction& tx)
+                            TAO::Ledger::Transaction& tx, const uint8_t nScheme)
         {
             /* No need to check connections or maturity in private mode as there is no PoS/Pow */
             if(!config::fHybrid.load())
@@ -325,7 +325,7 @@ namespace TAO
             }
 
             /* Create the transaction and return */
-            return TAO::Ledger::CreateTransaction(user, pin, tx);
+            return TAO::Ledger::CreateTransaction(user, pin, tx, nScheme);
         }
 
 

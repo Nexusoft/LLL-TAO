@@ -44,10 +44,11 @@ namespace TAO
          *  @param[in] user The signature chain to generate this tx
          *  @param[in] pin The pin number to generate with.
          *  @param[out] tx The traansaction object being created
+         *  @param[in] nScheme The key scheme to be used.
          *
          **/
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                               TAO::Ledger::Transaction& tx);
+                               TAO::Ledger::Transaction& tx, const uint8_t nScheme = TAO::Ledger::SIGNATURE::RESERVED);
 
 
         /** CreateProducer

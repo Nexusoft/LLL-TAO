@@ -61,12 +61,12 @@ namespace TAO
         std::condition_variable PRIVATE_CONDITION;
 
         /* Create a new block object from the chain.*/
-        static memory::atomic<TAO::Ledger::TritiumBlock> blockCache[4];
+        static memory::atomic<TAO::Ledger::TritiumBlock> tBlockCache[4];
 
 
         /* Create a new transaction object from signature chain. */
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                               TAO::Ledger::Transaction& tx)
+                               TAO::Ledger::Transaction& tx, const uint8_t nScheme)
         {
             /* Get the genesis id of the sigchain. */
             uint256_t hashGenesis = user->Genesis();
@@ -145,7 +145,9 @@ namespace TAO
                 }
             }
 
-
+            /* Handle if we have set a scheme. */
+            if(nScheme != TAO::Ledger::SIGNATURE::RESERVED)
+                tx.nNextType = nScheme; //we always override the commandline parameters
 
             /* Set the transaction version based on the timestamp. The transaction version is current version
                unless an activation is pending */
@@ -393,19 +395,19 @@ namespace TAO
             TAO::Ledger::Transaction txCached;
 
             /* Retrieve currently cached block */
-            TAO::Ledger::TritiumBlock blockCached = blockCache[nChannel].load();
+            TAO::Ledger::TritiumBlock tBlockCached = tBlockCache[nChannel].load();
 
             /* Retrieve block producer from cached block */
-            txCached = blockCached.producer;
+            txCached = tBlockCached.producer;
 
             /* Cache the best chain before processing. */
             const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
 
             /* Handle if the block is cached (if stateBest or user change, cache is invalid). */
-            if((ChainState::stateBest.load().GetHash() == blockCached.hashPrevBlock) && (hashGenesis == txCached.hashGenesis))
+            if((ChainState::stateBest.load().GetHash() == tBlockCached.hashPrevBlock) && (hashGenesis == txCached.hashGenesis))
             {
                 /* Set the block to cached block. */
-                block = blockCached;
+                block = tBlockCached;
                 txProducer = txCached;
 
                 /* Add new transactions. */
@@ -429,7 +431,7 @@ namespace TAO
                     block.producer = txProducer;
 
                     /* Store new block cache. */
-                    blockCache[nChannel].store(block);
+                    tBlockCache[nChannel].store(block);
                 }
 
                 /* Update the producer timestamp */
@@ -473,7 +475,7 @@ namespace TAO
                 AddBlockData(stateBest, nChannel, block);
 
                 /* Store the cached block. */
-                blockCache[nChannel].store(block);
+                tBlockCache[nChannel].store(block);
             }
 
             /* Update the time for the newly created block. */
