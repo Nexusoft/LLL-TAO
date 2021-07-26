@@ -1343,7 +1343,7 @@ namespace TAO::API
     }
 
 
-    /* Converts an Register's state into formattted string with no external lookups */
+    /* Converts an Register's state into unformatted string with no external lookups */
     std::string StateToJSON(const std::vector<uint8_t>& vState)
     {
         /* Wrap this call around previous overload. */
