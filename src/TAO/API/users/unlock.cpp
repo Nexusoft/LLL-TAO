@@ -15,6 +15,9 @@ ________________________________________________________________________________
 
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/session-manager.h>
+
+#include <TAO/API/include/extract.h>
+
 #include <Util/include/args.h>
 
 #include <TAO/Ledger/types/mempool.h>
@@ -33,27 +36,16 @@ namespace TAO
     {
 
         /* Unlock an account for mining (TODO: make this much more secure) */
-        encoding::json Users::Unlock(const encoding::json& params, const bool fHelp)
+        encoding::json Users::Unlock(const encoding::json& jParams, const bool fHelp)
         {
             /* JSON return value. */
             encoding::json ret;
 
             /* Pin parameter. */
-            SecureString strPin;
+            const SecureString strPin = ExtractPIN(jParams);
 
             /* Get the session */
-            Session& session = GetSession(params);
-
-            /* Check for pin parameter. Parse the pin parameter. */
-            if(params.find("pin") != params.end())
-                strPin = SecureString(params["pin"].get<std::string>().c_str());
-            else if(params.find("PIN") != params.end())
-                strPin = SecureString(params["PIN"].get<std::string>().c_str());
-            else
-                throw Exception(-129, "Missing PIN");
-
-            if(strPin.size() == 0)
-                throw Exception(-135, "Zero-length PIN");
+            Session& session = GetSession(jParams);
 
             /* Check for unlock actions */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to ALL actions
@@ -63,9 +55,9 @@ namespace TAO
                 nUnlockedActions = session.GetActivePIN()->UnlockedActions();
 
             /* Check for mining flag. */
-            if(params.find("mining") != params.end())
+            if(jParams.find("mining") != jParams.end())
             {
-                std::string strMint = params["mining"].get<std::string>();
+                std::string strMint = jParams["mining"].get<std::string>();
 
                 if(strMint == "1" || strMint == "true")
                 {
@@ -82,9 +74,9 @@ namespace TAO
             }
 
             /* Check for staking flag. */
-            if(params.find("staking") != params.end())
+            if(jParams.find("staking") != jParams.end())
             {
-                std::string strMint = params["staking"].get<std::string>();
+                std::string strMint = jParams["staking"].get<std::string>();
 
                 if(strMint == "1" || strMint == "true")
                 {
@@ -101,9 +93,9 @@ namespace TAO
             }
 
             /* Check transactions flag. */
-            if(params.find("transactions") != params.end())
+            if(jParams.find("transactions") != jParams.end())
             {
-                std::string strTransactions = params["transactions"].get<std::string>();
+                std::string strTransactions = jParams["transactions"].get<std::string>();
 
                 if(strTransactions == "1" || strTransactions == "true")
                 {
@@ -116,9 +108,9 @@ namespace TAO
             }
 
             /* Check for notifications. */
-            if(params.find("notifications") != params.end())
+            if(jParams.find("notifications") != jParams.end())
             {
-                std::string strNotifications = params["notifications"].get<std::string>();
+                std::string strNotifications = jParams["notifications"].get<std::string>();
 
                 if(strNotifications == "1" || strNotifications == "true")
                 {

@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/session-manager.h>
 
+#include <TAO/API/include/extract.h>
+
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -29,27 +31,16 @@ namespace TAO
     {
 
         /* Saves the users session into the local DB so that it can be resumed later after a crash */
-        encoding::json Users::Save(const encoding::json& params, const bool fHelp)
+        encoding::json Users::Save(const encoding::json& jParams, const bool fHelp)
         {
             /* JSON return value. */
             encoding::json ret;
 
             /* Pin parameter. */
-            SecureString strPin;
+            const SecureString strPin = ExtractPIN(jParams);
 
             /* Get the session */
-            Session& session = GetSession(params);
-
-            /* Check for pin parameter. Parse the pin parameter. */
-            if(params.find("pin") != params.end())
-                strPin = SecureString(params["pin"].get<std::string>().c_str());
-            else if(params.find("PIN") != params.end())
-                strPin = SecureString(params["PIN"].get<std::string>().c_str());
-            else
-                throw Exception(-129, "Missing PIN");
-
-            if(strPin.size() == 0)
-                throw Exception(-135, "Zero-length PIN");
+            Session& session = GetSession(jParams);
 
             /* Get the genesis ID. */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
@@ -66,7 +57,7 @@ namespace TAO
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
                 throw Exception(-149, "Invalid PIN");
-            
+
             /* Save the session */
             session.Save(strPin);
 

@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/users.h>
 
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/extract.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -30,42 +31,38 @@ namespace TAO
     {
 
         /* Recover a sig chain and set new credentials by supplying the recovery seed */
-        encoding::json Users::Recover(const encoding::json& params, const bool fHelp)
+        encoding::json Users::Recover(const encoding::json& jParams, const bool fHelp)
         {
             /* JSON return value. */
             encoding::json jsonRet;
 
             /* Check for username parameter. */
-            if(params.find("username") == params.end())
+            if(jParams.find("username") == jParams.end())
                 throw Exception(-127, "Missing username");
 
             /* Check for recovery parameter. */
-            if(params.find("recovery") == params.end())
+            if(jParams.find("recovery") == jParams.end())
                 throw Exception(-220, "Missing recovery seed");
 
             /* Check for password parameter. */
-            if(params.find("password") == params.end())
+            if(jParams.find("password") == jParams.end())
                 throw Exception(-128, "Missing password");
 
-            /* Check for pin parameter. Extract the pin. */
-            if(params.find("pin") == params.end())
-                throw Exception(-129, "Missing PIN");
-
             /* Extract username. */
-            SecureString strUsername = SecureString(params["username"].get<std::string>().c_str());
+            SecureString strUsername = SecureString(jParams["username"].get<std::string>().c_str());
 
             /* Get the genesis ID. */
             uint256_t hashGenesis = TAO::Ledger::SignatureChain::Genesis(strUsername);
 
 
             /* Extract the recovery seed */
-            SecureString strRecovery = SecureString(params["recovery"].get<std::string>().c_str());
+            SecureString strRecovery = SecureString(jParams["recovery"].get<std::string>().c_str());
 
             /* Extract the new password */
-            SecureString strPassword = SecureString(params["password"].get<std::string>().c_str());
+            SecureString strPassword = SecureString(jParams["password"].get<std::string>().c_str());
 
             /* Existing new pin parameter. */
-            SecureString strPin = SecureString(params["pin"].get<std::string>().c_str());
+            const SecureString strPin = ExtractPIN(jParams);
 
             /* Check the new password length */
             if(strPassword.length() < 8)

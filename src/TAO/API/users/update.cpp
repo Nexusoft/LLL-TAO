@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/session-manager.h>
 
+#include <TAO/API/include/extract.h>
+
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/create.h>
@@ -32,27 +34,23 @@ namespace TAO
     namespace API
     {
         /* Update a user's credentials given older credentials to authorize the update. */
-        encoding::json Users::Update(const encoding::json& params, const bool fHelp)
+        encoding::json Users::Update(const encoding::json& jParams, const bool fHelp)
         {
             /* JSON return value. */
             encoding::json jsonRet;
 
             /* Get the session to be used for this API call */
-            Session& session = GetSession(params);
+            Session& session = GetSession(jParams);
 
             /* Check for password parameter. */
-            if(params.find("password") == params.end())
+            if(jParams.find("password") == jParams.end())
                 throw Exception(-128, "Missing password");
 
-            /* Check for pin parameter. Extract the pin. */
-            if(params.find("pin") == params.end())
-                throw Exception(-129, "Missing PIN");
-
             /* Extract the existing password */
-            SecureString strPassword = SecureString(params["password"].get<std::string>().c_str());
+            SecureString strPassword = SecureString(jParams["password"].get<std::string>().c_str());
 
             /* Existing pin parameter. */
-            SecureString strPin = SecureString(params["pin"].get<std::string>().c_str());
+            const SecureString strPin = ExtractPIN(jParams);
 
             /* Extract the new password - default to old password if only changing pin*/
             SecureString strNewPassword = strPassword;
@@ -64,9 +62,9 @@ namespace TAO
             SecureString strNewRecovery = "";
 
             /* Check for new password parameter. */
-            if(params.find("new_password") != params.end() && !params["new_password"].get<std::string>().empty())
+            if(jParams.find("new_password") != jParams.end() && !jParams["new_password"].get<std::string>().empty())
             {
-                strNewPassword = SecureString(params["new_password"].get<std::string>().c_str());
+                strNewPassword = SecureString(jParams["new_password"].get<std::string>().c_str());
 
                 /* Check password length */
                 if(strNewPassword.length() < 8)
@@ -74,9 +72,9 @@ namespace TAO
             }
 
             /* Check for new pin parameter. */
-            if(params.find("new_pin") != params.end() && !params["new_pin"].get<std::string>().empty())
+            if(jParams.find("new_pin") != jParams.end() && !jParams["new_pin"].get<std::string>().empty())
             {
-                strNewPin = SecureString(params["new_pin"].get<std::string>().c_str());
+                strNewPin = SecureString(jParams["new_pin"].get<std::string>().c_str());
 
                 /* Check pin length */
                 if(strNewPin.length() < 4)
@@ -84,9 +82,9 @@ namespace TAO
             }
 
             /* Check for recovery seed parameter. */
-            if(params.find("new_recovery") != params.end() && !params["new_recovery"].get<std::string>().empty())
+            if(jParams.find("new_recovery") != jParams.end() && !jParams["new_recovery"].get<std::string>().empty())
             {
-                strNewRecovery = params["new_recovery"].get<std::string>().c_str();
+                strNewRecovery = jParams["new_recovery"].get<std::string>().c_str();
 
                 /* Check recovery seed length */
                 if(strNewRecovery.length() < 40)
@@ -116,11 +114,11 @@ namespace TAO
             if(!strNewRecovery.empty() && txPrev.hashRecovery != 0 )
             {
                 /* Check that the caller has supplied the previous recovery seed */
-                if(params.find("recovery") == params.end())
+                if(jParams.find("recovery") == jParams.end())
                     throw Exception(-220, "Missing recovery seed. ");
 
-                /* Get the previous recovery seed from the params */
-                strRecovery = SecureString(params["recovery"].get<std::string>().c_str());
+                /* Get the previous recovery seed from the jParams */
+                strRecovery = SecureString(jParams["recovery"].get<std::string>().c_str());
 
                 fRecovery = true;
             }
