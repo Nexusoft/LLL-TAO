@@ -139,7 +139,7 @@ namespace TAO::API
 
         /* DataStream to help us serialize the data. */
         DataStream ssData(SER_REGISTER, 1);
-        ssData << uint16_t(USER_TYPES::INVOICE) << jInvoice.dump(4);
+        ssData << uint16_t(USER_TYPES::INVOICE) << jInvoice.dump(-1);
 
         /* Check the data size */
         if(ssData.size() > TAO::Register::MAX_REGISTER_SIZE)
