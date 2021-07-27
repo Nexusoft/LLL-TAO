@@ -99,7 +99,7 @@ namespace TAO::API
          *  @return The genesis ID if logged in.
          *
          **/
-        uint256_t GetCallersGenesis(const encoding::json& params) const;
+        uint256_t GetCallersGenesis(const encoding::json& jParams) const;
 
 
         /** GetGenesis
@@ -112,7 +112,7 @@ namespace TAO::API
          *  @return The genesis ID if logged in.
          *
          **/
-        uint256_t GetGenesis(uint256_t nSession, bool fThrow = false) const;
+        uint256_t GetGenesis(const uint256_t& nSession, const bool fThrow = false) const;
 
 
 
@@ -129,7 +129,7 @@ namespace TAO::API
          *  @return the pin.
          *
          **/
-        SecureString GetPin(const encoding::json params, uint8_t nUnlockAction) const;
+        SecureString GetPin(const encoding::json& jParams, const uint8_t nUnlockAction) const;
 
 
         /** GetSession
@@ -148,7 +148,7 @@ namespace TAO::API
          *  @return the session id.
          *
          **/
-        Session& GetSession(const encoding::json params, bool fThrow = true, bool fLogActivity = true) const;
+        Session& GetSession(const encoding::json& jParams, bool fThrow = true, bool fLogActivity = true) const;
 
 
         /** GetSession
@@ -191,7 +191,7 @@ namespace TAO::API
          *  @param[in] nSession The session identifier.
          *
          **/
-        uint512_t GetKey(uint32_t nKey, SecureString strSecret, const Session& session) const;
+        uint512_t GetKey(const uint32_t nKey, const SecureString& strSecret, const Session& session) const;
 
 
         /** Login
@@ -204,7 +204,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Login(const encoding::json& params, const bool fHelp);
+        encoding::json Login(const encoding::json& jParams, const bool fHelp);
 
 
         /** Unlock
@@ -217,7 +217,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Unlock(const encoding::json& params, const bool fHelp);
+        encoding::json Unlock(const encoding::json& jParams, const bool fHelp);
 
 
         /** Lock
@@ -230,7 +230,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Lock(const encoding::json& params, const bool fHelp);
+        encoding::json Lock(const encoding::json& jParams, const bool fHelp);
 
 
         /** Logout
@@ -243,7 +243,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Logout(const encoding::json& params, const bool fHelp);
+        encoding::json Logout(const encoding::json& jParams, const bool fHelp);
 
 
         /** Create
@@ -256,7 +256,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Create(const encoding::json& params, const bool fHelp);
+        encoding::json Create(const encoding::json& jParams, const bool fHelp);
 
 
         /** Update
@@ -269,7 +269,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Update(const encoding::json& params, const bool fHelp);
+        encoding::json Update(const encoding::json& jParams, const bool fHelp);
 
 
         /** Recover
@@ -282,7 +282,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Recover(const encoding::json& params, const bool fHelp);
+        encoding::json Recover(const encoding::json& jParams, const bool fHelp);
 
 
         /** GetTransactions
@@ -295,7 +295,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Transactions(const encoding::json& params, const bool fHelp);
+        encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
 
 
         /** Notifications
@@ -308,7 +308,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Notifications(const encoding::json& params, const bool fHelp);
+        encoding::json Notifications(const encoding::json& jParams, const bool fHelp);
 
 
         /** Assets
@@ -321,7 +321,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Assets(const encoding::json& params, const bool fHelp);
+        encoding::json Assets(const encoding::json& jParams, const bool fHelp);
 
 
         /** Tokens
@@ -334,7 +334,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Tokens(const encoding::json& params, const bool fHelp);
+        encoding::json Tokens(const encoding::json& jParams, const bool fHelp);
 
 
         /** Accounts
@@ -347,7 +347,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Accounts(const encoding::json& params, const bool fHelp);
+        encoding::json Accounts(const encoding::json& jParams, const bool fHelp);
 
 
         /** Names
@@ -360,7 +360,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Names(const encoding::json& params, const bool fHelp);
+        encoding::json Names(const encoding::json& jParams, const bool fHelp);
 
 
         /** Namespaces
@@ -373,7 +373,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Namespaces(const encoding::json& params, const bool fHelp);
+        encoding::json Namespaces(const encoding::json& jParams, const bool fHelp);
 
 
         /** Items
@@ -386,7 +386,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Items(const encoding::json& params, const bool fHelp);
+        encoding::json Items(const encoding::json& jParams, const bool fHelp);
 
 
         /** Status
@@ -399,7 +399,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Status(const encoding::json& params, const bool fHelp);
+        encoding::json Status(const encoding::json& jParams, const bool fHelp);
 
 
         /** Invoices
@@ -412,7 +412,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Invoices(const encoding::json& params, const bool fHelp);
+        encoding::json Invoices(const encoding::json& jParams, const bool fHelp);
 
 
         /** ProcessNotifications
@@ -425,7 +425,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json ProcessNotifications(const encoding::json& params, const bool fHelp);
+        encoding::json ProcessNotifications(const encoding::json& jParams, const bool fHelp);
 
 
         /** Save
@@ -438,7 +438,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Save(const encoding::json& params, const bool fHelp);
+        encoding::json Save(const encoding::json& jParams, const bool fHelp);
 
 
         /** Load
@@ -451,7 +451,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Load(const encoding::json& params, const bool fHelp);
+        encoding::json Load(const encoding::json& jParams, const bool fHelp);
 
 
         /** Has
@@ -464,7 +464,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Has(const encoding::json& params, const bool fHelp);
+        encoding::json Has(const encoding::json& jParams, const bool fHelp);
 
 
         /** Processed
@@ -477,7 +477,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Processed(const encoding::json& params, const bool fHelp);
+        encoding::json Processed(const encoding::json& jParams, const bool fHelp);
 
 
         /** Clear
@@ -490,7 +490,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Clear(const encoding::json& params, const bool fHelp);
+        encoding::json Clear(const encoding::json& jParams, const bool fHelp);
 
 
         /** LoginThread
@@ -631,7 +631,7 @@ namespace TAO::API
         *  @return True if the request contains the required authentication parameters and that they are correct
         *
         **/
-        bool Authenticate(const encoding::json& params);
+        bool Authenticate(const encoding::json& jParams);
 
 
         /** TerminateSession

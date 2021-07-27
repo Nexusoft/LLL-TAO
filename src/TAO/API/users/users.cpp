@@ -106,20 +106,20 @@ namespace TAO
 
 
         /* Returns the genesis ID from the calling session or the the account logged in.*/
-        uint256_t Users::GetCallersGenesis(const encoding::json & params) const
+        uint256_t Users::GetCallersGenesis(const encoding::json& jParams) const
         {
             /* default to session 0 unless using multiuser mode */
             uint256_t hashSession = 0;
 
-            if(config::fMultiuser.load() && params.find("session") != params.end())
-                hashSession.SetHex(params["session"].get<std::string>());
+            if(config::fMultiuser.load() && jParams.find("session") != jParams.end())
+                hashSession.SetHex(jParams["session"].get<std::string>());
 
             return GetGenesis(hashSession);
         }
 
 
         /* Returns the genesis ID from the account logged in. */
-        uint256_t Users::GetGenesis(uint256_t hashSession, bool fThrow) const
+        uint256_t Users::GetGenesis(const uint256_t& hashSession, bool fThrow) const
         {
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
@@ -145,10 +145,10 @@ namespace TAO
 
 
         /* If the API is running in sessionless mode this method will return the currently
-         * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
-         * then the method will return the pin from the params.  If no pin is available then
+         * active PIN (if logged in) or the pin from the jParams.  If not in sessionless mode
+         * then the method will return the pin from the jParams.  If no pin is available then
          * an Exception is thrown */
-        SecureString Users::GetPin(const encoding::json jParams, uint8_t nUnlockAction) const
+        SecureString Users::GetPin(const encoding::json& jParams, const uint8_t nUnlockAction) const
         {
             /* Get the active session */
             Session& session = GetSession(jParams, true, false);
@@ -175,22 +175,22 @@ namespace TAO
         /* If the API is running in sessionless mode this method will return the default
          * session ID that is used to store the one and only session (ID 0). If the user is not
          * logged in than an Exception is thrown, if fThrow is true.
-         * If not in sessionless mode then the method will return the session from the params.
-         * If the session is not is available in the params then an Exception is thrown, if fThrow is true. */
-        Session& Users::GetSession(const encoding::json params, bool fThrow, bool fLogActivity) const
+         * If not in sessionless mode then the method will return the session from the jParams.
+         * If the session is not is available in the jParams then an Exception is thrown, if fThrow is true. */
+        Session& Users::GetSession(const encoding::json& jParams, const bool fThrow, const bool fLogActivity) const
         {
             /* Check for session parameter. */
             uint256_t hashSession = 0; // ID 0 is used for sessionless API
 
             if(config::fMultiuser.load())
             {
-                if(params.find("session") == params.end())
+                if(jParams.find("session") == jParams.end())
                 {
                     if(fThrow)
                         throw Exception(-12, "Missing Session ID");
                 }
                 else
-                    hashSession.SetHex(params["session"].get<std::string>());
+                    hashSession.SetHex(jParams["session"].get<std::string>());
 
                 /* Check that the session ID is valid */
                 if(fThrow && !GetSessionManager().Has(hashSession))
@@ -262,7 +262,7 @@ namespace TAO
 
 
         /* Returns a key from the account logged in. */
-        uint512_t Users::GetKey(uint32_t nKey, SecureString strSecret, const Session& session) const
+        uint512_t Users::GetKey(const uint32_t nKey, const SecureString& strSecret, const Session& session) const
         {
             return session.GetAccount()->Generate(nKey, strSecret);
         }
@@ -332,13 +332,13 @@ namespace TAO
         /* Checks that the session/password/pin parameters have been provided (where necessary) and then verifies that the
         *  password and pin are correct.
         *  If authentication fails then the AuthAttempts counter in the callers session is incremented */
-        bool Users::Authenticate(const encoding::json& params)
+        bool Users::Authenticate(const encoding::json& jParams)
         {
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+            Session& session = Commands::Get<Users>()->GetSession(jParams);
 
             /* Check the account. */
             if(!session.GetAccount())
