@@ -32,7 +32,7 @@ namespace version
 
 
     /* Client Version Outputs. */
-    const std::string CLIENT_NAME("Tritium");
+    const std::string CLIENT_NAME("Tritium++");
     const std::string CLIENT_DATE(__DATE__ " " __TIME__);
 
     /* The version number */
