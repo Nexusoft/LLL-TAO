@@ -164,25 +164,7 @@ namespace TAO::API
      *  @return encoded json object with given channel stats.
      *
      **/
-    encoding::json ChannelToJSON(const uint32_t nChannel);
-
-
-    /** ObjectToJSON
-     *
-     *  Converts an Object Register to formattted JSON
-     *
-     *  @param[in] params The paramets passed in the request
-     *  @param[in] object The Object Register to convert
-     *  @param[in] hashRegister The register address of the object
-     *  @param[in] fLookupName True if the Name object record should be looked up
-     *
-     *  @return the formatted JSON object
-     *
-     **/
-    encoding::json ObjectToJSON(const encoding::json& params,
-                            const TAO::Register::Object& object,
-                            const TAO::Register::Address& hashRegister,
-                            bool fLookupName = true);
+    __attribute__((pure)) encoding::json ChannelToJSON(const uint32_t nChannel);
 
 
     /** StatementToJSON
