@@ -42,7 +42,6 @@ namespace TAO
         /* Execute a write operation to bring register into new state. */
         bool Write::Execute(TAO::Register::State& state, const std::vector<uint8_t>& vchData, const uint64_t nTimestamp)
         {
-
             /* Write operations on the state object. */
             if(state.nType == TAO::Register::REGISTER::OBJECT)
             {

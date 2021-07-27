@@ -50,9 +50,10 @@ namespace TAO::API
             SUPPLY      = 1,
             INVOICE     = 2,
             ASSET       = 3,
+            STANDARD    = 4, //a standard object, this is really a dummy value to pass into Templates::Create and Templates::Update
 
             //for range checks
-            RESERVED2   = 4
+            RESERVED2   = 5
         };
 
         /** Valid

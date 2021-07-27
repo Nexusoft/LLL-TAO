@@ -187,8 +187,8 @@ namespace TAO::API
             vContracts[0] << uint8_t(TAO::Operation::OP::WRITE) << hashRegister << ssPayload.Bytes();
         }
 
-        /* Handle for json formats. */
-        if(strFormat == "json")
+        /* Handle for json formats and also standard objects. */
+        if(strFormat == "json" || strFormat == "standard")
         {
             /* Create an operations stream for the update payload. */
             TAO::Operation::Stream ssPayload;

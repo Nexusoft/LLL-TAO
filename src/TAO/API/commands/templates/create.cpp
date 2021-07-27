@@ -393,7 +393,7 @@ namespace TAO::API
             vContracts[0] << uint8_t(TAO::Register::REGISTER::OBJECT) << tPayload.GetState();
         }
 
-        /* Build our object first to check against our standards. */
+        /* Build our object to check against our standards. */
         const TAO::Register::Object tObject =
             ExecuteContract(vContracts[0]);
 
@@ -402,7 +402,15 @@ namespace TAO::API
             throw Exception(-18, "Invalid format for standard [", jParams["request"]["type"].get<std::string>(), "]");
 
         /* Add optional name if specified. */
-        BuildName(jParams, hashRegister, vContracts);
+        if(tObject.nType == TAO::Register::REGISTER::OBJECT)
+        {
+            /* Grab our standard. */
+            const uint8_t nStandard = tObject.Standard();
+
+            /* Add name record for all non TNS related standards if specified in parameters. */
+            if(nStandard != TAO::Register::OBJECTS::NAME && nStandard != TAO::Register::OBJECTS::NAMESPACE)
+                BuildName(jParams, hashRegister, vContracts);
+        }
 
         return BuildResponse(jParams, hashRegister, vContracts);
     }

@@ -213,7 +213,7 @@ namespace TAO::API
     {
         /* Check for our request parameters first, since this method can be called without */
         if(!CheckRequest(jParams, "fieldname", "string, array"))
-            throw Exception(-28, "Missing parameter [request::fieldname] for command");
+            return true;
 
         /* Handle if single string. */
         if(jParams["request"]["fieldname"].is_string())
