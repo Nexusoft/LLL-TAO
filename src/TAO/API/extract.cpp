@@ -69,13 +69,8 @@ namespace TAO::API
             if(hashRet.IsValid())
                 return hashRet;
 
-            /* Get our session to get the name object. */
-            const Session& session = Commands::Get<Users>()->GetSession(jParams);
-
-            /* Grab the name object register now. */
-            TAO::Register::Object object;
-            if(TAO::Register::GetNameRegister(session.GetAccount()->Genesis(), strDefault, object))
-                return object.get<uint256_t>("address");
+            /* Allow address to be a name record as well. */
+            return Names::ResolveAddress(jParams, strDefault);
         }
 
         /* Check for any/all request types. */
