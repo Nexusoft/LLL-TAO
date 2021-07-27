@@ -141,35 +141,35 @@ namespace LLP
             if(INCOMING.strType == "POST")
             {
                 /* Only parse content if some has been provided */
-                if(INCOMING.strContent.empty())
-                    throw TAO::API::Exception(-7, "Empty content not allowed for POST");
-
-                /* Handle different content types. */
-                if(!INCOMING.mapHeaders.count("content-type"))
-                    throw TAO::API::Exception(-5, "content-type [null or misisng] not supported");
-
-                /* Form encoding. */
-                if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
+                if(!INCOMING.strContent.empty())
                 {
-                    /* Decode if url-form-encoded. */
-                    INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
+                    /* Handle different content types. */
+                    if(!INCOMING.mapHeaders.count("content-type"))
+                        throw TAO::API::Exception(-5, "content-type [null or misisng] not supported");
 
-                    /* Split by delimiter. */
-                    std::vector<std::string> vParams;
-                    ParseString(INCOMING.strContent, '&', vParams);
+                    /* Form encoding. */
+                    if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
+                    {
+                        /* Decode if url-form-encoded. */
+                        INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
 
-                    /* Grab our parameters. */
-                    jParams = TAO::API::ParamsToJSON(vParams);
+                        /* Split by delimiter. */
+                        std::vector<std::string> vParams;
+                        ParseString(INCOMING.strContent, '&', vParams);
+
+                        /* Grab our parameters. */
+                        jParams = TAO::API::ParamsToJSON(vParams);
+                    }
+
+                    /* JSON encoding. */
+                    else if(INCOMING.mapHeaders["content-type"] == "application/json")
+                    {
+                        /* Parse JSON like normal. */
+                        jParams = encoding::json::parse(INCOMING.strContent);
+                    }
+                    else
+                        throw TAO::API::Exception(-5, "content-type [", INCOMING.mapHeaders["content-type"], "] not supported");
                 }
-
-                /* JSON encoding. */
-                else if(INCOMING.mapHeaders["content-type"] == "application/json")
-                {
-                    /* Parse JSON like normal. */
-                    jParams = encoding::json::parse(INCOMING.strContent);
-                }
-                else
-                    throw TAO::API::Exception(-5, "content-type [", INCOMING.mapHeaders["content-type"], "] not supported");
             }
             else if(INCOMING.strType == "GET")
             {
