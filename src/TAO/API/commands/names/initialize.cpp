@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/names/types/names.h>
+#include <TAO/API/types/commands/names.h>
 
 #include <TAO/API/include/check.h>
 

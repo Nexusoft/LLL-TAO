@@ -10,7 +10,7 @@
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/names/types/names.h>
+#include <TAO/API/types/commands/names.h>
 
 #include <TAO/API/types/session-manager.h>
 #include <TAO/API/types/exception.h>

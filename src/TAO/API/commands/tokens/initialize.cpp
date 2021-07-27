@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/constants.h>
 #include <TAO/API/include/global.h>
 
 #include <TAO/Register/include/enum.h>
@@ -68,10 +69,13 @@ namespace TAO::API
         (
             std::bind
             (
-                &Finance::Create,
-                Commands::Get<Finance>(),
+                &Templates::Create,
                 std::placeholders::_1,
-                std::placeholders::_2
+                std::placeholders::_2,
+
+                "standard",
+                USER_TYPES::STANDARD,
+                "standard"
             )
             , version::get_version(6, 0, 0)
             , "please use finance/create command instead"

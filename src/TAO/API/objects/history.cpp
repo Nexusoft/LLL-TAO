@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/objects/types/objects.h>
-#include <TAO/API/names/types/names.h>
+#include <TAO/API/types/commands/names.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
 

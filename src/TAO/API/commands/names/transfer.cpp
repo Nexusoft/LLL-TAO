@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/names/types/names.h>
+#include <TAO/API/types/commands/names.h>
 #include <TAO/API/objects/types/objects.h>
 
 #include <TAO/Register/include/enum.h>
@@ -22,16 +22,16 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        /* Claim a transferred name. */
-        encoding::json Names::ClaimName(const encoding::json& params, const bool fHelp)
+        /* Transfer a name. */
+        encoding::json Names::TransferName(const encoding::json& params, const bool fHelp)
         {
-            return Objects::Claim(params, TAO::Register::OBJECTS::NAME, std::string("Name"));
+            return Objects::Transfer(params, TAO::Register::OBJECTS::NAME, std::string("Name"));
         }
 
-        /* Claim a transferred namespace. */
-        encoding::json Names::ClaimNamespace(const encoding::json& params, const bool fHelp)
+        /* Transfer a namespace. */
+        encoding::json Names::TransferNamespace(const encoding::json& params, const bool fHelp)
         {
-            return Objects::Claim(params, TAO::Register::OBJECTS::NAMESPACE, std::string("Namespace"));
+            return Objects::Transfer(params, TAO::Register::OBJECTS::NAMESPACE, std::string("Namespace"));
         }
     }
 }

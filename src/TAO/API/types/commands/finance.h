@@ -68,19 +68,6 @@ namespace TAO::API
         encoding::json Burn(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Create
-         *
-         *  Create an account or token object register
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Create(const encoding::json& jParams, const bool fHelp);
-
-
         /** Credit
          *
          *  Claim a balance from an account or token object register.

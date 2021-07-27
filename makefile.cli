@@ -420,7 +420,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_dex_initialize.o \
 		build/API_commands_finance_balances.o \
 		build/API_commands_finance_burn.o \
-		build/API_commands_finance_create.o \
 		build/API_commands_finance_credit.o \
 		build/API_commands_finance_debit.o \
 		build/API_commands_finance_initialize.o \
@@ -443,14 +442,14 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_sync-headers.o \
 		build/API_commands_ledger_sync-sigchain.o \
 		build/API_commands_ledger_void-transaction.o \
-		build/API_types_names_claim.o \
-		build/API_types_names_create.o \
-		build/API_types_names_get.o \
-		build/API_types_names_history.o \
-		build/API_types_names_initialize.o \
-		build/API_types_names_names.o \
-		build/API_types_names_transfer.o \
-		build/API_types_names_update.o \
+		build/API_commands_names_initialize.o \
+		build/API_commands_names_names.o \
+		build/API_commands_names_claim.o \
+		build/API_commands_names_create.o \
+		build/API_commands_names_get.o \
+		build/API_commands_names_history.o \
+		build/API_commands_names_transfer.o \
+		build/API_commands_names_update.o \
 		build/API_types_objects_claim.o \
 		build/API_types_objects_history.o \
 		build/API_types_objects_transfer.o \
@@ -760,7 +759,7 @@ build/API_commands_invoices_%.o: ./src/TAO/API/commands/invoices/%.cpp $(HEADERS
 build/API_commands_ledger_%.o: ./src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_names_%.o: ./src/TAO/API/names/%.cpp $(HEADERS)
+build/API_commands_names_%.o: ./src/TAO/API/commands/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_objects_%.o: ./src/TAO/API/objects/%.cpp $(HEADERS)
@@ -1347,7 +1346,7 @@ build/API_commands_ledger_%.o: src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_names_%.o: src/TAO/API/names/%.cpp $(HEADERS)
+build/API_commands_names_%.o: src/TAO/API/commands/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
