@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/results.h>
 #include <TAO/API/types/exception.h>
 

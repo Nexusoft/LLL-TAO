@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <Legacy/types/address.h>
 #include <Legacy/types/trustkey.h>
 
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
 #include <TAO/API/include/format.h>
 #include <TAO/API/types/exception.h>
@@ -41,6 +42,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/unpack.h>
+#include <TAO/Register/include/reserved.h>
 
 #include <Util/include/args.h>
 #include <Util/include/convert.h>

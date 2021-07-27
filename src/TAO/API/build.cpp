@@ -31,6 +31,8 @@ ________________________________________________________________________________
 #include <TAO/Register/include/names.h>
 
 #include <TAO/Register/include/constants.h>
+#include <TAO/Register/include/create.h>
+#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/address.h>
 #include <TAO/Register/types/object.h>
 
@@ -39,6 +41,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 
 #include <LLD/include/global.h>
+
+#include <Util/include/math.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -599,6 +603,152 @@ namespace TAO::API
             );
         }
     }
+
+
+    /* Build a standard object based on hard-coded standards of object register. */
+    TAO::Register::Object BuildStandard(const encoding::json& jParams, const std::string& strStandard, uint256_t &hashRegister)
+    {
+        /* Handle for standard account type. */
+        if(strStandard == "account")
+        {
+            /* Generate register address for account. */
+            hashRegister =
+                TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+
+            /* If this is not a NXS token account, verify that the token identifier is for a valid token */
+            const TAO::Register::Address hashToken = ExtractToken(jParams);
+            if(hashToken != 0)
+            {
+                /* Check our address before hitting the database. */
+                if(hashToken.GetType() != TAO::Register::Address::TOKEN)
+                    throw Exception(-57, "Invalid parameter [token]");
+
+                /* Get the register off the disk. */
+                TAO::Register::Object tToken;
+                if(!LLD::Register->ReadObject(hashToken, tToken, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw Exception(-13, "Object not found");
+
+                /* Check the standard */
+                if(tToken.Standard() != TAO::Register::OBJECTS::TOKEN)
+                    throw Exception(-57, "Invalid parameter [token]");
+            }
+
+            /* Create an account object register. */
+            return TAO::Register::CreateAccount(hashToken);
+        }
+
+        /* Handle for standard token type. */
+        if(strStandard == "token")
+        {
+            /* Generate register address for token. */
+            hashRegister =
+                TAO::Register::Address(TAO::Register::Address::TOKEN);
+
+            /* Extract the supply parameter */
+            const uint64_t nSupply  =
+                ExtractInteger<uint64_t>(jParams, "supply");
+
+            /* Check for nDecimals parameter. */
+            const uint8_t nDecimals =
+                ExtractInteger<uint64_t>(jParams, "decimals", 2, 8); //2, 8: default of 2 decimals, max of 8
+
+            /* Sanitize the supply/decimals combination for uint64 overflow */
+            const uint64_t nCoinFigures = math::pow(10, nDecimals);
+            if(nDecimals > 0 && nSupply > (std::numeric_limits<uint64_t>::max() / nCoinFigures))
+                throw Exception(-178, "Invalid supply/decimals. The maximum supply/decimals cannot exceed 18446744073709551615");
+
+            /* Create a token object register. */
+            return TAO::Register::CreateToken(hashRegister, nSupply * nCoinFigures, nDecimals);
+        }
+
+        /* Handle for standard name type. */
+        if(strStandard == "name")
+        {
+            /* Generate register address for account. */
+            hashRegister =
+                TAO::Register::Address(TAO::Register::Address::NAME);
+
+            /* Check for required parameters. */
+            if(!CheckParameter(jParams, "name", "string"))
+                throw Exception(-28, "Missing parameter [name] for command");
+
+            /* Check for required parameters. */
+            if(!CheckParameter(jParams, "address", "string"))
+                throw Exception(-28, "Missing parameter [address] for command");
+
+            /* Grab our name parameter now. */
+            const std::string strName =
+                jParams["name"].get<std::string>();
+
+            /* Check for reserved values. */
+            if(TAO::Register::NAME::Reserved(strName))
+                throw Exception(-22, "Field [", strName, "] is a reserved name");
+
+            /* Grab our new register address to point towards. */
+            const TAO::Register::Address hashExternal =
+                TAO::Register::Address(jParams["address"].get<std::string>());
+
+            /* Check for valid address now. */
+            if(!hashExternal.IsValid())
+                throw Exception(-57, "Invalid Parameter [address]");
+
+            /* Check for global parameters. */
+            const bool fGlobal =
+                ExtractBoolean(jParams, "global", false);
+
+            /* Check for namespace parameter. */
+            if(CheckParameter(jParams, "namespace", "string"))
+            {
+                /* Grab our namespace parameter now. */
+                const std::string strNamespace =
+                    jParams["namespace"].get<std::string>();
+
+                /* Check for global names. */
+                if(fGlobal)
+                    throw Exception(-57, "Invalid parameter [namespace]");
+
+                /* Build our name if in namespace. */
+                return TAO::Register::CreateName(strNamespace, strName, hashExternal);
+            }
+
+            /* Handle for global names from here. */
+            if(!fGlobal)
+                throw Exception(-28, "Missing parameter [global] for command");
+
+            /* Build our name if in namespace. */
+            return TAO::Register::CreateName(TAO::Register::NAMESPACE::GLOBAL, strName, hashExternal);
+        }
+
+        /* Handle for standard namespace type. */
+        if(strStandard == "namespace")
+        {
+            /* Generate register address for account. */
+            hashRegister =
+                TAO::Register::Address(TAO::Register::Address::NAMESPACE);
+
+            /* Check for required parameters. */
+            if(!CheckParameter(jParams, "namespace", "string"))
+                throw Exception(-28, "Missing parameter [namespace] for command");
+
+            /* Grab our namespace now. */
+            const std::string strNamespace =
+                jParams["namespace"].get<std::string>();
+
+            /* Check namespace for case/allowed characters */
+            if (!std::all_of(strNamespace.cbegin(), strNamespace.cend(),
+                [](char c) { return std::islower(c) || std::isdigit(c) || c == '.'; })) //allow letters, numbers, and '.'
+                throw Exception(-162, "Namespace can only contain lowercase letters, numbers, periods (.)");
+
+            /* Check for reserved names. */
+            if(TAO::Register::NAMESPACE::Reserved(strNamespace))
+                throw Exception(-200, "Namespaces can't contain reserved names");
+
+            return TAO::Register::CreateNamespace(strNamespace);
+        }
+
+        throw Exception(-23, "Object standard [", strStandard, "] not available for command");
+    }
+
 
     /* Build a blank object based on _commands string, generating register address as well. */
     TAO::Register::Object BuildObject(uint256_t &hashRegister, const uint16_t nUserType)

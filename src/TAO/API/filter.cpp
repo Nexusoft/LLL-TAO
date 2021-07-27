@@ -11,8 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/filter.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/evaluate.h>
+#include <TAO/API/include/filter.h>
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Register/types/object.h>

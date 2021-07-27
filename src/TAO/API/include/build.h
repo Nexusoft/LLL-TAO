@@ -175,4 +175,18 @@ namespace TAO::API
      *
      **/
     TAO::Register::Object BuildObject(uint256_t &hashRegister, const uint16_t nUserType);
+
+
+    /** BuildStandard
+     *
+     *  Build a standard object based on hard-coded standards of object register.
+     *
+     *  @param[in] jParams The parameters used to create the object..
+     *  @param[in] strStandard The standard object to build template from.
+     *  @param[out] hashRegister The auto-generated register address.
+     *
+     *  @return the new object register.
+     *
+     **/
+    TAO::Register::Object BuildStandard(const encoding::json& jParams, const std::string& strStandard, uint256_t &hashRegister);
 }

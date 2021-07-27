@@ -19,7 +19,7 @@ namespace LLP
 {
 
     /* Events for LLP packet processing. */
-    namespace EVENTS
+    struct EVENTS
     {
         enum
         {
@@ -31,11 +31,11 @@ namespace LLP
             FAILED         = 5,
             PROCESSED      = 6,
         };
-    }
+    };
 
 
     /* Disonnect reason flags */
-    namespace DISCONNECT
+    struct DISCONNECT
     {
         enum
         {
@@ -49,11 +49,7 @@ namespace LLP
             BUFFER        = 14,
             TIMEOUT_WRITE = 15,
         };
-    }
-
-
-
-
+    };
 }
 
 #endif

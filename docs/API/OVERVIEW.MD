@@ -174,7 +174,7 @@ API Error Codes
 | -20 | Field [name] is read-only and can't be updated |
 | -21 | Field [name] size exceeds maximum length [size] |
 | -22 | Field [name] is a reserved field name |
-| -23 | -------------------------- |
+| -23 | Object standard [name] not available for command |
 | -24 | -------------------------- |
 | -25 | -------------------------- |
 | -26 | -------------------------- |
