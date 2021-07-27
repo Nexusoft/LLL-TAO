@@ -53,8 +53,25 @@ namespace TAO::API
         if(strFormat == "standard")
         {
             /* Generate our standard object from standard functions. */
-            const TAO::Register::Object tPayload =
+            TAO::Register::Object tPayload =
                 BuildStandard(jParams, hashRegister);
+
+            /* Check for our data parameter. */
+            if(CheckParameter(jParams, "data", "string, array, object"))
+            {
+                /* Handle for string. */
+                std::string strPayload;
+                if(jParams["data"].is_string())
+                    strPayload = jParams["data"].get<std::string>();
+
+                /* Handle for object. */
+                if(jParams["data"].is_structured())
+                    strPayload = jParams["data"].dump(-1);
+
+                /* Add the payload to our object. */
+                tPayload << std::string("data") << uint8_t(TAO::Register::TYPES::STRING);
+                tPayload << jParams["data"].get<std::string>();
+            }
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister;
