@@ -269,16 +269,8 @@ namespace TAO::API
     std::string ExtractFieldname(const encoding::json& jParams)
     {
         /* Check for our request parameters first, since this method can be called without */
-        if(jParams.find("request") == jParams.end())
-            throw Exception(-28, "Missing parameter [request] for command");
-
-        /* Check for our type we are checking against. */
-        if(jParams["request"].find("fieldname") == jParams["request"].end())
+        if(!CheckRequest(jParams, "fieldname", "string"))
             throw Exception(-28, "Missing parameter [request::fieldname] for command");
-
-        /* Check that we don't have multiple fields. */
-        if(!jParams["request"]["fieldname"].is_string())
-            throw Exception(-35, "Invalid parameter [request::fieldname], expecting [string]");
 
         /* Grab a reference of our string. */
         const std::string& strField =
@@ -352,19 +344,10 @@ namespace TAO::API
     std::string ExtractType(const encoding::json& jParams)
     {
         /* Check for our request parameters first, since this method can be called without */
-        if(jParams.find("request") == jParams.end())
-            throw Exception(-28, "Missing parameter [request] for command");
-
-        /* Check for our type we are checking against. */
-        if(jParams["request"].find("type") == jParams["request"].end())
+        if(!CheckRequest(jParams, "type", "string"))
             throw Exception(-28, "Missing parameter [request::type] for command");
 
-        /* Check for array to iterate. */
-        const encoding::json jType = jParams["request"]["type"];
-        if(!jType.is_string())
-            throw Exception(-35, "Invalid parameter [request::type=", jType.type_name(), "], expecting [requst::type=string]");
-
-        return jType.get<std::string>();
+        return jParams["request"]["type"].get<std::string>();
     }
 
 
@@ -372,11 +355,7 @@ namespace TAO::API
     std::vector<std::string> ExtractTypes(const encoding::json& jParams)
     {
         /* Check for our request parameters first, since this method can be called without */
-        if(jParams.find("request") == jParams.end())
-            throw Exception(-28, "Missing parameter [request] for command");
-
-        /* Check for our type we are checking against. */
-        if(jParams["request"].find("type") == jParams["request"].end())
+        if(!CheckRequest(jParams, "type", "string, array"))
             throw Exception(-28, "Missing parameter [request::type] for command");
 
         /* Check for array to iterate. */

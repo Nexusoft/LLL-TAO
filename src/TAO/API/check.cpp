@@ -62,6 +62,17 @@ namespace TAO::API
     }
 
 
+    /* Determines if given request is what is correct expected type. Will throw exception if invalid. */
+    bool CheckRequest(const encoding::json& jParams, const std::string& strKey, const std::string& strType)
+    {
+        /* Check for our request parameters first, since this method can be called without */
+        if(jParams.find("request") == jParams.end())
+            return false;
+
+        return CheckParameter(jParams, strKey, strType);
+    }
+
+
     /*  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
      *  Throws an appropriate Exception if it is not mature. */
     void CheckMature(const uint256_t& hashGenesis)
@@ -134,11 +145,7 @@ namespace TAO::API
     bool CheckStandard(const encoding::json& jParams, const TAO::Register::Object& rObject)
     {
         /* Check for our request parameters first, since this method can be called without */
-        if(jParams.find("request") == jParams.end())
-            return true;
-
-        /* Check for our type we are checking against. */
-        if(jParams["request"].find("type") == jParams["request"].end())
+        if(!CheckRequest(jParams, "type", "string, array"))
             return true;
 
         /* Check that we have the commands set. */

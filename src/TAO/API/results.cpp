@@ -22,11 +22,7 @@ namespace TAO::API
     void ResultsToArray(const encoding::json& jParams, const encoding::json& jResponse, encoding::json &jArray)
     {
         /* Check for our request parameters first, since this method can be called without */
-        if(jParams.find("request") == jParams.end())
-            return;
-
-        /* Check for our type we are checking against. */
-        if(jParams["request"].find("fieldname") == jParams["request"].end())
+        if(!CheckRequest(jParams, "fieldname", "string, array"))
             return;
 
         /* Handle if single string. */

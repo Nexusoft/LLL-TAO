@@ -50,7 +50,21 @@ namespace TAO::API
      *  @return true if the parameter is valid and ready for extracting.
      *
      **/
-    bool CheckParameter(const encoding::json& jParam, const std::string& strKey, const std::string& strType = "");
+    bool CheckParameter(const encoding::json& jParams, const std::string& strKey, const std::string& strType = "");
+
+
+    /** CheckRequest
+     *
+     *  Determines if given request is what is correct expected type. Will throw exception if invalid.
+     *
+     *  @param[in] jParam The parameter to check
+     *  @param[in] strKey The key of parameter we are checking.
+     *  @param[in] strType The allowed types, seperated by any delimiter like a comma
+     *
+     *  @return true if the parameter is valid and ready for extracting.
+     *
+     **/
+    bool CheckRequest(const encoding::json& jParams, const std::string& strKey, const std::string& strType = "");
 
 
     /** CheckMature

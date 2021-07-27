@@ -211,12 +211,8 @@ namespace TAO::API
     bool FilterFieldname(const encoding::json& jParams, encoding::json &jResponse)
     {
         /* Check for our request parameters first, since this method can be called without */
-        if(jParams.find("request") == jParams.end())
-            return true;
-
-        /* Check for our type we are checking against. */
-        if(jParams["request"].find("fieldname") == jParams["request"].end())
-            return true;
+        if(!CheckRequest(jParams, "fieldname", "string, array"))
+            throw Exception(-28, "Missing parameter [request::fieldname] for command");
 
         /* Handle if single string. */
         if(jParams["request"]["fieldname"].is_string())
@@ -258,7 +254,7 @@ namespace TAO::API
             return true;
         }
 
-        throw Exception(-36, "Invalid type [fieldname=", jParams["request"]["fieldname"].type_name(), "] for command");
+        return false;
     }
 
 
