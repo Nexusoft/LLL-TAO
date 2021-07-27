@@ -623,4 +623,34 @@ namespace TAO::API
         throw Exception(-57, "Invalid Parameter [", strKey, "=", jParams[strKey].type_name(), "]");
     }
 
+
+    /** ExtractHash
+     *
+     *  Extracts a hash value by template deduction.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *  @param[in] strKey The key value we are extracting for.
+     *
+     *  @return the converted object from string constructors.
+     *
+     **/
+    uint256_t ExtractHash(const encoding::json& jParams, const std::string& strKey)
+    {
+        /* Check for missing parameter. */
+        if(jParams.find(strKey) == jParams.end())
+            throw Exception(-56, "Missing Parameter [", strKey, "]");
+
+        /* Check for invalid type. */
+        if(!jParams[strKey].is_string())
+            throw Exception(-35, "Invalid parameter [", strKey, "], expecting [hex-string]");
+
+        /* Check for hex encoding. */
+        const std::string strHash = jParams[strKey].get<std::string>();
+        if(IsHex(strHash))
+            return uint256_t(strHash);
+
+        /* Otherwise assume Base58 encoding */
+        return TAO::Register::Address(strHash);
+    }
+
 } // End TAO namespace

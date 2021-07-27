@@ -197,7 +197,7 @@ namespace TAO::API
             for(auto it = jParams.begin(); it != jParams.end(); ++it)
             {
                 /* Get our keyname. */
-                const std::string strField = it.key();
+                const std::string& strField = it.key();
 
                 /* Skip any incoming parameters that are keywords used by this API method*/
                 if(ToLower(strField) == "pin"
@@ -211,21 +211,26 @@ namespace TAO::API
                     continue;
                 }
 
+                /* Handle parameter conversion. */
+                std::string strRegister = strField;
+                if(strRegister == "register")
+                    strRegister = "address"; //we need this to update names since the binary name is 'address'
+
                 /* Make sure the name is not reserved. */
-                if(TAO::Register::Reserved(strField))
+                if(TAO::Register::Reserved(strRegister))
                     throw Exception(-22, "Field [", strField, "] is a reserved field name");
 
                 /* Grab our field datatype. */
                 uint8_t nFieldType = 0;
-                if(!tObject.Type(strField, nFieldType))
+                if(!tObject.Type(strRegister, nFieldType))
                     throw Exception(-19, "Field [", strField, "] doesn't exist in object");
 
                 /* Check our object for data field. */
-                if(!tObject.Check(strField, nFieldType, true))
+                if(!tObject.Check(strRegister, nFieldType, true))
                     throw Exception(-20, "Field [", strField, "] type is invalid for update, expecting [mutable]");
 
                 /* Add our fieldname payload first. */
-                ssPayload << strField;
+                ssPayload << strRegister;
 
                 /* Handle for 8-bit unsigned int. */
                 if(nFieldType == TAO::Register::TYPES::UINT8_T)
@@ -245,7 +250,7 @@ namespace TAO::API
 
                 /* Handle for 256-bit unsigned int. */
                 if(nFieldType == TAO::Register::TYPES::UINT256_T)
-                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << ExtractHash<uint256_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << ExtractHash(jParams, strField); //this handles base58
 
                 /* Handle for 512-bit unsigned int. */
                 if(nFieldType == TAO::Register::TYPES::UINT512_T)

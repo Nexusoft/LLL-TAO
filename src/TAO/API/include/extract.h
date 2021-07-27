@@ -227,6 +227,20 @@ namespace TAO::API
      **/
     bool ExtractBoolean(const encoding::json& jParams, const std::string& strKey, const bool fDefault = false);
 
+
+    /** ExtractHash
+     *
+     *  Extracts a hash value by template deduction.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *  @param[in] strKey The key value we are extracting for.
+     *
+     *  @return the converted object from string constructors.
+     *
+     **/
+    uint256_t ExtractHash(const encoding::json& jParams, const std::string& strKey);
+
+
     /** ExtractHash
      *
      *  Extracts a hash value by template deduction.
