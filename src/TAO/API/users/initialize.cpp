@@ -80,15 +80,10 @@ namespace TAO::API
         mapFunctions["update/user"]              = Function(std::bind(&Users::Update,        this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["recover/user"]             = Function(std::bind(&Users::Recover,       this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["get/status"]               = Function(std::bind(&Users::Status,        this, std::placeholders::_1, std::placeholders::_2));
+
         mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,  this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["process/notifications"]    = Function(std::bind(&Users::ProcessNotifications, this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["list/assets"]              = Function(std::bind(&Users::Assets,        this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["list/items"]               = Function(std::bind(&Users::Items,         this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,        this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,      this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["list/names"]               = Function(std::bind(&Users::Names,         this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["list/namespaces"]          = Function(std::bind(&Users::Namespaces,    this, std::placeholders::_1, std::placeholders::_2));
 
         mapFunctions["list/processed"]           = Function(std::bind(&Users::Processed,      this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["clear/processed"]          = Function(std::bind(&Users::Clear,      this, std::placeholders::_1, std::placeholders::_2));
@@ -96,5 +91,91 @@ namespace TAO::API
         mapFunctions["load/session"]             = Function(std::bind(&Users::Load,         this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["save/session"]             = Function(std::bind(&Users::Save,         this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["has/session"]              = Function(std::bind(&Users::Has,         this, std::placeholders::_1, std::placeholders::_2));
+
+
+        //mapFunctions["list/items"]               = Function(std::bind(&Users::Items,         this, std::placeholders::_1, std::placeholders::_2));
+        //mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,        this, std::placeholders::_1, std::placeholders::_2));
+        //mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,      this, std::placeholders::_1, std::placeholders::_2));
+        //mapFunctions["list/names"]               = Function(std::bind(&Users::Names,         this, std::placeholders::_1, std::placeholders::_2));
+        //mapFunctions["list/namespaces"]          = Function(std::bind(&Users::Namespaces,    this, std::placeholders::_1, std::placeholders::_2));
+
+
+        /* DEPRECATED */
+        mapFunctions["list/assets"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use assets/list/assets instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/items"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use supply/list/items instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/tokens"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use finance/list/tokens instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/accounts"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use finance/list/accounts instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/names"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use names/list/names instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/namespaces"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use names/list/namespaces instead"
+        );
     }
 }

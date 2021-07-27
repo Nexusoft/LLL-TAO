@@ -235,7 +235,7 @@ namespace TAO::API
                 std::placeholders::_2
             )
             , version::get_version(5, 1, 0)
-            , "please use finance/transactions/account command instead"
+            , "please use assets/history/asset command instead"
         );
     }
 }

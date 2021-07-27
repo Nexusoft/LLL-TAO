@@ -33,21 +33,21 @@ namespace TAO
     namespace Register
     {
         /* Retrieve the name register for a namespace/name combination. */
-        bool GetNameRegister(const uint256_t& hashNamespace, const std::string& strName, Object& objName)
+        bool GetNameRegister(const uint256_t& hashNamespace, const std::string& strName, Object& rName)
         {
             /* Get the register address for the Name object */
             Address hashAddress = Address(strName, hashNamespace, Address::NAME);
 
             /* Read the Name Object */
-            if(!LLD::Register->ReadObject(hashAddress, objName, TAO::Ledger::FLAGS::LOOKUP))
+            if(!LLD::Register->ReadObject(hashAddress, rName, TAO::Ledger::FLAGS::LOOKUP))
                 return false; /* Don't log an error if it is not in the DB as the caller might have provided an invalid name */
 
             /* Check that the name object is proper type. */
-            if(objName.nType != TAO::Register::REGISTER::OBJECT)
+            if(rName.nType != TAO::Register::REGISTER::OBJECT)
                 return debug::error(FUNCTION, "Name register not an object: ", strName);
 
             /* Check that this is a Name register */
-            if(objName.Standard() != TAO::Register::OBJECTS::NAME)
+            if(rName.Standard() != TAO::Register::OBJECTS::NAME)
                 return debug::error(FUNCTION, "Register is not a name register: ", strName);
 
             return true;
@@ -55,25 +55,25 @@ namespace TAO
 
 
         /* Retrieve the namespace register by namespace name. */
-        bool GetNamespaceRegister(const std::string& strNamespace, Object& namespaceRegister)
+        bool GetNamespaceRegister(const std::string& strNamespace, Object &rNamespace)
         {
             /* Namespace hash is a SK256 hash of the namespace name */
-            uint256_t hashAddress  = Address(strNamespace, Address::NAMESPACE);
+            const uint256_t hashAddress = Address(strNamespace, Address::NAMESPACE);
 
             /* Read the Name Object */
-            if(!LLD::Register->ReadState(hashAddress, namespaceRegister, TAO::Ledger::FLAGS::LOOKUP))
+            if(!LLD::Register->ReadState(hashAddress, rNamespace, TAO::Ledger::FLAGS::LOOKUP))
                 return debug::error(FUNCTION, "Namespace register not found: ", strNamespace);
 
             /* Check that the name object is proper type. */
-            if(namespaceRegister.nType != TAO::Register::REGISTER::OBJECT)
+            if(rNamespace.nType != TAO::Register::REGISTER::OBJECT)
                 return debug::error(FUNCTION, "Namespace register not an object: ", strNamespace);
 
             /* Parse the object. */
-            if(!namespaceRegister.Parse())
+            if(!rNamespace.Parse())
                 return debug::error(FUNCTION, "Unable to parse namespace register: ", strNamespace);
 
             /* Check that this is a Name register */
-            if(namespaceRegister.Standard() != TAO::Register::OBJECTS::NAMESPACE)
+            if(rNamespace.Standard() != TAO::Register::OBJECTS::NAMESPACE)
                 return debug::error(FUNCTION, "Register is not a namespace register: ", strNamespace);
 
             return true;

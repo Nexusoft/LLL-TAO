@@ -667,9 +667,9 @@ namespace TAO::API
         /* Handle for standard name type. */
         if(strStandard == "name")
         {
-            /* Generate register address for account. */
-            hashRegister =
-                TAO::Register::Address(TAO::Register::Address::NAME);
+            /* Get our genesis-id for this call. */
+            const uint256_t hashGenesis =
+                Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
             /* Check for required parameters. */
             if(!CheckParameter(jParams, "name", "string"))
@@ -683,10 +683,6 @@ namespace TAO::API
             const std::string strName =
                 jParams["name"].get<std::string>();
 
-            /* Check for reserved values. */
-            if(TAO::Register::NAME::Reserved(strName))
-                throw Exception(-22, "Field [", strName, "] is a reserved name");
-
             /* Grab our new register address to point towards. */
             const TAO::Register::Address hashExternal =
                 TAO::Register::Address(jParams["address"].get<std::string>());
@@ -699,6 +695,10 @@ namespace TAO::API
             const bool fGlobal =
                 ExtractBoolean(jParams, "global", false);
 
+            /* Check for reserved values. */
+            if(fGlobal && TAO::Register::NAME::Reserved(strName))
+                throw Exception(-22, "Field [", strName, "] is a reserved name");
+
             /* Check for namespace parameter. */
             if(CheckParameter(jParams, "namespace", "string"))
             {
@@ -706,19 +706,55 @@ namespace TAO::API
                 const std::string strNamespace =
                     jParams["namespace"].get<std::string>();
 
+                /* Grab our namespace's address. */
+                const uint256_t hashNamespace =
+                    TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
+
                 /* Check for global names. */
                 if(fGlobal)
-                    throw Exception(-57, "Invalid parameter [namespace]");
+                    throw Exception(-57, "Invalid parameter [global]");
+
+                /* Make sure the namespace exists. */
+                TAO::Register::Object rNamespace;
+                if(!LLD::Register->ReadObject(hashNamespace, rNamespace))
+                    throw Exception(-95, "Namespace does not exist [", strNamespace, "]");
+
+                /* Check that the namespace is owned by us. */
+                if(rNamespace.hashOwner != hashGenesis)
+                    throw Exception(-96, "Cannot create name in [", strNamespace, "] you don't own");
+
+                /* Calculate our address now. */
+                hashRegister =
+                    TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
                 /* Build our name if in namespace. */
                 return TAO::Register::CreateName(strNamespace, strName, hashExternal);
+            }
+
+            /* If none found assume in local namespace. */
+            else if(!fGlobal)
+            {
+                /* Calculate our address now. */
+                hashRegister =
+                    TAO::Register::Address(strName, hashGenesis, TAO::Register::Address::NAME);
+
+                /* Build our name if in local user-space which has an empty namespace. */
+                return TAO::Register::CreateName("", strName, hashExternal);
             }
 
             /* Handle for global names from here. */
             if(!fGlobal)
                 throw Exception(-28, "Missing parameter [global] for command");
 
-            /* Build our name if in namespace. */
+            /* Grab our namespace's address. */
+            const uint256_t hashNamespace =
+                TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
+
+            /* Calculate our address now. */
+            hashRegister =
+                TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
+
+            /* Build our name if not in namespace. */
             return TAO::Register::CreateName(TAO::Register::NAMESPACE::GLOBAL, strName, hashExternal);
         }
 

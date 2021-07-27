@@ -246,8 +246,8 @@ API Error Codes
 | -92 | Name not found |
 | -93 | Missing namespace name |
 | -94 | Invalid namespace |
-| -95 | Namespace does not exist: (namespace) |
-| -96 | Cannot create a name in namespace (namespace) as you are not the owner |
+| -95 | Namespace does not exist: [namespace] |
+| -96 | Cannot create name in [namespace] you don't own |
 | -97 | An object with this name already exists in this namespace |
 | -98 | An object with this name already exists for this user |
 | -99 | Transfer transaction not found |
