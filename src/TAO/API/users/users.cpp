@@ -109,28 +109,28 @@ namespace TAO
         uint256_t Users::GetCallersGenesis(const encoding::json & params) const
         {
             /* default to session 0 unless using multiuser mode */
-            uint256_t nSession = 0;
+            uint256_t hashSession = 0;
 
             if(config::fMultiuser.load() && params.find("session") != params.end())
-                nSession.SetHex(params["session"].get<std::string>());
+                hashSession.SetHex(params["session"].get<std::string>());
 
-            return GetGenesis(nSession);
+            return GetGenesis(hashSession);
         }
 
 
         /* Returns the genesis ID from the account logged in. */
-        uint256_t Users::GetGenesis(uint256_t nSession, bool fThrow) const
+        uint256_t Users::GetGenesis(uint256_t hashSession, bool fThrow) const
         {
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint256_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
+            uint256_t hashSessionToUse = config::fMultiuser.load() ? hashSession : 0;
 
-            if(!GetSessionManager().Has(nSessionToUse))
+            if(!GetSessionManager().Has(hashSessionToUse))
             {
                 if(fThrow)
                 {
                     if(config::fMultiuser.load())
-                        throw Exception(-9, debug::safe_printstr("Session ", nSessionToUse.ToString(), " doesn't exist"));
+                        throw Exception(-9, debug::safe_printstr("Session ", hashSessionToUse.ToString(), " doesn't exist"));
                     else
                         throw Exception(-11, "User not logged in");
                 }
@@ -140,7 +140,7 @@ namespace TAO
                 }
             }
 
-            return GetSessionManager().Get(nSessionToUse, false).GetAccount()->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
+            return GetSessionManager().Get(hashSessionToUse, false).GetAccount()->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
         }
 
 
@@ -180,7 +180,7 @@ namespace TAO
         Session& Users::GetSession(const encoding::json params, bool fThrow, bool fLogActivity) const
         {
             /* Check for session parameter. */
-            uint256_t nSession = 0; // ID 0 is used for sessionless API
+            uint256_t hashSession = 0; // ID 0 is used for sessionless API
 
             if(config::fMultiuser.load())
             {
@@ -190,19 +190,19 @@ namespace TAO
                         throw Exception(-12, "Missing Session ID");
                 }
                 else
-                    nSession.SetHex(params["session"].get<std::string>());
+                    hashSession.SetHex(params["session"].get<std::string>());
 
                 /* Check that the session ID is valid */
-                if(fThrow && !GetSessionManager().Has(nSession))
+                if(fThrow && !GetSessionManager().Has(hashSession))
                     throw Exception(-10, "Invalid session ID");
             }
 
             /* Calling SessionManager.Get() with an invalid session ID will throw an exception.  Therefore if the caller has
                specified not to throw an exception we have to check whether the session exists first. */
-            if(!fThrow && !GetSessionManager().Has(nSession))
+            if(!fThrow && !GetSessionManager().Has(hashSession))
                 return null_session;
 
-            return GetSessionManager().Get(nSession, fLogActivity);
+            return GetSessionManager().Get(hashSession, fLogActivity);
         }
 
 
@@ -384,14 +384,14 @@ namespace TAO
 
 
         /* Gracefully closes down a users session */
-        void Users::TerminateSession(const uint256_t& nSession)
+        void Users::TerminateSession(const uint256_t& hashSession)
         {
             /* Check that the session exists */
-            if(!GetSessionManager().Has(nSession))
+            if(!GetSessionManager().Has(hashSession))
                 throw Exception(-141, "Already logged out");
 
             /* The genesis of the user logging out */
-            uint256_t hashGenesis = GetSessionManager().Get(nSession).GetAccount()->Genesis();
+            uint256_t hashGenesis = GetSessionManager().Get(hashSession).GetAccount()->Genesis();
 
             /* If not using multi-user then we need to send a deauth message to all peers */
             if(!config::fMultiuser.load() && LLP::TRITIUM_SERVER)
@@ -406,11 +406,11 @@ namespace TAO
 
             /* Remove the session from the notifications processor */
             if(NOTIFICATIONS_PROCESSOR)
-                NOTIFICATIONS_PROCESSOR->Remove(nSession);
+                NOTIFICATIONS_PROCESSOR->Remove(hashSession);
 
             /* If this is session 0 and stake minter is running when logout, stop it */
             TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
-            if(nSession == 0 && stakeMinter.IsStarted())
+            if(hashSession == 0 && stakeMinter.IsStarted())
                 stakeMinter.Stop();
 
             /* If this user has previously saved their session to the local DB, then delete it */
@@ -418,7 +418,7 @@ namespace TAO
                 LLD::Local->EraseSession(hashGenesis);
 
             /* Finally remove the session from the session manager */
-            GetSessionManager().Remove(nSession);
+            GetSessionManager().Remove(hashSession);
         }
 
 
