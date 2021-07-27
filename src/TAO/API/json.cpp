@@ -1547,12 +1547,7 @@ namespace TAO::API
                 case TAO::Register::OBJECTS::TRUST:
                 {
                     jRet["address"]    = hashRegister.ToString();
-
-                    /* Get the token names. */ //XXX: this is disabled as it is another O(n^2) algorithm for every object
-                    //std::string strTokenName = Names::ResolveAccountTokenName(params, object);
-                    //if(!strTokenName.empty())
-                    //    jRet["token"] = strTokenName;
-
+                    
                     /* Handle digit conversion. */
                     const uint8_t  nDecimals = GetDecimals(object);
 
