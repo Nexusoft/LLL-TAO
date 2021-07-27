@@ -714,6 +714,8 @@ namespace TAO::API
                     jRet["genesis"] = hashGenesis.ToString();
                     jRet["nonce"]   = nExtraNonce;
                     jRet["amount"]  = FormatBalance(nCredit);
+                    jRet["token"]   = 0;
+                    jRet["ticker"]  = "NXS";
 
                     break;
                 }
@@ -744,6 +746,8 @@ namespace TAO::API
                     jRet["last"]    = hashLastTrust.ToString();
                     jRet["score"]   = nScore;
                     jRet["amount"]  = FormatBalance(nReward);
+                    jRet["token"]   = 0;
+                    jRet["ticker"]  = "NXS";
 
                     /* Handle for add stake. */
                     if(nStakeChange > 0)
@@ -765,9 +769,11 @@ namespace TAO::API
                     contract >> nReward;
 
                     /* Output the json information. */
-                    jRet["OP"]        = "GENESIS";
-                    jRet["address"]   = TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST).ToString();
-                    jRet["amount"]    = FormatBalance(nReward);
+                    jRet["OP"]      = "GENESIS";
+                    jRet["address"] = TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST).ToString();
+                    jRet["amount"]  = FormatBalance(nReward);
+                    jRet["token"]   = 0;
+                    jRet["ticker"]  = "NXS";
 
                     break;
                 }
@@ -809,12 +815,14 @@ namespace TAO::API
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount, hashToken);
 
-                    /* Encode token in Base58 Encoding. */
-                    jRet["token"]   = hashToken.ToString();
-
                     /* Handle for NXS hardcoded token name. */
                     if(hashToken == TOKEN::NXS)
-                        jRet["token"] = "NXS";
+                    {
+                        jRet["token"]  = 0;
+                        jRet["ticker"] = "NXS";
+                    }
+                    else
+                        jRet["token"]   = hashToken.ToString();
 
                     /* Add the reference to the response */
                     jRet["reference"] = nReference;
@@ -876,12 +884,15 @@ namespace TAO::API
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nCredit, hashToken);
 
-                    /* Encode token in Base58 Encoding. */
-                    jRet["token"]   = hashToken.ToString();
-
                     /* Handle for NXS hardcoded token name. */
                     if(hashToken == TOKEN::NXS)
-                        jRet["token"] = "NXS";
+                    {
+                        jRet["token"]  = 0;
+                        jRet["ticker"] = "NXS";
+                    }
+                    else
+                        jRet["token"]   = hashToken.ToString();
+
 
                     break;
                 }
@@ -915,12 +926,14 @@ namespace TAO::API
                     contract >> hashLast;
 
                     /* Output the json information. */
-                    jRet["OP"]        = "MIGRATE";
-                    jRet["txid"]      = hashTx.ToString();
-                    jRet["address"]   = hashAccount.ToString();
-                    jRet["amount"]    = FormatBalance(nAmount);
-                    jRet["score"]     = nScore;
-                    jRet["hash_last"] = hashLast.ToString();
+                    jRet["OP"]      = "MIGRATE";
+                    jRet["txid"]    = hashTx.ToString();
+                    jRet["address"] = hashAccount.ToString();
+                    jRet["amount"]  = FormatBalance(nAmount);
+                    jRet["score"]   = nScore;
+                    jRet["last"]    = hashLast.ToString();
+                    jRet["token"]   = 0;
+                    jRet["ticker"]  = "NXS";
 
                     break;
                 }
@@ -960,6 +973,8 @@ namespace TAO::API
                     jRet["OP"]      = "FEE";
                     jRet["from"]    = hashAccount.ToString();
                     jRet["amount"]  = FormatBalance(nFee);
+                    jRet["token"]   = 0;
+                    jRet["ticker"]  = "NXS";
 
                     break;
                 }
@@ -992,7 +1007,8 @@ namespace TAO::API
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount);
-                    jRet["token"]   = "NXS";
+                    jRet["token"]   = 0;
+                    jRet["ticker"]  = "NXS";
 
                     break;
                 }
