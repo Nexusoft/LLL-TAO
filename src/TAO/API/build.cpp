@@ -761,10 +761,6 @@ namespace TAO::API
         /* Handle for standard namespace type. */
         if(strStandard == "namespace")
         {
-            /* Generate register address for account. */
-            hashRegister =
-                TAO::Register::Address(TAO::Register::Address::NAMESPACE);
-
             /* Check for required parameters. */
             if(!CheckParameter(jParams, "namespace", "string"))
                 throw Exception(-28, "Missing parameter [namespace] for command");
@@ -781,6 +777,10 @@ namespace TAO::API
             /* Check for reserved names. */
             if(TAO::Register::NAMESPACE::Reserved(strNamespace))
                 throw Exception(-200, "Namespaces can't contain reserved names");
+
+            /* Grab our namespace's address. */
+            hashRegister =
+                TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
 
             return TAO::Register::CreateNamespace(strNamespace);
         }
