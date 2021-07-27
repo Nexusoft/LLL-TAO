@@ -194,24 +194,6 @@ namespace TAO::API
         uint512_t GetKey(uint32_t nKey, SecureString strSecret, const Session& session) const;
 
 
-        /** RewriteURL
-         *
-         *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-         *  map directly to a function in the target API.  Insted this method can be overridden to
-         *  parse the incoming URL and route to a different/generic method handler, adding parameter
-         *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-         *  added to the jsonParams
-         *  The return json contains the modifed method URL to be called.
-         *
-         *  @param[in] strMethod The name of the method being invoked.
-         *  @param[in] jsonParams The json array of parameters being passed to this method.
-         *
-         *  @return the API method URL
-         *
-         **/
-        std::string RewriteURL(const std::string& strMethod, encoding::json& jsonParams) override;
-
-
         /** Login
          *
          *  Login to a user account.

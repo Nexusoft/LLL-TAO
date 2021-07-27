@@ -100,6 +100,9 @@ namespace TAO::API
             if(!FilterResults(jParams, jResult))
                 continue;
 
+            /* Filter out our expected fieldnames if specified. */
+            FilterFieldname(jParams, jResult);
+
             /* Check the offset. */
             if(++nTotal <= nOffset)
                 continue;

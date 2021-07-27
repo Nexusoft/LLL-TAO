@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/users.h>
 
 #include <TAO/API/types/commands/invoices.h>
+#include <TAO/API/types/commands/operators.h>
 #include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/check.h>
@@ -24,6 +25,40 @@ namespace TAO::API
     /* Standard initialization function. */
     void Users::Initialize()
     {
+        /* Handle for the SUM operator. */
+        mapOperators["sum"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Sum,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the ARRAY operator. */
+        mapOperators["array"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Array,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the MEAN operator. */
+        mapOperators["mean"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Mean,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+
         /* Handle for list/invoices operations. */
         mapFunctions["list/invoices"] = Function
         (
@@ -61,51 +96,5 @@ namespace TAO::API
         mapFunctions["load/session"]             = Function(std::bind(&Users::Load,         this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["save/session"]             = Function(std::bind(&Users::Save,         this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["has/session"]              = Function(std::bind(&Users::Has,         this, std::placeholders::_1, std::placeholders::_2));
-    }
-
-    /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-    *  map directly to a function in the target API.  Insted this method can be overriden to
-    *  parse the incoming URL and route to a different/generic method handler, adding parameter
-    *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-    *  added to the jsonParams
-    *  The return json contains the modifed method URL to be called.
-    */
-    std::string Users::RewriteURL(const std::string& strMethod, encoding::json& jsonParams)
-    {
-        std::string strMethodRewritten = strMethod;
-        std::string strNameOrAddress;
-
-
-        if(strMethod.find("user/")          != std::string::npos
-        || strMethod.find("recovery/")      != std::string::npos
-        || strMethod.find("transactions/")  != std::string::npos
-        || strMethod.find("notifications/") != std::string::npos
-        || strMethod.find("assets/")        != std::string::npos
-        || strMethod.find("accounts/")      != std::string::npos
-        || strMethod.find("items/")         != std::string::npos
-        || strMethod.find("tokens/")        != std::string::npos
-        || strMethod.find("names/")         != std::string::npos
-        || strMethod.find("namespaces/")    != std::string::npos)
-        {
-            /* support passing the username after a list method e.g. list/assets/myusername */
-            size_t nPos = strMethod.find_last_of("/");
-
-            if(nPos != std::string::npos)
-            {
-                /* get the method name from the incoming string */
-                strMethodRewritten = strMethod.substr(0, nPos);
-
-                /* Get the name or address that comes after the /item/ part */
-                strNameOrAddress = strMethod.substr(nPos + 1);
-
-                /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                if(CheckAddress(strNameOrAddress))
-                    jsonParams["genesis"] = strNameOrAddress;
-                else
-                    jsonParams["username"] = strNameOrAddress;
-            }
-        }
-
-        return strMethodRewritten;
     }
 }
