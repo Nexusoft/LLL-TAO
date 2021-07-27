@@ -79,7 +79,7 @@ namespace TAO::API
         }
 
         /* Check for any/all request types. */
-        if(jParams.find("request") != jParams.end() && jParams["request"].find("type") != jParams["request"].end())
+        if(CheckRequest(jParams, "type", "string"))
         {
             /* Grab a copy of our request type. */
             const std::string strType =
@@ -650,7 +650,14 @@ namespace TAO::API
             return uint256_t(strHash);
 
         /* Otherwise assume Base58 encoding */
-        return TAO::Register::Address(strHash);
+        const TAO::Register::Address hashRegister =
+            TAO::Register::Address(strHash);
+
+        /* Check that this is a valid base58 string. */
+        if(!hashRegister.IsValid())
+            throw Exception(-35, "Invalid parameter [", strKey, "], expecting [base58-string]");
+
+        return hashRegister;
     }
 
 } // End TAO namespace
