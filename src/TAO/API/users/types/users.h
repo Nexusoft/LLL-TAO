@@ -311,84 +311,6 @@ namespace TAO::API
         encoding::json Notifications(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Assets
-         *
-         *  Get a list of assets owned by a signature chain
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Assets(const encoding::json& jParams, const bool fHelp);
-
-
-        /** Tokens
-         *
-         *  Get a list of tokens owned by a signature chain
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Tokens(const encoding::json& jParams, const bool fHelp);
-
-
-        /** Accounts
-         *
-         *  Get a list of accounts owned by a signature chain
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Accounts(const encoding::json& jParams, const bool fHelp);
-
-
-        /** Names
-         *
-         *  Get a list of names owned by a signature chain
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Names(const encoding::json& jParams, const bool fHelp);
-
-
-        /** Namespaces
-         *
-         *  Get a list of namespaces owned by a signature chain
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Namespaces(const encoding::json& jParams, const bool fHelp);
-
-
-        /** Items
-         *
-         *  Get a list of items (raw registers) owned by a signature chain
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Items(const encoding::json& jParams, const bool fHelp);
-
-
         /** Status
          *
          *  Get status information for the currently logged in user
@@ -400,19 +322,6 @@ namespace TAO::API
          *
          **/
         encoding::json Status(const encoding::json& jParams, const bool fHelp);
-
-
-        /** Invoices
-         *
-         *  Get a list of invoices owned by a signature chain
-         *
-         *  @param[in] params The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Invoices(const encoding::json& jParams, const bool fHelp);
 
 
         /** ProcessNotifications
