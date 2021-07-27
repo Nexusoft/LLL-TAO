@@ -444,9 +444,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_void-transaction.o \
 		build/API_commands_names_initialize.o \
 		build/API_commands_names_names.o \
-		build/API_types_objects_claim.o \
-		build/API_types_objects_history.o \
-		build/API_types_objects_transfer.o \
 		build/API_commands_operators_array.o \
 		build/API_commands_operators_mean.o \
 		build/API_commands_operators_sum.o \
@@ -748,9 +745,6 @@ build/API_commands_ledger_%.o: ./src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_names_%.o: ./src/TAO/API/commands/names/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
-build/API_types_objects_%.o: ./src/TAO/API/objects/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_p2p_%.o: ./src/TAO/API/p2p/%.cpp $(HEADERS)
@@ -1335,13 +1329,6 @@ build/API_commands_ledger_%.o: src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_commands_names_%.o: src/TAO/API/commands/names/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_objects_%.o: src/TAO/API/objects/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/finance.h>
-#include <TAO/API/objects/types/objects.h>
+
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>

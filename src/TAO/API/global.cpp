@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <TAO/API/system/types/system.h>
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/commands/names.h>
-#include <TAO/API/objects/types/objects.h>
+
 #include <TAO/API/voting/types/voting.h>
 #include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/types/commands/crypto.h>
