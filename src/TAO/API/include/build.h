@@ -164,6 +164,19 @@ namespace TAO::API
     void BuildName(const encoding::json& jParams, const uint256_t& hashRegister, std::vector<TAO::Operation::Contract> &vContracts);
 
 
+    /** BuildStandard
+     *
+     *  Build a standard object based on hard-coded standards of object register.
+     *
+     *  @param[in] jParams The parameters used to create the object..
+     *  @param[out] hashRegister The auto-generated register address.
+     *
+     *  @return the new object register.
+     *
+     **/
+    TAO::Register::Object BuildStandard(const encoding::json& jParams, uint256_t &hashRegister);
+
+
     /** BuildObject
      *
      *  Build a blank object based on _usertype enum, generating register address as well.
@@ -175,18 +188,4 @@ namespace TAO::API
      *
      **/
     TAO::Register::Object BuildObject(uint256_t &hashRegister, const uint16_t nUserType);
-
-
-    /** BuildStandard
-     *
-     *  Build a standard object based on hard-coded standards of object register.
-     *
-     *  @param[in] jParams The parameters used to create the object..
-     *  @param[in] strStandard The standard object to build template from.
-     *  @param[out] hashRegister The auto-generated register address.
-     *
-     *  @return the new object register.
-     *
-     **/
-    TAO::Register::Object BuildStandard(const encoding::json& jParams, const std::string& strStandard, uint256_t &hashRegister);
 }

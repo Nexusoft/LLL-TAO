@@ -606,8 +606,11 @@ namespace TAO::API
 
 
     /* Build a standard object based on hard-coded standards of object register. */
-    TAO::Register::Object BuildStandard(const encoding::json& jParams, const std::string& strStandard, uint256_t &hashRegister)
+    TAO::Register::Object BuildStandard(const encoding::json& jParams, uint256_t &hashRegister)
     {
+        /* Extract our type from input parameters. */
+        const std::string strStandard = ExtractType(jParams);
+
         /* Handle for standard account type. */
         if(strStandard == "account")
         {

@@ -53,7 +53,8 @@ namespace TAO::API
         if(strFormat == "standard")
         {
             /* Generate our standard object from standard functions. */
-            TAO::Register::Object tPayload;
+            const TAO::Register::Object tPayload =
+                BuildStandard(jParams, hashRegister);
 
             /* Submit the payload object. */
             vContracts[0] << uint8_t(TAO::Operation::OP::CREATE)      << hashRegister;
