@@ -69,7 +69,7 @@ namespace TAO::API
         if(jParams.find("request") == jParams.end())
             return false;
 
-        return CheckParameter(jParams, strKey, strType);
+        return CheckParameter(jParams["request"], strKey, strType);
     }
 
 
