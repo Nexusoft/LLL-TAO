@@ -45,9 +45,6 @@ namespace TAO
             /* Extract the address, which will either be a legacy address or a sig chain account address */
             std::string strAddress = params["address"].get<std::string>();
 
-            /* Legacy address */
-            Legacy::NexusAddress address(strAddress);
-
             /* The decoded register address */
             TAO::Register::Address hashAddress;
 
@@ -70,6 +67,10 @@ namespace TAO
                     jsonRet["type"] = "LEGACY";
 
                     #ifndef NO_WALLET
+                    /* Legacy address */
+                    Legacy::NexusAddress address(strAddress);
+
+                    /* Check that we have the key in this wallet. */
                     if(Legacy::Wallet::Instance().HaveKey(address) || Legacy::Wallet::Instance().HaveScript(address.GetHash256()))
                         jsonRet["is_mine"] = true;
                     else

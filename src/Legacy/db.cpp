@@ -62,7 +62,7 @@ namespace Legacy
         {
              /* Flush log data to the dat file and detach the file */
             dbenv->txn_checkpoint(0, 0, 0);
-            //dbenv->lsn_reset(strDbFile.c_str(), 0);
+            dbenv->lsn_reset(strDbFile.c_str(), 0);
 
             /* Remove log files */
             char** listp;
@@ -443,7 +443,7 @@ namespace Legacy
 
         /* Flush wallet file so it's self contained */
         dbenv->txn_checkpoint(0, 0, 0);
-        //dbenv->lsn_reset(strDbFile.c_str(), 0);
+        dbenv->lsn_reset(strDbFile.c_str(), 0);
 
         debug::log(0, FUNCTION, "Flushed ", strDbFile, " in ", runtime::timestamp(true) - nStart, " ms");
 
