@@ -12,65 +12,51 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/system.h>
-#include <Util/include/debug.h>
-#include <Util/include/runtime.h>
 
 #include <Util/include/json.h>
-#include <Util/include/config.h>
-#include <Util/include/base64.h>
-
-#include <LLP/types/apinode.h>
-#include <LLP/include/base_address.h>
 
 #include <LLP/include/lisp.h>
 
-
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Queries the lisp api and returns the EID's for this node. */
+    encoding::json System::LispEIDs(const encoding::json& jParams, const bool fHelp)
     {
-        /* Queries the lisp api and returns the EID's for this node. */
-        encoding::json System::LispEIDs(const encoding::json& params, const bool fHelp)
+        /* Build our return object. */
+        encoding::json jRet = encoding::json::array();
+
+        /* Query the LISP API. */
+        std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
+        for(const auto& rEID : mapEIDs)
         {
-            encoding::json jsonEIDs = encoding::json::array();
-
-            std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
-            if(mapEIDs.size() > 0)
+            /* Build our EID object. */
+            encoding::json jEID =
             {
-                for(const auto& eid : mapEIDs)
+                { "instance-id", rEID.second.strInstanceID },
+                { "eid"        , rEID.second.strAddress    }
+            };
+
+            /* Add our according RLOC's. */
+            encoding::json jRLOCs = encoding::json::array();
+            for(const auto& rRLOC : rEID.second.vRLOCs)
+            {
+                /* Add our RLOC data to ret. */
+                const encoding::json jRLOC =
                 {
-                    encoding::json jsonEID;
+                    { "interface", rRLOC.strInterface      },
+                    { "rloc-name", rRLOC.strRLOCName       },
+                    { "rloc"     , rRLOC.strTranslatedRLOC }
+                };
 
-                    jsonEID["instance-id"] = eid.second.strInstanceID;
-                    jsonEID["eid"] = eid.second.strAddress;
-
-                    encoding::json jsonRLOCs = encoding::json::array();
-
-                    for(const auto& rloc : eid.second.vRLOCs)
-                    {
-                        encoding::json jsonRLOC;
-
-                        jsonRLOC["interface"] = rloc.strInterface;
-                        jsonRLOC["rloc-name"] = rloc.strRLOCName;
-                        jsonRLOC["rloc"] = rloc.strTranslatedRLOC;
-
-                        jsonRLOCs.push_back(jsonRLOC);
-                    }
-
-                    jsonEID["rlocs"] = jsonRLOCs;
-
-                    jsonEIDs.push_back(jsonEID);
-                }
+                jRLOCs.push_back(jRLOC);
             }
 
-            return jsonEIDs;
-
+            /* Add RLOC's to EID object. */
+            jEID["rlocs"] = jRLOCs;
+            jRet.push_back(jEID);
         }
 
-
+        return jRet;
     }
-
 }
