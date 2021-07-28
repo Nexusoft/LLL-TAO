@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
 
+#include <TAO/API/types/indexing.h>
+
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Ledger/include/dispatch.h>
@@ -155,11 +157,15 @@ namespace TAO::Ledger
                     /* Check all the tx contracts. */
                     for(uint32_t n = 0; n < tx.Size(); ++n)
                     {
-                        const TAO::Operation::Contract& contract = tx[n];
+                        /* Grab reference of our contract. */
+                        const TAO::Operation::Contract& rContract = tx[n];
+
+                        /* Skip to our primitive. */
+                        rContract.SeekToPrimitive();
 
                         /* Check the contract's primitive. */
                         uint8_t nOP = 0;
-                        contract >> nOP;
+                        rContract >> nOP;
                         switch(nOP)
                         {
                             case TAO::Operation::OP::TRANSFER:
@@ -167,8 +173,8 @@ namespace TAO::Ledger
                             {
                                 /* Seek to recipient. */
                                 uint256_t hashTo;
-                                contract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
-                                contract >> hashTo;
+                                rContract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
+                                rContract >> hashTo;
 
                                 /* Read the owner of register. (check this for MEMPOOL, too) */
                                 TAO::Register::State state;
@@ -188,7 +194,7 @@ namespace TAO::Ledger
                             {
                                 /* Get the genesis. */
                                 uint256_t hashGenesis;
-                                contract >> hashGenesis;
+                                rContract >> hashGenesis;
 
                                 /* Commit to disk. */
                                 if(tx[n].Caller() != hashGenesis)
