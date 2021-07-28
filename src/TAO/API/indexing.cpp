@@ -92,7 +92,7 @@ namespace TAO::API
                     const TAO::Operation::Contract& rContract = tx[n];
 
                     /* Process our command-set indexing. */
-                    Commands::Get("names") ->BuildIndexes(rContract);
+                    //Commands::Get("names") ->BuildIndexes(rContract);
                     Commands::Get("market")->BuildIndexes(rContract);
                 }
 
