@@ -1113,7 +1113,15 @@ namespace TAO::API
 
         /* Otherwise output the address if supplied. */
         else
+        {
+            /* Add address from input parameters. */
             jRet["address"] = TAO::Register::Address(hashRegister).ToString();
+
+            /* Check for reverse ptr record. */
+            std::string strName = "";
+            if(Names::ReverseLookup(hashRegister, strName))
+                jRet["name"] = strName;
+        }
 
         return jRet;
     }

@@ -32,8 +32,8 @@ namespace TAO::API
     encoding::json Market::Place(const encoding::json& jParams, const bool fHelp)
     {
         /* Extract our order addresses. */
-        const uint256_t hashRegister  = ExtractAddress(jParams, "", "from");
-        const uint256_t hashRecipient = ExtractAddress(jParams, "", "to");
+        const uint256_t hashRegister  = ExtractAddress(jParams, "from");
+        const uint256_t hashRecipient = ExtractAddress(jParams, "to");
 
         /* Grab our object we are placing order for. */
         TAO::Register::Object tDebit;

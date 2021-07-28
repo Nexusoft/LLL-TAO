@@ -440,9 +440,10 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_sync-headers.o \
 		build/API_commands_ledger_sync-sigchain.o \
 		build/API_commands_ledger_void-transaction.o \
+		build/API_commands_market_build.o \
 		build/API_commands_market_execute.o \
-		build/API_commands_market_place.o \
 		build/API_commands_market_initialize.o \
+		build/API_commands_market_place.o \
 		build/API_commands_names_build.o \
 		build/API_commands_names_initialize.o \
 		build/API_commands_names_names.o \

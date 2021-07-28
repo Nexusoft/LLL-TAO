@@ -23,11 +23,11 @@ ________________________________________________________________________________
 namespace LLD
 {
 
-  /** LocalDB
-   *
-   *  Database class for storing local wallet transactions.
-   *
-   **/
+   /** LocalDB
+    *
+    *  Database class for storing local wallet transactions.
+    *
+    **/
     class LogicalDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
     public:
@@ -115,6 +115,18 @@ namespace LLD
          *
          **/
         bool ErasePTR(const uint256_t& hashAddress);
+
+
+        /** HasPTR
+         *
+         *  Checks if a register address has a PTR mapping
+         *
+         *  @param[in] hashAddress The address we are mapping.
+         *
+         *  @return True if a session exists in the localdb
+         *
+         **/
+        bool HasPTR(const uint256_t& hashAddress);
 
     };
 }

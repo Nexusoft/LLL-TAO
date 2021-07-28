@@ -591,15 +591,20 @@ namespace TAO::API
         if(jParams.find("name") != jParams.end())
         {
             /* Check for empty name and alert caller of error. */
-            const std::string strName = jParams["name"].get<std::string>(); //grab a copy, not reference
+            const std::string& strName = jParams["name"].get<std::string>();
             if(strName.empty())
                 throw Exception(-88, "Missing or empty name.");
+
+            /* Check if creating token, which would mean this is a global name. */
+            std::string strNamespace = ""; //default to our local namespace
+            if(hashRegister.GetType() == TAO::Register::Address::TOKEN)
+                strNamespace = TAO::Register::NAMESPACE::GLOBAL;
 
             /* Add an optional name if supplied. */
             vContracts.push_back
             (
                 Names::CreateName(Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis(),
-                strName, "", hashRegister)
+                strName, strNamespace, hashRegister)
             );
         }
     }
@@ -665,7 +670,7 @@ namespace TAO::API
         }
 
         /* Handle for standard name type. */
-        if(strStandard == "name")
+        if(strStandard == "name" || strStandard == "global")
         {
             /* Get our genesis-id for this call. */
             const uint256_t hashGenesis =
@@ -693,7 +698,7 @@ namespace TAO::API
 
             /* Check for global parameters. */
             const bool fGlobal =
-                ExtractBoolean(jParams, "global", false);
+                ExtractBoolean(jParams, "global", (strStandard == "global"));
 
             /* Check for reserved values. */
             if(fGlobal && TAO::Register::NAME::Reserved(strName))

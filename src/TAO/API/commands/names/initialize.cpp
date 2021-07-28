@@ -46,6 +46,42 @@ namespace TAO::API
             }
         );
 
+        /* Populate our global names standard. */
+        mapStandards["global"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                /* Make sure standard is a name. */
+                if(rObject.Standard() != TAO::Register::OBJECTS::NAME)
+                    return false;
+
+                /* Check the namespace. */
+                const std::string strNamespace =
+                    rObject.get<std::string>("namespace");
+
+                return (strNamespace == TAO::Register::NAMESPACE::GLOBAL);
+            }
+        );
+
+        /* Populate our local names standard. */
+        mapStandards["local"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                /* Make sure standard is a name. */
+                if(rObject.Standard() != TAO::Register::OBJECTS::NAME)
+                    return false;
+
+                /* Check the namespace. */
+                const std::string strNamespace =
+                    rObject.get<std::string>("namespace");
+
+                return (strNamespace == "");
+            }
+        );
+
         /* Populate our raw standard. */
         mapStandards["namespace"] = Standard
         (
@@ -172,7 +208,7 @@ namespace TAO::API
                 "standard"            //the default format
             )
         );
-        
+
 
         /* DEPRECATED */
         mapFunctions["list/name/history"] = Function

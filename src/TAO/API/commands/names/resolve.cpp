@@ -60,8 +60,27 @@ namespace TAO::API
         if(!LLD::Register->ReadObject(hashName, tName))
             return false;
 
+        /* Get our namespace. */
+        const std::string strNamespace =
+            tName.get<std::string>("namespace");
+
+        /* Check for namespace. */
+        if(!strNamespace.empty())
+        {
+            /* Check for global. */
+            if(strNamespace == TAO::Register::NAMESPACE::GLOBAL)
+            {
+                strName = tName.get<std::string>("name");
+                return true;
+            }
+
+            /* Grab our name from object. */
+            strName = (strNamespace + "::" + tName.get<std::string>("name"));
+            return true;
+        }
+
         /* Grab our name from object. */
-        strName = tName.get<std::string>("name");
+        strName = "~" + tName.get<std::string>("name"); //local name
 
         return true;
     }

@@ -74,4 +74,10 @@ namespace LLD
     {
         return Erase(std::make_pair(std::string("ptr"), hashAddress));
     }
+
+    /* Checks if a register address has a PTR mapping */
+    bool LogicalDB::HasPTR(const uint256_t& hashAddress)
+    {
+        return Exists(std::make_pair(std::string("ptr"), hashAddress));
+    }
 }

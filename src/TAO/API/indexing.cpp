@@ -85,14 +85,15 @@ namespace TAO::API
             TAO::Ledger::BlockState state;
             for(const auto& tx : vtx)
             {
-                //_unused(tx);
-
+                /* Iterate the transaction contracts. */
                 for(uint32_t n = 0; n < tx.Size(); ++n)
                 {
+                    /* Grab contract reference. */
                     const TAO::Operation::Contract& rContract = tx[n];
 
                     /* Process our command-set indexing. */
-                    Commands::Get("names")->BuildIndexes(rContract);
+                    Commands::Get("names") ->BuildIndexes(rContract);
+                    Commands::Get("market")->BuildIndexes(rContract);
                 }
 
                 /* Update the scanned count for meters. */

@@ -54,6 +54,10 @@ namespace TAO::API
         }
 
 
+        /* Generic handler for creating new indexes for this specific command-set. */
+        void BuildIndexes(const TAO::Operation::Contract& rContract) override;
+
+
         /** Place
          *
          *  Places an order on the market

@@ -88,6 +88,10 @@ namespace TAO::API
                     }
                 }
 
+                /* Don't write PTR if one exists already. */
+                if(LLD::Logical->HasPTR(hashRecord))
+                    return; //so someone can't hijack another's PTR records, first come, first serve
+
                 /* Add our PTR record now. */
                 if(LLD::Logical->WritePTR(hashRecord, hashName))
                     debug::log(3, "PTR record created for: ", hashRecord.ToString(), " => ", hashName.ToString());
