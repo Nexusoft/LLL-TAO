@@ -55,6 +55,28 @@ namespace LLD
     }
 
 
+    /* Pushes an order to the orderbook stack. */
+    bool LogicalDB::PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket, const uint512_t& hashTx,
+                   const uint64_t nAmount, const uint64_t nRequest)
+    {
+        uint32_t nSequence = 0;
+        Read(std::make_pair(std::string("sequence"), pairMarket), nSequence);
+
+        /* Start an ACID transaction for this set of records. */
+        TxnBegin();
+
+        /* Write our new sequence to disk. */
+        if(!Write(std::make_pair(std::string("sequence"), pairMarket), ++nSequence))
+            return false;
+
+        /* Write our order by sequence number. */
+        if(!Write(std::make_pair(nSequence, pairMarket), hashTx))
+            return false;
+
+        return TxnCommit();
+    }
+
+
     /* Writes a register address PTR mapping from address to name address */
     bool LogicalDB::WritePTR(const uint256_t& hashAddress, const uint256_t& hashName)
     {

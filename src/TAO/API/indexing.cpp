@@ -82,7 +82,6 @@ namespace TAO::API
                 break;
 
             /* Loop through found transactions. */
-            TAO::Ledger::BlockState state;
             for(const auto& tx : vtx)
             {
                 /* Iterate the transaction contracts. */

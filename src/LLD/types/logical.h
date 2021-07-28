@@ -48,7 +48,7 @@ namespace LLD
          *  @param[in] hashGenesis The genesis of session.
          *  @param[in] nActive The timestamp this session was last active
          *
-         *  @return True if a session exists in the localdb
+         *  @return true if written successfully
          *
          **/
         bool WriteSession(const uint256_t& hashGenesis, const uint64_t nActive);
@@ -61,7 +61,7 @@ namespace LLD
          *  @param[in] hashGenesis The genesis of session.
          *  @param[out] nActive The timestamp this session was last active
          *
-         *  @return True if a session exists in the localdb
+         *  @return true if read successfully
          *
          **/
         bool ReadSession(const uint256_t& hashGenesis, uint64_t &nActive);
@@ -73,10 +73,26 @@ namespace LLD
          *
          *  @param[out] hashTx The txid of the last indexed transaction.
          *
-         *  @return True if a session exists in the localdb
+         *  @return true if read successfully
          *
          **/
         bool ReadLastIndex(uint512_t &hashTx);
+
+
+        /** PushOrder
+         *
+         *  Pushes an order to the orderbook stack.
+         *
+         *  @param[in] pairMarket The market-pair of token-id's
+         *  @param[in] hashTx The txid of the order on-chain
+         *  @param[in] nAmount The amount debited for this order
+         *  @param[in] nRequest The requested amount in exchange for order.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket, const uint512_t& hashTx,
+                       const uint64_t nAmount, const uint64_t nRequest);
 
 
         /** WritePTR
@@ -86,7 +102,7 @@ namespace LLD
          *  @param[in] hashAddress The address we are mapping.
          *  @param[in] hashName The name record we are mapping to.
          *
-         *  @return True if a session exists in the localdb
+         *  @return true if written successfully
          *
          **/
         bool WritePTR(const uint256_t& hashAddress, const uint256_t& hashName);
@@ -99,7 +115,7 @@ namespace LLD
          *  @param[in] hashAddress The address we are mapping.
          *  @param[in] hashName The name record we are mapping to.
          *
-         *  @return True if a session exists in the localdb
+         *  @return true if read successfully
          *
          **/
         bool ReadPTR(const uint256_t& hashAddress, uint256_t &hashName);
@@ -111,7 +127,7 @@ namespace LLD
          *
          *  @param[in] hashAddress The address we are mapping.
          *
-         *  @return True if a session exists in the localdb
+         *  @return true if item erased
          *
          **/
         bool ErasePTR(const uint256_t& hashAddress);
@@ -123,7 +139,7 @@ namespace LLD
          *
          *  @param[in] hashAddress The address we are mapping.
          *
-         *  @return True if a session exists in the localdb
+         *  @return true if db contains ptr record.
          *
          **/
         bool HasPTR(const uint256_t& hashAddress);

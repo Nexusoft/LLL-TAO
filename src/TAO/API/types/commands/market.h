@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
+#include <TAO/Operation/types/contract.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {

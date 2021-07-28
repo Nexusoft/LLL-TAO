@@ -41,7 +41,7 @@ namespace TAO::API
             throw Exception(-13, "Object not found");
 
         /* Check they have the required funds */
-        const uint64_t nAmount = ExtractAmount(jParams, GetFigures(tDebit));
+        const uint64_t nAmount = ExtractAmount(jParams, GetFigures(tDebit), "from");
 
         /* Grab our object we are placing order for. */
         TAO::Register::Object tRecipient;

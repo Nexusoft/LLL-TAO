@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/commands/market.h>
+#include <TAO/API/types/commands/names.h>
 #include <TAO/API/include/execute.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -35,43 +36,81 @@ namespace TAO::API
         uint8_t nType = 0;
         rContract >> nType;
 
-        debug::log(0, FUNCTION, "market is live");
-
         /* Switch based on type. */
         switch(nType)
         {
             /* Check that transaction has a condition. */
             case TAO::Operation::OP::CONDITION:
             {
-                /* Get the next OP. */
-                rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
+                try //in case de-serialization fails from non-standard contracts
+                {
+                    /* Get the next OP. */
+                    rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
 
-                /* Get the comparison bytes. */
-                std::vector<uint8_t> vBytes;
-                rContract >= vBytes;
+                    /* Get the comparison bytes. */
+                    std::vector<uint8_t> vBytes;
+                    rContract >= vBytes;
 
-                debug::warning(HexStr(vBytes.begin(), vBytes.end()));
+                    /* Get the next OP. */
+                    rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
 
-                /* Get the next OP. */
-                rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
+                    /* Grab our pre-state token-id. */
+                    std::string strToken;
+                    rContract >= strToken;
 
-                /* Grab our pre-state token-id. */
-                std::string strToken;
-                rContract >= strToken;
+                    /* Get the next OP. */
+                    rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
 
-                debug::log(0, VARIABLE(strToken));
+                    /* Grab our token-id now. */
+                    TAO::Register::Address hashFirst;
+                    rContract >= hashFirst;
 
-                /* Extract the data from the bytes. */
-                TAO::Operation::Stream ssCompare(vBytes);
-                ssCompare.seek(33);
+                    /* Grab our other token from pre-state. */
+                    TAO::Register::Object tPreState = rContract.PreState();
 
-                /* Get the address to. */
-                uint256_t hashTo;
-                ssCompare >> hashTo;
+                    /* Parse pre-state if needed. */
+                    if(tPreState.nType == TAO::Register::REGISTER::OBJECT)
+                        tPreState.Parse();
 
-                /* Get the amount requested. */
-                uint64_t nAmount = 0;
-                ssCompare >> nAmount;
+                    /* Grab the rhs token. */
+                    TAO::Register::Address hashSecond =
+                        tPreState.get<uint256_t>("token");
+
+                    /* Create our market-pair. */
+                    std::pair<uint256_t, uint256_t> pairMarket;
+
+                    /* Regular sorting by token-id. */
+                    if(hashFirst > hashSecond)
+                    {
+                        pairMarket.first  = hashFirst;
+                        pairMarket.second = hashSecond;
+                    }
+
+                    /* Reverse sort. */
+                    else
+                    {
+                        pairMarket.first  = hashSecond;
+                        pairMarket.second = hashFirst;
+                    }
+
+                    /* Extract the data from the bytes. */
+                    TAO::Operation::Stream ssCompare(vBytes);
+                    ssCompare.seek(33);
+
+                    /* Get the address to. */
+                    uint256_t hashTo;
+                    ssCompare >> hashTo;
+
+                    /* Get the amount requested. */
+                    uint64_t nAmount = 0;
+                    ssCompare >> nAmount;
+
+                    
+                }
+                catch(const std::exception& e)
+                {
+                    debug::warning(e.what());
+                }
 
                 break;
             }
