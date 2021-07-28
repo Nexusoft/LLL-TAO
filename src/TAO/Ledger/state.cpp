@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
 
+#include <TAO/API/types/indexing.h>
+
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/enum.h>
@@ -1061,6 +1063,9 @@ namespace TAO
 
                     /* Get the transaction hash. */
                     const uint512_t& hash = proof.second;
+
+                    /* Push to our logical indexing in API. */
+                    TAO::API::Indexing::Instance().Push(hash);
 
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))

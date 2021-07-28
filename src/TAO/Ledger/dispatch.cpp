@@ -16,8 +16,6 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
 
-#include <TAO/API/types/indexing.h>
-
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Ledger/include/dispatch.h>
