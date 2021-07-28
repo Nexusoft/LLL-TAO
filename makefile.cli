@@ -500,6 +500,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_format.o \
 		build/API_get.o \
 		build/API_global.o \
+		build/API_indexing.o \
 		build/API_json.o \
 		build/API_list.o \
 		build/API_results.o \

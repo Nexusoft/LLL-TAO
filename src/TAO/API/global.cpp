@@ -12,24 +12,23 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/commands.h>
+
+#include <TAO/API/dex/types/dex.h>
+#include <TAO/API/users/types/users.h>
+#include <TAO/API/voting/types/voting.h>
 
 #include <TAO/API/types/commands/assets.h>
-#include <TAO/API/dex/types/dex.h>
 #include <TAO/API/types/commands/ledger.h>
 #include <TAO/API/types/commands/supply.h>
 #include <TAO/API/types/commands/system.h>
-#include <TAO/API/users/types/users.h>
 #include <TAO/API/types/commands/names.h>
-
-#include <TAO/API/voting/types/voting.h>
 #include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/types/commands/crypto.h>
-
-
 #include <TAO/API/types/commands/finance.h>
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/tokens.h>
+#include <TAO/API/types/commands.h>
+#include <TAO/API/types/indexing.h>
 
 #include <TAO/API/types/session-manager.h>
 
@@ -58,6 +57,9 @@ namespace TAO::API
         Commands::Register<Tokens>();
         Commands::Register<Users>();
         //Commands::Register<Voting>();
+
+        /* Initialize our indexing services. */
+        Indexing::Initialize();
     }
 
 
@@ -68,5 +70,6 @@ namespace TAO::API
 
         /* Shut down our subsequent API's */
         Commands::Shutdown();
+        Indexing::Shutdown();
     }
 }
