@@ -11,119 +11,90 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/commands/system.h>
-#include <Util/include/debug.h>
-
-#include <Legacy/types/script.h>
 #include <Legacy/wallet/wallet.h>
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/types/commands/system.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/global.h>
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/json.h>
 
-#include <TAO/Register/types/address.h>
-#include <TAO/Register/types/object.h>
-
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Validates a register / legacy address */
+    encoding::json System::Validate(const encoding::json& jParams, const bool fHelp)
     {
-        /* Validates a register / legacy address */
-        encoding::json System::Validate(const encoding::json& params, const bool fHelp)
+        /* Extract the address, which will either be a legacy address or a sig chain account address */
+        const std::string strAddress =
+            ExtractString(jParams, "address");
+
+        /* The decoded register address */
+        const TAO::Register::Address hashAddress =
+            TAO::Register::Address(strAddress);
+
+        /* Populate address into response */
+        encoding::json jRet;
+        jRet["address"] = strAddress;
+        jRet["valid"]   = false;
+
+        /* handle recipient being a register address */
+        if(!hashAddress.IsValid())
+            return jRet;
+
+        /* Check to see if this is a legacy address */
+        if(hashAddress.IsLegacy())
         {
-            encoding::json jsonRet;
+            /* Set our response values. */
+            jRet["valid"] = true;
+            jRet["type"]  = "LEGACY";
+            jRet["mine"]  = false;
 
-            /* Check for address parameter. */
-            if(params.find("address") == params.end() )
-                throw Exception(-105, "Missing address");
+            #ifndef NO_WALLET
 
-            /* Extract the address, which will either be a legacy address or a sig chain account address */
-            std::string strAddress = params["address"].get<std::string>();
+            /* Legacy address */
+            const Legacy::NexusAddress hashAddress = Legacy::NexusAddress(strAddress);
 
-            /* The decoded register address */
-            TAO::Register::Address hashAddress;
+            /* Check that we have the key in this wallet. */
+            if(Legacy::Wallet::Instance().HaveKey(hashAddress) 
+            || Legacy::Wallet::Instance().HaveScript(hashAddress.GetHash256()))
+                jRet["mine"] = true;
 
-            /* Decode the address string */
-            hashAddress.SetBase58(strAddress);
+            #endif
 
-            /* Populate address into response */
-            jsonRet["address"] = strAddress;
-
-            /* handle recipient being a register address */
-            if(hashAddress.IsValid())
-            {
-                /* Check to see if this is a legacy address */
-                if(hashAddress.IsLegacy())
-                {
-                    /* Set the valid flag in the response */
-                    jsonRet["is_valid"] = true;
-
-                    /* Set type in response */
-                    jsonRet["type"] = "LEGACY";
-
-                    #ifndef NO_WALLET
-                    /* Legacy address */
-                    Legacy::NexusAddress address(strAddress);
-
-                    /* Check that we have the key in this wallet. */
-                    if(Legacy::Wallet::Instance().HaveKey(address) || Legacy::Wallet::Instance().HaveScript(address.GetHash256()))
-                        jsonRet["is_mine"] = true;
-                    else
-                        jsonRet["is_mine"] = false;
-                    #endif
-                }
-                else
-                {
-                    /* Get the state. We only consider an address valid if the state exists in the register database*/
-                    TAO::Register::Object state;
-                    if(LLD::Register->ReadState(hashAddress, state, TAO::Ledger::FLAGS::LOOKUP))
-                    {
-                        /* Set the valid flag in the response */
-                        jsonRet["is_valid"] = true;
-
-                        /* Set the register type */
-                        jsonRet["type"]    = GetRegisterName(state.nType);
-
-                        /* Check if address is owned by current user */
-                        uint256_t hashGenesis = Commands::Get<Users>()->GetCallersGenesis(params);
-                        if(hashGenesis != 0)
-                        {
-                            if(state.hashOwner == hashGenesis)
-                                jsonRet["is_mine"] = true;
-                            else
-                                jsonRet["is_mine"] = false;
-                        }
-
-                        /* If it is an object register then parse it to add the object_type */
-                        if(state.nType == TAO::Register::REGISTER::OBJECT)
-                        {
-                            /* parse object so that the data fields can be accessed */
-                            if(state.Parse())
-                                jsonRet["object_type"] = GetStandardName(state.Standard());
-                            else
-                                jsonRet["is_valid"] = false;
-                        }
-                    }
-                    else
-                    {
-                        /* Set the valid flag in the response */
-                        jsonRet["is_valid"] = false;
-                    }
-                }
-            }
-            else
-            {
-                /* Set the valid flag in the response */
-                jsonRet["is_valid"] = false;
-            }
-
-            return jsonRet;
+            return jRet;
         }
 
+        /* Get the tObject. We only consider an address valid if the tObject exists in the register database*/
+        TAO::Register::Object tObject;
+        if(!LLD::Register->ReadObject(hashAddress, tObject, TAO::Ledger::FLAGS::MEMPOOL))
+            return jRet;
+
+        /* Set our response values. */
+        jRet["valid"] = true;
+        jRet["type"]  = GetRegisterName(tObject.nType);
+
+        /* Check for caller's genesis. */
+        const uint256_t hashCaller =
+            Commands::Get<Users>()->GetCallersGenesis(jParams);
+
+        /* Make sure we were able to get the caller. */
+        if(hashCaller != 0)
+        {
+            /* Set false for fall through. */
+            jRet["mine"]  = false;
+
+            /* Check if address is owned by current user */
+            if(tObject.hashOwner == hashCaller)
+                jRet["mine"] = true;
+        }
+
+        /* Add our standard for objects. */
+        if(tObject.nType == TAO::Register::REGISTER::OBJECT)
+            jRet["standard"] = GetStandardName(tObject.Standard());
+
+        return jRet;
     }
 }

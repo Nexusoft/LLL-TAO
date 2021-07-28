@@ -655,4 +655,15 @@ namespace TAO::API
         return hashRegister;
     }
 
+
+    /* Extract a string of given key from input parameters. */
+    std::string ExtractString(const encoding::json& jParams, const std::string& strKey)
+    {
+        /* Check for missing parameters. */
+        if(!CheckParameter(jParams, strKey, "string"))
+            throw Exception(-56, "Missing Parameter [", strKey, "]");
+
+        return jParams[strKey].get<std::string>();
+    }
+
 } // End TAO namespace

@@ -241,6 +241,19 @@ namespace TAO::API
     uint256_t ExtractHash(const encoding::json& jParams, const std::string& strKey);
 
 
+    /** ExtractString
+     *
+     *  Extract a string of given key from input parameters.
+     *
+     *  @param[in] jParams The input parameters to extract from.
+     *  @param[in] strKey The key we are extracting for.
+     *
+     *  @return the string extracted from parameters.
+     *
+     **/
+    std::string ExtractString(const encoding::json& jParams, const std::string& strKey);
+
+
     /** ExtractHash
      *
      *  Extracts a hash value by template deduction.
