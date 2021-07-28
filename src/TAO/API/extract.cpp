@@ -35,6 +35,21 @@ namespace TAO::API
     /* Extract an address from incoming parameters to derive from name or address field. */
     uint256_t ExtractAddress(const encoding::json& jParams, const std::string& strSuffix, const std::string& strDefault)
     {
+        /* Check for our raw suffix formats here i.e. to, from, proof. */
+        if(CheckParameter(jParams, strSuffix, "string"))
+        {
+            /* Declare our return value. */
+            const TAO::Register::Address hashRet =
+                TAO::Register::Address(jParams[strSuffix].get<std::string>());
+
+            /* Check that it is valid */
+            if(hashRet.IsValid())
+                return hashRet;
+
+            /* Allow address to be a name record as well. */
+            return Names::ResolveAddress(jParams, jParams[strSuffix].get<std::string>());
+        }
+
         /* Cache a couple keys we will be using. */
         const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
         const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
@@ -210,7 +225,7 @@ namespace TAO::API
     uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strPrefix)
     {
         /* Cache our name with prefix calculated. */
-        const std::string strAmount = (strPrefix.empty() ? ("") : ("_" + strPrefix)) + "amount";
+        const std::string strAmount = (strPrefix.empty() ? ("") : (strPrefix + "_")) + "amount";
 
         /* Check for missing parameter. */
         if(CheckParameter(jParams, strAmount, "string, number"))

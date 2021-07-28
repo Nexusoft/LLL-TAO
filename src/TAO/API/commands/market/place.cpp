@@ -11,141 +11,76 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/include/random.h>
-#include <LLC/hash/SK.h>
-
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/extract.h>
+#include <TAO/API/include/get.h>
 #include <TAO/API/types/commands.h>
-
-#include <TAO/API/users/types/users.h>
-#include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/market.h>
 
 #include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/execute.h>
 
 #include <TAO/Register/include/constants.h>
-#include <TAO/Register/include/enum.h>
-#include <TAO/Register/types/object.h>
 
-#include <TAO/Ledger/include/create.h>
-#include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
-
-#include <Util/templates/datastream.h>
+#include <TAO/Ledger/types/transaction.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
 {
     /* Create an asset or digital item. */
-    encoding::json Market::Place(const encoding::json& params, const bool fHelp)
+    encoding::json Market::Place(const encoding::json& jParams, const bool fHelp)
     {
-        encoding::json ret;
+        /* Extract our order addresses. */
+        const uint256_t hashRegister  = ExtractAddress(jParams, "", "from");
+        const uint256_t hashRecipient = ExtractAddress(jParams, "", "to");
 
-        /* Authenticate the users credentials */
-        if(!Commands::Get<Users>()->Authenticate(params))
-            throw Exception(-139, "Invalid credentials");
+        /* Grab our object we are placing order for. */
+        TAO::Register::Object tDebit;
+        if(!LLD::Register->ReadObject(hashRegister, tDebit))
+            throw Exception(-13, "Object not found");
 
-        /* Get the PIN to be used for this API call */
-        SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        /* Check they have the required funds */
+        const uint64_t nAmount = ExtractAmount(jParams, GetFigures(tDebit));
 
-        /* Get the session to be used for this API call */
-        Session& session = Commands::Get<Users>()->GetSession(params);
-
-        /* Check for from parameter. */
-        TAO::Register::Address hashFrom;
-        if(params.find("name_from") != params.end() && !params["name_from"].get<std::string>().empty())
-            hashFrom = Names::ResolveAddress(params, params["name_from"].get<std::string>());
-        else if(params.find("address_from") != params.end())
-            hashFrom.SetHex(params["address_from"].get<std::string>());
-        else
-            throw Exception(-39, "Missing name_from / address_from");
-
-        /* Check for from parameter. */
-        TAO::Register::Address hashTo;
-        if(params.find("name_to") != params.end() && !params["name_to"].get<std::string>().empty())
-            hashTo = Names::ResolveAddress(params, params["name_to"].get<std::string>());
-        else if(params.find("address_to") != params.end())
-            hashTo.SetHex(params["address_to"].get<std::string>());
-        else
-            throw Exception(-45, "Missing name_to / address_to");
-
-        /* Check for credit parameter. */
-        if(params.find("amount") == params.end())
-            throw Exception(-46, "Missing amount.");
+        /* Grab our object we are placing order for. */
+        TAO::Register::Object tRecipient;
+        if(!LLD::Register->ReadObject(hashRecipient, tRecipient))
+            throw Exception(-13, "Object not found");
 
         /* Get the amount to debit. */
-        uint64_t nAmount = std::stoul(params["amount"].get<std::string>());
-
-        /* Check for credit parameter. */
-        if(params.find("price") == params.end())
-            throw Exception(-47, "Missing price.");
-
-        /* Get the amount to debit. */
-        uint64_t nPrice = std::stoul(params["price"].get<std::string>());
-
-        /* Lock the signature chain. */
-        LOCK(session.CREATE_MUTEX);
-
-        /* Get the from register. */
-        TAO::Register::Object objectTo;
-        if(!LLD::Register->ReadState(hashTo, objectTo))
-            throw Exception(-48, "Failed to read to state");
-
-        /* Parse the object register. */
-        if(!objectTo.Parse())
-            throw Exception(-49, "Failed to parse to state");
-
-        /* Create the transaction. */
-        TAO::Ledger::Transaction tx;
-        if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
-            throw Exception(-17, "Failed to create transaction");
+        const uint64_t nRequested =
+            ExtractAmount(jParams, GetFigures(tRecipient), "to");
 
         /* Transation payload. */
-        tx[0] << uint8_t(TAO::Operation::OP::CONDITION) << uint8_t(TAO::Operation::OP::DEBIT) << hashFrom << TAO::Register::WILDCARD_ADDRESS << nAmount << uint64_t(0);
+        std::vector<TAO::Operation::Contract> vContracts(1);
+        vContracts[0] << uint8_t(TAO::Operation::OP::CONDITION) << uint8_t(TAO::Operation::OP::DEBIT);
+        vContracts[0] << hashRegister << TAO::Register::WILDCARD_ADDRESS << nAmount << uint64_t(0);
 
-        /* Conditional Requirement. */
-        TAO::Operation::Stream compare;
-        compare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashTo << nPrice << uint64_t(0);
+        /* Create a comparison binary stream we will use for the contract requirement. */
+        TAO::Operation::Stream ssCompare;
+        ssCompare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashRecipient << nRequested << uint64_t(0);
 
-        /* Conditions. */
-        tx[0] <= uint8_t(TAO::Operation::OP::GROUP);
-        tx[0] <= uint8_t(TAO::Operation::OP::CALLER::OPERATIONS) <= uint8_t(TAO::Operation::OP::CONTAINS);
-        tx[0] <= uint8_t(TAO::Operation::OP::TYPES::BYTES) <= compare.Bytes();
-        tx[0] <= uint8_t(TAO::Operation::OP::AND);
-        tx[0] <= uint8_t(TAO::Operation::OP::CALLER::PRESTATE::VALUE) <= std::string("token");
-        tx[0] <= uint8_t(TAO::Operation::OP::EQUALS);
-        tx[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT256_T) <= objectTo.get<uint256_t>("token");
-        tx[0] <= uint8_t(TAO::Operation::OP::UNGROUP);
+        /* This conditional contract will require a DEBIT of given amount. */
+        vContracts[0] <= uint8_t(TAO::Operation::OP::GROUP);
+        vContracts[0] <= uint8_t(TAO::Operation::OP::CALLER::OPERATIONS) <= uint8_t(TAO::Operation::OP::CONTAINS);
+        vContracts[0] <= uint8_t(TAO::Operation::OP::TYPES::BYTES) <= ssCompare.Bytes();
+        vContracts[0] <= uint8_t(TAO::Operation::OP::AND);
+        vContracts[0] <= uint8_t(TAO::Operation::OP::CALLER::PRESTATE::VALUE) <= std::string("token");
+        vContracts[0] <= uint8_t(TAO::Operation::OP::EQUALS);
+        vContracts[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT256_T) <= tRecipient.get<uint256_t>("token");
+        vContracts[0] <= uint8_t(TAO::Operation::OP::UNGROUP);
 
-        tx[0] <= uint8_t(TAO::Operation::OP::OR);
+        /* Logical operator between clauses. */
+        vContracts[0] <= uint8_t(TAO::Operation::OP::OR);
 
-        tx[0] <= uint8_t(TAO::Operation::OP::GROUP);
-        tx[0] <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
-        tx[0] <= uint8_t(TAO::Operation::OP::EQUALS);
-        tx[0] <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
-        tx[0] <= uint8_t(TAO::Operation::OP::UNGROUP);
+        /* This is our clawback clause in case order needs to be cancelled. */
+        vContracts[0] <= uint8_t(TAO::Operation::OP::GROUP);
+        vContracts[0] <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
+        vContracts[0] <= uint8_t(TAO::Operation::OP::EQUALS);
+        vContracts[0] <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
+        vContracts[0] <= uint8_t(TAO::Operation::OP::UNGROUP);
 
-        /* Add the fee */
-        AddFee(tx);
-
-        /* Execute the operations layer. */
-        if(!tx.Build())
-            throw Exception(-30, "Operations failed to execute");
-
-        /* Sign the transaction. */
-        if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-            throw Exception(-31, "Ledger failed to sign transaction");
-
-        /* Execute the operations layer. */
-        if(!TAO::Ledger::mempool.Accept(tx))
-            throw Exception(-32, "Failed to accept");
-
-        /* Build a JSON response object. */
-        ret["txid"] = tx.GetHash().ToString();
-
-        return ret;
+        return BuildResponse(jParams, hashRegister, vContracts);
     }
 }
