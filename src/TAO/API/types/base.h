@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/operator.h>
 #include <TAO/API/types/exception.h>
 
+#include <TAO/Operation/types/contract.h>
+
 /* Forward declarations. */
 namespace TAO::Register { class Object; }
 
@@ -151,17 +153,11 @@ namespace TAO::API
         encoding::json Execute(std::string &strMethod, encoding::json &jParams, const bool fHelp = false);
 
 
-
-
-
         /** RewriteURL
          *
          *  Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-         *  map directly to a function in the target API.  Insted this method can be overriden to
-         *  parse the incoming URL and route to a different/generic method handler, adding parameter
-         *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-         *  added to the jParams
-         *  The return json contains the modifed method URL to be called.
+         *  map directly to a function in the target API.  This will break the URI into components
+         *  using such to generate parameters for types, fieldnames, and operators.
          *
          *  @param[in] strMethod The name of the method being invoked.
          *  @param[in] jParams The json array of parameters being passed to this method.
@@ -171,6 +167,16 @@ namespace TAO::API
          **/
         virtual std::string RewriteURL(const std::string& strMethod, encoding::json &jParams);
 
+
+        /** BuildIndexes
+         *
+         *  Generic handler for creating new indexes for this specific command-set.
+         *  This handler takes a contract and generates indexes according to command's logic.
+         *
+         *  @param[in] rContract The contract we are building indexes for.
+         *
+         **/
+        virtual void BuildIndexes(const TAO::Operation::Contract& rContract) { }
     };
 
 

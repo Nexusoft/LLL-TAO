@@ -58,6 +58,10 @@ namespace TAO::API
         }
 
 
+        /* Generic handler for creating new indexes for this specific command-set. */
+        void BuildIndexes(const TAO::Operation::Contract& rContract) override;
+
+
         /** CreateName
          *
          *  Creates a new Name Object register for the given name and register address adds the register

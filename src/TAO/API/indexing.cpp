@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/types/commands.h>
 #include <TAO/API/types/indexing.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -97,11 +98,8 @@ namespace TAO::API
             {
                 const TAO::Operation::Contract& rContract = tx[n];
 
-                /* Check the contract's primitive. */
-                const uint8_t nOP =
-                    rContract.Operations()[0];
-
-                debug::log(0, "Handling Contract for OP ", uint32_t(nOP));
+                /* Process our command-set indexing. */
+                Commands::Get("names")->BuildIndexes(rContract);
             }
         }
     }
