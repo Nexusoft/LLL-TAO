@@ -35,7 +35,7 @@ ________________________________________________________________________________
 #include <Legacy/include/money.h>
 
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/API/system/types/system.h>
+#include <TAO/API/types/commands/system.h>
 #include <LLP/include/lisp.h>
 
 #include <vector>

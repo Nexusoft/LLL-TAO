@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
-#include <TAO/API/system/types/system.h>
+#include <TAO/API/types/commands/system.h>
 
 /* Global TAO namespace. */
 namespace TAO

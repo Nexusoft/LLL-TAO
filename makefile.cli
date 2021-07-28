@@ -444,6 +444,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_void-transaction.o \
 		build/API_commands_names_initialize.o \
 		build/API_commands_names_names.o \
+		build/API_commands_names_resolve.o \
 		build/API_commands_operators_array.o \
 		build/API_commands_operators_mean.o \
 		build/API_commands_operators_sum.o \
@@ -451,10 +452,10 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_register_list.o \
 		build/API_commands_register_json.o \
 		build/API_commands_supply_initialize.o \
-		build/API_types_system_lisp.o \
-		build/API_types_system_system.o \
-		build/API_types_system_metrics.o \
-		build/API_types_system_validate.o \
+		build/API_commands_system_lisp.o \
+		build/API_commands_system_system.o \
+		build/API_commands_system_metrics.o \
+		build/API_commands_system_validate.o \
 		build/API_commands_templates_claim.o \
 		build/API_commands_templates_create.o \
 		build/API_commands_templates_get.o \
@@ -771,7 +772,7 @@ build/API_types_users_%.o: ./src/TAO/API/users/%.cpp $(HEADERS)
 build/API_types_voting_%.o: ./src/TAO/API/voting/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_system_%.o: ./src/TAO/API/system/%.cpp $(HEADERS)
+build/API_commands_system_%.o: ./src/TAO/API/commands/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Ledger_%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
@@ -1391,7 +1392,7 @@ build/API_types_voting_%.o: src/TAO/API/voting/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_system_%.o: src/TAO/API/system/%.cpp $(HEADERS)
+build/API_commands_system_%.o: src/TAO/API/commands/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

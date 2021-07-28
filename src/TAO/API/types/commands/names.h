@@ -152,20 +152,5 @@ namespace TAO::API
         static std::string ResolveName(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister);
 
 
-        /** ResolveAccountTokenName
-         *
-         *  Retrieves the token name for the token that this account object is used for.
-         *  The token is obtained by looking at the token_address field,
-         *  which contains the register address of the issuing token
-         *
-         *  @param[in] params The json request params
-         *  @param[in] account The Object Register of the token account
-         *
-         *  @return the token name for the token that this account object is used for
-         *
-         **/
-        static std::string ResolveAccountTokenName(const encoding::json& params, const TAO::Register::Object& account);
-
-
     };
 }

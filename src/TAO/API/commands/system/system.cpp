@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/include/trust_address.h>
 
-#include <TAO/API/system/types/system.h>
+#include <TAO/API/types/commands/system.h>
 #include <TAO/API/types/session-manager.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>

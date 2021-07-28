@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/system/types/system.h>
+#include <TAO/API/types/commands/system.h>
 #include <Util/include/debug.h>
 #include <Util/include/runtime.h>
 

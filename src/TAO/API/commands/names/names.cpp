@@ -1,3 +1,16 @@
+/*__________________________________________________________________________________________
+
+            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+
+            (c) Copyright The Nexus Developers 2014 - 2019
+
+            Distributed under the MIT software license, see the accompanying
+            file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
+            "ad vocem populi" - To the Voice of the People
+
+____________________________________________________________________________________________*/
+
 #include <unordered_set>
 
 #include <LLD/include/global.h>
@@ -400,130 +413,5 @@ namespace TAO
 
             return nameObject;
         }
-
-
-        /* Resolves a register address from a name by looking up the Name object. */
-        TAO::Register::Address Names::ResolveAddress(const encoding::json& params, const std::string& strName, const bool fThrow)
-        {
-            /* Declare the return register address hash */
-            TAO::Register::Address hashRegister;
-
-            /* Register address of nameObject.  Not used by this method */
-            TAO::Register::Address hashNameObject;
-
-            /* Get the Name object by name */
-            TAO::Register::Object name = Names::GetName(params, strName, hashNameObject, fThrow);
-            if(!name.IsNull())
-            {
-                /* Get the address that this name register is pointing to */
-                hashRegister = name.get<uint256_t>("address");
-            }
-
-            return hashRegister;
-        }
-
-
-        /* Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashRegister address */
-        std::string Names::ResolveName(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister)
-        {
-            /* Declare the return val */
-            std::string strName = "";
-
-            /* Register address of nameObject.  Not used by this method */
-            TAO::Register::Address hashNameObject;
-
-            /* The resolved name record  */
-            TAO::Register::Object name;
-
-            /* Look up the Name object for the register address in the specified sig chain, if one has been provided */
-            if(hashGenesis != 0)
-            {
-                /* If we are in client mode then if the hashGenesis is not for the logged in user we need to make sure we
-                   have downloaded their sig chain so that we have access to it */
-                if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
-                {
-                    /* Download the users signature chain transactions, but we do not need events */
-                    //TAO::API::DownloadSigChain(hashGenesis, false);
-                }
-
-                /* Now lookup the name in this sig chain */
-                name = Names::GetName(hashGenesis, hashRegister, hashNameObject);
-            }
-
-            /* Check to see if we resolved the name using the specified sig chain */
-            if(!name.IsNull())
-            {
-                /* Get the name from the Name register */
-                strName = name.get<std::string>("name");
-            }
-            else if(!config::fClient.load())
-            {
-                /* If we couldn't resolve the register name from the callers local names, we next check to see if it is a global name */
-
-                /* Batch read all names. */
-                std::vector<TAO::Register::Object> vNames;
-                if(LLD::Register->BatchRead("name", vNames, -1))
-                {
-                    /* Check through all names. */
-                    for(auto& object : vNames)
-                    {
-                        /* Skip over invalid objects (THIS SHOULD NEVER HAPPEN). */
-                        if(!object.Parse())
-                            continue;
-
-                        /* Check that it is a global */
-                        if(object.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL
-                            && object.get<uint256_t>("address") == hashRegister)
-                        {
-                            /* Get the name from the Name register */
-                            strName = object.get<std::string>("name");
-                            break;
-                        }
-                    }
-                }
-            }
-
-            return strName;
-        }
-
-
-        /* Retrieves the token name for the token that this account object is used for.
-        *  The token is obtained by looking at the token_address field,
-        *  which contains the register address of the issuing token */
-        std::string Names::ResolveAccountTokenName(const encoding::json& params, const TAO::Register::Object& account)
-        {
-            /* Declare token name to return  */
-            std::string strTokenName;
-
-            /* Get the object base type. */
-            uint8_t nBase = account.Base();
-
-            /* Check the object register standard. */
-            if(nBase == TAO::Register::OBJECTS::ACCOUNT)
-            {
-                /* The token name is obtained by first looking at the token field int the account,
-                   which contains the register address of the issuing token */
-                TAO::Register::Address hashToken = account.get<uint256_t>("token");
-
-                /* Edge case for NXS token which has identifier 0, so no look up needed */
-                if(hashToken == 0)
-                    strTokenName = "NXS";
-                else
-                {
-                    /* the genesis hash of the caller */
-                    uint256_t hashGenesis = Commands::Get<Users>()->GetCallersGenesis(params);
-
-                    /* Look up the token name based on the Name records in the caller's sig chain */
-                    strTokenName = Names::ResolveName(hashGenesis, hashToken);
-                }
-            }
-            else
-                throw Exception(-65, "Object is not an account.");
-
-            return strTokenName;
-        }
-
-
     } /* End API namespace */
-
 } /* End TAO namespace */

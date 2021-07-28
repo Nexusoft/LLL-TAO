@@ -55,7 +55,7 @@ namespace TAO
     namespace API
     {
         /* Migrate all Legacy wallet accounts to corresponding accounts in the signature chain */
-        encoding::json Finance::MigrateAccounts(const encoding::json& params, const bool fHelp)
+        encoding::json Finance::MigrateAccounts(const encoding::json& jParams, const bool fHelp)
         {
             /* Return value array */
             encoding::json ret = encoding::json::array();
@@ -65,26 +65,26 @@ namespace TAO
             Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
             /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(params))
+            if(!Commands::Get<Users>()->Authenticate(jParams))
                 throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+            Session& session = Commands::Get<Users>()->GetSession(jParams);
 
 
             /* Check for walletpassphrase parameter. */
             SecureString strWalletPass;
             strWalletPass.reserve(100);
 
-            if(params.find("walletpassphrase") != params.end())
-                strWalletPass = params["walletpassphrase"].get<std::string>().c_str();
+            if(jParams.find("walletpassphrase") != jParams.end())
+                strWalletPass = jParams["walletpassphrase"].get<std::string>().c_str();
 
             /* Check to see if the caller has specified NOT to create a name (we do by default) */
-            bool fCreateName = params.find("createname") == params.end()
-                    || (params["createname"].get<std::string>() != "0" && params["createname"].get<std::string>() != "false");
+            bool fCreateName = jParams.find("createname") == jParams.end()
+                    || (jParams["createname"].get<std::string>() != "0" && jParams["createname"].get<std::string>() != "false");
 
             /* Save the current lock state of wallet */
             bool fLocked = wallet.IsLocked();
@@ -163,6 +163,7 @@ namespace TAO
             uint8_t nContracts = 0;
 
             /* Iterate the legacy accounts */
+            std::vector<TAO::Operation::Contract> vContracts;
             for(const auto& accountBalance :  mapAccountBalances)
             {
                 /* The name of the legacy account */
@@ -172,7 +173,7 @@ namespace TAO
                 TAO::Register::Address hashAccount;
 
                 /* First check to see if an account exists with this name */
-                hashAccount = Names::ResolveAddress(params, strAccount, false);
+                hashAccount = Names::ResolveAddress(jParams, strAccount, false);
 
                 /* If one does not exist then check to see if one exists with a matching data field, from a previous migration */
                 if(!hashAccount.IsValid())
@@ -237,17 +238,23 @@ namespace TAO
                     hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
                     /* Create an account object register for NXS (identifier 0). */
-                    TAO::Register::Object account = TAO::Register::CreateAccount(0);
+                    TAO::Register::Object tAccount =
+                        TAO::Register::CreateAccount(0);
 
-                    /* Store the legacy account name in the data field of the account register */
-                    account << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << strAccount;
+                    /* Store the legacy account name in the data field. */
+                    tAccount << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << strAccount;
 
                     /* Submit the payload object. */
-                    tx[nContracts++] << uint8_t(TAO::Operation::OP::CREATE) << hashAccount << uint8_t(TAO::Register::REGISTER::OBJECT) << account.GetState();
+                    TAO::Operation::Contract tContract;
+                    tContract << uint8_t(TAO::Operation::OP::CREATE)      << hashAccount;
+                    tContract << uint8_t(TAO::Register::REGISTER::OBJECT) << tAccount.GetState();
+
+                    /* Add this contract to our payload. */
+                    vContracts.push_back(tContract);
 
                     /* If user has not explicitly indicated not to create a name then create a Name Object register for it. */
                     if(fCreateName)
-                        tx[nContracts++] = Names::CreateName(session.GetAccount()->Genesis(), strAccount, "", hashAccount);
+                        BuildName(jParams, hashAccount, vContracts);
                 }
 
                 /* Add this to the map */
@@ -255,23 +262,8 @@ namespace TAO
             }
 
             /* If there are accounts to create then submit the transaction */
-            if(nContracts > 0)
-            {
-                /* Add the fee */
-                AddFee(tx);
-
-                /* Execute the operations layer. */
-                if(!tx.Build())
-                    throw Exception(-44, "Transaction failed to build");
-
-                /* Sign the transaction. */
-                if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
-                    throw Exception(-31, "Ledger failed to sign transaction");
-
-                /* Execute the operations layer. */
-                if(!TAO::Ledger::mempool.Accept(tx))
-                    throw Exception(-32, "Failed to accept");
-            }
+            if(!vContracts.empty())
+                BuildAndAccept(jParams, vContracts);
 
             /* Once the accounts have been created transfer the balance from the legacy account to the new ones */
             for(const auto& accountBalance :  mapAccountBalances)
