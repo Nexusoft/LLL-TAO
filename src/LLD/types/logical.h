@@ -28,18 +28,17 @@ namespace LLD
    *  Database class for storing local wallet transactions.
    *
    **/
-    class APIDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class LogicalDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
-
     public:
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        APIDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
+        LogicalDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
             const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
 
 
         /** Default Destructor **/
-        virtual ~APIDB();
+        virtual ~LogicalDB();
 
 
         /** WriteSession

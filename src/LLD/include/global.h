@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/types/register.h>
 #include <LLD/types/ledger.h>
 #include <LLD/types/local.h>
+#include <LLD/types/logical.h>
 #include <LLD/types/client.h>
 #include <LLD/types/legacy.h>
 #include <LLD/types/trust.h>
@@ -25,7 +26,7 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-    extern APIDB*        API;
+    extern LogicalDB*    Logical;
     extern ContractDB*   Contract;
     extern RegisterDB*   Register;
     extern LedgerDB*     Ledger;

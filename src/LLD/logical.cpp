@@ -13,13 +13,13 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/types/api.h>
+#include <LLD/types/logical.h>
 
 
 namespace LLD
 {
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    APIDB::APIDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
+    LogicalDB::LogicalDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
     : SectorDatabase(std::string("_API")
     , nFlagsIn
     , nBucketsIn
@@ -29,7 +29,7 @@ namespace LLD
 
 
     /** Default Destructor **/
-    APIDB::~APIDB()
+    LogicalDB::~LogicalDB()
     {
     }
 
@@ -44,7 +44,7 @@ namespace LLD
      *  @return True if a session exists in the localdb
      *
      **/
-    bool APIDB::WriteSession(const uint256_t& hashGenesis, const uint64_t nActive)
+    bool LogicalDB::WriteSession(const uint256_t& hashGenesis, const uint64_t nActive)
     {
         return Write(std::make_pair(std::string("access"), hashGenesis), nActive);
     }
@@ -60,7 +60,7 @@ namespace LLD
      *  @return True if a session exists in the localdb
      *
      **/
-    bool APIDB::ReadSession(const uint256_t& hashGenesis, uint64_t &nActive)
+    bool LogicalDB::ReadSession(const uint256_t& hashGenesis, uint64_t &nActive)
     {
         return Read(std::make_pair(std::string("access"), hashGenesis), nActive);
     }

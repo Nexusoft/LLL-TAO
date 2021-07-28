@@ -362,9 +362,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_vrfy.o \
         build/LLC_x509_cert.o \
         build/LLD_address.o \
-		build/LLD_api.o \
         build/LLD_ledger.o \
         build/LLD_legacy.o \
+		build/LLD_logical.o \
 		build/LLD_contract.o \
 		build/LLD_client.o \
         build/LLD_local.o \
