@@ -1194,8 +1194,8 @@ namespace TAO::API
                             const uint64_t nCurrent = (object.get<uint64_t>("supply") - object.get<uint64_t>("balance"));
 
                             /* Populate json values. */
-                            jRet["current_supply"] = FormatBalance(nCurrent, nDecimals);
-                            jRet["max_supply"]     = FormatBalance(object.get<uint64_t>("supply"), nDecimals);
+                            jRet["currentsupply"] = FormatBalance(nCurrent, nDecimals);
+                            jRet["maxsupply"]     = FormatBalance(object.get<uint64_t>("supply"), nDecimals);
                         }
                         else
                             jRet[strName] = FormatBalance(nValue, nDecimals);
