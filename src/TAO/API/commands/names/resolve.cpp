@@ -20,14 +20,14 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Resolves a register address from a name by looking up the Name object. */
-    TAO::Register::Address Names::ResolveAddress(const encoding::json& params, const std::string& strName, const bool fThrow)
+    TAO::Register::Address Names::ResolveAddress(const encoding::json& jParams, const std::string& strName, const bool fThrow)
     {
         /* Declare the return register address hash */
         TAO::Register::Address hashRegister;
 
         /* Get the Name object by name */
         const TAO::Register::Object tObject =
-            Names::GetName(params, strName, hashRegister, fThrow);
+            Names::GetName(jParams, strName, hashRegister, fThrow);
 
         /* Get the address that this name register is pointing to */
         if(tObject.Check("address", TAO::Register::TYPES::UINT256_T, true))

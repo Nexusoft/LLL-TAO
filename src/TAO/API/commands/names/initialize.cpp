@@ -172,6 +172,7 @@ namespace TAO::API
                 "standard"            //the default format
             )
         );
+        
 
         /* DEPRECATED */
         mapFunctions["list/name/history"] = Function
@@ -198,18 +199,5 @@ namespace TAO::API
             , version::get_version(5, 1, 0)
             , "please use names/history/namespace command instead"
         );
-
-        //mapFunctions["create/name"]             = Function(std::bind(&Names::Create,    this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["update/name"]             = Function(std::bind(&Names::UpdateName,    this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["get/name"]                = Function(std::bind(&Names::Get,       this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["transfer/name"]           = Function(std::bind(&Names::TransferName,  this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["claim/name"]              = Function(std::bind(&Names::ClaimName,  this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["list/name/history"]       = Function(std::bind(&Names::NameHistory,   this, std::placeholders::_1, std::placeholders::_2));
-
-        //mapFunctions["create/namespace"]        = Function(std::bind(&Names::CreateNamespace,    this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["get/namespace"]           = Function(std::bind(&Names::GetNamespace,       this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["transfer/namespace"]      = Function(std::bind(&Names::TransferNamespace,  this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["claim/namespace"]         = Function(std::bind(&Names::ClaimNamespace,  this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["list/namespace/history"]  = Function(std::bind(&Names::NamespaceHistory,   this, std::placeholders::_1, std::placeholders::_2));
     }
 }
