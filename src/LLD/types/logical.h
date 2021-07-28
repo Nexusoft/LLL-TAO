@@ -45,7 +45,7 @@ namespace LLD
          *
          *  Writes a session's access time to the database.
          *
-         *  @param[in] hashAddress The register address.
+         *  @param[in] hashGenesis The genesis of session.
          *  @param[in] nActive The timestamp this session was last active
          *
          *  @return True if a session exists in the localdb
@@ -58,13 +58,25 @@ namespace LLD
          *
          *  Reads a session's access time to the database.
          *
-         *  @param[in] hashAddress The register address.
+         *  @param[in] hashGenesis The genesis of session.
          *  @param[out] nActive The timestamp this session was last active
          *
          *  @return True if a session exists in the localdb
          *
          **/
         bool ReadSession(const uint256_t& hashGenesis, uint64_t &nActive);
+
+
+        /** ReadLastIndex
+         *
+         *  Reads the last txid that was indexed.
+         *
+         *  @param[out] hashTx The txid of the last indexed transaction.
+         *
+         *  @return True if a session exists in the localdb
+         *
+         **/
+        bool ReadLastIndex(uint512_t &hashTx);
 
     };
 }

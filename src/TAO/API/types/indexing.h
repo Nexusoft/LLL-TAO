@@ -56,6 +56,14 @@ namespace TAO::API
         ~Indexing();
 
 
+        /** RefreshEvents
+         *
+         *  Checks current events against transaction history to ensure we are up to date.
+         *
+         **/
+        void RefreshEvents();
+
+
         /** Push
          *
          *  Indexing a new transaction to relay thread.

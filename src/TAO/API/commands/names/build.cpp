@@ -13,7 +13,9 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/names.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
+
 #include <TAO/Register/types/object.h>
 
 /* Global TAO namespace. */
@@ -22,10 +24,25 @@ namespace TAO::API
     /* Generic handler for creating new indexes for this specific command-set. */
     void Names::BuildIndexes(const TAO::Operation::Contract& rContract)
     {
-        /* Check the contract's primitive. */
-        const uint8_t nOP =
-            rContract.Operations()[0];
+        /* Get our primitive. */
+        rContract.SeekToPrimitive();
 
-        debug::log(0, "Handling Contract for OP ", uint32_t(nOP));
+        /* Check the contract's primitive. */
+        uint8_t nOP = 0;
+        rContract >> nOP;
+
+        /* Switch based on operation. */
+        switch(nOP)
+        {
+            /* Handle for CREATE. */
+            case TAO::Operation::OP::CREATE:
+            case TAO::Operation::OP::CLAIM:
+            case TAO::Operation::OP::WRITE:
+            {
+                
+            }
+        }
+
+
     }
 }

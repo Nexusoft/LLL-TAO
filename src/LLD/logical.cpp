@@ -34,34 +34,23 @@ namespace LLD
     }
 
 
-    /** WriteSession
-     *
-     *  Writes a session's access time to the database.
-     *
-     *  @param[in] hashAddress The register address.
-     *  @param[in] nActive The timestamp this session was last active
-     *
-     *  @return True if a session exists in the localdb
-     *
-     **/
+    /* Writes a session's access time to the database. */
     bool LogicalDB::WriteSession(const uint256_t& hashGenesis, const uint64_t nActive)
     {
         return Write(std::make_pair(std::string("access"), hashGenesis), nActive);
     }
 
 
-    /** ReadSession
-     *
-     *  Reads a session's access time to the database.
-     *
-     *  @param[in] hashAddress The register address.
-     *  @param[out] nActive The timestamp this session was last active
-     *
-     *  @return True if a session exists in the localdb
-     *
-     **/
+    /* Reads a session's access time to the database. */
     bool LogicalDB::ReadSession(const uint256_t& hashGenesis, uint64_t &nActive)
     {
         return Read(std::make_pair(std::string("access"), hashGenesis), nActive);
+    }
+
+
+    /* Reads the last txid that was indexed. */
+    bool LogicalDB::ReadLastIndex(uint512_t &hashTx)
+    {
+        return Read(std::string("indexing"), hashTx);
     }
 }
