@@ -84,18 +84,16 @@ namespace TAO::API
                     {
                         /* Erase our database entry for old record. */
                         if(LLD::Logical->ErasePTR(hashPreState))
-                            debug::log(0, "PTR record updated for: ", hashName.ToString());
+                            debug::log(3, "PTR record updated for: ", hashName.ToString());
                     }
                 }
 
                 /* Add our PTR record now. */
                 if(LLD::Logical->WritePTR(hashRecord, hashName))
-                    debug::log(0, "PTR record created for: ", hashRecord.ToString(), " => ", hashName.ToString());
+                    debug::log(3, "PTR record created for: ", hashRecord.ToString(), " => ", hashName.ToString());
 
                 break;
             }
         }
-
-
     }
 }

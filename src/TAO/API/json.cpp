@@ -714,7 +714,7 @@ namespace TAO::API
                     jRet["genesis"] = hashGenesis.ToString();
                     jRet["nonce"]   = nExtraNonce;
                     jRet["amount"]  = FormatBalance(nCredit);
-                    jRet["token"]   = 0;
+                    jRet["token"]   = TOKEN::NXS.ToString();
                     jRet["ticker"]  = "NXS";
 
                     break;
@@ -746,7 +746,7 @@ namespace TAO::API
                     jRet["last"]    = hashLastTrust.ToString();
                     jRet["score"]   = nScore;
                     jRet["amount"]  = FormatBalance(nReward);
-                    jRet["token"]   = 0;
+                    jRet["token"]   = TOKEN::NXS.ToString();
                     jRet["ticker"]  = "NXS";
 
                     /* Handle for add stake. */
@@ -814,15 +814,12 @@ namespace TAO::API
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount, hashToken);
+                    jRet["token"]   = hashToken.ToString();
 
-                    /* Handle for NXS hardcoded token name. */
-                    if(hashToken == TOKEN::NXS)
-                    {
-                        jRet["token"]  = 0;
-                        jRet["ticker"] = "NXS";
-                    }
-                    else
-                        jRet["token"]   = hashToken.ToString();
+                    /* Add a ticker if found. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashToken, strName))
+                        jRet["ticker"] = strName;
 
                     /* Add the reference to the response */
                     jRet["reference"] = nReference;
@@ -883,16 +880,12 @@ namespace TAO::API
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nCredit, hashToken);
+                    jRet["token"]   = hashToken.ToString();
 
-                    /* Handle for NXS hardcoded token name. */
-                    if(hashToken == TOKEN::NXS)
-                    {
-                        jRet["token"]  = 0;
-                        jRet["ticker"] = "NXS";
-                    }
-                    else
-                        jRet["token"]   = hashToken.ToString();
-
+                    /* Add a ticker if found. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashToken, strName))
+                        jRet["ticker"] = strName;
 
                     break;
                 }
@@ -932,7 +925,7 @@ namespace TAO::API
                     jRet["amount"]  = FormatBalance(nAmount);
                     jRet["score"]   = nScore;
                     jRet["last"]    = hashLast.ToString();
-                    jRet["token"]   = 0;
+                    jRet["token"]   = TOKEN::NXS.ToString();
                     jRet["ticker"]  = "NXS";
 
                     break;
@@ -973,7 +966,7 @@ namespace TAO::API
                     jRet["OP"]      = "FEE";
                     jRet["from"]    = hashAccount.ToString();
                     jRet["amount"]  = FormatBalance(nFee);
-                    jRet["token"]   = 0;
+                    jRet["token"]   = TOKEN::NXS.ToString();
                     jRet["ticker"]  = "NXS";
 
                     break;
@@ -1007,7 +1000,7 @@ namespace TAO::API
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount);
-                    jRet["token"]   = 0;
+                    jRet["token"]   = TOKEN::NXS.ToString();
                     jRet["ticker"]  = "NXS";
 
                     break;

@@ -121,10 +121,6 @@ namespace TAO::API
             const uint64_t nOutgoing =
                 GetUnconfirmed(hashGenesis, hashToken, true);
 
-            /* Resolve the name of the token name */
-            const std::string strToken =
-                (hashToken != TOKEN::NXS ? Names::ResolveName(hashGenesis, hashToken) : "NXS");
-
             /* Poplate the json response object. */
             encoding::json jBalances;
 
@@ -135,9 +131,10 @@ namespace TAO::API
             jBalances["decimals"]     = nDecimals;
             jBalances["token"]        = hashToken.ToString();
 
-            /* Add the token identifier */
-            if(!strToken.empty())
-                jBalances["token"] = strToken;
+            /* Add a ticker if found. */
+            std::string strName;
+            if(Names::ReverseLookup(hashToken, strName))
+                jBalances["ticker"] = strName;
 
             /* Add stake/immature for NXS only */
             if(hashToken == TOKEN::NXS)

@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/session-manager.h>
 
+#include <TAO/API/include/constants.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -40,6 +42,14 @@ namespace TAO::API
     /* Does a reverse name look-up by PTR records from names API logical indexes. */
     bool Names::ReverseLookup(const uint256_t& hashAddress, std::string &strName)
     {
+        /* Check for regular NXS accounts. */
+        if(hashAddress == TOKEN::NXS)
+        {
+            /* Set to our NXS ticker. */
+            strName = "NXS";
+            return true;
+        }
+
         /* Handle for NXS hardcoded token name. */
         uint256_t hashName;
         if(!LLD::Logical->ReadPTR(hashAddress, hashName))
