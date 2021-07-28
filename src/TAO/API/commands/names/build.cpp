@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/names.h>
+#include <TAO/API/include/execute.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
@@ -39,7 +40,18 @@ namespace TAO::API
             case TAO::Operation::OP::CLAIM:
             case TAO::Operation::OP::WRITE:
             {
-                
+                /* Execute our contract. */
+                TAO::Register::Object tObject =
+                    ExecuteContract(rContract);
+
+                /* Parse our object if we need it. */
+                if(tObject.nType == TAO::Register::REGISTER::OBJECT)
+                    tObject.Parse();
+
+                encoding::json jRet =
+                    RegisterToJSON(tObject);
+
+                debug::log(0, "NEW: ", jRet.dump(4));
             }
         }
 

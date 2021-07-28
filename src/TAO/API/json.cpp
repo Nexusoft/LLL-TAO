@@ -1233,7 +1233,7 @@ namespace TAO::API
 
                         /* Handle for NXS hardcoded token name. */
                         if(hash == TOKEN::NXS)
-                            jRet["token"] = "NXS";
+                            jRet["ticker"] = "NXS";
                     }
 
                     /* Specific rule for register address. */
@@ -1482,7 +1482,7 @@ namespace TAO::API
         /* We only fail here, as we want to isolate returns based on the standards, not parameters. */
         return pBase->EncodeObject(jParams["request"]["type"].get<std::string>(), rObject, hashRegister);
     }
-    
+
 
     /* Recursive helper function for QueryToJSON to recursively generate JSON statements for use with filters. */
     encoding::json StatementToJSON(std::vector<std::string> &vWhere, uint32_t &nIndex, encoding::json &jStatement)

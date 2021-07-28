@@ -455,7 +455,7 @@ namespace TAO
 
             /* Check the map for empty. */
             if(mapData.empty()) //TODO: this should either throw, or this method should return by reference
-                throw false;
+                throw debug::exception(FUNCTION, "object is not parsed");
 
             /* Iterate data map and pull field names out into return vector */
             for(const auto& fieldName : mapData)
