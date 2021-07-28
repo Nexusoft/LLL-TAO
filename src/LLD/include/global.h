@@ -25,7 +25,7 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-
+    extern APIDB*        API;
     extern ContractDB*   Contract;
     extern RegisterDB*   Register;
     extern LedgerDB*     Ledger;
