@@ -53,4 +53,25 @@ namespace LLD
     {
         return Read(std::string("indexing"), hashTx);
     }
+
+
+    /* Writes a register address PTR mapping from address to name address */
+    bool LogicalDB::WritePTR(const uint256_t& hashAddress, const uint256_t& hashName)
+    {
+        return Write(std::make_pair(std::string("ptr"), hashAddress), hashName);
+    }
+
+
+    /* Reads a register address PTR mapping from address to name address */
+    bool LogicalDB::ReadPTR(const uint256_t& hashAddress, uint256_t &hashName)
+    {
+        return Read(std::make_pair(std::string("ptr"), hashAddress), hashName);
+    }
+
+
+    /* Erases a register address PTR mapping */
+    bool LogicalDB::ErasePTR(const uint256_t& hashAddress)
+    {
+        return Erase(std::make_pair(std::string("ptr"), hashAddress));
+    }
 }

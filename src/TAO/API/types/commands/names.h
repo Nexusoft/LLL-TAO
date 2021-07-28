@@ -106,7 +106,7 @@ namespace TAO::API
          *
          *  @return The Name object .
          **/
-        static TAO::Register::Object GetName(const encoding::json& params,
+        static TAO::Register::Object GetName(const encoding::json& jParams,
                                              const std::string& strObjectName,
                                              TAO::Register::Address& hashRegister,
                                              const bool fThrow = true);
@@ -138,9 +138,23 @@ namespace TAO::API
          *
          *  @return The 256 bit hash of the object name.
          **/
-        static TAO::Register::Address ResolveAddress(const encoding::json& params,
+        static TAO::Register::Address ResolveAddress(const encoding::json& jParams,
                                                      const std::string& strName,
                                                      const bool fThrow = true);
+
+
+        /** ReverseLookup
+         *
+         *  Does a reverse name look-up by PTR records from names API logical indexes.
+         *
+         *  @param[in] hashAddress The address we are performing reverse lookup on.
+         *  @param[out] strName The name returned with the lookup
+         *
+         *  @return true if the lookup succeeded with valid ptr records.
+         *
+         **/
+        static bool ReverseLookup(const uint256_t& hashAddress, std::string &strName);
+
 
 
         /** ResolveName

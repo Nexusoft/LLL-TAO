@@ -78,5 +78,43 @@ namespace LLD
          **/
         bool ReadLastIndex(uint512_t &hashTx);
 
+
+        /** WritePTR
+         *
+         *  Writes a register address PTR mapping from address to name address
+         *
+         *  @param[in] hashAddress The address we are mapping.
+         *  @param[in] hashName The name record we are mapping to.
+         *
+         *  @return True if a session exists in the localdb
+         *
+         **/
+        bool WritePTR(const uint256_t& hashAddress, const uint256_t& hashName);
+
+
+        /** ReadPTR
+         *
+         *  Reads a register address PTR mapping from address to name address
+         *
+         *  @param[in] hashAddress The address we are mapping.
+         *  @param[in] hashName The name record we are mapping to.
+         *
+         *  @return True if a session exists in the localdb
+         *
+         **/
+        bool ReadPTR(const uint256_t& hashAddress, uint256_t &hashName);
+
+
+        /** ErasePTR
+         *
+         *  Erases a register address PTR mapping
+         *
+         *  @param[in] hashAddress The address we are mapping.
+         *
+         *  @return True if a session exists in the localdb
+         *
+         **/
+        bool ErasePTR(const uint256_t& hashAddress);
+
     };
 }

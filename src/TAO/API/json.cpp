@@ -1231,9 +1231,10 @@ namespace TAO::API
                         /* Encode token in Base58 Encoding. */
                         jRet["token"] = TAO::Register::Address(hash).ToString();
 
-                        /* Handle for NXS hardcoded token name. */
-                        if(hash == TOKEN::NXS)
-                            jRet["ticker"] = "NXS";
+                        /* Add a ticker if found. */
+                        std::string strName;
+                        if(Names::ReverseLookup(hash, strName))
+                            jRet["ticker"] = strName;
                     }
 
                     /* Specific rule for register address. */

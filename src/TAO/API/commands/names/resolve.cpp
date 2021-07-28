@@ -37,6 +37,28 @@ namespace TAO::API
     }
 
 
+    /* Does a reverse name look-up by PTR records from names API logical indexes. */
+    bool Names::ReverseLookup(const uint256_t& hashAddress, std::string &strName)
+    {
+        /* Handle for NXS hardcoded token name. */
+        uint256_t hashName;
+        if(!LLD::Logical->ReadPTR(hashAddress, hashName))
+            return false;
+
+        /* Get the name object now. */
+        TAO::Register::Object tName;
+        if(!LLD::Register->ReadObject(hashName, tName))
+            return false;
+
+        /* Grab our name from object. */
+        strName = tName.get<std::string>("name");
+
+        return true;
+    }
+
+
+
+
     /* Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashRegister address */
     std::string Names::ResolveName(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister)
     {
