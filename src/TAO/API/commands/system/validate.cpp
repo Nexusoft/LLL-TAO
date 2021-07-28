@@ -50,15 +50,17 @@ namespace TAO::API
             /* Set our response values. */
             jRet["valid"] = true;
             jRet["type"]  = "LEGACY";
-            jRet["mine"]  = false;
 
             #ifndef NO_WALLET
+
+            /* Only populate mine field when wallet enabled. */
+            jRet["mine"]  = false;
 
             /* Legacy address */
             const Legacy::NexusAddress hashAddress = Legacy::NexusAddress(strAddress);
 
             /* Check that we have the key in this wallet. */
-            if(Legacy::Wallet::Instance().HaveKey(hashAddress) 
+            if(Legacy::Wallet::Instance().HaveKey(hashAddress)
             || Legacy::Wallet::Instance().HaveScript(hashAddress.GetHash256()))
                 jRet["mine"] = true;
 
