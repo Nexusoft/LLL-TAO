@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
-#include <TAO/API/dex/types/dex.h>
+#include <TAO/API/types/commands/market.h>
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/voting/types/voting.h>
 

@@ -18,10 +18,10 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /** DEX
+    /** Market
      *
-     *  DEX API Class.
-     *  Manages the function pointers for all DEX exchanges
+     *  Market API Class.
+     *  Manages the function pointers for all P2P Marketplace Exchanges
      *
      **/
     class Market : public Derived<Market>
@@ -54,30 +54,30 @@ namespace TAO::API
         }
 
 
-        /** Buy
+        /** Place
          *
-         *  Create a new BUY order on the Market
+         *  Places an order on the market
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Buy(const encoding::json& params, const bool fHelp);
+        encoding::json Place(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Sell
+        /** Execute
          *
-         *  Create a new SELL order on the Market
+         *  Executes an order on the market
          *
-         *  @param[in] params The parameters from the API call.
+         *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
          *
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Sell(const encoding::json& params, const bool fHelp);
+        encoding::json Execute(const encoding::json& jParams, const bool fHelp);
 
     };
 }
