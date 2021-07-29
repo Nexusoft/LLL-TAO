@@ -119,7 +119,7 @@ namespace TAO::API
      *  @return The amount represented as whole integer value.
      *
      **/
-    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strPrefix = "");
+    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strKey = "");
 
 
     /** ExtractFieldname
@@ -191,10 +191,10 @@ namespace TAO::API
      *
      *  @param[in] jParams The input parameters to extract from.
      *
-     *  @return a string list of types submitted to API
+     *  @return a string set of types submitted to API
      *
      **/
-    std::vector<std::string> ExtractTypes(const encoding::json& jParams);
+    std::set<std::string> ExtractTypes(const encoding::json& jParams);
 
 
 

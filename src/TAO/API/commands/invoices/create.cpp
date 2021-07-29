@@ -109,7 +109,7 @@ namespace TAO::API
         {
             /* The item Unit Amount */
             const uint64_t nUnitAmount =
-                ExtractAmount((*it), nDigits, "unit");
+                ExtractAmount((*it), nDigits);
 
             /* The item number of units */
             const uint64_t nUnits =
@@ -118,7 +118,7 @@ namespace TAO::API
             /* Rebuild our JSON to use correct formatting. */
             const encoding::json jItem =
             {
-                { "unit_amount", FormatBalance(nUnitAmount, nDigits) },
+                { "amount",      FormatBalance(nUnitAmount, nDigits) },
                 { "units",       nUnits }
             };
 

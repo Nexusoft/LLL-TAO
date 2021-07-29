@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/extract.h>
+#include <TAO/API/include/format.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/market.h>
@@ -31,26 +32,92 @@ namespace TAO::API
     /* Create an asset or digital item. */
     encoding::json Market::Place(const encoding::json& jParams, const bool fHelp)
     {
+        /* Get our current object type. */
+        const std::string strType = ExtractType(jParams);
+
+        /* Check for valid types. */
+        if(strType == "order")
+            throw Exception(-36, "Invalid type [order] for command");
+
+        /* Grab our market pair. */
+        const std::pair<uint256_t, uint256_t> pairMarket = ExtractMarket(jParams);
+
         /* Extract our order addresses. */
-        const uint256_t hashRegister  = ExtractAddress(jParams, "from");
-        const uint256_t hashRecipient = ExtractAddress(jParams, "to");
+        const uint256_t hashRegister = ExtractAddress(jParams, "from");
+        const uint256_t hashDeposit  = ExtractAddress(jParams, "deposit");
 
         /* Grab our object we are placing order for. */
-        TAO::Register::Object tDebit;
-        if(!LLD::Register->ReadObject(hashRegister, tDebit))
+        TAO::Register::Object oAccount;
+        if(!LLD::Register->ReadObject(hashRegister, oAccount))
             throw Exception(-13, "Object not found");
+
+        /* Get the token-id of our debiting account. */
+        const uint256_t hashToken =
+            oAccount.get<uint256_t>("token");
+
+        /* Grab our object we are depositing order in. */
+        TAO::Register::Object oDeposit;
+        if(!LLD::Register->ReadObject(hashDeposit, oDeposit))
+            throw Exception(-13, "Object not found");
+
+        /* Get the token-id of our deposit account. */
+        const uint256_t hashRequest =
+            oDeposit.get<uint256_t>("token");
 
         /* Check they have the required funds */
-        const uint64_t nAmount = ExtractAmount(jParams, GetFigures(tDebit), "from");
+        const uint64_t nAmount =
+            ExtractAmount(jParams, GetFigures(pairMarket.second));
 
-        /* Grab our object we are placing order for. */
-        TAO::Register::Object tRecipient;
-        if(!LLD::Register->ReadObject(hashRecipient, tRecipient))
-            throw Exception(-13, "Object not found");
+        /* Extract the price field. */
+        const uint64_t nPrice =
+            ExtractAmount(jParams, GetFigures(pairMarket.second), "price");
 
-        /* Get the amount to debit. */
-        const uint64_t nRequested =
-            ExtractAmount(jParams, GetFigures(tRecipient), "to");
+        /* Calculate our required amount in order. */
+        uint64_t nTotal = 0;
+        if(hashRequest != pairMarket.second)
+        {
+            /* Check our account token types. */
+            if(oDeposit.get<uint256_t>("token") != pairMarket.first)
+                throw Exception(-26, "Invalid parameter [deposit], [", strType, "] requires correct token");
+
+            /* Check our account token types. */
+            if(oAccount.get<uint256_t>("token") != pairMarket.second)
+                throw Exception(-26, "Invalid parameter [from], [", strType, "] requires correct token");
+
+            /* Check our type is bid. */
+            if(strType != "bid")
+                throw Exception(-7, "Unsupported type [", strType, "] for parameters");
+
+            /* A bid is calculated with dividing amount and price. */
+            const double dTotal =
+                (FormatBalance(nAmount, hashToken) / FormatBalance(nPrice, pairMarket.second));
+
+            /* Now re-format using our figures. */
+            nTotal = (dTotal * GetFigures(hashToken));
+        }
+
+        /* Handle for asks. */
+        else
+        {
+            /* Check our account token types. */
+            if(oAccount.get<uint256_t>("token") != pairMarket.first)
+                throw Exception(-26, "Invalid parameter [from], [", strType, "] requires correct token");
+
+            /* Check our account token types. */
+            if(oDeposit.get<uint256_t>("token") != pairMarket.second)
+                throw Exception(-26, "Invalid parameter [deposit], [", strType, "] requires correct token");
+
+            /* Check our type is an ask. */
+            if(strType != "ask")
+                throw Exception(-7, "Unsupported type [", strType, "] for parameters");
+
+            /* A bid is calculated with dividing amount and price. */
+            const double dTotal =
+                (FormatBalance(nAmount, hashRequest) * FormatBalance(nPrice, pairMarket.second));
+
+            /* Now re-format using our figures. */
+            nTotal = (dTotal * GetFigures(hashRequest));
+        }
 
         /* Transation payload. */
         std::vector<TAO::Operation::Contract> vContracts(1);
@@ -59,7 +126,7 @@ namespace TAO::API
 
         /* Create a comparison binary stream we will use for the contract requirement. */
         TAO::Operation::Stream ssCompare;
-        ssCompare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashRecipient << nRequested << uint64_t(0);
+        ssCompare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashDeposit << nTotal << uint64_t(0);
 
         /* This conditional contract will require a DEBIT of given amount. */
         vContracts[0] <= uint8_t(TAO::Operation::OP::GROUP);
@@ -68,7 +135,7 @@ namespace TAO::API
         vContracts[0] <= uint8_t(TAO::Operation::OP::AND);
         vContracts[0] <= uint8_t(TAO::Operation::OP::CALLER::PRESTATE::VALUE) <= std::string("token");
         vContracts[0] <= uint8_t(TAO::Operation::OP::EQUALS);
-        vContracts[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT256_T) <= tRecipient.get<uint256_t>("token");
+        vContracts[0] <= uint8_t(TAO::Operation::OP::TYPES::UINT256_T) <= hashRequest;
         vContracts[0] <= uint8_t(TAO::Operation::OP::UNGROUP);
 
         /* Logical operator between clauses. */

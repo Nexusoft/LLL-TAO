@@ -40,7 +40,7 @@ namespace TAO::API
             throw Exception(-36, "Invalid type [missing] for command.");
 
         /* Grab our type to run some checks against. */
-        const std::vector<std::string> vTypes = ExtractTypes(jParams);
+        const std::set<std::string> setTypes = ExtractTypes(jParams);
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
@@ -53,7 +53,7 @@ namespace TAO::API
         std::set<encoding::json, CompareResults> setRegisters({}, CompareResults(strOrder, strColumn));
 
         /* Loop through our types. */
-        for(const auto& strType : vTypes)
+        for(const auto& strType : setTypes)
         {
             /* Batch read up to 1000 at a time */
             std::vector<TAO::Register::Object> vObjects;

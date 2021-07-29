@@ -19,8 +19,39 @@ namespace TAO::API
     /* Standard initialization function. */
     void Market::Initialize()
     {
+        /* Populate our BID standard. */
+        mapStandards["bid"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                return false;
+            }
+        );
+
+        /* Populate our ASK standard. */
+        mapStandards["ask"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                return false;
+            }
+        );
+
+        /* Populate our ASK standard. */
+        mapStandards["order"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                return false;
+            }
+        );
+
+
         /* Standard contract to create new order. */
-        mapFunctions["place/order"] = Function
+        mapFunctions["create"] = Function
         (
             std::bind
             (
@@ -32,7 +63,7 @@ namespace TAO::API
         );
 
         /* Standard contract to create new order. */
-        mapFunctions["list/orders"] = Function
+        mapFunctions["list"] = Function
         (
             std::bind
             (
@@ -44,7 +75,7 @@ namespace TAO::API
         );
 
         /* Standard contract to execute an order. */
-        mapFunctions["execute/order"] = Function
+        mapFunctions["execute"] = Function
         (
             std::bind
             (

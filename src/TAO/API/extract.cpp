@@ -223,10 +223,11 @@ namespace TAO::API
 
 
     /* Extract an amount value from either string or integer and convert to its final value. */
-    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strPrefix)
+    uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strKey)
     {
         /* Cache our name with prefix calculated. */
-        const std::string strAmount = (strPrefix.empty() ? ("") : (strPrefix + "_")) + "amount";
+        const std::string strAmount =
+            (strKey.empty() ? ("amount") : strKey);
 
         /* Check for missing parameter. */
         if(CheckParameter(jParams, strAmount, "string, number"))
@@ -363,7 +364,7 @@ namespace TAO::API
 
 
     /* Extract the type string value from input parameters as either array or string. */
-    std::vector<std::string> ExtractTypes(const encoding::json& jParams)
+    std::set<std::string> ExtractTypes(const encoding::json& jParams)
     {
         /* Check for our request parameters first, since this method can be called without */
         if(!CheckRequest(jParams, "type", "string, array"))
@@ -374,14 +375,14 @@ namespace TAO::API
         if(jTypes.is_array())
         {
             /* Loop through standards. */
-            std::vector<std::string> vRet;
+            std::set<std::string> setRet;
             for(const auto& jCheck : jTypes)
-                vRet.push_back(jCheck.get<std::string>());
+                setRet.insert(jCheck.get<std::string>());
 
-            return vRet;
+            return setRet;
         }
 
-        return std::vector<std::string>(1, jTypes.get<std::string>());
+        return { jTypes.get<std::string>() };
     }
 
 

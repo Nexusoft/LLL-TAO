@@ -1151,7 +1151,7 @@ namespace TAO::API
                     {
                         /* Calculate our price. */
                         nPrice =
-                            (FormatBalance(nRequest, hashRequest) / FormatBalance(nAmount, hashToken));
+                            (FormatBalance(nAmount, hashToken) / FormatBalance(nRequest, hashRequest));
 
                         /* Check what type of order this is. */
                         strType = "bid";
@@ -1160,7 +1160,7 @@ namespace TAO::API
                     {
                         /* Calculate our price. */
                         nPrice =
-                            (FormatBalance(nAmount, hashToken) / FormatBalance(nRequest, hashRequest));
+                            (FormatBalance(nRequest, hashRequest) / FormatBalance(nAmount, hashToken));
 
                         /* Check what type of order this is. */
                         strType = "ask";

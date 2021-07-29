@@ -30,6 +30,14 @@ namespace TAO::API
     /* Create an asset or digital item. */
     encoding::json Market::List(const encoding::json& jParams, const bool fHelp)
     {
+        /* Get our type strings. */
+        const std::set<std::string> setTypes =
+            ExtractTypes(jParams);
+
+        /* Track if this is a catch-all. */
+        const bool fAll =
+            (setTypes.find("order") != setTypes.end());
+
         /* Grab our market pair. */
         const std::pair<uint256_t, uint256_t> pairMarket  = ExtractMarket(jParams);
         const std::pair<uint256_t, uint256_t> pairReverse = std::make_pair(pairMarket.second, pairMarket.first);
@@ -45,109 +53,113 @@ namespace TAO::API
         encoding::json jRet =
             encoding::json::object();
 
-        /* Get a list of our active orders. */
-        std::vector<std::pair<uint512_t, uint32_t>> vBids;
-        if(LLD::Logical->ListOrders(pairMarket, vBids))
+        /* Check for our bids type. */
+        if(setTypes.find("bid") != setTypes.end() || fAll)
         {
-            /* Build our object list and sort on insert. */
-            std::set<encoding::json, CompareResults> setBids({}, CompareResults(strOrder, strColumn));
-
-            /* Build our list of orders now. */
-            for(const auto& pairOrder : vBids)
+            /* Get a list of our active orders. */
+            std::vector<std::pair<uint512_t, uint32_t>> vBids;
+            if(LLD::Logical->ListOrders(pairMarket, vBids))
             {
-                /* Get our contract now. */
-                const TAO::Operation::Contract tContract =
-                    LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
+                /* Build our object list and sort on insert. */
+                std::set<encoding::json, CompareResults> setBids({}, CompareResults(strOrder, strColumn));
 
-                /* Get our order's json. */
-                encoding::json jOrder =
-                    OrderToJSON(tContract, pairMarket);
+                /* Build our list of orders now. */
+                for(const auto& pairOrder : vBids)
+                {
+                    /* Get our contract now. */
+                    const TAO::Operation::Contract tContract =
+                        LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
 
-                /* Check that we match our filters. */
-                if(!FilterResults(jParams, jOrder))
-                    continue;
+                    /* Get our order's json. */
+                    encoding::json jOrder =
+                        OrderToJSON(tContract, pairMarket);
 
-                /* Insert into set and automatically sort. */
-                setBids.insert(jOrder);
+                    /* Check that we match our filters. */
+                    if(!FilterResults(jParams, jOrder))
+                        continue;
+
+                    /* Insert into set and automatically sort. */
+                    setBids.insert(jOrder);
+                }
+
+                /* Build our return value. */
+                encoding::json jBids = encoding::json::array();
+
+                /* Handle paging and offsets. */
+                uint32_t nTotal = 0;
+                for(const auto& jOrder : setBids)
+                {
+                    /* Check the offset. */
+                    if(++nTotal <= nOffset)
+                        continue;
+
+                    /* Check the limit */
+                    if(jBids.size() == nLimit)
+                        break;
+
+                    jBids.push_back(jOrder);
+                }
+
+                /* Add to our return value. */
+                jRet["bids"] = jBids;
             }
-
-            /* Build our return value. */
-            encoding::json jBids = encoding::json::array();
-
-            /* Handle paging and offsets. */
-            uint32_t nTotal = 0;
-            for(const auto& jOrder : setBids)
-            {
-                /* Check the offset. */
-                if(++nTotal <= nOffset)
-                    continue;
-
-                /* Check the limit */
-                if(jBids.size() == nLimit)
-                    break;
-
-                jBids.push_back(jOrder);
-            }
-
-            /* Add to our return value. */
-            jRet["bids"] = jBids;
+            else
+                jRet["bids"] = encoding::json::array();
         }
-        else
-            jRet["bids"] = encoding::json::array();
 
-        /* Get a list of our active orders. */
-        std::vector<std::pair<uint512_t, uint32_t>> vAsks;
-        if(LLD::Logical->ListOrders(pairReverse, vAsks))
+        /* Check for our bids type. */
+        if(setTypes.find("ask") != setTypes.end() || fAll)
         {
-            /* Build our object list and sort on insert. */
-            std::set<encoding::json, CompareResults> setAsks({}, CompareResults(strOrder, strColumn));
-
-            /* Build our list of orders now. */
-            for(const auto& pairOrder : vAsks)
+            /* Get a list of our active orders. */
+            std::vector<std::pair<uint512_t, uint32_t>> vAsks;
+            if(LLD::Logical->ListOrders(pairReverse, vAsks))
             {
-                /* Get our contract now. */
-                const TAO::Operation::Contract tContract =
-                    LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
+                /* Build our object list and sort on insert. */
+                std::set<encoding::json, CompareResults> setAsks({}, CompareResults(strOrder, strColumn));
 
-                /* Get our order's json. */
-                encoding::json jOrder =
-                    OrderToJSON(tContract, pairMarket);
+                /* Build our list of orders now. */
+                for(const auto& pairOrder : vAsks)
+                {
+                    /* Get our contract now. */
+                    const TAO::Operation::Contract tContract =
+                        LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
 
-                /* Check that we match our filters. */
-                if(!FilterResults(jParams, jOrder))
-                    continue;
+                    /* Get our order's json. */
+                    encoding::json jOrder =
+                        OrderToJSON(tContract, pairMarket);
 
-                /* Insert into set and automatically sort. */
-                setAsks.insert(jOrder);
+                    /* Check that we match our filters. */
+                    if(!FilterResults(jParams, jOrder))
+                        continue;
+
+                    /* Insert into set and automatically sort. */
+                    setAsks.insert(jOrder);
+                }
+
+                /* Build our return value. */
+                encoding::json jAsks = encoding::json::array();
+
+                /* Handle paging and offsets. */
+                uint32_t nTotal = 0;
+                for(const auto& jOrder : setAsks)
+                {
+                    /* Check the offset. */
+                    if(++nTotal <= nOffset)
+                        continue;
+
+                    /* Check the limit */
+                    if(jAsks.size() == nLimit)
+                        break;
+
+                    jAsks.push_back(jOrder);
+                }
+
+                /* Add to our return value. */
+                jRet["asks"] = jAsks;
             }
-
-            /* Build our return value. */
-            encoding::json jAsks = encoding::json::array();
-
-            /* Handle paging and offsets. */
-            uint32_t nTotal = 0;
-            for(const auto& jOrder : setAsks)
-            {
-                /* Check the offset. */
-                if(++nTotal <= nOffset)
-                    continue;
-
-                /* Check the limit */
-                if(jAsks.size() == nLimit)
-                    break;
-
-                jAsks.push_back(jOrder);
-            }
-
-            /* Add to our return value. */
-            jRet["asks"] = jAsks;
+            else
+                jRet["asks"] = encoding::json::array();
         }
-        else
-            jRet["asks"] = encoding::json::array();
-
-        /* Check that we have found some orders. */
-        if(vBids.empty() && vAsks.empty())
-            throw Exception(-24, "No orders found for market");
 
         /* Filter out our expected fieldnames if specified. */
         FilterFieldname(jParams, jRet);

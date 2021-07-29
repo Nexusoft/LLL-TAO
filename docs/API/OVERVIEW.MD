@@ -158,7 +158,7 @@ API Error Codes
 | -4 | API not found (API name) |
 | -5 | Object not available: [message] |
 | -6 | content-type [content type] not supported |
-| -7 | ------------------------------- |
+| -7 | Unsupported type [type] for parameters. |
 | -8 | Unable to Extract Input Address |
 | -9 | Session (session) doesn't exist |
 | -10 | Invalid session ID |
@@ -177,7 +177,7 @@ API Error Codes
 | -23 | Object standard [name] not available for command |
 | -24 | No orders found for market |
 | -25 | Market order invalid contract: message |
-| -26 | -------------------------- |
+| -26 | Invalid parameter [from], [type] requires correct token |
 | -27 | Malformed base64 encoding |
 | -28 | Missing parameter [name] for command |
 | -29 | Unsupported format [type] specified |
