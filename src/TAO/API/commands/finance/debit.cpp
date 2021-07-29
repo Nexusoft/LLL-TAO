@@ -96,40 +96,12 @@ namespace TAO::API
         /* Sending to only one recipient */
         else
         {
-            /* Check for amount parameter. */
-            if(jParams.find("amount") == jParams.end())
-                throw Exception(-46, "Missing amount");
-
-            /* Build a recipeint object from parameters. */
-            encoding::json jRecipient;
-            jRecipient["amount"] = jParams["amount"];
-
-            /* Check for a name_to parameter. */
-            if(jParams.find("name_to") != jParams.end())
-                jRecipient["name_to"] = jParams["name_to"];
-
-            /* Check for a address_to parameter. */
-            if(jParams.find("address_to") != jParams.end())
-                jRecipient["address_to"] = jParams["address_to"];
-
-            /* Check for a reference parameter. */
-            if(jParams.find("reference") != jParams.end())
-                jRecipient["reference"] = jParams["reference"];
-
-            /* Check for a reference parameter. */
-            if(jParams.find("expires") != jParams.end())
-                jRecipient["expires"] = jParams["expires"];
-
-            /* We need to copy session here to get the name. */
-            if(jParams.find("session") != jParams.end())
-                jRecipient["session"] = jParams["session"];
-
             /* Push this to our recipients vector now. */
-            vRecipients.push_back(jRecipient);
+            vRecipients.push_back(jParams); //XXX: we want to optimize this
         }
 
         /* The sending account or token. */
-        const TAO::Register::Address hashFrom = ExtractAddress(jParams);
+        const TAO::Register::Address hashFrom = ExtractAddress(jParams, "from");
         if(hashFrom == TAO::API::ADDRESS_ALL)
         {
             /* Extract a token name if debit from ALL. */

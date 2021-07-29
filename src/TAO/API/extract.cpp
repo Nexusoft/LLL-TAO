@@ -82,6 +82,9 @@ namespace TAO::API
         }
 
         /* This exception is for name/address */
+        if(!strSuffix.empty())
+            throw Exception(-56, "Missing Parameter [", strSuffix, "]");
+
         throw Exception(-56, "Missing Parameter [", strName, "/", strAddr, "]");
     }
 
