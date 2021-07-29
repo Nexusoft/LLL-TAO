@@ -67,10 +67,6 @@ namespace TAO::API
                 if(!FilterResults(jParams, jOrder))
                     continue;
 
-                /* Filter out our expected fieldnames if specified. */
-                if(!FilterFieldname(jParams, jOrder))
-                    continue;
-
                 /* Insert into set and automatically sort. */
                 setBids.insert(jOrder);
             }
@@ -121,10 +117,6 @@ namespace TAO::API
                 if(!FilterResults(jParams, jOrder))
                     continue;
 
-                /* Filter out our expected fieldnames if specified. */
-                if(!FilterFieldname(jParams, jOrder))
-                    continue;
-
                 /* Insert into set and automatically sort. */
                 setAsks.insert(jOrder);
             }
@@ -156,6 +148,9 @@ namespace TAO::API
         /* Check that we have found some orders. */
         if(vBids.empty() && vAsks.empty())
             throw Exception(-24, "No orders found for market");
+
+        /* Filter out our expected fieldnames if specified. */
+        FilterFieldname(jParams, jRet);
 
         return jRet;
     }
