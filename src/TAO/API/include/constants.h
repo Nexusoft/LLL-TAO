@@ -28,7 +28,7 @@ namespace TAO::API
     /** Namespace to hold ticker constants. */
     namespace TOKEN
     {
-        /* Hard coded value for NXS token-id. */
+        /** Hard coded value for NXS token-id. **/
         const uint256_t NXS = uint256_t(0);
     }
 

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/object.h>
 
+#include <Util/include/convert.h>
 #include <Util/include/string.h>
 
 namespace TAO::API
@@ -167,9 +168,9 @@ namespace TAO::API
         /* Check now for floating points. */
         if(jCheck.is_number_float())
         {
-            /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
-            const double dValue  = jCheck.get<double>();
-            const double dCheck  = std::stod(jClause["value"].get<std::string>());
+            /* Grab a copy of our doubles here casting to ints at given figures for efficiency. */
+            const uint64_t dValue  = convert::dtoi(jCheck.get<double>());
+            const uint64_t dCheck  = convert::dtoi(std::stod(jClause["value"].get<std::string>()));
 
             /* Check our not operator. */
             if(strOP == "!=" && dValue != dCheck)
@@ -251,7 +252,7 @@ namespace TAO::API
             if(strOP.find_first_of("<>") != strOP.npos)
                 throw Exception(-57, "Query Syntax Error: only '=' and '!=' operator allowed for type [bool]");
 
-            /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
+            /* Grab a copy of our boolean values to check */
             const bool fValue  = jCheck.get<bool>();
             const bool fCheck  = (ToLower(jClause["value"].get<std::string>()) == "true") ? true : false;
 
