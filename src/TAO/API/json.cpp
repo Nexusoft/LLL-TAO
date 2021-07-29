@@ -1171,7 +1171,7 @@ namespace TAO::API
                     jRet["price"]       = FormatBalance(uint64_t(nPrice * GetFigures(pairMarket.second)), pairMarket.second);
                     jRet["type"]        = strType;
                     jRet["contract"]    = jFrom;
-                    jRet["required"]    = jRequired;
+                    jRet["order"]       = jRequired;
 
                     return jRet;
                 }
