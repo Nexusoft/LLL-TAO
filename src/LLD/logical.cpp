@@ -13,8 +13,9 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/types/logical.h>
+#include <LLD/include/global.h>
 
+#include <TAO/Ledger/include/enum.h>
 
 namespace LLD
 {
@@ -56,24 +57,50 @@ namespace LLD
 
 
     /* Pushes an order to the orderbook stack. */
-    bool LogicalDB::PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket, const uint512_t& hashTx,
-                   const uint64_t nAmount, const uint64_t nRequest)
+    bool LogicalDB::PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket, const uint512_t& hashTx, const uint32_t nContract)
     {
+        /* Get our current sequence number. */
         uint32_t nSequence = 0;
         Read(std::make_pair(std::string("sequence"), pairMarket), nSequence);
 
         /* Start an ACID transaction for this set of records. */
         TxnBegin();
 
+        /* Write our order by sequence number. */
+        if(!Write(std::make_pair(nSequence, pairMarket), std::make_pair(hashTx, nContract)))
+            return false;
+
         /* Write our new sequence to disk. */
         if(!Write(std::make_pair(std::string("sequence"), pairMarket), ++nSequence))
             return false;
 
-        /* Write our order by sequence number. */
-        if(!Write(std::make_pair(nSequence, pairMarket), hashTx))
-            return false;
-
         return TxnCommit();
+    }
+
+
+    /* Pushes an order to the orderbook stack. */
+    bool LogicalDB::ListOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders)
+    {
+        /* Cache our txid and contract as a pair. */
+        std::pair<uint512_t, uint32_t> pairOrder;
+
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Read our current record. */
+            if(!Read(std::make_pair(nSequence, pairMarket), pairOrder))
+                break;
+
+            /* Check for already executed contracts to omit. */
+            if(!LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL))
+                vOrders.push_back(pairOrder);
+
+            /* Increment our sequence number. */
+            ++nSequence;
+        }
+
+        return !vOrders.empty();
     }
 
 

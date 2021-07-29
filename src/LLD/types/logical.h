@@ -91,8 +91,20 @@ namespace LLD
          *  @return true if written successfully
          *
          **/
-        bool PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket, const uint512_t& hashTx,
-                       const uint64_t nAmount, const uint64_t nRequest);
+        bool PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket, const uint512_t& hashTx, const uint32_t nContract);
+
+
+        /** ListOrders
+         *
+         *  Pushes an order to the orderbook stack.
+         *
+         *  @param[in] pairMarket The market-pair of token-id's
+         *  @param[in] vOrders The list of orders extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders);
 
 
         /** WritePTR

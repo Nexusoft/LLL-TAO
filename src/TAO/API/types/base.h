@@ -174,9 +174,10 @@ namespace TAO::API
          *  This handler takes a contract and generates indexes according to command's logic.
          *
          *  @param[in] rContract The contract we are building indexes for.
+         *  @param[in] nContract The contract-id we are building for.
          *
          **/
-        virtual void BuildIndexes(const TAO::Operation::Contract& rContract) { }
+        virtual void BuildIndexes(const TAO::Operation::Contract& rContract, const uint32_t nContract) { }
     };
 
 

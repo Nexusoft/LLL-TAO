@@ -85,14 +85,14 @@ namespace TAO::API
             for(const auto& tx : vtx)
             {
                 /* Iterate the transaction contracts. */
-                for(uint32_t n = 0; n < tx.Size(); ++n)
+                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
                 {
                     /* Grab contract reference. */
-                    const TAO::Operation::Contract& rContract = tx[n];
+                    const TAO::Operation::Contract& rContract = tx[nContract];
 
                     /* Process our command-set indexing. */
-                    Commands::Get("names") ->BuildIndexes(rContract);
-                    Commands::Get("market")->BuildIndexes(rContract);
+                    Commands::Get("names") ->BuildIndexes(rContract, nContract);
+                    Commands::Get("market")->BuildIndexes(rContract, nContract);
                 }
 
                 /* Update the scanned count for meters. */
@@ -166,13 +166,15 @@ namespace TAO::API
             if(!LLD::Ledger->ReadTx(hashTx, tx))
                 continue;
 
-            /* Check all the tx contracts. */
-            for(uint32_t n = 0; n < tx.Size(); ++n)
+            /* Iterate the transaction contracts. */
+            for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
             {
-                const TAO::Operation::Contract& rContract = tx[n];
+                /* Grab contract reference. */
+                const TAO::Operation::Contract& rContract = tx[nContract];
 
                 /* Process our command-set indexing. */
-                Commands::Get("names")->BuildIndexes(rContract);
+                Commands::Get("names") ->BuildIndexes(rContract, nContract);
+                Commands::Get("market")->BuildIndexes(rContract, nContract);
             }
         }
     }

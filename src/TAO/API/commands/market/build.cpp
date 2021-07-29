@@ -27,7 +27,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Generic handler for creating new indexes for this specific command-set. */
-    void Market::BuildIndexes(const TAO::Operation::Contract& rContract)
+    void Market::BuildIndexes(const TAO::Operation::Contract& rContract, const uint32_t nContract)
     {
         /* Start our stream at 0. */
         rContract.Reset();
@@ -62,7 +62,7 @@ namespace TAO::API
                     rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
 
                     /* Grab our token-id now. */
-                    TAO::Register::Address hashFirst;
+                    uint256_t hashFirst;
                     rContract >= hashFirst;
 
                     /* Grab our other token from pre-state. */
@@ -73,25 +73,12 @@ namespace TAO::API
                         tPreState.Parse();
 
                     /* Grab the rhs token. */
-                    TAO::Register::Address hashSecond =
+                    const uint256_t hashSecond =
                         tPreState.get<uint256_t>("token");
 
                     /* Create our market-pair. */
-                    std::pair<uint256_t, uint256_t> pairMarket;
-
-                    /* Regular sorting by token-id. */
-                    if(hashFirst > hashSecond)
-                    {
-                        pairMarket.first  = hashFirst;
-                        pairMarket.second = hashSecond;
-                    }
-
-                    /* Reverse sort. */
-                    else
-                    {
-                        pairMarket.first  = hashSecond;
-                        pairMarket.second = hashFirst;
-                    }
+                    const std::pair<uint256_t, uint256_t> pairMarket =
+                        std::make_pair(hashFirst, hashSecond);
 
                     /* Extract the data from the bytes. */
                     TAO::Operation::Stream ssCompare(vBytes);
@@ -104,8 +91,6 @@ namespace TAO::API
                     /* Get the amount requested. */
                     uint64_t nAmount = 0;
                     ssCompare >> nAmount;
-
-                    
                 }
                 catch(const std::exception& e)
                 {
