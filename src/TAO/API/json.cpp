@@ -1132,17 +1132,44 @@ namespace TAO::API
                     /* Build our from object. */
                     encoding::json jRequired =
                     {
-                        { "OP",    "DEBIT"                               },
-                        { "to",    hashTo.ToString()                     },
+                        { "OP",     "DEBIT"                              },
+                        { "to",     hashTo.ToString()                    },
                         { "amount", FormatBalance(nRequest, hashRequest) },
-                        { "token", hashRequest.ToString()                }
+                        { "token",  hashRequest.ToString()               }
                     };
 
                     /* Add a ticker if found. */
                     if(Names::ReverseLookup(hashRequest, strName))
                         jRequired["ticker"] = strName;
 
+                    /* Calculate our price based on market pairs. */
+                    double nPrice = 0.0;
+
+                    /* Handle if required is our base token. */
+                    std::string strType = "";
+                    if(hashRequest != pairMarket.second)
+                    {
+                        /* Calculate our price. */
+                        nPrice =
+                            (FormatBalance(nRequest, hashRequest) / FormatBalance(nAmount, hashToken));
+
+                        /* Check what type of order this is. */
+                        strType = "bid";
+                    }
+                    else
+                    {
+                        /* Calculate our price. */
+                        nPrice =
+                            (FormatBalance(nAmount, hashToken) / FormatBalance(nRequest, hashRequest));
+
+                        /* Check what type of order this is. */
+                        strType = "ask";
+                    }
+
+
                     /* Now populate the rest of our data. */
+                    jRet["price"]       = FormatBalance(uint64_t(nPrice * GetFigures(pairMarket.second)), pairMarket.second);
+                    jRet["type"]        = strType;
                     jRet["contract"]    = jFrom;
                     jRet["required"]    = jRequired;
 

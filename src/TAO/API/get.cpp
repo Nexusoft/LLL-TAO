@@ -36,18 +36,30 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /** GetFigures
-     *
-     *  Converts the decimals from an object into raw figures using power function
-     *
-     *  @param[in] object The Object Register to derive the figures from
-     *
-     *  @return the whole 64-bit value with figures expanded
-     *
-     **/
+    /* Converts the decimals from an object into raw figures using power function */
     uint64_t GetFigures(const TAO::Register::Object& object)
     {
         return math::pow(10, GetDecimals(object));
+    }
+
+
+    /* Converts the decimals from an object into raw figures using power function */
+    uint64_t GetFigures(const uint256_t& hashToken)
+    {
+        /* Check for NXS as a value. */
+        if(hashToken == 0)
+            return TAO::Ledger::NXS_COIN;
+
+        /* Otherwise let's lookup our token object. */
+        TAO::Register::Object tToken;
+        if(!LLD::Register->ReadObject(hashToken, tToken))
+            throw Exception(-13, "Object not found");
+
+        /* Let's check that a token was passed in. */
+        if(tToken.Standard() != TAO::Register::OBJECTS::TOKEN)
+            throw Exception(-15, "Object is not a token");
+
+        return math::pow(10, tToken.get<uint8_t>("decimals"));
     }
 
 

@@ -34,6 +34,18 @@ namespace TAO::API
     uint64_t GetFigures(const TAO::Register::Object& object);
 
 
+    /** GetFigures
+     *
+     *  Converts the decimals from an object into raw figures using power function
+     *
+     *  @param[in] hashToken The token address we are getting figures for.
+     *
+     *  @return the whole 64-bit value with figures expanded
+     *
+     **/
+    uint64_t GetFigures(const uint256_t& hashToken);
+
+
     /** GetDecimals
      *
      *  Retrieves the number of decimals that applies to amounts for this token or account object.
