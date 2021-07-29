@@ -102,26 +102,80 @@ namespace TAO::API
             if(a.find(strColumn) == a.end() || b.find(strColumn) == b.end())
                 return fDesc;
 
-            /* Handle based on integer type. */
-            if(a[strColumn].is_number())
+            /* Handle based on unsigned integer type. */
+            if(a[strColumn].is_number_unsigned())
             {
+                /* Grab both of our values. */
+                const uint64_t nA = a[strColumn].get<uint64_t>();
+                const uint64_t nB = b[strColumn].get<uint64_t>();
+
+                /* Check if they are equal. */
+                if(nA == nB)
+                    return fDesc;
+
                 /* Regular descending sort. */
                 if(fDesc)
-                    return a[strColumn].get<uint64_t>() > b[strColumn].get<uint64_t>();
+                    return nA > nB;
 
                 /* Ascending sorting. */
-                return a[strColumn].get<uint64_t>() < b[strColumn].get<uint64_t>();
+                return nA < nB;
+            }
+
+            /* Handle based on signed integer type. */
+            else if(a[strColumn].is_number_integer())
+            {
+                /* Grab both of our values. */
+                const int64_t nA = a[strColumn].get<int64_t>();
+                const int64_t nB = b[strColumn].get<int64_t>();
+
+                /* Check if they are equal. */
+                if(nA == nB)
+                    return fDesc;
+
+                /* Regular descending sort. */
+                if(fDesc)
+                    return nA > nB;
+
+                /* Ascending sorting. */
+                return nA < nB;
+            }
+
+            /* Handle based on signed integer type. */
+            else if(a[strColumn].is_number_float())
+            {
+                /* Grab both of our values. */
+                const double nA = a[strColumn].get<double>();
+                const double nB = b[strColumn].get<double>();
+
+                /* Check if they are equal. */
+                if(nA == nB)
+                    return fDesc;
+
+                /* Regular descending sort. */
+                if(fDesc)
+                    return nA > nB;
+
+                /* Ascending sorting. */
+                return nA < nB;
             }
 
             /* Handle based on integer type. */
-            if(a[strColumn].is_string())
+            else if(a[strColumn].is_string())
             {
+                /* Grab both of our values. */
+                const std::string strA = a[strColumn].get<std::string>();
+                const std::string strB = b[strColumn].get<std::string>();
+
+                /* Check if they are equal. */
+                if(strA == strB)
+                    return fDesc;
+
                 /* Regular descending sort. */
                 if(fDesc)
-                    return a[strColumn].get<std::string>() > b[strColumn].get<std::string>();
+                    return strA > strB;
 
                 /* Ascending sorting. */
-                return a[strColumn].get<std::string>() < b[strColumn].get<std::string>();
+                return strA < strB;
             }
 
             throw Exception(-57, "Invalid Parameter [", strColumn, "=", a[strColumn].type_name(), "]");

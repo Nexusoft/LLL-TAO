@@ -196,7 +196,7 @@ namespace TAO::API
             /* Handle for unsigned integers. */
             if(jCheck.is_number_unsigned())
             {
-                /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
+                /* Grab a copy of our integer values to check */
                 const uint64_t nValue  = jCheck.get<uint64_t>();
                 const uint64_t nCheck  = std::stoull(jClause["value"].get<std::string>());
 
@@ -220,7 +220,7 @@ namespace TAO::API
             }
             else
             {
-                /* Grab a copy of our doubles here: XXX: we may want to convert and compare as ints. */
+                /* Grab a copy of our integer values to check */
                 const int64_t nValue  = jCheck.get<int64_t>();
                 const int64_t nCheck  = std::stoll(jClause["value"].get<std::string>());
 
