@@ -81,15 +81,28 @@ namespace TAO::API
      *
      *  Converts a serialized contract stream to formattted JSON
      *
-     *  @param[in] contract The contract to de-serialize
+     *  @param[in] rContract The contract to de-serialize
      *  @param[in] nContract the id of the contract within the transaction
      *  @param[in] nVerbose The verbose output level.
      *
      *  @return the formatted JSON object
      *
      **/
-    __attribute__((pure)) encoding::json ContractToJSON(const TAO::Operation::Contract& contract,
+    __attribute__((pure)) encoding::json ContractToJSON(const TAO::Operation::Contract& rContract,
                                                         const uint32_t nContract, const uint32_t nVerbose = 0);
+
+
+    /** OrderToJSON
+     *
+     *  Converts an order for marketplace into formatted JSON.
+     *
+     *  @param[in] rContract The contract to de-serialize
+     *  @param[in] pairMarket The market pair ordering.
+     *
+     *  @return the formatted JSON object
+     *
+     **/
+    __attribute__((pure)) encoding::json OrderToJSON(const TAO::Operation::Contract& rContract, const std::pair<uint256_t, uint256_t>& pairMarket);
 
     /** RegisterToJSON
      *

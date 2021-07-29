@@ -176,7 +176,7 @@ API Error Codes
 | -22 | Field [name] is a reserved field name |
 | -23 | Object standard [name] not available for command |
 | -24 | Market pair not found |
-| -25 | -------------------------- |
+| -25 | Market order invalid contract: message |
 | -26 | -------------------------- |
 | -27 | Malformed base64 encoding |
 | -28 | Missing parameter [name] for command |
