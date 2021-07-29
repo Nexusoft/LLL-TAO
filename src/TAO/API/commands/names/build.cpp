@@ -48,49 +48,64 @@ namespace TAO::API
                     return;
 
                 /* Execute our contract. */
-                TAO::Register::Object tObject =
+                TAO::Register::Object oName =
                     ExecuteContract(rContract);
 
                 /* Parse our object if we need it. */
-                if(tObject.nType == TAO::Register::REGISTER::OBJECT)
-                    tObject.Parse();
+                if(oName.nType == TAO::Register::REGISTER::OBJECT)
+                    oName.Parse();
 
                 /* Check for wanted standards. */
-                const uint8_t nStandard = tObject.Standard();
+                const uint8_t nStandard = oName.Standard();
                 if(nStandard != TAO::Register::OBJECTS::NAME)
                     return; //we don't need to work on any other object
 
                 /* Grab our record now. */
                 const TAO::Register::Address hashRecord =
-                    tObject.get<uint256_t>("address");
+                    oName.get<uint256_t>("address");
 
                 /* Special pre-state logic. */
                 if(nOP == TAO::Operation::OP::WRITE)
                 {
                     /* Grab our pre-state. */
-                    TAO::Register::Object tPreState =
+                    TAO::Register::Object oPrestate =
                         rContract.PreState();
 
                     /* Parse our object if we need it. */
-                    if(tPreState.nType == TAO::Register::REGISTER::OBJECT)
-                        tPreState.Parse();
+                    if(oPrestate.nType == TAO::Register::REGISTER::OBJECT)
+                        oPrestate.Parse();
 
                     /* Get our initial ptr record. */
                     const TAO::Register::Address hashPreState =
-                        tPreState.get<uint256_t>("address");
+                        oPrestate.get<uint256_t>("address");
 
                     /* Check if our ptr record has been updated. */
                     if(hashPreState != hashRecord)
                     {
-                        /* Erase our database entry for old record. */
-                        if(LLD::Logical->ErasePTR(hashPreState))
-                            debug::log(3, "PTR record updated for: ", hashName.ToString());
+                        /* Read our object to make sure owner is updating ptr. */
+                        TAO::Register::Object oAddress;
+                        if(LLD::Register->ReadObject(hashPreState, oAddress, TAO::Ledger::FLAGS::MEMPOOL)
+                        && oPrestate.hashOwner == oAddress.hashOwner)
+                        {
+                            /* Erase our database entry for old record. */
+                            if(LLD::Logical->ErasePTR(hashPreState))
+                                debug::log(3, "PTR record updated for: ", hashName.ToString());
+                        }
                     }
                 }
 
                 /* Don't write PTR if one exists already. */
                 if(LLD::Logical->HasPTR(hashRecord))
-                    return; //so someone can't hijack another's PTR records, first come, first serve
+                    return;
+
+                /* Read our object to make sure owner is updating ptr. */
+                TAO::Register::Object oRecord;
+                if(!LLD::Register->ReadObject(hashRecord, oRecord, TAO::Ledger::FLAGS::MEMPOOL))
+                    return;
+
+                /* Only add PTR record when both address and name are owned by same person. */
+                if(oRecord.hashOwner != oName.hashOwner)
+                    return;
 
                 /* Add our PTR record now. */
                 if(LLD::Logical->WritePTR(hashRecord, hashName))

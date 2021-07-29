@@ -14,17 +14,16 @@ ________________________________________________________________________________
 #pragma once
 
 #include <LLC/types/uint1024.h>
+
+#include <TAO/Register/types/address.h>
+
 #include <Util/include/json.h>
 
 namespace Legacy         { class Transaction; }
 
 /* Forward declarations. */
 namespace TAO::Operation { class Contract;    }
-namespace TAO::Register
-{
-    class Object;
-    class Address;
-}
+namespace TAO::Register  { class Object;      }
 namespace TAO::Ledger
 {
     class Transaction;
@@ -114,7 +113,8 @@ namespace TAO::API
      *  @return the formatted JSON object
      *
      **/
-    __attribute__((const)) encoding::json RegisterToJSON(const TAO::Register::Object& object, const uint256_t& hashRegister = 0);
+    __attribute__((const)) encoding::json RegisterToJSON(const TAO::Register::Object& object,
+                                                         const TAO::Register::Address& hashRegister = 0);
 
 
     /** MembersToJSON
