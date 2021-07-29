@@ -29,7 +29,8 @@ namespace TAO::API
     encoding::json Market::Execute(const encoding::json& jParams, const bool fHelp)
     {
         /* Check for from parameter. */
-        const uint256_t hashAddress = ExtractAddress(jParams);
+        const uint256_t hashAddress =
+            ExtractAddress(jParams, "from");
 
         /* Get our txid. */
         const uint512_t hashOrder   = ExtractHash(jParams);
