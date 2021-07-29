@@ -73,6 +73,19 @@ namespace TAO::API
         encoding::json Place(const encoding::json& jParams, const bool fHelp);
 
 
+        /** List
+         *
+         *  Lists an order for the given marketplace.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json List(const encoding::json& jParams, const bool fHelp);
+
+
         /** Execute
          *
          *  Executes an order on the market

@@ -47,6 +47,31 @@ namespace TAO::API
     uint256_t ExtractToken(const encoding::json& jParams);
 
 
+    /** ExtractAddress
+     *
+     *  Extract an address from a single string.
+     *
+     *  @param[in] jParams The parameters to find address in.
+     *  @param[in] strAddress The parameters to find address in.
+     *
+     *  @return The register address if valid.
+     *
+     **/
+    uint256_t ExtractAddress(const std::string& strAddress, const encoding::json& jParams);
+
+
+    /** ExtractMarket
+     *
+     *  Extract a market identification from incoming parameters
+     *
+     *  @param[in] jParams The parameters to find address in.
+     *
+     *  @return The market trading pari
+     *
+     **/
+    std::pair<uint256_t, uint256_t> ExtractMarket(const encoding::json& jParams);
+
+
     /** ExtractGenesis
      *
      *  Extract a genesis-id from input parameters which could be either username or genesis keys.

@@ -152,6 +152,49 @@ namespace TAO::API
     }
 
 
+    /* Extract an address from a single string. */
+    uint256_t ExtractAddress(const std::string& strAddress, const encoding::json& jParams)
+    {
+        /* Declare our return value. */
+        const TAO::Register::Address hashRet =
+            TAO::Register::Address(strAddress);
+
+        /* Check that it is valid */
+        if(hashRet.IsValid())
+            return hashRet;
+
+        /* Allow address to be a name record as well. */
+        return Names::ResolveAddress(jParams, strAddress);
+    }
+
+
+    /* Extract a market identification from incoming parameters */
+    std::pair<uint256_t, uint256_t> ExtractMarket(const encoding::json& jParams)
+    {
+        /* Check that the market parameter exists. */
+        if(!CheckParameter(jParams, "market", "string"))
+            throw Exception(-56, "Missing Parameter [market]");
+
+        /* Get our pair string. */
+        const std::string& strMarket = jParams["market"].get<std::string>();
+
+        /* Parse into components. */
+        std::vector<std::string> vMarkets;
+        ParseString(strMarket, '/', vMarkets);
+
+        /* Check expected sizes match. */
+        if(vMarkets.size() != 2)
+            throw Exception(-35, "Invalid parameter [market], expecting [ABC/DEF]");
+
+        /* Build our new pair and return. */
+        return std::make_pair
+        (
+            ExtractAddress(vMarkets[0], jParams),
+            ExtractAddress(vMarkets[1], jParams)
+        );
+    }
+
+
     /* Extract a genesis-id from input parameters which could be either username or genesis keys. */
     uint256_t ExtractGenesis(const encoding::json& jParams)
     {
