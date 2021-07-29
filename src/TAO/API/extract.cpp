@@ -37,18 +37,7 @@ namespace TAO::API
     {
         /* Check for our raw suffix formats here i.e. to, from, proof. */
         if(CheckParameter(jParams, strSuffix, "string"))
-        {
-            /* Declare our return value. */
-            const TAO::Register::Address hashRet =
-                TAO::Register::Address(jParams[strSuffix].get<std::string>());
-
-            /* Check that it is valid */
-            if(hashRet.IsValid())
-                return hashRet;
-
-            /* Allow address to be a name record as well. */
-            return Names::ResolveAddress(jParams, jParams[strSuffix].get<std::string>());
-        }
+            return ExtractAddress(jParams[strSuffix].get<std::string>(), jParams);
 
         /* Cache a couple keys we will be using. */
         const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
@@ -69,24 +58,12 @@ namespace TAO::API
             if(hashRet.IsValid())
                 return hashRet;
 
-            /* Allow address to be a name record as well. */
-            return Names::ResolveAddress(jParams, jParams[strAddr].get<std::string>());
+            throw Exception(-35, "Invalid parameter [", strAddr, "], expecting [Base58]");
         }
 
         /* Check for our default values. */
         else if(!strDefault.empty())
-        {
-            /* Declare our return value. */
-            const TAO::Register::Address hashRet =
-                TAO::Register::Address(strDefault);
-
-            /* Check that this is valid address, invalid will be if default value is a name. */
-            if(hashRet.IsValid())
-                return hashRet;
-
-            /* Allow address to be a name record as well. */
-            return Names::ResolveAddress(jParams, strDefault);
-        }
+            return ExtractAddress(strDefault, jParams);
 
         /* Check for any/all request types. */
         if(CheckRequest(jParams, "type", "string"))
@@ -104,16 +81,8 @@ namespace TAO::API
                 return TAO::API::ADDRESS_ANY;
         }
 
-        /* This exception is for name_to/address_to */
-        if(strSuffix == "to")
-            throw Exception(-64, "Missing recipient account name_to / address_to");
-
-        /* This exception is for name_proof/address_proof */
-        if(strSuffix == "proof")
-            throw Exception(-54, "Missing name_proof / address_proof to credit");
-
         /* This exception is for name/address */
-        throw Exception(-33, "Missing name / address");
+        throw Exception(-56, "Missing Parameter [", strName, "/", strAddr, "]");
     }
 
 
@@ -132,21 +101,7 @@ namespace TAO::API
 
         /* Otherwise let's check for the raw address format. */
         else if(CheckParameter(jParams, "token", "string"))
-        {
-            /* Declare our return value. */
-            const TAO::Register::Address hashRet =
-                TAO::Register::Address(jParams["token"].get<std::string>());
-
-            /* Check that it is valid */
-            if(hashRet.IsValid())
-                return hashRet;
-
-            /* Check for default NXS token or empty name fields. */
-            if(jParams["token"].get<std::string>() == "NXS")
-                return 0;
-
-            return Names::ResolveAddress(jParams, jParams["token"].get<std::string>());
-        }
+            return ExtractAddress(jParams["token"].get<std::string>(), jParams);
 
         return 0;
     }

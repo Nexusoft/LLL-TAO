@@ -24,6 +24,10 @@ namespace TAO::API
     /* Resolves a register address from a name by looking up the Name object. */
     TAO::Register::Address Names::ResolveAddress(const encoding::json& jParams, const std::string& strName, const bool fThrow)
     {
+        /* Check for the NXS ticker. */
+        if(strName == "NXS")
+            return TOKEN::NXS;
+
         /* Declare the return register address hash */
         TAO::Register::Address hashRegister;
 
