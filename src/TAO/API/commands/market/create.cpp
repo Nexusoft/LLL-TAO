@@ -30,7 +30,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Create an asset or digital item. */
-    encoding::json Market::Place(const encoding::json& jParams, const bool fHelp)
+    encoding::json Market::Create(const encoding::json& jParams, const bool fHelp)
     {
         /* Get our current object type. */
         const std::string strType = ExtractType(jParams);

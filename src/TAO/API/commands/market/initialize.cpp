@@ -55,7 +55,7 @@ namespace TAO::API
         (
             std::bind
             (
-                &Market::Place,
+                &Market::Create,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

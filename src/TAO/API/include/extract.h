@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
 
+#include <set>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {

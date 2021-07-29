@@ -60,9 +60,9 @@ namespace TAO::API
         void BuildIndexes(const TAO::Operation::Contract& rContract, const uint32_t nContract) override;
 
 
-        /** Place
+        /** Create
          *
-         *  Places an order on the market
+         *  Create an order on the market
          *
          *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
@@ -70,7 +70,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Place(const encoding::json& jParams, const bool fHelp);
+        encoding::json Create(const encoding::json& jParams, const bool fHelp);
 
 
         /** List
