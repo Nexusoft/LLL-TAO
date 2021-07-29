@@ -28,70 +28,28 @@ namespace TAO::API
     /* Create an asset or digital item. */
     encoding::json Market::List(const encoding::json& jParams, const bool fHelp)
     {
-        /* Check for from parameter. */
-        const uint256_t hashAddress = ExtractAddress(jParams);
+        /* Grab our market pair. */
+        const std::pair<uint256_t, uint256_t> pairMarket = ExtractMarket(jParams);
 
-        /* Get our txid. */
-        const uint512_t hashOrder   = ExtractHash(jParams);
+        /* Get a list of our active orders. */
+        std::vector<std::pair<uint512_t, uint32_t>> vOrders;
+        if(!LLD::Logical->ListOrders(pairMarket, vOrders))
+            throw Exception(-24, "Market pair not found");
 
-        /* Read the previous transaction. */
-        TAO::Ledger::Transaction tx;
-        if(!LLD::Ledger->ReadTx(hashOrder, tx))
-            throw Exception(-40, "Previous transaction not found.");
-
-        /* Loop through all transactions. */
-        std::vector<TAO::Operation::Contract> vContracts;
-        for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+        /* Build our list of orders now. */
+        encoding::json jRet = encoding::json::array();
+        for(const auto& pairOrder : vOrders)
         {
-            /* Get the contract. */
-            const TAO::Operation::Contract& rContract = tx[nContract];
-
-            /* Get the operation byte. */
-            uint8_t nType = 0;
-            rContract >> nType;
-
-            /* Switch based on type. */
-            switch(nType)
+            /* Build our order's json. */
+            const encoding::json jOrder =
             {
-                /* Check that transaction has a condition. */
-                case TAO::Operation::OP::CONDITION:
-                {
-                    /* Get the next OP. */
-                    rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
+                { "txid",     pairOrder.first.ToString() },
+                { "contract", pairOrder.second           }
+            };
 
-                    /* Get the comparison bytes. */
-                    std::vector<uint8_t> vBytes;
-                    rContract >= vBytes;
-
-                    /* Extract the data from the bytes. */
-                    TAO::Operation::Stream ssCompare(vBytes);
-                    ssCompare.seek(33);
-
-                    /* Get the address to. */
-                    uint256_t hashTo;
-                    ssCompare >> hashTo;
-
-                    /* Get the amount requested. */
-                    uint64_t nAmount = 0;
-                    ssCompare >> nAmount;
-
-                    /* Build the transaction. */
-                    TAO::Operation::Contract tContract;
-                    tContract << uint8_t(TAO::Operation::OP::VALIDATE) << hashOrder   << nContract;
-                    tContract << uint8_t(TAO::Operation::OP::DEBIT)    << hashAddress << hashTo << nAmount << uint64_t(0);
-
-                    /* Add contract to our queue. */
-                    vContracts.push_back(tContract);
-
-                    break;
-                }
-            }
+            jRet.push_back(jOrder);
         }
 
-        /* Check that output was found. */
-        if(vContracts.empty())
-            throw Exception(-43, "No valid contracts in tx.");
-
-        return BuildResponse(jParams, hashAddress, vContracts);
+        return jRet;
     }
 }

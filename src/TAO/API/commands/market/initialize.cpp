@@ -31,6 +31,18 @@ namespace TAO::API
             )
         );
 
+        /* Standard contract to create new order. */
+        mapFunctions["list/orders"] = Function
+        (
+            std::bind
+            (
+                &Market::List,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Standard contract to execute an order. */
         mapFunctions["execute/order"] = Function
         (

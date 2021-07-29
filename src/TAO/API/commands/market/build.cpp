@@ -80,17 +80,9 @@ namespace TAO::API
                     const std::pair<uint256_t, uint256_t> pairMarket =
                         std::make_pair(hashFirst, hashSecond);
 
-                    /* Extract the data from the bytes. */
-                    TAO::Operation::Stream ssCompare(vBytes);
-                    ssCompare.seek(33);
-
-                    /* Get the address to. */
-                    uint256_t hashTo;
-                    ssCompare >> hashTo;
-
-                    /* Get the amount requested. */
-                    uint64_t nAmount = 0;
-                    ssCompare >> nAmount;
+                    /* Write the order to logical database. */
+                    if(!LLD::Contract->HasContract(std::make_pair(rContract.Hash(), nContract)))
+                        LLD::Logical->PushOrder(pairMarket, rContract.Hash(), nContract);
                 }
                 catch(const std::exception& e)
                 {

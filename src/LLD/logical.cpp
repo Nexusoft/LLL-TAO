@@ -56,6 +56,13 @@ namespace LLD
     }
 
 
+    /* Writes the last txid that was indexed. */
+    bool LogicalDB::WriteLastIndex(const uint512_t& hashTx)
+    {
+        return Write(std::string("indexing"), hashTx);
+    }
+
+
     /* Pushes an order to the orderbook stack. */
     bool LogicalDB::PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket, const uint512_t& hashTx, const uint32_t nContract)
     {

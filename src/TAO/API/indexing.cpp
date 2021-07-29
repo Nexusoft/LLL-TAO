@@ -60,7 +60,13 @@ namespace TAO::API
 
         /* Check if we have a last entry. */
         uint512_t hashLast;
-        if(!LLD::Logical->ReadLastIndex(hashLast))
+
+        /* See if we need to bootstrap indexes. */
+        const bool fIndexed =
+            LLD::Logical->ReadLastIndex(hashLast);
+
+        /* Handle first key if needed. */
+        if(!fIndexed)
         {
             /* Grab our starting txid by quick read. */
             if(LLD::Ledger->BatchRead("tx", vtx, 1))
@@ -78,7 +84,7 @@ namespace TAO::API
         {
             /* Read the next batch of inventory. */
             std::vector<TAO::Ledger::Transaction> vtx;
-            if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, nScannedCount > 0))
+            if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, !fIndexed))
                 break;
 
             /* Loop through found transactions. */
@@ -115,6 +121,9 @@ namespace TAO::API
             if(vtx.size() != 1000)
                 break;
         }
+
+        /* Write our last index now. */
+        LLD::Logical->WriteLastIndex(hashLast);
 
         debug::log(0, FUNCTION, "Complated scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
     }
@@ -176,6 +185,10 @@ namespace TAO::API
                 Commands::Get("names") ->BuildIndexes(rContract, nContract);
                 Commands::Get("market")->BuildIndexes(rContract, nContract);
             }
+
+            /* Write our last index now. */
+            if(!LLD::Logical->WriteLastIndex(hashTx))
+                continue;
         }
     }
 }

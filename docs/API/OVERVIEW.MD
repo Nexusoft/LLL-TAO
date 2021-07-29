@@ -158,7 +158,7 @@ API Error Codes
 | -4 | API not found (API name) |
 | -5 | Object not available: [message] |
 | -6 | content-type [content type] not supported |
-| -7 | Empty content not allowed for POST |
+| -7 | ------------------------------- |
 | -8 | Unable to Extract Input Address |
 | -9 | Session (session) doesn't exist |
 | -10 | Invalid session ID |
@@ -175,7 +175,7 @@ API Error Codes
 | -21 | Field [name] size exceeds maximum length [size] |
 | -22 | Field [name] is a reserved field name |
 | -23 | Object standard [name] not available for command |
-| -24 | -------------------------- |
+| -24 | Market pair not found |
 | -25 | -------------------------- |
 | -26 | -------------------------- |
 | -27 | Malformed base64 encoding |
