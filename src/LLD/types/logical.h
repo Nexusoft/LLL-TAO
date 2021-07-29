@@ -119,6 +119,18 @@ namespace LLD
         bool ListOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders);
 
 
+        /** HasOrder
+         *
+         *  Checks if an order has been indexed in the database already.
+         *
+         *  @param[in] hashAddress The address we are mapping.
+         *
+         *  @return true if db contains ptr record.
+         *
+         **/
+        bool HasOrder(const uint512_t& hashTx, const uint32_t nContract);
+
+
         /** WritePTR
          *
          *  Writes a register address PTR mapping from address to name address

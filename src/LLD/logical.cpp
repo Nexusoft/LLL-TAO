@@ -66,6 +66,10 @@ namespace LLD
     /* Pushes an order to the orderbook stack. */
     bool LogicalDB::PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket, const uint512_t& hashTx, const uint32_t nContract)
     {
+        /* Check for already existing order. */
+        if(HasOrder(hashTx, nContract))
+            return false;
+
         /* Get our current sequence number. */
         uint32_t nSequence = 0;
         Read(std::make_pair(std::string("sequence"), pairMarket), nSequence);
@@ -79,6 +83,10 @@ namespace LLD
 
         /* Write our new sequence to disk. */
         if(!Write(std::make_pair(std::string("sequence"), pairMarket), ++nSequence))
+            return false;
+
+        /* Write our order proof. */
+        if(!Write(std::make_pair(hashTx, nContract)))
             return false;
 
         return TxnCommit();
@@ -108,6 +116,13 @@ namespace LLD
         }
 
         return !vOrders.empty();
+    }
+
+
+    /* Checks if an order has been indexed in the database already. */
+    bool LogicalDB::HasOrder(const uint512_t& hashTx, const uint32_t nContract)
+    {
+        return Exists(std::make_pair(hashTx, nContract));
     }
 
 

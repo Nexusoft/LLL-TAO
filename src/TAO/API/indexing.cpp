@@ -84,7 +84,7 @@ namespace TAO::API
         {
             /* Read the next batch of inventory. */
             std::vector<TAO::Ledger::Transaction> vtx;
-            if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, !fIndexed))
+            if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, fIndexed))
                 break;
 
             /* Loop through found transactions. */
