@@ -32,6 +32,7 @@ namespace TAO::API
     {
         /* Grab our market pair. */
         const std::pair<uint256_t, uint256_t> pairMarket  = ExtractMarket(jParams);
+        const std::pair<uint256_t, uint256_t> pairReverse = std::make_pair(pairMarket.second, pairMarket.first);
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
@@ -42,7 +43,7 @@ namespace TAO::API
 
         /* Get a list of our active orders. */
         std::vector<std::pair<uint512_t, uint32_t>> vOrders;
-        if(!LLD::Logical->ListOrders(pairMarket, vOrders))
+        if(!LLD::Logical->ListOrders(pairMarket, vOrders) && !LLD::Logical->ListOrders(pairReverse, vOrders))
             throw Exception(-24, "Market pair not found");
 
         /* Build our object list and sort on insert. */

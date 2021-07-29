@@ -1034,12 +1034,28 @@ namespace TAO::API
             {
                 try
                 {
+                    /* This will hold our market name. */
+                    std::string strMarket =
+                        (TAO::Register::Address(pairMarket.first).ToString() + "/");
+
+                    /* Build our market-pair. */
+                    std::string strName;
+                    if(Names::ReverseLookup(pairMarket.first, strName))
+                        strMarket = strName + "/";
+
+                    /* Now add our second pair. */
+                    if(!Names::ReverseLookup(pairMarket.second, strName))
+                        strMarket += TAO::Register::Address(pairMarket.second).ToString();
+                    else
+                        strMarket += strName;
+
                     /* Build our JSON object. */
                     encoding::json jRet =
                     {
                         { "txid",      rContract.Hash().ToString()   },
                         { "timestamp", rContract.Timestamp()         },
-                        { "owner",     rContract.Caller().ToString() }
+                        { "owner",     rContract.Caller().ToString() },
+                        { "market",    strMarket                     }
                     };
 
                     /* Seek over our OP::DEBIT enum. */
@@ -1077,7 +1093,6 @@ namespace TAO::API
                     };
 
                     /* Add a ticker if found. */
-                    std::string strName;
                     if(Names::ReverseLookup(hashToken, strName))
                         jFrom["ticker"] = strName;
 
