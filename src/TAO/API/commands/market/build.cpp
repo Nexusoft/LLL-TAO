@@ -68,9 +68,12 @@ namespace TAO::API
                     /* Grab our other token from pre-state. */
                     TAO::Register::Object tPreState = rContract.PreState();
 
+                    /* Skip over non objects for now. */
+                    if(tPreState.nType != TAO::Register::REGISTER::OBJECT)
+                        return;
+
                     /* Parse pre-state if needed. */
-                    if(tPreState.nType == TAO::Register::REGISTER::OBJECT)
-                        tPreState.Parse();
+                    tPreState.Parse();
 
                     /* Grab the rhs token. */
                     const uint256_t hashSecond =
