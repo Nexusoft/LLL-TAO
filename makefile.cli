@@ -97,6 +97,8 @@ ifndef OPENSSL_INCLUDE_PATH
 		endif
 	endif
 endif
+
+ifndef NO_WALLET
 ifndef BDB_LIB_PATH
 	ifeq ($(detected_OS),Windows)
 		BDB_LIB_PATH= "C:\deps\lib"
@@ -119,6 +121,8 @@ ifndef BDB_INCLUDE_PATH
 		BDB_INCLUDE_PATH= /usr/include
 	endif
 endif
+endif
+
 ifndef MINIUPNPC_LIB_PATH
 	ifeq ($(detected_OS),Windows)
 		MINIUPNPC_LIB_PATH= "C:\deps\lib"
@@ -891,9 +895,15 @@ endif
 #Configure OS Specific Build Environment
 DEFS+= -DMAC_OSX \
 	-DMSG_NOSIGNAL=0
+
+ifdef NO_WALLET
+LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
+	   $(OPENSSL_LIB_PATH)/libcrypto.a
+else
 LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a \
 	$(OPENSSL_LIB_PATH)/libssl.a \
 	$(OPENSSL_LIB_PATH)/libcrypto.a
+endif
 
 
 
