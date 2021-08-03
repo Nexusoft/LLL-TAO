@@ -99,28 +99,28 @@ ifndef OPENSSL_INCLUDE_PATH
 endif
 
 ifndef NO_WALLET
-ifndef BDB_LIB_PATH
-	ifeq ($(detected_OS),Windows)
-		BDB_LIB_PATH= "C:\deps\lib"
+	ifndef BDB_LIB_PATH
+		ifeq ($(detected_OS),Windows)
+			BDB_LIB_PATH= "C:\deps\lib"
+		endif
+		ifeq ($(detected_OS),OSX)
+			BDB_LIB_PATH= /usr/local/opt/db/lib
+		endif
+		ifeq ($(detected_OS),Linux)
+			BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
+		endif
 	endif
-	ifeq ($(detected_OS),OSX)
-		BDB_LIB_PATH= /usr/local/opt/db/lib
+	ifndef BDB_INCLUDE_PATH
+		ifeq ($(detected_OS),Windows)
+			BDB_INCLUDE_PATH= "C:\deps\include"
+		endif
+		ifeq ($(detected_OS),OSX)
+			BDB_INCLUDE_PATH= /usr/local/opt/db/include
+		endif
+		ifeq ($(detected_OS),Linux)
+			BDB_INCLUDE_PATH= /usr/include
+		endif
 	endif
-	ifeq ($(detected_OS),Linux)
-		BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
-	endif
-endif
-ifndef BDB_INCLUDE_PATH
-	ifeq ($(detected_OS),Windows)
-		BDB_INCLUDE_PATH= "C:\deps\include"
-	endif
-	ifeq ($(detected_OS),OSX)
-		BDB_INCLUDE_PATH= /usr/local/opt/db/include
-	endif
-	ifeq ($(detected_OS),Linux)
-		BDB_INCLUDE_PATH= /usr/include
-	endif
-endif
 endif
 
 ifndef MINIUPNPC_LIB_PATH
@@ -896,13 +896,13 @@ endif
 DEFS+= -DMAC_OSX \
 	-DMSG_NOSIGNAL=0
 
-ifdef NO_WALLET
+
 LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
 	   $(OPENSSL_LIB_PATH)/libcrypto.a
-else
-LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a \
-	$(OPENSSL_LIB_PATH)/libssl.a \
-	$(OPENSSL_LIB_PATH)/libcrypto.a
+
+#Add BDB if wallet is enabled
+ifndef NO_WALLET
+LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a
 endif
 
 
