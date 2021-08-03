@@ -168,7 +168,7 @@ namespace TAO::API
         virtual std::string RewriteURL(const std::string& strMethod, encoding::json &jParams);
 
 
-        /** BuildIndexes
+        /** Index
          *
          *  Generic handler for creating new indexes for this specific command-set.
          *  This handler takes a contract and generates indexes according to command's logic.
@@ -177,7 +177,7 @@ namespace TAO::API
          *  @param[in] nContract The contract-id we are building for.
          *
          **/
-        virtual void BuildIndexes(const TAO::Operation::Contract& rContract, const uint32_t nContract) { }
+        virtual void Index(const TAO::Operation::Contract& rContract, const uint32_t nContract) { }
     };
 
 

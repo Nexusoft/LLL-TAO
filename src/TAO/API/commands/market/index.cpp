@@ -27,7 +27,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Generic handler for creating new indexes for this specific command-set. */
-    void Market::BuildIndexes(const TAO::Operation::Contract& rContract, const uint32_t nContract)
+    void Market::Index(const TAO::Operation::Contract& rContract, const uint32_t nContract)
     {
         /* Start our stream at 0. */
         rContract.Reset();

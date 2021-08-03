@@ -1065,7 +1065,7 @@ namespace TAO
                     const uint512_t& hash = proof.second;
 
                     /* Push to our logical indexing in API. */
-                    TAO::API::Indexing::Instance().Push(hash);
+                    TAO::API::Index::Instance().Push(hash);
 
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))

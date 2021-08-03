@@ -444,13 +444,13 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_sync-headers.o \
 		build/API_commands_ledger_sync-sigchain.o \
 		build/API_commands_ledger_void-transaction.o \
-		build/API_commands_market_build.o \
 		build/API_commands_market_execute.o \
+		build/API_commands_market_index.o \
 		build/API_commands_market_initialize.o \
 		build/API_commands_market_list.o \
 		build/API_commands_market_create.o \
-		build/API_commands_names_build.o \
 		build/API_commands_names_initialize.o \
+		build/API_commands_names_index.o \
 		build/API_commands_names_names.o \
 		build/API_commands_names_resolve.o \
 		build/API_commands_operators_array.o \
@@ -508,7 +508,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_format.o \
 		build/API_get.o \
 		build/API_global.o \
-		build/API_indexing.o \
+		build/API_index.o \
 		build/API_json.o \
 		build/API_list.o \
 		build/API_results.o \
