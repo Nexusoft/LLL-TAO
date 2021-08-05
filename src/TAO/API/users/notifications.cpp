@@ -24,6 +24,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/conditions.h>
 #include <TAO/API/include/extract.h>
+#include <TAO/API/include/format.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/json.h>
@@ -1071,9 +1072,10 @@ namespace TAO
                     /* Add the token account to the notification */
                     obj["proof"] = hashProof.ToString();
 
-                    std::string strProof = Names::ResolveName(hashCaller, hashProof);
-                    if(!strProof.empty())
-                        obj["proof_name"] = strProof;
+                    /* Check for token record. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashProof, strName))
+                        obj["ticker"] = strName;
 
                     /* Also flag this notification as a split dividend */
                     obj["dividend_payment"] = true;
@@ -1110,13 +1112,7 @@ namespace TAO
                 encoding::json obj;
                 obj["OP"]       = "LEGACY";
                 obj["address"]  = hashTo.ToString();
-
-                /* Resolve the name of the token/account/register that the debit is to */
-                std::string strTo = Names::ResolveName(hashCaller, hashTo);
-                if(!strTo.empty())
-                    obj["account_name"] = strTo;
-
-                obj["amount"]   = (double)tx.first->vout[tx.second].nValue / TAO::Ledger::NXS_COIN;
+                obj["amount"]   = FormatBalance(tx.first->vout[tx.second].nValue);
                 obj["txid"]     = tx.first->GetHash().GetHex();
                 obj["time"]     = tx.first->nTime;
 
@@ -1437,19 +1433,6 @@ namespace TAO
                             /* Ensure this wasn't a forced transfer (which requires no Claim) */
                             if(nType == TAO::Operation::TRANSFER::FORCE)
                                 continue;
-
-                            /* Create a name object for the claimed object unless this is a Name or Namespace already */
-                            if(!hashFrom.IsName() && !hashFrom.IsNamespace())
-                            {
-                                /* Create a new name from the previous owners name */
-                                TAO::Operation::Contract nameContract = Names::CreateName(user->Genesis(), hashTx);
-
-                                /* If the Name contract operation was created then add it to the transaction */
-                                if(!nameContract.Empty())
-                                {
-                                    session.vProcessQueue->push(nameContract);
-                                }
-                            }
 
                             /* Add the CLAIM operation */
                             TAO::Operation::Contract claim;
