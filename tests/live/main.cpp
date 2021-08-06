@@ -82,13 +82,15 @@ public:
 
     bool WriteKey(const uint1024_t& key, const uint1024_t& value)
     {
-        return Write(std::make_pair(std::string("key"), key), value);
+        return Write(std::make_pair(std::string("key"), key), std::make_pair(key, value));
     }
 
 
     bool ReadKey(const uint1024_t& key, uint1024_t &value)
     {
-        return Read(std::make_pair(std::string("key"), key), value);
+        std::pair<uint1024_t, uint1024_t&> pairResults = std::make_pair(key, std::ref(value));
+
+        return Read(std::make_pair(std::string("key"), key), pairResults);
     }
 
 
@@ -148,7 +150,54 @@ const uint256_t hashSeed = 55;
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    config::mapArgs["-datadir"] = "/database/SYNC1";
+    /* Read the configuration file. Pass argc and argv for possible -datadir setting */
+    config::ReadConfigFile(config::mapArgs, config::mapMultiArgs, argc, argv);
+
+
+    /* Parse out the parameters */
+    config::ParseParameters(argc, argv);
+
+
+    /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
+    config::CacheArgs();
+
+
+    /* Initalize the debug logger. */
+    debug::Initialize();
+
+    //config::mapArgs["-datadir"] = "/database/SYNC1";
+
+    TestDB* DB = new TestDB();
+
+    uint1024_t hashKey = LLC::GetRand1024();
+    uint1024_t hashValue = LLC::GetRand1024();
+
+    debug::log(0, VARIABLE(hashKey.SubString()), " | ", VARIABLE(hashValue.SubString()));
+
+    DB->WriteKey(hashKey, hashValue);
+
+    {
+        uint1024_t hashValue2;
+        DB->ReadKey(hashKey, hashValue2);
+
+        debug::log(0, VARIABLE(hashKey.SubString()), " | ", VARIABLE(hashValue2.SubString()));
+    }
+
+    hashKey = LLC::GetRand1024();
+    hashValue = LLC::GetRand1024();
+
+    debug::log(0, VARIABLE(hashKey.SubString()), " | ", VARIABLE(hashValue.SubString()));
+
+    DB->WriteKey(hashKey, hashValue);
+
+    {
+        uint1024_t hashValue2;
+        DB->ReadKey(hashKey, hashValue2);
+
+        debug::log(0, VARIABLE(hashKey.SubString()), " | ", VARIABLE(hashValue2.SubString()));
+    }
+
+    return 0;
 
     std::string strTest = "This is a test unicode string";
 

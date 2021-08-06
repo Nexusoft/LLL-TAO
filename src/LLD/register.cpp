@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/types/register.h>
 
 #include <TAO/Register/include/enum.h>
+#include <TAO/Register/include/unpack.h>
 
 namespace LLD
 {
@@ -116,56 +117,18 @@ namespace LLD
                 return true;
         }
 
-        /* Add sequential read keys for known address types. */
-        std::string strType = "NONE";
-        switch(hashRegister.GetType())
-        {
-            case TAO::Register::Address::ACCOUNT:
-                strType = "account";
-                break;
 
-            case TAO::Register::Address::APPEND:
-                strType = "append";
-                break;
 
-            case TAO::Register::Address::CRYPTO:
-                strType = "crypto";
-                break;
-
-            case TAO::Register::Address::NAME:
-                strType = "name";
-                break;
-
-            case TAO::Register::Address::NAMESPACE:
-                strType = "namespace";
-                break;
-
-            case TAO::Register::Address::OBJECT:
-                strType = "object";
-                break;
-
-            case TAO::Register::Address::RAW:
-                strType = "raw";
-                break;
-
-            case TAO::Register::Address::READONLY:
-                strType = "readonly";
-                break;
-
-            case TAO::Register::Address::TOKEN:
-                strType = "token";
-                break;
-
-            case TAO::Register::Address::TRUST:
-                strType = "trust";
-                break;
-
-            default :
-                strType = "NONE";
-        }
+        /* Check for register address index. */
+        if(config::GetBoolArg("-indexaddress"))
+            return Write(
+                std::make_pair(std::string("state"), hashRegister),
+                std::make_pair(hashRegister, state), get_address_type(hashRegister)
+            );
 
         /* Write the state to the register database */
-        return Write(std::make_pair(std::string("state"), hashRegister), state, strType);
+        return Write(std::make_pair(std::string("state"), hashRegister),
+            state, get_address_type(hashRegister));
     }
 
 
@@ -255,6 +218,16 @@ namespace LLD
                         return debug::error(FUNCTION, "no connections available...");
                 }
             }
+        }
+
+        /* Special case for indexed addresses. */
+        if(config::GetBoolArg("-indexaddress"))
+        {
+            /* Create a pair to use for reading the reference for return. */
+            std::pair<uint256_t, TAO::Register::State&> pairResult =
+                std::make_pair(hashRegister, std::ref(state));
+
+            return Read(std::make_pair(std::string("state"), hashRegister), pairResult);
         }
 
         return Read(std::make_pair(std::string("state"), hashRegister), state);
@@ -445,6 +418,124 @@ namespace LLD
         return Exists(std::make_pair(std::string("state"), hashRegister));
     }
 
+
+    /* Flag to determine if address indexing has completed. For -indexaddress flag. */
+    void RegisterDB::Reindex()
+    {
+        /* Check for address indexing flag. */
+        if(Exists(std::string("reindexed")))
+        {
+            /* Check there is no argument supplied. */
+            if(!config::HasArg("-indexaddress"))
+            {
+                /* Warn that -indexheight is persistent. */
+                debug::log(0, FUNCTION, "-indexaddress enabled from valid indexes");
+
+                /* Set indexing argument now. */
+                LOCK(config::ARGS_MUTEX);
+                config::mapArgs["-indexaddress"] = "1";
+            }
+
+            return;
+        }
+
+        /* Check there is no argument supplied. */
+        if(!config::GetBoolArg("-indexaddress"))
+            return;
+
+        /* Our list of transactions to read. */
+        std::vector<TAO::Ledger::Transaction> vtx;
+
+        /* Start a timer to track. */
+        runtime::timer timer;
+        timer.Start();
+
+        /* Grab our starting txid by quick read. */
+        if(!LLD::Ledger->BatchRead("tx", vtx, 1))
+            return;
+
+        /* Check if we have a last entry. */
+        uint512_t hashLast = vtx[0].GetHash();
+
+        /* Keep track of our total count. */
+        uint32_t nScannedCount = 0;
+
+        /* Keep track of already processed addresses. */
+        std::set<uint256_t> setScanned;
+
+        /* Start our scan. */
+        debug::log(0, FUNCTION, "Scanning from tx ", hashLast.SubString());
+        while(true)
+        {
+            /* Read the next batch of inventory. */
+            std::vector<TAO::Ledger::Transaction> vtx;
+            if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, false))
+                break;
+
+            /* Loop through found transactions. */
+            for(const auto& tx : vtx)
+            {
+                /* Iterate the transaction contracts. */
+                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                {
+                    /* Grab contract reference. */
+                    const TAO::Operation::Contract& rContract = tx[nContract];
+
+                    /* Unpack the address we will be working on. */
+                    uint256_t hashAddress;
+                    if(!TAO::Register::Unpack(rContract, hashAddress))
+                        continue;
+
+                    /* Check if already in set. */
+                    if(setScanned.count(hashAddress))
+                        continue;
+
+                    /* Check fo register in database. */
+                    TAO::Register::State rState;
+                    if(!Read(std::make_pair(std::string("state"), hashAddress), rState))
+                        continue;
+
+                    /* Erase our record from the database. */
+                    if(!Erase(std::make_pair(std::string("state"), hashAddress), true))
+                        continue;
+
+                    /* Create our new register record. */
+                    if(!Write(std::make_pair(std::string("state"), hashAddress),
+                        std::make_pair(hashAddress, rState), get_address_type(hashAddress)))
+                        continue;
+
+                    /* Add to completed set. */
+                    setScanned.insert(hashAddress);
+                }
+
+                /* Update the scanned count for meters. */
+                ++nScannedCount;
+
+                /* Meter for output. */
+                if(nScannedCount % 100000 == 0)
+                {
+                    /* Get the time it took to rescan. */
+                    uint32_t nElapsedSeconds = timer.Elapsed();
+                    debug::log(0, FUNCTION, "Processed ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                        std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                }
+            }
+
+            /* Set hash Last. */
+            hashLast = vtx.back().GetHash();
+
+            /* Check for end. */
+            if(vtx.size() != 1000)
+                break;
+        }
+
+        /* Write our last index now. */
+        Write(std::string("reindexed"));
+
+        debug::log(0, FUNCTION, "Complated scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
+    }
+
+
     /* Begin a memory transaction following ACID properties. */
     void RegisterDB::MemoryBegin(const uint8_t nFlags)
     {
@@ -515,5 +606,56 @@ namespace LLD
             delete pMemory;
             pMemory = nullptr;
         }
+    }
+
+
+    /* Get a type string of the given address for sequential write keys. */
+    std::string RegisterDB::get_address_type(const uint256_t& hashAddress)
+    {
+        /* Add sequential read keys for known address types. */
+        switch(hashAddress.GetType())
+        {
+            /* Handle for account standard. */
+            case TAO::Register::Address::ACCOUNT:
+                return "account";
+
+            /* Handle for append standard. */
+            case TAO::Register::Address::APPEND:
+                return "append";
+
+            /* Handle for crypto standard. */
+            case TAO::Register::Address::CRYPTO:
+                return "crypto";
+
+            /* Handle for name standard. */
+            case TAO::Register::Address::NAME:
+                return "name";
+
+            /* Handle for namespace standard. */
+            case TAO::Register::Address::NAMESPACE:
+                return "namespace";
+
+            /* Handle for object standard. */
+            case TAO::Register::Address::OBJECT:
+                return "object";
+
+            /* Handle for raw standard. */
+            case TAO::Register::Address::RAW:
+                return "raw";
+
+            /* Handle for readonly standard. */
+            case TAO::Register::Address::READONLY:
+                return "readonly";
+
+            /* Handle for token standard. */
+            case TAO::Register::Address::TOKEN:
+                return "token";
+
+            /* Handle for trust standard. */
+            case TAO::Register::Address::TRUST:
+                return "trust";
+        }
+
+        return "NONE";
     }
 }

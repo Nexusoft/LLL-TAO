@@ -218,6 +218,16 @@ namespace LLD
         bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** Reindex
+         *
+         *  Handle a reindexing to add address to sequential reads. For -indexaddress flag.
+         *
+         *  @return true if indexing has completed.
+         *
+         **/
+        void Reindex();
+
+
         /** MemoryBegin
          *
          *  Begin a memory transaction following ACID properties.
@@ -240,6 +250,19 @@ namespace LLD
          *
          **/
         void MemoryCommit();
+
+    private:
+
+        /** get_address_type
+         *
+         *  Get a type string of the given address for sequential write keys.
+         *
+         *  @param [in] hashAddress The address to get type string for.
+         *
+         *  @return the type string of address.
+         *
+         **/
+        std::string get_address_type(const uint256_t& hashAddress);
 
     };
 
