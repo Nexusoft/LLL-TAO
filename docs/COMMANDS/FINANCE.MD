@@ -18,9 +18,9 @@ finance/verb/noun
 
 The following operators are supported for this API command-set:
 
-[`array`](#array) - An object register containing a token-id and balance.   
-[`mean`](#mean)   - An object register containing a token-id, balance, and trust.  
-[`sum`](#sum)   - An object register containing a token-id, balance, supply, and decimals.    
+[`array`](#array) - Generate a list of values given from a set of filtered results.     
+[`mean`](#mean)   - Calculate the mean or average value across a set of filtered results.  
+[`sum`](#sum)   - Compute a sum of a set of values derived from filtered results.
 
 **Example:**
 
