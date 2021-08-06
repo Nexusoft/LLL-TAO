@@ -496,7 +496,7 @@ namespace LLD
                         continue;
 
                     /* Erase our record from the database. */
-                    if(!Erase(std::make_pair(std::string("state"), hashAddress), true))
+                    if(!Erase(std::make_pair(std::string("state"), hashAddress)))
                         continue;
 
                     /* Create our new register record. */

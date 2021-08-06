@@ -56,7 +56,7 @@ namespace TAO::API
             {
                 /* Batch read up to 1000 at a time */
                 std::vector<std::pair<uint256_t, TAO::Register::Object>> vObjects;
-                if(LLD::Register->BatchRead(strType, vObjects, 1000))
+                if(LLD::Register->BatchRead(strType, vObjects, -1))
                 {
                     debug::warning("found ", vObjects.size(), " records");
 
