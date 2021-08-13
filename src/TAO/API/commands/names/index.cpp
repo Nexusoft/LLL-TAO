@@ -26,7 +26,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Generic handler for creating new indexes for this specific command-set. */
-    void Names::BuildIndexes(const TAO::Operation::Contract& rContract, const uint32_t nContract)
+    void Names::Index(const TAO::Operation::Contract& rContract, const uint32_t nContract)
     {
         /* Get our primitive. */
         rContract.SeekToPrimitive();

@@ -28,18 +28,17 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-
     /* Default Constructor. */
-    Indexing::Indexing()
+    Index::Index()
     : EVENTS_QUEUE  (new std::queue<uint512_t>())
-    , EVENTS_THREAD (std::bind(&Indexing::Manager, this))
+    , EVENTS_THREAD (std::bind(&Index::Manager, this))
     , CONDITION     ( )
     {
     }
 
 
     /* Default destructor. */
-    Indexing::~Indexing()
+    Index::~Index()
     {
         /* Cleanup our dispatch thread. */
         CONDITION.notify_all();
@@ -49,7 +48,7 @@ namespace TAO::API
 
 
     /* Checks current events against transaction history to ensure we are up to date. */
-    void Indexing::RefreshEvents()
+    void Index::RefreshEvents()
     {
         /* Our list of transactions to read. */
         std::vector<TAO::Ledger::Transaction> vtx;
@@ -97,8 +96,8 @@ namespace TAO::API
                     const TAO::Operation::Contract& rContract = tx[nContract];
 
                     /* Process our command-set indexing. */
-                    Commands::Get("names") ->BuildIndexes(rContract, nContract);
-                    Commands::Get("market")->BuildIndexes(rContract, nContract);
+                    Commands::Get("names") ->Index(rContract, nContract);
+                    Commands::Get("market")->Index(rContract, nContract);
                 }
 
                 /* Update the scanned count for meters. */
@@ -129,8 +128,8 @@ namespace TAO::API
     }
 
 
-    /*  Indexing a new block hash to relay thread.*/
-    void Indexing::Push(const uint512_t& hashTx)
+    /*  Index a new block hash to relay thread.*/
+    void Index::Push(const uint512_t& hashTx)
     {
         EVENTS_QUEUE->push(hashTx);
         CONDITION.notify_one();
@@ -138,7 +137,7 @@ namespace TAO::API
 
 
     /* Handle relays of all events for LLP when processing block. */
-    void Indexing::Manager()
+    void Index::Manager()
     {
         /* Refresh our events. */
         RefreshEvents();
@@ -182,8 +181,8 @@ namespace TAO::API
                 const TAO::Operation::Contract& rContract = tx[nContract];
 
                 /* Process our command-set indexing. */
-                Commands::Get("names") ->BuildIndexes(rContract, nContract);
-                Commands::Get("market")->BuildIndexes(rContract, nContract);
+                Commands::Get("names") ->Index(rContract, nContract);
+                Commands::Get("market")->Index(rContract, nContract);
             }
 
             /* Write our last index now. */

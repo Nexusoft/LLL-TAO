@@ -59,7 +59,7 @@ namespace TAO::API
 
 
         /* Generic handler for creating new indexes for this specific command-set. */
-        void BuildIndexes(const TAO::Operation::Contract& rContract, const uint32_t nContract) override;
+        void Index(const TAO::Operation::Contract& rContract, const uint32_t nContract) override;
 
 
         /** CreateName

@@ -27,7 +27,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Generic handler for creating new indexes for this specific command-set. */
-    void Market::BuildIndexes(const TAO::Operation::Contract& rContract, const uint32_t nContract)
+    void Market::Index(const TAO::Operation::Contract& rContract, const uint32_t nContract)
     {
         /* Start our stream at 0. */
         rContract.Reset();
@@ -68,9 +68,12 @@ namespace TAO::API
                     /* Grab our other token from pre-state. */
                     TAO::Register::Object tPreState = rContract.PreState();
 
+                    /* Skip over non objects for now. */
+                    if(tPreState.nType != TAO::Register::REGISTER::OBJECT)
+                        return;
+
                     /* Parse pre-state if needed. */
-                    if(tPreState.nType == TAO::Register::REGISTER::OBJECT)
-                        tPreState.Parse();
+                    tPreState.Parse();
 
                     /* Grab the rhs token. */
                     const uint256_t hashSecond =
