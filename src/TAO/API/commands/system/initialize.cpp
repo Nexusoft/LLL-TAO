@@ -59,9 +59,6 @@ namespace TAO
         *  Stop Nexus server */
         encoding::json System::Stop(const encoding::json& params, const bool fHelp)
         {
-            if(fHelp || params.size() > 1)
-                return std::string("stop password=<password> - Stop server, if -system/stop set require password");
-
             /* Check for password argument. */
             const std::string strPassword = config::GetArg("-system/stop", "");
             if(!strPassword.empty())
