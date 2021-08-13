@@ -769,7 +769,7 @@ namespace TAO
                 new TAO::Ledger::SignatureChain("generate", config::GetArg("-generate", "").c_str());
 
             /* Get the genesis ID. */
-            uint256_t hashGenesis = user->Genesis();
+            const uint256_t hashGenesis = user->Genesis();
 
             /* Check for duplicates in ledger db. */
             TAO::Ledger::Transaction txPrev;
@@ -806,8 +806,12 @@ namespace TAO
                 }
             }
 
+            /* Extract our latency parameter. */
+            const uint64_t nLatency =
+                config::GetArg("-latency", 5000); //default value of 5 seconds
+
             /* Startup Debug. */
-            debug::log(0, FUNCTION, "Generator Thread Started...");
+            debug::log(0, FUNCTION, "Generator Thread Started at latency ", nLatency, "ms");
 
             std::mutex MUTEX;
             while(!config::fShutdown.load())
@@ -820,7 +824,7 @@ namespace TAO
                     return;
 
                 /* Keep block production to five seconds. */
-                runtime::sleep(5000);
+                runtime::sleep(nLatency);
 
                 /* Create the block object. */
                 runtime::timer TIMER;
