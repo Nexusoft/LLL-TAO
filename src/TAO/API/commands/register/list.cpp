@@ -37,7 +37,7 @@ namespace TAO::API
     {
         /* Check that there is a type defined here. */
         if(jParams["request"].find("type") == jParams["request"].end())
-            throw Exception(-36, "Invalid type [missing] for command.");
+            throw Exception(-36, "Unsupported type [missing] for command.");
 
         /* Grab our type to run some checks against. */
         const std::set<std::string> setTypes = ExtractTypes(jParams);

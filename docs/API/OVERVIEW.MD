@@ -187,7 +187,7 @@ API Error Codes
 | -33 | Incorrect or missing name / address |
 | -34 | Asset not found |
 | -35 | Invalid parameter [key=type], expecting [type] |
-| -36 | Invalid type [name] for command |
+| -36 | Unsupported type [name] for command |
 | -37 | Missing token name / address |
 | -38 | Missing asset name / address |
 | -39 | Missing name_from / address_from |

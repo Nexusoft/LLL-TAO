@@ -116,11 +116,11 @@ namespace TAO::API
 
             /* Check for invalid object. */
             else if(jField.is_object())
-                throw Exception(-36, FUNCTION, "Invalid type [object] for command");
+                throw Exception(-36, FUNCTION, "Unsupported type [object] for command");
 
             /* Check for invalid object. */
             else if(jField.is_array())
-                throw Exception(-36, FUNCTION, "Invalid type [array] for command");
+                throw Exception(-36, FUNCTION, "Unsupported type [array] for command");
 
             return true;
         }

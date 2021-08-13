@@ -222,7 +222,7 @@ namespace TAO::API
 
                 /* Check that parameter was converted correctly. */
                 if(strPayload.empty())
-                    throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
+                    throw Exception(-19, "Unsupported type [", strField, "=", it->type_name(), "] for command");
 
                 /* Adjust our serialization length. */
                 if(fMutable) //we don't need padding if data field is const
@@ -365,7 +365,7 @@ namespace TAO::API
 
                     /* Check that we found some payload. */
                     if(strPayload.empty())
-                        throw Exception(-19, "Invalid type [", strType, "=", (*it)["value"].type_name(), "] for command");
+                        throw Exception(-19, "Unsupported type [", strType, "=", (*it)["value"].type_name(), "] for command");
 
                     /* Adjust our serialization length. */
                     if(fMutable) //we don't need padding if value is const

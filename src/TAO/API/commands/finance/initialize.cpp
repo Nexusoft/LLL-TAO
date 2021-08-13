@@ -127,6 +127,17 @@ namespace TAO::API
             }
         );
 
+        /* Handle for all BURN operations. */
+        mapFunctions["burn"] = Function
+        (
+            std::bind
+            (
+                &Finance::Burn,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
 
         /* Handle for all CREATE operations. */
         mapFunctions["create"] = Function

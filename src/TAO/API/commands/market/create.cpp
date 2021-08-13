@@ -37,7 +37,7 @@ namespace TAO::API
 
         /* Check for valid types. */
         if(strType == "order")
-            throw Exception(-36, "Invalid type [order] for command");
+            throw Exception(-36, "Unsupported type [order] for command");
 
         /* Grab our market pair. */
         const std::pair<uint256_t, uint256_t> pairMarket = ExtractMarket(jParams);

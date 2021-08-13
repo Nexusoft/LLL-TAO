@@ -157,7 +157,7 @@ namespace TAO::API
 
                 /* Check that parameter was converted correctly. */
                 if(strPayload.empty())
-                    throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
+                    throw Exception(-19, "Unsupported type [", strField, "=", it->type_name(), "] for command");
 
                 /* Check that field exists first but grab a value too. */
                 const uint64_t nMaxLength = tObject.Size(strField);
@@ -274,7 +274,7 @@ namespace TAO::API
 
                     /* Check that we found some payload. */
                     if(strPayload.empty())
-                        throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
+                        throw Exception(-19, "Unsupported type [", strField, "=", it->type_name(), "] for command");
 
                     /* Check that field exists first but grab a value too. */
                     const uint64_t nMaxLength = tObject.Size(strField);
@@ -297,7 +297,7 @@ namespace TAO::API
                 {
                     /* Handle if string. */
                     if(!it->is_string())
-                        throw Exception(-19, "Invalid type [", strField, "=", it->type_name(), "] for command");
+                        throw Exception(-19, "Unsupported type [", strField, "=", it->type_name(), "] for command");
 
                     /* Grab our value string to check against. */
                     const std::string strPayload =

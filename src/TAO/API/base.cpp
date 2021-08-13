@@ -150,7 +150,7 @@ namespace TAO::API
 
                             /* Check for unexpected types. */
                             if(!mapStandards.count(strNoun))
-                                throw Exception(-36, "Invalid type [", strNoun, "] for command");
+                                throw Exception(-36, "Unsupported type [", strNoun, "] for command");
 
                             /* Add our type to request object. */
                             jParams["request"]["type"].push_back(strNoun);
@@ -166,7 +166,7 @@ namespace TAO::API
 
                     /* Check for unexpected types. */
                     if(!mapStandards.count(strNoun))
-                        throw Exception(-36, "Invalid type [", strNoun, "] for command");
+                        throw Exception(-36, "Unsupported type [", strNoun, "] for command");
 
                     /* Add our type to request object. */
                     jParams["request"]["type"] = strNoun;
