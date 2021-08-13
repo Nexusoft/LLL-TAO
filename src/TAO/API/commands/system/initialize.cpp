@@ -83,72 +83,82 @@ namespace TAO
         encoding::json System::GetInfo(const encoding::json& params, const bool fHelp)
         {
             /* Declare return JSON object */
-            encoding::json jsonRet;
+            encoding::json jRet;
 
             /* The daemon version*/
-            jsonRet["version"] = version::CLIENT_VERSION_BUILD_STRING;
+            jRet["version"] = version::CLIENT_VERSION_BUILD_STRING;
 
             /* The LLP version*/
-            jsonRet["protocolversion"] = LLP::PROTOCOL_VERSION;
+            jRet["protocolversion"] = LLP::PROTOCOL_VERSION;
 
             /* Legacy wallet version*/
             #ifndef NO_WALLET
-            jsonRet["walletversion"] = Legacy::Wallet::Instance().GetVersion();
+            jRet["walletversion"] = Legacy::Wallet::Instance().GetVersion();
             #endif
 
             /* Current unified time as reported by this node*/
-            jsonRet["timestamp"] =  (int)runtime::unifiedtimestamp();
+            jRet["timestamp"] =  (int)runtime::unifiedtimestamp();
 
             /* The hostname of this machine */
-            jsonRet["hostname"]  = LLP::strHostname;
+            jRet["hostname"]  = LLP::strHostname;
 
             /* The IP address, if known */
             if(LLP::TritiumNode::addrThis.load().IsValid())
-                jsonRet["ipaddress"] = LLP::TritiumNode::addrThis.load().ToStringIP();
+                jRet["ipaddress"] = LLP::TritiumNode::addrThis.load().ToStringIP();
 
             /* If this node is running on the testnet then this shows the testnet number*/
             if(config::fTestNet.load())
-                jsonRet["testnet"] = config::GetArg("-testnet", 0); //we don't need to show this value if in production mode
+                jRet["testnet"] = config::GetArg("-testnet", 0); //we don't need to show this value if in production mode
 
             /* Whether this node is running in hybrid or private mode */
-            jsonRet["private"] = (config::fHybrid.load() && config::fTestNet.load());
-            jsonRet["hybrid"]  = (config::fHybrid.load() && !config::fTestNet.load());
+            jRet["private"] = (config::fHybrid.load() && config::fTestNet.load());
+            jRet["hybrid"]  = (config::fHybrid.load() && !config::fTestNet.load());
+
+            /* Add our latency parameter if private or hybrid. */
+            if(config::fHybrid.load())
+            {
+                /* Extract our latency parameter. */
+                const uint64_t nLatency =
+                    config::GetArg("-latency", 5000); //default value of 5 seconds
+
+                jRet["latency"] = nLatency;
+            }
 
             /* Whether this node is running in multiuser mode */
-            jsonRet["multiuser"] = config::fMultiuser.load();
+            jRet["multiuser"] = config::fMultiuser.load();
 
             /* Number of logged in sessions */
             if(config::fMultiuser.load())
-                jsonRet["sessions"] = TAO::API::GetSessionManager().Size();
+                jRet["sessions"] = TAO::API::GetSessionManager().Size();
 
             /* Whether this node is running in client mode */
-            jsonRet["clientmode"] = config::fClient.load();
+            jRet["clientmode"] = config::fClient.load();
 
             /* Whether this node is running the legacy wallet */
             #ifdef NO_WALLET
-            jsonRet["legacy_unsupported"] = true;
+            jRet["legacy_unsupported"] = true;
             #endif
 
             /* The current block height of this node */
-            jsonRet["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
+            jRet["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
 
             /* Flag indicating whether this node is currently syncrhonizing */
-            jsonRet["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
+            jRet["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
 
             /* The percentage of the blocks downloaded */
-            jsonRet["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
+            jRet["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
 
             /* The percentage of the current sync completed */
-            jsonRet["syncprogress"] = (int)TAO::Ledger::ChainState::SyncProgress();
+            jRet["syncprogress"] = (int)TAO::Ledger::ChainState::SyncProgress();
 
             /* Number of transactions in the node's mempool*/
-            jsonRet["txtotal"] = TAO::Ledger::mempool.Size();
+            jRet["txtotal"] = TAO::Ledger::mempool.Size();
 
             /* Then check connections to the tritium server */
             if(LLP::TRITIUM_SERVER)
-                jsonRet["connections"] = LLP::TRITIUM_SERVER->GetConnectionCount();
+                jRet["connections"] = LLP::TRITIUM_SERVER->GetConnectionCount();
 
-            return jsonRet;
+            return jRet;
         }
 
 
@@ -156,7 +166,7 @@ namespace TAO
         encoding::json System::ListPeers(const encoding::json& params, const bool fHelp)
         {
             /* Declare the JSON response object*/
-            encoding::json jsonRet = encoding::json::array();
+            encoding::json jRet = encoding::json::array();
 
             /* Get the connections from the tritium server */
             std::vector<std::shared_ptr<LLP::TritiumNode>> vConnections = LLP::TRITIUM_SERVER->GetConnections();
@@ -224,12 +234,12 @@ namespace TAO
                         obj["score"]    = trustAddress.Score();
                     }
 
-                    jsonRet.push_back(obj);
+                    jRet.push_back(obj);
                 }
             }
 
 
-            return jsonRet;
+            return jRet;
         }
 
     }
