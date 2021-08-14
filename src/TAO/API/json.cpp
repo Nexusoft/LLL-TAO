@@ -177,6 +177,10 @@ namespace TAO::API
                 jRet["nexthash"]  = tx.hashNext.ToString();
                 jRet["prevhash"]  = tx.hashPrevTx.ToString();
 
+                /* Check for recovery hash. */
+                if(tx.hashRecovery != 0)
+                    jRet["recovery"] = tx.hashRecovery.ToString();
+
                 /* The cryptographic data. */
                 jRet["pubkey"]    = HexStr(tx.vchPubKey.begin(), tx.vchPubKey.end());
                 jRet["signature"] = HexStr(tx.vchSig.begin(),    tx.vchSig.end());
