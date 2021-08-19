@@ -47,11 +47,36 @@ namespace TAO::API
         if(CheckParameter(jParams, strName, "string"))
         {
             /* Check if we are resolving for a name or namespace. */
+            if(CheckRequest(jParams, "type", "string"))
+            {
+                /* Get our type to compare to. */
+                const std::string& strType = ExtractType(jParams);
 
+                /* Check for name or namespace resolution. */
+                if(strType == "name" || strType == "namespace")
+                {
+                    /* Grab our name from incoming parameters. */
+                    const std::string& strLookup =
+                        jParams[strName].get<std::string>();
+
+                    /* Declare the return register address hash */
+                    TAO::Register::Address hashRegister =
+                        TAO::API::ADDRESS_NONE;;
+
+                    /* Get the Name object by name */
+                    const TAO::Register::Object tObject =
+                        Names::GetName(jParams, strLookup, hashRegister, false);
+
+                    /* Check that we found a name record. */
+                    if(hashRegister == TAO::API::ADDRESS_NONE)
+                        throw Exception(-101, "Unknown name: ", strLookup);
+
+                    return hashRegister;
+                }
+            }
 
             return Names::ResolveAddress(jParams, jParams[strName].get<std::string>());
         }
-
 
         /* Otherwise let's check for the raw address format. */
         else if(CheckParameter(jParams, strAddr, "string"))
