@@ -25,20 +25,11 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Create an asset or digital item. */
-    encoding::json Market::Execute(const encoding::json& jParams, const bool fHelp)
+    /* Cancel an active order in market. */
+    encoding::json Market::Cancel(const encoding::json& jParams, const bool fHelp)
     {
-        /* Check for from parameter. */
-        const uint256_t hashAddress =
-            ExtractAddress(jParams, "from");
-
-        /* Get the token / account object. */
-        TAO::Register::Object tObject;
-        if(!LLD::Register->ReadObject(hashAddress, tObject, TAO::Ledger::FLAGS::MEMPOOL))
-            throw Exception(-13, "Object not found");
-
         /* Get our txid. */
-        const uint512_t hashOrder   = ExtractHash(jParams);
+        const uint512_t hashOrder = ExtractHash(jParams);
 
         /* Read the previous transaction. */
         TAO::Ledger::Transaction tx;
@@ -62,32 +53,9 @@ namespace TAO::API
                 /* Check that transaction has a condition. */
                 case TAO::Operation::OP::CONDITION:
                 {
-                    /* Get the next OP. */
-                    rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
-
-                    /* Get the comparison bytes. */
-                    std::vector<uint8_t> vBytes;
-                    rContract >= vBytes;
-
-                    /* Extract the data from the bytes. */
-                    TAO::Operation::Stream ssCompare(vBytes);
-                    ssCompare.seek(33);
-
-                    /* Get the address to. */
-                    uint256_t hashTo;
-                    ssCompare >> hashTo;
-
-                    /* Get the amount requested. */
-                    uint64_t nAmount = 0;
-                    ssCompare >> nAmount;
-
-                    /* Build the transaction. */
-                    TAO::Operation::Contract tContract;
-                    tContract << uint8_t(TAO::Operation::OP::VALIDATE) << hashOrder   << nContract;
-                    tContract << uint8_t(TAO::Operation::OP::DEBIT)    << hashAddress << hashTo << nAmount << uint64_t(0);
-
-                    /* Add contract to our queue. */
-                    vContracts.push_back(tContract);
+                    /* Process the contract and attempt to void it */
+                    if(!BuildVoid(jParams, nContract, rContract, vContracts))
+                        throw Exception(-43, "Void failed to build");
 
                     break;
                 }
@@ -98,6 +66,6 @@ namespace TAO::API
         if(vContracts.empty())
             throw Exception(-43, "No valid contracts in tx.");
 
-        return BuildResponse(jParams, hashAddress, vContracts);
+        return BuildResponse(jParams, vContracts);
     }
 }

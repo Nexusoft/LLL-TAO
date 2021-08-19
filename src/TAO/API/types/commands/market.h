@@ -98,5 +98,18 @@ namespace TAO::API
          **/
         encoding::json Execute(const encoding::json& jParams, const bool fHelp);
 
+
+        /** Cancel
+         *
+         *  Cancelles an order on the market
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Cancel(const encoding::json& jParams, const bool fHelp);
+
     };
 }

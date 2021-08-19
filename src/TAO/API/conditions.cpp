@@ -280,15 +280,6 @@ namespace TAO::API
             uint64_t nAmount = 0;
             contract >> nAmount;
 
-            /* Get the token / account object that the debit was made to. */
-            TAO::Register::Object debit;
-            if(!LLD::Register->ReadState(hashTo, debit))
-                return false;
-
-            /* Parse the object register. */
-            if(!debit.Parse())
-                throw Exception(-41, "Failed to parse object from debit transaction");
-
             /* Check to see whether there are any partial credits already claimed against the debit */
             uint64_t nClaimed = 0;
             if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, TAO::Ledger::FLAGS::MEMPOOL))
