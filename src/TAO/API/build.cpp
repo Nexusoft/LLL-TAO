@@ -285,7 +285,8 @@ namespace TAO::API
         std::vector<TAO::Operation::Contract> &vContracts)
     {
         /* Extract some parameters from input data. */
-        const TAO::Register::Address hashCredit = ExtractAddress(jParams, "", "default");
+        const TAO::Register::Address hashCredit =
+            ExtractAddress(jParams, "", "default");
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
@@ -301,6 +302,10 @@ namespace TAO::API
         /* Check for coinbase credits first. */
         if(nPrimitive == TAO::Operation::OP::COINBASE)
         {
+            /* Enforce address resolution for coinbase. */
+            if(hashCredit == TAO::API::ADDRESS_NONE)
+                throw Exception(-35, "Invalid parameter [name], expecting [exists]");
+
             /* Get the genesisHash of the user who mined the coinbase*/
             uint256_t hashMiner = 0;
             rDebit >> hashMiner;
@@ -346,6 +351,10 @@ namespace TAO::API
             /* Check for a legacy output debit. */
             if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
             {
+                /* Enforce address resolution for wildcard claim. */
+                if(hashCredit == TAO::API::ADDRESS_NONE)
+                    throw Exception(-35, "Invalid parameter [name], expecting [exists]");
+
                 /* Read our crediting account. */
                 TAO::Register::Object objCredit;
                 if(!LLD::Register->ReadObject(hashCredit, objCredit, TAO::Ledger::FLAGS::MEMPOOL))
@@ -373,6 +382,10 @@ namespace TAO::API
             /* Check for wildcard for conditional contract (OP::VALIDATE). */
             if(hashTo == TAO::Register::WILDCARD_ADDRESS)
             {
+                /* Enforce address resolution for wildcard claim. */
+                if(hashCredit == TAO::API::ADDRESS_NONE)
+                    throw Exception(-35, "Invalid parameter [name], expecting [exists]");
+
                 /* Check for conditions. */
                 if(!rDebit.Empty(TAO::Operation::Contract::CONDITIONS)) //XXX: unit tests for this scope in finance unit tests
                 {
@@ -448,6 +461,10 @@ namespace TAO::API
             /* If addressed to non-standard object, this could be a tokenized debit, so do some checks to find out. */
             else if(nStandardBase == TAO::Register::OBJECTS::NONSTANDARD)
             {
+                /* Enforce address resolution for wildcard claim. */
+                if(hashCredit == TAO::API::ADDRESS_NONE)
+                    throw Exception(-35, "Invalid parameter [name], expecting [exists]");
+
                 /* Attempt to get the proof from the parameters. */
                 const TAO::Register::Address hashProof = ExtractAddress(jParams, "proof");
 

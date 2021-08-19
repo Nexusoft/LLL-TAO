@@ -122,7 +122,7 @@ namespace TAO::API
             return hashRet;
 
         /* Allow address to be a name record as well. */
-        return Names::ResolveAddress(jParams, strAddress);
+        return Names::ResolveAddress(jParams, strAddress, false);
     }
 
 

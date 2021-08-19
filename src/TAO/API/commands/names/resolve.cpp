@@ -39,7 +39,7 @@ namespace TAO::API
         if(tObject.Check("address", TAO::Register::TYPES::UINT256_T, true))
             return tObject.get<uint256_t>("address");
 
-        return 0; //otherwise return 0, we should check this logic a bit more
+        return TAO::API::ADDRESS_NONE; //otherwise return none (1)
     }
 
 

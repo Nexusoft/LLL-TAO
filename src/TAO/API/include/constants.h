@@ -25,6 +25,10 @@ namespace TAO::API
     const uint256_t ADDRESS_ANY =  uint256_t(0);
 
 
+    /** Address for select any. **/
+    const uint256_t ADDRESS_NONE = uint256_t(1);
+
+
     /** Namespace to hold ticker constants. */
     namespace TOKEN
     {

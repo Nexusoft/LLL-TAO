@@ -143,6 +143,7 @@ namespace TAO::API
 
         return result;
     }
+    
 
     /* Converts the transaction to formatted JSON */
     encoding::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, const uint32_t nVerbose)
