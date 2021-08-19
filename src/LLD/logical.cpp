@@ -118,6 +118,31 @@ namespace LLD
         return !vOrders.empty();
     }
 
+    /*  List the current completed orders for given market pair. */
+    bool LogicalDB::ListExecuted(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vExecuted)
+    {
+        /* Cache our txid and contract as a pair. */
+        std::pair<uint512_t, uint32_t> pairOrder;
+
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Read our current record. */
+            if(!Read(std::make_pair(nSequence, pairMarket), pairOrder))
+                break;
+
+            /* Check for already executed contracts to omit. */
+            if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL))
+                vExecuted.push_back(pairOrder);
+
+            /* Increment our sequence number. */
+            ++nSequence;
+        }
+
+        return !vExecuted.empty();
+    }
+
 
     /* Checks if an order has been indexed in the database already. */
     bool LogicalDB::HasOrder(const uint512_t& hashTx, const uint32_t nContract)

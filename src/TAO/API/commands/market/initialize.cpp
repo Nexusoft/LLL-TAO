@@ -39,8 +39,18 @@ namespace TAO::API
             }
         );
 
-        /* Populate our ASK standard. */
+        /* Populate our ORDER standard. */
         mapStandards["order"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                return false;
+            }
+        );
+
+        /* Populate our EXECUTED standard. */
+        mapStandards["executed"] = Standard
         (
             /* Lambda expression to determine object standard. */
             [](const TAO::Register::Object& rObject)

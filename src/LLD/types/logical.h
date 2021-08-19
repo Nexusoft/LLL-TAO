@@ -108,7 +108,7 @@ namespace LLD
 
         /** ListOrders
          *
-         *  Pushes an order to the orderbook stack.
+         *  List the current active orders for given market pair.
          *
          *  @param[in] pairMarket The market-pair of token-id's
          *  @param[in] vOrders The list of orders extracted.
@@ -117,6 +117,19 @@ namespace LLD
          *
          **/
         bool ListOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders);
+
+
+        /** ListExecuted
+         *
+         *  List the current completed orders for given market pair.
+         *
+         *  @param[in] pairMarket The market-pair of token-id's
+         *  @param[in] vExecuted The list of orders executed.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListExecuted(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vExecuted);
 
 
         /** HasOrder
