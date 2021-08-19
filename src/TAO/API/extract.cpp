@@ -45,7 +45,13 @@ namespace TAO::API
 
         /* If name is provided then use this to deduce the register address, */
         if(CheckParameter(jParams, strName, "string"))
+        {
+            /* Check if we are resolving for a name or namespace. */
+
+
             return Names::ResolveAddress(jParams, jParams[strName].get<std::string>());
+        }
+
 
         /* Otherwise let's check for the raw address format. */
         else if(CheckParameter(jParams, strAddr, "string"))
@@ -93,17 +99,7 @@ namespace TAO::API
     uint256_t ExtractToken(const encoding::json& jParams)
     {
         /* If name is provided then use this to deduce the register address, */
-        if(CheckParameter(jParams, "token_name", "string"))
-        {
-            /* Check for default NXS token or empty name fields. */
-            if(jParams["token_name"].get<std::string>() == "NXS")
-                return 0;
-
-            return Names::ResolveAddress(jParams, jParams["token_name"].get<std::string>());
-        }
-
-        /* Otherwise let's check for the raw address format. */
-        else if(CheckParameter(jParams, "token", "string"))
+        if(CheckParameter(jParams, "token", "string"))
             return ExtractAddress(jParams["token"].get<std::string>(), jParams);
 
         return 0;
