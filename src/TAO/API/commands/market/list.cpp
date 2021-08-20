@@ -22,6 +22,8 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
+#include <TAO/Register/include/unpack.h>
+
 #include <TAO/Ledger/types/transaction.h>
 
 /* Global TAO namespace. */
@@ -69,6 +71,15 @@ namespace TAO::API
                     /* Get our contract now. */
                     const TAO::Operation::Contract tContract =
                         LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
+
+                    /* Unpack our register address. */
+                    uint256_t hashRegister;
+                    if(!TAO::Register::Unpack(tContract, hashRegister))
+                        continue;
+
+                    /* Check for a spent proof already. */
+                    if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second))
+                        continue;
 
                     /* Get our order's json. */
                     encoding::json jOrder =
@@ -123,6 +134,15 @@ namespace TAO::API
                     /* Get our contract now. */
                     const TAO::Operation::Contract tContract =
                         LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
+
+                    /* Unpack our register address. */
+                    uint256_t hashRegister;
+                    if(!TAO::Register::Unpack(tContract, hashRegister))
+                        continue;
+
+                    /* Check for a spent proof already. */
+                    if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second))
+                        continue;
 
                     /* Get our order's json. */
                     encoding::json jOrder =
