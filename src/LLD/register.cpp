@@ -121,10 +121,14 @@ namespace LLD
 
         /* Check for register address index. */
         if(config::GetBoolArg("-indexaddress"))
+        {
+            /* We include address if we are indexing by address. */
             return Write(
                 std::make_pair(std::string("state"), hashRegister),
                 std::make_pair(hashRegister, state), get_address_type(hashRegister)
             );
+        }
+
 
         /* Write the state to the register database */
         return Write(std::make_pair(std::string("state"), hashRegister),
@@ -464,7 +468,7 @@ namespace LLD
         std::set<uint256_t> setScanned;
 
         /* Start our scan. */
-        debug::log(0, FUNCTION, "Scanning from tx ", hashLast.SubString());
+        debug::log(0, FUNCTION, "Reindexing from tx ", hashLast.SubString());
         while(true)
         {
             /* Read the next batch of inventory. */

@@ -384,10 +384,11 @@ namespace LLD
             }
 
             /* Get current size */
-            uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
+            const uint64_t nSize =
+                (vData.size() + GetSizeOfCompactSize(vData.size()));
 
             /* Create a new Sector Key. */
-            SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
+            const SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
                             nCurrentFileSize, static_cast<uint32_t>(nSize));
 
             /* Increment the current filesize */
@@ -458,7 +459,7 @@ namespace LLD
             return false;
 
         /* Check that this key isn't a keychain only entry. */
-        if(key.nSectorFile ==0 && key.nSectorSize == 0 && key.nSectorStart == 0)
+        if(key.nSectorFile == 0 && key.nSectorSize == 0 && key.nSectorStart == 0)
             return true;
 
         {
@@ -484,7 +485,7 @@ namespace LLD
             pstream->seekg(key.nSectorStart, std::ios::beg);
 
             /* Write the size of record. */
-            uint64_t nSize = ReadCompactSize(*pstream);
+            const uint64_t nSize = ReadCompactSize(*pstream);
 
             /* Seek to write at specific location. */
             pstream->seekp(key.nSectorStart + GetSizeOfCompactSize(nSize), std::ios::beg);
