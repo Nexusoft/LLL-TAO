@@ -35,10 +35,6 @@ namespace TAO::API
     /* Retrieves the transaction for the given hash. */
     encoding::json Register::List(const encoding::json& jParams, const bool fHelp)
     {
-        /* Check that there is a type defined here. */
-        if(jParams["request"].find("type") == jParams["request"].end())
-            throw Exception(-36, "Unsupported type [missing] for command.");
-
         /* Grab our type to run some checks against. */
         const std::set<std::string> setTypes = ExtractTypes(jParams);
 
@@ -55,31 +51,69 @@ namespace TAO::API
         /* Loop through our types. */
         for(const auto& strType : setTypes)
         {
-            /* Batch read up to 1000 at a time */
-            std::vector<TAO::Register::Object> vObjects;
-            if(LLD::Register->BatchRead(strType, vObjects, -1))
+            /* Special handle if address indexed. */
+            if(config::GetBoolArg("-indexaddress"))
             {
-                /* Add the register data to the response */
-                for(auto& rObject : vObjects)
+                /* Batch read up to 1000 at a time */
+                std::vector<std::pair<uint256_t, TAO::Register::Object>> vObjects;
+                if(LLD::Register->BatchRead(strType, vObjects, -1))
                 {
-                    /* Parse our object now. */
-                    if(!rObject.Parse())
-                        continue;
+                    debug::warning("found ", vObjects.size(), " records");
 
-                    /* Check our object standards. */
-                    if(!CheckStandard(jParams, rObject))
-                        continue;
+                    /* Add the register data to the response */
+                    for(auto& rObject : vObjects)
+                    {
+                        /* Parse our object now. */
+                        if(rObject.second.nType == TAO::Register::REGISTER::OBJECT && !rObject.second.Parse())
+                            continue;
 
-                    /* Populate the response */
-                    encoding::json jRegister =
-                        StandardToJSON(jParams, rObject);
+                        /* Check our object standards. */
+                        if(!CheckStandard(jParams, rObject.second))
+                            continue;
 
-                    /* Check that we match our filters. */
-                    if(!FilterObject(jParams, jRegister, rObject))
-                        continue;
+                        /* Populate the response */
+                        encoding::json jRegister =
+                            StandardToJSON(jParams, rObject.second, rObject.first);
 
-                    /* Insert into set and automatically sort. */
-                    setRegisters.insert(jRegister);
+                        /* Check that we match our filters. */
+                        if(!FilterObject(jParams, jRegister, rObject.second))
+                            continue;
+
+                        /* Insert into set and automatically sort. */
+                        setRegisters.insert(jRegister);
+                    }
+                }
+            }
+            else
+            {
+                /* Batch read up to 1000 at a time */
+                std::vector<TAO::Register::Object> vObjects;
+                if(LLD::Register->BatchRead(strType, vObjects, -1))
+                {
+                    debug::warning("found ", vObjects.size(), " records");
+
+                    /* Add the register data to the response */
+                    for(auto& rObject : vObjects)
+                    {
+                        /* Parse our object now. */
+                        if(rObject.nType == TAO::Register::REGISTER::OBJECT && !rObject.Parse())
+                            continue;
+
+                        /* Check our object standards. */
+                        if(!CheckStandard(jParams, rObject))
+                            continue;
+
+                        /* Populate the response */
+                        encoding::json jRegister =
+                            StandardToJSON(jParams, rObject);
+
+                        /* Check that we match our filters. */
+                        if(!FilterObject(jParams, jRegister, rObject))
+                            continue;
+
+                        /* Insert into set and automatically sort. */
+                        setRegisters.insert(jRegister);
+                    }
                 }
             }
         }
