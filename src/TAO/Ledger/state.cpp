@@ -608,7 +608,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "ambassador genesis mismatch ", genesis.SubString());
 
                             /* The total to be credited. */
-                            uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                            const uint64_t nCredit = (nBalance * it->second.second) / 1000;
 
                             /* Check the value */
                             uint64_t nValue = 0;

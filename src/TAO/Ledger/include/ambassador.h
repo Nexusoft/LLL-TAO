@@ -88,7 +88,7 @@ namespace TAO
         const std::map<uint256_t, std::pair<uint256_t, uint32_t>> V7_AMBASSADOR_TESTNET =
         {
             {
-                uint256_t("a2cfad9f505f8166203df2685ee7cb8582be9ae017dcafa4ca4530cd5b4f1dca"),
+                uint256_t("b1cfad9f505f8166203df2685ee7cb8582be9ae017dcafa4ca4530cd5b4f1dca"),
                 {
                     uint256_t("6fcf29db16223b1aaddbbf0ad9f09758f12b2db85b5f1dbff4d0de1dac540fcc"), //password authentication
                     1000 //100%
@@ -101,7 +101,7 @@ namespace TAO
         const std::map<uint256_t, std::pair<uint256_t, uint32_t>> V8_AMBASSADOR_TESTNET =
         {
             {
-                uint256_t("a2cfad9f505f8166203df2685ee7cb8582be9ae017dcafa4ca4530cd5b4f1dca"),
+                uint256_t("b1cfad9f505f8166203df2685ee7cb8582be9ae017dcafa4ca4530cd5b4f1dca"),
                 {
                     uint256_t("6fcf29db16223b1aaddbbf0ad9f09758f12b2db85b5f1dbff4d0de1dac540fcc"), //password authentication
                     500 //50%
@@ -109,7 +109,7 @@ namespace TAO
             },
 
             {
-                uint256_t("a2769e12630b3943a1dc7d6a226c12a627f2c491400d7575b492b0b9cb9751d0"),
+                uint256_t("b1769e12630b3943a1dc7d6a226c12a627f2c491400d7575b492b0b9cb9751d0"),
                 {
                     uint256_t("22728016f7776a0883c313ae354fef9f57c02f18822d5608c525c86df124aa11"), //password authentication
                     500 //50%

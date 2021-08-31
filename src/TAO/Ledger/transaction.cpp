@@ -846,7 +846,7 @@ namespace TAO
                         debug::log(1, FUNCTION, "Processing DEVELOPER sigchain ", hashGenesis.SubString());
 
                         /* Check that the hashes match. */
-                        if(DEVELOPER.at(hashGenesis).first != PrevHash())
+                        if(Developer(nSwitchVersion).at(hashGenesis).first != PrevHash())
                             return debug::error(FUNCTION, "DEVELOPER sigchain using invalid credentials");
                     }
                 }
