@@ -97,7 +97,7 @@ namespace TAO
             #endif
 
             /* Current unified time as reported by this node*/
-            jRet["timestamp"] =  (int)runtime::unifiedtimestamp();
+            jRet["timestamp"] = runtime::unifiedtimestamp();
 
             /* The hostname of this machine */
             jRet["hostname"]  = LLP::strHostname;
