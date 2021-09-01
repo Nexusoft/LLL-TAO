@@ -102,6 +102,9 @@ namespace TAO
             /* The hostname of this machine */
             jRet["hostname"]  = LLP::strHostname;
 
+            /* The current data directory. */
+            jRet["directory"] = config::GetDataDir();
+
             /* The IP address, if known */
             if(LLP::TritiumNode::addrThis.load().IsValid())
                 jRet["ipaddress"] = LLP::TritiumNode::addrThis.load().ToStringIP();
