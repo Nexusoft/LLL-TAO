@@ -107,7 +107,7 @@ namespace TAO
 
             /* The IP address, if known */
             if(LLP::TritiumNode::addrThis.load().IsValid())
-                jRet["ipaddress"] = LLP::TritiumNode::addrThis.load().ToStringIP();
+                jRet["address"] = LLP::TritiumNode::addrThis.load().ToStringIP();
 
             /* If this node is running on the testnet then this shows the testnet number*/
             if(config::fTestNet.load())
