@@ -135,11 +135,11 @@ namespace TAO
                 jRet["sessions"] = TAO::API::GetSessionManager().Size();
 
             /* Whether this node is running in client mode */
-            jRet["clientmode"] = config::fClient.load();
+            jRet["litemode"] = config::fClient.load();
 
             /* Whether this node is running the legacy wallet */
             #ifdef NO_WALLET
-            jRet["legacy_unsupported"] = true;
+            jRet["nolegacy"] = true;
             #endif
 
             /* The current block height of this node */
