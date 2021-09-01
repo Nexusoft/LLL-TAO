@@ -239,7 +239,7 @@ namespace TAO::API
          *  Returns the number of incorrect authentication attempts made in this session
          *
          **/
-        uint8_t GetAuthAttempts() const;
+        uint16_t GetAuthAttempts() const;
 
 
         /** IncrementAuthAttempts
@@ -248,6 +248,14 @@ namespace TAO::API
          *
          **/
         void IncrementAuthAttempts();
+
+
+        /** ResetAuthAttempts
+         *
+         *  Resets our auth counter to zero on successful login.
+         *
+         **/
+        void ResetAuthAttempts();
 
 
 
@@ -294,7 +302,7 @@ namespace TAO::API
 
 
         /** Number of incorrect authentication attempts recorded for this session **/
-        uint16_t nAuthAttempts;
+        std::atomic<uint16_t> nAuthAttempts;
 
 
         /** Encrypted pointer of signature chain **/

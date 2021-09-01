@@ -344,6 +344,26 @@ namespace TAO
             if(!session.GetAccount())
                 throw Exception(-10, "Invalid session ID");
 
+            /* Check for password requirement field. */
+            if(config::GetBoolArg("-requirepassword", false))
+            {
+                /* Grab our password from parameters. */
+                if(!CheckParameter(jParams, "password", "string"))
+                    throw Exception(-128, "-requirepassword active, must pass in password=<password> for all commands when enabled");
+
+                /* Parse out password. */
+                const SecureString strPassword =
+                    SecureString(jParams["password"].get<std::string>().c_str());
+
+                /* Check our password input compared to our internal sigchain password. */
+                if(session.GetAccount()->Password() != strPassword)
+                {
+                    /* Increment our auth attempts if failed password. */
+                    session.IncrementAuthAttempts();
+                    return false;
+                }
+            }
+
             /* The logged in sig chain genesis hash */
             const uint256_t hashGenesis =
                 session.GetAccount()->Genesis();
@@ -367,24 +387,12 @@ namespace TAO
                 /* If the hashNext does not match then credentials are invalid, so increment the auth attempts counter */
                 session.IncrementAuthAttempts();
 
-                /* If the number of failed auth attempts exceeds the configured allowed number then log this user out */
-                if(session.GetAuthAttempts() >= config::GetArg("-authattempts", 3))
-                {
-                    debug::log(0, FUNCTION, "Too many invalid password / pin attempts. Logging out user session:", session.ID().ToString() );
-
-                    /* Log the user out.  NOTE this also closes down the stake minter, removes this session from the notifications
-                       processor, terminates any P2P connections, and removes the session from the session manager */
-                    TerminateSession(session.ID());
-
-                    throw Exception(-290, "Invalid credentials.  User logged out due to too many password / pin attempts");
-
-                }
-
                 return false;
             }
 
             /* Set our internal cache if credentials passed. */
             session.GetAccount()->SetCache(hashSecret, txPrev.nSequence + 1);
+            session.ResetAuthAttempts();
 
             return true;
         }

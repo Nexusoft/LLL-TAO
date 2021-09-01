@@ -11,8 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/session.h>
 #include <TAO/API/types/exception.h>
+#include <TAO/API/types/session.h>
+#include <TAO/API/include/global.h>
 
 #include <TAO/Ledger/types/sigchain.h>
 
@@ -55,7 +56,7 @@ namespace TAO
         , nID                   (std::move(session.nID))
         , nStarted              (std::move(session.nStarted))
         , nLastActive           (std::move(session.nLastActive))
-        , nAuthAttempts         (std::move(session.nAuthAttempts))
+        , nAuthAttempts         (session.nAuthAttempts.load())
         , pSigChain             (std::move(session.pSigChain))
         , pActivePIN            (std::move(session.pActivePIN))
         , nNetworkKey           (std::move(session.nNetworkKey))
@@ -72,7 +73,7 @@ namespace TAO
             nID               = (std::move(session.nID));
             nStarted          = (std::move(session.nStarted));
             nLastActive       = (std::move(session.nLastActive));
-            nAuthAttempts     = (std::move(session.nAuthAttempts));
+            nAuthAttempts     = (session.nAuthAttempts.load());
             pSigChain         = (std::move(session.pSigChain));
             pActivePIN        = (std::move(session.pActivePIN));
             nNetworkKey       = (std::move(session.nNetworkKey));
@@ -278,19 +279,33 @@ namespace TAO
 
 
         /*  Returns the number of incorrect authentication attempts made in this session */
-        uint8_t Session::GetAuthAttempts() const
+        uint16_t Session::GetAuthAttempts() const
         {
-            return nAuthAttempts;
+            return nAuthAttempts.load();
         }
 
 
         /*  Increments the number of incorrect authentication attempts made in this session */
         void Session::IncrementAuthAttempts()
         {
-            /* Lock mutex so two threads can't increment at the same time */
-            LOCK(MUTEX);
+            /* If the number of failed auth attempts exceeds the configured allowed number then log this user out */
+            if(++nAuthAttempts >= config::GetArg("-authattempts", 3))
+            {
+                /* Grab a reference of our session-id. */
+                const uint256_t hashSession = ID();
 
-            nAuthAttempts++;
+                /* Log the user out and terminate all relevant actions. */
+                Commands::Get<Users>()->TerminateSession(hashSession);
+                throw Exception(-290, "Too many invalid password/pin attempts. Logging out user session: ", hashSession.ToString());
+            }
+        }
+
+
+        /* Resets our auth counter to zero on successful login. */
+        void Session::ResetAuthAttempts()
+        {
+            /* Reset our atomic counter to zero. */
+            nAuthAttempts.store(0);
         }
 
 
@@ -302,7 +317,7 @@ namespace TAO
 
             /* Serialize the session data */
             ssData << nStarted;
-            ssData << nAuthAttempts;
+            ssData << nAuthAttempts.load();
 
             /* XXX: Assess why this is here, looks redundant. */
             if(!nNetworkKey.IsNull())
@@ -379,7 +394,10 @@ namespace TAO
 
                 /* Deserialize the session data*/
                 ssData >> nStarted;
-                ssData >> nAuthAttempts;
+
+                //XXX: this is superfluous, just acting as dummy now. We Don't want to track auth attempts between session loads.
+                uint16_t nAttempts;
+                ssData >> nAttempts;
 
                 /* Network key */
                 uint512_t nKey;
