@@ -109,10 +109,27 @@ namespace TAO
         }
 
 
-        /*
-         *  This function is responsible for genearting the private key in the keychain of a specific account.
-         *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
-         */
+        /* Set's the current cached key manually in case it was generated externally from this object. */
+        void SignatureChain::SetCache(const uint512_t& hashSecret, const uint32_t nKeyID)
+        {
+            {
+                LOCK(MUTEX);
+
+                /* Handle cache to stop exhaustive hash key generation. */
+                if(nKeyID == pairCache.first)
+                {
+                    /* Grab our key's binary data. */
+                    const std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+
+                    /* Set our cache record now with it. */
+                    pairCache.first  = nKeyID;
+                    pairCache.second = SecureString(vBytes.begin(), vBytes.end());
+                }
+            }
+        }
+
+
+        /* This function is responsible for genearting the private key in the keychain of a specific account. */
         uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strSecret, const bool fCache) const
         {
             {
@@ -122,7 +139,8 @@ namespace TAO
                 if(fCache && nKeyID == pairCache.first)
                 {
                     /* Get the bytes from secure allocator. */
-                    const std::vector<uint8_t> vBytes = std::vector<uint8_t>(pairCache.second.begin(), pairCache.second.end());
+                    const std::vector<uint8_t> vBytes =
+                        std::vector<uint8_t>(pairCache.second.begin(), pairCache.second.end());
 
                     /* Set the bytes of return value. */
                     uint512_t hashKey;
@@ -172,8 +190,7 @@ namespace TAO
         }
 
 
-        /* This function is responsible for generating the private key in the sigchain with a specific password and pin.
-        *  This version should be used when changing the password and/or pin */
+        /* This function is responsible for generating the private key in the sigchain with a specific password and pin. */
         uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strPassword, const SecureString& strSecret) const
         {
             /* Generate the Secret Phrase */
@@ -203,10 +220,7 @@ namespace TAO
         }
 
 
-        /*
-         *  This function is responsible for genearting the private key in the keychain of a specific account.
-         *  The keychain is a series of keys seeded from a secret phrase and a PIN number.
-         */
+        /* This function is responsible for genearting the private key in the keychain of a specific account. */
         uint512_t SignatureChain::Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const
         {
             /* Generate the Secret Phrase */
@@ -237,9 +251,7 @@ namespace TAO
         }
 
 
-        /* This function is responsible for generating a private key from a seed phrase.  By comparison to the other Generate
-         *  functions, this version using far stronger argon2 hashing since the only data input into the hashing function is
-         *  the seed phrase itself. */
+        /* This function version using far stronger argon2 hashing since the only data input is the seed phrase itself. */
         uint512_t SignatureChain::Generate(const SecureString& strSecret) const
         {
             /* Generate the Secret Phrase */
@@ -256,13 +268,15 @@ namespace TAO
 
 
         /* This function generates a public key generated from random seed phrase. */
-        std::vector<uint8_t> SignatureChain::Key(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
+        std::vector<uint8_t> SignatureChain::Key(const std::string& strType, const uint32_t nKeyID,
+                                                 const SecureString& strSecret, const uint8_t nType) const
         {
             /* The public key bytes */
             std::vector<uint8_t> vchPubKey;
 
             /* Get the private key. */
-            uint512_t hashSecret = Generate(strType, nKeyID, strSecret);
+            const uint512_t hashSecret =
+                Generate(strType, nKeyID, strSecret);
 
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();

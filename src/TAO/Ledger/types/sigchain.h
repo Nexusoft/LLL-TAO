@@ -122,6 +122,17 @@ namespace TAO
             static uint256_t Genesis(const SecureString& strUsername);
 
 
+            /** SetCache
+             *
+             *  Set's the current cached key manually in case it was generated externally from this object.
+             *
+             *  @param[in] hashSecret The secret key to cache internally.
+             *  @param[in] nKeyID The current sequence this key was generated from.
+             *
+             **/
+            void SetCache(const uint512_t& hashSecret, const uint32_t nKeyID);
+
+
             /** Generate
              *
              *  This function is responsible for genearting the private key in the sigchain of a specific account.

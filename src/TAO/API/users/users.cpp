@@ -353,9 +353,13 @@ namespace TAO
             if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                 throw Exception(-138, "No previous transaction found");
 
+            /* Generate our secret key from sigchain. */
+            const uint512_t hashSecret =
+                session.GetAccount()->Generate(txPrev.nSequence + 1, strPIN, false);
+
             /* Calculate our next hash for auth check. */
             const uint256_t hashNext =
-                TAO::Ledger::Transaction::NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, strPIN), txPrev.nNextType);
+                TAO::Ledger::Transaction::NextHash(hashSecret, txPrev.nNextType);
 
             /* Validate the credentials */
             if(txPrev.hashNext != hashNext)
@@ -378,6 +382,9 @@ namespace TAO
 
                 return false;
             }
+
+            /* Set our internal cache if credentials passed. */
+            session.GetAccount()->SetCache(hashSecret, txPrev.nSequence + 1);
 
             return true;
         }
