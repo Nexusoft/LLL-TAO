@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/operators/count.h>
 
 #include <TAO/API/include/results.h>
@@ -22,9 +23,8 @@ namespace TAO::API
     encoding::json Operators::Count(const encoding::json& jParams, const encoding::json& jResult)
     {
         /* Build our array object. */
-        encoding::json jRet = encoding::json::array();
-        for(const auto& jItem : jResult)
-            ResultsToArray(jParams, jItem, jRet);
+        const encoding::json jRet =
+            Operators::Array(jParams, jResult);
 
         return { {"count", jRet.size() }};
     }
