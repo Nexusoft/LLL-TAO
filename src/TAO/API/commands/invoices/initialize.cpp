@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/invoices.h>
-#include <TAO/API/types/commands/operators.h>
 #include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/operators/all.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
@@ -45,6 +45,17 @@ namespace TAO::API
             std::bind
             (
                 &Operators::Array,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the COUNT operator. */
+        mapOperators["count"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Count,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

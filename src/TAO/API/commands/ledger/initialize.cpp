@@ -14,8 +14,10 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/commands/ledger.h>
-#include <TAO/API/types/commands/operators.h>
 #include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/operators/array.h>
+#include <TAO/API/types/operators/mean.h>
+#include <TAO/API/types/operators/sum.h>
 
 /* Global TAO namespace. */
 namespace TAO::API

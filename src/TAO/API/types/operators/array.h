@@ -11,21 +11,32 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/commands/operators.h>
+#pragma once
 
-#include <TAO/API/include/results.h>
+#include <Util/include/json.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Get the data from a digital asset */
-    encoding::json Operators::Array(const encoding::json& jParams, const encoding::json& jResult)
+    /** @namespace Operators
+     *
+     *  Namespace to hold all available operators for use in commands routes.
+     *
+     **/
+    namespace Operators
     {
-        /* Build our array object. */
-        encoding::json jRet = encoding::json::array();
-        for(const auto& jItem : jResult)
-            ResultsToArray(jParams, jItem, jRet);
 
-        return jRet;
+        /** Array
+         *
+         *  Computes values into a single item array
+         *
+         *  @param[in] jParams The input parameters to the command.
+         *  @param[in] jResult The list of objects to operate on.
+         *
+         *  @return the json result of the operations.
+         *
+         **/
+        encoding::json Array(const encoding::json& jParams, const encoding::json& jResult);
+
     }
 }

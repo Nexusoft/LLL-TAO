@@ -11,8 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/commands/operators.h>
 #include <TAO/API/types/exception.h>
+#include <TAO/API/types/operators/array.h>
+#include <TAO/API/types/operators/sum.h>
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>

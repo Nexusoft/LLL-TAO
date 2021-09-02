@@ -454,9 +454,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_names_index.o \
 		build/API_commands_names_names.o \
 		build/API_commands_names_resolve.o \
-		build/API_commands_operators_array.o \
-		build/API_commands_operators_mean.o \
-		build/API_commands_operators_sum.o \
 		build/API_commands_register_initialize.o \
 		build/API_commands_register_list.o \
 		build/API_commands_register_json.o \
@@ -475,6 +472,10 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_templates_update.o \
 		build/API_commands_tokens_list.o \
 		build/API_commands_tokens_initialize.o \
+		build/API_operators_array.o \
+		build/API_operators_count.o \
+		build/API_operators_mean.o \
+		build/API_operators_sum.o \
 		build/API_types_users_create.o \
 		build/API_types_users_clear.o \
 		build/API_types_users_has.o \
@@ -767,22 +768,22 @@ build/API_commands_register_%.o: ./src/TAO/API/commands/register/%.cpp $(HEADERS
 build/API_commands_supply_%.o: ./src/TAO/API/commands/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
+build/API_commands_system_%.o: ./src/TAO/API/commands/system/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
 build/API_commands_templates_%.o: ./src/TAO/API/commands/templates/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_commands_operators_%.o: ./src/TAO/API/commands/operators/%.cpp $(HEADERS)
+build/API_commands_tokens_%.o: ./src/TAO/API/commands/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_commands_tokens_%.o: ./src/TAO/API/commands/tokens/%.cpp $(HEADERS)
+build/API_operators_%.o: ./src/TAO/API/operators/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_users_%.o: ./src/TAO/API/users/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_voting_%.o: ./src/TAO/API/voting/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
-build/API_commands_system_%.o: ./src/TAO/API/commands/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Ledger_%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
@@ -1373,6 +1374,13 @@ build/API_commands_supply_%.o: src/TAO/API/commands/supply/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+build/API_commands_system_%.o: src/TAO/API/commands/system/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
 build/API_commands_templates_%.o: src/TAO/API/commands/templates/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -1380,14 +1388,14 @@ build/API_commands_templates_%.o: src/TAO/API/commands/templates/%.cpp $(HEADERS
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_commands_operators_%.o: src/TAO/API/commands/operators/%.cpp $(HEADERS)
+build/API_commands_tokens_%.o: src/TAO/API/commands/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_commands_tokens_%.o: src/TAO/API/commands/tokens/%.cpp $(HEADERS)
+build/API_operators_%.o: src/TAO/API/operators/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1402,13 +1410,6 @@ build/API_types_users_%.o: src/TAO/API/users/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_types_voting_%.o: src/TAO/API/voting/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_commands_system_%.o: src/TAO/API/commands/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

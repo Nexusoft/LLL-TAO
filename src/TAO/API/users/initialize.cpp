@@ -14,8 +14,10 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/users.h>
 
 #include <TAO/API/types/commands/invoices.h>
-#include <TAO/API/types/commands/operators.h>
 #include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/operators/array.h>
+#include <TAO/API/types/operators/mean.h>
+#include <TAO/API/types/operators/sum.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/global.h>

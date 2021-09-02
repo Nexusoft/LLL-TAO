@@ -11,8 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/commands/operators.h>
 #include <TAO/API/types/exception.h>
+#include <TAO/API/types/operators/mean.h>
+#include <TAO/API/types/operators/sum.h>
 
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/json.h>

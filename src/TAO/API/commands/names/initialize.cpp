@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/names.h>
-#include <TAO/API/types/commands/operators.h>
+#include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/include/check.h>
