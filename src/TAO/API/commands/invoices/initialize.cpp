@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/operators/count.h>
 #include <TAO/API/types/operators/mean.h>
+#include <TAO/API/types/operators/min.h>
 #include <TAO/API/types/operators/sum.h>
 
 #include <TAO/API/include/check.h>
@@ -59,6 +60,17 @@ namespace TAO::API
             std::bind
             (
                 &Operators::Mean,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the MIN operator. */
+        mapOperators["min"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Min,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

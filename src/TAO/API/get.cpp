@@ -98,7 +98,7 @@ namespace TAO::API
             }
 
             default:
-                throw Exception(-124, "Unknown token / account.");
+                throw Exception(-36, "Unsupported type [", GetStandardName(object.Standard()), "] for command");
         }
 
         return 0;

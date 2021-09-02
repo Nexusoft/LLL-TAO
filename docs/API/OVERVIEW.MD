@@ -275,7 +275,7 @@ API Error Codes
 | -121 | Aggregated type [noun] not allowed for [verb] |
 | -122 | Invalid operator [op] for command. |
 | -123 | [type] unsupported for operator [op] |
-| -124 | Unknown token / account |
+| -124 | Operator [op] cannot be used on empty result |
 | -125 | Token not found |
 | -126 | Address is not for a NXS account" |
 | -127 | Missing username |
