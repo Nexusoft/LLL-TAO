@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/Operation/types/contract.h>
+
 #include <TAO/Ledger/include/enum.h>
 
 namespace LLD
@@ -64,25 +66,45 @@ namespace LLD
 
 
     /* Pushes an order to the orderbook stack. */
-    bool LogicalDB::PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket, const uint512_t& hashTx, const uint32_t nContract)
+    bool LogicalDB::PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket,
+                              const TAO::Operation::Contract& rContract, const uint32_t nContract)
     {
+        /* Grab a refernece of our txid. */
+        const uint512_t& hashTx =
+            rContract.Hash();
+
+        /* Grab a reference of our caller. */
+        const uint256_t& hashOwner =
+            rContract.Caller();
+
         /* Check for already existing order. */
         if(HasOrder(hashTx, nContract))
             return false;
 
         /* Get our current sequence number. */
-        uint32_t nSequence = 0;
-        Read(std::make_pair(std::string("sequence"), pairMarket), nSequence);
+        uint32_t nMarketSequence = 0, nOwnerSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("market.sequence"), pairMarket), nMarketSequence);
+        Read(std::make_pair(std::string("market.sequence"), hashOwner),   nOwnerSequence);
 
         /* Start an ACID transaction for this set of records. */
         TxnBegin();
 
         /* Write our order by sequence number. */
-        if(!Write(std::make_pair(nSequence, pairMarket), std::make_pair(hashTx, nContract)))
+        if(!Write(std::make_pair(nMarketSequence, pairMarket), std::make_pair(hashTx, nContract)))
             return false;
 
-        /* Write our new sequence to disk. */
-        if(!Write(std::make_pair(std::string("sequence"), pairMarket), ++nSequence))
+        /* Write our new market sequence to disk. */
+        if(!Write(std::make_pair(std::string("market.sequence"), pairMarket), ++nMarketSequence))
+            return false;
+
+        /* Add an additional indexing entry for owner level orders. */
+        if(!Index(std::make_pair(nOwnerSequence, hashOwner), std::make_pair(nMarketSequence, pairMarket)))
+            return false;
+
+        /* Write our new owner sequence to disk. */
+        if(!Write(std::make_pair(std::string("market.sequence"), hashOwner), ++nOwnerSequence))
             return false;
 
         /* Write our order proof. */
@@ -93,7 +115,7 @@ namespace LLD
     }
 
 
-    /* Pushes an order to the orderbook stack. */
+    /* Pulls a list of orders from the orderbook stack. */
     bool LogicalDB::ListOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders)
     {
         /* Cache our txid and contract as a pair. */
@@ -117,6 +139,7 @@ namespace LLD
 
         return !vOrders.empty();
     }
+
 
     /*  List the current completed orders for given market pair. */
     bool LogicalDB::ListExecuted(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vExecuted)

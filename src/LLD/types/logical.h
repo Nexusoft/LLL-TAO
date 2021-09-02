@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
+namespace TAO::Operation { class Contract; }
 
 namespace LLD
 {
@@ -96,14 +97,15 @@ namespace LLD
          *  Pushes an order to the orderbook stack.
          *
          *  @param[in] pairMarket The market-pair of token-id's
-         *  @param[in] hashTx The txid of the order on-chain
+         *  @param[in] rContract The contract that contains the existing order.
          *  @param[in] nAmount The amount debited for this order
          *  @param[in] nRequest The requested amount in exchange for order.
          *
          *  @return true if written successfully
          *
          **/
-        bool PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket, const uint512_t& hashTx, const uint32_t nContract);
+        bool PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket,
+                       const TAO::Operation::Contract& rContract, const uint32_t nContract);
 
 
         /** ListOrders
@@ -117,6 +119,19 @@ namespace LLD
          *
          **/
         bool ListOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders);
+
+
+        /** ListOrders
+         *
+         *  List the current active orders for given user's sigchain.
+         *
+         *  @param[in] hashGenesis The current genesis-id to grab orders by.
+         *  @param[in] vOrders The list of orders extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListOrders(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vOrders);
 
 
         /** ListExecuted
