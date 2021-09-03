@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/templates.h>
 #include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/operators/count.h>
+#include <TAO/API/types/operators/max.h>
 #include <TAO/API/types/operators/mean.h>
 #include <TAO/API/types/operators/min.h>
 #include <TAO/API/types/operators/sum.h>
@@ -49,6 +50,17 @@ namespace TAO::API
             std::bind
             (
                 &Operators::Count,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the MAX operator. */
+        mapOperators["max"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Max,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

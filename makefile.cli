@@ -474,6 +474,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_tokens_initialize.o \
 		build/API_operators_array.o \
 		build/API_operators_count.o \
+		build/API_operators_max.o \
 		build/API_operators_mean.o \
 		build/API_operators_min.o \
 		build/API_operators_sum.o \
