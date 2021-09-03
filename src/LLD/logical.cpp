@@ -95,12 +95,12 @@ namespace LLD
         if(!Write(std::make_pair(nMarketSequence, pairMarket), std::make_pair(hashTx, nContract)))
             return false;
 
-        /* Write our new market sequence to disk. */
-        if(!Write(std::make_pair(std::string("market.sequence"), pairMarket), ++nMarketSequence))
-            return false;
-
         /* Add an additional indexing entry for owner level orders. */
         if(!Index(std::make_pair(nOwnerSequence, hashOwner), std::make_pair(nMarketSequence, pairMarket)))
+            return false;
+
+        /* Write our new market sequence to disk. */
+        if(!Write(std::make_pair(std::string("market.sequence"), pairMarket), ++nMarketSequence))
             return false;
 
         /* Write our new owner sequence to disk. */

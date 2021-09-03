@@ -725,6 +725,7 @@ namespace LLD
                 cKey = mapIndex[item.second];
             else
             {
+                /* Check for the new indexing entry. */
                 if(!pSectorKeys->Get(item.second, cKey))
                     return debug::error(FUNCTION, "failed to read indexing entry");
 
