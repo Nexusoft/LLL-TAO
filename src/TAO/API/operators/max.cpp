@@ -29,7 +29,7 @@ namespace TAO::API
 
         /* Check for empty results. */
         if(jArray.empty())
-            throw Exception(-123, "Operator [min] cannot be used on empty result");
+            throw Exception(-123, "Operator [max] cannot be used on empty result");
 
         /* Loop through our entries to find minimum value. */
         encoding::json jRet = { {"max", jArray[0]} };
