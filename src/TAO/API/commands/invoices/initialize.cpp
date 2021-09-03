@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/operators/max.h>
 #include <TAO/API/types/operators/mean.h>
 #include <TAO/API/types/operators/min.h>
+#include <TAO/API/types/operators/mode.h>
+#include <TAO/API/types/operators/round.h>
 #include <TAO/API/types/operators/sum.h>
 
 #include <TAO/API/include/check.h>
@@ -83,6 +85,28 @@ namespace TAO::API
             std::bind
             (
                 &Operators::Min,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the MODE operator. */
+        mapOperators["mode"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Mode,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the ROUND operator. */
+        mapOperators["round"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Round,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

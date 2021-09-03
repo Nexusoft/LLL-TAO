@@ -15,8 +15,6 @@ ________________________________________________________________________________
 #include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/operators/max.h>
 
-#include <TAO/API/include/results.h>
-
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -39,7 +37,8 @@ namespace TAO::API
             if(jArray[n].is_number_unsigned())
             {
                 /* Grab our values. */
-                const uint64_t nValue = jArray[n].get<uint64_t>();
+                const uint64_t nValue =
+                    jArray[n].get<uint64_t>();
 
                 /* Check if above maximum value. */
                 if(nValue < jRet["max"].get<uint64_t>())
@@ -50,7 +49,8 @@ namespace TAO::API
             if(jArray[n].is_number_integer())
             {
                 /* Grab our values. */
-                const int64_t nValue = jArray[n].get<int64_t>();
+                const int64_t nValue =
+                    jArray[n].get<int64_t>();
 
                 /* Check if above maximum value. */
                 if(nValue > jRet["max"].get<int64_t>())
@@ -61,7 +61,8 @@ namespace TAO::API
             if(jArray[n].is_number_float())
             {
                 /* Grab our values. */
-                const double dValue = jArray[n].get<double>();
+                const double dValue =
+                    jArray[n].get<double>();
 
                 /* Check if above maximum value. */
                 if(dValue > jRet["max"].get<double>())

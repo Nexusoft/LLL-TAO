@@ -28,10 +28,12 @@ namespace TAO::API
     encoding::json Operators::Sum(const encoding::json& jParams, const encoding::json& jResult)
     {
         /* Build our list from Array command. */
-        const encoding::json jList = Operators::Array(jParams, jResult);
+        const encoding::json jList =
+            Operators::Array(jParams, jResult);
 
         /* Extract our fieldname. */
-        const std::string strField = ExtractFieldname(jParams);
+        const std::string strField =
+            ExtractFieldname(jParams);
 
         /* Loop through to calculate sum. */
         encoding::json jRet = encoding::json::object();

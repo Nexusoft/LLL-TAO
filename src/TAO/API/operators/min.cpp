@@ -15,8 +15,6 @@ ________________________________________________________________________________
 #include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/operators/min.h>
 
-#include <TAO/API/include/results.h>
-
 /* Global TAO namespace. */
 namespace TAO::API
 {

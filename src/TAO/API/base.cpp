@@ -85,10 +85,26 @@ namespace TAO::API
             if(jParams.find("request") != jParams.end() && jParams["request"].find("operator") != jParams["request"].end())
             {
                 /* Grab our current operator. */
-                const std::string& strOperator = jParams["request"]["operator"].get<std::string>();
+                const std::string& strOperators =
+                    jParams["request"]["operator"].get<std::string>();
+
+                /* Check if we are mapping multiple types. */
+                if(strOperators.find(",") != strOperators.npos)
+                {
+                    /* Grab our components of the operator. */
+                    std::vector<std::string> vOperators;
+                    ParseString(strOperators, ',', vOperators);
+
+                    /* Loop through our nouns now. */
+                    encoding::json jResult = jResults; //interim results to chain through operators
+                    for(auto& strOperator : vOperators)
+                        jResult = mapOperators[strOperator].Execute(jParams, jResult);
+
+                    return jResult;
+                }
 
                 /* Compute and return from our operator function. */
-                return mapOperators[strOperator].Execute(jParams, jResults);
+                return mapOperators[strOperators].Execute(jParams, jResults);
             }
 
             return jResults;
@@ -204,14 +220,30 @@ namespace TAO::API
                 case URI::OPERATOR:
                 {
                     /* Grab our operator. */
-                    const std::string& strOperator = vMethods[n];
+                    const std::string& strOperators = vMethods[n];
+
+                    /* Check if we are mapping multiple types. */
+                    if(strOperators.find(",") != strOperators.npos)
+                    {
+                        /* Grab our components of the operator. */
+                        std::vector<std::string> vOperators;
+                        ParseString(strOperators, ',', vOperators);
+
+                        /* Loop through compound operators. */
+                        for(auto& strOperator : vOperators)
+                        {
+                            /* Check if the operator is available. */
+                            if(!mapOperators.count(strOperator))
+                                throw Exception(-118, "[", strOperator, "] operator not supported for this command-set");
+                        }
+                    }
 
                     /* Check if the operator is available. */
-                    if(!mapOperators.count(strOperator))
-                        throw Exception(-118, "[", strOperator, "] operator not supported for this command-set");
+                    else if(!mapOperators.count(strOperators))
+                        throw Exception(-118, "[", strOperators, "] operator not supported for this command-set");
 
                     /* Add to input parameters. */
-                    jParams["request"]["operator"] = strOperator;
+                    jParams["request"]["operator"] = strOperators;
 
                     continue;
                 }
