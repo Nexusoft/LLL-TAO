@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/operators/array.h>
-#include <TAO/API/types/operators/round.h>
+#include <TAO/API/types/operators/floor.h>
 
 #include <TAO/API/types/exception.h>
 
@@ -20,7 +20,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Get the data from a digital asset */
-    encoding::json Operators::Round(const encoding::json& jParams, const encoding::json& jResult)
+    encoding::json Operators::Floor(const encoding::json& jParams, const encoding::json& jResult)
     {
         /* Build our array object. */
         encoding::json jList =

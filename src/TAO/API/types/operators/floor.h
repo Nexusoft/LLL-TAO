@@ -28,7 +28,7 @@ namespace TAO::API
 
         /** Round
          *
-         *  Rounds a float value into an integer without decimals for using with other operators that may not need precision.
+         *  Rounds a float value into integer without decimals for using with other operators that may not need precision.
          *
          *  @param[in] jParams The input parameters to the command.
          *  @param[in] jResult The list of objects to operate on.
@@ -36,7 +36,7 @@ namespace TAO::API
          *  @return the json result of the operations.
          *
          **/
-        encoding::json Round(const encoding::json& jParams, const encoding::json& jResult);
+        encoding::json Floor(const encoding::json& jParams, const encoding::json& jResult);
 
     }
 }

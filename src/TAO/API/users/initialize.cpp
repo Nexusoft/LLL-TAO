@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/operators/mean.h>
 #include <TAO/API/types/operators/mode.h>
-#include <TAO/API/types/operators/round.h>
+#include <TAO/API/types/operators/floor.h>
 #include <TAO/API/types/operators/sum.h>
 
 #include <TAO/API/include/check.h>
@@ -29,23 +29,23 @@ namespace TAO::API
     /* Standard initialization function. */
     void Users::Initialize()
     {
-        /* Handle for the SUM operator. */
-        mapOperators["sum"] = Operator
-        (
-            std::bind
-            (
-                &Operators::Sum,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
         /* Handle for the ARRAY operator. */
         mapOperators["array"] = Operator
         (
             std::bind
             (
                 &Operators::Array,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the FLOOR operator. */
+        mapOperators["floor"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Floor,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -73,30 +73,17 @@ namespace TAO::API
             )
         );
 
-        /* Handle for the ROUND operator. */
-        mapOperators["round"] = Operator
+        /* Handle for the SUM operator. */
+        mapOperators["sum"] = Operator
         (
             std::bind
             (
-                &Operators::Round,
+                &Operators::Sum,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
         );
 
-
-        /* Handle for list/invoices operations. */
-        mapFunctions["list/invoices"] = Function
-        (
-            std::bind
-            (
-                &Templates::List,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-            , version::get_version(5, 1, 0)
-            , "please use invoices/list/invoices command instead"
-        );
 
         mapFunctions["create/user"]              = Function(std::bind(&Users::Create,        this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["login/user"]               = Function(std::bind(&Users::Login,         this, std::placeholders::_1, std::placeholders::_2));
@@ -137,6 +124,19 @@ namespace TAO::API
             )
             , version::get_version(5, 1, 0)
             , "please use assets/list/assets instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/invoices"] = Function
+        (
+            std::bind
+            (
+                &Templates::List,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use invoices/list/invoices command instead"
         );
 
         /* DEPRECATED */

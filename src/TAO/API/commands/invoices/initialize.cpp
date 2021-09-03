@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/operators/mean.h>
 #include <TAO/API/types/operators/min.h>
 #include <TAO/API/types/operators/mode.h>
-#include <TAO/API/types/operators/round.h>
+#include <TAO/API/types/operators/floor.h>
 #include <TAO/API/types/operators/sum.h>
 
 #include <TAO/API/include/check.h>
@@ -52,6 +52,17 @@ namespace TAO::API
             std::bind
             (
                 &Operators::Count,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the FLOOR operator. */
+        mapOperators["floor"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Floor,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -96,17 +107,6 @@ namespace TAO::API
             std::bind
             (
                 &Operators::Mode,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
-        /* Handle for the ROUND operator. */
-        mapOperators["round"] = Operator
-        (
-            std::bind
-            (
-                &Operators::Round,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
