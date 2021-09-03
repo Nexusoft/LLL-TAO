@@ -82,29 +82,39 @@ namespace TAO::API
                 mapFunctions[strMethod].Execute(jParams, fHelp);
 
             /* Check for operator. */
-            if(jParams.find("request") != jParams.end() && jParams["request"].find("operator") != jParams["request"].end())
+            if(CheckRequest(jParams, "operator", "string, array"))
             {
-                /* Grab our current operator. */
-                const std::string& strOperators =
-                    jParams["request"]["operator"].get<std::string>();
+                /* Check for single string operator. */
+                if(jParams["request"]["operator"].is_string())
+                {
+                    /* Grab our current operator. */
+                    const std::string& strOperator =
+                        jParams["request"]["operator"].get<std::string>();
+
+                    /* Compute and return from our operator function. */
+                    return mapOperators[strOperator].Execute(jParams, jResults);
+                }
 
                 /* Check if we are mapping multiple types. */
-                if(strOperators.find(",") != strOperators.npos)
+                if(jParams["request"]["operator"].is_array())
                 {
-                    /* Grab our components of the operator. */
-                    std::vector<std::string> vOperators;
-                    ParseString(strOperators, ',', vOperators);
+                    /* Grab our current operator. */
+                    const encoding::json& jOperators =
+                        jParams["request"]["operator"];
 
                     /* Loop through our nouns now. */
                     encoding::json jResult = jResults; //interim results to chain through operators
-                    for(auto& strOperator : vOperators)
+                    for(auto& jOperator : jOperators)
+                    {
+                        /* Grab our current operator. */
+                        const std::string& strOperator =
+                            jOperator.get<std::string>();
+
                         jResult = mapOperators[strOperator].Execute(jParams, jResult);
+                    }
 
                     return jResult;
                 }
-
-                /* Compute and return from our operator function. */
-                return mapOperators[strOperators].Execute(jParams, jResults);
             }
 
             return jResults;
@@ -230,16 +240,25 @@ namespace TAO::API
                         ParseString(strOperators, ',', vOperators);
 
                         /* Loop through compound operators. */
+                        encoding::json jOperators = encoding::json::array();
                         for(auto& strOperator : vOperators)
                         {
                             /* Check if the operator is available. */
                             if(!mapOperators.count(strOperator))
                                 throw Exception(-118, "[", strOperator, "] operator not supported for this command-set");
+
+                            /* Add to a results array. */
+                            jOperators.push_back(strOperator);
                         }
+
+                        /* Add to input parameters. */
+                        jParams["request"]["operator"] = jOperators;
+
+                        continue;
                     }
 
                     /* Check if the operator is available. */
-                    else if(!mapOperators.count(strOperators))
+                    if(!mapOperators.count(strOperators))
                         throw Exception(-118, "[", strOperators, "] operator not supported for this command-set");
 
                     /* Add to input parameters. */
