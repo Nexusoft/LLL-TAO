@@ -329,9 +329,7 @@ namespace TAO
         }
 
 
-        /* Checks that the session/password/pin parameters have been provided (where necessary) and then verifies that the
-        *  password and pin are correct.
-        *  If authentication fails then the AuthAttempts counter in the callers session is incremented */
+        /* Checks that the session/password/pin parameters have been provided and are correct credentials. */
         bool Users::Authenticate(const encoding::json& jParams)
         {
             /* Get the PIN to be used for this API call */

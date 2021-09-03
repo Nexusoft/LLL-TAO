@@ -75,10 +75,10 @@ namespace TAO::API
                                 ((block.nChannel == 0) ? block.StakeHash().GetHex() : block.ProofHash().GetHex());
 
         /* Body of the block with relevant data. */
-        result["size"]       = (uint32_t)::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION);
-        result["height"]     = (uint32_t)block.nHeight;
-        result["channel"]    = (uint32_t)block.nChannel;
-        result["version"]    = (uint32_t)block.nVersion;
+        result["size"]       = ::GetSerializeSize(block, SER_NETWORK, LLP::PROTOCOL_VERSION);
+        result["height"]     = block.nHeight;
+        result["channel"]    = block.nChannel;
+        result["version"]    = block.nVersion;
         result["merkleroot"] = block.hashMerkleRoot.GetHex();
         result["timestamp"]       = block.GetBlockTime();
         result["date"]       = convert::DateTimeStrFormat(block.GetBlockTime());
@@ -143,7 +143,7 @@ namespace TAO::API
 
         return result;
     }
-    
+
 
     /* Converts the transaction to formatted JSON */
     encoding::json TransactionToJSON(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState& block, const uint32_t nVerbose)

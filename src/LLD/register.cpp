@@ -473,12 +473,15 @@ namespace LLD
         {
             /* Read the next batch of inventory. */
             std::vector<TAO::Ledger::Transaction> vtx;
-            if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, false))
+            if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, true))
                 break;
 
             /* Loop through found transactions. */
-            for(const auto& tx : vtx)
+            for(uint32_t nIndex = 0; nIndex < vtx.size() - 1; ++nIndex)
             {
+                /* Grab a reference of our transaction. */
+                const TAO::Ledger::Transaction& tx = vtx[nIndex];
+                
                 /* Iterate the transaction contracts. */
                 for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
                 {
@@ -520,7 +523,7 @@ namespace LLD
                 {
                     /* Get the time it took to rescan. */
                     uint32_t nElapsedSeconds = timer.Elapsed();
-                    debug::log(0, FUNCTION, "Processed ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                    debug::log(0, FUNCTION, "Re-indexed ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
                         std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
                 }
             }

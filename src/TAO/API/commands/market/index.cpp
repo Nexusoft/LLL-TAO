@@ -84,8 +84,8 @@ namespace TAO::API
                         std::make_pair(hashFirst, hashSecond);
 
                     /* Write the order to logical database. */
-                    if(!LLD::Contract->HasContract(std::make_pair(rContract.Hash(), nContract)))
-                        LLD::Logical->PushOrder(pairMarket, rContract.Hash(), nContract);
+                    if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
+                        debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
                 }
                 catch(const std::exception& e)
                 {
