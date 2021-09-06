@@ -220,6 +220,9 @@ namespace LLD
 
             /* Get the data. */
             TemplateNode<KeyType, DataType> *pthis = cache[Key];
+            if(!pthis)
+                return false;
+
             Data = pthis->Data;
 
             /* Move to front of double linked list. */
@@ -246,15 +249,17 @@ namespace LLD
             {
                 /* Get the node we are working on. */
                 TemplateNode<KeyType, DataType>* pthis = cache[Key];
+                if(pthis)
+                {
+                    /* Remove the node from the linked list. */
+                    remove_node(pthis);
 
-                /* Remove the node from the linked list. */
-                remove_node(pthis);
+                    /* Free the memory. */
+                    delete pthis;
+                }
 
                 /* Clear the pointer data. */
                 cache.erase(Key);
-
-                /* Free the memory. */
-                delete pthis;
             }
 
             /* Create a new cache node. */
@@ -307,17 +312,20 @@ namespace LLD
 
             /* Get the node we are working on. */
             TemplateNode<KeyType, DataType>* pthis = cache[Key];
+            if(pthis)
+            {
+                /* Remove the node from the linked list. */
+                remove_node(pthis);
 
-            /* Remove the node from the linked list. */
-            remove_node(pthis);
+                pthis->pprev     = nullptr;
+                pthis->pnext     = nullptr;
+
+                /* Free the memory. */
+                delete pthis;
+            }
 
             /* Clear the pointer data. */
             cache.erase(Key);
-            pthis->pprev     = nullptr;
-            pthis->pnext     = nullptr;
-
-            /* Free the memory. */
-            delete pthis;
 
             return true;
         }
