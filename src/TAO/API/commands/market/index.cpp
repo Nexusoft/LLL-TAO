@@ -48,40 +48,35 @@ namespace TAO::API
                     rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
 
                     /* Get the comparison bytes. */
-                    std::vector<uint8_t> vBytes;
-                    rContract >= vBytes;
+                    TAO::Operation::Stream ssBytes;
+                    rContract >= ssBytes;
 
-                    /* Get the next OP. */
-                    rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
+                    /* Skip ahead to our token-id. */
+                    ssBytes.seek(33, STREAM::BEGIN);
 
-                    /* Grab our pre-state token-id. */
-                    std::string strToken;
-                    rContract >= strToken;
+                    /* Grab our deposit token-id now. */
+                    uint256_t hashDeposit;
+                    ssBytes >> hashDeposit;
 
-                    /* Get the next OP. */
-                    rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
+                    /* Read the object to get token-id. */
+                    TAO::Register::Object oDeposit;
+                    if(!LLD::Register->ReadObject(hashDeposit, oDeposit))
+                        return;
 
-                    /* Grab our token-id now. */
-                    uint256_t hashFirst;
-                    rContract >= hashFirst;
-
-                    /* Grab our other token from pre-state. */
-                    TAO::Register::Object tPreState = rContract.PreState();
+                    /* Grab our other withdraw token-id from pre-state. */
+                    TAO::Register::Object oWithdraw =
+                        rContract.PreState();
 
                     /* Skip over non objects for now. */
-                    if(tPreState.nType != TAO::Register::REGISTER::OBJECT)
+                    if(oWithdraw.nType != TAO::Register::REGISTER::OBJECT)
                         return;
 
                     /* Parse pre-state if needed. */
-                    tPreState.Parse();
-
-                    /* Grab the rhs token. */
-                    const uint256_t hashSecond =
-                        tPreState.get<uint256_t>("token");
+                    oWithdraw.Parse();
 
                     /* Create our market-pair. */
                     const std::pair<uint256_t, uint256_t> pairMarket =
-                        std::make_pair(hashFirst, hashSecond);
+                        std::make_pair(oDeposit.get<uint256_t>("token"), oWithdraw.get<uint256_t>("token"));
 
                     /* Write the order to logical database. */
                     if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
