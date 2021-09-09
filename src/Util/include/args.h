@@ -19,6 +19,9 @@ ________________________________________________________________________________
 #include <map>
 #include <vector>
 #include <string>
+#include <mutex>
+
+#include <LLC/types/uint1024.h>
 
 namespace config
 {
@@ -26,7 +29,7 @@ namespace config
     extern std::map<std::string, std::string> mapArgs;
     extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
     extern std::map<uint16_t, std::vector<std::string> > mapIPFilters;
-    extern std::string strMiscWarning;
+
 
     extern std::atomic<bool> fShutdown;
     extern std::atomic<bool> fDebug;
@@ -44,7 +47,15 @@ namespace config
     extern std::atomic<bool> fInitialized;
     extern std::atomic<bool> fPoolStaking;
     extern std::atomic<bool> fStaking;
+    extern std::atomic<bool> fHybrid;
+    extern std::atomic<bool> fSister;
     extern std::atomic<int32_t> nVerbose;
+
+    /* Hybrid/Sister specific configuration variables. */
+    extern uint256_t hashNetworkOwner;
+
+    /* Declare our arguments mutex. */
+    extern std::mutex ARGS_MUTEX;
 
 
     /** InterpretNegativeSetting
@@ -80,6 +91,18 @@ namespace config
      *
      **/
     std::string GetArg(const std::string& strArg, const std::string& strDefault);
+
+
+    /** HasArg
+     *
+     *  Return boolean if given argument is in map.
+     *
+     *  @param strArg Argument to get. (e.g. "-foo")
+     *
+     *  @return command-line argument (0 if invalid number) or default value.
+     *
+     **/
+    bool HasArg(const std::string& strArg);
 
 
     /** GetArg

@@ -659,7 +659,6 @@ template<uint32_t BITS>
 const std::vector<uint8_t> base_uint<BITS>::GetBytes() const
 {
     std::vector<uint8_t> DATA;
-
     for(int index = 0; index < WIDTH; ++index)
     {
         std::vector<uint8_t> BYTES(4, 0);
@@ -786,9 +785,9 @@ uint64_t base_uint<BITS>::Get64(uint32_t n) const
 /*  A helper function used to inspect the most significant word. This can be
   *  used to determine the size in base 2 up to 992 bits. */
 template<uint32_t BITS>
-uint32_t base_uint<BITS>::high_bits(uint32_t mask)
+uint32_t base_uint<BITS>::high_bits(uint32_t nMask)
 {
-    return pn[WIDTH-1] & mask;
+    return pn[WIDTH-1] & nMask;
 }
 
 
@@ -796,16 +795,16 @@ uint32_t base_uint<BITS>::high_bits(uint32_t mask)
 template <uint32_t BITS>
 uint32_t base_uint<BITS>::bits() const
 {
-    for(int32_t pos = WIDTH - 1; pos >= 0; --pos)
+    for(int32_t nPos = WIDTH - 1; nPos >= 0; --nPos)
     {
-        if(pn[pos])
+        if(pn[nPos])
         {
             for(int32_t nbits = 31; nbits > 0; --nbits)
             {
-                if(pn[pos] & 1U << nbits)
-                    return 32 * pos + nbits + 1;
+                if(pn[nPos] & 1U << nbits)
+                    return 32 * nPos + nbits + 1;
             }
-            return 32 * pos + 1;
+            return 32 * nPos + 1;
         }
     }
 

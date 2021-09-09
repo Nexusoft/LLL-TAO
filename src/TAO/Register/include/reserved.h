@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_RESERVED_H
-#define NEXUS_TAO_REGISTER_INCLUDE_RESERVED_H
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/address.h>
@@ -21,44 +19,105 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Register
 {
-
-    /* Register Layer namespace. */
-    namespace Register
+    /** Hold list of reserved object register values. **/
+    const std::set<std::string> RESERVED =
     {
+        /* Used to hold token blance. */
+        "balance",
 
-        /** Hold list of reserved object register values. **/
-        const std::vector<std::string> RESERVED =
+        /* Used to identify a specific token. */
+        "token",
+
+        /* Used to set validation script in object register. */
+        "require",
+
+        /* Used for token domain parameters for max supply. */
+        "supply",
+
+        /* Used to determine decimals of a token. */
+        "decimals",
+
+        /* Used to determine collective trust in a register. */
+        "trust",
+
+        /* Used to determine total stake for a register. */
+        "stake",
+
+        /* Used for internal object register system memory. */
+        "system",
+
+        /* Used for object register names. Reserved to never be changed. */
+        "name"
+    };
+
+
+    /** Reserved
+     *
+     *  Object register keys that are reserved
+     *
+     *  @param[in] strValue The value to check.
+     *
+     *  @return True if value is object register reserved value.
+     *
+     **/
+    __attribute__((const)) inline bool Reserved(const std::string& strValue)
+    {
+        return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
+    }
+
+
+    /** Reserved
+     *
+     *  System reserved values for system registers.
+     *
+     *  @param[in] hashAddress The register address to check.
+     *
+     *  @return True if value is system reserved value.
+     *
+     **/
+    __attribute__((const)) inline bool Reserved(const Address& hashAddress)
+    {
+        /* Check for valid address values. */
+        if(!hashAddress.IsValid())
+            return true;
+
+        return hashAddress >= uint8_t(SYSTEM::RESERVED) && hashAddress <= uint8_t(SYSTEM::LIMIT);
+    }
+
+
+    /** Range
+     *
+     *  Check if a register type is using a valid range
+     *
+     *  @param[in] nType The type byte to check
+     *
+     *  @return True if value is in acceptable range.
+     *
+     **/
+    inline bool Range(const uint8_t nType)
+    {
+        return (nType > REGISTER::RESERVED && nType < REGISTER::SYSTEM);
+    }
+
+
+    /** Name
+     *
+     *  Contains the list of reserved names we want to check against.
+     *
+     **/
+    namespace NAME
+    {
+        /** Hold list of reserved global names. **/
+        const std::set<std::string> RESERVED =
         {
-            /* Used to hold token blance. */
-            "balance",
-
-            /* Used to identify a specific token. */
-            "token",
-
-            /* Used to set validation script in object register. */
-            "require",
-
-            /* Used for token domain parameters for max supply. */
-            "supply",
-
-            /* Used to determine decimals of a token. */
-            "decimals",
-
-            /* Used to determine collective trust in a register. */
-            "trust",
-
-            /* Used to determine total stake for a register. */
-            "stake",
-
-            /* Used for internal object register system memory. */
-            "system",
-
-            /* Used for object register names. Reserved to never be changed. */
-            "name"
+            /* native token name. */
+            "NXS",
+            "nxs",
+            "NEXUS",
+            "nexus"
         };
-
 
         /** Reserved
          *
@@ -69,112 +128,52 @@ namespace TAO
          *  @return True if value is object register reserved value.
          *
          **/
-        inline bool Reserved(const std::string& strValue)
+        __attribute__((const)) inline bool Reserved(const std::string& strValue)
         {
             return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
         }
+    }
 
+
+    /** Namespace
+     *
+     *  Contains the list of reserved namespaces we want to check against.
+     *
+     **/
+    namespace NAMESPACE
+    {
+        /** Hold list of reserved global names. **/
+        const std::set<std::string> RESERVED =
+        {
+            /* Global namspace name has to be reserved */
+            TAO::Register::NAMESPACE::GLOBAL,
+
+            /* reserved to avoid confusion or scam attempts. */
+             "nxs",
+             "nexus.io",
+             "nexus.com",
+             "nexusearth.com",
+
+        };
 
         /** Reserved
          *
-         *  System reserved values for system registers.
+         *  Object register keys that are reserved
          *
-         *  @param[in] hashAddress The register address to check.
+         *  @param[in] strValue The value to check.
          *
-         *  @return True if value is system reserved value.
-         *
-         **/
-        inline bool Reserved(const Address& hashAddress)
-        {
-            /* Check for valid address values. */
-            if(!hashAddress.IsValid())
-                return true;
-
-            return hashAddress >= uint8_t(SYSTEM::RESERVED) && hashAddress <= uint8_t(SYSTEM::LIMIT);
-        }
-
-
-        /** Range
-         *
-         *  Check if a register type is using a valid range
-         *
-         *  @param[in] nType The type byte to check
-         *
-         *  @return True if value is in acceptable range.
+         *  @return True if value is object register reserved value.
          *
          **/
-        inline bool Range(const uint8_t nType)
+        __attribute__((const)) inline bool Reserved(const std::string& strValue)
         {
-            return (nType > REGISTER::RESERVED && nType < REGISTER::SYSTEM);
-        }
-
-
-        namespace NAME
-        {
-            /** Hold list of reserved global names. **/
-            const std::vector<std::string> RESERVED =
-            {
-                /* native token name. */
-                "NXS",
-                "nxs",
-                "NEXUS",
-                "nexus"
-            };
-
-            /** Reserved
-             *
-             *  Object register keys that are reserved
-             *
-             *  @param[in] strValue The value to check.
-             *
-             *  @return True if value is object register reserved value.
-             *
-             **/
-            inline bool Reserved(const std::string& strValue)
-            {
-                return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
-            }
-        }
-
-
-        namespace NAMESPACE
-        {
-            /** Hold list of reserved global names. **/
-            const std::vector<std::string> RESERVED =
-            {
-                /* Global namspace name has to be reserved */
-                TAO::Register::NAMESPACE::GLOBAL,
-
-                /* reserved to avoid confusion or scam attempts. */
-                 "nxs",
-                 "nexus.io",
-                 "nexus.com",
-                 "nexusearth.com",
-
-            };
-
-            /** Reserved
-             *
-             *  Object register keys that are reserved
-             *
-             *  @param[in] strValue The value to check.
-             *
-             *  @return True if value is object register reserved value.
-             *
-             **/
-            inline bool Reserved(const std::string& strValue)
-            {
-                /* For namespaces the reserved word can't exist anywhere in the name.  */
-                return std::any_of(RESERVED.begin(), RESERVED.end(), 
-                    [&](std::string strReserved)
-                    {
-                        return strValue.find(strReserved) != std::string::npos;
-                    }
-                );
-                
-            }
+            /* For namespaces the reserved word can't exist anywhere in the name.  */
+            return std::any_of(RESERVED.begin(), RESERVED.end(),
+                [&](std::string strReserved)
+                {
+                    return strValue.find(strReserved) != std::string::npos;
+                }
+            );
         }
     }
 }
-
-#endif

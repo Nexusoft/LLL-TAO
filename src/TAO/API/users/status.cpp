@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/sigchain.h>
@@ -32,13 +32,13 @@ namespace TAO
     {
 
         /* Get status information for the currently logged in user. */
-        json::json Users::Status(const json::json& params, bool fHelp)
+        encoding::json Users::Status(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params, true, false);
+            Session& session = Commands::Get<Users>()->GetSession(params, true, false);
 
             /* The callers genesis */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
@@ -50,8 +50,8 @@ namespace TAO
             if(config::fMultiuser.load() && params.find("pin") != params.end())
             {
                 /* Authenticate the users credentials */
-                if(!users->Authenticate(params))
-                    throw APIException(-139, "Invalid credentials");
+                if(!Commands::Get<Users>()->Authenticate(params))
+                    throw Exception(-139, "Invalid credentials");
                 
                 /* Pin is valid so include the username */
                 fUsername = true;
@@ -93,7 +93,7 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-108, "Failed to read transaction");
+                    throw Exception(-108, "Failed to read transaction");
 
                 /* Number of transactions is the last sequence number + 1 (since the sequence is 0 based) */
                 nTransactions = tx.nSequence + 1;
@@ -123,7 +123,7 @@ namespace TAO
 
 
             /* populate unlocked status */
-            json::json jsonUnlocked;
+            encoding::json jsonUnlocked;
 
             jsonUnlocked["mining"] = !session.GetActivePIN().IsNull() && session.CanMine();
             jsonUnlocked["notifications"] = !session.GetActivePIN().IsNull() && session.CanProcessNotifications();

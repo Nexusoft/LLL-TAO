@@ -91,7 +91,7 @@ namespace LLP
          *  @return The json object to respond with.
          *
          **/
-        json::json JSONReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID);
+        encoding::json JSONReply(const encoding::json& jsonResponse, const encoding::json& jsonError, const encoding::json& jsonID);
 
 
         /** ErrorReply
@@ -103,7 +103,7 @@ namespace LLP
          *
          *
          **/
-        void ErrorReply(const json::json& jsonError, const json::json& jsonID);
+        void ErrorReply(const encoding::json& jsonError, const encoding::json& jsonID);
 
 
         /** Authorized

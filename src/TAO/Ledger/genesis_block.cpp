@@ -13,9 +13,12 @@ ________________________________________________________________________________
 
 #include <LLC/types/bignum.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/Ledger/include/genesis_block.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/block.h>
+#include <TAO/Ledger/types/transaction.h>
 
 #include <Legacy/types/legacy.h>
 
@@ -66,6 +69,64 @@ namespace TAO
 
             /* Ensure the time of transaction is the same time as the block time. */
             assert(genesis.nTime == block.nTime);
+
+            return block;
+        }
+
+
+        /* Creates the hybrid network genesis block. */
+        const BlockState HybridGenesis()
+        {
+            /* Check that we are in hybrid mode. */
+            if(!config::fHybrid.load())
+                throw debug::exception(FUNCTION, "cannot create hybrid genesis when not in hybrid mode");
+
+            /* Main coinbase genesis. */
+            Transaction genesis;
+            genesis.nVersion = 1;
+            genesis.nTimestamp = 1601484576;
+            genesis[0] <= config::hashNetworkOwner; //we seriailize the hybrid network sigchain into a conditional contract
+
+            /* Build the hashes to calculate the merkle root. */
+            std::vector<uint512_t> vHashes;
+            vHashes.push_back(genesis.GetHash());
+
+            /* Create the genesis block. */
+            BlockState block;
+            block.hashPrevBlock = 0;
+            block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
+            block.nVersion = 1;
+            block.nHeight  = 0;
+            block.nChannel = 2;
+            block.nTime    = 1601484576;
+            block.nBits    = LLC::CBigNum(bnProofOfWorkLimit[2]).GetCompact();
+            block.nNonce   = 0;
+            block.nChannelHeight = 1;
+
+            /* Find our nNonce solution. */
+            uint1024_t hashTarget = LLC::CBigNum(bnProofOfWorkLimit[2]).getuint1024();
+            while(true)
+            {
+                /* Check if we found a solution. */
+                if(block.GetHash() < hashTarget)
+                    break;
+
+                /* Keep searching until we find a solution. */
+                ++block.nNonce;
+            }
+
+            /* Set our hybrid genesis hash now. */
+            block.hashCheckpoint = block.GetHash();
+            hashGenesisHybrid    = block.GetHash();
+
+            /* Debug output. */
+            debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN, "Genesis ", hashGenesisHybrid.SubString(), " sucessfully created for nNonce ", block.nNonce, ANSI_COLOR_RESET);
+
+            /* Write the hybrid genesis hash to the LLD. */
+            LLD::Ledger->WriteHybridGenesis(hashGenesisHybrid);
+
+            /* Ensure the time of transaction is the same time as the block time. */
+            assert(genesis.nTimestamp == block.nTime);
 
             return block;
         }

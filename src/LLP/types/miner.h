@@ -19,11 +19,8 @@ ________________________________________________________________________________
 #include <Legacy/types/coinbase.h>
 #include <atomic>
 
-namespace Legacy
-{
-    class ReserveKey;
-}
-
+//forward declarations
+namespace Legacy { class ReserveKey; }
 
 namespace LLP
 {
@@ -35,51 +32,52 @@ namespace LLP
      **/
     class Miner : public Connection
     {
-        enum
+        /* Protocol messages based on Default Packet. */
+        enum : Packet::message_t
         {
             /** DATA PACKETS **/
-            BLOCK_DATA   = 0,
-            SUBMIT_BLOCK = 1,
-            BLOCK_HEIGHT = 2,
-            SET_CHANNEL  = 3,
-            BLOCK_REWARD = 4,
-            SET_COINBASE = 5,
-            GOOD_BLOCK   = 6,
-            ORPHAN_BLOCK = 7,
+            BLOCK_DATA     = 0,
+            SUBMIT_BLOCK   = 1,
+            BLOCK_HEIGHT   = 2,
+            SET_CHANNEL    = 3,
+            BLOCK_REWARD   = 4,
+            SET_COINBASE   = 5,
+            GOOD_BLOCK     = 6,
+            ORPHAN_BLOCK   = 7,
 
 
             /** DATA REQUESTS **/
-            CHECK_BLOCK  = 64,
-            SUBSCRIBE    = 65,
+            CHECK_BLOCK    = 64,
+            SUBSCRIBE      = 65,
 
 
             /** REQUEST PACKETS **/
-            GET_BLOCK    = 129,
-            GET_HEIGHT   = 130,
-            GET_REWARD   = 131,
+            GET_BLOCK      = 129,
+            GET_HEIGHT     = 130,
+            GET_REWARD     = 131,
 
 
             /** SERVER COMMANDS **/
-            CLEAR_MAP    = 132,
-            GET_ROUND    = 133,
+            CLEAR_MAP      = 132,
+            GET_ROUND      = 133,
 
 
             /** RESPONSE PACKETS **/
-            BLOCK_ACCEPTED       = 200,
-            BLOCK_REJECTED       = 201,
+            BLOCK_ACCEPTED = 200,
+            BLOCK_REJECTED = 201,
 
 
             /** VALIDATION RESPONSES **/
-            COINBASE_SET  = 202,
-            COINBASE_FAIL = 203,
+            COINBASE_SET   = 202,
+            COINBASE_FAIL  = 203,
 
             /** ROUND VALIDATIONS. **/
-            NEW_ROUND     = 204,
-            OLD_ROUND     = 205,
+            NEW_ROUND      = 204,
+            OLD_ROUND      = 205,
 
             /** GENERIC **/
-            PING     = 253,
-            CLOSE    = 254
+            PING           = 253,
+            CLOSE          = 254
         };
 
     private:

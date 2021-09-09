@@ -80,7 +80,19 @@ namespace Legacy
      **/
     class WalletDB
     {
+        /** Internal pointer for this class's instance. */
+        static std::atomic<WalletDB*>   EXTERNAL;
+
+
+        /** Internal pointer for this class's berkeley instance. **/
+        static std::atomic<BerkeleyDB*> INTERNAL;
+
+
+        /** Internal tracking of database name. */
+        static std::string strWalletFile;
+
     public:
+
         /** Defines default name of wallet database file **/
         static const std::string DEFAULT_WALLET_DB;
 
@@ -95,10 +107,6 @@ namespace Legacy
          *
          **/
         static std::atomic<uint32_t> nWalletDBUpdated;
-
-
-        /** The file name of the wallet database file **/
-        std::string strWalletFile;
 
 
         /* Default Constructor */
@@ -136,6 +144,45 @@ namespace Legacy
         WalletDB(const std::string& strFileName);
 
 
+        /** GetDatabaseFile
+         *
+         *  Retrieve the file name backing this database file.
+         *
+         *  @return the database file name
+         *
+         **/
+        static std::string& GetDatabaseFile()
+        {
+            return strWalletFile;
+        }
+
+
+        /** GetInstance
+         *
+         *  Retrieves the BerkeleyDB instance that corresponds to a given database file.
+         *
+         *  @return Berkeley db reference for operating on the database file
+         *
+         **/
+        static WalletDB& Instance();
+
+
+        /** Initialize
+         *
+         *  Initialize our singleton instances now.
+         *
+         **/
+        static void Initialize(const std::string& strFileIn = std::string(""));
+
+
+        /** Shutdown
+         *
+         *  Initiate our shutdown sequence for this singleton.
+         *
+         **/
+        static void Shutdown();
+
+
         /** WriteMasterKey
          *
          *  Stores an encrypted master key into the database. Used to lock/unlock access when
@@ -169,7 +216,7 @@ namespace Legacy
          *  @return true if master key successfully written to wallet database
          *
          **/
-        bool WriteMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey);
+        static bool WriteMasterKey(const uint32_t nMasterKeyId, const MasterKey& kMasterKey);
 
 
         /** ReadMinVersion
@@ -181,7 +228,7 @@ namespace Legacy
          *  @return true if min version is present in the database entry and read successfully
          *
          **/
-        bool ReadMinVersion(uint32_t& nVersion);
+        static bool ReadMinVersion(uint32_t& nVersion);
 
 
         /** WriteMinVersion
@@ -194,7 +241,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteMinVersion(const uint32_t nVersion);
+        static bool WriteMinVersion(const uint32_t nVersion);
 
 
         /** ReadUpdateTime
@@ -206,7 +253,7 @@ namespace Legacy
          *  @return true if accounts have been updated.
          *
          **/
-        bool ReadUpdateTime(uint32_t &nTime);
+        static bool ReadUpdateTime(uint32_t &nTime);
 
 
         /** WriteUpdateTime
@@ -218,7 +265,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteUpdateTime(const uint32_t nTime);
+        static bool WriteUpdateTime(const uint32_t nTime);
 
 
         /** ReadAccount
@@ -234,7 +281,7 @@ namespace Legacy
          *  @return true if account is present in the database and read successfully
          *
          **/
-        bool ReadAccount(const std::string& strAccount, Account& account);
+        static bool ReadAccount(const std::string& strAccount, Account& account);
 
 
         /** WriteAccount
@@ -248,7 +295,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteAccount(const std::string& strAccount, const Account& account);
+        static bool WriteAccount(const std::string& strAccount, const Account& account);
 
 
         /** ReadName
@@ -262,7 +309,7 @@ namespace Legacy
          *  @return true if name is present in the database and read successfully
          *
          **/
-        bool ReadName(const std::string& strAddress, std::string& strName);
+        static bool ReadName(const std::string& strAddress, std::string& strName);
 
 
         /** WriteName
@@ -276,7 +323,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteName(const std::string& strAddress, const std::string& strName);
+        static bool WriteName(const std::string& strAddress, const std::string& strName);
 
 
         /** EraseName
@@ -288,7 +335,7 @@ namespace Legacy
          *  @return true if database entry successfully removed
          *
          **/
-        bool EraseName(const std::string& strAddress);
+        static bool EraseName(const std::string& strAddress);
 
 
         /** ReadDefaultKey
@@ -300,7 +347,7 @@ namespace Legacy
          *  @return true if default key is present in the database and read successfully
          *
          **/
-        bool ReadDefaultKey(std::vector<uint8_t>& vchPubKey);
+        static bool ReadDefaultKey(std::vector<uint8_t>& vchPubKey);
 
 
         /** WriteDefaultKey
@@ -312,7 +359,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteDefaultKey(const std::vector<uint8_t>& vchPubKey);
+        static bool WriteDefaultKey(const std::vector<uint8_t>& vchPubKey);
 
 
         /** ReadTrustKey
@@ -324,7 +371,7 @@ namespace Legacy
          *  @return true if trust key is present in the database and read successfully
          *
          **/
-        bool ReadTrustKey(std::vector<uint8_t>& vchPubKey);
+        static bool ReadTrustKey(std::vector<uint8_t>& vchPubKey);
 
 
         /** WriteTrustKey
@@ -336,7 +383,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteTrustKey(const std::vector<uint8_t>& vchPubKey);
+        static bool WriteTrustKey(const std::vector<uint8_t>& vchPubKey);
 
 
         /** EraseTrustKey
@@ -346,7 +393,7 @@ namespace Legacy
          *  @return true if database entry successfully removed
          *
          **/
-        bool EraseTrustKey();
+        static bool EraseTrustKey();
 
 
         /** ReadKey
@@ -360,7 +407,7 @@ namespace Legacy
          *  @return true if unencrypted key is present in the database and read successfully
          *
          **/
-        bool ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey);
+        static bool ReadKey(const std::vector<uint8_t>& vchPubKey, LLC::CPrivKey& vchPrivKey);
 
 
         /** WriteKey
@@ -374,7 +421,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey);
+        static bool WriteKey(const std::vector<uint8_t>& vchPubKey, const LLC::CPrivKey& vchPrivKey);
 
 
         /** WriteCryptedKey
@@ -392,7 +439,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret,
+        static bool WriteCryptedKey(const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchCryptedSecret,
                              const bool fEraseUnencryptedKey = true);
 
 
@@ -407,7 +454,7 @@ namespace Legacy
          *  @return true if the transaction is present in the database and read successfully
          *
          **/
-        bool ReadTx(const uint512_t& hash, WalletTx& wtx);
+        static bool ReadTx(const uint512_t& hash, WalletTx& wtx);
 
 
         /** WriteTx
@@ -421,7 +468,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteTx(const uint512_t& hash, const WalletTx& wtx);
+        static bool WriteTx(const uint512_t& hash, const WalletTx& wtx);
 
 
         /** EraseTx
@@ -433,7 +480,7 @@ namespace Legacy
          *  @return true if database entry successfully removed
          *
          **/
-        bool EraseTx(const uint512_t& hash);
+        static bool EraseTx(const uint512_t& hash);
 
 
         /** ReadScript
@@ -447,7 +494,7 @@ namespace Legacy
          *  @return true if the script is present in the database and read successfully
          *
          **/
-        bool ReadScript(const uint256_t& hash, Script& redeemScript);
+        static bool ReadScript(const uint256_t& hash, Script& redeemScript);
 
 
         /** WriteScript
@@ -461,7 +508,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WriteScript(const uint256_t& hash, const Script& redeemScript);
+        static bool WriteScript(const uint256_t& hash, const Script& redeemScript);
 
 
         /** ReadPool
@@ -475,7 +522,7 @@ namespace Legacy
          *  @return true if the key pool entry is present in the database and read successfully
          *
          **/
-        bool ReadPool(const uint64_t nPool, KeyPoolEntry& keypoolEntry);
+        static bool ReadPool(const uint64_t nPool, KeyPoolEntry& keypoolEntry);
 
 
         /** WritePool
@@ -489,7 +536,7 @@ namespace Legacy
          *  @return true if database entry successfully written
          *
          **/
-        bool WritePool(const uint64_t nPool, const KeyPoolEntry& keypoolEntry);
+        static bool WritePool(const uint64_t nPool, const KeyPoolEntry& keypoolEntry);
 
 
         /** ErasePool
@@ -501,29 +548,17 @@ namespace Legacy
          *  @return true if database entry successfully removed
          *
          **/
-        bool ErasePool(const uint64_t nPool);
-
-
-        /** InitializeDatabase
-         *
-         *  Initializes WalletDB for database access to the database file.
-         *
-         *  Should be called once on initialization. Any subsequent calls will be ignored.
-         *
-         **/
-        void InitializeDatabase();
+        static bool ErasePool(const uint64_t nPool);
 
 
         /** LoadWallet
          *
          *  Initializes a wallet instance from the data in this wallet database.
          *
-         *  @param[in,out] pwallet The wallet instance to initialize
-         *
          *  @return Value from Legacy::DBErrors, DB_LOAD_OK on success
          *
          **/
-        uint32_t LoadWallet(Wallet& wallet);
+        static uint32_t LoadWallet();
 
 
         /** EncryptDatabase
@@ -543,7 +578,7 @@ namespace Legacy
          *  @return true on success, false otherwise (transaction aborted, database not updated)
          *
          **/
-        bool EncryptDatabase(const uint32_t nNewMasterKeyId, const MasterKey& kMasterKey, const CryptedKeyMap& mapNewEncryptedKeys);
+        static bool EncryptDatabase(const uint32_t nNewMasterKeyId, const MasterKey& kMasterKey, const CryptedKeyMap& mapNewEncryptedKeys);
 
 
         /** DBRewrite
@@ -557,7 +592,7 @@ namespace Legacy
          *  @return true on success, false otherwise
          *
          **/
-        bool DBRewrite();
+        static bool DBRewrite();
 
 
         /** @fn ThreadFlushWalletDB
@@ -572,7 +607,7 @@ namespace Legacy
          *  @return true if the flush thread was started, false otherwise
          *
          **/
-        static bool StartFlushThread(const std::string& strFile);
+        static bool StartFlushThread(const std::string& strFile = "");
 
 
         /** @fn ThreadFlushWalletDB

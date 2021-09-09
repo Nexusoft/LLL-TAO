@@ -11,6 +11,7 @@
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/types/object.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/address.h>
@@ -28,6 +29,9 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     SecureString strPassword = "password";
     SecureString strPin = "1234";
 
+    /* Temporarily disable private mode so that fees are applicable */
+    config::fHybrid = false;
+
     /* Create a sig chain to use for these tests */
     memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername, strPassword);
 
@@ -37,14 +41,10 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     /* Generate a random hash for default account register address */
     TAO::Register::Address hashDefaultAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
-
-    /* Temporarily disable private mode so that fees are applicable */
-    config::mapArgs["-private"] = "0";
-
     /* Keep a track of the transaction timestamps so that we can avoid paying tx fees for this test */
     uint64_t nTimestamp = runtime::unifiedtimestamp();
 
-    /* Set the timestamp on this first transaction to be 600s in the past so that we can create some transactions for free 
+    /* Set the timestamp on this first transaction to be 600s in the past so that we can create some transactions for free
            without hitting the tx fee limit*/
     nTimestamp -= 600;
 
@@ -105,7 +105,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         /* run tests */
 
         /* Check the fee */
-        REQUIRE(tx.Cost() == TAO::Ledger::ACCOUNT_FEE);
+        REQUIRE(tx.Cost() == TAO::Register::ACCOUNT_FEE);
 
         REQUIRE(tx.Build());
         REQUIRE(tx.Sign(user->Generate(tx.nSequence, strPin)));
@@ -136,7 +136,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << asset.GetState();
 
         /* Check the fee */
-        REQUIRE(tx.Cost() == TAO::Ledger::OBJECT_FEE);
+        REQUIRE(tx.Cost() == TAO::Register::OBJECT_FEE);
 
     }
 
@@ -159,7 +159,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << name.GetState();
 
         /* Check the fee */
-        REQUIRE(tx.Cost() == TAO::Ledger::NAME_FEE);
+        REQUIRE(tx.Cost() == TAO::Register::NAME_FEE);
 
     }
 
@@ -182,7 +182,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << name.GetState();
 
         /* Check the fee */
-        REQUIRE(tx.Cost() == TAO::Ledger::GLOBAL_NAME_FEE);
+        REQUIRE(tx.Cost() == TAO::Register::GLOBAL_NAME_FEE);
     }
 
     /* Test namespace fee */
@@ -204,7 +204,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         tx[0] << uint8_t(OP::CREATE) << hashAddress << uint8_t(REGISTER::OBJECT) << name.GetState();
 
         /* Check the fee */
-        REQUIRE(tx.Cost() == TAO::Ledger::NAMESPACE_FEE);
+        REQUIRE(tx.Cost() == TAO::Register::NAMESPACE_FEE);
     }
 
     /* Test token fee - free for 100 units*/
@@ -306,7 +306,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
         /* run tests */
 
         /* Check the fee.  This shuld be 3 lots of account fee (free) and 3 x TX_FEE (0.03) */
-        REQUIRE(tx.Cost() == (3 *TAO::Ledger::ACCOUNT_FEE) + 3 * (TAO::Ledger::TX_FEE));
+        REQUIRE(tx.Cost() == (3 *TAO::Register::ACCOUNT_FEE) + 3 * (TAO::Ledger::TX_FEE));
 
     }
 
@@ -320,7 +320,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
 
         /* Force the timestamp to be 1s after the last so that there is a tx fee*/
         tx.nTimestamp = nTimestamp + 1;
-        
+
         /* create object so that a fee is required */
         Object asset = CreateAsset();
 
@@ -380,10 +380,6 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
 
     }
 
-
-
-
     /* Finally reinstate private mode so the rest of the tests can continue */
-    config::mapArgs["-private"] = "1";
-
+    config::fHybrid = true;
 }

@@ -79,7 +79,7 @@ namespace TAO
         }
 
 
-        /*Build an address from a base58 encoded string.*/
+        /* Build an address from a base58 encoded string.*/
         Address::Address(const std::string& strAddress)
         : uint256_t()
         {
@@ -87,8 +87,8 @@ namespace TAO
             SetBase58(strAddress);
 
             /* Check for valid address types. */
-            if(!IsValid())
-                throw debug::exception(FUNCTION, "invalid type for address");
+            //if(!IsValid()) XXX: disabled for now, we can don't always want an exception thrown here
+            //    throw debug::exception(FUNCTION, "invalid type for address");
         }
 
 
@@ -130,11 +130,8 @@ namespace TAO
         /* Check if address has a valid type assoicated. */
         bool Address::IsValid() const
         {
-            /* Get the type. */
-            uint8_t nType = GetType();
-
             /* Return on valid types. */
-            switch(nType)
+            switch(GetType())
             {
                 case LEGACY:
                 case LEGACY_TESTNET:
@@ -253,7 +250,6 @@ namespace TAO
 
                 /* Set the type */
                 SetType(bytes[0]);
-
             }
         }
 
@@ -276,7 +272,7 @@ namespace TAO
         {
             if(*this == 0)
                 return "0";
-            else if(GetType() == GENESIS1 || GetType() == GENESIS2)
+            else if(GetType() == SYSTEM || (GetType() >= RESERVED1 && GetType() <= RESERVED2))
                 return GetHex();
             else
                 return ToBase58();

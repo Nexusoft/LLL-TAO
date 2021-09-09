@@ -34,10 +34,10 @@ TEST_CASE("Claim Primitive Tests", "[operation]")
     //create object
     uint256_t hashAsset  = TAO::Register::Address(TAO::Register::Address::OBJECT);
     uint256_t hashGenesis  = LLC::GetRand256();
-    hashGenesis.SetType(TAO::Ledger::GENESIS::TESTNET);
+    hashGenesis.SetType(TAO::Ledger::GENESIS::TESTNET::USER);
 
     uint256_t hashGenesis2  = LLC::GetRand256();
-    hashGenesis2.SetType(TAO::Ledger::GENESIS::TESTNET);
+    hashGenesis2.SetType(TAO::Ledger::GENESIS::TESTNET::USER);
 
     // create an asset
     {

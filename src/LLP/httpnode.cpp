@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLP/types/httpnode.h>
 #include <LLP/templates/ddos.h>
+#include <LLP/templates/events.h>
 
 #include <Util/include/string.h>
 
@@ -69,7 +70,7 @@ namespace LLP
             /* Handle Reading Data into Buffer. */
             uint32_t nAvailable = Available();
             if(nAvailable > 0)
-            {                
+            {
                 std::vector<int8_t> vchData(nAvailable);
                 int nRead = Read(vchData, nAvailable);
                 if(nRead > 0)
@@ -104,32 +105,33 @@ namespace LLP
                     INCOMING.fHeader = true;
 
                     vchBuffer.erase(vchBuffer.begin(), it + 1); //erase the CLRF
-                    //this->Event()
-                    //TODO: assess the events code and calling virutal method from lower class in the inheritance heirarchy
+
+                    /* Fire off header event. */
+                    this->Event(EVENTS::HEADER);
                 }
 
                 /* Read all the headers. */
                 else if(!INCOMING.fHeader)
                 {
                     /* Extract the line from the buffer. */
-                    std::string strLine = std::string(vchBuffer.begin(), it - 1);
+                    const std::string strLine = std::string(vchBuffer.begin(), it - 1);
 
                     /* Dump the header if requested on read. */
                     if(config::GetBoolArg("-httpheader"))
                         debug::log(0, strLine);
 
                     /* Find the delimiter to split. */
-                    std::string::size_type pos = strLine.find(':', 0);
+                    const std::string::size_type pos = strLine.find(':', 0);
 
                     /* Handle the request types. */
                     if(INCOMING.strType == "")
                     {
                         /* Find the end of request type. */
-                        std::string::size_type npos = strLine.find(' ', 0);
+                        const std::string::size_type npos = strLine.find(' ', 0);
                         INCOMING.strType = strLine.substr(0, npos);
 
                         /* Find the start of version. */
-                        std::string::size_type npos2 = strLine.find(' ', npos + 1);
+                        const std::string::size_type npos2 = strLine.find(' ', npos + 1);
                         INCOMING.strVersion = strLine.substr(npos2 + 1);
 
                         /* Parse request from between the two. */
@@ -141,7 +143,7 @@ namespace LLP
                     else if(pos != std::string::npos)
                     {
                         /* Set the field value to lowercase. */
-                        std::string strField = ToLower(strLine.substr(0, pos));
+                        const std::string strField = ToLower(strLine.substr(0, pos));
 
                         /* Parse out the content length field. */
                         if(strField == "content-length")

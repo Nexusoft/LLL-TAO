@@ -100,28 +100,32 @@ ifndef OPENSSL_INCLUDE_PATH
 		endif
 	endif
 endif
-ifndef BDB_LIB_PATH
-	ifeq ($(detected_OS),Windows)
-		BDB_LIB_PATH= "C:\deps\lib"
+
+ifndef NO_WALLET
+	ifndef BDB_LIB_PATH
+		ifeq ($(detected_OS),Windows)
+			BDB_LIB_PATH= "C:\deps\lib"
+		endif
+		ifeq ($(detected_OS),OSX)
+			BDB_LIB_PATH= /usr/local/opt/db/lib
+		endif
+		ifeq ($(detected_OS),Linux)
+			BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
+		endif
 	endif
-	ifeq ($(detected_OS),OSX)
-		BDB_LIB_PATH= /usr/local/opt/db/lib
-	endif
-	ifeq ($(detected_OS),Linux)
-		BDB_LIB_PATH= /usr/lib/x86_64-linux-gnu
+	ifndef BDB_INCLUDE_PATH
+		ifeq ($(detected_OS),Windows)
+			BDB_INCLUDE_PATH= "C:\deps\include"
+		endif
+		ifeq ($(detected_OS),OSX)
+			BDB_INCLUDE_PATH= /usr/local/opt/db/include
+		endif
+		ifeq ($(detected_OS),Linux)
+			BDB_INCLUDE_PATH= /usr/include
+		endif
 	endif
 endif
-ifndef BDB_INCLUDE_PATH
-	ifeq ($(detected_OS),Windows)
-		BDB_INCLUDE_PATH= "C:\deps\include"
-	endif
-	ifeq ($(detected_OS),OSX)
-		BDB_INCLUDE_PATH= /usr/local/opt/db/include
-	endif
-	ifeq ($(detected_OS),Linux)
-		BDB_INCLUDE_PATH= /usr/include
-	endif
-endif
+
 ifndef MINIUPNPC_LIB_PATH
 	ifeq ($(detected_OS),Windows)
 		MINIUPNPC_LIB_PATH= "C:\deps\lib"
@@ -280,7 +284,6 @@ ifdef UNIT_TESTS
 		   build/Tests_LLC_aes.o \
 		   build/Tests_LLP_base_address.o \
 		   build/Tests_TAO_API_assets.o \
-		   build/Tests_TAO_API_crypto.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \
 		   build/Tests_TAO_API_supply.o \
@@ -292,7 +295,6 @@ ifdef UNIT_TESTS
            build/Tests_TAO_Ledger_transaction.o \
 		   build/Tests_TAO_Ledger_sigchain.o \
 		   build/Tests_TAO_Ledger_stake.o \
-		   build/Tests_TAO_Ledger_stakepool.o \
 		   build/Tests_TAO_Register_objects.o \
 		   build/Tests_TAO_Register_rollback.o \
 		   build/Tests_TAO_Register_testvm.o \
@@ -310,7 +312,8 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_Operation_trust.o \
 		   build/Tests_TAO_Operation_validate.o \
 		   build/Tests_TAO_Operation_write.o \
-		   build/Tests_Util_hex.o
+		   build/Tests_Util_hex.o \
+		   build/Tests_Util_math.o
 
 	DEFS += -DUNIT_TESTS
 
@@ -369,6 +372,7 @@ OBJS+=  build/LLC_base_uint.o \
         build/LLD_address.o \
         build/LLD_ledger.o \
         build/LLD_legacy.o \
+		build/LLD_logical.o \
 		build/LLD_contract.o \
 		build/LLD_client.o \
         build/LLD_local.o \
@@ -380,8 +384,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLD_filemap.o \
 		build/LLD_global.o \
 		build/LLD_hashmap.o \
-		build/LLD_shard_hashmap.o \
-		build/LLD_hashtree.o \
 		build/LLD_key.o \
 		build/LLD_sector.o \
 		build/LLD_transaction.o \
@@ -401,123 +403,102 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_lisp.o \
 		build/LLP_manager.o \
 		build/LLP_network.o \
-		build/LLP_p2p.o \
 		build/LLP_permissions.o \
 		build/LLP_rpcnode.o \
 		build/LLP_seeds.o \
 		build/LLP_server.o \
-		build/LLP_server_config.o \
 		build/LLP_socket.o \
 		build/LLP_time.o \
 		build/LLP_tritium.o \
 		build/LLP_trust_address.o \
-		build/API_types_assets_claim.o \
-		build/API_types_assets_create.o \
-		build/API_types_assets_get.o \
-		build/API_types_assets_history.o \
-		build/API_types_assets_initialize.o \
-		build/API_types_assets_schema.o \
-		build/API_types_assets_tokenize.o \
-		build/API_types_assets_transfer.o \
-		build/API_types_assets_update.o \
-		build/API_types_crypto_change.o \
-		build/API_types_crypto_create.o \
-		build/API_types_crypto_crypto.o \
-		build/API_types_crypto_decrypt.o \
-		build/API_types_crypto_encrypt.o \
-		build/API_types_crypto_get.o \
-		build/API_types_crypto_initialize.o \
-		build/API_types_crypto_list.o \
-		build/API_types_crypto_sign.o \
-		build/API_types_crypto_verify.o \
-		build/API_types_dex_buy.o \
-		build/API_types_dex_sell.o \
-		build/API_types_dex_initialize.o \
-		build/API_types_finance_balances.o \
-		build/API_types_finance_create.o \
-		build/API_types_finance_credit.o \
-		build/API_types_finance_debit.o \
-		build/API_types_finance_get.o \
-		build/API_types_finance_info.o \
-		build/API_types_finance_initialize.o \
-		build/API_types_finance_list.o \
-		build/API_types_finance_migrate.o \
-		build/API_types_finance_trustaccounts.o \
-		build/API_types_finance_stake.o \
-		build/API_types_invoices_cancel.o \
-		build/API_types_invoices_create.o \
-		build/API_types_invoices_get.o \
-		build/API_types_invoices_history.o \
-		build/API_types_invoices_initialize.o \
-		build/API_types_invoices_pay.o \
-		build/API_types_ledger_block.o \
-		build/API_types_ledger_initialize.o \
-		build/API_types_ledger_state.o \
-		build/API_types_ledger_sync.o \
-		build/API_types_ledger_transaction.o \
-		build/API_types_ledger_void.o \
-		build/API_types_names_claim.o \
-		build/API_types_names_create.o \
-		build/API_types_names_get.o \
-		build/API_types_names_history.o \
-		build/API_types_names_initialize.o \
-		build/API_types_names_names.o \
-		build/API_types_names_transfer.o \
-		build/API_types_names_update.o \
-		build/API_types_objects_claim.o \
-		build/API_types_objects_history.o \
-		build/API_types_objects_list.o \
-		build/API_types_objects_transactions.o \
-		build/API_types_objects_transfer.o \
-		build/API_types_p2p_accept.o \
-		build/API_types_p2p_ignore.o \
-		build/API_types_p2p_initialize.o \
-		build/API_types_p2p_get.o \
-		build/API_types_p2p_list.o \
-		build/API_types_p2p_p2p.o \
-		build/API_types_p2p_peek.o \
-		build/API_types_p2p_pop.o \
-		build/API_types_p2p_request.o \
-		build/API_types_p2p_send.o \
-		build/API_types_p2p_terminate.o \
-		build/API_types_supply_claim.o \
-		build/API_types_supply_createitem.o \
-		build/API_types_supply_getitem.o \
-		build/API_types_supply_history.o \
-		build/API_types_supply_initialize.o \
-		build/API_types_supply_transfer.o \
-		build/API_types_supply_updateitem.o \
-		build/API_types_system_lisp.o \
-		build/API_types_system_system.o \
-		build/API_types_system_metrics.o \
-		build/API_types_system_validate.o \
-		build/API_types_tokens_create.o \
-		build/API_types_tokens_credit.o \
-		build/API_types_tokens_debit.o \
-		build/API_types_tokens_burn.o \
-		build/API_types_tokens_list.o \
-		build/API_types_tokens_get.o \
-		build/API_types_tokens_initialize.o \
-		build/API_types_users_accounts.o \
-		build/API_types_users_assets.o \
+		build/API_commands_assets_initialize.o \
+		build/API_commands_assets_json.o \
+		build/API_commands_assets_tokenize.o \
+		build/API_commands_crypto_change.o \
+		build/API_commands_crypto_create.o \
+		build/API_commands_crypto_crypto.o \
+		build/API_commands_crypto_decrypt.o \
+		build/API_commands_crypto_encrypt.o \
+		build/API_commands_crypto_get.o \
+		build/API_commands_crypto_initialize.o \
+		build/API_commands_crypto_list.o \
+		build/API_commands_crypto_sign.o \
+		build/API_commands_crypto_verify.o \
+		build/API_commands_finance_balances.o \
+		build/API_commands_finance_burn.o \
+		build/API_commands_finance_credit.o \
+		build/API_commands_finance_debit.o \
+		build/API_commands_finance_initialize.o \
+		build/API_commands_finance_migrate.o \
+		build/API_commands_finance_set-stake.o \
+		build/API_commands_finance_stake-info.o \
+		build/API_commands_invoices_cancel.o \
+		build/API_commands_invoices_create.o \
+		build/API_commands_invoices_get.o \
+		build/API_commands_invoices_json.o \
+		build/API_commands_invoices_initialize.o \
+		build/API_commands_invoices_pay.o \
+		build/API_commands_ledger_get-block.o \
+		build/API_commands_ledger_get-block-hash.o \
+		build/API_commands_ledger_get-info.o \
+		build/API_commands_ledger_get-transaction.o \
+		build/API_commands_ledger_initialize.o \
+		build/API_commands_ledger_list-blocks.o \
+		build/API_commands_ledger_submit-transaction.o \
+		build/API_commands_ledger_sync-headers.o \
+		build/API_commands_ledger_sync-sigchain.o \
+		build/API_commands_ledger_void-transaction.o \
+		build/API_commands_market_cancel.o \
+		build/API_commands_market_create.o \
+		build/API_commands_market_execute.o \
+		build/API_commands_market_index.o \
+		build/API_commands_market_initialize.o \
+		build/API_commands_market_list.o \
+		build/API_commands_names_initialize.o \
+		build/API_commands_names_index.o \
+		build/API_commands_names_names.o \
+		build/API_commands_names_resolve.o \
+		build/API_commands_register_initialize.o \
+		build/API_commands_register_list.o \
+		build/API_commands_register_json.o \
+		build/API_commands_supply_initialize.o \
+		build/API_commands_system_lisp.o \
+		build/API_commands_system_initialize.o \
+		build/API_commands_system_metrics.o \
+		build/API_commands_system_validate.o \
+		build/API_commands_templates_claim.o \
+		build/API_commands_templates_create.o \
+		build/API_commands_templates_get.o \
+		build/API_commands_templates_list.o \
+		build/API_commands_templates_history.o \
+		build/API_commands_templates_transactions.o \
+		build/API_commands_templates_transfer.o \
+		build/API_commands_templates_update.o \
+		build/API_commands_tokens_list.o \
+		build/API_commands_tokens_initialize.o \
+		build/API_operators_array.o \
+		build/API_operators_count.o \
+		build/API_operators_floor.o \
+		build/API_operators_max.o \
+		build/API_operators_mean.o \
+		build/API_operators_min.o \
+		build/API_operators_mode.o \
+		build/API_operators_sum.o \
 		build/API_types_users_create.o \
+		build/API_types_users_clear.o \
 		build/API_types_users_has.o \
         build/API_types_users_initialize.o \
-		build/API_types_users_items.o \
-		build/API_types_users_invoices.o \
 		build/API_types_users_load.o \
 		build/API_types_users_lock.o \
 		build/API_types_users_login.o \
 		build/API_types_users_logout.o \
-		build/API_types_users_names.o \
-		build/API_types_users_namespaces.o \
 		build/API_types_users_notifications.o \
 		build/API_types_users_notifications_processor.o \
 		build/API_types_users_notifications_thread.o \
+		build/API_types_users_processed.o \
 		build/API_types_users_recover.o \
 		build/API_types_users_save.o \
 		build/API_types_users_status.o \
-		build/API_types_users_tokens.o \
 		build/API_types_users_transactions.o \
 		build/API_types_users_unlock.o \
 		build/API_types_users_update.o \
@@ -525,13 +506,24 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_voting_count.o \
 		build/API_types_voting_initialize.o \
 		build/API_types_voting_list.o \
-		build/API_utils.o \
-		build/API_json.o \
-        build/API_global.o \
-        build/API_cmd.o \
+		build/API_base.o \
+		build/API_build.o \
+		build/API_check.o \
+		build/API_cmd.o \
 		build/API_conditions.o \
+		build/API_evaluate.o \
+		build/API_execute.o \
+		build/API_extract.o \
+		build/API_filter.o \
+		build/API_format.o \
+		build/API_get.o \
+		build/API_global.o \
+		build/API_index.o \
+		build/API_json.o \
+		build/API_list.o \
+		build/API_results.o \
 		build/API_session.o \
-		build/API_sessionmanager.o \
+		build/API_session-manager.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
 		build/Operation_coinbase.o \
@@ -607,6 +599,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_create.o \
 		build/Legacy_enum.o \
 		build/Legacy_evaluate.o \
+		build/Legacy_global.o \
 		build/Legacy_legacy.o \
 		build/Legacy_masterkey.o \
 		build/Legacy_mempool.o \
@@ -624,12 +617,12 @@ OBJS+=  build/LLC_base_uint.o \
 
 
 ifndef NO_WALLET
-	OBJS+= 	build/API_types_rpc_account.o \
-			build/API_types_rpc_daemon.o \
-			build/API_types_rpc_info.o \
-			build/API_types_rpc_network.o \
-			build/API_types_rpc_rpc.o \
-			build/API_types_rpc_wallet.o \
+	OBJS+= 	build/Legacy_rpc_account.o \
+			build/Legacy_rpc_daemon.o \
+			build/Legacy_rpc_info.o \
+			build/Legacy_rpc_network.o \
+			build/Legacy_rpc_rpc.o \
+			build/Legacy_rpc_wallet.o \
 			build/Legacy_account.o \
 			build/Legacy_addressbook.o \
 			build/Legacy_basickeystore.o \
@@ -701,7 +694,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++11
+CXXFLAGS+=-std=c++17
 CXXFLAGS+= $(CXXWARNINGS)
 
 
@@ -753,49 +746,52 @@ build/LLP_%.o: ./src/LLP/%.cpp $(HEADERS)
 build/API_%.o: ./src/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_assets_%.o: ./src/TAO/API/assets/%.cpp $(HEADERS)
+build/API_commands_assets_%.o: ./src/TAO/API/commands/assets/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_crypto_%.o: ./src/TAO/API/crypto/%.cpp $(HEADERS)
+build/API_commands_crypto_%.o: ./src/TAO/API/commands/crypto/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_dex_%.o: ./src/TAO/API/dex/%.cpp $(HEADERS)
+build/API_commands_market_%.o: ./src/TAO/API/commands/market/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_finance_%.o: ./src/TAO/API/finance/%.cpp $(HEADERS)
+build/API_commands_finance_%.o: ./src/TAO/API/commands/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_invoices_%.o: ./src/TAO/API/invoices/%.cpp $(HEADERS)
+build/API_commands_invoices_%.o: ./src/TAO/API/commands/invoices/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
+build/API_commands_ledger_%.o: ./src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_names_%.o: ./src/TAO/API/names/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
-build/API_types_objects_%.o: ./src/TAO/API/objects/%.cpp $(HEADERS)
+build/API_commands_names_%.o: ./src/TAO/API/commands/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_p2p_%.o: ./src/TAO/API/p2p/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_rpc_%.o: ./src/TAO/API/rpc/%.cpp $(HEADERS)
+build/API_commands_register_%.o: ./src/TAO/API/commands/register/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
+build/API_commands_supply_%.o: ./src/TAO/API/commands/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_tokens_%.o: ./src/TAO/API/tokens/%.cpp $(HEADERS)
+build/API_commands_system_%.o: ./src/TAO/API/commands/system/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_commands_templates_%.o: ./src/TAO/API/commands/templates/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_commands_tokens_%.o: ./src/TAO/API/commands/tokens/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_operators_%.o: ./src/TAO/API/operators/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_users_%.o: ./src/TAO/API/users/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_voting_%.o: ./src/TAO/API/voting/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -o $@ $<
-
-build/API_types_system_%.o: ./src/TAO/API/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Ledger_%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
@@ -811,6 +807,9 @@ build/Util_%.o: ./src/Util/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Legacy_%.o: ./src/Legacy/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/Legacy_rpc_%.o: ./src/Legacy/rpc/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Tests_%.o: ./tests/unit/%.cpp $(HEADERS)
@@ -906,9 +905,15 @@ endif
 #Configure OS Specific Build Environment
 DEFS+= -DMAC_OSX \
 	-DMSG_NOSIGNAL=0
-LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a \
-	$(OPENSSL_LIB_PATH)/libssl.a \
-	$(OPENSSL_LIB_PATH)/libcrypto.a
+
+
+LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
+	   $(OPENSSL_LIB_PATH)/libcrypto.a
+
+#Add BDB if wallet is enabled
+ifndef NO_WALLET
+LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a
+endif
 
 
 
@@ -924,7 +929,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++11
+CXXFLAGS+=-std=c++17
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -992,7 +997,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++11
+CXXFLAGS+=-std=c++17
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1063,7 +1068,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++11
+CXXFLAGS+=-std=c++17
 CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
@@ -1150,7 +1155,7 @@ CFLAGS:= $(CXXFLAGS)
 CFLAGS+= $(CWARNINGS)
 
 #set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++11
+CXXFLAGS+=-std=c++17
 CXXFLAGS+= $(CXXWARNINGS)
 
 
@@ -1307,56 +1312,49 @@ build/API_%.o: src/TAO/API/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_assets_%.o: src/TAO/API/assets/%.cpp $(HEADERS)
+build/API_commands_assets_%.o: src/TAO/API/commands/assets/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_crypto_%.o: src/TAO/API/crypto/%.cpp $(HEADERS)
+build/API_commands_crypto_%.o: src/TAO/API/commands/crypto/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_dex_%.o: src/TAO/API/dex/%.cpp $(HEADERS)
+build/API_commands_market_%.o: src/TAO/API/commands/market/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_finance_%.o: src/TAO/API/finance/%.cpp $(HEADERS)
+build/API_commands_finance_%.o: src/TAO/API/commands/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_invoices_%.o: src/TAO/API/invoices/%.cpp $(HEADERS)
+build/API_commands_invoices_%.o: src/TAO/API/commands/invoices/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_ledger_%.o: src/TAO/API/ledger/%.cpp $(HEADERS)
+build/API_commands_ledger_%.o: src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_names_%.o: src/TAO/API/names/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_objects_%.o: src/TAO/API/objects/%.cpp $(HEADERS)
+build/API_commands_names_%.o: src/TAO/API/commands/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1370,21 +1368,42 @@ build/API_types_p2p_%.o: src/TAO/API/p2p/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_rpc_%.o: src/TAO/API/rpc/%.cpp $(HEADERS)
+build/API_commands_register_%.o: src/TAO/API/commands/register/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_supply_%.o: src/TAO/API/supply/%.cpp $(HEADERS)
+build/API_commands_supply_%.o: src/TAO/API/commands/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_tokens_%.o: src/TAO/API/tokens/%.cpp $(HEADERS)
+build/API_commands_system_%.o: src/TAO/API/commands/system/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_commands_templates_%.o: src/TAO/API/commands/templates/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_commands_tokens_%.o: src/TAO/API/commands/tokens/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_operators_%.o: src/TAO/API/operators/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1399,13 +1418,6 @@ build/API_types_users_%.o: src/TAO/API/users/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_types_voting_%.o: src/TAO/API/voting/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_system_%.o: src/TAO/API/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1441,6 +1453,13 @@ build/Util_%.o: src/Util/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/Legacy_%.o: src/Legacy/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/Legacy_rpc_%.o: src/Legacy/rpc/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

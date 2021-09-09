@@ -149,91 +149,43 @@ bool ParseMoney(const std::string& str, int64_t& nRet)
 }
 
 
-/*  Split a string into it's components by delimiter. */
-std::vector<std::string> Split(const std::string& strInput, char strDelimiter)
-{
-    std::string::size_type nIndex = 0;
-    std::string::size_type nFind  = strInput.find(strDelimiter);
-
-    std::vector<std::string> vData;
-
-    /* Check that there is at least one delimiter */
-    if(nFind != std::string::npos)
-    {
-        while(nFind != std::string::npos)
-        {
-            vData.push_back(strInput.substr(nIndex, nFind - nIndex));
-            nIndex = ++nFind;
-            nFind  = strInput.find(strDelimiter, nFind);
-
-            if(nFind == std::string::npos)
-                vData.push_back(strInput.substr(nIndex, strInput.length()));
-        }
-    }
-    else
-    {
-        /* Otherwise return just the input string */
-        vData.push_back(strInput);
-
-    }
-
-    return vData;
-}
-
-
-/*  Split a string into it's components by delimiter. */
-std::vector<std::string> Split(const std::string& strInput, const std::string& strDelimiter)
-{
-    std::string::size_type nIndex = 0;
-    std::string::size_type nFind  = strInput.find(strDelimiter);
-
-    std::vector<std::string> vData;
-
-    /* Check that there is at least one delimiter */
-    if(nFind != std::string::npos)
-    {
-        while(nFind != std::string::npos)
-        {
-            vData.push_back(strInput.substr(nIndex, nFind - nIndex));
-            nIndex = nFind + strDelimiter.length();
-            nFind  = strInput.find(strDelimiter, nIndex);
-
-            if(nFind == std::string::npos)
-                vData.push_back(strInput.substr(nIndex, strInput.length()));
-        }
-    }
-    else
-    {
-        /* Otherwise return just the input string */
-        vData.push_back(strInput);
-
-    }
-
-    return vData;
-}
-
-
 /*  Trims spaces from the left of a std::string. */
-std::string &ltrim(std::string &s)
+std::string ltrim(std::string strValue)
 {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))));
-    return s;
+    strValue.erase
+    (
+        strValue.begin(),
+        std::find_if(strValue.begin(), strValue.end(),
+        [](const char c)
+        {
+            return (c != ' ');
+        })
+    );
+
+    return strValue;
 }
 
 
 
 /*  Trims spaces from the right of a std::string. */
-std::string &rtrim(std::string &s)
+std::string rtrim(std::string strValue)
 {
-    s.erase(std::find_if(s.rbegin(), s.rend(),
-            std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
-    return s;
+    strValue.erase
+    (
+        std::find_if(strValue.rbegin(), strValue.rend(),
+        [](const char c)
+        {
+            return (c != ' ');
+        }).base(),
+        strValue.end()
+    );
+
+    return strValue;
 }
 
 
 /*  Trims spaces from both ends of a std::string. */
-std::string &trim(std::string &s)
+std::string trim(std::string s)
 {
     return ltrim(rtrim(s));
 }
@@ -276,6 +228,6 @@ bool IsUINT64(const std::string& strIn)
 {
     char* end;
     errno = 0;
-    uint64_t v = strtoull( strIn.c_str(), &end, 10 );
+    uint64_t v = strtoull(strIn.c_str(), &end, 10);
     return errno == 0 && *end == '\0' && end != strIn.c_str() && v <= std::numeric_limits<uint64_t>::max();
 }

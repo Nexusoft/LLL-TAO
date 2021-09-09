@@ -808,7 +808,7 @@ protected:
         unsigned sign = in.u & 0x80000000;
         in.u ^= sign;
 
-        if( in.u >= 0x47800000 )
+        if(in.u >= 0x47800000 )
             w = (ushort)(in.u > 0x7f800000 ? 0x7e00 : 0x7c00);
         else
         {

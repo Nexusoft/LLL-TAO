@@ -14,10 +14,12 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/users/types/users.h>
+
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/include/filter.h>
 #include <TAO/API/include/json.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
@@ -29,142 +31,89 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* List the transactions from a particular sigchain. */
+    encoding::json Users::Transactions(const encoding::json& jParams, const bool fHelp)
     {
-        /* Get a user's account. */
-        json::json Users::Transactions(const json::json& params, bool fHelp)
+        /* Extract input parameters. */
+        const uint256_t hashGenesis = ExtractGenesis(jParams);
+        const uint32_t  nVerbose    = ExtractVerbose(jParams);
+
+        /* Number of results to return. */
+        uint32_t nLimit = 100, nOffset = 0;
+
+        /* Get the parameters to apply to the response. */
+        std::string strOrder = "desc";
+        ExtractList(jParams, strOrder, nLimit, nOffset);
+
+        /* Get the last transaction. */
+        uint512_t hashLast = 0;
+        if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+            throw Exception(-144, "No transactions found");
+
+        /* Loop until genesis, storing all tx into a vector (these will be in descending order). */
+        std::vector<TAO::Ledger::Transaction> vtx;
+        while(hashLast != 0)
         {
-            /* JSON return value. */
-            json::json ret = json::json::array();
-
-            /* Get the Genesis ID. */
-            uint256_t hashGenesis = 0;
-
-            /* Check to see if specific genesis has been supplied */
-            if(params.find("genesis") != params.end() && !params["genesis"].get<std::string>().empty())
-                hashGenesis.SetHex(params["genesis"].get<std::string>());
-
-            /* Check if username has been supplied instead. */
-            else if(params.find("username") != params.end() && !params["username"].get<std::string>().empty())
-                hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-            
-            /* Check for logged in user.  NOTE: we rely on the GetSession method to check for the existence of a valid session ID
-               in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession 
-               method will throw an appropriate error. */
-            else
-                hashGenesis = users->GetSession(params).GetAccount()->Genesis();
-
-            /* The genesis hash of the API caller, if logged in */
-            uint256_t hashCaller = users->GetCallersGenesis(params);
-
-            if(config::fClient.load() && hashGenesis != hashCaller)
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
-
-
-            /* Get verbose levels. */
-            std::string strVerbose = "default";
-            if(params.find("verbose") != params.end())
-                strVerbose = params["verbose"].get<std::string>();
-
-            uint32_t nVerbose = 1;
-            if(strVerbose == "default")
-                nVerbose = 1;
-            else if(strVerbose == "summary")
-                nVerbose = 2;
-            else if(strVerbose == "detail")
-                nVerbose = 3;
-
-
-            /* Number of results to return. */
-            uint32_t nLimit = 100;
-
-            /* Offset into the result set to return results from */
-            uint32_t nOffset = 0;
-
-            /* Sort order to apply */
-            std::string strOrder = "desc";
-
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
-            /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
-
-            /* Get the last transaction. */
-            uint512_t hashLast = 0;
-            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-144, "No transactions found");
-
-            /* Loop until genesis, storing all tx into a vector (these will be in descending order). */
-            std::vector<TAO::Ledger::Transaction> vtx;
-
-            while(hashLast != 0)
+            /* Get the transaction from disk. */
+            TAO::Ledger::Transaction tx;
+            if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
             {
-                /* Get the transaction from disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                {
-                    /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
-                    if(config::fClient.load())
-                        break;
-                    else
-                        throw APIException(-108, "Failed to read transaction");
-                }
-
-                /* Set the next last. */
-                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
-
-                vtx.push_back(tx);
-            }
-
-            /* Transactions sorted in descending order. Reverse the order if ascending requested. */
-            if(strOrder == "asc")
-                std::reverse(vtx.begin(), vtx.end());
-
-            uint32_t nTotal = 0;
-
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
-
-            for(auto tx : vtx)
-            {
-                /* Read the block state from the the ledger DB using the transaction hash index */
-                TAO::Ledger::BlockState blockState;
-                LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
-
-                /* Get the transaction JSON. */
-                json::json obj = TAO::API::TransactionToJSON(hashCaller, tx, blockState, nVerbose, hashGenesis, vWhere);
-
-                /* Check to see whether the transaction has had all children filtered out */
-                if(obj.empty())
-                    continue;
-
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(obj, vWhere[""]))
-                        continue;
-                }
-
-                ++nTotal;
-
-                /* Check the offset. */
-                if(nTotal <= nOffset)
-                    continue;
-                
-                /* Check the limit */
-                if(nTotal - nOffset > nLimit)
+                /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                if(config::fClient.load())
                     break;
-
-                ret.push_back(obj);
+                else
+                    throw Exception(-108, "Failed to read transaction");
             }
 
-            return ret;
+            /* Set the next last. */
+            hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
+
+            vtx.push_back(tx);
         }
+
+        /* Transactions sorted in descending order. Reverse the order if ascending requested. */
+        if(strOrder == "asc")
+            std::reverse(vtx.begin(), vtx.end());
+
+        /* JSON return value. */
+        encoding::json jRet = encoding::json::array();
+
+        /* Loop through our transactions now and apply filters. */
+        uint32_t nTotal = 0;
+        for(auto tx : vtx)
+        {
+            /* Read the block state from the the ledger DB using the transaction hash index */
+            TAO::Ledger::BlockState blockState;
+            LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
+
+            /* Get the transaction JSON. */
+            encoding::json jResult =
+                TAO::API::TransactionToJSON(tx, blockState, nVerbose);
+
+            /* Check to see whether the transaction has had all children filtered out */
+            if(jResult.empty())
+                continue;
+
+            /* Apply our where filters now. */
+            if(!FilterResults(jParams, jResult))
+                continue;
+
+            /* Filter out our expected fieldnames if specified. */
+            FilterFieldname(jParams, jResult);
+
+            /* Check the offset. */
+            if(++nTotal <= nOffset)
+                continue;
+
+            /* Check the limit */
+            if(nTotal - nOffset > nLimit)
+                break;
+
+            jRet.push_back(jResult);
+        }
+
+        return jRet;
     }
 }

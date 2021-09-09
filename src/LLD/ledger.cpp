@@ -86,6 +86,20 @@ namespace LLD
     }
 
 
+    /* Writes the hybrid chain pointer to the ledger DB. */
+    bool LedgerDB::WriteHybridGenesis(const uint1024_t& hashBest)
+    {
+        return Write(std::string("hybrid"), hashBest);
+    }
+
+
+    /* Reads the hybrid chain pointer from the ledger DB. */
+    bool LedgerDB::ReadHybridGenesis(uint1024_t &hashBest)
+    {
+        return Read(std::string("hybrid"), hashBest);
+    }
+
+
     /* Reads the best chain pointer from the ledger DB. */
     bool LedgerDB::ReadBestChain(memory::atomic<uint1024_t> &atomicBest)
     {
@@ -122,8 +136,8 @@ namespace LLD
                 throw debug::exception(FUNCTION, "failed to read contract");
 
             /* Get const reference for read-only access. */
-            const TAO::Ledger::Transaction& ref = tx;
-            return ref[nContract];
+            const TAO::Ledger::Transaction& rtx = tx;
+            return rtx[nContract];
         }
 
         /* Check for Legacy transaction. */
@@ -134,27 +148,7 @@ namespace LLD
             if(!LLD::Legacy->ReadTx(hashTx, tx, nFlags))
                 throw debug::exception(FUNCTION, "failed to get legacy transaction");
 
-            /* Check boundaries. */
-            if(nContract >= tx.vout.size())
-                throw debug::exception(FUNCTION, "contract output out of bounds");
-
-            /* Check script size. */
-            if(tx.vout[nContract].scriptPubKey.size() != 34)
-                throw debug::exception(FUNCTION, "invalid script size ", tx.vout[nContract].scriptPubKey.size());
-
-            /* Get the script output. */
-            uint256_t hashAccount;
-            std::copy((uint8_t*)&tx.vout[nContract].scriptPubKey[1], (uint8_t*)&tx.vout[nContract].scriptPubKey[1] + 32, (uint8_t*)&hashAccount);
-
-            /* Check for OP::RETURN. */
-            if(tx.vout[nContract].scriptPubKey[33] != Legacy::OP_RETURN)
-                throw debug::exception(FUNCTION, "last OP has to be OP_RETURN");
-
-            /* Create Contract. */
-            TAO::Operation::Contract contract;
-            contract << uint8_t(TAO::Operation::OP::DEBIT) << TAO::Register::WILDCARD_ADDRESS << hashAccount << uint64_t(tx.vout[nContract].nValue) << uint64_t(0);
-
-            return contract;
+            return TAO::Operation::Contract(tx, nContract);
         }
         else
             throw debug::exception(FUNCTION, "invalid txid type");
@@ -512,42 +506,6 @@ namespace LLD
     }
 
 
-    /*  Recover the block height index.
-     *  Adds or fixes th block height index by iterating forward from the genesis block */
-    bool LedgerDB::RepairIndexHeight()
-    {
-        runtime::timer timer;
-        timer.Start();
-        debug::log(0, FUNCTION, "block height index missing or incomplete");
-
-        /* Get the best block state to start from. */
-        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateGenesis;
-
-        /* Loop until it is found. */
-        while(!config::fShutdown.load() && !state.IsNull())
-        {
-            /* Give debug output of status. */
-            if(state.nHeight % 100000 == 0)
-                debug::log(0, FUNCTION, "repairing block height index..... ", state.nHeight);
-
-            if(!IndexBlock(state.nHeight, state.GetHash()))
-                return false;
-
-            /* Move onto the next block if there is one */
-            if(state.hashNextBlock != 0)
-                state = state.Next();
-            else
-                break;
-        }
-
-        uint32_t nElapsed = timer.Elapsed();
-        timer.Stop();
-        debug::log(0, FUNCTION, "Block height indexing complete in ", nElapsed, "s");
-
-        return true;
-    }
-
-
     /* Reads a block state from disk from a tx index. */
     bool LedgerDB::ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState &state)
     {
@@ -667,7 +625,7 @@ namespace LLD
     {
         /* Get the last known event sequence for this address  */
         uint32_t nSequence = 0;
-        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value 
+        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value
 
         /* Read the transaction ID of the last event */
         if(nSequence > 0)

@@ -18,11 +18,19 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <TAO/API/users/types/users.h>
+#include <TAO/API/types/commands/names.h>
+
+#include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/conditions.h>
+#include <TAO/API/include/extract.h>
+#include <TAO/API/include/format.h>
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/include/list.h>
+
+#include <TAO/API/types/session-manager.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -100,7 +108,7 @@ namespace TAO
                 (
                     /* Use std remove_if function to return the iterator to erase. This allows us to pass in a lambda function,
                     which itself can check to see if a notification suppression exists and, if so, whether it has expired */
-                    std::remove_if(vContracts.begin(), vContracts.end(), 
+                    std::remove_if(vContracts.begin(), vContracts.end(),
                     [](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& entry)
                     {
                         uint64_t nTimestamp;
@@ -108,7 +116,7 @@ namespace TAO
                             return false;
                         else
                             return nTimestamp > runtime::unifiedtimestamp(); // remove notification if timeout not expired
-                    }), 
+                    }),
                     vContracts.end()
                 );
             }
@@ -144,7 +152,7 @@ namespace TAO
                 (
                     /* Use std remove_if function to return the iterator to erase. This allows us to pass in a lambda function,
                     which itself can check to see if a notification suppression exists and, if so, whether it has expired */
-                    std::remove_if(vContracts.begin(), vContracts.end(), 
+                    std::remove_if(vContracts.begin(), vContracts.end(),
                     [](const std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>& entry)
                     {
                         uint64_t nTimestamp;
@@ -152,7 +160,7 @@ namespace TAO
                             return false;
                         else
                             return nTimestamp > runtime::unifiedtimestamp(); // remove notification if timeout not expired
-                    }), 
+                    }),
                     vContracts.end()
                 );
             }
@@ -175,7 +183,7 @@ namespace TAO
                 (
                     /* Use std remove_if function to return the iterator to erase. This allows us to pass in a lambda function,
                     which itself can check to see if a notification suppression exists and, if so, whether it has expired */
-                    std::remove_if(vContracts.begin(), vContracts.end(), 
+                    std::remove_if(vContracts.begin(), vContracts.end(),
                     [](const std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>& entry)
                     {
                         uint64_t nTimestamp;
@@ -183,7 +191,7 @@ namespace TAO
                             return false;
                         else
                             return nTimestamp > runtime::unifiedtimestamp(); // remove notification if timeout not expired
-                    }), 
+                    }),
                     vContracts.end()
                 );
             }
@@ -302,7 +310,7 @@ namespace TAO
                             if(hashGenesis != hashProof)
                                 continue;
 
-                            /* Check that the sender has not claimed it back (voided).  We can skip this in client mode and just 
+                            /* Check that the sender has not claimed it back (voided).  We can skip this in client mode and just
                                rely on whether a proof exists for it instead. */
                             if(!config::fClient.load())
                             {
@@ -351,7 +359,7 @@ namespace TAO
                         continue;
                     }
 
-                    /* Check that we haven't already added this contract to the vContracts list.  Since events are written by 
+                    /* Check that we haven't already added this contract to the vContracts list.  Since events are written by
                        transaction hash only, if two or more contracts exist in the same transaction for the same sig chain, then
                        there will be duplicate events written for the same transaction. */
                     if(setUnique.count(std::make_pair(hashTx, nContract)) == 0)
@@ -381,7 +389,7 @@ namespace TAO
             /* Check the database instance. */
             if(!LLD::Legacy)
                 return false;
-                
+
             /* Get notifications for personal genesis indexes. */
             Legacy::Transaction tx;
 
@@ -437,7 +445,7 @@ namespace TAO
                         continue;
                     }
 
-                    /* Check that we haven't already added this contract to the vContracts list.  Since events are written by 
+                    /* Check that we haven't already added this contract to the vContracts list.  Since events are written by
                        transaction hash only, if two or more contracts exist in the same transaction for the same sig chain, then
                        there will be duplicate events written for the same transaction. */
                     uint512_t hashTx = tx.GetHash();
@@ -514,7 +522,7 @@ namespace TAO
                             if(hashGenesis != hashProof)
                                 continue;
 
-                            /* Check that the sender has not claimed it back (voided).  We can skip this in client mode and just 
+                            /* Check that the sender has not claimed it back (voided).  We can skip this in client mode and just
                                rely on whether a proof exists for it instead. */
                             if(!config::fClient.load())
                             {
@@ -571,8 +579,8 @@ namespace TAO
                     else
                         return debug::error(FUNCTION, "Failed to read transaction");
                 }
-                    
-                    
+
+
                 /* Skip this transaction if it not a coinbase or is immature. */
                 if(!tx.IsCoinBase() || !LLD::Ledger->ReadMature(tx))
                 {
@@ -639,7 +647,7 @@ namespace TAO
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vRegisters;
             if(!ListRegisters(hashGenesis, vRegisters))
-                throw APIException(-74, "No registers found");
+                throw Exception(-74, "No registers found");
 
             /* Iterate registers to find all token accounts. */
             for(const auto& hashRegister : vRegisters)
@@ -694,7 +702,7 @@ namespace TAO
 
                 /* Decrement the current sequence number to get the last event sequence number */
                 --nSequence;
-                
+
                 while(LLD::Ledger->ReadEvent(hashToken, nSequence, tx))
                 {
                     /* Iterate sequence backwards. */
@@ -763,11 +771,11 @@ namespace TAO
             if(config::fClient.load())
                 return false;
 
-            /* Cache of contracts by genesis hash for all contracts that we have already determined either do not have 
+            /* Cache of contracts by genesis hash for all contracts that we have already determined either do not have
                any conditions or have already been claimed/credited.  If any contract is already in this vector then we can skip
                it for all future invocations of the get_expired method. */
             static std::unordered_set<std::pair<uint512_t, uint32_t>, pair_hash> cacheProcessed(256);
-                
+
             /* Temporary transaction to use to evaluate the conditions */
             TAO::Ledger::Transaction voidTx;
 
@@ -945,60 +953,31 @@ namespace TAO
 
 
         /* Get a user's notifications. */
-        json::json Users::Notifications(const json::json& params, bool fHelp)
+        encoding::json Users::Notifications(const encoding::json& jParams, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             /* Get the Genesis ID. */
-            uint256_t hashGenesis = 0;
-
-            /* Get genesis by raw hex. */
-            if(params.find("genesis") != params.end())
-                hashGenesis.SetHex(params["genesis"].get<std::string>());
-
-            /* Get genesis by username. */
-            else if(params.find("username") != params.end())
-                hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
-
-            /* Check for logged in user.  NOTE: we rely on the GetSession method to check for the existence of a valid session ID
-               in the parameters in multiuser mode, or that a user is logged in for single user mode. Otherwise the GetSession 
-               method will throw an appropriate error. */
-            else
-                hashGenesis = users->GetSession(params).GetAccount()->Genesis();
+            const uint256_t hashGenesis =
+                ExtractGenesis(jParams);
 
             /* The genesis hash of the API caller, if logged in */
-            uint256_t hashCaller = users->GetCallersGenesis(params);
-
-            if(config::fClient.load() && hashGenesis != hashCaller)
-                throw APIException(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
+            const uint256_t hashCaller =
+                Commands::Get<Users>()->GetCallersGenesis(jParams);
 
             /* Number of results to return. */
-            uint32_t nLimit = 100;
-
-            /* Offset into the result set to return results from */
-            uint32_t nOffset = 0;
+            uint32_t nLimit = 100, nOffset = 0;
 
             /* Sort order to apply */
             std::string strOrder = "desc";
 
-            /* Vector of where clauses to apply to filter the results */
-            std::map<std::string, std::vector<Clause>> vWhere;
-
-            /* Get the params to apply to the response. */
-            GetListParams(params, strOrder, nLimit, nOffset, vWhere);
-
-            /* Flag indicating there are top level filters  */
-            bool fHasFilter = vWhere.count("") > 0;
-
-            /* fields to ignore in the where clause.  This is necessary so that the suppressed param is not treated as 
-               standard where clauses to filter the json */
-            std::vector<std::string> vIgnore = {"suppressed"};
+            /* Get the jParams to apply to the response. */
+            ExtractList(jParams, strOrder, nLimit, nOffset);
 
             /* Check for suppressed parameter. */
-            bool fIncludeSuppressed = false;
-            if(params.find("suppressed") != params.end())
-                fIncludeSuppressed = params["suppressed"].get<std::string>() == "true" || params["suppressed"].get<std::string>() == "1";
+            const bool fIncludeSuppressed =
+                ExtractBoolean(jParams, "suppressed");
 
             /* The total number of notifications. */
             uint32_t nTotal = 0;
@@ -1014,20 +993,20 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Get a reference to the contract */
-                const TAO::Operation::Contract& refContract = std::get<0>(contract);
+                const TAO::Operation::Contract& rContract = std::get<0>(contract);
 
                 /* Get contract JSON data. */
-                json::json obj = ContractToJSON(hashCaller, refContract, std::get<1>(contract), 1);
+                encoding::json obj = ContractToJSON(rContract, std::get<1>(contract), 1);
 
-                obj["txid"]      = refContract.Hash().ToString();
-                obj["time"]      = refContract.Timestamp();
+                obj["txid"]      = rContract.Hash().ToString();
+                obj["time"]      = rContract.Timestamp();
 
-                /* If caller has chosen to include suppressed notifications, then include an extra field in the response to 
+                /* If caller has chosen to include suppressed notifications, then include an extra field in the response to
                    indicate which ones are suppressed */
                 if(fIncludeSuppressed)
                 {
                     uint64_t nTimeout = 0;
-                    obj["suppressed"] = (LLD::Local->ReadSuppressNotification(refContract.Hash(), std::get<1>(contract), nTimeout) && nTimeout > runtime::unifiedtimestamp());
+                    obj["suppressed"] = (LLD::Local->ReadSuppressNotification(rContract.Hash(), std::get<1>(contract), nTimeout) && nTimeout > runtime::unifiedtimestamp());
                 }
 
                 /* Check to see if there is a proof for the contract, indicating this is a split dividend payment and the
@@ -1039,15 +1018,15 @@ namespace TAO
                     /* Read the object register, which is the token . */
                     TAO::Register::Object account;
                     if(!LLD::Register->ReadState(hashProof, account, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-13, "Account not found");
+                        throw Exception(-13, "Object not found");
 
                     /* Parse the object register. */
                     if(!account.Parse())
-                        throw APIException(-36, "Failed to parse object register");
+                        throw Exception(-36, "Failed to parse object register");
 
                     /* Check that this is an account */
                     if(account.Base() != TAO::Register::OBJECTS::ACCOUNT )
-                        throw APIException(-65, "Object is not an account");
+                        throw Exception(-65, "Object is not an account");
 
                     /* Get the token address */
                     TAO::Register::Address hashToken = account.get<uint256_t>("token");
@@ -1055,11 +1034,11 @@ namespace TAO
                     /* Read the token register. */
                     TAO::Register::Object token;
                     if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
-                        throw APIException(-125, "Token not found");
+                        throw Exception(-125, "Token not found");
 
                     /* Parse the object register. */
                     if(!token.Parse())
-                        throw APIException(-36, "Failed to parse object register");
+                        throw Exception(-36, "Failed to parse object register");
 
                     /* Get the token supply so that we an determine our share */
                     uint64_t nSupply = token.get<uint64_t>("supply");
@@ -1069,20 +1048,20 @@ namespace TAO
 
                     /* Get the amount from the debit contract*/
                     uint64_t nAmount = 0;
-                    TAO::Register::Unpack(refContract, nAmount);
+                    TAO::Register::Unpack(rContract, nAmount);
 
                     /* Get the from account the debit contract*/
                     TAO::Register::Address hashFrom;
-                    TAO::Register::Unpack(refContract, hashFrom);
+                    TAO::Register::Unpack(rContract, hashFrom);
 
                     /* Get the account that made the debit, so that we can determine the decimals */
                     TAO::Register::Object accountFrom;
                     if(!LLD::Register->ReadState(hashFrom, accountFrom, TAO::Ledger::FLAGS::LOOKUP))
-                        throw APIException(-13, "Account not found");
+                        throw Exception(-13, "Object not found");
 
                     /* Parse the object register. */
                     if(!accountFrom.Parse())
-                        throw APIException(-36, "Failed to parse object register");
+                        throw Exception(-36, "Failed to parse object register");
 
                     /* Calculate the partial debit amount that this token holder is entitled to. */
                     uint64_t nPartial = (nAmount * nBalance) / nSupply;
@@ -1093,29 +1072,20 @@ namespace TAO
                     /* Add the token account to the notification */
                     obj["proof"] = hashProof.ToString();
 
-                    std::string strProof = Names::ResolveName(hashCaller, hashProof);
-                    if(!strProof.empty())
-                        obj["proof_name"] = strProof;
+                    /* Check for token record. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashProof, strName))
+                        obj["ticker"] = strName;
 
                     /* Also flag this notification as a split dividend */
                     obj["dividend_payment"] = true;
 
                 }
 
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(obj, vWhere[""], vIgnore))
-                        continue;
-                }
-
-                ++nTotal;
-
                 /* Check the offset. */
-                if(nTotal <= nOffset)
+                if(++nTotal <= nOffset)
                     continue;
-                
+
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
                     break;
@@ -1133,40 +1103,23 @@ namespace TAO
             /* Get notifications for foreign token registers. */
             for(const auto& tx : vLegacy)
             {
-    
+
                 /* The register address of the recipient account */
                 TAO::Register::Address hashTo;
                 Legacy::ExtractRegister(tx.first->vout[tx.second].scriptPubKey, hashTo);
 
                 /* Get transaction JSON data. */
-                json::json obj;
+                encoding::json obj;
                 obj["OP"]       = "LEGACY";
                 obj["address"]  = hashTo.ToString();
-
-                /* Resolve the name of the token/account/register that the debit is to */
-                std::string strTo = Names::ResolveName(hashCaller, hashTo);
-                if(!strTo.empty())
-                    obj["account_name"] = strTo;
-
-                obj["amount"]   = (double)tx.first->vout[tx.second].nValue / TAO::Ledger::NXS_COIN;
+                obj["amount"]   = FormatBalance(tx.first->vout[tx.second].nValue);
                 obj["txid"]     = tx.first->GetHash().GetHex();
                 obj["time"]     = tx.first->nTime;
 
-
-                /* Check to see that it matches the where clauses */
-                if(fHasFilter)
-                {
-                    /* Skip this top level record if not all of the filters were matched */
-                    if(!MatchesWhere(obj, vWhere[""], vIgnore))
-                        continue;
-                }
-
-                ++nTotal;
-
                 /* Check the offset. */
-                if(nTotal <= nOffset)
+                if(++nTotal <= nOffset)
                     continue;
-                
+
                 /* Check the limit */
                 if(nTotal - nOffset > nLimit)
                     break;
@@ -1180,62 +1133,59 @@ namespace TAO
 
 
         /* Process any outstanding notifications for a particular sig chain */
-        json::json Users::ProcessNotifications(const json::json& params, bool fHelp)
+        encoding::json Users::ProcessNotifications(const encoding::json& jParams, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Track how many contracts were processed */
             uint8_t nProcessed = 0;
 
             /* Store the transaction ID's of all transactions that were created (in case there are more than 99 notifications ) */
-            std::vector<uint512_t> vTxIDs; 
+            std::vector<uint512_t> vTxIDs;
 
             /* default the processed in the return JSON to 0 */
             ret["processed"] = 0;
 
             /* Testnet is considered local if no dns is being used or if using a private network */
             bool fLocalTestnet = config::fTestNet.load()
-                && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
+                && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
 
             /* Make sure the tritium server has a connection. (skip check if running local testnet) */
             if(!fLocalTestnet && LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
-                throw APIException(-255, "Cannot process notifications until peers are connected");
+                throw Exception(-255, "Cannot process notifications until peers are connected");
 
             /* Don't process events while synchronizing. */
             if(TAO::Ledger::ChainState::Synchronizing())
-                throw APIException(-256, "Cannot process notifications whilst synchronizing");
+                throw Exception(-256, "Cannot process notifications whilst synchronizing");
 
             /* Flag indicating that this call should log this call in the session activity */
-            bool fLogActivity = true;
-            if(params.find("logactivity") != params.end())
-                fLogActivity = params["logactivity"].get<std::string>() == "true" || params["logactivity"].get<std::string>() == "1";
-            
+            const bool fLogActivity =
+                ExtractBoolean(jParams, "logactivity", true);
+
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params, true, fLogActivity);
+            Session& session = Commands::Get<Users>()->GetSession(jParams, true, fLogActivity);
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
             if(!user)
-                throw APIException(-10, "Invalid session ID");
+                throw Exception(-10, "Invalid session ID");
 
             /* Set the hash genesis for this user. */
             uint256_t hashGenesis = user->Genesis();
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::NOTIFICATIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::NOTIFICATIONS);
 
             /* Retrieve user's default NXS account. This is only relevant when not in private mode (as there is no NXS)*/
             std::string strAccount = config::GetArg("-events_account", "default");
-            TAO::Register::Object defaultAccount;
-            if(!config::GetBoolArg("-private", false) && !TAO::Register::GetNameRegister(hashGenesis, strAccount, defaultAccount))
-                throw APIException(-63, "Could not retrieve default NXS account to credit");
+            TAO::Register::Object objectDefault;
+            if(!config::fHybrid.load() && !TAO::Register::GetNameRegister(hashGenesis, strAccount, objectDefault))
+                throw Exception(-63, "Could not retrieve default NXS account to credit");
 
             /* Check for suppressed parameter. */
-            bool fIncludeSuppressed = false;
-            if(params.find("suppressed") != params.end())
-                fIncludeSuppressed = params["suppressed"].get<std::string>() == "true" || params["suppressed"].get<std::string>() == "1";
-
+            const bool fIncludeSuppressed =
+                ExtractBoolean(jParams, "suppressed");
 
             /* Get the list of outstanding contracts. */
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
@@ -1250,12 +1200,12 @@ namespace TAO
             GetOutstanding(hashGenesis, fIncludeSuppressed, vLegacyTx);
 
             /* Check if there is anything to process */
-            if(vContracts.size() == 0 && vLegacyTx.size() == 0 && vExpired.size() == 0)
+            if(vContracts.size() == 0 && vLegacyTx.size() == 0 && vExpired.size() == 0 && session.vProcessQueue->empty())
                 return ret;
 
-            /* Ensure that the signature is mature. This is an expensive check, so we only check this after we know 
+            /* Ensure that the signature is mature. This is an expensive check, so we only check this after we know
                that there is something to process */
-            CheckMature(hashGenesis);            
+            CheckMature(hashGenesis);
 
             /* The transaction hash. */
             uint512_t hashTx;
@@ -1273,22 +1223,18 @@ namespace TAO
             /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
             std::map<uint256_t, TAO::Register::State> mapStates;
 
-            /* Loop through each contract in the notification queue. */
-            std::queue<TAO::Operation::Contract> vProcessQueue;
-            
             try
             {
-            
                 for(const auto& contract : vContracts)
                 {
                     /* Reset the receiving address */
                     hashTo = uint256_t(0);
 
                     /* Get a reference to the contract */
-                    const TAO::Operation::Contract& refContract = std::get<0>(contract);
+                    const TAO::Operation::Contract& rContract = std::get<0>(contract);
 
                     /* Set the transaction hash. */
-                    hashTx = refContract.Hash();
+                    hashTx = rContract.Hash();
 
                     /* Get the contract ID */
                     nContract = std::get<1>(contract);
@@ -1297,11 +1243,11 @@ namespace TAO
                     bool fMature = LLD::Ledger->ReadMature(hashTx);
 
                     /* Reset the contract to the position of the primitive. */
-                    refContract.SeekToPrimitive();
+                    rContract.SeekToPrimitive();
 
                     /* Get the opcode. */
                     uint8_t OPERATION;
-                    refContract >> OPERATION;
+                    rContract >> OPERATION;
 
                     /* Check the opcodes for debit, coinbase or transfers. */
                     switch (OPERATION)
@@ -1320,7 +1266,7 @@ namespace TAO
                                 Therefore we need to retrieve the account/token the debit is from so that we can check */
 
                                 /* Get the token/account we are debiting from */
-                                refContract >> hashFrom;
+                                rContract >> hashFrom;
                                 TAO::Register::Object from;
                                 if(!LLD::Register->ReadState(hashFrom, from))
                                     continue;
@@ -1335,7 +1281,7 @@ namespace TAO
                                 /* If this is a NXS debit then process the credit to the default account */
                                 if(hashToken == 0)
                                 {
-                                    hashTo = defaultAccount.get<uint256_t>("address");
+                                    hashTo = objectDefault.get<uint256_t>("address");
                                 }
                                 else
                                 {
@@ -1378,7 +1324,7 @@ namespace TAO
 
                                 /* Get the amount from the debit contract*/
                                 uint64_t nAmount = 0;
-                                TAO::Register::Unpack(refContract, nAmount);
+                                TAO::Register::Unpack(rContract, nAmount);
 
                                 /* Calculate the partial debit amount that this token holder is entitled to. */
                                 uint64_t nPartial = (nAmount * nBalance) / nSupply;
@@ -1398,15 +1344,14 @@ namespace TAO
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                vProcessQueue.push(credit);
-
+                                session.vProcessQueue->push(credit);
                             }
                             else
                             {
                                 /* Set to and from hashes and amount. */
-                                refContract >> hashFrom;
-                                refContract >> hashTo;
-                                refContract >> nAmount;
+                                rContract >> hashFrom;
+                                rContract >> hashTo;
+                                rContract >> nAmount;
 
                                 /* Submit the payload object. */
                                 TAO::Operation::Contract credit;
@@ -1423,7 +1368,7 @@ namespace TAO
                                     continue;
 
                                 /* Add the contract to the transaction */
-                                vProcessQueue.push(credit);
+                                session.vProcessQueue->push(credit);
                             }
 
                             /* Log debug message. */
@@ -1443,11 +1388,11 @@ namespace TAO
                             }
 
                             /* Set the genesis hash and the amount. */
-                            refContract >> hashFrom;
-                            refContract >> nAmount;
+                            rContract >> hashFrom;
+                            rContract >> nAmount;
 
                             /* Get the address that this name register for default account is pointing to. */
-                            hashTo = defaultAccount.get<uint256_t>("address");
+                            hashTo = objectDefault.get<uint256_t>("address");
 
                             /* Submit the payload object. */
                             TAO::Operation::Contract credit;
@@ -1464,7 +1409,7 @@ namespace TAO
                                 continue;
 
                             /* Add the contract to the transaction */
-                            vProcessQueue.push(credit);
+                            session.vProcessQueue->push(credit);
 
                             /* Log debug message. */
                             debug::log(2, FUNCTION, "Matching COINBASE with CREDIT");
@@ -1476,31 +1421,18 @@ namespace TAO
                         case Operation::OP::TRANSFER:
                         {
                             /* Get the address of the asset being transfered from the transaction. */
-                            refContract >> hashFrom;
+                            rContract >> hashFrom;
 
                             /* Get the genesis hash (recipient) of the transfer. */
-                            refContract >> hashTo;
+                            rContract >> hashTo;
 
                             /* Read the force transfer flag */
                             uint8_t nType = 0;
-                            refContract >> nType;
+                            rContract >> nType;
 
                             /* Ensure this wasn't a forced transfer (which requires no Claim) */
                             if(nType == TAO::Operation::TRANSFER::FORCE)
                                 continue;
-
-                            /* Create a name object for the claimed object unless this is a Name or Namespace already */
-                            if(!hashFrom.IsName() && !hashFrom.IsNamespace())
-                            {
-                                /* Create a new name from the previous owners name */
-                                TAO::Operation::Contract nameContract = Names::CreateName(user->Genesis(), hashTx);
-
-                                /* If the Name contract operation was created then add it to the transaction */
-                                if(!nameContract.Empty())
-                                {
-                                    vProcessQueue.push(nameContract);
-                                }
-                            }
 
                             /* Add the CLAIM operation */
                             TAO::Operation::Contract claim;
@@ -1516,7 +1448,7 @@ namespace TAO
                                 continue;
 
                             /* Add the contract to the transaction */
-                            vProcessQueue.push(claim);
+                            session.vProcessQueue->push(claim);
 
                             /* Log debug message. */
                             debug::log(2, FUNCTION, "Matching TRANSFER with CLAIM");
@@ -1527,7 +1459,7 @@ namespace TAO
                             break;
                     }
                 }
-            
+
                 /* Now process the legacy transactions */
                 for(const auto& contract : vLegacyTx)
                 {
@@ -1554,126 +1486,16 @@ namespace TAO
 
                     /* Parse the object register. */
                     if(!debit.Parse())
-                        throw APIException(-41, "Failed to parse object from debit transaction");
+                        throw Exception(-41, "Failed to parse object from debit transaction");
 
                     /* Check for the owner to make sure this was a send to the current users account */
                     if(debit.hashOwner == user->Genesis())
                     {
-                        /* Identify trust migration to create OP::MIGRATE instead of OP::CREDIT */
-
-                        /* Check if output is new trust account (no stake or balance) */
-                        if(debit.Standard() == TAO::Register::OBJECTS::TRUST
-                                && debit.get<uint64_t>("stake") == 0 && debit.get<uint64_t>("trust") == 0)
-                        {
-                            /* Need to check for migration.
-                            * Trust migration converts a legacy trust key to a trust account register.
-                            * It will send all inputs from an existing trust key, with one output to a new trust account.
-                            */
-                            bool fMigration = false; //if this stays false, not a migration, fall through to OP::CREDIT
-
-                            /* Trust key data we need for OP::MIGRATE */
-                            uint32_t nScore;
-                            uint576_t hashTrust;
-                            uint512_t hashLast;
-                            Legacy::TrustKey trustKey;
-
-                            /* This loop will only have one iteration. If it breaks out before end, fMigration stays false */
-                            while(1)
-                            {
-                                /* Trust account output must be only output for the transaction */
-                                if(nContract != 0 || contract.first->vout.size() > 1)
-                                    break;
-
-                                /* Trust account must be new (not indexed) */
-                                if(LLD::Register->HasTrust(hashGenesis))
-                                    break;
-
-                                /* Retrieve the trust key being converted */
-                                if(!Legacy::FindMigratedTrustKey(*contract.first, trustKey))
-                                    break;
-
-                                /* Verify trust key not already converted */
-                                hashTrust.SetBytes(trustKey.vchPubKey);
-                                if(LLD::Legacy->HasTrustConversion(hashTrust))
-                                    break;
-
-                                /* Get last trust for the legacy trust key */
-                                TAO::Ledger::BlockState stateLast;
-                                if(!LLD::Ledger->ReadBlock(trustKey.hashLastBlock, stateLast))
-                                    break;
-
-                                /* Last stake block must be at least v5 and coinstake must be a legacy transaction */
-                                if(stateLast.nVersion < 5 || stateLast.vtx[0].first != TAO::Ledger::TRANSACTION::LEGACY)
-                                    break;
-
-                                /* Extract the coinstake from the last trust block */
-                                Legacy::Transaction txLast;
-                                if(!LLD::Legacy->ReadTx(stateLast.vtx[0].second, txLast))
-                                    break;
-
-                                /* Verify that the transaction is a coinstake */
-                                if(!txLast.IsCoinStake())
-                                    break;
-
-                                hashLast = txLast.GetHash();
-
-                                /* Extract the trust score from the coinstake */
-                                uint1024_t hashLastBlock;
-                                uint32_t nSequence;
-
-                                if(txLast.IsGenesis())
-                                    nScore = 0;
-
-                                else if(!txLast.ExtractTrust(hashLastBlock, nSequence, nScore))
-                                    break;
-
-                                fMigration = true;
-                                break;
-                            }
-
-                            /* Everything verified for migration and we have the data we need. Set up OP::MIGRATE */
-                            if(fMigration)
-                            {
-                                /* The amount to migrate */
-                                const int64_t nLegacyAmount = txLegacy.nValue;
-                                uint64_t nAmount = 0;
-                                if(nLegacyAmount > 0)
-                                    nAmount = nLegacyAmount;
-
-                                /* Set up the OP::MIGRATE */
-                                TAO::Operation::Contract migrate;
-                                migrate << uint8_t(TAO::Operation::OP::MIGRATE) << hashTx << hashAccount << hashTrust
-                                            << nAmount << nScore << hashLast;
-
-                                /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
-                                migrate.Bind(nTimestamp, hashGenesis);
-
-                                /* Sanitize the contract to make sure it builds and executes before we add it to the transaction */
-                                if(!sanitize_contract(migrate, mapStates))
-                                    continue;
-
-                                /* Add the contract to the transaction */
-                                vProcessQueue.push(migrate);
-
-                                /* Log debug message. */
-                                debug::log(2, FUNCTION, "Matching LEGACY SEND with trust key MIGRATE",
-                                    "\n    Migrated amount: ", std::fixed, (nAmount / (double)TAO::Ledger::NXS_COIN),
-                                    "\n    Migrated trust: ", nScore,
-                                    "\n    To trust account: ", hashAccount.ToString(),
-                                    "\n    Last stake block: ", trustKey.hashLastBlock.SubString(),
-                                    "\n    Last stake tx: ", hashLast.SubString());
-
-                                continue;
-                            }
-                        }
-
-                        /* No migration. Use normal credit process */
-
                         /* Check the object base to see whether it is an account. */
                         if(debit.Base() == TAO::Register::OBJECTS::ACCOUNT)
                         {
                             if(debit.get<uint256_t>("token") != 0)
-                                throw APIException(-51, "Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts.");
+                                throw Exception(-51, "Debit transaction is not for a NXS account.  Please use the tokens API for crediting token accounts.");
 
                             /* The amount to credit */
                             const uint64_t nAmount = txLegacy.nValue;
@@ -1690,7 +1512,7 @@ namespace TAO
                                 continue;
 
                             /* Add the contract to the transaction */
-                            vProcessQueue.push(credit);
+                            session.vProcessQueue->push(credit);
 
                             /* Log debug message. */
                             debug::log(2, FUNCTION, "Matching LEGACY SEND with CREDIT");
@@ -1705,17 +1527,17 @@ namespace TAO
                 for(const auto& contract : vExpired)
                 {
                     /* Get a reference to the contract */
-                    const TAO::Operation::Contract& refContract = std::get<0>(contract); 
+                    const TAO::Operation::Contract& rContract = std::get<0>(contract);
 
                     /* Get the transaction hash */
-                    hashTx = refContract.Hash();
+                    hashTx = rContract.Hash();
 
                     /* Get the current contract ID */
                     nContract = std::get<1>(contract);
 
                     /* Attempt to add the void contract */
                     TAO::Operation::Contract voidContract;
-                    if(VoidContract(refContract, nContract, voidContract))
+                    if(AddVoid(rContract, nContract, voidContract))
                     {
                         /* Bind the contract to the tx so that the genesis and timestamp are bound prior to sanitizing */
                         voidContract.Bind(nTimestamp, hashGenesis);
@@ -1725,11 +1547,11 @@ namespace TAO
                             continue;
 
                         /* Add the void contract */
-                        vProcessQueue.push(voidContract);
+                        session.vProcessQueue->push(voidContract);
                     }
                 }
             }
-            catch(const APIException& ex)
+            catch(const Exception& ex)
             {
                 /* Suppress this notification for 10 x the notifications interval, so by default it will be retried after 50s */
                 uint64_t nSuppress = config::GetArg("-notificationsinterval", 5) * 10;
@@ -1744,7 +1566,7 @@ namespace TAO
             }
 
             /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
-            while(!vProcessQueue.empty())
+            while(!session.vProcessQueue->empty())
             {
                 /* Lock the signature chain. */
                 LOCK(session.CREATE_MUTEX);
@@ -1752,18 +1574,18 @@ namespace TAO
                 /* Create the transaction output. */
                 TAO::Ledger::Transaction txout;
                 if(!TAO::Ledger::CreateTransaction(user, strPIN, txout))
-                    throw APIException(-17, "Failed to create transaction");
+                    throw Exception(-17, "Failed to create transaction");
 
-                /* Add the contracts into tx. NOTE we add one less than maximum allowed to leave room for a fee contract. */
+                /* We add one less than maximum allowed to leave room for a fee contract. */
                 for(uint32_t i = 0; i < TAO::Ledger::MAX_TRANSACTION_CONTRACTS -1; ++i)
                 {
                     /* Stop if run out of items to process. */
-                    if(vProcessQueue.empty())
+                    if(session.vProcessQueue->empty())
                         break;
 
                     /* Add the contract to tx. */
-                    txout[i] = vProcessQueue.front();
-                    vProcessQueue.pop();
+                    txout[i] = session.vProcessQueue->front();
+                    session.vProcessQueue->pop();
                 }
 
                 /* Check for end. */
@@ -1778,7 +1600,7 @@ namespace TAO
 
                 /* If we are in client mode then we need to get a peer to validate the transaction for us, as we will not
                     have the ability to sanitize contracts with conditions or where other consensus rules require foreign
-                    registers.  
+                    registers.
                 */
                 if(config::fClient.load())
                 {
@@ -1797,42 +1619,65 @@ namespace TAO
                         /* Suppress this notification for 1 hour or until manually attempted  */
                         LLD::Local->WriteSuppressNotification(hashTx, nContract, runtime::unifiedtimestamp() + 3600);
 
-                        /* Throw exception to signify this transaction failed to be accepted due to the contract failing peer 
+                        /* Throw exception to signify this transaction failed to be accepted due to the contract failing peer
                            validation and break out of this iteration of the process */
-                        throw APIException(-257, "Contract failed peer validation");
+                        throw Exception(-257, "Contract failed peer validation");
                     }
-                    
+
                 }
 
                 /* Execute the operations layer. */
                 if(!txout.Build())
-                    throw APIException(-30, "Failed to build register pre-states");
+                    throw Exception(-30, "Failed to build register pre-states");
 
                 /* Sign the transaction. */
                 if(!txout.Sign(session.GetAccount()->Generate(txout.nSequence, strPIN)))
-                    throw APIException(-31, "Ledger failed to sign transaction");
+                    throw Exception(-31, "Ledger failed to sign transaction");
 
                 /* Execute the operations layer. */
                 if(!TAO::Ledger::mempool.Accept(txout))
-                    throw APIException(-32, "Failed to accept");
+                    throw Exception(-32, "Failed to accept");
 
                 /* Capture the transaction ID */
-                vTxIDs.push_back(txout.GetHash());
+                const uint512_t hashTx = txout.GetHash();
+                vTxIDs.push_back(hashTx);
+
+                /* AutoTX debug output. */
+                if(config::GetBoolArg("-autotx", false))
+                {
+                    /* Add to our recent procssed vector. */
+                    session.vProcessed->push_back(hashTx);
+
+                    debug::log(0, "[AUTOTX] Generated tx ", vTxIDs.back().SubString(), " with ", txout.Size(), " contracts");
+                }
+
+                /* Check for nofee parameters. */
+                if(!config::GetBoolArg("-fee", true))
+                {
+                    /* Loop and sleep until we have reached our new interval. */
+                    while(txout.nTimestamp + 10 >= runtime::unifiedtimestamp())
+                    {
+                        /* Check for shutdown. */
+                        if(config::fShutdown.load())
+                            break;
+
+                        runtime::sleep(500);
+                    }
+                }
             }
 
             /* Populate the response JSON */
             ret["processed"] = nProcessed;
-            ret["transactions"] = json::json::array();
+            ret["transactions"] = encoding::json::array();
 
             for(const auto& tx : vTxIDs)
             {
-                json::json jsonTX;
+                encoding::json jsonTX;
                 jsonTX["txid"] = tx.ToString();
                 ret["transactions"].push_back(jsonTX);
             }
 
             return ret;
-
         }
 
         /* Checks that the contract passes both Build() and Execute() */
@@ -1878,7 +1723,7 @@ namespace TAO
         }
 
 
-        /* Used when in client mode, this method will send the transaction to a peer to validate it.  This will in turn check 
+        /* Used when in client mode, this method will send the transaction to a peer to validate it.  This will in turn check
         *  each contract in the transaction to verify that the conditions are met, the contract can be built, and executed.
         *  If any of the contracts in the transaction fail then the method will return the index of the failed contract.
         */
@@ -1896,20 +1741,20 @@ namespace TAO
 
                     /* Create our trigger nonce. */
                     uint64_t nNonce = LLC::GetRand();
-                    pNode->PushMessage(LLP::Tritium::TYPES::TRIGGER, nNonce);
+                    pNode->PushMessage(LLP::TritiumNode::TYPES::TRIGGER, nNonce);
 
                     /* Request the transaction validation */
-                    pNode->PushMessage(LLP::Tritium::ACTION::VALIDATE, uint8_t(LLP::Tritium::TYPES::TRANSACTION), tx);
+                    pNode->PushMessage(LLP::TritiumNode::ACTION::VALIDATE, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx);
 
                     /* Create the condition variable trigger. */
                     LLP::Trigger REQUEST_TRIGGER;
-                    pNode->AddTrigger(LLP::Tritium::RESPONSE::VALIDATED, &REQUEST_TRIGGER);
+                    pNode->AddTrigger(LLP::TritiumNode::RESPONSE::VALIDATED, &REQUEST_TRIGGER);
 
                     /* Process the event. */
                     REQUEST_TRIGGER.wait_for_nonce(nNonce, 10000);
 
                     /* Cleanup our event trigger. */
-                    pNode->Release(LLP::Tritium::RESPONSE::VALIDATED);
+                    pNode->Release(LLP::TritiumNode::RESPONSE::VALIDATED);
 
                     debug::log(1, FUNCTION, "CLIENT MODE: RESPONSE::VALIDATED received");
 
@@ -1930,23 +1775,23 @@ namespace TAO
 
                             /* Check the hash is valid */
                             if(hashTx != tx.GetHash())
-                                throw APIException(0, "Invalid transaction ID received from RESPONSE::VALIDATED");
+                                throw Exception(0, "Invalid transaction ID received from RESPONSE::VALIDATED");
 
                             /* Check the contract ID is valid */
                             if(nContract > tx.Size() -1)
-                                throw APIException(0, "Invalid contract ID received from RESPONSE::VALIDATED");
+                                throw Exception(0, "Invalid contract ID received from RESPONSE::VALIDATED");
                         }
                     }
                     else
                     {
-                        throw APIException(0, "CLIENT MODE: timeout waiting for RESPONSE::VALIDATED");
+                        throw Exception(0, "CLIENT MODE: timeout waiting for RESPONSE::VALIDATED");
                     }
-                    
+
                 }
                 else
                     debug::error(FUNCTION, "no connections available...");
             }
-        
+
             /* return the valid flag */
             return fValid;
         }

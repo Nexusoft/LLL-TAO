@@ -149,8 +149,6 @@ namespace LLP
         /* Free the SSL context. */
         SSL_CTX_free(pSSL_CTX);
 
-        debug::log(2, FUNCTION, "Network resource cleanup complete");
-
         return true;
     }
 

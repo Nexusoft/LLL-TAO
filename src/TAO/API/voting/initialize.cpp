@@ -12,7 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/voting/types/voting.h>
-#include <TAO/API/include/utils.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -21,7 +20,7 @@ namespace TAO
     /* API Layer namespace. */
     namespace API
     {
-        
+
 
         /* Standard initialization function. */
         void Voting::Initialize()

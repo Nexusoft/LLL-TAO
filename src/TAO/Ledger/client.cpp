@@ -409,7 +409,7 @@ namespace TAO
                 return debug::error(FUNCTION, "size limits failed ", MAX_BLOCK_SIZE);
 
             /* Make sure the Block was Created within Active Channel. */
-            if(GetChannel() > (config::GetBoolArg("-private") ? 3 : 2))
+            if(GetChannel() > (config::fHybrid.load() ? 3 : 2))
                 return debug::error(FUNCTION, "channel out of range");
 
             /* Check that the time was within range. */
@@ -500,7 +500,7 @@ namespace TAO
                 return debug::error(FUNCTION, "block state failed to write");
 
             /* Signal to set the best chain. */
-            if(nVersion >= 7 && !IsPrivate())
+            if(nVersion >= 7 && !IsHybrid())
             {
                 /* Set the chain trust. */
                 uint8_t nEquals  = 0;

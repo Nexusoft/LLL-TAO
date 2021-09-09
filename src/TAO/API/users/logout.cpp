@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 
 #include <Util/include/hex.h>
 
@@ -30,14 +30,14 @@ namespace TAO
     {
 
         /* Login to a user account. */
-        json::json Users::Logout(const json::json& params, bool fHelp)
+        encoding::json Users::Logout(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Check for username parameter. */
             if(config::fMultiuser.load() && params.find("session") == params.end())
-                throw APIException(-12, "Missing Session ID");
+                throw Exception(-12, "Missing Session ID");
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint256_t nSession = 0;
@@ -45,7 +45,7 @@ namespace TAO
                 nSession.SetHex(params["session"].get<std::string>());
 
             if(!GetSessionManager().Has(nSession))
-                throw APIException(-141, "Already logged out");
+                throw Exception(-141, "Already logged out");
 
             /* Gracefully terminate the session */
             TerminateSession(nSession);

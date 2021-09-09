@@ -493,13 +493,8 @@ namespace Legacy
     /* Store this transaction in the database for the bound wallet */
     bool WalletTx::WriteToDisk(const uint512_t& hash)
     {
-        if (IsBound() && pWallet->IsFileBacked())
-        {
-            WalletDB walletDB(pWallet->GetWalletFile());
-            bool ret = walletDB.WriteTx(hash, *this);
-
-            return ret;
-        }
+        if(IsBound() && pWallet->IsFileBacked())
+            return WalletDB::WriteTx(hash, *this);
 
         return true;
     }
@@ -748,9 +743,9 @@ namespace Legacy
                     {
                         LLP::TRITIUM_SERVER->Relay
                         (
-                            LLP::Tritium::ACTION::NOTIFY,
-                            uint8_t(LLP::Tritium::SPECIFIER::LEGACY),
-                            uint8_t(LLP::Tritium::TYPES::TRANSACTION),
+                            LLP::TritiumNode::ACTION::NOTIFY,
+                            uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY),
+                            uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
                             hash
                         );
                     }
@@ -775,9 +770,9 @@ namespace Legacy
                 {
                     LLP::TRITIUM_SERVER->Relay
                     (
-                        LLP::Tritium::ACTION::NOTIFY,
-                        uint8_t(LLP::Tritium::SPECIFIER::LEGACY),
-                        uint8_t(LLP::Tritium::TYPES::TRANSACTION),
+                        LLP::TritiumNode::ACTION::NOTIFY,
+                        uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY),
+                        uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
                         hash
                     );
                 }

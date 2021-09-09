@@ -23,7 +23,8 @@ namespace LLP
 
     class TimeNode : public Connection
     {
-        enum
+        /* Protocol messages based on Default Packet. */
+        enum : Packet::message_t
         {
             /** DATA PACKETS **/
             TIME_DATA     = 0,
@@ -114,14 +115,6 @@ namespace LLP
          *
          **/
         static int32_t GetOffset();
-
-
-        /** AdjustmentThread
-         *
-         *  This thread is responsible for unified time offset adjustments. This will be deleted on post v8 updates.
-         *
-         **/
-        static void AdjustmentThread();
     };
 }
 

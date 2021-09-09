@@ -20,7 +20,7 @@ ________________________________________________________________________________
 
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/create.h>
@@ -67,7 +67,7 @@ namespace LLP
     , nHashLast(0)
     {
         #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
         #endif
     }
 
@@ -85,7 +85,7 @@ namespace LLP
     , nHashLast(0)
     {
         #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
         #endif
     }
 
@@ -103,7 +103,7 @@ namespace LLP
     , nHashLast(0)
     {
         #ifndef NO_WALLET
-        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        pMiningKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
         #endif
     }
 
@@ -258,7 +258,7 @@ namespace LLP
             {
                 /* Cache the last transaction ID of the sig chain so that we can detect if
                    new transactions enter the mempool for this sig chain. */
-                LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
+                LLD::Ledger->ReadLast(TAO::API::Commands::Get<TAO::API::Users>()->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
                 /* Debug output. */
                 debug::log(2, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
@@ -672,7 +672,7 @@ namespace LLP
     bool Miner::check_round()
     {
         /* Get the hash genesis. */
-        uint256_t hashGenesis = TAO::API::users->GetGenesis(0);
+        uint256_t hashGenesis = TAO::API::Commands::Get<TAO::API::Users>()->GetGenesis(0);
 
         /* Read hashLast from hashGenesis' sigchain and also check mempool. */
         uint512_t hashLast;
@@ -736,12 +736,12 @@ namespace LLP
             nLastNotificationsHeight.store(nBestHeight);
 
             /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
-            if(TAO::API::users && TAO::API::users->NOTIFICATIONS_PROCESSOR
+            if(TAO::API::Commands::Get<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR
                 && TAO::API::GetSessionManager().Has(0)
                 && TAO::API::GetSessionManager().Get(0, false).CanProcessNotifications())
             {
                 /* Find the thread processing notifications for this user */
-                TAO::API::NotificationsThread* pThread = TAO::API::users->NOTIFICATIONS_PROCESSOR->FindThread(0);
+                TAO::API::NotificationsThread* pThread = TAO::API::Commands::Get<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR->FindThread(0);
 
                 if(pThread)
                 {
@@ -752,7 +752,7 @@ namespace LLP
 
             /* If we detected a block height change, update the cached last hash of the logged in sig chain.
              * This is done AFTER the notifications processor has finished, in case it added new transactions to the mempool  */
-            LLD::Ledger->ReadLast(TAO::API::users->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
+            LLD::Ledger->ReadLast(TAO::API::Commands::Get<TAO::API::Users>()->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
         }
 
         return true;
@@ -870,7 +870,7 @@ namespace LLP
                 pBlock->UpdateTime();
 
                 /* Sign the block with a key from wallet. */
-                if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::GetInstance()))
+                if(!Legacy::SignBlock(*pBlock, Legacy::Wallet::Instance()))
                     return debug::error(FUNCTION, "Unable to Sign Legacy Block ", hashMerkleRoot.SubString());
 
                 #endif
@@ -972,7 +972,7 @@ namespace LLP
                 #ifndef NO_WALLET
 
                 /* Check the Proof of Work for submitted block. */
-                if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::GetInstance()))
+                if(!Legacy::CheckWork(*pBlock, Legacy::Wallet::Instance()))
                     return false;
 
                 /* Block is valid - Tell the wallet to keep this key. */

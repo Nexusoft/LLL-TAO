@@ -14,10 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/types/sessionmanager.h>
-#include <TAO/API/include/utils.h>
-
-
+#include <TAO/API/types/session-manager.h>
 
 
 /* Global TAO namespace. */
@@ -29,12 +26,12 @@ namespace TAO
     {
 
         /* Checks to see if a saves session exists in the local DB for the given user */
-        json::json Users::Has(const json::json& params, bool fHelp)
+        encoding::json Users::Has(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
-            
+
             /* Get the Genesis ID. */
             uint256_t hashGenesis = 0;
 
@@ -48,7 +45,7 @@ namespace TAO
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
 
             else
-                throw APIException(-111, "Missing genesis / username");
+                throw Exception(-111, "Missing genesis / username");
 
             bool bHas = LLD::Local->HasSession(hashGenesis);
 

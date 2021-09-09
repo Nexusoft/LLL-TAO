@@ -46,7 +46,7 @@ namespace TAO
         const std::map<uint256_t, std::pair<uint256_t, uint32_t>> DEVELOPER_TESTNET =
         {
             {
-                uint256_t("a20963c98e8996c70f470cdeb660ee98e233fda957439c81b19d9cb9ec5a6611"),
+                uint256_t("b10963c98e8996c70f470cdeb660ee98e233fda957439c81b19d9cb9ec5a6611"),
                 {
                     uint256_t("4f816e60e8161564d02f5e1ccc252db857a0121a248bd263559672cf843547d6"), //password authentication
                     1000 //100%

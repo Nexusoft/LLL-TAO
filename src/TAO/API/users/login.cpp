@@ -18,10 +18,12 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
 
-#include <TAO/API/users/types/users.h>
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/sessionmanager.h>
-#include <TAO/API/include/utils.h>
+
+#include <TAO/API/users/types/users.h>
+#include <TAO/API/types/session-manager.h>
+#include <TAO/API/types/commands.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -46,47 +48,37 @@ namespace TAO
         //TODO: have the authorization system build a SHA256 hash and salt on the client side as the AUTH hash.
 
         /* Login to a user account. */
-        json::json Users::Login(const json::json& params, bool fHelp)
+        encoding::json Users::Login(const encoding::json& jParams, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Pin parameter. */
-            SecureString strPin;
+            const SecureString strPIN = ExtractPIN(jParams);
 
             /* Check for username parameter. */
-            if(params.find("username") == params.end())
-                throw APIException(-127, "Missing username");
+            if(jParams.find("username") == jParams.end())
+                throw Exception(-127, "Missing username");
 
             /* Parse out username. */
-            SecureString strUser = SecureString(params["username"].get<std::string>().c_str());
+            const SecureString strUser =
+                SecureString(jParams["username"].get<std::string>().c_str());
 
             /* Check for username size. */
             if(strUser.size() == 0)
-                throw APIException(-133, "Zero-length username");
+                throw Exception(-133, "Zero-length username");
 
             /* Check for password parameter. */
-            if(params.find("password") == params.end())
-                throw APIException(-128, "Missing password");
+            if(jParams.find("password") == jParams.end())
+                throw Exception(-128, "Missing password");
 
             /* Parse out password. */
-            SecureString strPass = SecureString(params["password"].get<std::string>().c_str());
+            const SecureString strPass =
+                SecureString(jParams["password"].get<std::string>().c_str());
 
             /* Check for password size. */
             if(strPass.size() == 0)
-                throw APIException(-134, "Zero-length password");
-
-            /* Check for pin parameter. Parse the pin parameter. */
-            if(params.find("pin") != params.end())
-                strPin = SecureString(params["pin"].get<std::string>().c_str());
-            else if(params.find("PIN") != params.end())
-                strPin = SecureString(params["PIN"].get<std::string>().c_str());
-            else
-                throw APIException(-129, "Missing PIN");
-
-            /* Check for pin size. */
-            if(strPin.size() == 0)
-                throw APIException(-135, "Zero-length PIN");
+                throw Exception(-134, "Zero-length password");
 
             /* Create a temp sig chain for checking credentials */
             TAO::Ledger::SignatureChain user(strUser, strPass);
@@ -103,56 +95,49 @@ namespace TAO
                 /* If not using multiuser then check to see whether another user is already logged in */
                 if(GetSessionManager().Has(0) && GetSessionManager().Get(0).GetAccount()->Genesis() != hashGenesis)
                 {
-                    throw APIException(-140, "CLIENT MODE: Already logged in with a different username.");
+                    throw Exception(-140, "CLIENT MODE: Already logged in with a different username.");
                 }
                 else if(GetSessionManager().Has(0))
                 {
-                    json::json ret;
+                    encoding::json ret;
                     ret["genesis"] = hashGenesis.ToString();
 
                     return ret;
                 }
 
                 if(TAO::Ledger::ChainState::Synchronizing())
-                    throw APIException(-297, "Cannot log in while synchronizing");
-               
-                /* In order to authenticate the user, at a minimum we need a transaction from the users sig chain containing the most
-                   up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in 
-                   the mempool).  If it is not, we can lookup the users Crypto object register (since this is updated 
-                   whenever the password/pin changes).  Reading the crypto register from the DB will force a remote lookup from a
-                   peer if it is missing or expired.  This process avoids us having to download the entire sig chain before logging
-                   in, so we can download it asynchronously after logging them in.  */
+                    throw Exception(-297, "Cannot log in while synchronizing");
 
                 /* First check to see if this is a new sig chain and the genesis is in the mempool */
                 bool fNewSigchain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
 
                 /* IF this is not a new sig chain, force a lookup of the crypto register */
-                if(!fNewSigchain )
+                if(!fNewSigchain)
                 {
                     /* The address of the crypto object register, which is deterministic based on the genesis */
                     TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-                    
+
                     /* Read the crypto object register.  This will fail if the caller has provided an invalid username. */
                     TAO::Register::Object crypto;
                     if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
-                        throw APIException(-139, "Invalid credentials");
+                        throw Exception(-139, "Invalid credentials");
 
                     /* Get the last transaction. */
                     uint512_t hashLast;
                     if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-138, "No previous transaction found");
+                        throw Exception(-138, "No previous transaction found");
 
                     /* Get previous transaction */
                     if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                        throw APIException(-138, "No previous transaction found");
+                        throw Exception(-138, "No previous transaction found");
                 }
                 /* If this is a new sig chain, get the genesis tx from mempool */
                 else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                 {
-                    throw APIException(-137, "Couldn't get transaction");
-                }                
+                    throw Exception(-137, "Couldn't get transaction");
+                }
 
-            }  
+            }
             else if(!LLD::Ledger->HasGenesis(hashGenesis))
             {
                 /* If user genesis not in ledger, this will throw an exception. Just a matter of which one. */
@@ -161,7 +146,7 @@ namespace TAO
                 if(!TAO::Ledger::mempool.Has(hashGenesis))
                 {
                     /* Account doesn't exist returns invalid credentials */
-                    throw APIException(-139, "Invalid credentials");
+                    throw Exception(-139, "Invalid credentials");
                 }
 
                 /* Dissallow mempool login on mainnet unless this node is runing in client mode.  This is because in client mode we
@@ -170,13 +155,13 @@ namespace TAO
                 if(!config::fTestNet.load())
                 {
                     /* After credentials verified, disallow login while in mempool and unconfirmed */
-                    throw APIException(-222, "User create pending confirmation");
+                    throw Exception(-222, "User create pending confirmation");
                 }
 
                 /* Testnet allows mempool login. Get the memory pool transaction. */
                 else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                 {
-                    throw APIException(-137, "Couldn't get transaction");
+                    throw Exception(-137, "Couldn't get transaction");
                 }
             }
             /* If we haven't looked up the txprev at this point, read the last known tx */
@@ -185,22 +170,20 @@ namespace TAO
                 /* Get the last transaction. */
                 uint512_t hashLast;
                 if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
+                    throw Exception(-138, "No previous transaction found");
 
                 /* Get previous transaction */
                 if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-138, "No previous transaction found");
+                    throw Exception(-138, "No previous transaction found");
             }
 
-            /* Genesis Transaction. */
-            TAO::Ledger::Transaction tx;
-            tx.NextHash(user.Generate(txPrev.nSequence + 1, strPin), txPrev.nNextType);
-            
-            /* Check for consistency. */
-            if(txPrev.hashNext != tx.hashNext)
-            {
-                throw APIException(-139, "Invalid credentials");
-            }
+            /* Calculate our next hash for auth check. */
+            const uint256_t hashNext =
+                TAO::Ledger::Transaction::NextHash(user.Generate(txPrev.nSequence + 1, strPIN), txPrev.nNextType);
+
+            /* Validate the credentials */
+            if(txPrev.hashNext != hashNext)
+                throw Exception(-139, "Invalid credentials");
 
             /* Check the sessions. */
             {
@@ -218,18 +201,16 @@ namespace TAO
                     /* increment iterator */
                     ++session;
                 }
-                    
-
             }
 
             /* If not using multiuser then check to see whether another user is already logged in */
             if(!config::fMultiuser.load() && GetSessionManager().Has(0) && GetSessionManager().Get(0).GetAccount()->Genesis() != hashGenesis)
             {
-                throw APIException(-140, "Already logged in with a different username.");
+                throw Exception(-140, "Already logged in with a different username.");
             }
 
             /* Create the new session */
-            Session& session = GetSessionManager().Add(user, strPin);
+            Session& session = GetSessionManager().Add(user, strPIN);
 
             /* Cache the txid that was used to authenticate their login */
             session.hashAuth = txPrev.GetHash();
@@ -253,7 +234,7 @@ namespace TAO
             {
                 std::thread([&]()
                 {
-                    TAO::API::DownloadSigChain(hashGenesis, true);
+                    DownloadSigChain(hashGenesis, true);
                 }).detach();
             }
 
@@ -276,11 +257,11 @@ namespace TAO
                     /* Keep a the credentials in secure allocated strings. */
                     SecureString strUsername = config::GetArg("-username", "").c_str();
                     SecureString strPassword = config::GetArg("-password", "").c_str();
-                    SecureString strPin = config::GetArg("-pin", "").c_str();
+                    SecureString strPIN      = config::GetArg("-pin", "").c_str();
 
                     /* Check we have user/pass/pin */
-                    if(strUsername.empty() || strPassword.empty() || strPin.empty())
-                        throw APIException(-203, "Autologin missing username/password/pin");
+                    if(strUsername.empty() || strPassword.empty() || strPIN.empty())
+                        throw Exception(-203, "Autologin missing username/password/pin");
 
                     /* Create a temp sig chain for checking credentials */
                     TAO::Ledger::SignatureChain user(strUsername, strPassword);
@@ -296,14 +277,7 @@ namespace TAO
                     {
                         /* In client mode, wait until we are synchronized before logging in */
                         if(TAO::Ledger::ChainState::Synchronizing())
-                            throw APIException(-297, "Cannot log in while synchronizing");
-
-                        /* In order to authenticate the user, at a minimum we need a transaction from the users sig chain containing the most
-                        up to date credentials.  To achieve this we first check to see if this is a new sig chain (the genesis will be in 
-                        the mempool).  If it is not, we can lookup the users Crypto object register (since this is updated 
-                        whenever the password/pin changes).  Reading the crypto register from the DB will force a remote lookup from a
-                        peer if it is missing or expired.  This process avoids us having to download the entire sig chain before logging
-                        in, so we can download it asynchronously after logging them in.  */
+                            throw Exception(-297, "Cannot log in while synchronizing");
 
                         /* First check to see if this is a new sig chain and the genesis is in the mempool */
                         bool fNewSigchain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
@@ -313,30 +287,30 @@ namespace TAO
                         {
                             /* The address of the crypto object register, which is deterministic based on the genesis */
                             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-                            
+
                             /* Read the crypto object register */
                             TAO::Register::Object crypto;
                             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
-                                throw APIException(-259, "Could not read crypto object register"); 
+                                throw Exception(-259, "Could not read crypto object register");
 
                             /* Get the last transaction. */
                             uint512_t hashLast;
                             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                                throw APIException(-138, "No previous transaction found");
+                                throw Exception(-138, "No previous transaction found");
 
                             /* Get previous transaction */
                             if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                                throw APIException(-138, "No previous transaction found");
+                                throw Exception(-138, "No previous transaction found");
                         }
                         /* If this is a new sig chain, get the genesis tx from mempool */
                         else if(!TAO::Ledger::mempool.Get(hashGenesis, txPrev))
                         {
-                            throw APIException(-137, "Couldn't get transaction");
-                        }                     
+                            throw Exception(-137, "Couldn't get transaction");
+                        }
                     }
 
                     /* See if the sig chain exists */
-                    else 
+                    else
                     {
                         if(!LLD::Ledger->HasGenesis(hashGenesis) && !TAO::Ledger::mempool.Has(hashGenesis))
                         {
@@ -345,7 +319,7 @@ namespace TAO
                             {
                                 /* Testnet is considered local if no dns is being used or if using a private network */
                                 bool fLocalTestnet = config::fTestNet.load()
-                                    && (!config::GetBoolArg("-dns", true) || config::GetBoolArg("-private"));
+                                    && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
 
                                 /* Can only create user if synced and (if not local) have connections.
                                 * Return without create/login if cannot create, yet. It will have to try again.
@@ -360,45 +334,43 @@ namespace TAO
                                 TAO::Ledger::Transaction tx;
 
                                 /* Create the sig chain genesis transaction */
-                                create_sig_chain(strUsername, strPassword, strPin, tx);
+                                create_sig_chain(strUsername, strPassword, strPIN, tx);
 
                                 /* Display that login was successful. */
                                 debug::log(0, "Auto-Create Successful");
                             }
                             else
-                                throw APIException(-203, "Autologin user not found");
+                                throw Exception(-203, "Autologin user not found");
                         }
 
                         /* Get the last transaction. */
                         uint512_t hashLast;
                         if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
                         {
-                            throw APIException(-138, "No previous transaction found");
+                            throw Exception(-138, "No previous transaction found");
                         }
 
                         /* Get previous transaction */
                         if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
                         {
-                            throw APIException(-138, "No previous transaction found");
+                            throw Exception(-138, "No previous transaction found");
                         }
                     }
 
-                    /* Genesis Transaction. */
-                    TAO::Ledger::Transaction tx;
-                    tx.NextHash(user.Generate(txPrev.nSequence + 1, config::GetArg("-pin", "").c_str()), txPrev.nNextType);
+                    /* Calculate our next hash for auth check. */
+                    const uint256_t hashNext =
+                        TAO::Ledger::Transaction::NextHash(user.Generate(txPrev.nSequence + 1, strPIN), txPrev.nNextType);
 
-                    /* Check the credentials match the previous tx. */
-                    if(txPrev.hashNext != tx.hashNext)
-                    {
-                        throw APIException(-139, "Invalid credentials");
-                    }
+                    /* Validate the credentials */
+                    if(txPrev.hashNext != hashNext)
+                        throw Exception(-139, "Invalid credentials");
 
                     /* Create the new session */
-                    Session& session = GetSessionManager().Add(user, strPin);
+                    Session& session = GetSessionManager().Add(user, strPIN);
 
                     /* Cache the txid that was used to authenticate their login */
                     session.hashAuth = txPrev.GetHash();
-                                            
+
 
                     /* The unlock actions to apply for autologin.  NOTE we do NOT unlock for transactions */
                     uint8_t nUnlockActions = TAO::Ledger::PinUnlock::UnlockActions::MINING
@@ -406,9 +378,9 @@ namespace TAO
                                            | TAO::Ledger::PinUnlock::UnlockActions::STAKING;
 
                     /* Set account to unlocked. */
-                    session.UpdatePIN(config::GetArg("-pin", "").c_str(), nUnlockActions);
+                    session.UpdatePIN(strPIN.c_str(), nUnlockActions);
 
-                    
+
                     /* Display that login was successful. */
                     debug::log(0, "Auto-Login Successful");
 
@@ -420,7 +392,7 @@ namespace TAO
                     {
                         std::thread([&]()
                         {
-                            TAO::API::DownloadSigChain(hashGenesis, true);
+                            DownloadSigChain(hashGenesis, true);
                         }).detach();
                     }
 
@@ -437,7 +409,7 @@ namespace TAO
                         LLD::Local->EraseSession(hashGenesis);
                 }
             }
-            catch(const APIException& e)
+            catch(const Exception& e)
             {
                 /* Log the error */
                 debug::error(FUNCTION, e.what());

@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/users/types/notifications_thread.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 #include <TAO/API/users/types/users.h>
 
 #include <TAO/Ledger/include/chainstate.h>
@@ -94,7 +94,7 @@ namespace TAO
         void NotificationsThread::Thread()
         {
             /** The interval between processing notifications in milliseconds, defaults to 5s if not specified in config **/
-            uint64_t nInterval = config::GetArg("-notificationsinterval", 5) * 1000;
+            uint64_t nInterval = config::GetArg("-notificationsinterval", 1) * 1000;
 
             /* Loop the events processing thread until shutdown. */
             while(!fShutdown.load())
@@ -105,11 +105,13 @@ namespace TAO
                 /* If mining is enabled, notify miner LLP that events processor is finished processing transactions so mined blocks
                    can include these transactions and not orphan a mined block. */
                 if(LLP::MINING_SERVER)
-                    LLP::MINING_SERVER.load()->NotifyEvent();
+                    LLP::MINING_SERVER->NotifyEvent();
+
+                runtime::sleep(nInterval);
 
                 /* Wait for the events processing thread to be woken up (such as a login) */
-                std::unique_lock<std::mutex> lock(NOTIFICATIONS_MUTEX);
-                CONDITION.wait_for(lock, std::chrono::milliseconds(nInterval), [this]{ return fEvent.load() || fShutdown.load();});
+                //std::unique_lock<std::mutex> lock(NOTIFICATIONS_MUTEX);
+                //CONDITION.wait_for(lock, std::chrono::milliseconds(nInterval), [this]{ return fEvent.load() || fShutdown.load();});
 
                 /* Check for a shutdown event. */
                 if(fShutdown.load())
@@ -126,7 +128,7 @@ namespace TAO
                     {
                         /* Ensure that the user is logged, in, wallet unlocked, and unlocked for notifications. */
                         if(GetSessionManager().Has(nSession))
-                        { 
+                        {
                             Session& session = GetSessionManager().Get(nSession, false);
                             if(!session.Locked() && session.CanProcessNotifications())
                                 auto_process_notifications(session.ID());
@@ -145,14 +147,14 @@ namespace TAO
 
 
 
-        
+
 
 
         /* Process notifications for the currently logged in user(s) */
         void NotificationsThread::auto_process_notifications(const uint256_t& nSession)
         {
             /* Dummy params to pass into ProcessNotifications call */
-            json::json params;
+            encoding::json params;
 
             /* Set the session ID in the params */
             params["session"] = nSession.ToString();
@@ -174,9 +176,9 @@ namespace TAO
                     fRetry = false;
 
                     /* Invoke the process notifications method to process all oustanding */
-                    TAO::API::users->ProcessNotifications(params, false);
+                    TAO::API::Commands::Get<Users>()->ProcessNotifications(params, false);
                 }
-                catch(const APIException& ex)
+                catch(const Exception& ex)
                 {
                     /* Absorb certain errors and write them to the log instead */
                     switch (ex.id)
@@ -225,6 +227,6 @@ namespace TAO
             CONDITION.notify_one();
         }
 
-        
+
     }
 }

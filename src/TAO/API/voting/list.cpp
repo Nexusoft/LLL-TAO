@@ -14,8 +14,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/types/commands/names.h>
+#include <TAO/API/voting/types/voting.h>
+
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/types/mempool.h>
@@ -36,10 +37,10 @@ namespace TAO
     {
 
         /* Returns a list of all votes made to an account. */
-        json::json Voting::List(const json::json& params, bool fHelp)
+        encoding::json Voting::List(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret = json::json::array();
+            encoding::json ret = encoding::json::array();
 
             /* The register address of the account to get the vote count for. */
             TAO::Register::Address hashAccount ;
@@ -51,23 +52,23 @@ namespace TAO
             else if(params.find("address") != params.end())
                 hashAccount.SetBase58(params["address"].get<std::string>());
             else
-                throw APIException(-33, "Missing name or address");
+                throw Exception(-33, "Missing name or address");
 
             /* Get the account . */
             TAO::Register::Object account;
             if(!LLD::Register->ReadState(hashAccount, account))
-                throw APIException(-13, "Account not found");
+                throw Exception(-13, "Object not found");
 
             /* Get the Genesis ID of the account owner. */
             uint256_t hashGenesis = account.hashOwner;
 
             /* Parse the object register. */
             if(!account.Parse())
-                throw APIException(-14, "Object failed to parse");
+                throw Exception(-14, "Object failed to parse");
 
             /* Check that the object is an account. */
             if(account.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                throw APIException(-65, "Object is not an account");
+                throw Exception(-65, "Object is not an account");
 
             /* Check for paged parameter. */
             uint32_t nPage = 0;
@@ -82,7 +83,7 @@ namespace TAO
             /* Get the last transaction. */
             uint512_t hashLast = 0;
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
-                throw APIException(-144, "No transactions found");
+                throw Exception(-144, "No transactions found");
 
             /* vector of votes by sig chain so we can detect dupes */
             std::vector<uint256_t> vVotes;
@@ -97,13 +98,13 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashLast, tx))
-                    throw APIException(-108, "Failed to read transaction");
+                    throw Exception(-108, "Failed to read transaction");
 
                 /* Check all contracts in the transaction to see if any of them relates to the requested vote account. */
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
-                    
+
                     /* Retrieve the contract from the transaction for easier processing */
                     const TAO::Operation::Contract& contract = tx[nContract];
 
@@ -129,7 +130,7 @@ namespace TAO
                     /* The register address that this contract relates to, if any  */
                     TAO::Register::Address hashAddress;
                     contract >> hashAddress;
-                    
+
                     /* Check that the credit was made to the requested vote account */
                     if(hashAddress != hashAccount)
                         continue;
@@ -166,7 +167,7 @@ namespace TAO
 
                     /* Parse the object. */
                     if(!trust.Parse())
-                        throw APIException(-71, "Unable to parse trust account.");
+                        throw Exception(-71, "Unable to parse trust account.");
 
                     /* The amount staked */
                     uint64_t nStake = trust.get<uint64_t>("stake") ;
@@ -180,7 +181,7 @@ namespace TAO
                         /* Cap the amount of NXS used in the vote to 10k NXS so that large accounts cannot dominate */
                         uint64_t nStakeCapped = std::min(nStake, 10000 * TAO::Ledger::NXS_COIN);
 
-                        nVote = TAO::Ledger::NXS_COIN + ((nStakeCapped / 10000) * dTrustScore);  
+                        nVote = TAO::Ledger::NXS_COIN + ((nStakeCapped / 10000) * dTrustScore);
 
                         // 1,000 NXS    @ 0.6%      = 1.06 votes
                         // 10,000 NXS   @ 0.6%      = 1.6 votes
@@ -202,7 +203,7 @@ namespace TAO
                         break;
 
                     /* Build the transaction JSON. */
-                    json::json jsonTx;
+                    encoding::json jsonTx;
 
                     /* Read the block state from the the ledger DB using the transaction hash index */
                     TAO::Ledger::BlockState blockState;

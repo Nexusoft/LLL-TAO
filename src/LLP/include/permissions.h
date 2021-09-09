@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLP_INCLUDE_PERMISSIONS_H
-#define NEXUS_LLP_INCLUDE_PERMISSIONS_H
 
 #include <cstdint>
 #include <string>
@@ -30,6 +28,4 @@ ________________________________________________________________________________
  *  @return Returns true if address is permissable, false otherwise.
  *
  **/
-bool CheckPermissions(const std::string &strAddress, uint16_t nPort);
-
-#endif
+bool CheckPermissions(const std::string &strAddress, const uint16_t nPort);

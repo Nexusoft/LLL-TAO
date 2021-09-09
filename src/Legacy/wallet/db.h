@@ -51,12 +51,7 @@ namespace Legacy
      **/
     class BerkeleyDB final
     {
-
-    private:
-
-        /** Flag indicating whether or not the wallet instance has been initialized **/
-        static std::atomic<bool> fDbInitialized;
-
+    protected:
 
         /** Mutex for thread concurrency.
          *
@@ -84,18 +79,6 @@ namespace Legacy
 
         /** Contains all current open (uncommitted) transactions for the database in the order they were begun **/
         std::vector<DbTxn*> vTxn;
-
-
-        /** Constructor
-         *
-         *  Initializes database access for a given file name.
-         *
-         *  All BerkeleyDB instances are initialized in read/write/create mode.
-         *
-         *  @param[in] strFileIn The database file name
-         *
-         **/
-        explicit BerkeleyDB(const std::string& strFileIn);
 
 
         /** Init
@@ -144,7 +127,19 @@ namespace Legacy
 
 
     public:
-        
+
+
+        /** Constructor
+         *
+         *  Initializes database access for a given file name.
+         *
+         *  All BerkeleyDB instances are initialized in read/write/create mode.
+         *
+         *  @param[in] strFileIn The database file name
+         *
+         **/
+        explicit BerkeleyDB(const std::string& strFileIn);
+
 
         /** Default constructor **/
         BerkeleyDB()                                   = delete;
@@ -491,43 +486,6 @@ namespace Legacy
          *
          **/
         bool DBRewrite();
-
-
-        /** Shutdown
-         *
-         *  Shut down the Berkeley database environment for this instance.
-         *
-         *  Call this on system shutdown to flush, checkpoint, and detach the backing database file.
-         *
-         **/
-        void Shutdown();
-
-
-        /* Static Methods */
-
-        /** GetInstance
-         *
-         *  Retrieves the BerkeleyDB instance that corresponds to a given database file.
-         *
-         *  Database setup will be executed the first time this method is called, and
-         *  the database file name must be passed. This will initialize the database environment
-         *  for that file. After this initialization call, the database file should not be passed.
-         *
-         *  Initial call requires a file name, and throws an error if not present.
-         *
-         *  All subsequent calls should not pass a file name. If one is, and it matches the one
-         *  currently in use, it is ignored. If a different file name is passed, it throws an error.
-         *
-         *  On the first call, this method opens the database environment for the database file.
-         *  The returned instance allows all read/write operations. If the file does not
-         *  exist, it will be created the first time it is accessed.
-         *
-         *  @param strFileIn[in] The database file name
-         *
-         *  @return Berkeley db reference for operating on the database file
-         *
-         **/
-        static BerkeleyDB& GetInstance(const std::string& strFileIn = std::string(""));
 
     };
 

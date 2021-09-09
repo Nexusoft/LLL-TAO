@@ -200,11 +200,11 @@ Increment an amount received from another NXS account to an account owned by you
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the account. For single-user API mode the session should not be supplied.
 
-`txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.  The transaction can also be a legacy transaction created from sendtoaddress or sendmany where the inputs are UTXO but the output is an account register address. 
+`txid` : The transaction ID (hash) of the corresponding debit transaction for which you are creating this credit for.  The transaction can also be a legacy transaction created from sendtoaddress or sendmany where the inputs are UTXO but the output is an account register address.
 
-`name` : The name identifying the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+`name` : The name identifying the account to credit. This is only required when crediting a split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
-`address` : The register address of the account to credit. This is only required when crediting a coinbase or split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the name is provided.
+`address` : The register address of the account to credit. This is only required when crediting a split payment transaction (where the receiving account is not included in the credit transaction) and is optional if the name is provided.
 
 `name_proof` : The name identifying the account that proves your ownership of the share of the debit. This is only required for split payments and is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the account was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
 
@@ -396,9 +396,9 @@ This will list off all of the NXS accounts belonging to the currently logged in 
 
 # `list/account/transactions`
 
-This will list off all of the transactions related to a given account. You DO NOT need to be logged in to use this command. If you are logged in, then neither username or genesis are required as it will default to the logged in user. 
+This will list off all of the transactions related to a given account. You DO NOT need to be logged in to use this command. If you are logged in, then neither username or genesis are required as it will default to the logged in user.
 
-**NOTE** : The returned transaction data will only include contracts that related to the requested account.  Any other contracts are omitted from the transaction result. 
+**NOTE** : The returned transaction data will only include contracts that related to the requested account.  Any other contracts are omitted from the transaction result.
 
 **NOTE** : If you use the username parameter it will take slightly longer to calculate the username genesis with our brute-force protected hashing algorithm. For higher performance, use the genesis parameter.
 
@@ -566,7 +566,7 @@ This will retrieve account values and staking metrics for the trust account belo
 
 ### Return values:
 
-`address` : The register address of the trust account. 
+`address` : The register address of the trust account.
 
 `balance` : The current NXS balance of the trust account. This is general account balance that is not staked.
 
@@ -582,7 +582,7 @@ This will retrieve account values and staking metrics for the trust account belo
 
 `onhold` : When trust account is new, any change to balance requires a minimum wait period before staking begins. During this period, staking is on hold and this field returns true. "staking" field will still be true when on hold.
 
-`holdtime` : Conditional field. Only appears when onhold=true and will contain number of seconds remaining in hold period. 
+`holdtime` : Conditional field. Only appears when onhold=true and will contain number of seconds remaining in hold period.
 
 `stakerate` : The current annual reward rate earned for staking as an annual percent.
 
@@ -598,21 +598,21 @@ This will retrieve account values and staking metrics for the trust account belo
 
 `requested` : Timestamp when the stake change request was created.
 
-`expires`: Timestamp when the stake change request expires, if assigned. Zero indicates does not expire. 
+`expires`: Timestamp when the stake change request expires, if assigned. Zero indicates does not expire.
 
- 
+
 
 ***
 
 # `set/stake`
 
-Creates a stake change request for a signature chain's trust account. This request will add or remove stake to set the stake value to the requested amount. If the new value is more than the current stake amount, it adds stake from the account balance. If the new value is less, it removes stake to the account balance (with appropriate trust penalty, if applicable). 
+Creates a stake change request for a signature chain's trust account. This request will add or remove stake to set the stake value to the requested amount. If the new value is more than the current stake amount, it adds stake from the account balance. If the new value is less, it removes stake to the account balance (with appropriate trust penalty, if applicable).
 
 Requests are saved locally and take effect with the next stake block found by staking the signature chain's trust account. Because they are saved locally, you must continue to stake on the machine where it was created until the next stake block is found, or the request will not be processed.
 
-Until implemented, you can update the request by calling set/stake again. 
+Until implemented, you can update the request by calling set/stake again.
 
-To remove a stake change request, you can either set an expiration time, or set the amount equal to the current trust account stake. 
+To remove a stake change request, you can either set an expiration time, or set the amount equal to the current trust account stake.
 
 
 ### Endpoint:
@@ -626,9 +626,9 @@ To remove a stake change request, you can either set an expiration time, or set 
 
 `session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) owns the trust account. For single-user API mode the session should not be supplied.
 
-`amount` : The new amount of NXS to stake. 
+`amount` : The new amount of NXS to stake.
 
-`expires` : Optional field to assign the number of seconds until the stake change request expires. A value of zero indicates it does not expire. Default is zero if not passed. 
+`expires` : Optional field to assign the number of seconds until the stake change request expires. A value of zero indicates it does not expire. Default is zero if not passed.
 
 
 ### Return value JSON object:
@@ -696,7 +696,7 @@ The method uses the arbitrary `data` field in the account object register to tra
 
 `amount` : The NXS amount transferred from the legacy account to the signature chain account.
 
-`txid` : If the the legacy send was successful, the ID (hash) of the legacy transaction. 
+`txid` : If the the legacy send was successful, the ID (hash) of the legacy transaction.
 
 `error` : If the legacy send failed, this field includes the legacy send error message
 
@@ -748,7 +748,7 @@ for a particular token type.
 
 `unconfirmed` : The sum of all debit transactions made to your accounts that are not confirmed, or credits you have made to your accounts that are not yet confirmed (not yet included in a block).
 
-`immature`  The sum of all coinbase transactions that have not yet reached maturity.  Only included when returning NXS balances. 
+`immature`  The sum of all coinbase transactions that have not yet reached maturity.  Only included when returning NXS balances.
 
 `stake` : The amount of NXS currently staked in the trust account.  Only included when returning NXS balances.
 
@@ -812,7 +812,7 @@ This will retrieve a summary of balance information across all accounts for each
 
 `unconfirmed` : The sum of all debit transactions made to your accounts that are not confirmed, or credits you have made to your accounts that are not yet confirmed (not yet included in a block).
 
-`immature`  The sum of all coinbase transactions that have not yet reached maturity.  Only included when returning NXS balances. 
+`immature`  The sum of all coinbase transactions that have not yet reached maturity.  Only included when returning NXS balances.
 
 `stake` : The amount of NXS currently staked in the trust account.  Only included when returning NXS balances.
 

@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_ADDRESS_H
-#define NEXUS_TAO_REGISTER_INCLUDE_ADDRESS_H
 
 #include <LLC/types/uint1024.h>
 
@@ -33,12 +31,12 @@ namespace TAO
         public:
 
             /** Different bytes that are prepended to addresses. */
-            enum
+            enum : uint8_t
             {
                 /* These are here to prevent you from making the mistake of using these three 'genesis' enum values. */
-                RESERVED        = 0x00, //this is system reserved value
-                GENESIS1        = 0xa1, //this is mainnet reserved value
-                GENESIS2        = 0xa2, //this is testnet reserved value
+                SYSTEM         = 0x00, //this is system reserved value
+                RESERVED1      = 0xa0, //this is the start of the genesis-id type range
+                RESERVED2      = 0xbf, //this is the end of the gensis-id type range
 
                 /* To identify legacy addresses */
                 LEGACY         = 0x2a,
@@ -300,5 +298,3 @@ namespace TAO
         };
     }
 }
-
-#endif

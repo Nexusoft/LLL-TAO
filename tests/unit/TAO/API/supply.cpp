@@ -28,9 +28,9 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/create.h>
 
-#include <TAO/API/names/types/names.h>
+#include <TAO/API/types/commands/names.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/user_types.h>
+#include <TAO/API/include/constants.h>
 
 #include <Util/include/convert.h>
 #include <Util/include/base64.h>
@@ -45,10 +45,10 @@ uint512_t hashItemTransfer = 0;
 TEST_CASE( "Test Supply API - create item", "[supply/create/item]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -143,10 +143,10 @@ TEST_CASE( "Test Supply API - create item", "[supply/create/item]")
 TEST_CASE( "Test Supply API - get item", "[supply/get/item]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -231,10 +231,10 @@ TEST_CASE( "Test Supply API - get item", "[supply/get/item]")
 TEST_CASE( "Test Supply API - update item", "[supply/update/item]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -359,10 +359,10 @@ TEST_CASE( "Test Supply API - update item", "[supply/update/item]")
 TEST_CASE( "Test Assets API - transfer item", "[supply/transfer/item]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -499,10 +499,10 @@ TEST_CASE( "Test Assets API - transfer item", "[supply/transfer/item]")
 TEST_CASE( "Test Assets API - claim item", "[supply/claim/item]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);
@@ -621,10 +621,10 @@ TEST_CASE( "Test Assets API - claim item", "[supply/claim/item]")
 TEST_CASE( "Test Supply API - list item history", "[supply/list/item/history]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(USERNAME1, PASSWORD, PIN, GENESIS1, SESSION1);

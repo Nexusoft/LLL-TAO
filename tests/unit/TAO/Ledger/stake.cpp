@@ -243,13 +243,3 @@ TEST_CASE( "Threshold Tests", "[ledger][stake]")
         REQUIRE(nRequired == 8.0);
     }
 }
-
-
-TEST_CASE( "Pool Stake Fee", "[ledger][stake][poolstake]")
-{
-    uint64_t nReward = 10000000; //10 NXS
-
-    uint64_t nFee = TAO::Ledger::GetPoolStakeFee(nReward);
-
-    REQUIRE(nFee == 1600000); //1.6 NXS
-}

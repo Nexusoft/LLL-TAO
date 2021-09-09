@@ -78,7 +78,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.nTimestamp  = runtime::timestamp();
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
-            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+            tx.NextHash(hashPrivKey2);
 
             //create object
             tx[0] << uint8_t(OP::COINBASE) << hashGenesis << uint64_t(1000 * TAO::Ledger::NXS_COIN) << (uint64_t)0;
@@ -124,7 +124,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.nTimestamp  = runtime::timestamp();
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
-            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+            tx.NextHash(hashPrivKey2);
 
             //create object
             Object account = CreateAccount(0);
@@ -171,7 +171,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.nTimestamp  = runtime::timestamp();
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
-            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+            tx.NextHash(hashPrivKey2);
 
             //payload
             tx[0] << uint8_t(OP::CREDIT) << hashCoinbaseTx << uint32_t(0) << hashAccount << hashGenesis << uint64_t(1000 * TAO::Ledger::NXS_COIN);
@@ -192,7 +192,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
 
         {
             //random shuffle the list for sequencing
-            std::random_shuffle(vTX.begin(), vTX.end());
+            LLC::random_shuffle(vTX.begin(), vTX.end());
 
             //accept all transactions in random ordering
             for(auto& tx : vTX)
@@ -251,14 +251,14 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.nTimestamp  = runtime::timestamp();
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
-            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+            tx.NextHash(hashPrivKey2);
 
             //payload
             tx[0] << uint8_t(OP::LEGACY) << hashAccount << uint64_t(10 * TAO::Ledger::NXS_COIN);
 
             //legacy get key
             std::vector<uint8_t> vKey;
-            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            REQUIRE(Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vKey, false));
             Legacy::NexusAddress address(vKey);
 
             //legacy payload
@@ -285,7 +285,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             txDependant1   = tx;
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
         }
 
 
@@ -331,14 +331,14 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             tx.nTimestamp  = runtime::timestamp();
             tx.nKeyType    = TAO::Ledger::SIGNATURE::BRAINPOOL;
             tx.nNextType   = TAO::Ledger::SIGNATURE::BRAINPOOL;
-            tx.NextHash(hashPrivKey2, TAO::Ledger::SIGNATURE::BRAINPOOL);
+            tx.NextHash(hashPrivKey2);
 
             //payload
             tx[0] << uint8_t(OP::LEGACY) << hashAccount << uint64_t(10 * TAO::Ledger::NXS_COIN);
 
             //legacy get key
             std::vector<uint8_t> vKey;
-            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            REQUIRE(Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vKey, false));
             Legacy::NexusAddress address(vKey);
 
             //legacy payload
@@ -362,7 +362,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             txDependant2   = tx;
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
 
         }
 
@@ -372,7 +372,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
         {
             //legacy get key
             std::vector<uint8_t> vKey;
-            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            REQUIRE(Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vKey, false));
             Legacy::NexusAddress address(vKey);
 
             //create a transaction
@@ -384,11 +384,11 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             vecSend.push_back(make_pair(scriptPubKey, 9 * TAO::Ledger::NXS_COIN));
 
             //for change
-            Legacy::ReserveKey changeKey(Legacy::Wallet::GetInstance());
+            Legacy::ReserveKey changeKey(Legacy::Wallet::Instance());
 
             //create transaction
             int64_t nFees;
-            REQUIRE(Legacy::Wallet::GetInstance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
+            REQUIRE(Legacy::Wallet::Instance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
 
             //check the inputs
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;

@@ -11,18 +11,17 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/session.h>
-#include <TAO/API/include/utils.h>
 #include <TAO/API/types/exception.h>
-
-#include <LLD/include/global.h>
-
+#include <TAO/API/types/session.h>
+#include <TAO/API/include/global.h>
 
 #include <TAO/Ledger/types/sigchain.h>
 
 #include <LLC/include/argon2.h>
 #include <LLC/include/encrypt.h>
 #include <LLC/include/random.h>
+
+#include <LLD/include/global.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -35,16 +34,16 @@ namespace TAO
         Session::Session()
         : CREATE_MUTEX          ()
         , hashAuth              ()
+        , vProcessQueue         (new std::queue<TAO::Operation::Contract>())
+        , vProcessed            (new std::vector<uint512_t>())
         , MUTEX                 ()
         , nID                   (0)
         , nStarted              (0)
         , nLastActive           (0)
-        , nAuthAttempts          (0)
+        , nAuthAttempts         (0)
         , pSigChain             ()
         , pActivePIN            ()
         , nNetworkKey           (0)
-        , vP2PIncoming          ()
-        , vP2POutgoing          ()
         {
         }
 
@@ -52,15 +51,15 @@ namespace TAO
         /* Move constructor. */
         Session::Session(Session&& session) noexcept
         : hashAuth              (std::move(session.hashAuth))
+        , vProcessQueue         (std::move(session.vProcessQueue))
+        , vProcessed            (std::move(session.vProcessed))
         , nID                   (std::move(session.nID))
         , nStarted              (std::move(session.nStarted))
         , nLastActive           (std::move(session.nLastActive))
-        , nAuthAttempts          (std::move(session.nAuthAttempts))
+        , nAuthAttempts         (session.nAuthAttempts.load())
         , pSigChain             (std::move(session.pSigChain))
         , pActivePIN            (std::move(session.pActivePIN))
         , nNetworkKey           (std::move(session.nNetworkKey))
-        , vP2PIncoming          (std::move(session.vP2PIncoming))
-        , vP2POutgoing          (std::move(session.vP2POutgoing))
         {
         }
 
@@ -68,16 +67,16 @@ namespace TAO
         /** Move assignment. **/
         Session& Session::operator=(Session&& session) noexcept
         {
-            hashAuth =          (std::move(session.hashAuth));
-            nID =               (std::move(session.nID));
-            nStarted =          (std::move(session.nStarted));
-            nLastActive =       (std::move(session.nLastActive));
-            nAuthAttempts =      (std::move(session.nAuthAttempts));
-            pSigChain =         (std::move(session.pSigChain));
-            pActivePIN =        (std::move(session.pActivePIN));
-            nNetworkKey =       (std::move(session.nNetworkKey));
-            vP2PIncoming =      (std::move(session.vP2PIncoming));
-            vP2POutgoing =      (std::move(session.vP2POutgoing));
+            hashAuth          = (std::move(session.hashAuth));
+            vProcessQueue     = (std::move(session.vProcessQueue));
+            vProcessed        = (std::move(session.vProcessed));
+            nID               = (std::move(session.nID));
+            nStarted          = (std::move(session.nStarted));
+            nLastActive       = (std::move(session.nLastActive));
+            nAuthAttempts     = (session.nAuthAttempts.load());
+            pSigChain         = (std::move(session.pSigChain));
+            pActivePIN        = (std::move(session.pActivePIN));
+            nNetworkKey       = (std::move(session.nNetworkKey));
 
             return *this;
         }
@@ -88,7 +87,7 @@ namespace TAO
             /* Free up values in encrypted memory */
             if(!pSigChain.IsNull())
                 pSigChain.free();
-            
+
             if(!pActivePIN.IsNull())
                 pActivePIN.free();
 
@@ -117,7 +116,7 @@ namespace TAO
 
             /* Cache the pin with no unlocked actions */
             UpdatePIN(strPin, TAO::Ledger::PinUnlock::UnlockActions::NONE);
-            
+
         }
 
 
@@ -210,7 +209,7 @@ namespace TAO
         }
 
 
-        
+
 
 
         /* Determine if the Users are locked. */
@@ -253,7 +252,7 @@ namespace TAO
         bool Session::CanStake() const
         {
             LOCK(MUTEX);
-            
+
             if(!config::fMultiuser.load() &&(!pActivePIN.IsNull() && pActivePIN->CanStake()))
                 return true;
 
@@ -264,7 +263,7 @@ namespace TAO
         bool Session::CanProcessNotifications() const
         {
             LOCK(MUTEX);
-            
+
             if(!pActivePIN.IsNull() && pActivePIN->ProcessNotifications())
                 return true;
 
@@ -279,119 +278,36 @@ namespace TAO
         }
 
 
-        /* Adds a new P2P Request. */
-        void Session::AddP2PRequest(const LLP::P2P::ConnectionRequest& request, bool fIncoming)
-        {
-            /* Lock mutex so p2p request vector can't be accessed by another thread */
-            LOCK(MUTEX);
-
-            /* Reference to the vector to work on, based on the fIncoming flag */
-            std::vector<LLP::P2P::ConnectionRequest>& vP2PRequests = fIncoming ? vP2PIncoming : vP2POutgoing;
-
-            /* Add the request */
-            vP2PRequests.push_back(request);
-        }
-
-
-        /* Gets P2P Request matching the app id / hashPeer criteria. */
-        LLP::P2P::ConnectionRequest Session::GetP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming) const
-        {
-            /* Lock mutex so p2p request vector can't be accessed by another thread */
-            LOCK(MUTEX);
-
-            /* Reference to the vector to work on, based on the fIncoming flag */
-            const std::vector<LLP::P2P::ConnectionRequest>& vP2PRequests = fIncoming ? vP2PIncoming : vP2POutgoing;
-
-            /* Check each request */
-            for(const auto request : vP2PRequests)
-            {
-                /* If the request matches the appID and hashPeer then return it*/
-                if(request.strAppID == strAppID && request.hashPeer == hashPeer)
-                    return request;
-            }
-
-            /* If we haven't found one then return an empty connection request */
-            return LLP::P2P::ConnectionRequest();
-
-        }
-
-
-        /* Checks to see if a P2P Request matching the app id / hashPeer criteria exists. */
-        bool Session::HasP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming) const
-        {
-            /* Lock mutex so p2p request vector can't be accessed by another thread */
-            LOCK(MUTEX);
-
-            /* Reference to the vector to work on, based on the fIncoming flag */
-            const std::vector<LLP::P2P::ConnectionRequest>& vP2PRequests = fIncoming ? vP2PIncoming : vP2POutgoing;
-
-            /* Check each request */
-            for(const auto request : vP2PRequests)
-            {
-                /* Check the appID and hashPeer */
-                if(request.strAppID == strAppID && request.hashPeer == hashPeer)
-                    return true;
-            }
-
-            /* No match found */
-            return false;
-        }
-
-
-        /* Deletes the P2P Request matching the app id / hashPeer criteria exists. */
-        void Session::DeleteP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming)
-        {
-            /* Lock mutex so p2p request vector can't be accessed by another thread */
-            LOCK(MUTEX);
-
-            /* Reference to the vector to work on, based on the fIncoming flag */
-            std::vector<LLP::P2P::ConnectionRequest>& vP2PRequests = fIncoming ? vP2PIncoming : vP2POutgoing;
-
-            vP2PRequests.erase
-            (
-                /* Use std remove_if function to return the iterator to erase. This allows us to pass in a lambda function,
-                which itself can check to see if a match exists */
-                std::remove_if(vP2PRequests.begin(), vP2PRequests.end(), 
-                [&](const LLP::P2P::ConnectionRequest& request)
-                {
-                    return (request.strAppID == strAppID && request.hashPeer == hashPeer);
-                }), 
-                vP2PRequests.end()
-            );
-        }
-
-
-        /* Returns a vector of all connection requests. NOTE: This will copy the internal vector to protect against 
-           direct manipulation by calling code */
-        const std::vector<LLP::P2P::ConnectionRequest> Session::GetP2PRequests(bool fIncoming) const
-        {
-            /* Lock mutex so p2p request vector can't be accessed by another thread */
-            LOCK(MUTEX);
-
-            /* Reference to the vector to work on, based on the fIncoming flag */
-            const std::vector<LLP::P2P::ConnectionRequest>& vP2PRequests = fIncoming ? vP2PIncoming : vP2POutgoing;
-
-            /* Return the required vector. */
-            return vP2PRequests;
-        }
-
-
         /*  Returns the number of incorrect authentication attempts made in this session */
-        uint8_t Session::GetAuthAttempts() const
+        uint16_t Session::GetAuthAttempts() const
         {
-            return nAuthAttempts;
+            return nAuthAttempts.load();
         }
 
 
         /*  Increments the number of incorrect authentication attempts made in this session */
-        void Session::IncrementAuthAttempts() 
+        void Session::IncrementAuthAttempts()
         {
-            /* Lock mutex so two threads can't increment at the same time */
-            LOCK(MUTEX);
+            /* If the number of failed auth attempts exceeds the configured allowed number then log this user out */
+            if(++nAuthAttempts >= config::GetArg("-authattempts", 3))
+            {
+                /* Grab a reference of our session-id. */
+                const uint256_t hashSession = ID();
 
-            nAuthAttempts++;
+                /* Log the user out and terminate all relevant actions. */
+                Commands::Get<Users>()->TerminateSession(hashSession);
+                throw Exception(-290, "Too many invalid password/pin attempts. Logging out user session: ", hashSession.ToString());
+            }
         }
-        
+
+
+        /* Resets our auth counter to zero on successful login. */
+        void Session::ResetAuthAttempts()
+        {
+            /* Reset our atomic counter to zero. */
+            nAuthAttempts.store(0);
+        }
+
 
         /* Encrypts the current session and saves it to the local database */
         void Session::Save(const SecureString& strPin) const
@@ -400,59 +316,40 @@ namespace TAO
             DataStream ssData(SER_LLD, 1);
 
             /* Serialize the session data */
-            
-            /* Session */
             ssData << nStarted;
-            ssData << nAuthAttempts;
-            
+            ssData << nAuthAttempts.load();
+
+            /* XXX: Assess why this is here, looks redundant. */
             if(!nNetworkKey.IsNull())
                 ssData << nNetworkKey->DATA;
             else
                 ssData << uint512_t(0);
 
-            
+            /* XXX: This looks redundant as well. */
             ssData << hashAuth;
 
             /* Sig Chain */
             ssData << pSigChain->UserName();
             ssData << pSigChain->Password();
-            
-            /* PinUnlock */
             ssData << pActivePIN->UnlockedActions();
 
-            /* Get the session bytes */
-            std::vector<uint8_t> vchData = ssData.Bytes();
-
             /* Generate a symmetric key to encrypt it based on the genesis and pin */
-            std::vector<uint8_t> vchKey;
-
-            /* Get the users genesis */
             uint256_t hashGenesis = GetAccount()->Genesis();
 
-            /* Add the genesis */
-            vchKey = hashGenesis.GetBytes();
-
             /* Add the pin */
+            std::vector<uint8_t> vchKey = hashGenesis.GetBytes();
             vchKey.insert(vchKey.end(), strPin.begin(), strPin.end());
 
-            /* For added security we don't directly use the genesis + PIN as the symmetric key, but a hash of it instead.  
-               NOTE: the AES256 function requires a 32-byte key, so we reduce the length if necessary by using
-                the 256-bit version of the Argon2 hashing function */
-            uint256_t nKey = LLC::Argon2Fast_256(vchKey);
-            
-            /* Put the key back into the vector */
-            vchKey = nKey.GetBytes();
-
-            /* The encrypted data */
-            std::vector<uint8_t> vchCipherText;
+            /* For added security we don't directly use the genesis + PIN as the symmetric key, but a hash of it instead. */
+            uint256_t hashKey = LLC::Argon2Fast_256(vchKey); //XXX: this shouldn't be a fast key
 
             /* Encrypt the data */
-            if(!LLC::EncryptAES256(vchKey, vchData, vchCipherText))
-                throw APIException(-270, "Failed to encrypt data.");
+            std::vector<uint8_t> vchCipherText;
+            if(!LLC::EncryptAES256(hashKey.GetBytes(), ssData.Bytes(), vchCipherText))
+                throw Exception(-270, "Failed to encrypt data.");
 
             /* Write the session to local DB */
             LLD::Local->WriteSession(hashGenesis, vchCipherText);
-
         }
 
 
@@ -464,8 +361,8 @@ namespace TAO
 
             /* Load the encrypted data from the local DB */
             if(!LLD::Local->ReadSession(hashGenesis, vchEncrypted))
-                throw APIException(-309, "Error loading session.");
-            
+                throw Exception(-309, "Error loading session.");
+
             /* Generate a symmetric key to encrypt it based on the session ID and pin */
             std::vector<uint8_t> vchKey;
 
@@ -475,7 +372,7 @@ namespace TAO
             /* Add the pin */
             vchKey.insert(vchKey.end(), strPin.begin(), strPin.end());
 
-            /* For added security we don't directly use the session ID + PIN as the symmetric key, but a hash of it instead.  
+            /* For added security we don't directly use the session ID + PIN as the symmetric key, but a hash of it instead.
                NOTE: the AES256 function requires a 32-byte key, so we reduce the length if necessary by using
                 the 256-bit version of the Argon2 hashing function */
             uint256_t nKey = LLC::Argon2Fast_256(vchKey);
@@ -488,7 +385,7 @@ namespace TAO
 
             /* Encrypt the data */
             if(!LLC::DecryptAES256(vchKey, vchEncrypted, vchSession))
-                throw APIException(-309, "Error loading session."); // generic message callers can't brute force session id's 
+                throw Exception(-309, "Error loading session."); // generic message callers can't brute force session id's
 
             try
             {
@@ -497,7 +394,10 @@ namespace TAO
 
                 /* Deserialize the session data*/
                 ssData >> nStarted;
-                ssData >> nAuthAttempts;
+
+                //XXX: this is superfluous, just acting as dummy now. We Don't want to track auth attempts between session loads.
+                uint16_t nAttempts;
+                ssData >> nAttempts;
 
                 /* Network key */
                 uint512_t nKey;
@@ -516,7 +416,7 @@ namespace TAO
 
                 /* Initialise the sig chain */
                 pSigChain = new TAO::Ledger::SignatureChain(strUsername, strPassword);
-                
+
                 /* PinUnlock */
                 uint8_t nUnlockActions;
                 ssData >> nUnlockActions;
@@ -532,9 +432,9 @@ namespace TAO
             }
             catch(const std::exception& e)
             {
-                throw APIException(-309, "Error loading session."); // generic message callers can't brute force session id's 
+                throw Exception(-309, "Error loading session."); // generic message callers can't brute force session id's
             }
         }
-        
+
     }
 }

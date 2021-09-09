@@ -68,7 +68,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
     Legacy::TrustKey trustKey;
 
     /* Retrieve any existing balance in temp wallet from prior tests */
-    Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+    Legacy::Wallet& wallet = Legacy::Wallet::Instance();
     int64_t nBalance = wallet.GetBalance();
     int64_t nTrustKeyBalance = 0;
 
@@ -913,7 +913,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
     Legacy::TrustKey trustKey;
 
     /* Retrieve any existing balance in temp wallet from prior tests */
-    Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+    Legacy::Wallet& wallet = Legacy::Wallet::Instance();
     int64_t nBalance = wallet.GetBalance();
     int64_t nTrustKeyBalance;
     uint32_t nScoreMigrated;
@@ -1504,7 +1504,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
         Legacy::TrustKey trustKey;
 
         /* Retrieve any existing balance in temp wallet from prior tests */
-        Legacy::Wallet& wallet = Legacy::Wallet::GetInstance();
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
         int64_t nBalance = wallet.GetBalance();
         int64_t nTrustKeyBalance;
         uint32_t nScoreMigrated;

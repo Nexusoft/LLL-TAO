@@ -90,7 +90,7 @@ namespace TAO
 
                 return *this;
             }
-            
+
 
             /** Default Destructor **/
             virtual ~Stream()
@@ -101,7 +101,7 @@ namespace TAO
             IMPLEMENT_SERIALIZE
             (
                 READWRITE(vchData);
-          )
+            )
 
 
             /** Operator Overload <<

@@ -51,9 +51,7 @@ namespace Legacy
     {
         if(addressBookWallet.IsFileBacked())
         {
-            WalletDB walletdb(addressBookWallet.GetWalletFile());
-
-            if(!walletdb.WriteName(address.ToString(), strName))
+            if(!WalletDB::WriteName(address.ToString(), strName))
                 return debug::error(FUNCTION, "Failed writing address book entry");
         }
 
@@ -80,9 +78,7 @@ namespace Legacy
 
         if(addressBookWallet.IsFileBacked())
         {
-            WalletDB walletdb(addressBookWallet.GetWalletFile());
-
-            if(!walletdb.EraseName(address.ToString()))
+            if(!WalletDB::EraseName(address.ToString()))
                 throw std::runtime_error("AddressBook::DelAddressBookName() : removing address book entry failed");
         }
 
@@ -226,8 +222,8 @@ namespace Legacy
             {
                 Legacy::Script scriptPubKey;
                 scriptPubKey.SetNexusAddress(address);
-                for(std::map<uint512_t, Legacy::WalletTx>::iterator it = Legacy::Wallet::GetInstance().mapWallet.begin();
-                        it != Legacy::Wallet::GetInstance().mapWallet.end() && !fKeyUsed;
+                for(std::map<uint512_t, Legacy::WalletTx>::iterator it = Legacy::Wallet::Instance().mapWallet.begin();
+                        it != Legacy::Wallet::Instance().mapWallet.end() && !fKeyUsed;
                         ++it)
                 {
                     const Legacy::WalletTx& wtx = (*it).second;
@@ -246,7 +242,7 @@ namespace Legacy
         {
             std::vector<uint8_t> vchPubKey;
 
-            if(!Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vchPubKey, false))
+            if(!Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vchPubKey, false))
                 throw std::runtime_error("Error: Keypool ran out, please call keypoolrefill first");
 
             address = Legacy::NexusAddress(vchPubKey);

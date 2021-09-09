@@ -36,7 +36,7 @@ namespace TAO
         : uint256_t(value)
         {
             if(fSet)
-                SetType(config::fTestNet.load() ? GENESIS::TESTNET : GENESIS::MAINNET);
+                SetType(GENESIS::UserType());
         }
 
 
@@ -70,7 +70,7 @@ namespace TAO
         /* Check if genesis has a valid indicator byte.*/
         bool Genesis::IsValid() const
         {
-            return GetType() == TAO::Ledger::GenesisType();
+            return GetType() == TAO::Ledger::GENESIS::UserType();
         }
     }
 }

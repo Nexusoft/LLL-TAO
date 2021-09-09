@@ -20,24 +20,25 @@ namespace version
     /* Major version X (X.y.z | X > 0). */
     const uint32_t CLIENT_MAJOR = 5;
 
-
-    /* Minor version Y (x.Y.z | x > 0). */
+    /* Minor version Y (x.Y.z | Y > 0). */
     const uint32_t CLIENT_MINOR = 1;
 
-
-    /* Patch version Z (x.y.Z | x > 0). */
+    /* Patch version Z (x.y.Z | Z > 0). */
     const uint32_t CLIENT_PATCH = 0;
 
 
     /* The version of the actual wallet client. */
-    const uint32_t CLIENT_VERSION = 10000 * CLIENT_MAJOR + 100 * CLIENT_MINOR + CLIENT_PATCH;
+    const uint32_t CLIENT_VERSION =
+        get_version(CLIENT_MAJOR, CLIENT_MINOR, CLIENT_PATCH);
+
 
     /* Client Version Outputs. */
-    const std::string CLIENT_NAME("Tritium");
+    const std::string CLIENT_NAME("Tritium++");
     const std::string CLIENT_DATE(__DATE__ " " __TIME__);
 
     /* The version number */
-    const std::string CLIENT_VERSION_STRING = debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH);
+    const std::string CLIENT_VERSION_STRING =
+        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH);
 
 
     /* The interface used Qt, CLI, or Tritium) */
@@ -66,6 +67,26 @@ namespace version
     #else
         const std::string BUILD_ARCH = "[x64]";
     #endif
+    
 
-    const std::string CLIENT_VERSION_BUILD_STRING(CLIENT_VERSION_STRING + "-rc2 " + CLIENT_NAME  + " " + CLIENT_INTERFACE + " " + CLIENT_DATABASE + BUILD_ARCH);
+    /* Our literal build string. */
+    const std::string CLIENT_VERSION_BUILD_STRING
+    (
+          CLIENT_VERSION_STRING + "-rc2 "
+        + CLIENT_NAME           + " "
+        + CLIENT_INTERFACE      + " "
+        + CLIENT_DATABASE + BUILD_ARCH
+    );
+
+
+	/* Overload to decompose a integer version into string value. */
+	std::string version_string(const uint32_t nVersion)
+	{
+		/* Decompose our individual sub-versions. */
+		const uint32_t nMajor = nVersion / 10000;
+		const uint32_t nMinor = (nVersion - (nMajor * 10000)) / 100;
+		const uint32_t nPatch = (nVersion - (nMajor * 10000) - (nMinor * 100));
+
+		return debug::safe_printstr(nMajor, ".", nMinor, ".", nPatch);
+	}
 }

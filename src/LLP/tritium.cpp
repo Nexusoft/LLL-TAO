@@ -22,8 +22,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/sessionmanager.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/types/session-manager.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -68,9 +67,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    using namespace LLP::Tritium;
-
-
     /* Declaration of client mutex for synchronizing client mode transactions. */
     std::mutex TritiumNode::CLIENT_MUTEX;
 
@@ -236,13 +232,33 @@ namespace LLP
                 /* Set the laset ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
 
-                /* We need to set flag based on ChainState::Synchronizing() as this will vary based on testnet settings */
-                if(!fSynchronized.load())
-                    fSynchronized.store(!TAO::Ledger::ChainState::Synchronizing());
-
                 /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
-                    PushMessage(ACTION::VERSION, PROTOCOL_VERSION, SESSION_ID, version::CLIENT_VERSION_BUILD_STRING);
+                {
+                    /* If we are on version 3.1, we want to send their address on connect. */
+                    if(MinorVersion(LLP::PROTOCOL_VERSION, 3) >= 1) //3 is major version, 1 is minor (3.1)
+                    {
+                        /* Respond with version message. */
+                        PushMessage(
+                            ACTION::VERSION,
+                            PROTOCOL_VERSION,
+                            SESSION_ID,
+                            version::CLIENT_VERSION_BUILD_STRING,
+                            BaseAddress(GetAddress())
+                        );
+                    }
+                    else
+                    {
+                        /* Respond with version message. */
+                        PushMessage(
+                            ACTION::VERSION,
+                            PROTOCOL_VERSION,
+                            SESSION_ID,
+                            version::CLIENT_VERSION_BUILD_STRING
+                        );
+                    }
+                }
+
 
                 break;
             }
@@ -318,7 +334,7 @@ namespace LLP
                     if(!TAO::Ledger::ChainState::Synchronizing())
                     {
                         #ifndef NO_WALLET
-                        Legacy::Wallet::GetInstance().ResendWalletTransactions();
+                        Legacy::Wallet::Instance().ResendWalletTransactions();
                         #endif
                     }
                 }
@@ -581,23 +597,56 @@ namespace LLP
                 /* Get the version string. */
                 ssPacket >> strFullVersion;
 
-                /* Respond with version message if incoming connection. */
-                if(Incoming())
+                /* Handle augmenting Tritium Protocol with new minor version 3.1. */
+                if(MinorVersion(nProtocolVersion, 3) >= 1) //NOTE: 3 is for major version 3, we want to check against minor (0.1)
                 {
-                    /* Respond with version message. */
-                    PushMessage(ACTION::VERSION,
-                        PROTOCOL_VERSION,
-                        SESSION_ID,
-                        version::CLIENT_VERSION_BUILD_STRING);
+                    /* Deserialize the address. */
+                    BaseAddress addr;
+                    ssPacket >> addr;
+
+                    /* Set our internal address value if possible. */
+                    BaseAddress addrCurrent = addrThis.load();
+                    if(!addrCurrent.IsValid())
+                    {
+                        addrThis.store(addr);
+                        debug::log(0, NODE, "ACTION::VERSION set current address as ", addr.ToStringIP());
+                    }
+                    else if(addrCurrent != addr)
+                        debug::warning(NODE, "ACTION::VERSION conflicting address ",
+                            addr.ToStringIP(), " != ", addrCurrent.ToStringIP()); //TODO: vAddrThis: can have multiple addr (IPv4/6, LTE, Wifi, etc.)
+
+                    /* Respond with version message if incoming connection. */
+                    if(Incoming())
+                    {
+                        /* Respond with version message. */
+                        PushMessage(
+                            ACTION::VERSION,
+                            PROTOCOL_VERSION,
+                            SESSION_ID,
+                            version::CLIENT_VERSION_BUILD_STRING,
+                            BaseAddress(GetAddress())
+                        );
+                    }
                 }
+                else
+                {
+                    /* Respond with version message if incoming connection. */
+                    if(Incoming())
+                    {
+                        /* Respond with version message. */
+                        PushMessage(
+                            ACTION::VERSION,
+                            PROTOCOL_VERSION,
+                            SESSION_ID,
+                            version::CLIENT_VERSION_BUILD_STRING
+                        );
+                    }
+                }
+
 
                 /* Add to address manager. */
                 if(TRITIUM_SERVER->GetAddressManager())
                     TRITIUM_SERVER->GetAddressManager()->AddAddress(GetAddress(), ConnectState::CONNECTED);
-
-                /* If we dont yet know our IP address and the peer is on the newer protocol version then request the IP address */
-                if(!addrThis.load().IsValid() && nProtocolVersion >= MIN_TRITIUM_VERSION)
-                    PushMessage(ACTION::GET, uint8_t(TYPES::PEERADDRESS));
 
                 #ifdef DEBUG_MISSING
                 fSynchronized.store(true);
@@ -659,16 +708,12 @@ namespace LLP
                 uint64_t nTimestamp;
                 ssPacket >> nTimestamp;
 
-                /* Check the timestamp. */
+                /* Track our difference as a signed int for (+) values indicating older message. */
                 if(nTimestamp > runtime::unifiedtimestamp() || nTimestamp < runtime::unifiedtimestamp() - 10)
-                {
-                    /* Track our difference as a signed int for (+) values indicating older message. */
                     return debug::drop(NODE, "ACTION::AUTH: message is stale by ", int64_t(runtime::unifiedtimestamp() - nTimestamp), " seconds");
-                }
-
 
                 /* Get the nonce */
-                uint64_t nNonce;
+                uint64_t nNonce = 0;
                 ssPacket >> nNonce;
 
                 /* Check the nNonce for expected values. */
@@ -678,7 +723,6 @@ namespace LLP
                 /* Get the public key. */
                 std::vector<uint8_t> vchPubKey;
                 ssPacket >> vchPubKey;
-
 
                 /* Build the byte stream from genesis+nonce in order to verify the signature */
                 DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
@@ -695,25 +739,39 @@ namespace LLP
                 if(!TAO::Ledger::SignatureChain::Verify(hashGenesis, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
                     return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
-                /* Get the crypto register. */
-                TAO::Register::Object trust;
-                if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
-                    hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
-                    return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
-
-                /* Parse the object. */
-                if(!trust.Parse())
-                    return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
-
-                /* Set the node's current trust score. */
-                nTrust = trust.get<uint64_t>("trust");
-
                 /* Set to authorized node if passed all cryptographic checks. */
-                fAuthorized = true;
-                debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
+                if(INCOMING.MESSAGE == ACTION::AUTH)
+                {
+                    /* Get the trust object register. */
+                    TAO::Register::Object trust;
+                    if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
+                        hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
+                        return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
 
-                PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
+                    /* Parse the object. */
+                    if(!trust.Parse())
+                        return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
 
+                    /* Set as authorized and respond with acknowledgement. */
+                    fAuthorized = true;
+                    PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
+
+                    /* Set the node's current trust score. */
+                    nTrust = trust.get<uint64_t>("trust");
+
+                    debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
+                }
+                else if(INCOMING.MESSAGE == ACTION::DEAUTH)
+                {
+                    /* Set deauthorization flag. */
+                    fAuthorized = false;
+
+                    /* Reset sigchain specific values. */
+                    hashGenesis = 0;
+                    nTrust = 0;
+
+                    debug::log(0, NODE, "ACTION::DEAUTH: ", hashGenesis.SubString(), " DE-AUTHORIZATION ACCEPTED");
+                }
 
                 break;
             }
@@ -727,68 +785,6 @@ namespace LLP
                 ssPacket >> hashGenesis;
 
                 debug::log(0, NODE, "RESPONSE::AUTHORIZED: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
-
-                if(config::fClient.load())
-                {
-                    /* Before subscribing to sig chain transactions and notifications we first ask the node to send us any that we
-                       might not alraedy have.  This could happen if we get disconnected from peers whilst logged in and new events
-                       or transactions occur */
-                    SyncSigChain(this, hashGenesis, false, true);
-
-                    /* Get the last txid in sigchain. */
-                    uint512_t hashLast;
-                    LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
-
-                    /* Subscribe to sig chain transactions */
-                    Subscribe(SUBSCRIPTION::SIGCHAIN);
-
-                    /* Subscribe to notifications for this genesis */
-                    SubscribeNotification(hashGenesis);
-
-                    /* Subscribe to notifications for any tokens we own, or any tokens that we have accounts for */
-
-                    /* Get the list of accounts and tokens owned by this sig chain */
-                    std::vector<TAO::Register::Address> vAddresses;
-                    TAO::API::ListAccounts(hashGenesis, vAddresses, true, false);
-
-                    /* Now iterate through and find all tokens and token accounts */
-                    for(const auto& hashAddress : vAddresses)
-                    {
-                        /* For tokens just subscribe to it */
-                        if(hashAddress.IsToken())
-                        {
-                            /* Get the last event txid */
-                            LLD::Ledger->ReadLastEvent(hashAddress, hashLast);
-
-                            /* Subscribe to new notifications */
-                            SubscribeNotification(hashAddress);
-                        }
-                        else if(hashAddress.IsAccount())
-                        {
-                           /* Get the token account object. */
-                            TAO::Register::Object account;
-                            if(!LLD::Register->ReadState(hashAddress, account, TAO::Ledger::FLAGS::LOOKUP))
-                                return debug::drop(NODE, "Token/account not found");
-
-                            /* Parse the object register. */
-                            if(!account.Parse())
-                                return debug::drop(NODE, "Object failed to parse");
-
-                            /* Get the token */
-                            uint256_t hashToken = account.get<uint256_t>("token");
-
-                            /* If it is not a NXS account, and we have not already subscribed to it, subscribe to it */
-                            if(hashToken != 0 && std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
-                            {
-                                /* Get the last event txid */
-                                LLD::Ledger->ReadLastEvent(hashAddress, hashLast);
-
-                                /* Subscribe to new notifications */
-                                SubscribeNotification(hashAddress);
-                            }
-                        }
-                    }
-                }
 
                 break;
             }
@@ -1927,7 +1923,7 @@ namespace LLP
                                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 {
                                     /* Check if producer is being asked for, and send block instead. */
-                                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsPrivate())
+                                    if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsHybrid())
                                     {
                                         /* Read block state from disk. */
                                         TAO::Ledger::BlockState state;
@@ -2067,7 +2063,7 @@ namespace LLP
                         }
 
 
-                        /* Standard type for last sigchain transaction. */
+                        /* Standard type for register in form of merkle transaction. */
                         case TYPES::REGISTER:
                         {
                             /* Check for available protocol version. */
@@ -2115,10 +2111,10 @@ namespace LLP
                             if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
                                 break;
 
-                            /* Make adjustment to history check and detect if the register is owned by system. */
+                            /* If register is in the middle of a transfer, hashOwner will be owned by system. Detect and continue.*/
                             uint256_t hashOwner = state.hashOwner;
                             if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
-                                hashOwner.SetType(TAO::Ledger::GenesisType());
+                                hashOwner.SetType(TAO::Ledger::GENESIS::UserType());
 
                             /* Read the last hash of owner. */
                             uint512_t hashLast = 0;
@@ -2241,13 +2237,6 @@ namespace LLP
                             break;
                         }
 
-                        case TYPES::PEERADDRESS:
-                        {
-                            /* Send back the peer's own address from our connection */
-                            PushMessage(TYPES::PEERADDRESS, addr);
-                            break;
-                        }
-
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::GET malformed binary stream");
@@ -2357,7 +2346,7 @@ namespace LLP
                                 ssPacket >> hashSigchain;
 
                                 /* Check for expected genesis. */
-                                uint256_t hashLogin = TAO::API::users->GetGenesis(0);
+                                uint256_t hashLogin = TAO::API::Commands::Get<TAO::API::Users>()->GetGenesis(0);
                                 if(hashSigchain != hashLogin)
                                     return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashLogin.SubString());
                             }
@@ -2377,21 +2366,15 @@ namespace LLP
                                 ssPacket >> hashAddress;
 
                                 /* Get the genesis hash of the logged in user */
-                                uint256_t hashLogin = TAO::API::users->GetGenesis(0);
+                                uint256_t hashLogin = TAO::API::Commands::Get<TAO::API::Users>()->GetGenesis(0);
 
                                 /* If the address is a genesis hash, then make sure that it is for the currently logged in user */
-                                if(hashAddress.GetType() == TAO::Ledger::GenesisType())
+                                if(hashAddress.GetType() == TAO::Ledger::GENESIS::UserType())
                                 {
                                     /* Check for expected genesis. */
                                     if(hashAddress != hashLogin)
                                         return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected genesis-id ", hashAddress.SubString());
                                 }
-                                /* Otherwise check that it is for a register that the logged in user has subscribed to */
-                                else if(std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
-                                {
-                                    return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected register address ", hashAddress.SubString());
-                                }
-
                             }
 
                             /* Get the index of transaction. */
@@ -2533,28 +2516,11 @@ namespace LLP
 
                                             /* Calculate the time to sync*/
                                             uint32_t nElapsed = SYNCTIMER.Elapsed();
-                                            if(nElapsed == 0)
-                                                nElapsed = 1;
-
-                                            double dRate = nBlocks / nElapsed;
 
                                             /* Log that sync is complete. */
                                             debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
-                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchronized ", nBlocks, " blocks in ", nElapsed, " seconds [", dRate, " blocks/s]" );
-
-
-                                            /* If in client mode and logged in, request a sig chain sync as soon as we get the blocks syncd */
-                                            if(config::fClient.load() && TAO::API::users->LoggedIn())
-                                            {
-                                                /* Get the Session */
-                                                TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
-
-                                                /* The genesis of the currently logged in user */
-                                                uint256_t hashSigchain = session.GetAccount()->Genesis();
-
-                                                /* Send the sync messages */
-                                                SyncSigChain(this, hashGenesis, false, true);
-                                            }
+                                            debug::log(0, NODE, "ACTION::NOTIFY: Synchronized ", nBlocks, " blocks in ", nElapsed,
+                                                " seconds [", double(nBlocks / (nElapsed + 1.0)), " blocks/s]" );
                                         }
                                         else
                                         {
@@ -2606,20 +2572,7 @@ namespace LLP
                                 Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                 /* Log that sync is complete. */
-                                debug::log(0, NODE, "ACTION::NOTIFY: Synchonization COMPLETE at ", hashBestChain.SubString());
-
-                                /* If in client mode and logged in, request a sig chain sync as soon as we get the blocks syncd */
-                                if(config::fClient.load() && TAO::API::users->LoggedIn())
-                                {
-                                    /* Get the Session */
-                                    TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
-
-                                    /* The genesis of the currently logged in user */
-                                    uint256_t hashSigchain = session.GetAccount()->Genesis();
-
-                                    /* Send the sync messages */
-                                    SyncSigChain(this, hashGenesis, false, true);
-                                }
+                                debug::log(0, NODE, "ACTION::NOTIFY: Synchronization COMPLETE at ", hashBestChain.SubString());
                             }
 
                             /* Debug output. */
@@ -3440,135 +3393,6 @@ namespace LLP
                 break;
             }
 
-            case ACTION::REQUEST:
-            {
-                /* deserialize the type */
-                uint8_t nType;
-                ssPacket >> nType;
-
-                switch(nType)
-                {
-                    /* Caller is requesting a peer to peer connection to communicate via the messaging LLP*/
-                    case TYPES::P2PCONNECTION:
-                    {
-                        /* get the source genesis hash */
-                        uint256_t hashFrom;
-                        ssPacket >> hashFrom;
-
-                        /* Get the connection request */
-                        LLP::P2P::ConnectionRequest request;
-                        ssPacket >> request;
-
-                        /* Get the public key. */
-                        std::vector<uint8_t> vchPubKey;
-                        ssPacket >> vchPubKey;
-
-                        /* Get the signature. */
-                        std::vector<uint8_t> vchSig;
-                        ssPacket >> vchSig;
-
-                        /* Check the timestamp. If the request is older than 30s then it is stale so ignore the message */
-                        if(request.nTimestamp > runtime::unifiedtimestamp() || request.nTimestamp < runtime::unifiedtimestamp() - 30)
-                        {
-                            debug::log(3, NODE, "ACTION::REQUEST::P2P: timestamp out of range (stale)");
-                            return true;
-                        }
-
-                        /* See whether we have processed a P2P request from this user in the last 5 seconds.
-                           If so then ignore the message. If not then relay the message to our peers. */
-                        {
-                            LOCK(P2P_REQUESTS_MUTEX);
-                            if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < request.nTimestamp - 5)
-                            {
-                                /* Check that the source and destination genesis exists before relaying. We skip this
-                                   in client mode as we will only have local scope and not know about all genesis hashes */
-                                if(!config::fClient.load())
-                                {
-                                    /* Check that the source genesis exists. */
-                                    if(!LLD::Ledger->HasGenesis(request.hashPeer))
-                                        return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid destination genesis hash");
-
-                                    /* Check that the source genesis exists. */
-                                    if(!LLD::Ledger->HasGenesis(hashFrom))
-                                        return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid source genesis hash");
-                                }
-
-                                /* Verify the signature before relaying.  Again we don't do this in client mode as we only have
-                                   local scope and won't be able to access the crypto object register of the hashFrom */
-                                if(!config::fClient.load())
-                                {
-                                    /* Build the byte stream from the request data in order to verify the signature */
-                                    DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                                    ssCheck << hashFrom << request;
-
-                                    /* Verify the signature */
-                                    if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
-                                        return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
-
-                                    /* Reset the packet data pointer */
-                                    ssPacket.Reset();
-
-                                    /* Relay the P2P request */
-                                    TRITIUM_SERVER->Relay
-                                    (
-                                        uint8_t(ACTION::REQUEST),
-                                        uint8_t(TYPES::P2PCONNECTION),
-                                        hashFrom,
-                                        request,
-                                        vchPubKey,
-                                        vchSig
-                                    );
-                                }
-
-                                /* Check to see whether the destination genesis is logged in on this node */
-                                if(TAO::API::users->LoggedIn(request.hashPeer))
-                                {
-                                    /* Get the users session */
-                                    TAO::API::Session& session = TAO::API::users->GetSession(request.hashPeer);
-
-                                    /* If an incoming request already exists from this peer then remove it */
-                                    if(session.HasP2PRequest(request.strAppID, hashFrom, true))
-                                        session.DeleteP2PRequest(request.strAppID, hashFrom, true);
-
-                                    /* Add this incoming request to the P2P requests queue for this user */
-                                    LLP::P2P::ConnectionRequest requestIncoming = { runtime::unifiedtimestamp(), request.strAppID, hashFrom, request.nSession, request.address, request.nPort, request.nSSLPort };
-                                    session.AddP2PRequest(requestIncoming, true);
-
-                                    debug::log(3, NODE, "P2P Request received from " , hashFrom.ToString(), " for appID ", request.strAppID );
-                                }
-                            }
-
-                            /* Log this request */
-                            mapP2PRequests[hashFrom] = request.nTimestamp;
-                        }
-
-                        break;
-                    }
-                    default:
-                    {
-                        return debug::drop(NODE, "ACTION::REQUEST invalid type specified");
-                    }
-                }
-
-                break;
-            }
-
-            case TYPES::PEERADDRESS:
-            {
-                /* Ignore the message if we have already obtained our IP address */
-                if(!addrThis.load().IsValid())
-                {
-                    /* Deserialize the address */
-                    BaseAddress addr;
-                    ssPacket >> addr;
-
-                    /* Store in atomic value. */
-                    addrThis.store(addr);
-                }
-
-                break;
-            }
-
             default:
                 return debug::drop(NODE, "invalid protocol message ", INCOMING.MESSAGE);
         }
@@ -3861,18 +3685,18 @@ namespace LLP
 
 
     /* Unsubscribe from another node for notifications. */
-    void TritiumNode::UnsubscribeNotification(const uint256_t& hashAddress)
+    void TritiumNode::UnsubscribeAddress(const uint256_t& hashAddress)
     {
         /* Set the timestamp that we unsubscribed at. */
         nUnsubscribed = runtime::timestamp();
 
         /* Unsubscribe over the network. */
-        SubscribeNotification(hashAddress, false);
+        SubscribeAddress(hashAddress, false);
     }
 
 
     /* Subscribe to another node for notifications. */
-    void TritiumNode::SubscribeNotification(const uint256_t& hashAddress, bool fSubscribe)
+    void TritiumNode::SubscribeAddress(const uint256_t& hashAddress, bool fSubscribe)
     {
         /* Build subscription message. */
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
@@ -3905,6 +3729,7 @@ namespace LLP
         WritePacket(NewMessage((fSubscribe ? ACTION::SUBSCRIBE : ACTION::UNSUBSCRIBE), ssMessage));
     }
 
+
     /* Builds an Auth message for this node.*/
     DataStream TritiumNode::GetAuth(bool fAuth)
     {
@@ -3912,7 +3737,7 @@ namespace LLP
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
 
         /* Only send auth messages if the auth key has been cached */
-        if(TAO::API::users->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
+        if(TAO::API::Commands::Get<TAO::API::Users>()->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
         {
             /* Get the Session */
             TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
@@ -3968,34 +3793,6 @@ namespace LLP
         /* Switch based on message type */
         switch(nMsg)
         {
-            /* Filter out request messages so that we don't send them to peers on older protocol versions */
-            case ACTION::REQUEST :
-            {
-                /* Get the request type */
-                uint8_t nType = 0;
-                ssData >> nType;
-
-                /* Switch based on type. */
-                switch(nType)
-                {
-                    case TYPES::P2PCONNECTION:
-                    {
-                        /* Ensure the peer is on a high enough version to receive the P2PCONNECTION message */
-                        if(nProtocolVersion >= MIN_TRITIUM_VERSION)
-                            ssRelay = ssData;
-                        break;
-                    }
-                    default:
-                    {
-                        /* Default to letting the message be relayed */
-                        ssRelay = ssData;
-                        break;
-                    }
-                }
-
-                break;
-            }
-
             /* Filter notifications. */
             case ACTION::NOTIFY:
             {
@@ -4324,172 +4121,8 @@ namespace LLP
     }
 
 
-    /* Handle relays of all events for LLP when processing block. */
-    void TritiumNode::RelayBlock(const uint1024_t& hashBlock)
-    {
-        /* Start a stopwatch. */
-        runtime::stopwatch swTimer;
-        swTimer.start();
-
-        /* Read the block from disk. */
-        TAO::Ledger::BlockState block;
-        if(!LLD::Ledger->ReadBlock(hashBlock, block))
-        {
-            /* Debug output. */
-            debug::log(0, FUNCTION, "Relay ",
-                ANSI_COLOR_BRIGHT_RED, "FAILED ", ANSI_COLOR_RESET,
-                " for ", hashBlock.SubString(), ": block not on disk"
-            );
-
-            return;
-        }
-
-        /* Relay the block and bestchain. */
-        LLP::TRITIUM_SERVER->Relay
-        (
-            LLP::Tritium::ACTION::NOTIFY,
-
-            /* Relay BLOCK notification. */
-            uint8_t(LLP::Tritium::TYPES::BLOCK),
-            hashBlock,
-
-            /* Relay BESTCHAIN notification. */
-            uint8_t(LLP::Tritium::TYPES::BESTCHAIN),
-            hashBlock,
-
-            /* Relay BESTHEIGHT notification. */
-            uint8_t(LLP::Tritium::TYPES::BESTHEIGHT),
-            block.nHeight
-        );
-
-        /* Keep track of the total items. */
-        uint32_t nTotalEvents = 0;
-
-        /* Let's process all the transactios now. */
-        DataStream ssRelay(SER_NETWORK, LLP::PROTOCOL_VERSION);
-        for(const auto& proof : block.vtx)
-        {
-            /* Only work on tritium transactions for now. */
-            if(proof.first == TAO::Ledger::TRANSACTION::TRITIUM)
-            {
-                /* Get the transaction hash. */
-                const uint512_t& hash = proof.second;
-
-                /* Make sure the transaction is on disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hash, tx))
-                    continue;
-
-                /* Check all the tx contracts. */
-                for(uint32_t n = 0; n < tx.Size(); ++n)
-                {
-                    const TAO::Operation::Contract& contract = tx[n];
-
-                    /* Check the contract's primitive. */
-                    uint8_t nOP = 0;
-                    contract >> nOP;
-                    switch(nOP)
-                    {
-                        case TAO::Operation::OP::TRANSFER:
-                        case TAO::Operation::OP::DEBIT:
-                        {
-                            /* Seek to recipient. */
-                            uint256_t hashTo;
-                            contract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
-                            contract >> hashTo;
-
-                            /* Read the owner of register. (check this for MEMPOOL, too) */
-                            TAO::Register::State state;
-                            if(!LLD::Register->ReadState(hashTo, state))
-                                continue;
-
-                            /* Fire off our event for client mode peers. For debits to assets and transfers to tokens the
-                                event will be a notification to the token itself, otherwise this will be notification to
-                                the register owner */
-                            if((nOP == TAO::Operation::OP::DEBIT && hashTo.GetType() == TAO::Register::Address::OBJECT)
-                                || (nOP == TAO::Operation::OP::TRANSFER && hashTo.GetType() == TAO::Register::Address::TOKEN))
-                            {
-                                ssRelay << uint8_t(TYPES::NOTIFICATION) << hashTo << hash;
-                            }
-                            else
-                                ssRelay << uint8_t(TYPES::NOTIFICATION) << state.hashOwner << hash;
-
-                            ++nTotalEvents;
-
-                            debug::log(0, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
-                                hash.SubString(), " for genesis ", state.hashOwner.SubString());
-
-                            break;
-                        }
-
-                        case TAO::Operation::OP::COINBASE:
-                        {
-                            /* Get the genesis. */
-                            uint256_t hashGenesis;
-                            contract >> hashGenesis;
-
-                            /* Commit to disk. */
-                            if(tx[n].Caller() != hashGenesis)
-                            {
-                                /* Fire off our event. */
-                                ssRelay << uint8_t(TYPES::SIGCHAIN) << hashGenesis << hash;
-                                ++nTotalEvents;
-
-                                debug::log(0, FUNCTION, "COINBASE: ", hash.SubString(), " for genesis ", hashGenesis.SubString());
-                            }
-
-                            break;
-                        }
-                    }
-                }
-
-                /* Notify the sender as well. */
-                ssRelay << uint8_t(TYPES::SIGCHAIN) << tx.hashGenesis << hash;
-                ++nTotalEvents;
-            }
-            else if(proof.first == TAO::Ledger::TRANSACTION::LEGACY)
-            {
-                /* Get the transaction hash. */
-                const uint512_t& hash = proof.second;
-
-                /* Make sure the transaction isn't on disk. */
-                Legacy::Transaction tx;
-                if(!LLD::Legacy->ReadTx(hash, tx))
-                    continue;
-
-                /* Check the outputs for send to register. */
-                for(const auto& out : tx.vout)
-                {
-                    /* Check outputs for possible events. */
-                    uint256_t hashTo;
-                    if(Legacy::ExtractRegister(out.scriptPubKey, hashTo))
-                    {
-                        /* Read the owner of register. (check this for MEMPOOL, too) */
-                        TAO::Register::State state;
-                        if(!LLD::Register->ReadState(hashTo, state))
-                            continue;
-
-                        /* Fire off our event. */
-                        ssRelay << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::SIGCHAIN) << state.hashOwner << hash;
-                        ++nTotalEvents;
-
-                        debug::log(0, FUNCTION, "LEGACY: ", hash.SubString(), " for genesis ", state.hashOwner.SubString());
-                    }
-                }
-            }
-        }
-
-        /* Relay all of our SIGCHAIN events. */
-        LLP::TRITIUM_SERVER->_Relay(LLP::Tritium::ACTION::NOTIFY, ssRelay);
-
-        /* Report status once complete. */
-        debug::log(0, FUNCTION, "Relay for ", hashBlock.SubString(), " completed in ", swTimer.ElapsedMilliseconds(), " ms [", (nTotalEvents * 1000000) / (swTimer.ElapsedMicroseconds() + 1), " events/s]");
-
-    }
-
-
     /* Requests missing sig chain / event transactions for the given signature chain. */
-    void TritiumNode::SyncSigChain(LLP::TritiumNode* pNode, const uint256_t& hashGenesis, bool bWait, bool bSyncEvents)
+    void TritiumNode::SyncSigChain(LLP::TritiumNode* pNode, const uint256_t& hashGenesis, bool fWait, bool fSyncEvents)
     {
         if(config::fClient.load())
         {
@@ -4523,86 +4156,34 @@ namespace LLP
             }
 
             /* Request the sig chain from all. */
-            if(bWait)
-                TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+            if(fWait)
+                TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast);
             else
-                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast);
 
             /* Get the last event txid */
             uint512_t hashLastEvent;
             LLD::Ledger->ReadLastEvent(hashGenesis, hashLastEvent);
 
             /* Sync events if requested */
-            if(bSyncEvents)
+            if(fSyncEvents)
             {
                 /* Request notifications/events. */
-                if(bWait)
-                    TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
+                if(fWait)
+                    TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
 
                 else
-                    pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
+                    pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
 
                 /* Get the last legacy event txid*/
                 uint512_t hashLastLegacyEvent;
                 LLD::Legacy->ReadLastEvent(hashGenesis, hashLastLegacyEvent);
 
                 /* Request legacy notifications/events. */
-                if(bWait)
-                    TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
+                if(fWait)
+                    TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
                 else
-                    pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
-
-
-                /* Request notifications for any tokens we own, or any tokens that we have accounts for */
-
-                /* Get the list of accounts and tokens owned by this sig chain */
-                std::vector<TAO::Register::Address> vAddresses;
-                TAO::API::ListAccounts(hashGenesis, vAddresses, true, false);
-
-                /* Now iterate through and find all tokens and token accounts */
-                for(const auto& hashAddress : vAddresses)
-                {
-                    /* For tokens just subscribe to it */
-                    if(hashAddress.IsToken())
-                    {
-                        /* Get the last event txid */
-                        LLD::Ledger->ReadLastEvent(hashAddress, hashLastEvent);
-
-                        /* Request existing notifications/events. */
-                        if(bWait)
-                            TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
-                        else
-                            pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
-
-                    }
-                    else if(hashAddress.IsAccount())
-                    {
-                        /* Get the token account object. */
-                        TAO::Register::Object account;
-                        if(!LLD::Register->ReadState(hashAddress, account, TAO::Ledger::FLAGS::LOOKUP))
-                            debug::error(FUNCTION, "Token/account not found");
-
-                        /* Parse the object register. */
-                        if(!account.Parse())
-                            debug::error(FUNCTION, "Object failed to parse");
-
-                        /* Get the token */
-                        uint256_t hashToken = account.get<uint256_t>("token");
-
-                        /* If it is not a NXS account, and we have not already subscribed to it, subscribe to it */
-                        if(hashToken != 0 && std::find(pNode->vNotifications.begin(), pNode->vNotifications.end(), hashAddress) == pNode->vNotifications.end())
-                        {
-                            /* Get the last event txid */
-                            LLD::Ledger->ReadLastEvent(hashAddress, hashLastEvent);
-
-                            /* Request existing notifications/events. */
-                            if(bWait)
-                                TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
-                            else
-                                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
-                        }
-                    }
-                }
+                    pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
             }
         }
     }
@@ -4615,9 +4196,7 @@ namespace LLP
         TAO::Ledger::nSyncSession.store(nCurrentSession);
 
         /* Reset last time received. */
-        nLastTimeReceived.store(runtime::timestamp());
-
-        debug::log(0, NODE, "New sync address set");
+        nLastTimeReceived.store(runtime::unifiedtimestamp());
 
         /* Cache the height at the start of the sync */
         nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);
@@ -4625,7 +4204,7 @@ namespace LLP
         /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
         SYNCTIMER.Stop();
 
-        /* Subscribe t3o this node. */
+        /* Subscribe to this node. */
         Subscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN | SUBSCRIPTION::BESTHEIGHT);
 
         /* Ask for list of blocks if this is current sync node. */
@@ -4636,5 +4215,7 @@ namespace LLP
             TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
             uint1024_t(0)
         );
+
+        debug::log(0, NODE, "New sync address set");
     }
 }

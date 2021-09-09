@@ -51,7 +51,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
     /* NOTE: We need ensure private mode is off for these tests so that the genesis transaction fees and default contracts
        can be correctly tested */
-    config::mapArgs["-private"] = "0";
+    config::fHybrid = false;
 
     /* Failure case adding invalid contracts to genesis, tokens are not allowed */
     {
@@ -85,8 +85,8 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
         //check for error
         std::string error = debug::GetLastError();
         REQUIRE(error.find("genesis transaction contains invalid contracts") != std::string::npos);
-
     }
+
 
     /* Failure case adding invalid contracts to genesis - too many names */
     {
@@ -381,5 +381,5 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
 
     /* Finally reinstate private mode so the rest of the tests can continue */
-    config::mapArgs["-private"] = "1";
+    config::fHybrid = true;
 }
