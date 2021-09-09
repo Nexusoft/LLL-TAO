@@ -18,10 +18,14 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
 
+#include <LLP/templates/ddos.h>
+#include <LLP/templates/events.h>
+
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
 
 #include <Util/templates/datastream.h>
+
 
 #include <atomic>
 #include <vector>
@@ -59,46 +63,10 @@ namespace LLP
     template <class ProtocolType>
     class DataThread
     {
-        /** message_args
-         *
-         *  Overload of variadic templates
-         *
-         *  @param[out] s The data stream to write to
-         *  @param[in] head The object being written
-         *
-         **/
-        template<class Head>
-        void message_args(DataStream& s, Head&& head)
-        {
-            s << std::forward<Head>(head);
-        }
-
-
-        /** message_args
-         *
-         *  Variadic template pack to handle any message size of any type.
-         *
-         *  @param[out] s The data stream to write to
-         *  @param[in] head The object being written
-         *  @param[in] tail The variadic paramters
-         *
-         **/
-        template<class Head, class... Tail>
-        void message_args(DataStream& s, Head&& head, Tail&&... tail)
-        {
-            s << std::forward<Head>(head);
-            message_args(s, std::forward<Tail>(tail)...);
-        }
-
-
-        /** Lock access to find slot to ensure no race conditions happend between threads. **/
-        std::mutex SLOT_MUTEX;
-
-
     public:
 
         /* Variables to track Connection / Request Count. */
-        bool fDDOS;
+        std::atomic<bool> fDDOS;
         bool fMETER;
 
         /* Destructor flag. */
@@ -113,7 +81,7 @@ namespace LLP
 
 
         /* Vector to store Connections. */
-        memory::atomic_ptr< std::vector< memory::atomic_ptr<ProtocolType>> > CONNECTIONS;
+        memory::atomic_ptr< std::vector< std::shared_ptr<ProtocolType>> > CONNECTIONS;
 
 
         /** Queu to process outbound relay messages. **/
@@ -136,47 +104,141 @@ namespace LLP
         std::thread FLUSH_THREAD;
 
 
-        /** Default Constructor
-         *
-         **/
+        /** Default Constructor. **/
         DataThread<ProtocolType>(uint32_t nID, bool ffDDOSIn, uint32_t rScore, uint32_t cScore,
                                  uint32_t nTimeout, bool fMeter = false);
 
 
-        /** Default Destructor
-         *
-         **/
+        /** Default Destructor. **/
         virtual ~DataThread<ProtocolType>();
 
 
         /** AddConnection
          *
-         *  Adds a new connection to current Data Thread.
+         *  Adds an existing socket connection to current Data Thread.
          *
          *  @param[in] SOCKET The socket for the connection.
          *  @param[in] DDOS The pointer to the DDOS filter to add to connection.
+         *  @param[in] args variadic args to forward to the LLP protocol constructor
          *
          **/
-        void AddConnection(const Socket& SOCKET, DDOS_Filter* DDOS);
+        template<typename... Args>
+        void AddConnection(const Socket& SOCKET, DDOS_Filter* DDOS, Args&&... args)
+        {
+            try
+            {
+                /* Create a new pointer on the heap. */
+                ProtocolType* pnode = new ProtocolType(SOCKET, DDOS, fDDOS, std::forward<Args>(args)...);
+                pnode->fCONNECTED.store(true);
+
+                /* Find an available slot. */
+                uint32_t nSlot = find_slot();
+
+                /* Update the indexes. */
+                pnode->nDataThread     = ID;
+                pnode->nDataIndex      = nSlot;
+                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS->size())
+                    CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
+                else
+                    CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
+
+                /* Fire the connected event. */
+                pnode->Event(EVENTS::CONNECT);
+
+                /* Iterate the DDOS cScore (Connection score). */
+                if(fDDOS.load())
+                    DDOS -> cSCORE += 1;
+
+                /* Check for inbound socket. */
+                if(pnode->Incoming())
+                    ++nIncoming;
+                else
+                    ++nOutbound;
+
+                /* Notify data thread to wake up. */
+                CONDITION.notify_all();
+            }
+            catch(const std::runtime_error& e)
+            {
+                debug::error(FUNCTION, e.what()); //catch any atomic_ptr exceptions
+            }
+        }
 
 
-        /** AddConnection
+        /** NewConnection
          *
-         *  Adds a new connection to current Data Thread
+         *  Establishes a new connection and adds it to current Data Thread
          *
-         *  @param[in] strAddress The IP address for the connection.
-         *  @param[in] nPort The port number for the connection.
+         *  @param[in] addr Address class instnace containing the IP address and port for the connection.
          *  @param[in] DDOS The pointer to the DDOS filter to add to the connection.
+         *  @param[in] fSSL Flag indicating if this connection should use SSL
+         *  @param[in] args variadic args to forward to the LLP protocol constructor
          *
          *  @return Returns true if successfully added, false otherwise.
          *
          **/
-        bool AddConnection(const BaseAddress &addr, DDOS_Filter* DDOS);
+        template<typename... Args>
+        bool NewConnection(const BaseAddress &addr, DDOS_Filter* DDOS, const bool& fSSL, Args&&... args)
+        {
+            try
+            {
+                /* Create a new pointer on the heap. */
+                ProtocolType* pnode = new ProtocolType(nullptr, false, std::forward<Args>(args)...); //turn off DDOS for outgoing connections
+
+                /* Set the SSL flag */
+                pnode->SetSSL(fSSL);
+
+                /* Attempt to make the connection. */
+                if(!pnode->Connect(addr))
+                {
+                    delete pnode;
+                    return false;
+                }
+
+                /* Find an available slot. */
+                uint32_t nSlot = find_slot();
+
+                /* Update the indexes. */
+                pnode->nDataThread     = ID;
+                pnode->nDataIndex      = nSlot;
+                pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+
+                /* Find a slot that is empty. */
+                if(nSlot == CONNECTIONS->size())
+                    CONNECTIONS->push_back(std::shared_ptr<ProtocolType>(pnode));
+                else
+                    CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
+
+                /* Fire the connected event. */
+                pnode->Event(EVENTS::CONNECT);
+
+                /* Check for inbound socket. */
+                if(pnode->Incoming())
+                    ++nIncoming;
+                else
+                    ++nOutbound;
+
+                /* Notify data thread to wake up. */
+                CONDITION.notify_all();
+
+            }
+            catch(const std::runtime_error& e)
+            {
+                debug::error(FUNCTION, e.what()); //catch any atomic_ptr exceptions
+
+                return false;
+            }
+
+            return true;
+        }
 
 
         /** DisconnectAll
          *
-         *  Disconnects all connections by issuing a DISCONNECT_FORCE event message
+         *  Disconnects all connections by issuing a DISCONNECT::FORCE event message
          *  and then removes the connection from this data thread.
          *
          **/
@@ -220,6 +282,22 @@ namespace LLP
         }
 
 
+        /** _Relay
+         *
+         *  Relays raw binary data to the network. Accepts only binary stream pre-serialized.
+         *
+         **/
+        template<typename MessageType>
+        void _Relay(const MessageType& message, const DataStream& ssData)
+        {
+            /* Push the relay message to outbound queue. */
+            RELAY->push(std::make_pair(message, ssData));
+
+            /* Wake up the flush thread. */
+            FLUSH_CONDITION.notify_all();
+        }
+
+
         /** GetConnectionCount
          *
          *  Returns the number of active connections.
@@ -239,7 +317,7 @@ namespace LLP
       private:
 
 
-        /** disconnect_remove_event
+        /** remove_connection_with_event
          *
          *  Fires off a Disconnect event with the given disconnect reason
          *  and also removes the data thread connection.
@@ -248,7 +326,7 @@ namespace LLP
          *  @param[in] nReason The reason why the connection is to be disconnected.
          *
          **/
-        void disconnect_remove_event(uint32_t nIndex, uint8_t nReason);
+        void remove_connection_with_event(const uint32_t nIndex, const uint8_t nReason);
 
 
         /** remove
@@ -256,10 +334,10 @@ namespace LLP
          *  Removes given connection from current Data Thread.
          *  This happens with a timeout/error, graceful close, or disconnect command.
          *
-         *  @param[in] The index of the connection to remove.
+         *  @param[in] nIndex The index of the connection to remove.
          *
          **/
-        void remove(uint32_t nIndex);
+        void remove_connection(const uint32_t nIndex);
 
 
         /** find_slot

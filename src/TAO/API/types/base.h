@@ -141,7 +141,28 @@ namespace TAO
              **/
             virtual json::json SanitizeParams(const std::string& strMethod, const json::json& jsonParams)
             {
-                return jsonParams;
+                /* If configured, remove any string populated with the text null. Some 3rd party apps such as
+                   bubble do not handle dynamic values very well and will insert the text null if not populated
+                   so this helper will remove them (set them to json::null) */
+                if(config::GetBoolArg("-apiremovenullstring", false))
+                {
+                    /* Make a copy of the params to parse */
+                    json::json jsonSanitizedParams = jsonParams;
+
+                    /* Iterate all parameters */
+                    for(auto param = jsonParams.begin(); param != jsonParams.end(); ++param)
+                    {
+                        if((*param).is_string() && (*param).get<std::string>() == "null")
+                        {
+                            jsonSanitizedParams[param.key()] = nullptr;
+                        }
+                    }
+
+                    return jsonSanitizedParams;
+                
+                }
+                else
+                    return jsonParams;
             };
 
         protected:

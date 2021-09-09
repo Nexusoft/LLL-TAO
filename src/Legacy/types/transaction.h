@@ -32,6 +32,7 @@ namespace Legacy
 	 * (can't include trustkey.h in this file -- It includes legacy.h which needs Transaction declared and it isn't yet)
 	 */
 	class TrustKey;
+	class MerkleTx;
 
 	/** Transaction Class
 	 *
@@ -90,6 +91,13 @@ namespace Legacy
 		/** Move Constructor. **/
 		Transaction(Transaction&& tx) noexcept;
 
+		/** Copy constructor. **/
+		Transaction(const MerkleTx& tx);
+
+
+		/** Move constructor. **/
+		Transaction(MerkleTx&& tx) noexcept;
+
 
 		/** Copy assignment. **/
 		Transaction& operator=(const Transaction& tx);
@@ -97,6 +105,14 @@ namespace Legacy
 
 		/** Move assignment. **/
 		Transaction& operator=(Transaction&& tx) noexcept;
+
+
+		/** Copy assignment. **/
+		Transaction& operator=(const MerkleTx& tx);
+
+
+		/** Move assignment. **/
+		Transaction& operator=(MerkleTx&& tx) noexcept;
 
 
 		/** Default destructor. **/

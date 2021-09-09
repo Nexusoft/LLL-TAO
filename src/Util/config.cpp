@@ -121,7 +121,9 @@ namespace config
     {
         /* Windows: C:\Documents and Settings\username\Application Data\Nexus
          * Mac: ~/Library/Application Support/Nexus
-         * Unix: ~/.Nexus */
+         * Unix: ~/.Nexus 
+         * iPhone: ~{App}/Documents/Nexus
+         * Android: ~{App}Files/Nexus */
     std::string pathRet;
     #ifdef WIN32
         // Windows
@@ -137,6 +139,10 @@ namespace config
         // Mac
         pathRet.append("/Library/Application Support");
         filesystem::create_directories(pathRet);
+        pathRet.append("/" + strName + "/");
+    #elif defined(IPHONE)
+        pathRet.append("/Documents/" + strName + "/");
+    #elif defined(ANDROID)
         pathRet.append("/" + strName + "/");
     #else
         // Unix
@@ -201,9 +207,14 @@ namespace config
         else
             path = GetDefaultDataDir();
 
+        /* Check for testnet mode. */
         uint32_t nTestnet = GetArg("-testnet", 0);
         if(fNetSpecific && nTestnet > 0)
             path.append(debug::safe_printstr("testnet", nTestnet, "/"));
+
+        /* Check for client mode. */
+        if(config::GetBoolArg("-client", false))
+            path.append("client/");
 
         filesystem::create_directories(path);
 

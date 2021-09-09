@@ -15,6 +15,10 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 #include <LLD/cache/template_lru.h>
 
+#include <LLP/include/global.h>
+#include <LLP/types/tritium.h>
+#include <LLP/templates/trigger.h>
+
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/utils.h>
 #include <TAO/API/types/exception.h>
@@ -100,7 +104,7 @@ namespace TAO
                     {
 
                         TAO::Register::Object token;
-                        if(!LLD::Register->ReadState(nIdentifier, token, TAO::Ledger::FLAGS::MEMPOOL))
+                        if(!LLD::Register->ReadState(nIdentifier, token, TAO::Ledger::FLAGS::LOOKUP))
                             throw APIException(-125, "Token not found");
 
                         /* Parse the object register. */
@@ -181,7 +185,13 @@ namespace TAO
                 /* Get the transaction from disk. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw APIException(-108, "Failed to read transaction");
+                {
+                    /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                    if(config::fClient.load())
+                        break;
+                    else
+                        throw APIException(-108, "Failed to read transaction");
+                }
 
                 /* Set the next last. */
                 hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
@@ -192,38 +202,15 @@ namespace TAO
                     /* Get the contract output. */
                     const TAO::Operation::Contract& contract = tx[nContract];
 
-                    /* Seek to start of the operation stream in case this a transaction from mempool that has already been read*/
-                    contract.Reset(TAO::Operation::Contract::OPERATIONS);
+                    /* Reset all streams */
+                    contract.Reset();
+
+                    /* Seek the contract operation stream to the position of the primitive. */
+                    contract.SeekToPrimitive();
 
                     /* Deserialize the OP. */
                     uint8_t nOP = 0;
                     contract >> nOP;
-
-                    /* Check the current opcode. */
-                    switch(nOP)
-                    {
-                        /* Condition that allows a validation to occur. */
-                        case TAO::Operation::OP::CONDITION:
-                        {
-                            /* Condition has no parameters. */
-                            contract >> nOP;
-
-                            break;
-                        }
-
-
-                        /* Validate a previous contract's conditions */
-                        case TAO::Operation::OP::VALIDATE:
-                        {
-                            /* Skip over validate. */
-                            contract.Seek(68);
-
-                            /* Get next OP. */
-                            contract >> nOP;
-
-                            break;
-                        }
-                    }
 
                     /* Check the current opcode. */
                     switch(nOP)
@@ -297,18 +284,11 @@ namespace TAO
                             uint8_t nType = 0;
                             contract >> nType;
 
-                            /* If we have transferred to a token that we own then we ignore the transfer as we still
-                               technically own the register */
-                            if(nType == TAO::Operation::TRANSFER::FORCE)
-                            {
-                                TAO::Register::Object newOwner;
-                                if(!LLD::Register->ReadState(hashTransfer, newOwner))
-                                    throw APIException(-153, "Transfer recipient object not found");
-
-                                if(newOwner.hashOwner == hashGenesis)
-                                    break;
-                            }
-                            else
+                            /* IF this is not a forced transfer, we need to retrieve the object so we can see whether it has been
+                               claimed or not.  If it has not been claimed then we ignore the transfer operation and still show
+                               it as ours.  However we need to skip this check in light mode because we will not have the
+                               register state available in order to determine if it has been claimed or not */
+                            if(nType != TAO::Operation::TRANSFER::FORCE && !config::fClient.load())
                             {
                                 /* Retrieve the object so we can see whether it has been claimed or not */
                                 TAO::Register::Object object;
@@ -318,6 +298,18 @@ namespace TAO
                                 /* If we are transferring to someone else but it has not yet been claimed then we ignore the
                                    transfer and still show it as ours */
                                 if(object.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+                                {
+                                    /* Ensure it is the caller that made the most recent transfer */
+                                    uint256_t hashPrevOwner = hashGenesis;;
+
+                                    /* Set the SYSTEM byte so that we can compare the prev owner */
+                                    hashPrevOwner.SetType(TAO::Ledger::GENESIS::SYSTEM);
+
+                                    /* If we transferred it  */
+                                    if(object.hashOwner == hashPrevOwner)
+                                        break;
+
+                                }
                                     break;
                             }
 
@@ -655,6 +647,11 @@ namespace TAO
                     else
                         continue;
 
+                    /* Check that this notification hasn't been suppressed */
+                    uint64_t nTimeout = 0;
+                    if(LLD::Local->ReadSuppressNotification(tx.GetHash(), nContract, nTimeout) && nTimeout > runtime::unifiedtimestamp())
+                        continue;
+
                     /* Get the amount */
                     uint64_t nAmount = 0;
                     TAO::Register::Unpack(tx[nContract], nAmount);
@@ -704,6 +701,11 @@ namespace TAO
                     uint64_t nAmount = 0;
                     refContract >> nAmount;
 
+                    /* Check that this notification hasn't been suppressed */
+                    uint64_t nTimeout = 0;
+                    if(LLD::Local->ReadSuppressNotification(refContract.Hash(), std::get<1>(contract), nTimeout) && nTimeout > runtime::unifiedtimestamp())
+                        continue;
+
                     /* Add this to the pending amount */
                     nPending += nAmount;
                 }
@@ -722,6 +724,11 @@ namespace TAO
                 {
                     /* Get a reference to the contract */
                     const TAO::Operation::Contract& refContract = std::get<0>(contract);
+
+                    /* Check that this notification hasn't been suppressed */
+                    uint64_t nTimeout = 0;
+                    if(LLD::Local->ReadSuppressNotification(refContract.Hash(), std::get<1>(contract), nTimeout) && nTimeout > runtime::unifiedtimestamp())
+                        continue;
 
                     /* Reset the contract operation stream. */
                     refContract.Reset();
@@ -791,7 +798,6 @@ namespace TAO
                     /* Add this to our pending balance */
                     nPending += nPartial;
                 }
-
             }
 
             return nPending;
@@ -1016,7 +1022,13 @@ namespace TAO
                     /* Get the transaction from disk. */
                     TAO::Ledger::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                        debug::error(FUNCTION, "Failed to read transaction");
+                    {
+                        /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                        if(config::fClient.load())
+                            break;
+                        else
+                            throw APIException(-108, "Failed to read transaction");
+                    }
 
                     /* Skip this transaction if it is mature. */
                     if(LLD::Ledger->ReadMature(hashLast))
@@ -1174,7 +1186,7 @@ namespace TAO
 
                 /* Get all objects owned by this token */
                 std::vector<TAO::Register::Address> vTokenizedObjects;
-                ListTokenizedObjects(hashToken, vTokenizedObjects);
+                ListTokenizedObjects(hashGenesis, hashToken, vTokenizedObjects);
 
                 /* Add them to the list if they are not already in there */
                 for(const auto& address : vTokenizedObjects)
@@ -1189,11 +1201,49 @@ namespace TAO
 
 
         /* Finds all objects that have been tokenized and therefore owned by hashToken */
-        bool ListTokenizedObjects(const TAO::Register::Address& hashToken,
+        bool ListTokenizedObjects(const uint256_t hashGenesis, const TAO::Register::Address& hashToken,
                                   std::vector<TAO::Register::Address>& vObjects)
         {
             /* There is no index of the assets owned by a token.  Therefore, to determine which assets the token owns, we can scan
                through the events for the token itself to find all object transfers where the new owner is the token. */
+
+
+            /* If we are in client mode we need to first check whether we own the token or not.  If we don't then we have to
+               download the sig chain of the token owner so that we have access to all of the token's events. */
+            if(config::fClient.load())
+            {
+                /* First grab the token object */
+                TAO::Register::Object token;
+                if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
+                    throw APIException(-125, "Token not found");
+
+                /* Now check the owner.  We should already be subscribed to events for any tokens that the caller owns, so if this
+                   token owner is not the caller then we need to synchronize to the events of the token */
+                if(token.hashOwner != hashGenesis)
+                {
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                        if(pNode != nullptr)
+                        {
+                            /* The transaction ID of the last event */
+                            uint512_t hashLast = 0;
+                            LLD::Ledger->ReadLastEvent(hashToken, hashLast);
+
+                            debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing events for foreign token");
+
+                            /* Request the sig chain. */
+                            debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashToken.SubString());
+
+                            LLP::TritiumNode::BlockingMessage(30000, pNode.get(), LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashToken, hashLast);
+
+                            debug::log(1, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashToken.SubString());
+                        }
+                        else
+                            debug::error(FUNCTION, "no connections available...");
+                    }
+                }
+            }
 
             /* Transaction for the event. */
             TAO::Ledger::Transaction tx;
@@ -1387,6 +1437,234 @@ namespace TAO
         }
 
 
+        /* Get the number of transactions in the sig chain relating to the register. */
+        uint32_t GetTxCount(const uint256_t& hashGenesis, const TAO::Register::Object& object, const TAO::Register::Address& hashRegister)
+        {
+            /* return value. */
+            uint32_t nCount = 0;;
+
+            /* Flag indicating that the register is a trust account, as we need to process trust-related transactions differently */
+            bool fTrust = false;
+
+
+            /* We need to check if this register is a trust account as stake/genesis/trust/stake/unstake
+               transactions don't include the account register address like all other transactions do */
+            if(object.Standard() == TAO::Register::OBJECTS::TRUST)
+                fTrust = true;
+
+            /* Get the last transaction. */
+            uint512_t hashLast = 0;
+            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+                throw APIException(-144, "No transactions found");
+
+            /* Loop until genesis. */
+            while(hashLast != 0)
+            {
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                {
+                    /* In client mode it is possible to not have the full sig chain if it is still being downloaded asynchronously.*/
+                    if(config::fClient.load())
+                        break;
+                    else
+                        throw APIException(-108, "Failed to read transaction");
+                }
+
+                /* Flag indicating this transaction is trust related */
+                bool fTrustRelated = false;
+
+                /* The contracts to include that relate to the supplied register */
+                std::vector<std::pair<TAO::Operation::Contract, uint32_t>> vContracts;
+
+                /* Check all contracts in the transaction to see if any of them relates to the requested object register. */
+                uint32_t nContracts = tx.Size();
+                for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
+                {
+                    /* reset trust related flag */
+                    fTrustRelated = false;
+
+                    /* The register address that this contract relates to, if any  */
+                    TAO::Register::Address hashAddress;
+
+                    /* Retrieve the contract from the transaction for easier processing */
+                    const TAO::Operation::Contract& contract = tx[nContract];
+
+                    /* Reset all streams */
+                    contract.Reset();
+
+                    /* Seek the contract operation stream to the position of the primitive. */
+                    contract.SeekToPrimitive();
+
+                    /* Get the contract operation. */
+                    uint8_t OPERATION = 0;
+                    contract >> OPERATION;
+
+                    /* Check the current opcode. */
+                    switch(OPERATION)
+                    {
+                        case TAO::Operation::OP::WRITE:
+                        case TAO::Operation::OP::APPEND:
+                        case TAO::Operation::OP::CREATE:
+                        case TAO::Operation::OP::TRANSFER:
+                        case TAO::Operation::OP::DEBIT:
+                        case TAO::Operation::OP::FEE:
+                        case TAO::Operation::OP::LEGACY:
+                        {
+                            /* Get the Address of the Register. */
+                            contract >> hashAddress;
+                            break;
+                        }
+
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            /* Extract the transaction from contract. */
+                            uint512_t hashTx = 0;
+                            contract >> hashTx;
+
+                            /* Extract the contract-id. */
+                            uint32_t nContract = 0;
+                            contract >> nContract;
+
+                            /* Extract the address from the contract. */
+                            contract >> hashAddress;
+                            break;
+                        }
+
+                        case TAO::Operation::OP::CREDIT:
+                        {
+                            /* Extract the transaction from contract. */
+                            uint512_t hashTx = 0;
+                            contract >> hashTx;
+
+                            /* Extract the contract-id. */
+                            uint32_t nID = 0;
+                            contract >> nID;
+
+                            /* Get the receiving account address. */
+                            contract >> hashAddress;
+                            break;
+                        }
+
+                        case TAO::Operation::OP::TRUST:
+                        case TAO::Operation::OP::GENESIS:
+                        case TAO::Operation::OP::MIGRATE:
+                        {
+                            fTrustRelated = true;
+                            break;
+                        }
+                    }
+
+                    /* If the register from the contract is the same as the requested register OR if the register is a trust account
+                       and the contract is a trust related operation, then include this tx in the count*/
+                    if((hashAddress == hashRegister) || (fTrust && fTrustRelated))
+                    {
+                        /* increment the tx count */
+                        ++nCount;
+
+                        /* break out of processing this transaction as we don't need to look at any more contracts in it */
+                        break;
+                    }
+                }
+
+                /* Set the next last. */
+                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
+
+            }
+
+            return nCount;
+        }
+
+
+        /*Used for client mode, this method will download the signature chain transactions and events for a given genesis */
+        bool DownloadSigChain(const uint256_t& hashGenesis, bool bSyncEvents)
+        {
+            if(LLP::TRITIUM_SERVER)
+            {
+                std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                if(pNode != nullptr)
+                {
+                    runtime::timer TIMER;
+                    TIMER.Start();
+                    uint32_t nStart = TIMER.ElapsedMilliseconds();
+                    debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing Signatiure Chain");
+
+                    /* Request the sig chain. */
+                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+
+                    LLP::TritiumNode::SyncSigChain(pNode.get(), hashGenesis, true, bSyncEvents);
+
+                    uint32_t nStop = TIMER.ElapsedMilliseconds();
+
+                    debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString(), " in ", nStop - nStart, " milliseconds");
+
+
+                    return true;
+                }
+                else
+                    return debug::error(FUNCTION, "no connections available...");
+            }
+            else
+                return debug::error(FUNCTION, "Tritium server not initialized...");
+        }
+
+
+        /* Searches the sig chain for the first account for the given token type */
+        bool GetAccountByToken(const uint256_t& hashGenesis, const uint256_t& hashToken, TAO::Register::Address& hashAccount)
+        {
+            /* Flag indicating if an account was found */
+            bool fFound = false;
+
+            /* We search for the first account of the specified token type.  NOTE that the owner my not
+               have an account for the token at this stage, in which case we can just skip the notification
+               for now until they do have one */
+
+            /* Get the list of registers owned by this sig chain */
+            std::vector<TAO::Register::Address> vAccounts;
+            if(!ListAccounts(hashGenesis, vAccounts, false, false))
+                throw APIException(-74, "No registers found");
+
+            /* Read all the registers to that they are sorted by creation time */
+            std::vector<std::pair<TAO::Register::Address, TAO::Register::State>> vRegisters;
+            GetRegisters(vAccounts, vRegisters);
+
+            /* Iterate all registers to find the first for the token being credited */
+            for(const auto& state : vRegisters)
+            {
+                /* Double check that it is an object before we cast it */
+                if(state.second.nType != TAO::Register::REGISTER::OBJECT)
+                    continue;
+
+                /* Cast the state to an Object register */
+                TAO::Register::Object object(state.second);
+
+                /* Check that this is a non-standard object type so that we can parse it and check the type*/
+                if(object.nType != TAO::Register::REGISTER::OBJECT)
+                    continue;
+
+                /* parse object so that the data fields can be accessed */
+                if(!object.Parse())
+                    throw APIException(-36, "Failed to parse object register");
+
+                /* Check that this is an account */
+                uint8_t nStandard = object.Standard();
+                if(nStandard != TAO::Register::OBJECTS::ACCOUNT)
+                    continue;
+
+                /* Check the account is for the specified token */
+                if(object.get<uint256_t>("token") != hashToken)
+                    continue;
+                else
+                {
+                    /* Stop on the first one we find */
+                    hashAccount = state.first;
+                    fFound = true;
+                    break;
+                }
+            }
+
+            return fFound;
+        }
 
 
     } // End API namespace

@@ -147,7 +147,10 @@ namespace TAO
                 MINER       = 0x04,
 
                 /* Wipe the memory states when writing. */
-                ERASE       = 0x05
+                ERASE       = 0x05,
+
+                /* Trigger remote lookups for -client mode. */
+                LOOKUP      = 0x06,
             };
         }
 

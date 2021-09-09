@@ -42,6 +42,8 @@ namespace config
     extern std::atomic<bool> fMultiuser;
     extern std::atomic<bool> fProcessNotifications;
     extern std::atomic<bool> fInitialized;
+    extern std::atomic<bool> fPoolStaking;
+    extern std::atomic<bool> fStaking;
     extern std::atomic<int32_t> nVerbose;
 
 

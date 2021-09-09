@@ -73,7 +73,7 @@ The Users API can be found in the following repo path:
 
 ## Finance API
 
-The Finance API provides methods for sending and receiving NXS coins (tokens) between users / accounts, creating accounts, and managing staking.
+The Finance API provides methods for sending and receiving NXS coins or other tokens between users / accounts, creating accounts, and managing staking.
 
 The Finance API can be found in the following repo path:
 
@@ -107,7 +107,7 @@ NOTE: some of the commands in this API require LOGIN. Make sure to use the users
 
 ## Ledger API
 
-The ledger API provides access to the ledger, primarily to create and retrieve blocks and transactions, but also to query for ledger state information. 
+The ledger API provides access to the ledger, primarily to create and retrieve blocks and transactions, but also to query for ledger state information.
 
 The Ledger API can be found in the following repo path:
 

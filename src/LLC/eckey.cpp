@@ -15,14 +15,20 @@ ________________________________________________________________________________
 
 #include <openssl/ecdsa.h>
 #include <openssl/obj_mac.h>
+#include <openssl/evp.h>
 
 #include <LLC/include/key_error.h>
 #include <LLC/include/eckey.h>
+#include <LLC/include/random.h>
+#include <LLC/hash/SK.h> 
 
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/mutex.h>
+#include <Util/templates/datastream.h>
+
 #include <openssl/ec.h> // for EC_KEY definition
+#include <openssl/err.h>
 
 namespace LLC
 {
@@ -276,8 +282,8 @@ namespace LLC
 
 
     /* Constructor from a new curve type. */
-    ECKey::ECKey(const uint32_t nID, const uint32_t nKeySizeIn)
-    : pkey(nullptr)
+    ECKey::ECKey(const uint32_t nID, const uint32_t nKeySizeIn, EC_KEY* key)
+    : pkey(key)
     , fSet(false)
     , fCompressedPubKey(false)
     , nCurveID(nID)
@@ -297,8 +303,9 @@ namespace LLC
             throw key_error("ECKey::ECKey() : Unrecognized EC Type");
         }
 
-        /* Create a new key from the curve type. */
-        pkey = EC_KEY_new_by_curve_name(nCurveID);
+        /* Create a new key from the curve type, if one has not been passed in */
+        if(pkey == nullptr)
+            pkey = EC_KEY_new_by_curve_name(nCurveID);
 
         /* Check for failure. */
         if(pkey == nullptr)
@@ -800,5 +807,57 @@ namespace LLC
     }
 
 
+    /* Uses ECDH to generate a shared key from the private and public keys of two different EC keypairs */
+    bool ECKey::MakeShared(const ECKey& privateKey, const ECKey& publicKey, std::vector<uint8_t> &vchShared)
+    {
+        /* Generate the shared secret */
+        EVP_PKEY_CTX *ctx;
+        unsigned char *skey;
+        size_t skeylen;
+        EVP_PKEY *evpPrivateKey = EVP_PKEY_new();
+        EVP_PKEY_set1_EC_KEY(evpPrivateKey, privateKey.pkey);
+
+        EVP_PKEY *evpPeerKey = EVP_PKEY_new();
+        EVP_PKEY_set1_EC_KEY(evpPeerKey, publicKey.pkey);
+
+        ctx = EVP_PKEY_CTX_new(evpPrivateKey, NULL);
+        if (!ctx)
+            return debug::error("Error generating shared key: ", ERR_error_string(ERR_get_error(), NULL));
+
+        if (EVP_PKEY_derive_init(ctx) <= 0)
+            return debug::error("Error generating shared key: ", ERR_error_string(ERR_get_error(), NULL));
+
+        if (EVP_PKEY_derive_set_peer(ctx, evpPeerKey) <= 0)
+            return debug::error("Error generating shared key: ", ERR_error_string(ERR_get_error(), NULL));
+
+        /* Determine buffer length */
+        if (EVP_PKEY_derive(ctx, NULL, &skeylen) <= 0)
+            return debug::error("Error generating shared key: ", ERR_error_string(ERR_get_error(), NULL));
+
+        skey = (unsigned char*)OPENSSL_malloc(skeylen);
+
+        if (!skey)
+            return false;
+        
+        if (EVP_PKEY_derive(ctx, skey, &skeylen) <= 0)
+            return debug::error("Error generating shared key: ", ERR_error_string(ERR_get_error(), NULL));
+
+        /* Copy the generated key to the vchShared byte vector */
+        vchShared = std::vector<uint8_t>(skey, skey + skeylen);
+
+        /* clean up */
+        OPENSSL_free(skey);
+        EVP_PKEY_free(evpPrivateKey);
+        EVP_PKEY_free(evpPeerKey);
+
+        return true;
+    }
+
+
+    /* Accessor to the internal EC_KEY pointer */
+    EC_KEY* ECKey::GetEC() const
+    {
+        return pkey;
+    }
 
 }

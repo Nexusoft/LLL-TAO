@@ -1,3 +1,4 @@
+
 /*__________________________________________________________________________________________
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
@@ -29,6 +30,10 @@ namespace TAO
 
         /** Very first block hash in the blockchain. **/
         const uint1024_t hashGenesis("0x00000bb8601315185a0d001e19e63551c34f1b7abeb3445105077522a9cbabf3e1da963e3bfbb87d260218b7c6207cb9c6df90b86e6a3ce84366434763bc8bcbf6ccbd1a7d5958996aecbe8205c20b296818efb3a59c74acbc7a2d1a5a6b64aab63839b8b11a6b41c4992f835cbbc576d338404fb1217bdd7909ca7db63bbc02");
+
+
+        /** Very first tritium block in EVER! **/
+        const uint1024_t hashTritium("0x9e804d2d1e1d3f64629939c6f405f15bdcf8cd18688e140a43beb2ac049333a230d409a1c4172465b6642710ba31852111abbd81e554b4ecb122bdfeac9f73d4f1570b6b976aa517da3c1ff753218e1ba940a5225b7366b0623e4200b8ea97ba09cb93be7d473b47b5aa75b593ff4b8ec83ed7f3d1b642b9bba9e6eda653ead9");
 
 
         /** Hash to start the Test Net Blockchain. **/
@@ -149,8 +154,12 @@ namespace TAO
         const uint32_t MAINNET_MINIMUM_INTERVAL_LEGACY = 120;
 
 
+        /** Minimum span between trust blocks mainnet prior to v9 when pooled staking implemented. **/
+        const uint32_t MAINNET_MINIMUM_INTERVAL_PREPOOL = 250;
+
+
         /** Minimum span between trust blocks mainnet. **/
-        const uint32_t MAINNET_MINIMUM_INTERVAL = 250;
+        const uint32_t MAINNET_MINIMUM_INTERVAL = 60;
 
 
         /** NXS token default digits. **/
@@ -216,6 +225,33 @@ namespace TAO
 
         /* The cost per contract when creating transactions faster than the fee-free threshold */
         const uint64_t TX_FEE = 0.01 * NXS_COIN;
+
+
+        /* Stake pool settings */
+
+        /* Percentage of stake reward paid to block finder by coinstakes in the stake pool */
+        const uint64_t POOL_FEE_PCT = 16;
+
+        /* Initial maximum number of coinstakes in a pool stake block (this can be increased based on block age) */
+        const uint64_t POOL_MAX_TX_BASE = 20;
+        const uint64_t POOL_MAX_TX_BASE_TESTNET = 3;
+
+        /* Hard maximum for number of coinstakes in a pool block */
+        const uint64_t POOL_MAX_TX = 200;
+
+        /* Minimum trust account balance to participate in the stake pool */
+        const uint64_t POOL_MIN_STAKE_BALANCE = 1 * NXS_COIN;
+
+        /* Maximum number of times a pool coinstake will be relayed */
+        const uint64_t POOL_MAX_TTL_COUNT = 3;
+
+        /* Starting maximum number of transactions accepted into the stake pool */
+        const uint64_t POOL_MAX_SIZE_BASE = 50;
+        const uint64_t POOL_MAX_SIZE_BASE_TESTNET = 8;
+
+        /* Amount the maximum pool size is incremented if more transactions are needed */
+        const uint64_t POOL_MAX_SIZE_INCREMENT = 50;
+        const uint64_t POOL_MAX_SIZE_INCREMENT_TESTNET = 10;
 
 
 

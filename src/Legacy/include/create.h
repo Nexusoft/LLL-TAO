@@ -18,8 +18,10 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy.h>
 #include <Legacy/types/coinbase.h>
 #include <Legacy/types/reservekey.h>
-#include <Legacy/wallet/wallet.h>
 
+#ifndef NO_WALLET
+#include <Legacy/wallet/wallet.h>
+#endif
 
 namespace Legacy
 {
@@ -93,6 +95,8 @@ namespace Legacy
     void AddTransactions(std::vector<Transaction>& vtx);
 
 
+#ifndef NO_WALLET
+
     /** SignBlock
      *
      *  Sign the block with the key that found the block.
@@ -123,6 +127,8 @@ namespace Legacy
      *
      **/
     bool CheckWork(const LegacyBlock& block, Legacy::Wallet& wallet);
+
+#endif
 
 }
 

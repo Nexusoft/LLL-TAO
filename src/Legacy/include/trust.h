@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <Legacy/types/trustkey.h>
 
+namespace TAO { namespace Operation { class Contract; } }
+
 namespace Legacy
 {
 

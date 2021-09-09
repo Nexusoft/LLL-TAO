@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/block.h>
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -216,6 +217,20 @@ namespace TAO
         bool CheckConsistency(const uint512_t& hashLastTrust, uint64_t& nTrustRet);
 
 
+        /** FindTrustAccount
+         *
+         *  Gets the trust account for a signature chain.
+         *
+         *  @param[in] hashGenesis - genesis of user account signature chain that is staking
+         *  @param[out] account - trust account belonging to hashGenesis sig chain
+         *  @param[out] fIndexed - true if trust account has previously staked genesis
+         *
+         *  @return true if the trust account was successfully retrieved
+         *
+         **/
+        bool FindTrustAccount(const uint256_t& hashGenesis, TAO::Register::Object &account, bool &fIndexed);
+
+
         /** FindLastStake
          *
          *  Find the last stake transaction for a user signature chain.
@@ -226,7 +241,52 @@ namespace TAO
          *  @return True if last stake found, false otherwise
          *
          **/
-        bool FindLastStake(const uint256_t& hashGenesis, Transaction& tx);
+        bool FindLastStake(const uint256_t& hashGenesis, Transaction &tx);
+
+
+        /** GetStakeProofs
+         *
+         *  Retrieve the coinstake proofs for a given pool stake block. All coinstake operations within a pool block must
+         *  include these same proofs. This ensures that all pool coinstakes included in the block were generated for the
+         *  same block.
+         *
+         *  This method calculates nTimeBegin, nTimeEnd, and hashProof for pool coinstake operations. These will be set as follows:
+         *
+         *  nTimeBegin - the timestamp from the oldest transaction included in the block.
+         *  If the block has no non-coinstake transactions, or the oldest transaction timestamp is after nTimeEnd,
+         *  this value is the prior block time and nTimeBegin = nTimeEnd
+         *
+         *  nTimeEnd - the timestamp from the prior block (statePrev)
+         *
+         *  hashProof - To start, this function will take the first tx in the stateCurrent.vtx, hash its tx hash, and assign
+         *  it as hashProof. For remaining tx in the vtx, it will hash the current hashProof with the tx hash of each. This
+         *  continues until the entire vtx is processed and the resulting hashProof value is returned.
+         *  Only transactions generated prior to nTimeEnd are included in this calculation.
+         *  When nTimeBegin = nTimeEnd (no tx in current block), hashProof is the hash of the previous block hash (from statePrev)
+         *
+         *  @param[in] blockCurrent - The pool stake block for which the stake proofs apply
+         *  @param[in] statePrev - The block state prior to the block for which the stake proofs apply
+         *  @param[out] nTimeBegin - beginning time for coinstake op
+         *  @param[out] nTimeEnd - ending time for coinstake op
+         *  @param[out] hashProof - proof for coinstake op
+         *
+         *  @return true if stake proofs calculated successfully, false otherwise
+         *
+         **/
+        bool GetStakeProofs(const TritiumBlock& blockCurrent, const BlockState& statePrev,
+                            uint64_t &nTimeBegin, uint64_t &nTimeEnd, uint256_t &hashProof);
+
+
+        /** GetPoolStakeFee
+         *
+         *  Calculate the fee to be paid if a coinstake is mined by the stake pool.
+         *
+         *  @param[in] nReward - Coinstake reward calculated before fee
+         *
+         *  @return the fee amount
+         *
+         **/
+        uint64_t GetPoolStakeFee(const uint64_t& nReward);
 
     }
 }

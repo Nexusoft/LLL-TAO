@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/p2p.h>
 #include <LLP/include/lisp.h>
 #include <LLP/include/port.h>
 
@@ -26,9 +27,11 @@ ________________________________________________________________________________
 #include <TAO/API/include/cmd.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/types/tritium_minter.h>
+#include <TAO/Ledger/include/dispatch.h>
+#include <TAO/Ledger/types/stake_minter.h>
 #include <TAO/Ledger/include/timelocks.h>
 
+#include <Util/include/block_notify.h>
 #include <Util/include/convert.h>
 #include <Util/include/filesystem.h>
 #include <Util/include/signals.h>
@@ -40,6 +43,7 @@ ________________________________________________________________________________
 #ifndef WIN32
 #include <sys/resource.h>
 #endif
+
 
 int main(int argc, char** argv)
 {
@@ -116,48 +120,18 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
     }
 
-    /* Handle the beta server. */
-    uint16_t nPort = static_cast<uint16_t>(config::fTestNet.load() ? TESTNET_CORE_LLP_PORT : MAINNET_CORE_LLP_PORT);
+    /* Startup the time server. */    
+    LLP::TIME_SERVER = LLP::CreateTimeServer();
 
-    /* Startup the time server. */
-    LLP::TIME_SERVER = new LLP::Server<LLP::TimeNode>(
-        nPort,
-        10,
-        10, //Timeout set to 10s
-        true,
-        1,
-        10,
-        10,
-        config::GetBoolArg(std::string("-unified"), false),
-        true,
-        config::GetBoolArg(std::string("-meters"), false),
-        true,
-        60000);
-
-    /* Get the port for the Core API Server. */
-    nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
-
+    
+    #ifndef NO_WALLET
     /* Set up RPC server */
-    LLP::RPC_SERVER = new LLP::Server<LLP::RPCNode>(
-        nPort,
-        static_cast<uint16_t>(config::GetArg(std::string("-rpcthreads"), 4)),
-        30,
-        true,
-        /* The connection score (total connections per second, default 5). */
-        static_cast<uint32_t>(config::GetArg(std::string("-rpccscore"), 5)),
-
-        /* The request score (total requests per second, default 5.) */
-        static_cast<uint32_t>(config::GetArg(std::string("-rpcrscore"), 5)),
-
-        /* The DDOS moving average timespan (default: 60 seconds). */
-        static_cast<uint32_t>(config::GetArg(std::string("-rpctimespan"), 60)),
-        true,
-
-        /* Flag to determine if server should allow remote connections. */
-        config::GetBoolArg(std::string("-rpcremote"), false),
-
-        false,
-        false);
+    if(!config::fClient.load())
+    {
+        /* Instantiate the RPC server */
+        LLP::RPC_SERVER = LLP::CreateRPCServer();
+    }
+    #endif
 
 
     /* Startup timer stats. */
@@ -171,62 +145,88 @@ int main(int argc, char** argv)
         /* Initialize LLD. */
         LLD::Initialize();
 
-        /* Load the Wallet Database. NOTE this needs to be done before ChainState::Initialize as that can disconnect blocks causing
-           the wallet to be accessed if they contain any legacy stake transactions */
-        bool fFirstRun;
-        if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
-            return debug::error("Failed initializing wallet");
 
         /* Initialize ChainState. */
         TAO::Ledger::ChainState::Initialize();
 
+        /* Register the user-configurable blocknotify function with the Ledger Dispatcher so that it is notififed whenever there is a new block*/
+        TAO::Ledger::Dispatch::GetInstance().SubscribeBlock(BlockNotify);
+        
 
-        /* Initialize the scripts for legacy mode. */
-        Legacy::InitializeScripts();
-
-
-        /* Check the wallet loading for errors. */
-        uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
-        if (nLoadWalletRet != Legacy::DB_LOAD_OK)
+        /* We don't need the wallet in client mode. */
+        if(!config::fClient.load())
         {
-            if (nLoadWalletRet == Legacy::DB_CORRUPT)
-                return debug::error("Failed loading wallet.dat: Wallet corrupted");
-            else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
-                return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
-            else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
-            {
-                debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning now");
+            #ifndef NO_WALLET
 
-                Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+            /* Load the Wallet Database. NOTE this needs to be done before ChainState::Initialize as that can disconnect blocks causing
+               the wallet to be accessed if they contain any legacy stake transactions */
+            bool fFirstRun;
+            if (!Legacy::Wallet::InitializeWallet(config::GetArg(std::string("-wallet"), Legacy::WalletDB::DEFAULT_WALLET_DB)))
+                return debug::error("Failed initializing wallet");
+
+
+            /* Initialize the scripts for legacy mode. */
+            Legacy::InitializeScripts();
+
+
+            /* Check the wallet loading for errors. */
+            uint32_t nLoadWalletRet = Legacy::Wallet::GetInstance().LoadWallet(fFirstRun);
+            if (nLoadWalletRet != Legacy::DB_LOAD_OK)
+            {
+                if (nLoadWalletRet == Legacy::DB_CORRUPT)
+                    return debug::error("Failed loading wallet.dat: Wallet corrupted");
+                else if (nLoadWalletRet == Legacy::DB_TOO_NEW)
+                    return debug::error("Failed loading wallet.dat: Wallet requires newer version of Nexus");
+                else if (nLoadWalletRet == Legacy::DB_NEEDS_RESCAN)
+                {
+                    debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning now");
+
+                    Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+                }
+                else
+                    return debug::error("Failed loading wallet.dat");
             }
-            else
-                return debug::error("Failed loading wallet.dat");
+
+
+            /* Handle Rescanning. */
+            if(config::GetBoolArg(std::string("-rescan")))
+                Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+
+
+            /* Relay transactions. */
+            Legacy::Wallet::GetInstance().ResendWalletTransactions();
+
+            #else
+
+            /* Initialize the scripts for legacy mode. */
+            Legacy::InitializeScripts();
+            
+            #endif
         }
 
 
-        /* Handle Rescanning. */
-        if(config::GetBoolArg(std::string("-rescan")))
-            Legacy::Wallet::GetInstance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+        /* Get the port for Tritium Server. Allow serverport or port params to be used (serverport takes preference)*/
+        uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT)); 
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-serverport"), nPort));
 
-
-        /* Relay transactions. */
-        Legacy::Wallet::GetInstance().ResendWalletTransactions();
-
-
-        /* Get the port for Tritium Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-serverport"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
-
+        uint16_t nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-sslport"), config::fTestNet.load() ? (TRITIUM_TESTNET_SSL_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_SSL_PORT));
 
         /* Initialize the Tritium Server. */
-        LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort);
+        LLP::TRITIUM_SERVER = LLP::CreateTAOServer<LLP::TritiumNode>(nPort, nSSLPort);
+
+        /* Register the tritium server with the ledger dispatcher so that it is notififed whenever there is a new block*/
+        TAO::Ledger::Dispatch::GetInstance().SubscribeBlock(LLP::TritiumNode::RelayBlock);
+
+
+        /* Get the port for the P2P server. */
+        nPort = static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), config::fTestNet.load() ? TESTNET_P2P_PORT : MAINNET_P2P_PORT));
+        nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-p2psslport"), config::fTestNet.load() ? TESTNET_P2P_SSL_PORT : MAINNET_P2P_SSL_PORT));
+        /* Initialize the P2P Server */
+        LLP::P2P_SERVER = LLP::CreateP2PServer<LLP::P2PNode>(nPort, nSSLPort);
 
 
         /* Initialize API Pointers. */
         TAO::API::Initialize();
-
-
-        /* Get the port for the Core API Server. */
-        nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
 
 
         /* ensure that apiuser / apipassword has been configured */
@@ -242,39 +242,7 @@ int main(int argc, char** argv)
         else
         {
             /* Create the Core API Server. */
-            LLP::API_SERVER = new LLP::Server<LLP::APINode>(
-                /* The port this server listens on. */
-                nPort,
-
-                /* The total data I/O threads. */
-                static_cast<uint16_t>(config::GetArg(std::string("-apithreads"), 10)),
-
-                /* The timeout value (default: 30 seconds). */
-                static_cast<uint32_t>(config::GetArg(std::string("-apitimeout"), 30)),
-
-                /* Enable DDOS protection, always on */
-                false,
-
-                /* The connection score (total connections per second, default 5). */
-                static_cast<uint32_t>(config::GetArg(std::string("-apicscore"), 5)),
-
-                /* The request score (total requests per second, default 5.) */
-                static_cast<uint32_t>(config::GetArg(std::string("-apirscore"), 5)),
-
-                /* The DDOS moving average timespan (default: 60 seconds). */
-                static_cast<uint32_t>(config::GetArg(std::string("-apitimespan"), 60)),
-
-                /* listen, always on */
-                true,
-
-                /* Flag to determine if server should allow remote connections. */
-                config::GetBoolArg(std::string("-apiremote"), false),
-
-                /* meters, always off */
-                false,
-
-                /* connection manager, always off, not required for API as connections are ephemeral */
-                false);
+            LLP::API_SERVER = LLP::CreateAPIServer();
         }
 
 
@@ -283,7 +251,7 @@ int main(int argc, char** argv)
 
 
         /* Set up Mining Server */
-        if(config::GetBoolArg(std::string("-mining")))
+        if(!config::fClient.load() && config::GetBoolArg(std::string("-mining")))
               LLP::MINING_SERVER.store(LLP::CreateMiningServer());
 
 
@@ -324,7 +292,7 @@ int main(int argc, char** argv)
 
 
         /* Stop stake minter if running. Minter ignores request if not running, so safe to just call both */
-        TAO::Ledger::TritiumMinter::GetInstance().Stop();
+        TAO::Ledger::StakeMinter::GetInstance().Stop();
 
 
         /* Wait for the private condition. */
@@ -340,26 +308,28 @@ int main(int argc, char** argv)
     timer.Reset();
 
 
-    /* Shutdown the API. */
-    TAO::API::Shutdown();
-
-
     /* After all servers shut down, clean up underlying networking resources */
     LLP::Shutdown();
 
+    /* Shutdown the API. */
+    TAO::API::Shutdown();
 
     /* Shutdown database instances. */
     LLD::Shutdown();
 
 
     /* Shutdown these subsystems if nothing failed. */
-    if(!fFailed)
+    if(!fFailed && !config::fClient.load())
     {
+        #ifndef NO_WALLET
+
         /* Shut down wallet database environment. */
         if (config::GetBoolArg(std::string("-flushwallet"), true))
             Legacy::WalletDB::ShutdownFlushThread();
 
         Legacy::BerkeleyDB::GetInstance().Shutdown();
+
+        #endif
     }
 
 

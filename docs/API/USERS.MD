@@ -30,9 +30,12 @@ The following methods are currently supported by this API
 [`list/names`](#listnames)    
 [`list/namespaces`](#listnamespaces)  
 [`list/notifications`](#listnotifications)  
+[`process/notifications`](#processnotifications)  
 [`list/tokens`](#listtokens)  
 [`list/transactions`](#listtransactions)
-
+[`save/session`](#savesession)
+[`load/session`](#loadsession)
+[`has/session`](#hassession)
 
 
 
@@ -361,7 +364,7 @@ The following example sets the initial recovery seed on the sig chain
 
 # `get/status`
 
-Only available in single-user API mode (multiuser=0), this method will return status information for the currently logged in user
+Return status information for the currently logged in user
 
 
 ### Endpoint:
@@ -371,9 +374,10 @@ Only available in single-user API mode (multiuser=0), this method will return st
 
 ### Parameters:
 
-````
-NONE
-````
+
+`session` : When using multi-user API mode the session parameter must be supplied to identify which user to return the status for.
+
+`pin` : The pin for the signature chain.  This should only be supplied in multi-user mode and only if the caller requires the `username` to be included in the response.  In single user mode the username is always returned  
 
 
 ### Return value JSON object:
@@ -381,6 +385,7 @@ NONE
 {
     "username": "bob",
     "genesis": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269ae000",
+    "confirmed": true,
     "recovery": true,
     "transactions": 272,
     "notifications": 10,
@@ -396,9 +401,11 @@ NONE
 
 ### Return values:
 
-`username` : The username of the currently logged in user
+`username` : The username of the currently logged in user.  This is always included in single-user API mode, but is only included in multi-user mode if the caller provides the `pin` parameter. 
 
 `genesis` : The signature chain genesis hash for the currently logged in user.
+
+`confirmed` : Boolean flag indicating whether the genesis transaction for this signature chain has at least one confirmation.
 
 `recovery` : Flag indicating whether the recovery seed has been set for this user. 
 
@@ -439,9 +446,13 @@ This will list off all of the assets owned by a signature chain.
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+`limit` : The number of records to return for the current page. The default is 100.
 
-`limit` : The number of results to return for the current page.  Default is 100
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 ### Return value JSON object:
@@ -507,9 +518,15 @@ This will list off all of the token accounts belonging to a particular signature
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
 
-`limit` : The number of results to return for the current page.  Default is 100
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 
@@ -560,6 +577,8 @@ This will list off all of the token accounts belonging to a particular signature
 
 `unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
 
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the account.
+
 
 ****
 
@@ -582,11 +601,15 @@ This will list all invoices issued or received by the signature chain.
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
-
-`limit` : The number of results to return for the current page.  Default is 100
-
 `status` : Optional filter by invoice status.  Values can be `OUTSTANDING` (the invoice has been issued but not paid), `PAID` (the invoice has been paid by the recipient), or `CANCELLED` (the invoice was cancelled by the issuer before payment)
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 ### Return value JSON object:
@@ -679,9 +702,13 @@ This will list off all of the supply chain items (append registers) owned by a s
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+`limit` : The number of records to return for the current page. The default is 100.
 
-`limit` : The number of results to return for the current page.  Default is 100
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 ### Return value JSON object:
@@ -732,9 +759,13 @@ This will list off all of the names owned by the signature chain.  For privacy r
 
 `session` : For multi-user API mode (configured with multiuser=1), the session is required to identify  which signature chain should be used to return the Names for. For single-user API mode the session should not be supplied an the currently logged in users signature chain is used.
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+`limit` : The number of records to return for the current page. The default is 100.
 
-`limit` : The number of results to return for the current page.  Default is 100
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 
@@ -785,9 +816,13 @@ This will list off all of the namespaces owned by the signature chain.
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+`limit` : The number of records to return for the current page. The default is 100.
 
-`limit` : The number of results to return for the current page.  Default is 100
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 
@@ -838,9 +873,15 @@ This will list off all of the transactions sent to a particular genesis or usern
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) notifications.  The default value is 0 if not supplied.
+`suppressed`: Optional boolean flag indicating that suppressed notifications should be included in the list. 
 
-`limit` : The number of notifications to return for the current page.  Default is 100
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 ### Return value JSON object:
@@ -883,6 +924,8 @@ An array of contracts deifned as:
 
 `txid` : The transaction that was credited / claimed.
 
+`suppressed`: If the caller included the optional `suppressed` flag, then the response will include this field to indicate whether this notification is currently being suppressed or not. 
+
 `from` : For `DEBIT` transactions, the register address of the account that the debit is being made from.
 
 `from_name` : For `DEBIT` transactions, the name of the account that the debit is being made from.  Only included if the name can be resolved.
@@ -902,6 +945,51 @@ An array of contracts deifned as:
 `proof` : The register address of the token account proving the the split dividend debit.
 
 `dividend_payment` : Flag indicating that this debit is a split dividend payment to a tokenized asset
+
+
+****
+
+
+# `process/notifications`
+
+Process all outstanding notifications for a logged in signature chain.  This API method can be used instead of running the  
+
+
+### Endpoint:
+
+`/users/process/notifications`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.  This is required unless the signature chain is already unlocked for notifications.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the notifications should be processed for. For single-user API mode the session should not be supplied.
+
+`suppressed`: Optional boolean flag indicating that suppressed notifications should be included when processing.
+
+
+### Return value JSON object:
+```
+{
+    "processed": 7,
+    "transactions": [
+        {
+            "txid": "01c4cf7b356d95bb783c31cd22119ff6dfcb5efc91dd1cf6c80f0cc4fd612dd7d03ed62955b0641f1b8985e38c2d7cd8fe7a07a98a46701b55c77559bd3c3152"
+        }
+    ]
+}
+
+
+```
+
+### Return values:
+
+`processed` : The number of notifications (contracts) processed.  
+
+`transactions` : Array of transaction ID's (`txid`) for each transaction that was created to process the notifications.  If there are more outstanding notifications than can fit in a single transaction, then additional transactions will be created until all notifications are processed.   
+
+**NOTE** : Some outstanding notifications may be skipped by this API call without resulting in an error message.  For example this can happen if the individual notifications conditions cannot be satisfied.
 
 ****
 
@@ -924,9 +1012,16 @@ This will list off all of the tokens that were created by a particular signature
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based).  E.g. passing in page=1 will return the second set of (limit) results.  The default value is 0 if not supplied.
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
 
-`limit` : The number of results to return for the current page.  Default is 100
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 
@@ -963,13 +1058,19 @@ This will list off all of the tokens that were created by a particular signature
 
 `address` : The register address for the account
 
-`balance` : The current balance of the token account.
+`balance` : The available balance of this token.  Initially the balance of the token is equal to the max supply, until the tokens have been distributed to accounts. This is the last confirmed balance less any new debits that you have made since the last block.
+
+`pending` : This is the sum of all confirmed debit transactions that have been made to this token, that have not yet been credited.  To move tokens from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
+
+`unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this token PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to the token it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
 
 `maxsupply` : The maximum available supply for this token.
 
 `currentsupply` : The current number of tokens that have been distributed from this token register.
 
 `decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
+
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the token.
 
 
 ****
@@ -994,16 +1095,20 @@ This will list off all of the transactions for the requested signature chain gen
 
 `username` : The username identifying the signature chain (optional if genesis is supplied).
 
-`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
-
-`limit` : The number of transactions to return for the current page. The default is 100.
-
-`order` : The transaction order, based on signature chain sequence. 'asc' for oldest first, 'desc' for most recent first. The default is 'desc'.
-
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
  - `default` : hash
  - `summary` : type, version, sequence, timestamp, operation, and confirmations.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+`order` : The transaction order, based on signature chain sequence. 'asc' for oldest first, 'desc' for most recent first. The default is 'desc'.
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 
@@ -1090,5 +1195,112 @@ This will list off all of the transactions for the requested signature chain gen
 &nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
 }
+
+****
+
+
+# `save/session`
+
+This will save the users session to the local database, allowing the session to be resumed at a later time without the need to login or unlock.  The users PIN is required as this is used (in conjunction with the genesis) to encrypt the session data before persisting it to the local database. 
+
+
+### Endpoint:
+
+`/users/save/session`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+
+### Return value JSON object:    
+```
+{
+    "success": true
+}
+
+```
+
+### Return values:
+
+`success` : Boolean flag indicating that the session was saved successfully .
+
+
+****
+
+
+# `load/session`
+
+Loads a previously saved session from the local database.  In addition to restoring the logged in status of the user, the session resumes the unlocked status that was active at the time it was saved.  The users PIN is required as this is used (in conjunction with the genesis) to decrypt the session data loaded from the local database. 
+
+
+### Endpoint:
+
+`/users/load/session`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain to load the session for (optional if username is supplied).
+
+`username` : The username identifying the signature chain to load the session for (optional if genesis is supplied).
+
+`pin` : The PIN for this signature chain.
+
+
+### Return value JSON object:    
+```
+{
+    "genesis": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "session": "0000000000000000000000000000000000000000000000000000000000000000"
+}
+
+
+```
+
+### Return values:
+
+`genesis` : The signature chain genesis hash is echoed back to confirm the session has been loaded for the correct user.
+
+`session` : The session ID for the resumed session.  NOTE: in multi-user mode this will be a NEW session ID, generated at the point the session is loaded.  The previous session ID is not persisted and restored.  When not in multi-user mode this will always be 0 
+
+
+****
+
+
+# `has/session`
+
+Determines whether a previously saved session exists in the local database for the specified user.
+
+
+### Endpoint:
+
+`/users/has/session`
+
+
+### Parameters:
+
+`genesis` : The genesis hash identifying the signature chain to check the session for (optional if username is supplied).
+
+`username` : The username identifying the signature chain to check the session for (optional if genesis is supplied).
+
+
+### Return value JSON object:    
+```
+{
+    "genesis": "a2e51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
+    "has": true
+}
+
+
+```
+
+### Return values:
+
+`genesis` : The signature chain genesis hash is echoed back to confirm the session has been checked for the correct user.
+
+`has` : Boolean flag indicating whether the session exists in the local database or not 
+
 
 ****

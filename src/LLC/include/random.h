@@ -69,6 +69,14 @@ namespace LLC
     uint64_t GetRand(uint64_t nMax = std::numeric_limits<uint64_t>::max());
 
 
+    /** GetRand128
+     *
+     *  Get random 128 bit number.
+     *
+     **/
+    uint128_t GetRand128();
+
+
     /** GetRand256
      *
      *  Get random 256 bit number.

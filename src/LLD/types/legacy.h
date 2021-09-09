@@ -219,6 +219,19 @@ namespace LLD
         bool ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, Legacy::Transaction &tx);
 
 
+        /** ReadLastEvent
+         *
+         *  Reads the last event (highest sequence number) for the sig chain / register
+         *
+         *  @param[in] hashAddress The event address to read.
+         *  @param[out] hashLast The last hash (txid) to read.
+         *
+         *  @return True if the write was successful.
+         *
+         **/
+        bool ReadLastEvent(const uint256_t& hashAddress, uint512_t& hashLast);
+
+
         /** WriteTrustConversion
          *
          *  Writes the key of a trust key to record that it has been converted from Legacy to Tritium.

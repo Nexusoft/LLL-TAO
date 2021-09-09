@@ -90,7 +90,7 @@ namespace TAO
 
             /* Check for transaction on disk. */
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
-                return false;
+                return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
             debug::log(3, "ACCEPT --------------------------------------");
             if(config::nVerbose >= 3)
@@ -134,7 +134,7 @@ namespace TAO
 
                     /* Ask for the missing transaction. */
                     if(pnode)
-                        pnode->PushMessage(LLP::ACTION::GET, uint8_t(LLP::TYPES::TRANSACTION), tx.hashPrevTx);
+                        pnode->PushMessage(LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::TRANSACTION), tx.hashPrevTx);
 
                     return false;
                 }
@@ -210,8 +210,8 @@ namespace TAO
                 /* Relay the transaction notification. */
                 LLP::TRITIUM_SERVER->Relay
                 (
-                    LLP::ACTION::NOTIFY,
-                    uint8_t(LLP::TYPES::TRANSACTION),
+                    LLP::Tritium::ACTION::NOTIFY,
+                    uint8_t(LLP::Tritium::TYPES::TRANSACTION),
                     hashTx
                 );
             }

@@ -70,7 +70,7 @@ namespace LLP
     void RPCNode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
         /* Log connect event */
-        if(EVENT == EVENT_CONNECT)
+        if(EVENT == EVENTS::CONNECT)
         {
             debug::log(3, NODE, fOUTGOING ? "Outgoing" : "Incoming",
                        " RPC Connected at timestamp ",   runtime::unifiedtimestamp());
@@ -80,36 +80,36 @@ namespace LLP
 
 
         /* Log disconnect event */
-        if(EVENT == EVENT_DISCONNECT)
+        if(EVENT == EVENTS::DISCONNECT)
         {
             std::string strReason = "";
             switch(LENGTH)
             {
-                case DISCONNECT_TIMEOUT:
+                case DISCONNECT::TIMEOUT:
                     strReason = "Timeout";
                     break;
 
-                case DISCONNECT_PEER:
+                case DISCONNECT::PEER:
                     strReason = "Peer disconnected";
                     break;
 
-                case DISCONNECT_ERRORS:
+                case DISCONNECT::ERRORS:
                     strReason = "Errors";
                     break;
 
-                case DISCONNECT_POLL_ERROR:
+                case DISCONNECT::POLL_ERROR:
                     strReason = "Poll Error";
                     break;
 
-                case DISCONNECT_POLL_EMPTY:
+                case DISCONNECT::POLL_EMPTY:
                     strReason = "Unavailable";
                     break;
 
-                case DISCONNECT_DDOS:
+                case DISCONNECT::DDOS:
                     strReason = "DDOS";
                     break;
 
-                case DISCONNECT_FORCE:
+                case DISCONNECT::FORCE:
                     strReason = "Forced";
                     break;
 
@@ -130,7 +130,6 @@ namespace LLP
     /** Main message handler once a packet is received. **/
     bool RPCNode::ProcessPacket()
     {
-
         /* Check HTTP authorization */
         if(!Authorized(INCOMING.mapHeaders))
         {
@@ -180,10 +179,12 @@ namespace LLP
                 throw APIException(-1, "Daemon is still initializing");
 
             /* Execute the RPC method. */
+            #ifndef NO_WALLET
             json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
 
             /* Push the response data with json payload. */
             PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
+            #endif
         }
 
         /* Handle for custom API exceptions. */

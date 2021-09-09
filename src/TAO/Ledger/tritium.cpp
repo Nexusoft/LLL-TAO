@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <LLP/packets/tritium.h>
+#include <LLP/packets/message.h>
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
 
@@ -56,33 +56,33 @@ namespace TAO
 
         /* Default constructor. */
         TritiumBlock::TritiumBlock()
-        : Block    ( )
-        , nTime    (runtime::unifiedtimestamp())
-        , producer ( )
-        , ssSystem ( )
-        , vtx      ( )
+        : Block     ( )
+        , nTime     (runtime::unifiedtimestamp())
+        , producer  ( )
+        , ssSystem  ( )
+        , vtx       ( )
         {
         }
 
 
         /* Copy constructor. */
         TritiumBlock::TritiumBlock(const TritiumBlock& block)
-        : Block    (block)
-        , nTime    (block.nTime)
-        , producer (block.producer)
-        , ssSystem (block.ssSystem)
-        , vtx      (block.vtx)
+        : Block     (block)
+        , nTime     (block.nTime)
+        , producer  (block.producer)
+        , ssSystem  (block.ssSystem)
+        , vtx       (block.vtx)
         {
         }
 
 
         /* Move constructor. */
         TritiumBlock::TritiumBlock(TritiumBlock&& block) noexcept
-        : Block    (std::move(block))
-        , nTime    (std::move(block.nTime))
-        , producer (std::move(block.producer))
-        , ssSystem (std::move(block.ssSystem))
-        , vtx      (std::move(block.vtx))
+        : Block     (std::move(block))
+        , nTime     (std::move(block.nTime))
+        , producer  (std::move(block.producer))
+        , ssSystem  (std::move(block.ssSystem))
+        , vtx       (std::move(block.vtx))
         {
         }
 
@@ -104,9 +104,10 @@ namespace TAO
             fConflicted    = block.fConflicted;
 
             nTime          = block.nTime;
-            producer       = block.producer;
             ssSystem       = block.ssSystem;
             vtx            = block.vtx;
+
+            producer   = block.producer;
 
             return *this;
         }
@@ -129,9 +130,10 @@ namespace TAO
             fConflicted    = std::move(block.fConflicted);
 
             nTime          = std::move(block.nTime);
-            producer       = std::move(block.producer);
             ssSystem       = std::move(block.ssSystem);
             vtx            = std::move(block.vtx);
+
+            producer   = std::move(block.producer);
 
             return *this;
         }
@@ -145,11 +147,11 @@ namespace TAO
 
         /* Copy Constructor. */
         TritiumBlock::TritiumBlock(const Block& block)
-        : Block    (block)
-        , nTime    (runtime::unifiedtimestamp())
-        , producer ( )
-        , ssSystem ( )
-        , vtx      ( )
+        : Block     (block)
+        , nTime     (runtime::unifiedtimestamp())
+        , producer  ( )
+        , ssSystem  ( )
+        , vtx       ( )
         {
         }
 
@@ -170,11 +172,11 @@ namespace TAO
 
         /* Copy Constructor. */
         TritiumBlock::TritiumBlock(const SyncBlock& block)
-        : Block    (block)
-        , nTime    (block.nTime)
-        , producer ( )
-        , ssSystem (block.ssSystem)
-        , vtx      ( )
+        : Block     (block)
+        , nTime     (block.nTime)
+        , producer  ( )
+        , ssSystem  (block.ssSystem)
+        , vtx       ( )
         {
             /* Check for version conversions. */
             if(block.nVersion < 7)
@@ -357,19 +359,19 @@ namespace TAO
             /* Proof of stake specific checks. */
             if(IsProofOfStake())
             {
-                /* Check the producer transaction. */
-                if(!producer.IsCoinStake())
-                    return debug::error(FUNCTION, "producer transaction has to be trust/genesis for proof of stake");
-
                 /* Check for nonce of zero values. */
                 if(nNonce == 0)
                     return debug::error(FUNCTION, "proof of stake can't have Nonce value of zero");
 
+                /* Check producer is coinstake */
+                if(!(producer.IsTrust() || producer.IsGenesis()))
+                    return debug::error(FUNCTION, "producer transaction must be trust/genesis for proof of stake");
+
                 /* Check the trust time is before Unified timestamp. */
                 if(producer.nTimestamp > (runtime::unifiedtimestamp() + runtime::maxdrift()))
-                    return debug::error(FUNCTION, "trust timestamp too far in the future");
+                    return debug::error(FUNCTION, "coinstake timestamp too far in the future");
 
-                /* Make Sure Trust Transaction Time is Before Block. */
+                 /* Check coinstake transaction Time is Before Block. */
                 if(producer.nTimestamp > GetBlockTime())
                     return debug::error(FUNCTION, "coinstake timestamp is after block timestamp");
 
@@ -452,7 +454,7 @@ namespace TAO
 
                     /* Check for coinbase / coinstake. */
                     if(tx.IsCoinBase() || tx.IsCoinStake())
-                        return debug::error(FUNCTION, "more than one coinbase / coinstake");
+                        return debug::error(FUNCTION, "cannot have non-producer coinbase / coinstake transaction");
 
                     /* Check the transaction timestamp. */
                     if(GetBlockTime() < uint64_t(tx.nTime))
@@ -487,7 +489,7 @@ namespace TAO
 
                     /* Check for coinbase / coinstake. */
                     if(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsPrivate())
-                        return debug::error(FUNCTION, "more than one coinbase / coinstake");
+                        return debug::error(FUNCTION, "cannot have non-producer coinbase / coinstake transaction");
 
                     /* Check the sequencing. */
                     if(mapLast.count(tx.hashGenesis) && tx.hashPrevTx != mapLast[tx.hashGenesis])
@@ -500,7 +502,7 @@ namespace TAO
                     return debug::error(FUNCTION, "unknown transaction type");
             }
 
-            /* Check producer. */
+            /* Check producer */
             if(mapLast.count(producer.hashGenesis) && producer.hashPrevTx != mapLast[producer.hashGenesis])
                 return debug::error(FUNCTION, "producer transaction out of sequence");
 
@@ -527,7 +529,7 @@ namespace TAO
             if(hashMerkleRoot != BuildMerkleTree(vHashes))
                 return debug::error(FUNCTION, "hashMerkleRoot mismatch");
 
-            /* Verify producer signature (if not synchronizing) */
+            /* Verify producer signature(s) (if not synchronizing) */
             if(!TAO::Ledger::ChainState::Synchronizing())
             {
                 /* Switch based on signature type. */
@@ -609,13 +611,16 @@ namespace TAO
             if(IsPrivate())
             {
                 /* Check producer for correct genesis. */
-                if(producer.hashGenesis != (config::fTestNet ?
+                uint256_t hashGenesis;
+                hashGenesis = producer.hashGenesis;
+
+                if(hashGenesis != (config::fTestNet ?
                     uint256_t("0xa2a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41") :
                     uint256_t("0xa1a74c14508bd09e104eff93d86cbbdc5c9556ae68546895d964d8374a0e9a41")))
                     return debug::error(FUNCTION, "invalid genesis generated");
             }
 
-            /* Check for proof of stake. */
+            /* Validate proof of stake. */
             if(IsProofOfStake() && !CheckStake())
                 return debug::error(FUNCTION, "invalid proof of stake");
 
@@ -683,7 +688,7 @@ namespace TAO
                     return debug::error(FUNCTION, "using an unknown transaction type");
             }
 
-            /* Add the producer transaction */
+            /* Add the producer transaction(s) */
             if(!LLD::Ledger->WriteTx(producer.GetHash(), producer))
                 return debug::error(FUNCTION, "failed to write producer to disk");
 
@@ -718,15 +723,24 @@ namespace TAO
         /* Check the proof of stake calculations. */
         bool TritiumBlock::CheckStake() const
         {
-            /* Reset the coinstake contract streams. */
-            producer[0].Reset();
+            /* Get previous block. Used for block age/coin age and pooled stake proof calculations */
+            TAO::Ledger::BlockState statePrev;
+            if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
+                return debug::error(FUNCTION, "prev block not in database");
 
-            /* Get the trust object register. */
-            TAO::Register::Object account;
+            /* Weights for threshold calculations */
+            cv::softdouble nTrustWeight = cv::softdouble(0.0);
+            cv::softdouble nBlockWeight = cv::softdouble(0.0);
+
+            /* Stake amount and stake change for threshold calculations */
+            int64_t nStakeChange = 0;
+            uint64_t nStake      = 0;
+
+            /* Reset the coinstake contract streams. */
+            producer[0].Seek(1, TAO::Operation::Contract::REGISTERS, STREAM::BEGIN);
 
             /* Deserialize from the stream. */
-            uint8_t nState = 0;
-            producer[0] >>= nState;
+            TAO::Register::Object account;
             producer[0] >>= account;
 
             /* Parse the object. */
@@ -737,33 +751,20 @@ namespace TAO
             if(account.Standard() != TAO::Register::OBJECTS::TRUST)
                 return debug::error(FUNCTION, "stake producer account is not a trust account");
 
-            /* Calculate weights */
-            cv::softdouble nTrustWeight = cv::softdouble(0.0);
-            cv::softdouble nBlockWeight = cv::softdouble(0.0);
-
-            /* Keep track of stake change. */
-            int64_t nStakeChange = 0;
-            uint64_t nStake      = 0;
-
-            /* Check for trust transactions. */
+            /* Process trust transaction. */
             if(producer.IsTrust())
             {
                 /* Seek to last trust. */
-                producer[0].Seek(1, TAO::Operation::Contract::OPERATIONS);
+                producer[0].Seek(1, TAO::Operation::Contract::OPERATIONS, STREAM::BEGIN);
 
                 /* Get last trust hash. */
                 uint512_t hashLastTrust = 0;
                 producer[0] >> hashLastTrust;
 
-                /* Get the claimed trust score. */
+                /* Get the trust score and stake change. */
                 uint64_t nTrustScore = 0;
                 producer[0] >> nTrustScore;
                 producer[0] >> nStakeChange;
-
-                /* Get previous block. Block time used for block age/coin age calculation */
-                TAO::Ledger::BlockState statePrev;
-                if(!LLD::Ledger->ReadBlock(hashPrevBlock, statePrev))
-                    return debug::error(FUNCTION, "prev block not in database");
 
                 /* Get the last stake block. */
                 TAO::Ledger::BlockState stateLast;
@@ -771,7 +772,7 @@ namespace TAO
                     return debug::error(FUNCTION, "last block not in database");
 
                 /* Calculate Block Age (time from last stake block until previous block) */
-                uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+                const uint64_t nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
                 /* Get expected trust and block weights. */
                 nTrustWeight = TrustWeight(nTrustScore);
@@ -781,20 +782,21 @@ namespace TAO
                 nStake = account.get<uint64_t>("stake");
             }
 
+            /* Process genesis transaction. */
             else if(producer.IsGenesis())
             {
                 /* Genesis transaction can't have any transactions. */
                 if(vtx.size() != 0)
-                    return debug::error(FUNCTION, "genesis cannot include transactions");
+                    return debug::error(FUNCTION, "stake genesis cannot include transactions");
 
                 /* Calculate the Coin Age. */
                 const uint64_t nAge = GetBlockTime() - account.nModified;
 
                 /* Validate that Genesis coin age exceeds required minimum. */
                 if(nAge < MinCoinAge())
-                    return debug::error(FUNCTION, "genesis age is immature");
+                    return debug::error(FUNCTION, "stake genesis age is immature");
 
-                /* Trust Weight For Genesis Transaction Reaches Maximum at 90 day Limit. */
+                /* Trust Weight For Genesis Transaction based on coin age. */
                 nTrustWeight = GenesisWeight(nAge);
 
                 /* Set the stake to pre-state value. */
@@ -802,9 +804,9 @@ namespace TAO
             }
 
             else
-                return debug::error(FUNCTION, "invalid stake operation");
+                return debug::error(FUNCTION, "invalid solo stake operation");
 
-            /* If stake added, apply to threshold calculation. */
+            /* If stake added in block finder, apply to threshold calculation. */
             uint64_t nStakeApplied = nStake;
             if(nStakeChange > 0)
                 nStakeApplied += nStakeChange;

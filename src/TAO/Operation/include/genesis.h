@@ -38,9 +38,9 @@ namespace TAO
         class Contract;
 
 
-        /** Write
+        /** Genesis
          *
-         *  Namespace to contain main functions for OP::WRITE
+         *  Namespace to contain main functions for OP::GENESIS
          *
          **/
         namespace Genesis

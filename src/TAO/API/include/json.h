@@ -10,22 +10,34 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
+
 #pragma once
 
+#include <LLC/types/uint1024.h>
 #include <Util/include/json.h>
-#include <TAO/Register/types/object.h>
-#include <TAO/Register/types/address.h>
-#include <Legacy/types/transaction.h>
+#include <TAO/API/types/clause.h>
 
+namespace Legacy { class Transaction; }
 
 /* Global TAO namespace. */
 namespace TAO
 {
+    namespace Operation { class Contract; }
+    namespace Register
+    {
+        class Object;
+        class Address;
+    }
+    namespace Ledger
+    {
+        class Transaction;
+        class BlockState;
+    }
 
     /* API Layer namespace. */
     namespace API
     {
-
+        
         /** BlockToJSON
          *
          *  Converts the block to formatted JSON
@@ -36,7 +48,8 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity);
+        json::json BlockToJSON(const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
+                               const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** TransactionToJSON
@@ -47,14 +60,15 @@ namespace TAO
          *  @param[in] tx The transaction to convert to JSON
          *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
          *  @param[in] nVerbosity determines the amount of transaction data to include in the response
-         *  @param[in] hashCoinbase Used to filter out coinbase transactions to only those belonging to hashCoinbase 
-         * 
+         *  @param[in] hashCoinbase Used to filter out coinbase transactions to only those belonging to hashCoinbase
+         *
          *  @return the formatted JSON object
          *
          **/
-        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, 
-                                     const TAO::Ledger::BlockState& block, uint32_t nVerbosity, 
-                                     const uint256_t& hashCoinbase = 0 );
+        json::json TransactionToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
+                                     const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
+                                     const uint256_t& hashCoinbase = 0,
+                                     const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** TransactionToJSON
@@ -68,7 +82,8 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity);
+        json::json TransactionToJSON(const Legacy::Transaction& tx, const TAO::Ledger::BlockState& block, uint32_t nVerbosity,
+                                     const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** ContractsToJSON
@@ -78,13 +93,14 @@ namespace TAO
          *  @param[in] hashCaller Genesis hash of the callers sig chain (0 if not logged in)
          *  @param[in] tx The transaction with contracts to convert to JSON
          *  @param[in] nVerbosity The verbose output level.
-         *  @param[in] hashCoinbase Used to filter out coinbase transactions to only those belonging to hashCoinbase 
+         *  @param[in] hashCoinbase Used to filter out coinbase transactions to only those belonging to hashCoinbase
          *
          *  @return the formatted JSON object
          *
          **/
-        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx, 
-                                   uint32_t nVerbosity = 0, const uint256_t& hashCoinbase = 0);
+        json::json ContractsToJSON(const uint256_t& hashCaller, const TAO::Ledger::Transaction& tx,
+                                   uint32_t nVerbosity = 0, const uint256_t& hashCoinbase = 0,
+                                   const std::map<std::string, std::vector<Clause>>& vWhere = std::map<std::string, std::vector<Clause>>());
 
 
         /** ContractToJSON
@@ -99,7 +115,7 @@ namespace TAO
          *  @return the formatted JSON object
          *
          **/
-        json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract, 
+        json::json ContractToJSON(const uint256_t& hashCaller, const TAO::Operation::Contract& contract,
                                   uint32_t nContract, uint32_t nVerbosity = 0);
 
 
@@ -133,5 +149,35 @@ namespace TAO
         **/
         void FilterResponse(const json::json& params, json::json& response);
 
+
+        /** GetListParams
+        *
+        *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result 
+        *
+        *  @param[in] params The parameters passed into the request
+        *  @param[out] strOrder The sort order to apply
+        *  @param[out] nLimit The number of results to return
+        *  @param[out] nOffset The offset to apply to the results
+        *  @param[out] vWhere Vector of clauses to apply to filter the results 
+        *
+        *  @return The filtered response
+        *
+        **/
+        void GetListParams(const json::json& params, std::string& strOrder, uint32_t& nLimit, uint32_t& nOffset, std::map<std::string, std::vector<Clause>>& vWhere);
+
+
+        /** MatchesWhere
+        *
+        *  Checks to see if the json response matches the where clauses 
+        *
+        *  @param[in] obj The JSON to be filtered
+        *  @param[in] vWhere Vector of clauses to apply to filter the results
+        *  @param[in] vIgnore Vector of fieldnames to ignore in the vWhere list.  This is useful for those /list/xxx methods that 
+        *             require non-standard params but do not want them interpreted as a where clause.  
+        *
+        *  @return True if the json response meets all of the clauses
+        *
+        **/
+        bool MatchesWhere(const json::json& obj, const std::vector<Clause>& vWhere, const std::vector<std::string>& vIgnore = std::vector<std::string>());
     }
 }

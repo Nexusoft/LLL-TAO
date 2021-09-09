@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/p2p.h>
 
 namespace LLP
 {
@@ -31,6 +32,7 @@ namespace LLP
     extern Server<APINode>*      API_SERVER;
     extern Server<RPCNode>*      RPC_SERVER;
     extern std::atomic<Server<Miner>*>        MINING_SERVER;
+    extern Server<P2PNode>*      P2P_SERVER;
 
 
     /** Current session identifier. **/
@@ -52,6 +54,21 @@ namespace LLP
      **/
     void Shutdown();
 
+    /** CloseListening
+     *
+     *  Closes the listening sockets on all running servers.
+     *
+     **/
+    void CloseListening();
+
+
+    /** OpenListening
+     *
+     *  Restarts the listening sockets on all running servers.
+     *
+     **/
+    void OpenListening();
+
 
     /** CreateMiningServer
      *
@@ -59,6 +76,36 @@ namespace LLP
      *
      **/
     Server<Miner>* CreateMiningServer();
+
+
+    /** CreateTimeServer
+     *
+     *  Helper for creating the Time server.
+     *
+     *  @return Returns the server.
+     *
+     **/
+    Server<TimeNode>* CreateTimeServer();
+
+
+    /** CreateRPCServer
+     *
+     *  Helper for creating the RPC server.
+     *
+     *  @return Returns a new RPC server.
+     *
+     **/
+    Server<RPCNode>* CreateRPCServer();
+
+
+    /** CreateAPIServer
+     *
+     *  Helper for creating the API server.
+     *
+     *  @return Returns a new API server.
+     *
+     **/
+    Server<APINode>* CreateAPIServer();
 
 
     /** MakeConnections
@@ -75,8 +122,19 @@ namespace LLP
         if(config::mapMultiArgs["-connect"].size() > 0)
         {
             /* Add connections and resolve potential DNS lookups. */
-            for(const auto& node : config::mapMultiArgs["-connect"])
-                pServer->AddConnection(node, pServer->GetPort(), true);
+            for(const auto& address : config::mapMultiArgs["-connect"])
+            {
+                /* Flag indicating connection was successful */
+                bool fConnected = false;
+                
+                /* First attempt SSL if configured */
+                if(pServer->SSLEnabled())
+                   fConnected = pServer->AddConnection(address, pServer->GetPort(true), true, true);
+
+                /* If SSL connection failed or was not attempted and SSL is not required, attempt on the non-SSL port */
+                if(!fConnected && !pServer->SSLRequired())
+                    fConnected = pServer->AddConnection(address, pServer->GetPort(false), false, true);
+            }
         }
 
         /* -addnode means add to address manager and let it make connections. */
@@ -84,7 +142,7 @@ namespace LLP
         {
             /* Add nodes and resolve potential DNS lookups. */
             for(const auto& node : config::mapMultiArgs["-addnode"])
-                pServer->AddNode(node, pServer->GetPort(), true);
+                pServer->AddNode(node, true);
         }
     }
 
@@ -97,50 +155,132 @@ namespace LLP
      *  the TAO framework. I just think it's a future proof name :)
      *
      *  @param[in] port The unique port for the server type
+     *  @param[in] port The SSL port for the server type
      *
      *  @return Returns a templated server.
      *
      **/
     template <class ProtocolType>
-    Server<ProtocolType>* CreateTAOServer(uint16_t nPort)
+    Server<ProtocolType>* CreateTAOServer(uint16_t nPort, uint16_t nSSLPort)
     {
+        LLP::ServerConfig config;
+
+        /* The port this server listens on. */
+        config.nPort =  nPort;
+
+        /* The SSL port this server listens on. */
+        config.nSSLPort =  nSSLPort;
+
+        /* The total data I/O threads. */
+        config.nMaxThreads = static_cast<uint16_t>(config::GetArg(std::string("-threads"), 8));
+
+        /* The timeout value (default: 30 seconds). */
+        config.nTimeout = static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 120));
+
+        /* The DDOS if enabled. */
+        config.fDDOS = config::GetBoolArg(std::string("-ddos"), false);
+
+        /* The connection score (total connections per second). */
+        config.nDDOSCScore = static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1));
+
+        /* The request score (total packets per second.) */
+        config.nDDOSRScore = static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 2000));
+
+        /* The DDOS moving average timespan (default: 20 seconds). */
+        config.nDDOSTimespan = static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 20));
+
+        /* Flag to determine if server should listen. */
+        config.fListen = (config::fClient.load() ? false : config::GetBoolArg(std::string("-listen"), true));
+
+        /* Flag to determine if server should allow remote connections. */
+        config.fRemote = true;
+
+        /* Flag to determine if meters should be active. */
+        config.fMeter = config::GetBoolArg(std::string("-meters"), false);
+
+        /* Flag to determine if the connection manager should try new connections. */
+        config.fManager = config::GetBoolArg(std::string("-manager"), true);
+        
+        /* Default sleep */
+        config.nManagerInterval = 1000;
+        
+        /* Enable SSL if configured */
+        config.fSSL = config::GetBoolArg(std::string("-ssl"), false) || config::GetBoolArg(std::string("-sslrequired"), false);
+
+        /* Require SSL if configured */
+        config.fSSLRequired = config::GetBoolArg(std::string("-sslrequired"), false);
+
+        /* Max outgoing connections */
+        config.nMaxIncoming = static_cast<uint32_t>(config::GetArg(std::string("-maxincoming"), 84));
+
+        /* Max connections */
+        config.nMaxConnections = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100));
+
         /* Create the new server object. */
-        return new Server<ProtocolType>(
+        return new Server<ProtocolType>(config);
+    }
 
-            /* The port this server listens on. */
-            nPort,
 
-            /* The total data I/O threads. */
-            static_cast<uint16_t>(config::GetArg(std::string("-threads"), 8)),
+    /** CreateP2PServer
+     *
+     *  Helper for creating P2P Servers.
+     *
+     *  @param[in] port The unique port for the server type
+     *  @param[in] port The SSL port for the server type
+     *
+     *  @return Returns a templated server.
+     *
+     **/
+    template <class ProtocolType>
+    Server<ProtocolType>* CreateP2PServer(uint16_t nPort, uint16_t nSSLPort)
+    {
+        LLP::ServerConfig config;
 
-            /* The timeout value (default: 30 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 120)),
+        /* The port this server listens on. */
+        config.nPort =  nPort;
 
-            /* The DDOS if enabled. */
-            config::GetBoolArg(std::string("-ddos"), false),
+        /* The SSL port this server listens on. */
+        config.nSSLPort =  nSSLPort;
 
-            /* The connection score (total connections per second). */
-            static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1)),
+        /* The total data I/O threads. */
+        config.nMaxThreads = static_cast<uint16_t>(config::GetArg(std::string("-threads"), 8));
 
-            /* The request score (total packets per second.) */
-            static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 2000)),
+        /* The timeout value (default: 30 seconds). */
+        config.nTimeout = static_cast<uint32_t>(config::GetArg(std::string("-timeout"), 120));
 
-            /* The DDOS moving average timespan (default: 20 seconds). */
-            static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 20)),
+        /* The DDOS if enabled. */
+        config.fDDOS = config::GetBoolArg(std::string("-ddos"), false);
 
-            /* Flag to determine if server should listen. */
-            config::GetBoolArg(std::string("-listen"), true),
+        /* The connection score (total connections per second). */
+        config.nDDOSCScore = static_cast<uint32_t>(config::GetArg(std::string("-cscore"), 1));
 
-            /* Flag to determine if server should allow remote connections. */
-            true,
+        /* The request score (total packets per second.) */
+        config.nDDOSRScore = static_cast<uint32_t>(config::GetArg(std::string("-rscore"), 2000));
 
-            /* Flag to determine if meters should be active. */
-            config::GetBoolArg(std::string("-meters"), false),
+        /* The DDOS moving average timespan (default: 20 seconds). */
+        config.nDDOSTimespan = static_cast<uint32_t>(config::GetArg(std::string("-timespan"), 20));
 
-            /* Flag to determine if the connection manager should try new connections. */
-            config::GetBoolArg(std::string("-manager"), true)
+        /* Flag to determine if server should listen. */
+        config.fListen = true;
 
-        );
+        /* Flag to determine if server should allow remote connections. */
+        config.fRemote = true;
+
+        /* Flag to determine if meters should be active. */
+        config.fMeter = config::GetBoolArg(std::string("-meters"), false);
+
+        /* Never use connection manager */
+        config.fManager = false;
+        
+        /* Enable SSL if configured */
+        config.fSSL = config::GetBoolArg(std::string("-p2pssl"), false) || config::GetBoolArg(std::string("-p2psslrequired"), false);
+
+        /* Require SSL if configured */
+        config.fSSLRequired = config::GetBoolArg(std::string("-p2psslrequired"), false);
+
+        /* Create the new server object. */
+        return new Server<ProtocolType>(config);
+
     }
 
 
@@ -162,6 +302,7 @@ namespace LLP
             debug::log(0, FUNCTION, ProtocolType::Name());
         }
     }
+
 }
 
 #endif

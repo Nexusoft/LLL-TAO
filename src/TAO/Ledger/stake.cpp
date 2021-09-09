@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/stake.h>
 
+#include <LLC/hash/SK.h>
 #include <LLC/types/uint1024.h>
 
 #include <LLD/include/global.h>
@@ -21,6 +22,8 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/tritium.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -57,13 +60,17 @@ namespace TAO
         uint32_t MinStakeInterval(const Block& block)
         {
             if(config::fTestNet)
-                return TESTNET_MINIMUM_INTERVAL;
+                return TAO::Ledger::TESTNET_MINIMUM_INTERVAL;
 
-            /* Apply legacy interval for all versions prior to version 7 */
-            if(block.nVersion < 7)
-                return MAINNET_MINIMUM_INTERVAL_LEGACY;
+            /* Apply legacy interval for all versions prior to v7 */
+            else if(block.nVersion < 7)
+                return TAO::Ledger::MAINNET_MINIMUM_INTERVAL_LEGACY;
 
-            return MAINNET_MINIMUM_INTERVAL;
+            /* Apply original Tritium interval if prior to v9 when pooled staking implemented */
+            else if(block.nVersion < 9)
+                return TAO::Ledger::MAINNET_MINIMUM_INTERVAL_PREPOOL;
+
+            return TAO::Ledger::MAINNET_MINIMUM_INTERVAL;
         }
 
 
@@ -85,7 +92,7 @@ namespace TAO
              * If unstake penalty were applied first, trust would fully decay in less time than it should.
              */
             uint64_t nScore = 0;
-            uint64_t nBlockAgeMax = MaxBlockAge();
+            const uint64_t nBlockAgeMax = MaxBlockAge();
 
             /* Block age less than maximum awards trust score increase equal to the current block age. */
             if(nBlockAge <= nBlockAgeMax)
@@ -230,7 +237,7 @@ namespace TAO
              *
              * Therefore, it performs the full multiplication portion first.
              */
-            uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / ONE_YEAR;
+            uint64_t nStakeReward = (nStake * nStakeRate * nStakeTime) / TAO::Ledger::ONE_YEAR;
 
             return nStakeReward;
         }
@@ -360,8 +367,70 @@ namespace TAO
         }
 
 
+        /*  Gets the trust account for a signature chain */
+        bool FindTrustAccount(const uint256_t& hashGenesis, TAO::Register::Object &account, bool &fIndexed)
+        {
+
+            /* Reset trust account data */
+            account = TAO::Register::Object();
+
+            /*
+             * Every user account should have a corresponding trust account created with its first transaction.
+             * Upon staking Genesis, that account is indexed into the register DB and is directly retrievable.
+             * Pre-Genesis, we have to retrieve the name register to obtain the trust account address.
+             */
+
+            if(LLD::Register->HasTrust(hashGenesis))
+            {
+                /* Trust account is indexed */
+                fIndexed = true;
+                TAO::Register::Object reg;
+
+                if(!LLD::Register->ReadTrust(hashGenesis, reg))
+                   return debug::error(FUNCTION, "Unable to retrieve trust account");
+
+                if(!reg.Parse())
+                    return debug::error(FUNCTION, "Unable to parse trust account register");
+
+                if(reg.Standard() != TAO::Register::OBJECTS::TRUST)
+                    return debug::error(FUNCTION, "Invalid trust account register");
+
+                /* Found valid trust account register. */
+                account = reg;
+
+                return true;
+            }
+            else
+            {
+                /* Trust account is not indexed */
+                fIndexed = false;
+                TAO::Register::Object reg;
+
+                /* Retrieve the trust address */
+                uint256_t hashAddress = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
+
+                if(!LLD::Register->ReadState(hashAddress, reg))
+                    return debug::error(FUNCTION, "Unable to retrieve trust account for Genesis");
+
+                /* Verify we have trust account register for the user account */
+                if(!reg.Parse())
+                    return debug::error(FUNCTION, "Unable to parse trust account register for Genesis");
+
+                if(reg.Standard() != TAO::Register::OBJECTS::TRUST)
+                    return debug::error(FUNCTION, "Invalid trust account register for Genesis");
+
+                /* Found valid trust account register. */
+                account = reg;
+
+                return true;
+            }
+
+            return false;
+        }
+
+
         /** Retrieves the most recent stake transaction for a user account. */
-        bool FindLastStake(const uint256_t& hashGenesis, Transaction& tx)
+        bool FindLastStake(const uint256_t& hashGenesis, Transaction &tx)
         {
             /* Start with most recent signature chain transaction. */
             uint512_t hashLast = 0;
@@ -390,6 +459,94 @@ namespace TAO
             }
 
             return false;
+        }
+
+
+        /* Retrieve the coinstake proofs for a given pool stake block */
+        bool GetStakeProofs(const TritiumBlock& blockCurrent, const BlockState& statePrev,
+                            uint64_t &nTimeBegin, uint64_t &nTimeEnd, uint256_t &hashProof)
+        {
+            nTimeEnd = statePrev.GetBlockTime();
+            nTimeBegin = nTimeEnd;
+
+            DataStream ss(SER_GETHASH, LLP::PROTOCOL_VERSION);
+            hashProof = 0;
+
+            for(const auto& proof : blockCurrent.vtx)
+            {
+                if(proof.first == TRANSACTION::TRITIUM)
+                {
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "Unable to read transaction");
+
+                    ss.clear();
+
+                    /* After first tx, chain the tx hashes by hashing current tx hash with the current hashProof */
+                    if(hashProof != 0)
+                        ss << hashProof;
+
+                    ss << tx.GetHash();
+
+                    hashProof = LLC::SK256(ss.begin(), ss.end());
+
+                    /* Skip timestamp of any transactions more recent than prev block time */
+                    if(tx.nTimestamp >= nTimeEnd)
+                        continue;
+
+                    /* Save beginning time from oldest tx */
+                    if(tx.nTimestamp < nTimeBegin)
+                        nTimeBegin = tx.nTimestamp;
+
+                }
+                else if(proof.first == TRANSACTION::LEGACY)
+                {
+                    Legacy::Transaction tx;
+                    if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                        return debug::error(FUNCTION, "Unable to read legacy transaction");
+
+                    ss.clear();
+
+                    /* After first tx, chain the tx hashes by hashing current tx hash with the overall hash proof */
+                    if(hashProof != 0)
+                        ss << hashProof;
+
+                    ss << tx.GetHash();
+
+                    hashProof = LLC::SK256(ss.begin(), ss.end());
+
+                    /* Skip timestamp of any transactions more recent than prev block time */
+                    if(tx.nTime >= nTimeEnd)
+                        continue;
+
+                    /* Save beginning time from oldest tx */
+                    if(tx.nTime < nTimeBegin)
+                        nTimeBegin = tx.nTime;
+
+                }
+                else
+                    return debug::error(FUNCTION, "Invalid transaction type");
+            }
+
+            /* Add hash of previous block hash to hashProof */
+            ss.clear();
+
+            if(hashProof != 0)
+                ss << hashProof;
+
+            ss << statePrev.GetHash();
+
+            /* Get the hash. */
+            hashProof = LLC::SK256(ss.begin(), ss.end());
+
+            return true;
+        }
+
+
+        /*  Calculate the fee to be paid if a coinstake is mined by the stake pool */
+        uint64_t GetPoolStakeFee(const uint64_t& nReward)
+        {
+            return (TAO::Ledger::POOL_FEE_PCT * nReward) / 100;
         }
 
     }

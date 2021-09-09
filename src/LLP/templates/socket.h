@@ -17,12 +17,15 @@ ________________________________________________________________________________
 
 
 #include <LLP/include/base_address.h>
-#include <LLP/include/network.h>
 
 #include <vector>
 #include <cstdint>
 #include <mutex>
 #include <atomic>
+
+
+typedef struct ssl_st SSL;
+typedef struct ssl_ctx_st SSL_CTX;
 
 namespace LLP
 {
@@ -43,6 +46,9 @@ namespace LLP
         /** Mutex for thread synchronization. **/
         mutable std::mutex SOCKET_MUTEX;
 
+
+        /* SSL object */
+        SSL *pSSL;
 
     protected:
 
@@ -99,15 +105,15 @@ namespace LLP
 
 
         /** The socket constructor. **/
-        Socket(int32_t nSocketIn, const BaseAddress &addrIn);
+        Socket(int32_t nSocketIn, const BaseAddress &addrIn, const bool& fSSL = false);
 
 
         /** Constructor for socket
          *
-         *  @param[in] addrDest The address to connect socket to
+         *  @param[in] addrConnect The address to connect socket to
          *
          **/
-        Socket(const BaseAddress &addrDest);
+        Socket(const BaseAddress &addrConnect, const bool& fSSL = false);
 
 
         /** Destructor for socket **/
@@ -249,7 +255,25 @@ namespace LLP
          *  Give the message (c-string) of the error in the socket.
          *
          **/
-        char* Error() const;
+        const char* Error() const;
+
+
+        /** SetSSL
+         *
+         *  Creates or destroys the SSL object depending on the flag set.
+         *
+         *  @param[in] fSSL_ The flag to set SSL on or off.
+         *
+         **/
+         void SetSSL(bool fSSL);
+
+
+         /** IsSSL
+          *
+          * Determines if socket is using SSL encryption.
+          *
+          **/
+          bool IsSSL() const;
 
 
     private:

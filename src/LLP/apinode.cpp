@@ -57,7 +57,7 @@ namespace LLP
     void APINode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
 
-        if(EVENT == EVENT_CONNECT)
+        if(EVENT == EVENTS::CONNECT)
         {
             /* Reset the error log for this thread */
             debug::GetLastError();
@@ -99,8 +99,20 @@ namespace LLP
         /* Extract the method to invoke. */
         std::string METHOD = INCOMING.strRequest.substr(npos + 1);
 
-        /* Extract the parameters. */
+        /* The JSON response */
         json::json ret;
+
+        /* The HTTP response status code, default to 200 unless an error is encountered */
+        uint16_t nStatus = 200;
+
+        /* Flag indicating that the connection should be kept alive */
+        bool fKeepAlive = false;
+
+        runtime::timer TIMER;
+        TIMER.Start();
+        uint32_t nStart = TIMER.ElapsedMilliseconds();
+
+        /* Extract the parameters. */
         try
         {
             json::json params;
@@ -118,22 +130,8 @@ namespace LLP
                             /* Decode if url-form-encoded. */
                             INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
 
-                            /* Split by delimiter. */
-                            std::vector<std::string> vParams;
-                            ParseString(INCOMING.strContent, '&', vParams);
-
-                            /* Get the parameters. */
-                            for(std::string strParam : vParams)
-                            {
-                                std::string::size_type pos2 = strParam.find("=");
-                                if(pos2 == strParam.npos)
-                                    break;
-
-                                std::string key   = strParam.substr(0, pos2);
-                                std::string value = strParam.substr(pos2 + 1);
-
-                                params[key] = value;
-                            }
+                            /* parse the querystring */
+                            params = QuerystringToJSON(INCOMING.strContent, METHOD);
                         }
 
                         /* JSON encoding. */
@@ -152,25 +150,14 @@ namespace LLP
                 std::string::size_type pos = METHOD.find("?");
                 if(pos != METHOD.npos)
                 {
-                    /* Parse out the form entries by char '&' */
-                    std::vector<std::string> vParams;
-                    ParseString(encoding::urldecode(METHOD.substr(pos + 1)), '&', vParams);
-
-                    /* Parse the form from the end of method. */
+                    /* Parse the querystring */
+                    std::string strQuerystring = METHOD.substr(pos + 1);
+                    
+                    /* Parse the method. */
                     METHOD = METHOD.substr(0, pos);
 
-                    /* Check each form entry. */
-                    for(std::string strParam : vParams)
-                    {
-                        std::string::size_type pos2 = strParam.find("=");
-                        if(pos2 == strParam.npos)
-                            break;
-
-                        std::string key   = strParam.substr(0, pos2);
-                        std::string value = strParam.substr(pos2 + 1);
-
-                        params[key] = value;
-                    }
+                    /* parse the querystring */
+                    params = QuerystringToJSON(encoding::urldecode(strQuerystring), METHOD);
                 }
             }
             else if(INCOMING.strType == "OPTIONS")
@@ -223,6 +210,10 @@ namespace LLP
                 ret = { {"result", TAO::API::voting->Execute(METHOD, params) } };
             else if(strAPI == "invoices")
                 ret = { {"result", TAO::API::invoices->Execute(METHOD, params) } };
+            else if(strAPI == "crypto")
+                ret = { {"result", TAO::API::crypto->Execute(METHOD, params) } };
+            else if(strAPI == "p2p")
+                ret = { {"result", TAO::API::p2p->Execute(METHOD, params) } };
             else
                 throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
         }
@@ -233,8 +224,13 @@ namespace LLP
             /* Get error from exception. */
             json::json jsonError = e.ToJSON();
 
-            /* Default error status code is 500. */
-            uint16_t nStatus = 500;
+            /* Check to see if the caller has specified an error code to use for general API errors */
+            if(INCOMING.mapHeaders.count("api-error-code"))
+                nStatus = std::stoi(INCOMING.mapHeaders["api-error-code"]);
+            else
+                /* Default error status code is 400. */
+                nStatus = 400;
+            
             int32_t nError = jsonError["code"].get<int32_t>();
 
             /* Set status by error code. */
@@ -256,32 +252,43 @@ namespace LLP
                     break;
             }
 
-            /* Send the response packet. */
-            json::json ret = { { "error", jsonError } };
+            /* Populate the return JSON to the error */
+            ret = { { "error", jsonError } };
 
-            /* Build packet. */
-            HTTPPacket RESPONSE(nStatus);
-            if(INCOMING.mapHeaders.count("origin"))
-                RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = INCOMING.mapHeaders["origin"];
-
-            /* Add content. */
-            RESPONSE.strContent = ret.dump();
-            this->WritePacket(RESPONSE);
-
-            return false;
         }
 
 
         /* Build packet. */
-        HTTPPacket RESPONSE(200);
+        HTTPPacket RESPONSE(nStatus);
+
+        /* Add the origin header if supplied in the request */
         if(INCOMING.mapHeaders.count("origin"))
             RESPONSE.mapHeaders["Access-Control-Allow-Origin"] = INCOMING.mapHeaders["origin"];
 
+        /* Add the connection header */
+        if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "keep-alive")
+        {
+            RESPONSE.mapHeaders["Connection"] = "keep-alive";
+            fKeepAlive = true;
+        }
+        else
+        {
+            RESPONSE.mapHeaders["Connection"] = "close";
+            fKeepAlive = true;
+        }
+
         /* Add content. */
         RESPONSE.strContent = ret.dump();
+            
+        /* Write the response */
         this->WritePacket(RESPONSE);
 
-        return true;
+        uint32_t nStop = TIMER.ElapsedMilliseconds();
+                    
+        debug::log(3, "API Request ", strAPI +"/" +METHOD, " from ", this->addr.ToString(), " completed in ", nStop - nStart, " milliseconds");
+
+
+        return fKeepAlive;
     }
 
 
@@ -310,5 +317,74 @@ namespace LLP
 
         return strUserPass == strAPIUserColonPass;
     }
+
+
+    /* Parses the querystring and coverts it to a json object of key=value pairs */
+    json::json APINode::QuerystringToJSON(const std::string& strQuerystring, const std::string& strMethod)
+    {
+        /* The json params to return */
+        json::json params;
+
+        /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
+        bool fIsList = strMethod.find("list/") != strMethod.npos;
+
+        /* list of keywords that are acceptale parameters for a /list/xxx method.  Parameters not in this list will be converted
+           into a `where` array */
+        std::vector<std::string> vKeywords = {"genesis", "username", "verbose", "page", "limit", "offset", "sort", "order", "where"};
+
+        /* Parse out the form entries by char '&' */
+        std::vector<std::string> vParams;
+        ParseString(strQuerystring, '&', vParams);
+        
+        /* Check each form entry. */
+        for(std::string strParam : vParams)
+        {
+            std::string::size_type pos2 = std::string::npos;
+
+            if(fIsList)
+                pos2 = strParam.find_first_of("><=", 0);
+            else
+                pos2 = strParam.find('=', 0);
+
+            if(pos2 == strParam.npos)
+                break;
+            
+            /* Get the parameter key */
+            std::string key = strParam.substr(0, pos2);
+
+            /* If this is a list command, check to see if this is a where clause (not a keyword parameter supported by list)*/
+            if(fIsList && std::find(vKeywords.begin(), vKeywords.end(), key) == vKeywords.end())
+            {
+                /* add the where clause */
+                json::json jsonClause;
+                jsonClause["field"] = key;
+
+                /* Check to see if the parameter delimter is a two-character operand */
+                if(strParam.find_first_of("><=", pos2+1) != strParam.npos)
+                {
+                    /* Extract the operand */
+                    jsonClause["op"] = strParam.substr(pos2, 2);
+                    pos2++;
+                }
+                else
+                {
+                    /* Extract the operand */
+                    jsonClause["op"] = strParam.substr(pos2, 1);
+                }
+
+                /* Extract the value */
+                jsonClause["value"] = strParam.substr(pos2 + 1);
+
+                /* Add it to the where params*/
+                params["where"].push_back(jsonClause);
+            }
+            
+            /* Add the parameter as a JSON parameter regardless of whether it is has been added as where clause as it might be a
+               keyword required by a list method such as name or address */
+            params[key] =  strParam.substr(pos2 + 1);
+        }
+
+        return params;
+    } 
 
 }

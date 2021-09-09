@@ -22,8 +22,10 @@ The following methods are currently supported by this API
 [`create/token`](#createtoken)   
 [`debit/token`](#debittoken)      
 [`credit/token`](#credittoken)    
-[`get/token`](#gettoken)  
-[`list/token/transactions`](#listtokentransactions)   
+[`get/token`](#gettoken)   
+[`burn/token`](#burntoken)   
+[`list/token/transactions`](#listtokentransactions)    
+[`list/token/accounts`](#listtokenaccounts)   
 [`create/account`](#createaccount)   
 [`debit/account`](#debitaccount)   
 [`credit/account`](#creditaccount)   
@@ -112,7 +114,7 @@ The method supports the ability to send to multiple recipients in one transactio
 
 `reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a 64-bit unsigned integer in the range of 0 to 18446744073709551615
 
-`expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied 
+`expires` : This optional field allows callers to specify an expiration for the debit transaction.  The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If expires is set to 0, the transaction will never expire, making the sender unable to ever void the transaction.  If omitted, a default expiration of 7 days (604800 seconds) is applied. 
 
 `recipients` : This optional array can be provided as an alternative to the single `name_to`/`address_to`, `amount`, `reference`, and `expires` fields.  Each object in the array can have `name_to`/`address_to`, `amount`, `reference`, and `expires` fields, as described above.  Up to 99 recipients can be included in the array.
 
@@ -241,6 +243,8 @@ Additionally the API supports passing a field name in the URL after the token na
 
 `address` : The register address of the token to retrieve. This is optional if the name is provided.
 
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+
 `fieldname`: This optional field can be used to filter the response to return only a single field from the token.
 
 ### Return value JSON object:
@@ -284,6 +288,61 @@ Additionally the API supports passing a field name in the URL after the token na
 
 `decimals` : The maximum number of decimal places that can be applied to token amounts.  For example decimals=2 will allow a token amount to be given to 2 decimal places.
 
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the token.
+
+
+***
+
+# `burn/token`
+
+This method can be used to take tokens permanently out of the current supply, a process commonly known as burning.  The method will debit a token account and send the tokens back to the token address.  However the transaction contains a condition that will always evaluate to false, guaranteeing that the debit can not be credited by the token issuer nor the sender.  The result is that the amount burned will always appear in the "pending" balance of the token.
+
+
+### Endpoint:
+
+`/tokens/burn/token`
+
+
+### Parameters:
+
+`pin` : The PIN for this signature chain.
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session is required to identify which session (sig-chain) the token owner. For single-user API mode the session should not be supplied.
+
+`name` : The name identifying the account to debit the tokens from to be burnt. This is optional if the address is provided.  The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the token was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+
+`address` : The register address of the account to debit the tokens from the be burnt. This is optional if the name is provided.
+
+`amount` : The amount of tokens to burn.
+
+`reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a 64-bit unsigned integer in the range of 0 to 18446744073709551615
+
+
+### Example:
+
+The following example shows the json payload for a burn of 100 tokens from an account called "main" (that itself was created by the sig chain logged into session "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8")
+```
+{
+    "pin": "1234",
+    "session": "5e9d8aa625a1838f60f30e12058089169e32c968389f365428f7b0c878bb47f8",
+    "name": "main",
+    "amount": 100
+}
+```
+
+
+### Return value JSON object:
+```    
+{
+    "txid": "f9dcd28bce2563ab288fab76cf3ee5149ea938c735894ce4833b55e474e08e8a519e8005e09e2fc19623577a8839a280ca72b6430ee0bdf13b3d9f785bc7397d"
+}
+```   
+
+### Return values:
+
+`txid` : The ID (hash) of the transaction that includes the token burn.
+
+
 ****
 
 
@@ -314,14 +373,18 @@ This will list off all of the transactions related to a given token. You DO NOT 
 
 `address` : The register address of the token to list transactions for. This is optional if the name is provided.
 
-`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
-
-`limit` : The number of transactions to return for the current page. The default is 100.
-
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
  - `default` : hash, contracts
  - `summary` : type, version, sequence, timestamp, operation, and confirmations.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+ `limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 
@@ -411,6 +474,69 @@ This will list off all of the transactions related to a given token. You DO NOT 
 &nbsp;&nbsp;&nbsp;`reference` : For `DEBIT` and `CREDIT` transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
 }
+
+
+# `list/token/accounts`
+
+This will list all accounts (globally) that have been created for a particular token.
+
+
+### Endpoint:
+
+`/tokens/list/token/accounts`
+
+
+### Parameters:
+
+`session` : For multi-user API mode, (configured with multiuser=1) the session can be provided in conjunction with the token name in order to deduce the register address of the token.  The `session` parameter is only required when a name parameter is also provided without a namespace in the name string.  For single-user API mode the session should not be supplied.
+
+`name` : The name identifying the token to list accounts for. This is optional if the address is provided. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace).  However, if the object was created in the callers namespace (their username), then the username can be omitted from the name if the `session` parameter is provided (as we can deduce the username from the session)
+
+`address` : The register address of the token to list transactions for. This is optional if the name is provided.
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
+
+
+
+### Return value JSON object:
+```
+[
+    {
+        "owner": "a1f94d55f41aba2f75b020d0582c8b607b72f4f2742e4cde6135558adc44583d",
+        "created": 1576709402,
+        "modified": 1576718254,
+        "address": "8CsmdG4rP5J2RRY5M9ibTxKEpnZiJoGu5RzmGyxxy726sv6Nc76",
+        "balance": 32930.0
+    },
+    {
+        "owner": "a1fc3f7264e53dba1e1043e29e4087f57f5a30a2008fdc8483be7e6cd3d7ff97",
+        "created": 1576655433,
+        "modified": 1576673358,
+        "address": "8BjpdTPJthrBDQan2mABjbYhs2FPKAih6Vq5oxELiXqXGVq1Mqt",
+        "balance": 6586.0
+    }
+]
+
+```
+
+### Return values:
+
+`owner` : The genesis hash of the signature chain that owns this account.
+
+`created` : The UNIX timestamp when the account was created.
+
+`modified` : The UNIX timestamp when the account was last modified.
+
+`address` : The register address of the account.    
+
+`balance` : The available balance of this account.  This is the last confirmed balance for the account, and does not reflect and any new debits that have been made since the last block.
+
 
 ***
 
@@ -510,7 +636,7 @@ The method supports the ability to send to multiple recipients in one transactio
 
 `reference` : This optional field allows callers to provide a reference, which the recipient can then use to relate the transaction to an order number, invoice number etc.  The reference is be a 64-bit unsigned integer in the range of 0 to 18446744073709551615
 
-`expires` : This optional field allows callers to specify an expiration for the debit transaction. The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If omitted, a default expiration of 1 day (86400 seconds) is applied 
+`expires` : This optional field allows callers to specify an expiration for the debit transaction.  The expires value is the `number of seconds` from the transaction creation time after which the transaction can no longer be credited by the recipient.  Conversely, when you apply an expiration to a transaction, you are unable to void the transaction until after the expiration time.  If expires is set to 0, the transaction will never expire, making the sender unable to ever void the transaction.  If omitted, a default expiration of 7 days (604800 seconds) is applied. 
 
 `recipients` : This optional array can be provided as an alternative to the single `name_to`/`address_to`, `amount`, `reference`, and `expires` fields.  Each object in the array can have `name_to`/`address_to`, `amount`, `reference`, and `expires` fields, as described above.  Up to 99 recipients can be included in the array.
 
@@ -644,6 +770,8 @@ Additionally the API supports passing a field name in the URL after the account 
 
 `address` : The register address of the token account to retrieve. This is optional if the name is provided.
 
+`count` : Optional boolean field that determines whether the response includes the transaction `count` field.  This defaults to false, as including the transaction count can slow the response time of the method considerably.   
+
 `fieldname`: This optional field can be used to filter the response to return only a single field from the token account.
 
 ### Return value JSON object:
@@ -654,7 +782,7 @@ Additionally the API supports passing a field name in the URL after the account 
     "modified": 1566616211,
     "name": "myaccount",
     "address": "8CbkwEQ9S8owmX74joU6XmiwxJq1aoiqUoXc9fLCKzw15HscM99",
-    "token_name": "mytoken"
+    "token_name": "mytoken",
     "token": "8EHRNnxn5qX9gMF1Jbqvo1jkAeP7XY1PETnMtegv9rdr6QG3ZJy",
     "balance": 990,
     "pending": 0.0,
@@ -683,6 +811,8 @@ Additionally the API supports passing a field name in the URL after the account 
 `pending` : This is the sum of all confirmed debit transactions that have been made to this account, that have not yet been credited.  To move coins from pending into the available balance you must create a corresponding credit transaction.  NOTE: if configured to run, the events processor does this for you.
 
 `unconfirmed` : This is the sum of all unconfirmed debit transactions that have been made to this account PLUS the sum of all unconfirmed credits that you have for confirmed debit transactions.  When someone makes a debit to your account it will immediately appear in the unconfirmed balance until that transaction is included in a block, at which point it moves into `pending`.  When you (or the events processor) creates the corresponding credit transaction for that debit, the amount will move from `pending` back into `unconfirmed` until the credit transaction is included in a block, at which point the amount moves to `balance`.  
+
+`count` : Only returned if the caller requested `count` : true.  This is the number of transactions made to/from the account.
 
 ****
 
@@ -714,14 +844,18 @@ This will list off all of the transactions related to a given account. You DO NO
 
 `address` : The register address of the token account to list transactions for. This is optional if the name is provided.
 
-`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
-
-`limit` : The number of transactions to return for the current page. The default is 100.
-
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
  - `default` : hash, contracts
  - `summary` : type, version, sequence, timestamp, operation, and confirmations.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 

@@ -156,14 +156,25 @@ std::vector<std::string> Split(const std::string& strInput, char strDelimiter)
     std::string::size_type nFind  = strInput.find(strDelimiter);
 
     std::vector<std::string> vData;
-    while(nFind != std::string::npos)
-    {
-        vData.push_back(strInput.substr(nIndex, nFind - nIndex));
-        nIndex = ++nFind;
-        nFind  = strInput.find(strDelimiter, nFind);
 
-        if(nFind == std::string::npos)
-            vData.push_back(strInput.substr(nIndex, strInput.length()));
+    /* Check that there is at least one delimiter */
+    if(nFind != std::string::npos)
+    {
+        while(nFind != std::string::npos)
+        {
+            vData.push_back(strInput.substr(nIndex, nFind - nIndex));
+            nIndex = ++nFind;
+            nFind  = strInput.find(strDelimiter, nFind);
+
+            if(nFind == std::string::npos)
+                vData.push_back(strInput.substr(nIndex, strInput.length()));
+        }
+    }
+    else
+    {
+        /* Otherwise return just the input string */
+        vData.push_back(strInput);
+
     }
 
     return vData;
@@ -177,14 +188,25 @@ std::vector<std::string> Split(const std::string& strInput, const std::string& s
     std::string::size_type nFind  = strInput.find(strDelimiter);
 
     std::vector<std::string> vData;
-    while(nFind != std::string::npos)
-    {
-        vData.push_back(strInput.substr(nIndex, nFind - nIndex));
-        nIndex = ++nFind;
-        nFind  = strInput.find(strDelimiter, nFind);
 
-        if(nFind == std::string::npos)
-            vData.push_back(strInput.substr(nIndex, strInput.length()));
+    /* Check that there is at least one delimiter */
+    if(nFind != std::string::npos)
+    {
+        while(nFind != std::string::npos)
+        {
+            vData.push_back(strInput.substr(nIndex, nFind - nIndex));
+            nIndex = nFind + strDelimiter.length();
+            nFind  = strInput.find(strDelimiter, nIndex);
+
+            if(nFind == std::string::npos)
+                vData.push_back(strInput.substr(nIndex, strInput.length()));
+        }
+    }
+    else
+    {
+        /* Otherwise return just the input string */
+        vData.push_back(strInput);
+
     }
 
     return vData;

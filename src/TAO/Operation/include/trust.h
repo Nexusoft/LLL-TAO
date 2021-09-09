@@ -38,9 +38,9 @@ namespace TAO
         class Contract;
 
 
-        /** Write
+        /** Trust
          *
-         *  Namespace to contain main functions for OP::WRITE
+         *  Namespace to contain main functions for OP::TRUST
          *
          **/
         namespace Trust

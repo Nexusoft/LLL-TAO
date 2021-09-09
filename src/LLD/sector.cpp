@@ -494,6 +494,7 @@ namespace LLD
             /* Update the record with blank data. */
             DataStream ssData(SER_LLD, DATABASE_VERSION);
             ssData << std::string("NONE");
+            ssData.resize(nSize);
 
             /* Write the data record. */
             if(!pstream->write((char*)ssData.data(), ssData.size()))

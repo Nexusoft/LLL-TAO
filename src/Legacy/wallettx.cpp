@@ -748,9 +748,9 @@ namespace Legacy
                     {
                         LLP::TRITIUM_SERVER->Relay
                         (
-                            LLP::ACTION::NOTIFY,
-                            uint8_t(LLP::SPECIFIER::LEGACY),
-                            uint8_t(LLP::TYPES::TRANSACTION),
+                            LLP::Tritium::ACTION::NOTIFY,
+                            uint8_t(LLP::Tritium::SPECIFIER::LEGACY),
+                            uint8_t(LLP::Tritium::TYPES::TRANSACTION),
                             hash
                         );
                     }
@@ -775,9 +775,9 @@ namespace Legacy
                 {
                     LLP::TRITIUM_SERVER->Relay
                     (
-                        LLP::ACTION::NOTIFY,
-                        uint8_t(LLP::SPECIFIER::LEGACY),
-                        uint8_t(LLP::TYPES::TRANSACTION),
+                        LLP::Tritium::ACTION::NOTIFY,
+                        uint8_t(LLP::Tritium::SPECIFIER::LEGACY),
+                        uint8_t(LLP::Tritium::TYPES::TRANSACTION),
                         hash
                     );
                 }

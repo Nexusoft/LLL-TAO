@@ -1,7 +1,23 @@
+######################################################################################################################################################################################################
+### Nexus Core
+######################################################################################################################################################################################################
+
 ifeq ($(OS),Windows_NT)
 detected_OS:= Windows
+else ifeq (${ANDROID}, 1)
+	detected_OS:= Android
+	openssl_arch:= x86_64
+
+	ifeq ($(ANDROID_ARCH),aarch64)
+		openssl_arch= arm64-v8a
+	endif
 else ifeq ($(shell uname -s),Darwin)
-	detected_OS:= OSX
+### You can only build iPhone on OSX
+	ifeq (${IPHONE}, 1)
+		detected_OS:= iPhone
+	else
+		detected_OS:= OSX
+	endif
 else
 	detected_OS:= Linux
 endif
@@ -30,6 +46,9 @@ else ifeq (${ARM64}, 1)
         BUILD_ARCH=aarch64
         CXXFLAGS+= -march=native -mtune=native
 
+else ifeq ($(shell uname -m),armv7l)
+        BUILD_ARCH=arm
+
 else
 	BUILD_ARCH=x64
 	CXXFLAGS+= -m64
@@ -43,6 +62,12 @@ ifndef OPENSSL_LIB_PATH
 	endif
 	ifeq ($(detected_OS),OSX)
 		OPENSSL_LIB_PATH= /usr/local/opt/openssl/lib
+	endif
+	ifeq ($(detected_OS),iPhone)
+		OPENSSL_LIB_PATH= /usr/local/Cellar/openssl@iphones/lib
+	endif
+	ifeq ($(detected_OS),Android)
+		OPENSSL_LIB_PATH= /usr/local/Cellar/openssl@android/$(openssl_arch)/lib
 	endif
 	ifeq ($(detected_OS),Linux)
 		#Arch Linux Fix
@@ -59,6 +84,12 @@ ifndef OPENSSL_INCLUDE_PATH
 	endif
 	ifeq ($(detected_OS),OSX)
 		OPENSSL_INCLUDE_PATH= /usr/local/opt/openssl/include
+	endif
+	ifeq ($(detected_OS),iPhone)
+		OPENSSL_INCLUDE_PATH= /usr/local/Cellar/openssl@iphones/include
+	endif
+	ifeq ($(detected_OS),Android)
+		OPENSSL_INCLUDE_PATH= /usr/local/Cellar/openssl@android/$(openssl_arch)/include
 	endif
 	ifeq ($(detected_OS),Linux)
 		#Arch Linux Fix
@@ -131,25 +162,41 @@ ifeq (${USE_UPNP}, 1)
 	DEFS+= -DMINIUPNP_STATICLIB -DUSE_UPNP=1
 endif
 
+
+#Handle compiling with no wallet enabled
+ifdef NO_WALLET
+DEFS    += -DNO_WALLET
+else
+
+ifneq ($(detected_OS),Windows)
+    INCLUDEPATHS+= -I$(BDB_INCLUDE_PATH)
+endif
+ifeq ($(detected_OS),Windows)
+    INCLUDEPATHS+= -I$(BDB_INCLUDE_PATH)
+endif
+ifneq ($(detected_OS),OSX)
+LIBS+=-ldb_cxx
+endif
+
+LIBPATHS+= -L$(BDB_LIB_PATH)
+endif
+
 #Configure Build Environment
 ifneq ($(detected_OS),Windows)
-INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/tests)\
-	-I$(BDB_INCLUDE_PATH) \
+    INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/tests)\
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
 ifeq ($(detected_OS),Windows)
-INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/tests" \
-	-I$(BDB_INCLUDE_PATH) \
+    INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/tests" \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
-LIBPATHS+= -L$(BDB_LIB_PATH) \
-	-L$(OPENSSL_LIB_PATH)
 ifneq ($(detected_OS),OSX)
-LIBS+=-ldb_cxx \
-	-lssl \
-	-lcrypto
+LIBS+= -lssl \
+	   -lcrypto
 endif
-DEFS+=  -D$(BUILD_ARCH)
+
+LIBPATHS +=  -L$(OPENSSL_LIB_PATH)
+DEFS     +=  -D$(BUILD_ARCH)
 
 #Fail on warnings
 ifdef WARNINGS_FAIL
@@ -231,7 +278,9 @@ ifdef UNIT_TESTS
 		   build/Tests_Legacy_utxo.o \
 		   build/Tests_Legacy_mempool.o \
 		   build/Tests_LLC_aes.o \
+		   build/Tests_LLP_base_address.o \
 		   build/Tests_TAO_API_assets.o \
+		   build/Tests_TAO_API_crypto.o \
 		   build/Tests_TAO_API_finance.o \
 		   build/Tests_TAO_API_names.o \
 		   build/Tests_TAO_API_supply.o \
@@ -243,6 +292,7 @@ ifdef UNIT_TESTS
            build/Tests_TAO_Ledger_transaction.o \
 		   build/Tests_TAO_Ledger_sigchain.o \
 		   build/Tests_TAO_Ledger_stake.o \
+		   build/Tests_TAO_Ledger_stakepool.o \
 		   build/Tests_TAO_Register_objects.o \
 		   build/Tests_TAO_Register_rollback.o \
 		   build/Tests_TAO_Register_testvm.o \
@@ -298,11 +348,13 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_sha3.o \
 		build/LLC_blake2b.o \
 		build/LLC_argon2.o \
-		build/LLC_core.o \
-		build/LLC_encoding.o \
-		build/LLC_ref.o \
-		build/LLC_thread.o \
+		build/LLC_argon2_argon2.o \
+		build/LLC_argon2_core.o \
+		build/LLC_argon2_encoding.o \
+		build/LLC_argon2_ref.o \
+		build/LLC_argon2_thread.o \
 		build/LLC_aes.o \
+		build/LLC_encrypt.o \
 		build/LLC_codec.o \
 		build/LLC_common.o \
 		build/LLC_falcon.o \
@@ -318,6 +370,7 @@ OBJS+=  build/LLC_base_uint.o \
         build/LLD_ledger.o \
         build/LLD_legacy.o \
 		build/LLD_contract.o \
+		build/LLD_client.o \
         build/LLD_local.o \
         build/LLD_register.o \
         build/LLD_trust.o \
@@ -348,10 +401,12 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_lisp.o \
 		build/LLP_manager.o \
 		build/LLP_network.o \
+		build/LLP_p2p.o \
 		build/LLP_permissions.o \
 		build/LLP_rpcnode.o \
 		build/LLP_seeds.o \
 		build/LLP_server.o \
+		build/LLP_server_config.o \
 		build/LLP_socket.o \
 		build/LLP_time.o \
 		build/LLP_tritium.o \
@@ -365,6 +420,16 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_assets_tokenize.o \
 		build/API_types_assets_transfer.o \
 		build/API_types_assets_update.o \
+		build/API_types_crypto_change.o \
+		build/API_types_crypto_create.o \
+		build/API_types_crypto_crypto.o \
+		build/API_types_crypto_decrypt.o \
+		build/API_types_crypto_encrypt.o \
+		build/API_types_crypto_get.o \
+		build/API_types_crypto_initialize.o \
+		build/API_types_crypto_list.o \
+		build/API_types_crypto_sign.o \
+		build/API_types_crypto_verify.o \
 		build/API_types_dex_buy.o \
 		build/API_types_dex_sell.o \
 		build/API_types_dex_initialize.o \
@@ -388,6 +453,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_ledger_block.o \
 		build/API_types_ledger_initialize.o \
 		build/API_types_ledger_state.o \
+		build/API_types_ledger_sync.o \
 		build/API_types_ledger_transaction.o \
 		build/API_types_ledger_void.o \
 		build/API_types_names_claim.o \
@@ -403,12 +469,17 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_objects_list.o \
 		build/API_types_objects_transactions.o \
 		build/API_types_objects_transfer.o \
-		build/API_types_RPC_account.o \
-		build/API_types_RPC_daemon.o \
-		build/API_types_RPC_info.o \
-		build/API_types_RPC_network.o \
-		build/API_types_RPC_rpc.o \
-		build/API_types_RPC_wallet.o \
+		build/API_types_p2p_accept.o \
+		build/API_types_p2p_ignore.o \
+		build/API_types_p2p_initialize.o \
+		build/API_types_p2p_get.o \
+		build/API_types_p2p_list.o \
+		build/API_types_p2p_p2p.o \
+		build/API_types_p2p_peek.o \
+		build/API_types_p2p_pop.o \
+		build/API_types_p2p_request.o \
+		build/API_types_p2p_send.o \
+		build/API_types_p2p_terminate.o \
 		build/API_types_supply_claim.o \
 		build/API_types_supply_createitem.o \
 		build/API_types_supply_getitem.o \
@@ -423,23 +494,28 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_tokens_create.o \
 		build/API_types_tokens_credit.o \
 		build/API_types_tokens_debit.o \
+		build/API_types_tokens_burn.o \
 		build/API_types_tokens_list.o \
 		build/API_types_tokens_get.o \
 		build/API_types_tokens_initialize.o \
 		build/API_types_users_accounts.o \
 		build/API_types_users_assets.o \
 		build/API_types_users_create.o \
-		build/API_types_users_events.o \
+		build/API_types_users_has.o \
         build/API_types_users_initialize.o \
 		build/API_types_users_items.o \
 		build/API_types_users_invoices.o \
+		build/API_types_users_load.o \
 		build/API_types_users_lock.o \
 		build/API_types_users_login.o \
 		build/API_types_users_logout.o \
 		build/API_types_users_names.o \
 		build/API_types_users_namespaces.o \
 		build/API_types_users_notifications.o \
+		build/API_types_users_notifications_processor.o \
+		build/API_types_users_notifications_thread.o \
 		build/API_types_users_recover.o \
+		build/API_types_users_save.o \
 		build/API_types_users_status.o \
 		build/API_types_users_tokens.o \
 		build/API_types_users_transactions.o \
@@ -454,6 +530,8 @@ OBJS+=  build/LLC_base_uint.o \
         build/API_global.o \
         build/API_cmd.o \
 		build/API_conditions.o \
+		build/API_session.o \
+		build/API_sessionmanager.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
 		build/Operation_coinbase.o \
@@ -482,22 +560,26 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Register_state.o \
 		build/Register_unpack.o \
 		build/Register_verify.o \
-		build/Ledger_base_minter.o \
 		build/Ledger_block.o \
 		build/Ledger_chainstate.o \
 		build/Ledger_checkpoints.o \
+		build/Ledger_client.o \
 		build/Ledger_constants.o \
 		build/Ledger_create.o \
 		build/Ledger_difficulty.o \
+		build/Ledger_dispatch.o \
 		build/Ledger_genesis.o \
+		build/Ledger_genesis_block.o \
 		build/Ledger_locator.o \
 		build/Ledger_mempool.o \
+		build/Ledger_merkle.o \
 		build/Ledger_prime.o \
 		build/Ledger_process.o \
 		build/Ledger_retarget.o \
 		build/Ledger_sigchain.o \
 		build/Ledger_stake.o \
 		build/Ledger_stake_change.o \
+		build/Ledger_stake_minter.o \
 		build/Ledger_state.o \
 		build/Ledger_supply.o \
 		build/Ledger_syncblock.o \
@@ -519,27 +601,17 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Util_softfloat.o \
         build/Util_string.o \
 		build/Util_version.o \
-		build/Legacy_account.o \
 		build/Legacy_address.o \
-		build/Legacy_addressbook.o \
 		build/Legacy_ambassador.o \
-		build/Legacy_basickeystore.o \
-        build/Legacy_coinbase.o \
+		build/Legacy_coinbase.o \
 		build/Legacy_create.o \
-		build/Legacy_crypter.o \
-		build/Legacy_cryptokeystore.o \
-		build/Legacy_db.o \
 		build/Legacy_enum.o \
 		build/Legacy_evaluate.o \
-		build/Legacy_keypool.o \
-		build/Legacy_keypoolentry.o \
-		build/Legacy_keystore.o \
 		build/Legacy_legacy.o \
 		build/Legacy_masterkey.o \
 		build/Legacy_mempool.o \
 		build/Legacy_merkle.o \
 		build/Legacy_outpoint.o \
-		build/Legacy_output.o \
 		build/Legacy_reservekey.o \
 		build/Legacy_script.o \
 		build/Legacy_secret.o \
@@ -549,12 +621,37 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Legacy_trustkey.o \
 		build/Legacy_txin.o \
 		build/Legacy_txout.o \
-		build/Legacy_wallet.o \
-		build/Legacy_walletdb.o \
-		build/Legacy_walletkey.o \
-		build/Legacy_wallettx.o
 
-###############################################################################
+
+ifndef NO_WALLET
+	OBJS+= 	build/API_types_rpc_account.o \
+			build/API_types_rpc_daemon.o \
+			build/API_types_rpc_info.o \
+			build/API_types_rpc_network.o \
+			build/API_types_rpc_rpc.o \
+			build/API_types_rpc_wallet.o \
+			build/Legacy_account.o \
+			build/Legacy_addressbook.o \
+			build/Legacy_basickeystore.o \
+			build/Legacy_crypter.o \
+			build/Legacy_cryptokeystore.o \
+			build/Legacy_db.o \
+			build/Legacy_keypool.o \
+			build/Legacy_keypoolentry.o \
+			build/Legacy_keystore.o \
+			build/Legacy_output.o \
+			build/Legacy_wallet.o \
+			build/Legacy_walletdb.o \
+			build/Legacy_walletkey.o \
+			build/Legacy_wallettx.o
+
+endif
+
+
+#############################
+####### Build Windows #######
+#############################
+
 ifeq ($(detected_OS),Windows)
 
 #Configure OS Specific Compiler Output
@@ -632,7 +729,7 @@ build/LLC_%.o: ./src/LLC/hash/SHA3/%.c $(HEADERS)
 build/LLC_SK_%.o: ./src/LLC/hash/SK/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
-build/LLC_%.o: ./src/LLC/hash/argon2/%.c $(HEADERS)
+build/LLC_argon2_%.o: ./src/LLC/hash/argon2/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
 build/LLC_%.o: ./src/LLC/hash/argon2/blake2/%.c $(HEADERS)
@@ -656,43 +753,49 @@ build/LLP_%.o: ./src/LLP/%.cpp $(HEADERS)
 build/API_%.o: ./src/TAO/API/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_assets_%.o: ./src/TAO/API/types/assets/%.cpp $(HEADERS)
+build/API_types_assets_%.o: ./src/TAO/API/assets/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_dex_%.o: ./src/TAO/API/types/dex/%.cpp $(HEADERS)
+build/API_types_crypto_%.o: ./src/TAO/API/crypto/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_finance_%.o: ./src/TAO/API/types/finance/%.cpp $(HEADERS)
+build/API_types_dex_%.o: ./src/TAO/API/dex/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_invoices_%.o: ./src/TAO/API/types/invoices/%.cpp $(HEADERS)
+build/API_types_finance_%.o: ./src/TAO/API/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_ledger_%.o: ./src/TAO/API/types/ledger/%.cpp $(HEADERS)
+build/API_types_invoices_%.o: ./src/TAO/API/invoices/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_names_%.o: ./src/TAO/API/types/names/%.cpp $(HEADERS)
+build/API_types_ledger_%.o: ./src/TAO/API/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_objects_%.o: ./src/TAO/API/types/objects/%.cpp $(HEADERS)
+build/API_types_names_%.o: ./src/TAO/API/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_RPC_%.o: ./src/TAO/API/types/RPC/%.cpp $(HEADERS)
+build/API_types_objects_%.o: ./src/TAO/API/objects/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_supply_%.o: ./src/TAO/API/types/supply/%.cpp $(HEADERS)
+build/API_types_p2p_%.o: ./src/TAO/API/p2p/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_tokens_%.o: ./src/TAO/API/types/tokens/%.cpp $(HEADERS)
+build/API_types_rpc_%.o: ./src/TAO/API/rpc/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_users_%.o: ./src/TAO/API/types/users/%.cpp $(HEADERS)
+build/API_types_supply_%.o: ./src/TAO/API/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_voting_%.o: ./src/TAO/API/types/voting/%.cpp $(HEADERS)
+build/API_types_tokens_%.o: ./src/TAO/API/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
-build/API_types_system_%.o: ./src/TAO/API/types/system/%.cpp $(HEADERS)
+build/API_types_users_%.o: ./src/TAO/API/users/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_types_voting_%.o: ./src/TAO/API/voting/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_types_system_%.o: ./src/TAO/API/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/Ledger_%.o: ./src/TAO/Ledger/%.cpp $(HEADERS)
@@ -780,7 +883,11 @@ clean:
 	-rm -f src/build.h
 
 endif
-###############################################################################
+
+#############################
+######### Build OSX #########
+#############################
+
 ifeq ($(detected_OS),OSX)
 
 #Configure OS Specific Compiler Output
@@ -822,6 +929,278 @@ CXXFLAGS+= $(CXXWARNINGS)
 
 #OS Specific Targets and instructions
 all: nexus
+
+nexus: $(OBJS:build/%=build/%)
+	$(CXX) $(CXXFLAGS) -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
+	@echo ' '
+	@echo Finished building nexus
+	@echo ' '
+
+clean:
+	-rm -f nexus
+	-rm -f build/*.o
+	-rm -f build/*.P
+	-rm -f src/build.h
+
+endif
+
+#############################
+######## Build Linux ########
+#############################
+
+ifeq ($(detected_OS),Linux)
+
+#Configure OS Specific Compiler Output
+ifndef VERBOSE
+CXX= @echo Compiling $< && g++
+else
+CXX= g++
+endif
+
+#Handle for no ansi
+ifdef NO_ANSI
+    DEFS+= -DNO_ANSI
+endif
+
+#Configure OS Specific Build Environment
+LIBS+= -Wl,-Bdynamic \
+	-ldl \
+	-lpthread
+
+#Arch Linux Fix
+ifeq ($(shell uname -r | grep -o ....$), ARCH)
+	TMPLIBS := $(LIBS)
+	LIBS= $(filter-out -lssl -lcrypto,$(TMPLIBS))
+	LIBS+= /usr/lib/openssl-1.0/libssl.so \
+		/usr/lib/openssl-1.0/libcrypto.so
+endif
+
+#OS Specific Compiler Flags
+CXXFLAGS+= -pthread \
+	-fstack-protector \
+	-D_FORTIFY_SOURCE=2 \
+	-Wl,-z,relro \
+	-Wl,-z,now \
+	$(DEBUG) \
+    $(OPTIMIZATION) \
+	$(DEFS) \
+	$(INCLUDEPATHS)
+
+
+#Set CFLAGS and Warnings
+CFLAGS:= $(CXXFLAGS)
+CFLAGS+= $(CWARNINGS)
+
+#set -std=c++ for all but c compiling
+CXXFLAGS+=-std=c++11
+CXXFLAGS+= $(CXXWARNINGS)
+
+#OS Specific Targets and instructions
+all: nexus
+
+#build the final executable
+nexus: $(OBJS:obj/%=build/%)
+	$(CXX) $(CXXFLAGS) -rdynamic -o $@ $^ $(LDFLAGS) $(LIBS)
+	@echo ' '
+	@echo Finished building nexus
+	@echo ' '
+
+clean:
+	-rm -f nexus
+	-rm -f build/*.o
+	-rm -f build/*.P
+	-rm -f src/build.h
+
+endif
+
+#############################
+####### Build iPhone ########
+#############################
+
+ifeq ($(detected_OS),iPhone)
+
+ifeq ($(SIMULATOR),1)
+	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator$(IOS_SDK_VER).sdk
+else
+	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS$(IOS_SDK_VER).sdk
+	IOS_TYPE?= iphoneos
+	IOS_ARCH?= arm64
+endif
+
+IOS_ARCH ?= x86_64
+IOS_TYPE ?= ios-simulator
+IOS_SDK_VER ?= 13.2
+MIN_OS_VER ?= 10
+
+
+#Configure OS Specific Compiler Output
+CXX= @echo Compiling $< && llvm-g++
+
+
+#Handle for no ansi
+ifdef NO_ANSI
+    DEFS+= -DNO_ANSI
+endif
+
+
+#Configure OS Specific Build Environment
+DEFS+= -DMSG_NOSIGNAL=0 -DIPHONE
+LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
+	$(OPENSSL_LIB_PATH)/libcrypto.a
+
+
+#OS Specific Compiler Flags
+CXXFLAGS+= -O3 \
+	$(DEFS) \
+	$(DEBUG) \
+	$(INCLUDEPATHS) \
+	-arch $(IOS_ARCH) \
+	-m$(IOS_TYPE)-version-min=$(MIN_OS_VER)
+
+
+#Set CFLAGS and Warnings
+CFLAGS:= $(CXXFLAGS)
+CFLAGS+= $(CWARNINGS)
+
+#set -std=c++ for all but c compiling
+CXXFLAGS+=-std=c++11
+CXXFLAGS+= $(CXXWARNINGS)
+
+#OS Specific Targets and instructions
+all: iphone.a
+
+.PHONY: buildall iphone.a
+
+buildall:
+	mkdir -p build/obj
+	echo MAKING DEVICE
+	make -f makefile.cli NO_ANSI=1 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=0
+	echo CLEANING
+	make -f makefile.cli IPHONE=1 SIMULATOR=0 clean
+	echo MAKING SIM
+	make -f makefile.cli NO_ANSI=1 STATIC=1 NO_WALLET=1 IPHONE=1 SIMULATOR=1
+	mkdir build/tempdir
+	echo MOVING HEADERS
+	find ./src -name '*.h' -print | cpio -pvdumB ./build/tempdir
+	cp ./src/LLD/hash/xxhash.c ./build/tempdir/src/LLD/hash/xxhash.c
+	mkdir build/obj/nexus-mobile-library.framework
+	mv build/tempdir/src build/obj/nexus-mobile-library.framework/Headers
+	rmdir build/tempdir
+	echo BUILDING FRAMEWORK
+	cd build/obj && LIPO -create -arch arm64 "iphoneos.a" -arch x86_64 "ios-simulator.a" -o "nexus-mobile-library.a"
+	cd build/obj && mv nexus-mobile-library.a nexus-mobile-library.framework/nexus-mobile-library
+
+
+iphone.a: $(OBJS:build/%=build/%)
+	cd build && ar rc obj/$(IOS_TYPE).a **.o
+	@echo ' '
+	@echo Finished building nexus
+	@echo ' '
+
+clean:
+	-rm -f build/*.o
+	-rm -f build/*.P
+
+endif
+
+#############################
+####### Build Android #######
+#############################
+
+ifeq ($(detected_OS),Android)
+
+ANDROID_API ?= 29
+SDK_LOCATION ?= /usr/local/Caskroom/android-sdk/4333796/
+NDK_LOCATION ?= /usr/local/Caskroom/android-sdk/4333796/ndk/21.3.6528147/
+HOST_ARCH ?= darwin-x86_64
+ANDROID_TARGET ?= $(ANDROID_ARCH)-linux-android$(ANDROID_API)
+
+llvm_prebuild_dir = $(NDK_LOCATION)toolchains/llvm/prebuilt/$(HOST_ARCH)
+
+#Configure OS Specific Compiler Output
+CXX= @echo Compiling $< && $(llvm_prebuild_dir)/bin/$(ANDROID_ARCH)-linux-android$(ANDROID_API)-clang++
+
+
+#Handle for no ansi
+ifdef NO_ANSI
+    DEFS+= -DNO_ANSI
+endif
+
+
+#Configure OS Specific Build Environment
+DEFS+= -DMSG_NOSIGNAL=0 -DANDROID
+LIBS+= $(OPENSSL_LIB_PATH)/libssl.a \
+	$(OPENSSL_LIB_PATH)/libcrypto.a
+
+
+#OS Specific Compiler Flags
+CXXFLAGS+= -O3 \
+	$(DEFS) \
+	$(DEBUG) \
+	$(INCLUDEPATHS) \
+	-isysroot $(SDK_LOCATION)platforms/android-$(ANDROID_API) \
+	-target $(ANDROID_TARGET) \
+	-arch $(ANDROID_ARCH) \
+	-static-libstdc++ \
+	-fPIC
+
+
+#Set CFLAGS and Warnings
+CFLAGS:= $(CXXFLAGS)
+CFLAGS+= $(CWARNINGS)
+
+#set -std=c++ for all but c compiling
+CXXFLAGS+=-std=c++11
+CXXFLAGS+= $(CXXWARNINGS)
+
+
+all: android.so
+
+### Print Info
+#$(info ANDROID)
+#$(info $(CXX))
+#$(info $(CFLAGS))
+#$(info $(CXXFLAGS))
+#$(info $(OPENSSL_INCLUDE_PATH))
+#$(info $(OPENSSL_LIB_PATH))
+
+
+
+.PHONY: buildall android.so
+
+#OS Specific Targets and instructions
+buildall:
+	mkdir -p build/Nexus.androidframework
+	@echo Making x86_64
+	make -f makefile.cli NO_ANSI=1 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="x86_64"
+	@echo Cleaning
+	make -f makefile.cli ANDROID=1 clean
+	@echo Making aarch64
+	make -f makefile.cli NO_ANSI=1 STATIC=0 NO_WALLET=1 ANDROID=1 ANDROID_ARCH="aarch64"
+	mkdir build/tempdir
+	find ./src -name '*.h' -print | cpio -pvdumB ./build/tempdir
+	cp ./src/LLD/hash/xxhash.c ./build/tempdir/src/LLD/hash/xxhash.c
+	mv build/tempdir/src build/Nexus.androidframework/Headers
+	rmdir build/tempdir
+
+
+android.so: $(OBJS:build/%=build/%)
+	cd build && $(llvm_prebuild_dir)/$(ANDROID_ARCH)-linux-android/bin/ar rc Nexus.androidframework/$(openssl_arch)-android-nexuslib.so **.o
+	@echo ' '
+	@echo $(info ANDROID)
+	@echo Finished building nexus
+	@echo ' '
+
+
+clean:
+	-rm -f build/*.o
+	-rm -f build/*.P
+
+endif
+
+#############################
+### C / CPP Build objects ###
+#############################
 
 build/%.o: src/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
@@ -872,7 +1251,7 @@ build/LLC_SK_%.o: src/LLC/hash/SK/%.c $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/LLC_%.o: src/LLC/hash/argon2/%.c $(HEADERS)
+build/LLC_argon2_%.o: src/LLC/hash/argon2/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -928,91 +1307,105 @@ build/API_%.o: src/TAO/API/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_assets_%.o: src/TAO/API/types/assets/%.cpp $(HEADERS)
+build/API_types_assets_%.o: src/TAO/API/assets/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_dex_%.o: src/TAO/API/types/dex/%.cpp $(HEADERS)
+build/API_types_crypto_%.o: src/TAO/API/crypto/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_finance_%.o: src/TAO/API/types/finance/%.cpp $(HEADERS)
+build/API_types_dex_%.o: src/TAO/API/dex/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_invoices_%.o: src/TAO/API/types/invoices/%.cpp $(HEADERS)
+build/API_types_finance_%.o: src/TAO/API/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_ledger_%.o: src/TAO/API/types/ledger/%.cpp $(HEADERS)
+build/API_types_invoices_%.o: src/TAO/API/invoices/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_names_%.o: src/TAO/API/types/names/%.cpp $(HEADERS)
+build/API_types_ledger_%.o: src/TAO/API/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_objects_%.o: src/TAO/API/types/objects/%.cpp $(HEADERS)
+build/API_types_names_%.o: src/TAO/API/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_RPC_%.o: src/TAO/API/types/RPC/%.cpp $(HEADERS)
+build/API_types_objects_%.o: src/TAO/API/objects/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_supply_%.o: src/TAO/API/types/supply/%.cpp $(HEADERS)
+build/API_types_p2p_%.o: src/TAO/API/p2p/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_tokens_%.o: src/TAO/API/types/tokens/%.cpp $(HEADERS)
+build/API_types_rpc_%.o: src/TAO/API/rpc/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_users_%.o: src/TAO/API/types/users/%.cpp $(HEADERS)
+build/API_types_supply_%.o: src/TAO/API/supply/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_voting_%.o: src/TAO/API/types/voting/%.cpp $(HEADERS)
+build/API_types_tokens_%.o: src/TAO/API/tokens/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-build/API_types_system_%.o: src/TAO/API/types/system/%.cpp $(HEADERS)
+build/API_types_users_%.o: src/TAO/API/users/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_voting_%.o: src/TAO/API/voting/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_types_system_%.o: src/TAO/API/system/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -1187,448 +1580,6 @@ build/Live_%.o: tests/live/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
-nexus: $(OBJS:build/%=build/%)
-	$(CXX) $(CXXFLAGS) -dead_strip -o $@ $(LIBPATHS) $^ $(LIBS)
-	@echo ' '
-	@echo Finished building nexus
-	@echo ' '
-
-clean:
-	-rm -f nexus
-	-rm -f build/*.o
-	-rm -f build/*.P
-	-rm -f src/build.h
-
-endif
-###############################################################################
-ifeq ($(detected_OS),Linux)
-
-#Configure OS Specific Compiler Output
-ifndef VERBOSE
-CXX= @echo Compiling $< && g++
-else
-CXX= g++
-endif
-
-#Handle for no ansi
-ifdef NO_ANSI
-    DEFS+= -DNO_ANSI
-endif
-
-#Configure OS Specific Build Environment
-LIBS+= -Wl,-Bdynamic \
-	-ldl \
-	-lpthread
-
-#Arch Linux Fix
-ifeq ($(shell uname -r | grep -o ....$), ARCH)
-	TMPLIBS := $(LIBS)
-	LIBS= $(filter-out -lssl -lcrypto,$(TMPLIBS))
-	LIBS+= /usr/lib/openssl-1.0/libssl.so \
-		/usr/lib/openssl-1.0/libcrypto.so
-endif
-
-#OS Specific Compiler Flags
-CXXFLAGS+= -pthread \
-	-fstack-protector \
-	-D_FORTIFY_SOURCE=2 \
-	-Wl,-z,relro \
-	-Wl,-z,now \
-	$(DEBUG) \
-    $(OPTIMIZATION) \
-	$(DEFS) \
-	$(INCLUDEPATHS)
-
-
-#Set CFLAGS and Warnings
-CFLAGS:= $(CXXFLAGS)
-CFLAGS+= $(CWARNINGS)
-
-#set -std=c++ for all but c compiling
-CXXFLAGS+=-std=c++11
-CXXFLAGS+= $(CXXWARNINGS)
-
-#OS Specific Targets and instructions
-all: nexus
-
-build/%.o: src/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLC_%.o: src/LLC/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLC_%.o: src/LLC/hash/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLC_SK_%.o: src/LLC/hash/SK/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLC_%.o: src/LLC/hash/Skein/%.c $(HEADERS)
-	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLC_%.o: src/LLC/hash/SHA3/%.c $(HEADERS)
-	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLC_SK_%.o: src/LLC/hash/SK/%.c $(HEADERS)
-	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLC_%.o: src/LLC/hash/argon2/%.c $(HEADERS)
-	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLC_%.o: src/LLC/hash/argon2/blake2/%.c $(HEADERS)
-	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLC_%.o: src/LLC/aes/%.c $(HEADERS)
-	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLC_%.o: src/LLC/falcon/%.c $(HEADERS)
-	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLD_%.o: src/LLD/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLD_%.o: src/LLD/hash/%.c $(HEADERS)
-	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/LLP_%.o: src/LLP/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_%.o: src/TAO/API/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_assets_%.o: src/TAO/API/types/assets/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_dex_%.o: src/TAO/API/types/dex/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_finance_%.o: src/TAO/API/types/finance/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_invoices_%.o: src/TAO/API/types/invoices/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-
-build/API_types_ledger_%.o: src/TAO/API/types/ledger/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_names_%.o: src/TAO/API/types/names/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_objects_%.o: src/TAO/API/types/objects/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_RPC_%.o: src/TAO/API/types/RPC/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_supply_%.o: src/TAO/API/types/supply/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_tokens_%.o: src/TAO/API/types/tokens/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_users_%.o: src/TAO/API/types/users/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_voting_%.o: src/TAO/API/types/voting/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_types_system_%.o: src/TAO/API/types/system/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Ledger_%.o: src/TAO/Ledger/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Operation_%.o: src/TAO/Operation/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Register_%.o: src/TAO/Register/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Util_%.o: src/Util/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Legacy_%.o: src/Legacy/%.cpp
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Tests_%.o: tests/unit/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Tests_Legacy_%.o: tests/unit/Legacy/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Tests_LLC_%.o: tests/unit/LLC/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Tests_LLD_%.o: tests/unit/LLD/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Tests_LLP_%.o: tests/unit/LLP/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Tests_TAO_API_%.o: tests/unit/TAO/API/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Tests_TAO_Ledger_%.o: tests/unit/TAO/Ledger/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Tests_TAO_Operation_%.o: tests/unit/TAO/Operation/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Tests_TAO_Register_%.o: tests/unit/TAO/Register/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Tests_Util_%.o: tests/unit/Util/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Benchmarks_%.o: tests/bench/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Benchmarks_%.o: tests/bench/LLC/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Benchmarks_%.o: tests/bench/LLD/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Benchmarks_%.o: tests/bench/LLP/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Benchmarks_%.o: tests/bench/TAO/Ledger/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Benchmarks_%.o: tests/bench/TAO/Operation/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Benchmarks_%.o: tests/bench/TAO/Register/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Benchmarks_%.o: tests/bench/Util/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/Live_%.o: tests/live/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-#build the final executable
-nexus: $(OBJS:obj/%=build/%)
-	$(CXX) $(CXXFLAGS) -rdynamic -o $@ $^ $(LDFLAGS) $(LIBS)
-	@echo ' '
-	@echo Finished building nexus
-	@echo ' '
-
-clean:
-	-rm -f nexus
-	-rm -f build/*.o
-	-rm -f build/*.P
-	-rm -f src/build.h
-
-endif
-###############################################################################
-##
+######################################################################################################################################################################################################
+### END OF FILE
+######################################################################################################################################################################################################

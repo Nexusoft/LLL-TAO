@@ -209,13 +209,14 @@ namespace TAO
          *
          *  Finds all objects that have been tokenized and therefore owned by hashToken
          *
+         *  @param[in] hashGenesis The genesis hash for the sig chain owner.
          *  @param[in] hashToken The token to find objects for
          *  @param[out] vObjects The list of object register addresses owned by the token.
          *
          *  @return A vector of register addresses owned by the token
          *
          **/
-        bool ListTokenizedObjects(const TAO::Register::Address& hashToken, 
+        bool ListTokenizedObjects(const uint256_t hashGenesis, const TAO::Register::Address& hashToken, 
                                   std::vector<TAO::Register::Address>& vObjects);
 
 
@@ -258,6 +259,46 @@ namespace TAO
         **/
         bool VoidContract(const TAO::Operation::Contract& contract, const uint32_t nContract, TAO::Operation::Contract &voidContract);
 
+
+        /** GetTxCount
+        *
+        *  Get the number of transactions in the sig chain relating to the register
+        *
+        *  @param[in] hashGenesis The genesis hash of the sig chain to search
+        *  @param[in] object  The object register to get the tx count for
+        *  @param[in] hashRegister The address of the register to get the tx count for
+        * 
+        *  @return The number of transactions in the sig chain relating to the register
+        *
+        **/
+        uint32_t GetTxCount(const uint256_t& hashGenesis, const TAO::Register::Object& object, const TAO::Register::Address& hashRegister);
+
+
+        /** DownloadSigChain
+        *
+        *  Used for client mode, this method will download the signature chain transactions and events for a given genesis  
+        *
+        *  @param[in] hashGenesis The genesis hash of the sig chain to synchronize for
+        *  @param[in] bSyncEvents Flag indicating whether or not to also download events for the sig chain
+        * 
+        *  @return Boolean indicating whether the download was successful
+        *
+        **/
+        bool DownloadSigChain(const uint256_t& hashGenesis, bool bSyncEvents);
+
+
+        /** GetAccountByToken
+        *
+        *  Searches the sig chain for the first account for the given token type 
+        *
+        *  @param[in] hashGenesis The genesis hash of the sig chain to search  
+        *  @param[in] hashToken The token type to search for
+        *  @param[out] hashAccount Populated with the address of the account, if found
+        * 
+        *  @return Boolean indicating whether an account was found or not
+        *
+        **/
+        bool GetAccountByToken(const uint256_t& hashGenesis, const uint256_t& hashToken, TAO::Register::Address& hashAccount);
 
     }
 }

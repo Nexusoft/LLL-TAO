@@ -35,6 +35,61 @@ namespace TAO
     namespace API
     {
 
+        /* Makes a connection, write packet, read response, and then disconnects. */
+        template<typename ProtocolType>
+        int WriteReadResponse(ProtocolType &node, const LLP::BaseAddress& addr, std::vector<uint8_t> &vBuffer, const std::string& type)
+        {
+            if(!node.Connect(addr))
+            {
+                debug::log(0, "Couldn't Connect to ", type);
+
+                return 0;
+            }
+
+            /* Write the buffer to the socket. */
+            node.Write(vBuffer, vBuffer.size());
+
+            /* Read the response packet. */
+            while(!node.INCOMING.Complete() && !config::fShutdown.load())
+            {
+                node.Flush();
+
+                /* Catch if the connection was closed. */
+                if(!node.Connected())
+                {
+                    debug::log(0, "Connection Terminated");
+
+                    return 0;
+                }
+
+                /* Catch if the socket experienced errors. */
+                if(node.Errors())
+                {
+                    debug::log(0, "Socket Error");
+
+                    return 0;
+                }
+
+                /* Catch if the connection timed out. */
+                if(node.Timeout(120000))
+                {
+                    debug::log(0, "Socket Timeout");
+                    return 0;
+                }
+
+                /* Read the response packet. */
+                node.ReadPacket();
+                runtime::sleep(1);
+
+            }
+
+            /* Disconnect node. */
+            node.Disconnect();
+
+            return 1;
+        }
+
+
         /* Executes an API call from the commandline */
         int CommandLineAPI(int argc, char** argv, int argn)
         {
@@ -60,24 +115,54 @@ namespace TAO
                 return 0;
             }
 
+            /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
+            bool fIsList = endpoint.find("/list/") != endpoint.npos;
+
+            /* list of keywords that are acceptale parameters for a /list/xxx method.  Parameters not in this list will be converted
+               a `where` array */
+                
+            std::vector<std::string> vKeywords = {"genesis", "username", "verbose", "page", "limit", "offset", "sort", "order", "where"};
+            
             /* Build the JSON request object. */
             json::json parameters;
 
             /* Keep track of previous parameter. */
             std::string prev;
+
+            /* flag indicating the parameter is a where clause  */
+            bool fWhere = false;
             for(int i = argn + 1; i < argc; ++i)
             {
                 /* Parse out the key / values. */
                 std::string arg = std::string(argv[i]);
-                std::string::size_type pos = arg.find('=', 0);
+                std::string::size_type pos = std::string::npos;
+
+                if(fIsList)
+                    pos = arg.find_first_of("><=", 0);
+                else
+                    pos = arg.find('=', 0);
 
                 /* Watch for missing delimiter. */
                 if(pos == arg.npos)
                 {
-                    /* Append this data with URL encoding. */
+                    if(fWhere)
+                    {
+                        /* Get the last added clause */
+                        json::json jsonClause = parameters["where"].back();
+
+                        /* Append the next piece of data to it */
+                        std::string strValue = jsonClause["value"];
+                        strValue.append(" " + arg);
+                        jsonClause["value"] = strValue;
+                    }
+                    
+                    /* Append this data to the previously stored parameter. */
                     std::string value = parameters[prev];
                     value.append(" " + arg);
                     parameters[prev] = value;
+                    
+                    /* Reset the Where flag */
+                    fWhere = false;
 
                     continue;
                 }
@@ -85,12 +170,42 @@ namespace TAO
                 /* Set the previous argument. */
                 prev = arg.substr(0, pos);
 
+                /* If this is a list command, check to see if this is a where clause (not a keyword parameter supported by list)*/
+                if(fIsList && std::find(vKeywords.begin(), vKeywords.end(), prev) == vKeywords.end())
+                {
+                    fWhere = true;
+
+                    /* add the where clause */
+                    json::json jsonClause;
+                    jsonClause["field"] = prev;
+
+                    /* Check to see if the parameter delimter is a two-character operand */
+                    if(arg.find_first_of("><=", pos+1) != arg.npos)
+                    {
+                        /* Extract the operand */
+                        jsonClause["op"] = arg.substr(pos, 2);
+                        pos++;
+                    }
+                    else
+                    {
+                        /* Extract the operand */
+                        jsonClause["op"] = arg.substr(pos, 1);
+                    }
+
+                    /* Extract the value */
+                    jsonClause["value"] = arg.substr(pos + 1);
+
+                    /* Add it to the where params*/
+                    parameters["where"].push_back(jsonClause);
+                }
+    
 
                 // if the paramter is a JSON list or array then we need to parse it
                 if(arg.compare(pos + 1,1,"{") == 0 || arg.compare(pos + 1,1,"[") == 0)
                     parameters[prev]=json::json::parse(arg.substr(pos + 1));
                 else
                     parameters[prev] = arg.substr(pos + 1);
+
             }
 
 
@@ -112,59 +227,58 @@ namespace TAO
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
             /* Make the connection to the API server. */
-            LLP::APINode apiNode;
+            
 
             std::string strAddr = config::GetArg("-apiconnect", "127.0.0.1");
             uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-apiport"), config::fTestNet.load() ? TESTNET_API_PORT : MAINNET_API_PORT));
+            uint16_t nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-apisslport"), config::fTestNet.load() ? TESTNET_API_SSL_PORT : MAINNET_API_SSL_PORT));
 
-            LLP::BaseAddress addr(strAddr, nPort);
+            bool fSSL = config::GetBoolArg(std::string("-apissl")) || config::GetBoolArg(std::string("-apisslrequired"));
+            bool fSSLRequired = config::GetBoolArg(std::string("-apisslrequired"));
 
-            if(!apiNode.Connect(addr))
+            std::string strResponse;
+            bool fSuccess = false;
+
+            /* If SSL is enabled then attempt the connection using SSL */
+            if(fSSL)
             {
-                debug::log(0, "Couldn't Connect to API");
+                LLP::APINode apiNode;
+                apiNode.SetSSL(true);
+                
+                LLP::BaseAddress addr(strAddr, nSSLPort);
 
+                /* Make connection, write packet, read response, and disconnect. */
+                if(WriteReadResponse<LLP::APINode>(apiNode, addr, vBuffer, "API"))
+                {
+                    /* If successful read the response */
+                    strResponse = apiNode.INCOMING.strContent;
+                    fSuccess = true;
+                }
+            }
+
+            /* If SSL wasn't successful or enabled and is not required, try insecure connection  */
+            if(!fSuccess && !fSSLRequired)
+            {
+                LLP::APINode apiNode;
+                apiNode.SetSSL(false);
+                
+                LLP::BaseAddress addr(strAddr, nPort);
+
+                /* Make connection, write packet, read response, and disconnect. */
+                if(WriteReadResponse<LLP::APINode>(apiNode, addr, vBuffer, "API"))
+                {
+                    /* If successful read the response */
+                    strResponse = apiNode.INCOMING.strContent;
+                    fSuccess = true;
+                }
+            }
+
+            /* Break out if we couldn't establish a connection */
+            if(!fSuccess)
                 return 0;
-            }
-
-            /* Write the buffer to the socket. */
-            apiNode.Write(vBuffer, vBuffer.size());
-            apiNode.Flush();
-
-            /* Read the response packet. */
-            while(!apiNode.INCOMING.Complete() && !config::fShutdown.load())
-            {
-
-                /* Catch if the connection was closed. */
-                if(!apiNode.Connected())
-                {
-                    debug::log(0, "Connection Terminated");
-                    return 0;
-                }
-
-                /* Catch if the socket experienced errors. */
-                if(apiNode.Errors())
-                {
-                    debug::log(0, "Socket Error");
-                    return 0;
-                }
-
-                /* Catch if the connection timed out (120s). */
-                if(apiNode.Timeout(120000))
-                {
-                    debug::log(0, "Socket Timeout");
-                    return 0;
-                }
-
-                /* Read the response packet. */
-                apiNode.ReadPacket();
-                runtime::sleep(1);
-            }
-
-            /* Disconnect node. */
-            apiNode.Disconnect();
 
             /* Parse response JSON. */
-            json::json ret = json::json::parse(apiNode.INCOMING.strContent);
+            json::json ret = json::json::parse(strResponse);
 
             /* Check for errors. */
             std::string strPrint = "";
@@ -236,59 +350,64 @@ namespace TAO
             /* Convert the content into a byte buffer. */
             std::vector<uint8_t> vBuffer(strReply.begin(), strReply.end());
 
-            /* Make the connection to the API server. */
-            LLP::RPCNode rpcNode;
-
             std::string strAddr = config::GetArg("-rpcconnect", "127.0.0.1");
             uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcport"), config::fTestNet.load() ? TESTNET_RPC_PORT : MAINNET_RPC_PORT));
+            uint16_t nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-rpcsslport"), config::fTestNet.load() ? TESTNET_RPC_SSL_PORT : MAINNET_RPC_SSL_PORT));
 
-            LLP::BaseAddress addr(strAddr, nPort);
+            bool fSSL = config::GetBoolArg(std::string("-rpcssl")) || config::GetBoolArg(std::string("-rpcsslrequired"));
+            bool fSSLRequired = config::GetBoolArg(std::string("-rpcsslrequired"));
 
-            if(!rpcNode.Connect(addr))
+            std::string strRequest;
+            std::string strResponse;
+            bool fSuccess = false;
+
+            /* If SSL is enabled then attempt the connection using SSL */
+            if(fSSL)
             {
-                debug::log(0, "Couldn't Connect to RPC");
+                LLP::RPCNode rpcNode;
+                rpcNode.SetSSL(true);
+                
+                LLP::BaseAddress addr(strAddr, nSSLPort);
 
+                /* Make connection, write packet, read response, and disconnect. */
+                if(WriteReadResponse<LLP::RPCNode>(rpcNode, addr, vBuffer, "RPC"))
+                {
+                    /* If successful read the response */
+                    strResponse = rpcNode.INCOMING.strContent;
+                    strRequest = rpcNode.INCOMING.strRequest;
+                    fSuccess = true;
+                }
+            }
+
+            /* If SSL wasn't successful or enabled and is not required, try insecure connection  */
+            if(!fSuccess && !fSSLRequired)
+            {
+                LLP::RPCNode rpcNode;
+                rpcNode.SetSSL(false);
+                
+                LLP::BaseAddress addr(strAddr, nPort);
+
+                /* Make connection, write packet, read response, and disconnect. */
+                if(WriteReadResponse<LLP::RPCNode>(rpcNode, addr, vBuffer, "RPC"))
+                {
+                    /* If successful read the response */
+                    strResponse = rpcNode.INCOMING.strContent;
+                    strRequest = rpcNode.INCOMING.strRequest;
+                    fSuccess = true;
+                }
+            }
+
+            /* Break out if we couldn't establish a connection */
+            if(!fSuccess)
                 return 0;
-            }
 
-            /* Write the buffer to the socket. */
-            rpcNode.Write(vBuffer, vBuffer.size());
-
-            /* Read the response packet. */
-            while(!rpcNode.INCOMING.Complete() && !config::fShutdown.load())
-            {
-                rpcNode.Flush();
-
-                /* Catch if the connection was closed. */
-                if(!rpcNode.Connected())
-                {
-                    debug::log(0, "Connection Terminated");
-
-                    return 0;
-                }
-
-                /* Catch if the socket experienced errors. */
-                if(rpcNode.Errors())
-                {
-                    debug::log(0, "Socket Error");
-
-                    return 0;
-                }
-
-                /* Read the response packet. */
-                rpcNode.ReadPacket();
-                runtime::sleep(1);
-            }
-
-            /* Disconnect node. */
-            rpcNode.Disconnect();
 
             /* Dump the response to the console. */
             int nRet = 0;
             std::string strPrint = "";
-            if(rpcNode.INCOMING.strContent.length() > 0)
+            if(strResponse.length() > 0)
             {
-                json::json ret = json::json::parse(rpcNode.INCOMING.strContent);
+                json::json ret = json::json::parse(strResponse);
 
                 if(!ret["error"].is_null())
                 {
@@ -306,7 +425,7 @@ namespace TAO
             else
             {
                 // If the server returned no content then just output the packet header type, which will include any HTTP error code
-                strPrint = rpcNode.INCOMING.strRequest;
+                strPrint = strRequest;
             }
 
             // output to console

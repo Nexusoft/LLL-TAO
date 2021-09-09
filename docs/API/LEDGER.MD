@@ -217,13 +217,19 @@ Retrieves an array of block data for a sequential range of blocks from a given h
 
 `height` : The block height to retrieve the block data for.
 
-`limit` : The number of blocks to return data for.  This is optional (default 10). The limit must be between 1 and 1000.
-
 `verbose` : This is optional, determines how much transaction data to include in the response. Supported values are :
  - `none` : no transaction data
  - `default` : hash
  - `summary` : type, version, sequence, timestamp, and operation.
  - `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+`limit` : The number of records to return for the current page. The default is 100.
+
+`page` : Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) records. The default value is 0 if not supplied.
+
+`offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+
+`where` : An array of clauses to filter the JSON results.  More information on filtering the results from /list/xxx API methods can be found here [Filtering Results](filtering-results.md)
 
 
 **NOTE** : Either the hash or the height needs to be supplied, but not both.  

@@ -81,14 +81,14 @@ DataStream::DataStream(const std::vector<char>& vchDataIn, const uint32_t nSerTy
 
 
 /*  Sets the type of stream. */
-void DataStream::SetType(uint8_t nSerTypeIn)
+void DataStream::SetType(const uint32_t nSerTypeIn)
 {
     nSerType = nSerTypeIn;
 }
 
 
 /*  Sets the position in the stream. */
-void DataStream::SetPos(uint64_t nNewPos) const
+void DataStream::SetPos(const uint64_t nNewPos) const
 {
     /* Check size constraints. */
     if(nNewPos > size())

@@ -16,12 +16,15 @@ ________________________________________________________________________________
 #include <LLC/hash/macro.h>
 #include <LLC/hash/argon2.h>
 
+#include <LLC/include/argon2.h>
 #include <LLC/include/flkey.h>
 #include <LLC/include/eckey.h>
 
 #include <LLD/include/global.h>
 
 #include <LLP/include/version.h>
+
+#include <TAO/API/include/global.h>
 
 #include <TAO/Operation/include/cost.h>
 #include <TAO/Operation/include/execute.h>
@@ -38,11 +41,12 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/developer.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/dispatch.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/stake.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/include/timelocks.h>
-#include <TAO/Ledger/types/transaction.h>
+#include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/debug.h>
@@ -110,6 +114,42 @@ namespace TAO
         }
 
 
+        /* Copy constructor. */
+        Transaction::Transaction(const MerkleTx& tx)
+        : vContracts   (tx.vContracts)
+        , nVersion     (tx.nVersion)
+        , nSequence    (tx.nSequence)
+        , nTimestamp   (tx.nTimestamp)
+        , hashNext     (tx.hashNext)
+        , hashRecovery (tx.hashRecovery)
+        , hashGenesis  (tx.hashGenesis)
+        , hashPrevTx   (tx.hashPrevTx)
+        , nKeyType     (tx.nKeyType)
+        , nNextType    (tx.nNextType)
+        , vchPubKey    (tx.vchPubKey)
+        , vchSig       (tx.vchSig)
+        {
+        }
+
+
+        /* Move constructor. */
+        Transaction::Transaction(MerkleTx&& tx) noexcept
+        : vContracts   (std::move(tx.vContracts))
+        , nVersion     (std::move(tx.nVersion))
+        , nSequence    (std::move(tx.nSequence))
+        , nTimestamp   (std::move(tx.nTimestamp))
+        , hashNext     (std::move(tx.hashNext))
+        , hashRecovery (std::move(tx.hashRecovery))
+        , hashGenesis  (std::move(tx.hashGenesis))
+        , hashPrevTx   (std::move(tx.hashPrevTx))
+        , nKeyType     (std::move(tx.nKeyType))
+        , nNextType    (std::move(tx.nNextType))
+        , vchPubKey    (std::move(tx.vchPubKey))
+        , vchSig       (std::move(tx.vchSig))
+        {
+        }
+
+
         /* Copy assignment. */
         Transaction& Transaction::operator=(const Transaction& tx)
         {
@@ -132,6 +172,46 @@ namespace TAO
 
         /* Move assignment. */
         Transaction& Transaction::operator=(Transaction&& tx) noexcept
+        {
+            vContracts   = std::move(tx.vContracts);
+            nVersion     = std::move(tx.nVersion);
+            nSequence    = std::move(tx.nSequence);
+            nTimestamp   = std::move(tx.nTimestamp);
+            hashNext     = std::move(tx.hashNext);
+            hashRecovery = std::move(tx.hashRecovery);
+            hashGenesis  = std::move(tx.hashGenesis);
+            hashPrevTx   = std::move(tx.hashPrevTx);
+            nKeyType     = std::move(tx.nKeyType);
+            nNextType    = std::move(tx.nNextType);
+            vchPubKey    = std::move(tx.vchPubKey);
+            vchSig       = std::move(tx.vchSig);
+
+            return *this;
+        }
+
+
+        /* Copy assignment. */
+        Transaction& Transaction::operator=(const MerkleTx& tx)
+        {
+            vContracts   = tx.vContracts;
+            nVersion     = tx.nVersion;
+            nSequence    = tx.nSequence;
+            nTimestamp   = tx.nTimestamp;
+            hashNext     = tx.hashNext;
+            hashRecovery = tx.hashRecovery;
+            hashGenesis  = tx.hashGenesis;
+            hashPrevTx   = tx.hashPrevTx;
+            nKeyType     = tx.nKeyType;
+            nNextType    = tx.nNextType;
+            vchPubKey    = tx.vchPubKey;
+            vchSig       = tx.vchSig;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        Transaction& Transaction::operator=(MerkleTx&& tx) noexcept
         {
             vContracts   = std::move(tx.vContracts);
             nVersion     = std::move(tx.nVersion);
@@ -196,7 +276,7 @@ namespace TAO
                 vContracts.resize(n + 1);
 
             /* Bind this transaction. */
-            vContracts[n].Bind(this, false); //don't get txid yet, because the non-const version of this subscript will modify object
+            vContracts[n].Bind(this);
 
             return vContracts[n];
         }
@@ -429,8 +509,8 @@ namespace TAO
             return true;
         }
 
-
         /* Check the trust score that is claimed is correct. */
+        static const uint256_t hashConsistencyCheck = uint256_t("0xa15efdcd1969a9a645eda0296b52678f1ef3d9e91ec9f54a4f82f9ab7ce65a6c");
         bool Transaction::CheckTrust(BlockState* pblock) const
         {
             /* Check for proof of stake. */
@@ -511,7 +591,8 @@ namespace TAO
 
                 /* Check for previous version 7 and current version 8. */
                 uint64_t nTrustRet = 0;
-                if(pblock->nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
+                if(pblock->nVersion == 8 && stateLast.nVersion == 7
+                && hashGenesis == hashConsistencyCheck &&!CheckConsistency(hashLast, nTrustRet))
                     nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, pblock->nVersion);
                 else //when consistency is correct, calculate like normal
                     nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, pblock->nVersion);
@@ -614,13 +695,13 @@ namespace TAO
             uint64_t nPrevTimestamp = txPrev.nTimestamp;
 
             /* flag indicating that transaction fees should apply, depending on the time since the last transaction */
-            bool fApplyTxFee = nTimestamp - nPrevTimestamp < TX_FEE_INTERVAL;
+            bool fApplyTxFee = (nTimestamp - nPrevTimestamp) < TX_FEE_INTERVAL;
 
             /* Run through all the contracts. */
             for(auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(this, false);  //don't bind txid yet, because it depends on the costs added for its final state
+                contract.Bind(nTimestamp, hashGenesis);
 
                 /* Calculate the total cost to execute. */
                 TAO::Operation::Cost(contract, nRet);
@@ -650,9 +731,19 @@ namespace TAO
                 /* Bind the contract to this transaction. */
                 contract.Bind(this, false); //don't bind txid yet, because it depends on build for its final state
 
-                /* Calculate the pre-states and post-states. */
-                if(!TAO::Register::Build(contract, mapStates, FLAGS::MEMPOOL))
-                    return false;
+                /* Create a temporary map for pre-states. */
+                std::map<uint256_t, TAO::Register::State> mapStates;
+
+                /* Run through all the contracts. */
+                for(auto& contract : vContracts)
+                {
+                    /* Bind the contract to this transaction. */
+                    contract.Bind(nTimestamp, hashGenesis);
+
+                    /* Calculate the pre-states and post-states. */
+                    if(!TAO::Register::Build(contract, mapStates, FLAGS::MEMPOOL))
+                        return false;
+                }
             }
 
 
@@ -744,50 +835,59 @@ namespace TAO
             }
             else
             {
-                /* Make sure the previous transaction is on disk or mempool. */
-                TAO::Ledger::Transaction txPrev;
-                if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
-                    return debug::error(FUNCTION, "prev transaction not on disk");
+                /* We want to track the sigchain logged in so we can enforce certain rules for our own sigchain. */
+                uint256_t hashSigchain = 0;
+                if(config::fClient.load())
+                    hashSigchain = TAO::API::users->GetGenesis(0);
 
-                /* Double check sequence numbers here. */
-                if(txPrev.nSequence + 1 != nSequence)
-                    return debug::error(FUNCTION, "prev transaction incorrect sequence");
-
-                /* Check timestamp to previous transaction. */
-                if(nTimestamp < txPrev.nTimestamp)
-                    return debug::error(FUNCTION, "timestamp too far in the past ", txPrev.nTimestamp - nTimestamp);
-
-                /* Work out the whether transaction fees should apply based on the interval between transactions */
-                fApplyTxFee = ((nTimestamp - txPrev.nTimestamp) < TX_FEE_INTERVAL);
-
-                /* Check the previous next hash that is being claimed. */
-                bool fRecovery = false;
-                if(txPrev.hashNext != PrevHash())
+                /* We want this to trigger for times not in -client mode. */
+                if(!config::fClient.load() || hashGenesis == hashSigchain)
                 {
-                    /* Check that previous hash matches recovery. */
-                    if(txPrev.hashRecovery == PrevHash())
+                    /* Make sure the previous transaction is on disk or mempool. */
+                    TAO::Ledger::Transaction txPrev;
+                    if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
+                        return debug::error(FUNCTION, "prev transaction not on disk");
+
+                    /* Double check sequence numbers here. */
+                    if(txPrev.nSequence + 1 != nSequence)
+                        return debug::error(FUNCTION, "prev transaction incorrect sequence");
+
+                    /* Check timestamp to previous transaction. */
+                    if(nTimestamp < txPrev.nTimestamp)
+                        return debug::error(FUNCTION, "timestamp too far in the past ", txPrev.nTimestamp - nTimestamp);
+
+                    /* Work out the whether transaction fees should apply based on the interval between transactions */
+                    fApplyTxFee = ((nTimestamp - txPrev.nTimestamp) < TX_FEE_INTERVAL);
+
+                    /* Check the previous next hash that is being claimed. */
+                    bool fRecovery = false;
+                    if(txPrev.hashNext != PrevHash())
                     {
-                        /* Check that recovery hash is not 0. */
-                        if(txPrev.hashRecovery == 0)
-                            return debug::error(FUNCTION, "NOTICE: recovery hash disabled");
+                        /* Check that previous hash matches recovery. */
+                        if(txPrev.hashRecovery == PrevHash())
+                        {
+                            /* Check that recovery hash is not 0. */
+                            if(txPrev.hashRecovery == 0)
+                                return debug::error(FUNCTION, "NOTICE: recovery hash disabled");
 
-                        /* Log that transaction is being recovered. */
-                        debug::log(0, FUNCTION, "NOTICE: transaction is using recovery hash");
+                            /* Log that transaction is being recovered. */
+                            debug::log(0, FUNCTION, "NOTICE: transaction is using recovery hash");
 
-                        /* Set recovery mode to be enabled. */
-                        fRecovery = true;
+                            /* Set recovery mode to be enabled. */
+                            fRecovery = true;
+                        }
+                        else
+                            return debug::error(FUNCTION, "invalid signature chain credentials");
                     }
-                    else
-                        return debug::error(FUNCTION, "invalid signature chain credentials");
+
+                    /* Check recovery hash is sequenced from previous tx (except for changing from 0) */
+                    if(!fRecovery && txPrev.hashRecovery != hashRecovery && txPrev.hashRecovery != 0)
+                        return debug::error(FUNCTION, "recovery hash broken chain"); //this can only be updated when recovery executed
+
+                    /* Check the previous genesis. */
+                    if(txPrev.hashGenesis != hashGenesis)
+                        return debug::error(FUNCTION, "genesis hash broken chain");
                 }
-
-                /* Check recovery hash is sequenced from previous tx (except for changing from 0) */
-                if(!fRecovery && txPrev.hashRecovery != hashRecovery && txPrev.hashRecovery != 0)
-                    return debug::error(FUNCTION, "recovery hash broken chain"); //this can only be updated when recovery executed
-
-                /* Check the previous genesis. */
-                if(txPrev.hashGenesis != hashGenesis)
-                    return debug::error(FUNCTION, "genesis hash broken chain");
             }
 
             /* Keep for dependants. */
@@ -797,33 +897,37 @@ namespace TAO
             /* Run through all the contracts. */
             for(const auto& contract : vContracts)
             {
-                /* Check for dependants. */
-                if(contract.Dependant(hashPrev, nContract))
+                /* DISABLED for -client mode. */
+                if(!config::fClient.load())
                 {
-                    /* Check for confirmations when on a block. */
-                    if(nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER)
+                    /* Check for dependants. */
+                    if(contract.Dependant(hashPrev, nContract))
                     {
-                        /* Check that the previous transaction is indexed. */
-                        if(!LLD::Ledger->HasIndex(hashPrev))
-                            return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
-
-                        /* Read previous transaction from disk. */
-                        const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
-                        switch(dependant.Primitive())
+                        /* Check for confirmations when on a block. */
+                        if(nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER)
                         {
-                            /* Handle coinbase rules. */
-                            case TAO::Operation::OP::COINBASE:
+                            /* Check that the previous transaction is indexed. */
+                            if(!LLD::Ledger->HasIndex(hashPrev))
+                                return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
+
+                            /* Read previous transaction from disk. */
+                            const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
+                            switch(dependant.Primitive())
                             {
-                                /* Get number of confirmations of previous TX */
-                                uint32_t nConfirms = 0;
-                                if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
-                                    return debug::error(FUNCTION, "failed to read confirmations for coinbase");
+                                /* Handle coinbase rules. */
+                                case TAO::Operation::OP::COINBASE:
+                                {
+                                    /* Get number of confirmations of previous TX */
+                                    uint32_t nConfirms = 0;
+                                    if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
+                                        return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                                /* Check that the previous TX has reached sig chain maturity */
-                                if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
-                                    return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
+                                    /* Check that the previous TX has reached sig chain maturity */
+                                    if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
+                                        return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
-                                break;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -868,6 +972,9 @@ namespace TAO
             if(nFlags == FLAGS::BLOCK && !LLD::Ledger->WriteLast(hashGenesis, hash))
                 return debug::error(FUNCTION, "failed to write last hash");
 
+            /* Notify subscribers of new transaction. */
+            Dispatch::GetInstance().DispatchTransaction(hash, true);
+
             return true;
         }
 
@@ -900,22 +1007,23 @@ namespace TAO
                         if(!LLD::Ledger->WriteStake(hashGenesis, hashLast))
                             return debug::error(FUNCTION, "failed to write last stake");
 
-                        /* If local database has a stake change request for this transaction that marked as processed, update it.
-                         * This resets the request but keeps the tx hash, so if it is later reconnected it can be marked
-                         * as processed again. Otherwise, the stake minter can recognized that the original coinstake was
-                         * disconnected and implement the stake change request with the next stake block found.
+                        /* If local database has a stake change request for this transaction that is marked as processed, reset it.
+                         * If it is later reconnected it can be marked as processed again. Otherwise, the stake minter will
+                         * recognize that the stake change is reset and implement it with the next stake block.
                          */
                         StakeChange request;
                         if(LLD::Local->ReadStakeChange(hashGenesis, request) && request.fProcessed && request.hashTx == GetHash())
                         {
                             request.fProcessed = false;
+                            request.hashTx = 0;
 
                             if(!LLD::Local->WriteStakeChange(hashGenesis, request))
-                                debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail for this
+                                debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail
                         }
                     }
                     else
                     {
+                        /* Remove last stake indexing if disconnect a genesis transaction */
                         if(!LLD::Ledger->EraseStake(hashGenesis))
                             return debug::error(FUNCTION, "failed to erase last stake");
                     }
@@ -929,6 +1037,9 @@ namespace TAO
                 if(!TAO::Register::Rollback(*contract, nFlags))
                     return false;
             }
+
+            /* Notify subscribers of transaction disconnect. */
+            Dispatch::GetInstance().DispatchTransaction(GetHash(), false);
 
             return true;
         }
@@ -952,7 +1063,7 @@ namespace TAO
         /* Determines if the transaction is a coinstake (trust or genesis) transaction. */
         bool Transaction::IsCoinStake() const
         {
-            return (IsGenesis() || IsTrust());
+            return (IsTrust() || IsGenesis());
         }
 
 
@@ -971,7 +1082,7 @@ namespace TAO
         }
 
 
-        /* Determines if the transaction is a coinstake transaction. */
+        /* Determines if the transaction is a solo staking trust transaction. */
         bool Transaction::IsTrust() const
         {
             /* Check all contracts. */
@@ -986,7 +1097,7 @@ namespace TAO
         }
 
 
-        /* Determines if the transaction is a genesis transaction */
+        /* Determines if the transaction is a solo staking genesis transaction */
         bool Transaction::IsGenesis() const
         {
             /* Check all contracts. */
@@ -1298,8 +1409,6 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Bind the contract to this transaction. */
-                contract.Bind(this);
-
                 if(contract.Primitive() == TAO::Operation::OP::FEE)
                 {
                     contract.Value(nContractValue);

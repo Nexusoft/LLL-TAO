@@ -57,6 +57,14 @@ namespace TAO
         extern const uint32_t NEXUS_NETWORK_TIMELOCK;
 
 
+        /** Nexus Tritium Timelock
+         *
+         *  Activated timestamp of first tritium block.
+         *
+         **/
+        extern const uint32_t NEXUS_TRITIUM_TIMELOCK;
+
+
         /** Testnet Version Timelock
          *
          *  Lock for the Nexus block version upgrades.
@@ -79,8 +87,8 @@ namespace TAO
          *
          **/
         extern const uint32_t NEXUS_NETWORK_TIMELOCK;
-        
-        
+
+
         /** Testnet Transaction Version Timelock
          *
          *  Lock for the Nexus transaction version upgrades.
@@ -240,7 +248,7 @@ namespace TAO
 
         /** EndTransactionTimelock
          *
-         *  Retrieve the ending timelock for a given transaction version on mainnet or testnet. 
+         *  Retrieve the ending timelock for a given transaction version on mainnet or testnet.
          *  This value equals the StartTransactionTimelock() value of the next version.
          *
          *  Invalid versions (version 0 or anything after current version) return 0, as does the current version.

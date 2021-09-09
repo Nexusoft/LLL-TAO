@@ -19,6 +19,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/types/address.h>
 
+#include <Util/include/args.h>
+
 
 TEST_CASE( "Test Finance API - create acccount", "[finance/create/account]")
 {

@@ -44,16 +44,18 @@ The following list of verbs are used throughout the Nexus APIs.  While the actio
 
 * `list`
    - Retrieves a sorted list of objects or data
-   - Sorting is always newest to oldest
+   - Sorting is based on transaction/object age, by default is always newest to oldest.  Some list methods support additional sort fields. 
    - Supported parameters:
-     - `page` + `limit` (where the start point is known) *or* `index` + `limit`
-     - `verbose` to indicate the verbosity of the data returned.  Values can be `default`, `summary`, or `detail`
-     - `format` indicates the format of the returned data (where applicable). Values can be `raw`, `JSON`, `XML`   
+     - `order` : The order of the results.  Values can be `desc` (default) or `asc`
+     - `limit` : The number of records to return, default 100.  
+     - `page`: Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied. 
+     - `offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+     - `verbose` : to indicate the verbosity of the data returned.  Values can be `default`, `summary`, or `detail`   
 
 * `get`
    - Retrieves a single object or piece of data
    - Supported parameters:
-     - `format` indicates the format of the returned data (where applicable). Values can be `raw`, `JSON`, `XML`
+     - (No common parameters)
 
 * `create`
    - Creates a single resource / object
@@ -125,7 +127,7 @@ In the event that an API call results in an error, a JSON object will be returne
     "error" :
     {
         "code" : -123,
-        "message" : An error has occurred"
+        "message" : "An error has occurred"
     }
 }
 ```
@@ -389,4 +391,56 @@ Error Codes
 | -251 | Missing name from or address from |
 | -252 | Account to debit is not for the required token |
 | -254 | Invoices API not yet active |
-
+| -255 | Cannot process notifications until peers are connected |
+| -256 | Cannot process notifications whilst synchronizing |
+| -257 | Contract failed peer validation |
+| -258 | Unknown genesis |
+| -259 | Could not read crypto object register |
+| -260 | Invalid key name |
+| -261 | Key already exists |
+| -262 | Invalid scheme |
+| -263 | Private keys cannot only be retrieved for keys in the crypto register |
+| -264 | Key not yet created |
+| -265 | Missing public key |
+| -266 | Malformed public key |
+| -267 | Shared key encryption only supported for EC (Brainpool) keys |
+| -268 | Failed to generate shared key |
+| -269 | Malformed private key |
+| -270 | Failed to encrypt data |
+| -271 | Failed to decrypt data |
+| -272 | Unsupported key type |
+| -273 | Failed to generate signature |
+| -274 | Missing signature |
+| -275 | Missing scheme |
+| -276 | Error generating hash |
+| -277 | Invalid hash function |
+| -278 | Scheme already in use |
+| -279 | P2P request not found |
+| -280 | P2P server not enabled on this node |
+| -281 | Missing App ID |
+| -282 | Connection not found |
+| -283 | A connection to this peer already exists |
+| -284 | Failed to connect to peer |
+| -285 | No messages available |
+| -286 | Timeout waiting for peer to accept connection request |
+| -287 | API method not supported in multiuser mode |
+| -288 | Cannot unlock for mining in multiuser mode |
+| -289 | Cannot unlock for staking in multiuser mode |
+| -290 | Invalid credentials.  User logged out due to too many password / pin attempts |
+| -291 | The cert key cannot be used to create a key pair as it is reserved for a TLS certificate.  Please use the create/certificate API method instead. |
+| -292 | The cert key cannot be used to sign data as it is reserved for a TLS certificate |
+| -293 | Invalid key name.  Keys in the crypto register cannot be used for encryption, only signature generation and verification |
+| -294 | Certificate has not yet been created for this signature chain.  Please use crypto/create/key to create the certificate first |
+| -295 | Public key mismatch. Unable to generate certificate |
+| -296 | Missing certificate |
+| -297 | Cannot log in while synchronizing |
+| -300 | API can only be used to lookup data for the currently logged in signature chain when running in client mode |
+| -301 | where field must be an array |
+| -302 | Missing field in where clause |
+| -303 | Missing op in where clause |
+| -304 | Missing value in where clause |
+| -305 | Unknown operand in where clause |
+| -306 | No connections available |
+| -307 | Failed to download signature chain |
+| -308 | API method only available in client mode |
+| -309 | Error loading session |

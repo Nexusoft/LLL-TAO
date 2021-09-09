@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <Legacy/include/trust.h>
 
 #include <Legacy/types/legacy.h>
+#include <Legacy/types/merkle.h>
 #include <Legacy/types/script.h>
 #include <Legacy/types/trustkey.h>
 
@@ -76,6 +77,28 @@ namespace Legacy
     }
 
 
+    /* Copy Constructor. */
+    Transaction::Transaction(const MerkleTx& tx)
+    : nVersion  (tx.nVersion)
+    , nTime     (tx.nTime)
+    , vin       (tx.vin)
+    , vout      (tx.vout)
+    , nLockTime (tx.nLockTime)
+    {
+    }
+
+
+    /* Move Constructor. */
+    Transaction::Transaction(MerkleTx&& tx) noexcept
+    : nVersion  (std::move(tx.nVersion))
+    , nTime     (std::move(tx.nTime))
+    , vin       (std::move(tx.vin))
+    , vout      (std::move(tx.vout))
+    , nLockTime (std::move(tx.nLockTime))
+    {
+    }
+
+
     /* Copy assignment. */
     Transaction& Transaction::operator=(const Transaction& tx)
     {
@@ -91,6 +114,32 @@ namespace Legacy
 
     /* Move assignment. */
     Transaction& Transaction::operator=(Transaction&& tx) noexcept
+    {
+        nVersion  = std::move(tx.nVersion);
+        nTime     = std::move(tx.nTime);
+        vin       = std::move(tx.vin);
+        vout      = std::move(tx.vout);
+        nLockTime = std::move(tx.nLockTime);
+
+        return *this;
+    }
+
+
+    /* Copy assignment. */
+    Transaction& Transaction::operator=(const MerkleTx& tx)
+    {
+        nVersion  = tx.nVersion;
+        nTime     = tx.nTime;
+        vin       = tx.vin;
+        vout      = tx.vout;
+        nLockTime = tx.nLockTime;
+
+        return *this;
+    }
+
+
+    /* Move assignment. */
+    Transaction& Transaction::operator=(MerkleTx&& tx) noexcept
     {
         nVersion  = std::move(tx.nVersion);
         nTime     = std::move(tx.nTime);

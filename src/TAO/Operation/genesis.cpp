@@ -43,7 +43,7 @@ namespace TAO
             uint256_t hashAddress =
                 TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
 
-            /* Check that a trust register exists. */
+            /* Check if trust register already has genesis. */
             if(LLD::Register->HasTrust(state.hashOwner))
                 return debug::error(FUNCTION, "cannot create genesis when already exists");
 
@@ -59,7 +59,7 @@ namespace TAO
         }
 
 
-        /* Commits funds from a coinbase transaction. */
+        /* Commits funds from a staking genesis transaction. */
         bool Genesis::Execute(TAO::Register::Object &trust, const uint64_t nReward, const uint64_t nTimestamp)
         {
             /* Parse the account object register. */

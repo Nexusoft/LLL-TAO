@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#ifndef NO_WALLET
+
 #pragma once
 #ifndef NEXUS_LEGACY_WALLET_WALLET_H
 #define NEXUS_LEGACY_WALLET_WALLET_H
@@ -1226,5 +1228,7 @@ namespace Legacy
     };
 
 }
+
+#endif
 
 #endif

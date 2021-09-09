@@ -121,8 +121,8 @@ namespace TAO
             {
                 LLP::TRITIUM_SERVER->Relay
                 (
-                    LLP::ACTION::NOTIFY,
-                    uint8_t(LLP::TYPES::CHECKPOINT),
+                    LLP::Tritium::ACTION::NOTIFY,
+                    uint8_t(LLP::Tritium::TYPES::CHECKPOINT),
                     state.hashCheckpoint
                 );
             }

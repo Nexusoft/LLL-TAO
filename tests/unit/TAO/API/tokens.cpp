@@ -27,7 +27,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/create.h>
 
-#include <TAO/API/types/names.h>
+#include <TAO/API/names/types/names.h>
 
 TEST_CASE( "Test Tokens API - create token", "[tokens/create/token]")
 {
@@ -618,21 +618,6 @@ TEST_CASE( "Test Tokens API - create account", "[tokens/create/account]")
         REQUIRE(ret["error"]["code"].get<int32_t>() == -12);
     }
 
-    /* tokens/create/account fail with missing token name / address*/
-    {
-        /* Build the parameters to pass to the API */
-        params.clear();
-        params["pin"] = PIN;
-        params["session"] = SESSION1;
-
-        /* Invoke the API */
-        ret = APICall("tokens/create/account", params);
-
-        /* Check response is an error and validate error code */
-        REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -37);
-    }
-
     /* tokens/create/account by token name success */
     {
 
@@ -823,7 +808,7 @@ TEST_CASE( "Test Tokens API - debit account", "[tokens/debit/account]")
 
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -122);
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -13);
     }
 
     /* Debit the token and credit the account so that we have some funds to debit */
@@ -1419,7 +1404,7 @@ TEST_CASE( "Test Tokens API - get account", "[tokens/get/account]")
 
         /* Check response is an error and validate error code */
         REQUIRE(ret.find("error") != ret.end());
-        REQUIRE(ret["error"]["code"].get<int32_t>() == -122);
+        REQUIRE(ret["error"]["code"].get<int32_t>() == -13);
     }
 
     /* Test successful get by name  */

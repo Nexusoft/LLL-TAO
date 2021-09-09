@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
+#include <TAO/API/types/sessionmanager.h>
+
 #include <Util/include/debug.h>
 
 namespace TAO
@@ -23,7 +25,11 @@ namespace TAO
         Assets*     assets;
         Ledger*     ledger;
         Register*   reg;
+
+        #ifndef NO_WALLET
         RPC*        RPCCommands;
+        #endif
+
         Supply*     supply;
         System*     system;
         Tokens*     tokens;
@@ -33,6 +39,8 @@ namespace TAO
         DEX*        dex;
         Voting*     voting;
         Invoices*   invoices;
+        Crypto*     crypto;
+        P2P*        p2p;
 
 
         /*  Instantiate global instances of the API. */
@@ -44,7 +52,11 @@ namespace TAO
             assets      = new Assets();
             ledger      = new Ledger();
             reg         = new Register();
+
+            #ifndef NO_WALLET
             RPCCommands = new RPC();
+            #endif
+
             supply      = new Supply();
             system      = new System();
             tokens      = new Tokens();
@@ -54,6 +66,8 @@ namespace TAO
             dex         = new DEX();
             voting      = new Voting();
             invoices    = new Invoices();
+            crypto      = new Crypto();
+            p2p         = new P2P();
         }
 
 
@@ -71,8 +85,10 @@ namespace TAO
             if(reg)
                 delete reg;
 
+            #ifndef NO_WALLET
             if(RPCCommands)
                 delete RPCCommands;
+            #endif
 
             if(supply)
                 delete supply;
@@ -100,6 +116,12 @@ namespace TAO
 
             if(invoices)
                 delete invoices;
+
+            if(crypto)
+                delete crypto;
+
+            if(p2p)
+                delete p2p;
         }
     }
 }

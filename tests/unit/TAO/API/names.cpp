@@ -29,7 +29,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/include/names.h>
 
-#include <TAO/API/types/names.h>
+#include <TAO/API/names/types/names.h>
 #include <TAO/API/include/global.h>
 
 #include <Util/include/convert.h>

@@ -29,6 +29,7 @@ namespace TAO
     namespace Ledger
     {
         class BlockState;
+        class MerkleTx;
 
 
         /** Transaction
@@ -41,6 +42,8 @@ namespace TAO
          **/
         class Transaction
         {
+        protected:
+
             /** For disk indexing on contract. **/
             std::vector<TAO::Operation::Contract> vContracts;
 
@@ -126,12 +129,28 @@ namespace TAO
             Transaction(Transaction&& tx) noexcept;
 
 
+            /** Copy constructor. **/
+            Transaction(const MerkleTx& tx);
+
+
+            /** Move constructor. **/
+            Transaction(MerkleTx&& tx) noexcept;
+
+
             /** Copy assignment. **/
             Transaction& operator=(const Transaction& tx);
 
 
             /** Move assignment. **/
             Transaction& operator=(Transaction&& tx) noexcept;
+
+
+            /** Copy assignment. **/
+            Transaction& operator=(const MerkleTx& tx);
+
+
+            /** Move assignment. **/
+            Transaction& operator=(MerkleTx&& tx) noexcept;
 
 
             /** Default Destructor. **/
@@ -200,11 +219,11 @@ namespace TAO
 
             /** CheckTrust
              *
-             *  Check the trust score that is claimed is correct.
+             *  Check that the claimed trust score and stake reward are correct.
              *
              *  @param[in] pblock Pointer to the block that is connecting
              *
-             *  @return true if trust score is correct.
+             *  @return true if trust score and reward correct.
              *
              **/
             bool CheckTrust(BlockState* pblock) const;
@@ -286,7 +305,7 @@ namespace TAO
 
             /** IsTrust
              *
-             *  Determines if the transaction is a trust transaction.
+             *  Determines if the transaction is a solo staking trust transaction.
              *
              *  @return true if transaction is a coinbase.
              *
@@ -296,7 +315,7 @@ namespace TAO
 
             /** IsGenesis
              *
-             *  Determines if the transaction is a genesis transaction
+             *  Determines if the transaction is a solo staking genesis transaction
              *
              *  @return true if transaction is genesis
              *
@@ -426,6 +445,10 @@ namespace TAO
             *
             **/
             uint64_t Fees() const;
+
+
+            /** Class friends. **/
+            friend class MerkleTx;
 
         };
     }

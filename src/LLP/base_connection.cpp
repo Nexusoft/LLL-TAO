@@ -17,7 +17,9 @@ ________________________________________________________________________________
 
 #include <LLP/packets/packet.h>
 #include <LLP/packets/http.h>
-#include <LLP/packets/tritium.h>
+#include <LLP/packets/message.h>
+
+#include <LLP/templates/trigger.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
@@ -55,6 +57,8 @@ namespace LLP
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
+    , TRIGGER_MUTEX   ( )
+    , TRIGGERS        ( )
     {
         INCOMING.SetNull();
     }
@@ -75,6 +79,8 @@ namespace LLP
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
+    , TRIGGER_MUTEX   ( )
+    , TRIGGERS        ( )
     {
     }
 
@@ -95,6 +101,8 @@ namespace LLP
     , fEVENT          (false)
     , EVENT_MUTEX     ( )
     , EVENT_CONDITION ( )
+    , TRIGGER_MUTEX   ( )
+    , TRIGGERS        ( )
     {
     }
 
@@ -105,6 +113,26 @@ namespace LLP
     {
         Disconnect();
         SetNull();
+    }
+
+
+    /* Adds a new event listener to this connection to fire off condition variables on specific message types.*/
+    template <class PacketType>
+    void BaseConnection<PacketType>::AddTrigger(const message_t nMsg, Trigger* TRIGGER)
+    {
+        LOCK(TRIGGER_MUTEX);
+
+        TRIGGERS[nMsg] = TRIGGER;
+    }
+
+
+    /* Release an event listener from tirggers. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::Release(const message_t nMsg)
+    {
+        LOCK(TRIGGER_MUTEX);
+
+        TRIGGERS.erase(nMsg);
     }
 
 
@@ -184,8 +212,13 @@ namespace LLP
             /* Update packet count. */
             ++PACKETS;
         }
-        else //set buffer to full
+        else 
+        {
+            debug::log(4, NODE, "Socket buffer full. Packet size: ", vBytes.size(), " bytes.  Buffered: ", Buffered(), " bytes");
+            
+            /* set buffer to full */
             fBufferFull.store(true);
+        }
 
         /* Notify condition if available. */
         if(FLUSH_CONDITION && Buffered())
@@ -261,7 +294,7 @@ namespace LLP
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class BaseConnection<Packet>;
-    template class BaseConnection<TritiumPacket>;
+    template class BaseConnection<MessagePacket>;
     template class BaseConnection<HTTPPacket>;
 
 }

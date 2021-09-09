@@ -127,7 +127,29 @@ namespace TAO
              *  @param[in] tx The transaction to bind the contract to.
              *
              **/
-            void Bind(const TAO::Ledger::Transaction* tx, bool fBindTxid = true) const;
+            void Bind(const TAO::Ledger::Transaction* tx) const;
+
+
+            /** Bind
+             *
+             *  Bind the contract to a transaction with txid passed as param.
+             *
+             *  @param[in] tx The transaction to bind the contract to.
+             *  @param[in] hash The txid to bind the contract to.
+             *
+             **/
+            void Bind(const TAO::Ledger::Transaction* tx, const uint512_t& hash) const;
+
+
+            /** Bind
+             *
+             *  Bind the contract to a transaction with timestamp and caller passed as param.
+             *
+             *  @param[in] nTimestampIn The timestamp to bind contract to
+             *  @param[in] hashCallerIn The contract executor to bind contract to.
+             *
+             **/
+            void Bind(const uint64_t nTimestampIn, const uint256_t& hashCallerIn) const;
 
 
             /** Primitive
@@ -333,6 +355,15 @@ namespace TAO
              *
              **/
             uint64_t Position(const uint8_t nFlags = CONDITIONS) const;
+
+
+            /** SeekToPrimitive
+             *
+             *  Move the internal operation stream pointer to the position of the primitive operation byte.
+             *  If the stream starts with a CONDITION or VALIDATE byte then the pointer is moved forward to skip these bytes
+             *
+             **/
+            void SeekToPrimitive() const;
 
 
             /** Operator Overload <<

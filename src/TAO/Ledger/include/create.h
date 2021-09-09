@@ -50,6 +50,29 @@ namespace TAO
                                TAO::Ledger::Transaction& tx);
 
 
+        /** CreateProducer
+         *
+         *  Create a producer transaction object from signature chain.
+         *
+         *  @param[in] user The signature chain to generate this tx
+         *  @param[in] pin The pin number to generate with.
+         *  @param[out] tx The traansaction object being created
+         *  @param[in] stateBest The current best block state
+         *  @param[in] nBlockVersion The block version the producer is being created for
+         *  @param[in] nChannel The channel to create block for.
+         *  @param[in] nExtraNonce An extra nonce to use for double iterating.
+         *  @param[in] pCoinbaseRecipients The coinbase recipients, if any.
+         *
+         **/
+        bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+                               TAO::Ledger::Transaction& tx,
+                               const TAO::Ledger::BlockState& stateBest,
+                               const uint32_t nBlockVersion,
+                               const uint32_t nChannel,
+                               const uint64_t nExtraNonce,
+                               Legacy::Coinbase *pCoinbaseRecipients = nullptr);
+
+
         /** AddTransactions
          *
          *  Gets a list of transactions from memory pool for current block.
@@ -133,6 +156,18 @@ namespace TAO
         /** UpdateProducerTimestamp
          *
          *  Updates the producer timestamp, making sure it is not earlier than the previous block.
+         *
+         *  @param[out] txProducer The producer transaction to have its timestamp updated.
+         *
+         **/
+        void UpdateProducerTimestamp(TAO::Ledger::Transaction& txProducer);
+
+
+        /** UpdateProducerTimestamp
+         *
+         *  Updates the producer timestamp, making sure it is not earlier than the previous block.
+         *
+         *  For v9+ this only updates the block finding producer (last producer).
          *
          *  @param[out] block The block to have its producer timestamp updated.
          *

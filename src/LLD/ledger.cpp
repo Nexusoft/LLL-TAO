@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/include/global.h>
+#include <LLP/include/global.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -22,7 +23,9 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/mempool.h>
+#include <TAO/Ledger/types/client.h>
 
 #include <tuple>
 
@@ -64,6 +67,10 @@ namespace LLD
     /* Writes the best chain pointer to the ledger DB. */
     bool LedgerDB::WriteBestChain(const uint1024_t& hashBest)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->WriteBestChain(hashBest);
+
         return Write(std::string("hashbestchain"), hashBest);
     }
 
@@ -71,6 +78,10 @@ namespace LLD
     /* Reads the best chain pointer from the ledger DB. */
     bool LedgerDB::ReadBestChain(uint1024_t &hashBest)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->ReadBestChain(hashBest);
+
         return Read(std::string("hashbestchain"), hashBest);
     }
 
@@ -78,6 +89,18 @@ namespace LLD
     /* Reads the best chain pointer from the ledger DB. */
     bool LedgerDB::ReadBestChain(memory::atomic<uint1024_t> &atomicBest)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            uint1024_t hashBest = 0;
+            if(!Client->ReadBestChain(hashBest))
+                return false;
+
+            atomicBest.store(hashBest);
+            return true;
+        }
+
+        /* Check for best chain on disk. */
         uint1024_t hashBest = 0;
         if(!Read(std::string("hashbestchain"), hashBest))
             return false;
@@ -150,6 +173,16 @@ namespace LLD
                 return tx;
         }
 
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            TAO::Ledger::MerkleTx mTX;
+            if(!Client->ReadTx(hashTx, mTX, nFlags))
+                throw debug::exception(FUNCTION, "failed to read -client tx");
+
+            return mTX;
+        }
+
         /* Check for failed read. */
         if(!Read(hashTx, tx))
             throw debug::exception(FUNCTION, "failed to read tx");
@@ -176,6 +209,19 @@ namespace LLD
                 return true;
         }
 
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            /* Get the merkle transaction from disk. */
+            TAO::Ledger::MerkleTx mTX;
+            if(!Client->ReadTx(hashTx, mTX, nFlags))
+                return false;
+
+            /* Set the return value. */
+            tx = mTX;
+            return true;
+        }
+
         return Read(hashTx, tx);
     }
 
@@ -189,6 +235,19 @@ namespace LLD
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTx, tx, fConflicted))
                 return true;
+        }
+
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            /* Get the merkle transaction from disk. */
+            TAO::Ledger::MerkleTx mTX;
+            if(!Client->ReadTx(hashTx, mTX, nFlags))
+                return false;
+
+            /* Set the return value. */
+            tx = mTX;
+            return true;
         }
 
         return Read(hashTx, tx);
@@ -319,9 +378,16 @@ namespace LLD
         if(!ReadTx(hashTx, tx))
             return false;
 
+        return ReadMature(tx, pblock);
+    }
+
+
+    /* Read if a transaction is mature. */
+    bool LedgerDB::ReadMature(const TAO::Ledger::Transaction& tx, const TAO::Ledger::BlockState* pblock)
+    {
         /* Get the total confirmations. */
         uint32_t nConfirms = 0;
-        if(!ReadConfirmations(hashTx, nConfirms, pblock))
+        if(!ReadConfirmations(tx.GetHash(), nConfirms, pblock))
             return false;
 
         /* Switch for coinbase. */
@@ -366,6 +432,10 @@ namespace LLD
     /* Determine if a transaction has already been indexed. */
     bool LedgerDB::HasIndex(const uint512_t& hashTx)
     {
+        /* Check indexes for -client mode. */
+        if(config::fClient.load())
+            return Client->HasIndex(hashTx);
+
         return Exists(std::make_pair(std::string("index"), hashTx));
     }
 
@@ -481,6 +551,19 @@ namespace LLD
     /* Reads a block state from disk from a tx index. */
     bool LedgerDB::ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState &state)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            /* Get the merkle transaction from disk. */
+            TAO::Ledger::ClientBlock block;
+            if(!Client->ReadBlock(hashTx, block))
+                return false;
+
+            /* Set the return value. */
+            state = block;
+            return true;
+        }
+
         return Read(std::make_pair(std::string("index"), hashTx), state);
     }
 
@@ -488,6 +571,8 @@ namespace LLD
     /* Reads a block state from disk from a tx index. */
     bool LedgerDB::ReadBlock(const uint32_t& nBlockHeight, TAO::Ledger::BlockState &state)
     {
+        //TODO: add -client switch for indexed blocks
+
         return Read(std::make_pair(std::string("height"), nBlockHeight), state);
     }
 
@@ -502,6 +587,10 @@ namespace LLD
             if(TAO::Ledger::mempool.Has(hashTx))
                 return true;
         }
+
+        /* Check indexes for -client mode. */
+        if(config::fClient.load())
+            return Client->HasIndex(hashTx);
 
         return Exists(hashTx);
     }
@@ -533,6 +622,10 @@ namespace LLD
         if(!WriteSequence(hashAddress, nSequence + 1))
             return false;
 
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Index(std::make_pair(hashAddress, nSequence), hashTx);
+
         return Index(std::make_pair(hashAddress, nSequence), hashTx);
     }
 
@@ -549,6 +642,10 @@ namespace LLD
         if(!WriteSequence(hashAddress, nSequence - 1))
             return false;
 
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Erase(std::make_pair(hashAddress, nSequence - 1));
+
         return Erase(std::make_pair(hashAddress, nSequence - 1));
     }
 
@@ -557,13 +654,45 @@ namespace LLD
      *  This is responsible for knowing foreign sigchain events that correlate to your own. */
     bool LedgerDB::ReadEvent(const uint256_t& hashAddress, const uint32_t nSequence, TAO::Ledger::Transaction &tx)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Read(std::make_pair(hashAddress, nSequence), tx);
+
         return Read(std::make_pair(hashAddress, nSequence), tx);
+    }
+
+
+    /* Reads the last event (highest sequence number) for the sig chain / register */
+    bool LedgerDB::ReadLastEvent(const uint256_t& hashAddress, uint512_t& hashLast)
+    {
+        /* Get the last known event sequence for this address  */
+        uint32_t nSequence = 0;
+        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value 
+
+        /* Read the transaction ID of the last event */
+        if(nSequence > 0)
+        {
+            TAO::Ledger::Transaction tx;
+            if(ReadEvent(hashAddress, nSequence -1, tx))
+            {
+                hashLast = tx.GetHash();
+                return true;
+            }
+            else
+                return false;
+        }
+
+        return true;
     }
 
 
     /* Writes the last txid of sigchain to disk indexed by genesis. */
     bool LedgerDB::WriteLast(const uint256_t& hashGenesis, const uint512_t& hashLast)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->WriteLast(hashGenesis, hashLast);
+
         return Write(std::make_pair(std::string("last"), hashGenesis), hashLast);
     }
 
@@ -571,6 +700,10 @@ namespace LLD
     /* Erase the last txid of sigchain to disk indexed by genesis. */
     bool LedgerDB::EraseLast(const uint256_t& hashGenesis)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Erase(std::make_pair(std::string("last"), hashGenesis));
+
         return Erase(std::make_pair(std::string("last"), hashGenesis));
     }
 
@@ -589,6 +722,10 @@ namespace LLD
                 return true;
             }
         }
+
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->ReadLast(hashGenesis, hashLast);
 
         /* If we haven't checked the mempool or haven't found one in the mempool then read the last from the ledger DB */
         return Read(std::make_pair(std::string("last"), hashGenesis), hashLast);
@@ -774,6 +911,19 @@ namespace LLD
     /* Reads a block state object from disk. */
     bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, TAO::Ledger::BlockState &state)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            /* Get the merkle transaction from disk. */
+            TAO::Ledger::ClientBlock block;
+            if(!Client->ReadBlock(hashBlock, block))
+                return false;
+
+            /* Set the return value. */
+            state = block;
+            return true;
+        }
+
         return Read(hashBlock, state);
     }
 
@@ -781,6 +931,19 @@ namespace LLD
     /* Reads a block state object from disk for an atomic object. */
     bool LedgerDB::ReadBlock(const uint1024_t& hashBlock, memory::atomic<TAO::Ledger::BlockState> &atomicState)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+        {
+            /* Get the merkle transaction from disk. */
+            TAO::Ledger::ClientBlock block;
+            if(!Client->ReadBlock(hashBlock, block))
+                return false;
+
+            /* Set the return value. */
+            atomicState.store(block);
+            return true;
+        }
+
         TAO::Ledger::BlockState state;
         if(!Read(hashBlock, state))
             return false;
@@ -793,6 +956,10 @@ namespace LLD
     /* Checks if there is a block state object on disk. */
     bool LedgerDB::HasBlock(const uint1024_t& hashBlock)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->HasBlock(hashBlock);
+
         return Exists(hashBlock);
     }
 
@@ -800,6 +967,10 @@ namespace LLD
     /* Erase a block from disk. */
     bool LedgerDB::EraseBlock(const uint1024_t& hashBlock)
     {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Erase(hashBlock);
+
         return Erase(hashBlock);
     }
 

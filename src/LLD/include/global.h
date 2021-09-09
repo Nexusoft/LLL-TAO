@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLD/types/register.h>
 #include <LLD/types/ledger.h>
 #include <LLD/types/local.h>
+#include <LLD/types/client.h>
 #include <LLD/types/legacy.h>
 #include <LLD/types/trust.h>
 #include <LLD/types/contract.h>
@@ -29,6 +30,7 @@ namespace LLD
     extern RegisterDB*   Register;
     extern LedgerDB*     Ledger;
     extern LocalDB*      Local;
+    extern ClientDB*     Client;
 
     //for legacy objects
     extern TrustDB*      Trust;

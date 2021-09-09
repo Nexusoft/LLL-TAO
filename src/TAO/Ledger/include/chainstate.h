@@ -67,10 +67,18 @@ namespace TAO
 
             /** PercentSynchronized
              *
-             *  Real value of the total synchronzation percent completion.
+             *  Real value of the total synchronization percent completion.
              *
              **/
             double PercentSynchronized();
+
+
+            /** SyncProgress
+             *
+             *  Percentage of blocks synchronized since the node started.
+             *
+             **/
+            double SyncProgress();
 
 
             /** Initialize

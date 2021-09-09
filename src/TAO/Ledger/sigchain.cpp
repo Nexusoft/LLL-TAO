@@ -14,8 +14,8 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <LLC/hash/macro.h>
-#include <LLC/hash/argon2.h>
 
+#include <LLC/include/argon2.h>
 #include <LLC/include/flkey.h>
 #include <LLC/include/eckey.h>
 
@@ -41,10 +41,10 @@ namespace TAO
 
         /* Copy Constructor */
         SignatureChain::SignatureChain(const SignatureChain& sigchain)
-        : strUsername (sigchain.strUsername)
-        , strPassword (sigchain.strPassword)
+        : strUsername (sigchain.strUsername.c_str())
+        , strPassword (sigchain.strPassword.c_str())
         , MUTEX       ( )
-        , pairCache   (sigchain.pairCache)
+        , cacheKeys   (sigchain.cacheKeys)
         , hashGenesis (sigchain.hashGenesis)
         {
         }
@@ -55,7 +55,7 @@ namespace TAO
         : strUsername (std::move(sigchain.strUsername.c_str()))
         , strPassword (std::move(sigchain.strPassword.c_str()))
         , MUTEX       ( )
-        , pairCache   (std::move(sigchain.pairCache))
+        , cacheKeys   (std::move(sigchain.cacheKeys))
         , hashGenesis (std::move(sigchain.hashGenesis))
         {
         }
@@ -72,7 +72,7 @@ namespace TAO
         : strUsername (strUsernameIn.c_str())
         , strPassword (strPasswordIn.c_str())
         , MUTEX       ( )
-        , pairCache   (std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+        , cacheKeys   (5)
         , hashGenesis (SignatureChain::Genesis(strUsernameIn))
         {
         }
@@ -88,64 +88,32 @@ namespace TAO
         /* This function is responsible for generating the genesis ID.*/
         uint256_t SignatureChain::Genesis(const SecureString& strUsername)
         {
+            /* The Genesis hash to return */
+            uint256_t hashGenesis;
+
+            /* Check the local DB first */
+            if(LLD::Local->ReadGenesis(strUsername, hashGenesis))
+                return hashGenesis;
+
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
 
-            // low-level API
-            std::vector<uint8_t> vHash(32);
-            std::vector<uint8_t> vSalt(16); //TODO: possibly make this your birthday (required in API)
+            /* Default salt */
+            std::vector<uint8_t> vSalt(16);
 
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &vHash[0],
-                32,
+            /* Empty vector used for Argon2 call */
+            std::vector<uint8_t> vEmpty;
 
-                /* Password input data. */
-                &vUsername[0],
-                static_cast<uint32_t>(vUsername.size()),
+            /* Argon2 hash the secret */
+            hashGenesis = LLC::Argon2_256(vUsername, vSalt, vEmpty, 12, (1 << 16));
+            
+            /* Set the genesis type byte. */
+            hashGenesis.SetType(TAO::Ledger::GenesisType());
 
-                /* The salt for usernames */
-                &vSalt[0],
-                static_cast<uint32_t>(vSalt.size()),
+            /* Cache this username-genesis pair in the local db*/
+            LLD::Local->WriteGenesis(strUsername, hashGenesis);
 
-                /* Optional secret data */
-                NULL, 0,
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                12,
-
-                /* Memory Cost (64 MB). */
-                (1 << 16),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int32_t nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-            /* Set the bytes for the key. */
-            uint256_t hashKey;
-            hashKey.SetBytes(vHash);
-            hashKey.SetType(TAO::Ledger::GenesisType());
-
-            return hashKey;
+            return hashGenesis;
         }
 
 
@@ -155,17 +123,27 @@ namespace TAO
          */
         uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strSecret, bool fCache) const
         {
+            /* key used to identify this private key in the key cache */
+            std::tuple<SecureString, SecureString, uint32_t> cacheKey = std::make_tuple(strPassword, strSecret, nKeyID);
+
+            /* If caching is requested, check to see if we have already cached this private key, to stop exhaustive 
+               hash key generation */
+            if(fCache)
             {
                 LOCK(MUTEX);
-
-                /* Handle cache to stop exhaustive hash key generation. */
-                if(fCache && nKeyID == pairCache.first)
+                
+                /* Check the cache */
+                if(cacheKeys.Has(cacheKey))
                 {
+                    /* Retreive the private key hash from the cache */
+                    SecureString strKey;
+                    cacheKeys.Get(cacheKey, strKey);
+
                     /* Create the hash key object. */
                     uint512_t hashKey;
 
                     /* Get the bytes from secure allocator. */
-                    std::vector<uint8_t> vBytes(pairCache.second.begin(), pairCache.second.end());
+                    std::vector<uint8_t> vBytes(strKey.begin(), strKey.end());
 
                     /* Set the bytes of return value. */
                     hashKey.SetBytes(vBytes);
@@ -190,69 +168,19 @@ namespace TAO
             std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
             vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
-            // low-level API
-            std::vector<uint8_t> hash(64);
+            /* Argon2 hash the secret */
+            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret, 
+                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))), 
+                            uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &hash[0],
-                64,
-
-                /* Password input data. */
-                &vPassword[0],
-                static_cast<uint32_t>(vPassword.size()),
-
-                /* Username and key ID as the salt. */
-                &vUsername[0],
-                static_cast<uint32_t>(vUsername.size()),
-
-                /* The secret phrase as secret data. */
-                &vSecret[0],
-                static_cast<uint32_t>(vSecret.size()),
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
-
-                /* Memory Cost (64 MB). */
-                uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-            /* Set the cache items. */
+            /* Add the private key to the cache. */
+            if(fCache)
             {
                 LOCK(MUTEX);
 
-                if(fCache)
-                {
-                    pairCache.first  = nKeyID;
-                    pairCache.second = SecureString(hash.begin(), hash.end());
-                }
+                std::vector<uint8_t> vBytes = hashKey.GetBytes();
+                cacheKeys.Put(cacheKey, SecureString(vBytes.begin(), vBytes.end()));
             }
-
-            /* Set the bytes for the key. */
-            uint512_t hashKey;
-            hashKey.SetBytes(hash);
 
             return hashKey;
         }
@@ -278,59 +206,12 @@ namespace TAO
             std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
             vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
-            // low-level API
-            std::vector<uint8_t> hash(64);
 
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &hash[0],
-                64,
+            /* Argon2 hash the secret */
+            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret, 
+                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))), 
+                            uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
-                /* Password input data. */
-                &vPassword[0],
-                static_cast<uint32_t>(vPassword.size()),
-
-                /* Username and key ID as the salt. */
-                &vUsername[0],
-                static_cast<uint32_t>(vUsername.size()),
-
-                /* The secret phrase as secret data. */
-                &vSecret[0],
-                static_cast<uint32_t>(vSecret.size()),
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
-
-                /* Memory Cost (64 MB). */
-                uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-
-            /* Set the bytes for the key. */
-            uint512_t hashKey;
-            hashKey.SetBytes(hash);
 
             return hashKey;
         }
@@ -361,58 +242,10 @@ namespace TAO
             /* Seed secret data with the key type. */
             vSecret.insert(vSecret.end(), strType.begin(), strType.end());
 
-            // low-level API
-            std::vector<uint8_t> hash(64);
-
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &hash[0],
-                64,
-
-                /* Password input data. */
-                &vPassword[0],
-                static_cast<uint32_t>(vPassword.size()),
-
-                /* Username and key ID as the salt. */
-                &vUsername[0],
-                static_cast<uint32_t>(vUsername.size()),
-
-                /* The secret phrase as secret data. */
-                &vSecret[0],
-                static_cast<uint32_t>(vSecret.size()),
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
-
-                /* Memory Cost (64 MB). */
-                uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-            /* Set the bytes for the key. */
-            uint512_t hashKey;
-            hashKey.SetBytes(hash);
+            /* Argon2 hash the secret */
+            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret, 
+                            std::max(1u, uint32_t(config::GetArg("-argon2", 12))), 
+                            uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
             return hashKey;
         }
@@ -426,67 +259,22 @@ namespace TAO
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
 
-            // low-level API
-            std::vector<uint8_t> vHash(32);
-            std::vector<uint8_t> vSalt(16);
+            /* Argon2 hash the secret */
+            uint512_t hashKey = LLC::Argon2_512(vSecret);
 
-            /* Create the hash context. */
-            argon2_context context =
-            {
-                /* Hash Return Value. */
-                &vHash[0],
-                32,
-
-                /* Password input data. */
-                &vSecret[0],
-                static_cast<uint32_t>(vSecret.size()),
-
-                /* The salt for usernames */
-                &vSalt[0],
-                static_cast<uint32_t>(vSalt.size()),
-
-                /* Optional secret data */
-                NULL, 0,
-
-                /* Optional associated data */
-                NULL, 0,
-
-                /* Computational Cost. */
-                64,
-
-                /* Memory Cost (64 MB). */
-                (1 << 16),
-
-                /* The number of threads and lanes */
-                1, 1,
-
-                /* Algorithm Version */
-                ARGON2_VERSION_13,
-
-                /* Custom memory allocation / deallocation functions. */
-                NULL, NULL,
-
-                /* By default only internal memory is cleared (pwd is not wiped) */
-                ARGON2_DEFAULT_FLAGS
-            };
-
-            /* Run the argon2 computation. */
-            int32_t nRet = argon2id_ctx(&context);
-            if(nRet != ARGON2_OK)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-
-            /* Set the bytes for the key. */
-            uint256_t hashKey;
-            hashKey.SetBytes(vHash);
+            /* Set the key type */
             hashKey.SetType(TAO::Ledger::GenesisType());
 
             return hashKey;
         }
 
 
-        /* This function generates a hash of a public key generated from random seed phrase. */
-        uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
+        /* This function generates a public key generated from random seed phrase. */
+        std::vector<uint8_t> SignatureChain::Key(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
         {
+            /* The public key bytes */
+            std::vector<uint8_t> vchPubKey;
+
             /* Get the private key. */
             uint512_t hashSecret = Generate(strType, nKeyID, strSecret);
 
@@ -507,13 +295,10 @@ namespace TAO
                     if(!key.SetSecret(vchSecret))
                         throw debug::exception(FUNCTION, "failed to set falcon secret key");
 
-                    /* Calculate the next hash. */
-                    uint256_t hashRet = LLC::SK256(key.GetPubKey());
+                    /* Set the key bytes to return */
+                    vchPubKey = key.GetPubKey();
 
-                    /* Set the leading byte. */
-                    hashRet.SetType(nType);
-
-                    return hashRet;
+                    break;
                 }
 
                 /* Support for the BRAINPOOL signature scheme. */
@@ -526,17 +311,32 @@ namespace TAO
                     if(!key.SetSecret(vchSecret, true))
                         throw debug::exception(FUNCTION, "failed to set brainpool secret key");
 
-                    /* Calculate the next hash. */
-                    uint256_t hashRet = LLC::SK256(key.GetPubKey());
+                    /* Set the key bytes to return */
+                    vchPubKey = key.GetPubKey();
 
-                    /* Set the leading byte. */
-                    hashRet.SetType(nType);
+                    break;
 
-                    return hashRet;
                 }
             }
 
-            return 0;
+            /* return the public key */
+            return vchPubKey;
+        }
+
+        /* This function generates a hash of a public key generated from random seed phrase. */
+        uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
+        {
+            /* Generate the public key */
+            std::vector<uint8_t> vchPubKey = Key(strType, nKeyID, strSecret, nType);
+            
+            /* Calculate the key hash. */
+            uint256_t hashRet = LLC::SK256(vchPubKey);
+
+            /* Set the leading byte. */
+            hashRet.SetType(nType);
+
+            return hashRet;
+
         }
 
 
@@ -610,50 +410,61 @@ namespace TAO
         }
 
 
+        /* Returns the password for this sig chain */
+        const SecureString& SignatureChain::Password() const
+        {
+            return strPassword;
+        }
+
+
         /* Special method for encrypting specific data types inside class. */
         void SignatureChain::Encrypt()
         {
             encrypt(strUsername);
             encrypt(strPassword);
-            encrypt(pairCache.first);
-            encrypt(pairCache.second);
+            encrypt(cacheKeys);
             encrypt(hashGenesis);
         }
 
 
-        /* Generates a signature for the data, using the specified crypto key type. */
-        bool SignatureChain::Sign(const std::string& strType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
-                                  std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig ) const
+        /* Generates a signature for the data, using the specified crypto key from the crypto object register. */
+        bool SignatureChain::Sign(const std::string& strKey, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+                                  std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const
         {
-
-            /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = hashSecret.GetBytes();
-            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
-
             /* The crypto register object */
             TAO::Register::Object crypto;
 
             /* Get the crypto register. This is needed so that we can determine the key type used to generate the public key */
             TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
             if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                throw debug::exception(FUNCTION, "Could not sign - missing crypto register");
+                return debug::error(FUNCTION, "Could not sign - missing crypto register");
 
             /* Parse the object. */
             if(!crypto.Parse())
-                throw debug::exception(FUNCTION, "failed to parse crypto register");
+                return debug::error(FUNCTION, "failed to parse crypto register");
 
             /* Check that the requested key is in the crypto register */
-            if(!crypto.CheckName(strType))
-                throw debug::exception(FUNCTION, "Key type not found in crypto register: ", strType);
-
-            /* Retrieve the pubic key hash from the crypto register */
-            uint256_t hashPublic = crypto.get<uint256_t>(strType);
+            if(!crypto.CheckName(strKey))
+                return debug::error(FUNCTION, "Key type not found in crypto register: ", strKey);
 
             /* Get the encryption key type from the hash of the public key */
-            uint8_t nType = hashPublic.GetType();
+            uint8_t nType = crypto.get<uint256_t>(strKey).GetType();
+
+            /* call the Sign method with the retrieved type */
+            return Sign(nType, vchData, hashSecret, vchPubKey, vchSig);
+
+        }
+        
+        /* Generates a signature for the data, using the specified crypto key type. */
+        bool SignatureChain::Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+                                  std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const
+        {
+            /* Get the secret from new key. */
+            std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Switch based on signature type. */
-            switch(nType)
+            switch(nKeyType)
             {
                 /* Support for the FALCON signature scheme. */
                 case SIGNATURE::FALCON:
@@ -704,6 +515,87 @@ namespace TAO
             /* Return success */
             return true;
 
+        }
+
+
+        /* Verifies a signature for the data, as well as verifying that the hashed public key matches the 
+        *  specified key from the crypto object register */
+        bool SignatureChain::Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData, 
+                    const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchSig)
+        {
+            /* Derive the object register address. */
+            TAO::Register::Address hashCrypto =
+                TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
+            /* Get the crypto register. */
+            TAO::Register::Object crypto;
+            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
+                return debug::error(FUNCTION, "Missing crypto register");
+
+            /* Parse the object. */
+            if(!crypto.Parse())
+                return debug::drop(FUNCTION, "failed to parse crypto register");
+
+            /* Check that the requested key is in the crypto register */
+            if(!crypto.CheckName(strKey))
+                return debug::error(FUNCTION, "Key type not found in crypto register: ", strKey);
+
+            /* Check the authorization hash. */
+            uint256_t hashCheck = crypto.get<uint256_t>(strKey);
+
+            /* Check that the hashed public key exists in the register*/
+            if(hashCheck == 0)
+                return debug::error(FUNCTION, "Public key hash not found in crypto register: ", strKey);
+
+            /* Get the encryption key type from the hash of the public key */
+            uint8_t nType = hashCheck.GetType();
+
+            /* Grab hash of incoming pubkey and set its type. */
+            uint256_t hashPubKey = LLC::SK256(vchPubKey);
+            hashPubKey.SetType(nType);
+
+            /* Check the public key to expected authorization key. */
+            if(hashPubKey != hashCheck)
+                return debug::error(FUNCTION, "Invalid public key");
+
+            /* Switch based on signature type. */
+            switch(nType)
+            {
+                /* Support for the FALCON signature scheeme. */
+                case TAO::Ledger::SIGNATURE::FALCON:
+                {
+                    /* Create the FL Key object. */
+                    LLC::FLKey key;
+
+                    /* Set the public key and verify. */
+                    key.SetPubKey(vchPubKey);
+                    if(!key.Verify(vchData, vchSig))
+                        return debug::error(FUNCTION, "Invalid transaction signature");
+
+                    break;
+                }
+
+                /* Support for the BRAINPOOL signature scheme. */
+                case TAO::Ledger::SIGNATURE::BRAINPOOL:
+                {
+                    /* Create EC Key object. */
+                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                    /* Set the public key and verify. */
+                    key.SetPubKey(vchPubKey);
+                    if(!key.Verify(vchData, vchSig))
+                        return debug::error(FUNCTION, "Invalid transaction signature");
+
+                    break;
+                }
+
+                default:
+                    return debug::error(FUNCTION, "Unknown signature scheme");
+
+            }
+
+            /* Verified! */
+            return true;
         }
 
     }

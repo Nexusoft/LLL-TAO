@@ -134,7 +134,7 @@ public:
      *  @param[in] nSerTypeIn The serialize type to set.
      *
      **/
-    void SetType(uint8_t nSerTypeIn);
+    void SetType(const uint32_t nSerTypeIn);
 
 
     /** SetPos
@@ -144,7 +144,7 @@ public:
      *  @param[in] nNewPos The position to set to in the stream.
      *
      **/
-    void SetPos(uint64_t nNewPos) const;
+    void SetPos(const uint64_t nNewPos) const;
 
 
     /** GetPos
