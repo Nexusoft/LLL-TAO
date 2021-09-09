@@ -24,157 +24,157 @@ ________________________________________________________________________________
 namespace TAO
 {
 
-/* Ledger Layer namespace. */
-namespace Ledger
-{
-
-    /* Default constructor. */
-    SyncBlock::SyncBlock()
-    : Block    ( )
-    , nTime    (runtime::unifiedtimestamp())
-    , ssSystem ( )
-    , vtx      ( )
+    /* Ledger Layer namespace. */
+    namespace Ledger
     {
-    }
 
-
-    /* Copy constructor. */
-    SyncBlock::SyncBlock(const SyncBlock& block)
-    : Block    (block)
-    , nTime    (block.nTime)
-    , ssSystem (block.ssSystem)
-    , vtx      (block.vtx)
-    {
-    }
-
-
-    /* Move constructor. */
-    SyncBlock::SyncBlock(SyncBlock&& block) noexcept
-    : Block    (std::move(block))
-    , nTime    (std::move(block.nTime))
-    , ssSystem (std::move(block.ssSystem))
-    , vtx      (std::move(block.vtx))
-    {
-    }
-
-
-    /* Copy assignment. */
-    SyncBlock& SyncBlock::operator=(const SyncBlock& block)
-    {
-        nVersion       = block.nVersion;
-        hashPrevBlock  = block.hashPrevBlock;
-        hashMerkleRoot = block.hashMerkleRoot;
-        nChannel       = block.nChannel;
-        nHeight        = block.nHeight;
-        nBits          = block.nBits;
-        nNonce         = block.nNonce;
-        vOffsets       = block.vOffsets;
-        vchBlockSig    = block.vchBlockSig;
-        vMissing       = block.vMissing;
-        hashMissing    = block.hashMissing;
-        fConflicted    = block.fConflicted;
-
-        nTime          = block.nTime;
-        ssSystem       = block.ssSystem;
-        vtx            = block.vtx;
-
-        return *this;
-    }
-
-
-    /* Move assignment. */
-    SyncBlock& SyncBlock::operator=(SyncBlock&& block) noexcept
-    {
-        nVersion       = std::move(block.nVersion);
-        hashPrevBlock  = std::move(block.hashPrevBlock);
-        hashMerkleRoot = std::move(block.hashMerkleRoot);
-        nChannel       = std::move(block.nChannel);
-        nHeight        = std::move(block.nHeight);
-        nBits          = std::move(block.nBits);
-        nNonce         = std::move(block.nNonce);
-        vOffsets       = std::move(block.vOffsets);
-        vchBlockSig    = std::move(block.vchBlockSig);
-        vMissing       = std::move(block.vMissing);
-        hashMissing    = std::move(block.hashMissing);
-        fConflicted    = std::move(block.fConflicted);
-
-        nTime          = std::move(block.nTime);
-        ssSystem       = std::move(block.ssSystem);
-        vtx            = std::move(block.vtx);
-
-        return *this;
-    }
-
-
-    /* Destructor. */
-    SyncBlock::~SyncBlock()
-    {
-    }
-
-
-    /* Copy Constructor. */
-    SyncBlock::SyncBlock(const BlockState& state)
-    : Block    (state)
-    , nTime    (state.nTime)
-    , ssSystem (state.ssSystem)
-    , vtx      ( )
-    {
-        /* Loop through transactions in state block. */
-        for(const auto& proof : state.vtx)
+        /* Default constructor. */
+        SyncBlock::SyncBlock()
+        : Block    ( )
+        , nTime    (runtime::unifiedtimestamp())
+        , ssSystem ( )
+        , vtx      ( )
         {
-            /* Switch for type. */
-            switch(proof.first)
+        }
+
+
+        /* Copy constructor. */
+        SyncBlock::SyncBlock(const SyncBlock& block)
+        : Block    (block)
+        , nTime    (block.nTime)
+        , ssSystem (block.ssSystem)
+        , vtx      (block.vtx)
+        {
+        }
+
+
+        /* Move constructor. */
+        SyncBlock::SyncBlock(SyncBlock&& block) noexcept
+        : Block    (std::move(block))
+        , nTime    (std::move(block.nTime))
+        , ssSystem (std::move(block.ssSystem))
+        , vtx      (std::move(block.vtx))
+        {
+        }
+
+
+        /* Copy assignment. */
+        SyncBlock& SyncBlock::operator=(const SyncBlock& block)
+        {
+            nVersion       = block.nVersion;
+            hashPrevBlock  = block.hashPrevBlock;
+            hashMerkleRoot = block.hashMerkleRoot;
+            nChannel       = block.nChannel;
+            nHeight        = block.nHeight;
+            nBits          = block.nBits;
+            nNonce         = block.nNonce;
+            vOffsets       = block.vOffsets;
+            vchBlockSig    = block.vchBlockSig;
+            vMissing       = block.vMissing;
+            hashMissing    = block.hashMissing;
+            fConflicted    = block.fConflicted;
+
+            nTime          = block.nTime;
+            ssSystem       = block.ssSystem;
+            vtx            = block.vtx;
+
+            return *this;
+        }
+
+
+        /* Move assignment. */
+        SyncBlock& SyncBlock::operator=(SyncBlock&& block) noexcept
+        {
+            nVersion       = std::move(block.nVersion);
+            hashPrevBlock  = std::move(block.hashPrevBlock);
+            hashMerkleRoot = std::move(block.hashMerkleRoot);
+            nChannel       = std::move(block.nChannel);
+            nHeight        = std::move(block.nHeight);
+            nBits          = std::move(block.nBits);
+            nNonce         = std::move(block.nNonce);
+            vOffsets       = std::move(block.vOffsets);
+            vchBlockSig    = std::move(block.vchBlockSig);
+            vMissing       = std::move(block.vMissing);
+            hashMissing    = std::move(block.hashMissing);
+            fConflicted    = std::move(block.fConflicted);
+
+            nTime          = std::move(block.nTime);
+            ssSystem       = std::move(block.ssSystem);
+            vtx            = std::move(block.vtx);
+
+            return *this;
+        }
+
+
+        /* Destructor. */
+        SyncBlock::~SyncBlock()
+        {
+        }
+
+
+        /* Copy Constructor. */
+        SyncBlock::SyncBlock(const BlockState& state)
+        : Block    (state)
+        , nTime    (state.nTime)
+        , ssSystem (state.ssSystem)
+        , vtx      ( )
+        {
+            /* Loop through transactions in state block. */
+            for(const auto& proof : state.vtx)
             {
-                /* Check for tritium. */
-                case TRANSACTION::TRITIUM:
+                /* Switch for type. */
+                switch(proof.first)
                 {
-                    /* Read the tritium transaction from disk. */
-                    Transaction tx;
-                    if(!LLD::Ledger->ReadTx(proof.second, tx, FLAGS::MEMPOOL)) //check mempool too
-                        throw debug::exception(FUNCTION, "failed to read tx ", proof.second.SubString());
+                    /* Check for tritium. */
+                    case TRANSACTION::TRITIUM:
+                    {
+                        /* Read the tritium transaction from disk. */
+                        Transaction tx;
+                        if(!LLD::Ledger->ReadTx(proof.second, tx, FLAGS::MEMPOOL)) //check mempool too
+                            throw debug::exception(FUNCTION, "failed to read tx ", proof.second.SubString());
 
-                    /* Serialize stream. */
-                    DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                    ssData << tx;
+                        /* Serialize stream. */
+                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                        ssData << tx;
 
-                    /* Add transaction to binary data. */
-                    vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
 
-                    break;
-                }
+                        break;
+                    }
 
-                /* Check for legacy. */
-                case TRANSACTION::LEGACY:
-                {
-                    /* Read the tritium transaction from disk. */
-                    Legacy::Transaction tx;
-                    if(!LLD::Legacy->ReadTx(proof.second, tx, FLAGS::MEMPOOL)) //check mempool too
-                        throw debug::exception(FUNCTION, "failed to read tx ", proof.second.SubString());
+                    /* Check for legacy. */
+                    case TRANSACTION::LEGACY:
+                    {
+                        /* Read the tritium transaction from disk. */
+                        Legacy::Transaction tx;
+                        if(!LLD::Legacy->ReadTx(proof.second, tx, FLAGS::MEMPOOL)) //check mempool too
+                            throw debug::exception(FUNCTION, "failed to read tx ", proof.second.SubString());
 
-                    /* Serialize stream. */
-                    DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                    ssData << tx;
+                        /* Serialize stream. */
+                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                        ssData << tx;
 
-                    /* Add transaction to binary data. */
-                    vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
 
-                    break;
-                }
+                        break;
+                    }
 
-                /* Check for checkpoint. */
-                case TRANSACTION::CHECKPOINT:
-                {
-                    /* Serialize stream. */
-                    DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
-                    ssData << proof.second;
+                    /* Check for checkpoint. */
+                    case TRANSACTION::CHECKPOINT:
+                    {
+                        /* Serialize stream. */
+                        DataStream ssData(SER_DISK, LLD::DATABASE_VERSION);
+                        ssData << proof.second;
 
-                    /* Add transaction to binary data. */
-                    vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
+                        /* Add transaction to binary data. */
+                        vtx.push_back(std::make_pair(proof.first, ssData.Bytes()));
 
-                    break;
+                        break;
+                    }
                 }
             }
         }
     }
-}
 }

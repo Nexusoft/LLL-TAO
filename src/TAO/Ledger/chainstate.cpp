@@ -24,253 +24,253 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-    
-/* Ledger Layer namespace. */
-namespace Ledger
-{
 
-    /* The best block height in the chain. */
-    std::atomic<uint32_t> ChainState::nBestHeight;
-
-
-    /* The best trust in the chain. */
-    std::atomic<uint64_t> ChainState::nBestChainTrust;
-
-
-    /* The current checkpoint height. */
-    std::atomic<uint64_t> ChainState::nCheckpointHeight;
-
-
-    /* The best hash in the chain. */
-    memory::atomic<uint1024_t> ChainState::hashBestChain;
-
-
-    /* Hardened Checkpoint. */
-    memory::atomic<uint1024_t> ChainState::hashCheckpoint;
-
-
-    /* The best block in the chain. */
-    memory::atomic<BlockState> ChainState::stateBest;
-
-
-    /* The best block in the chain. */
-    BlockState ChainState::stateGenesis;
-
-
-    /* Flag to tell if initial blocks are downloading. */
-    //static std::atomic<bool> fSynchronizing(true);
-    bool ChainState::Synchronizing()
+    /* Ledger Layer namespace. */
+    namespace Ledger
     {
-        bool fSynchronizing = true;
-        /* Persistent switch once synchronized. */
-        //if(!fSynchronizing.load())
-        //    return false;
 
-        #ifndef UNIT_TESTS
+        /* The best block height in the chain. */
+        std::atomic<uint32_t> ChainState::nBestHeight;
 
-        /* Check for null best state. */
-        if(stateBest.load().IsNull())
-            return true;
 
-        /* Check if there's been a new block. */
-        static memory::atomic<uint1024_t> hashLast;
-        static std::atomic<uint64_t> nLastTime;
-        if(hashBestChain.load() != hashLast.load())
+        /* The best trust in the chain. */
+        std::atomic<uint64_t> ChainState::nBestChainTrust;
+
+
+        /* The current checkpoint height. */
+        std::atomic<uint64_t> ChainState::nCheckpointHeight;
+
+
+        /* The best hash in the chain. */
+        memory::atomic<uint1024_t> ChainState::hashBestChain;
+
+
+        /* Hardened Checkpoint. */
+        memory::atomic<uint1024_t> ChainState::hashCheckpoint;
+
+
+        /* The best block in the chain. */
+        memory::atomic<BlockState> ChainState::stateBest;
+
+
+        /* The best block in the chain. */
+        BlockState ChainState::stateGenesis;
+
+
+        /* Flag to tell if initial blocks are downloading. */
+        //static std::atomic<bool> fSynchronizing(true);
+        bool ChainState::Synchronizing()
         {
-            hashLast = hashBestChain.load();
-            nLastTime = runtime::unifiedtimestamp();
-        }
+            bool fSynchronizing = true;
+            /* Persistent switch once synchronized. */
+            //if(!fSynchronizing.load())
+            //    return false;
 
-        /* Special testnet rule. s*/
-        if(config::fTestNet.load())
-        {
-            bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
-            bool fHasConnections = LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() > 0;
-            /* Set the synchronizing flag. */
+            #ifndef UNIT_TESTS
+
+            /* Check for null best state. */
+            if(stateBest.load().IsNull())
+                return true;
+
+            /* Check if there's been a new block. */
+            static memory::atomic<uint1024_t> hashLast;
+            static std::atomic<uint64_t> nLastTime;
+            if(hashBestChain.load() != hashLast.load())
+            {
+                hashLast = hashBestChain.load();
+                nLastTime = runtime::unifiedtimestamp();
+            }
+
+            /* Special testnet rule. s*/
+            if(config::fTestNet.load())
+            {
+                bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+                bool fHasConnections = LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() > 0;
+                /* Set the synchronizing flag. */
+                fSynchronizing =
+                (
+                    /* If using main testnet then rely on the LLP synchronized flag */
+                    (!fLocalTestnet && !LLP::TritiumNode::fSynchronized.load()
+                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
+
+                    /* If local testnet with connections then rely on LLP flag  */
+                    || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load() )
+
+                    /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago
+                       and block age is more than 20 mins, which gives us a 30s window to connect to a local peer */
+                    || (fLocalTestnet && !fHasConnections
+                        && runtime::unifiedtimestamp() - nLastTime < 30
+                        && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
+                );
+
+                return fSynchronizing;
+            }
+
+            /* Check if block has been created within 60 minutes. */
             fSynchronizing =
             (
-                /* If using main testnet then rely on the LLP synchronized flag */
-                (!fLocalTestnet && !LLP::TritiumNode::fSynchronized.load()
-                    && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
-
-                /* If local testnet with connections then rely on LLP flag  */
-                || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load() )
-
-                /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago
-                   and block age is more than 20 mins, which gives us a 30s window to connect to a local peer */
-                || (fLocalTestnet && !fHasConnections
-                    && runtime::unifiedtimestamp() - nLastTime < 30
-                    && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
+                (!LLP::TritiumNode::fSynchronized.load() &&
+                (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 60 * 60))
             );
 
             return fSynchronizing;
+
+            /* On unit tests, always keep Synchronizing off. */
+            #else
+            _unused(fSynchronizing); //suppress compiler warnings
+            return false;
+            #endif
         }
 
-        /* Check if block has been created within 60 minutes. */
-        fSynchronizing =
-        (
-            (!LLP::TritiumNode::fSynchronized.load() &&
-            (stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 60 * 60))
-        );
 
-        return fSynchronizing;
-
-        /* On unit tests, always keep Synchronizing off. */
-        #else
-        _unused(fSynchronizing); //suppress compiler warnings
-        return false;
-        #endif
-    }
-
-
-    /* Flag to tell if initial blocks are downloading. */
-    double ChainState::PercentSynchronized()
-    {
-        uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 60 * 60) - (config::fTestNet.load() ?
-            NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK);
-
-        uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - static_cast<uint64_t>(config::fTestNet.load() ?
-            NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
-
-        return (100.0 * nSyncAge) / nChainAge;
-    }
-
-
-    /* Initialize the Chain State. */
-    bool ChainState::Initialize()
-    {
-        /* Initialize the Genesis. */
-        if(!CreateGenesis())
-            return debug::error(FUNCTION, "failed to create genesis");
-
-        /* Read the best chain. */
-        if(!LLD::Ledger->ReadBestChain(hashBestChain))
-            return debug::error(FUNCTION, "failed to read best chain");
-
-        /* Get the best chain stats. */
-        if(!LLD::Ledger->ReadBlock(hashBestChain.load(), stateBest))
+        /* Flag to tell if initial blocks are downloading. */
+        double ChainState::PercentSynchronized()
         {
-            debug::error(FUNCTION, "failed to read best block, attempting to recover database");
+            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - 60 * 60) - (config::fTestNet.load() ?
+                NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK);
 
-            /* The block for hashBestChain might not exist on disk if the process was unexpectedly terminated
-            during a block commit.  In this case we can attempt to recover by iterating forward from the genesis
-            blockState until we reach the end of the chain, which is the last written block. */
-            BlockState stateBestKnown = stateGenesis;
-            while(!stateBestKnown.IsNull() && stateBestKnown.hashNextBlock != 0)
+            uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - static_cast<uint64_t>(config::fTestNet.load() ?
+                NEXUS_TESTNET_TIMELOCK : NEXUS_NETWORK_TIMELOCK));
+
+            return (100.0 * nSyncAge) / nChainAge;
+        }
+
+
+        /* Initialize the Chain State. */
+        bool ChainState::Initialize()
+        {
+            /* Initialize the Genesis. */
+            if(!CreateGenesis())
+                return debug::error(FUNCTION, "failed to create genesis");
+
+            /* Read the best chain. */
+            if(!LLD::Ledger->ReadBestChain(hashBestChain))
+                return debug::error(FUNCTION, "failed to read best chain");
+
+            /* Get the best chain stats. */
+            if(!LLD::Ledger->ReadBlock(hashBestChain.load(), stateBest))
             {
-                stateBest = stateBestKnown;
-                stateBestKnown = stateBestKnown.Next();
+                debug::error(FUNCTION, "failed to read best block, attempting to recover database");
+
+                /* The block for hashBestChain might not exist on disk if the process was unexpectedly terminated
+                during a block commit.  In this case we can attempt to recover by iterating forward from the genesis
+                blockState until we reach the end of the chain, which is the last written block. */
+                BlockState stateBestKnown = stateGenesis;
+                while(!stateBestKnown.IsNull() && stateBestKnown.hashNextBlock != 0)
+                {
+                    stateBest = stateBestKnown;
+                    stateBestKnown = stateBestKnown.Next();
+                }
+
+                hashBestChain = stateBest.load().GetHash();
+                if(!LLD::Ledger->WriteBestChain(hashBestChain.load()))
+                    return debug::error(FUNCTION, "failed to write best chain");
+
+                debug::log(0, FUNCTION, "database successfully recovered");
             }
 
-            hashBestChain = stateBest.load().GetHash();
-            if(!LLD::Ledger->WriteBestChain(hashBestChain.load()))
-                return debug::error(FUNCTION, "failed to write best chain");
+            /* Check database consistency. */
+            if(stateBest.load().GetHash() != hashBestChain.load())
+                return debug::error(FUNCTION, "disk index inconsistent with best chain");
 
-            debug::log(0, FUNCTION, "database successfully recovered");
-        }
-
-        /* Check database consistency. */
-        if(stateBest.load().GetHash() != hashBestChain.load())
-            return debug::error(FUNCTION, "disk index inconsistent with best chain");
-
-        /* Rewind the chain a total number of blocks. */
-        int64_t nForkblocks = config::GetArg("-forkblocks", 0);
-        if(nForkblocks > 0)
-        {
-            /* Rollback the chain a given number of blocks. */
-            TAO::Ledger::BlockState state = stateBest.load();
-
-            debug::log(0, FUNCTION, "forkblocks requested removal of ", nForkblocks, " blocks");
-
-            for(int i = 0; i < nForkblocks; ++i)
+            /* Rewind the chain a total number of blocks. */
+            int64_t nForkblocks = config::GetArg("-forkblocks", 0);
+            if(nForkblocks > 0)
             {
-                if(state.hashPrevBlock == 0)
-                    break; //Stop if reach genesis
+                /* Rollback the chain a given number of blocks. */
+                TAO::Ledger::BlockState state = stateBest.load();
 
-                state = state.Prev();
+                debug::log(0, FUNCTION, "forkblocks requested removal of ", nForkblocks, " blocks");
 
-                if(!state)
-                    return debug::error(FUNCTION, "failed to find ancestor block");
+                for(int i = 0; i < nForkblocks; ++i)
+                {
+                    if(state.hashPrevBlock == 0)
+                        break; //Stop if reach genesis
+
+                    state = state.Prev();
+
+                    if(!state)
+                        return debug::error(FUNCTION, "failed to find ancestor block");
+                }
+
+                /* Set the best to older block. */
+                LLD::TxnBegin();
+                state.SetBest();
+                LLD::TxnCommit();
             }
 
-            /* Set the best to older block. */
-            LLD::TxnBegin();
-            state.SetBest();
-            LLD::TxnCommit();
-        }
+            /* Fill out the best chain stats. */
+            nBestHeight     = stateBest.load().nHeight;
+            nBestChainTrust = stateBest.load().nChainTrust;
 
-        /* Fill out the best chain stats. */
-        nBestHeight     = stateBest.load().nHeight;
-        nBestChainTrust = stateBest.load().nChainTrust;
+            /* Set the checkpoint. */
+            hashCheckpoint = stateBest.load().hashCheckpoint;
 
-        /* Set the checkpoint. */
-        hashCheckpoint = stateBest.load().hashCheckpoint;
-
-        /* Find the last checkpoint. */
-        if(stateBest != stateGenesis)
-        {
-            /* Go back 10 checkpoints on startup. */
-            for(uint32_t i = 0; i < config::GetArg("-checkpoints", 100); ++i)
+            /* Find the last checkpoint. */
+            if(stateBest != stateGenesis)
             {
-                /* Search back until fail or different checkpoint. */
-                BlockState state;
-                if(!LLD::Ledger->ReadBlock(hashCheckpoint.load(), state))
-                    return debug::error(FUNCTION, "no pending checkpoint");
+                /* Go back 10 checkpoints on startup. */
+                for(uint32_t i = 0; i < config::GetArg("-checkpoints", 100); ++i)
+                {
+                    /* Search back until fail or different checkpoint. */
+                    BlockState state;
+                    if(!LLD::Ledger->ReadBlock(hashCheckpoint.load(), state))
+                        return debug::error(FUNCTION, "no pending checkpoint");
 
-                /* Check we haven't reached the genesis */
-                if(state == stateGenesis)
-                    break;
+                    /* Check we haven't reached the genesis */
+                    if(state == stateGenesis)
+                        break;
 
-                /* Get the previous state. */
-                state = state.Prev();
-                if(!state)
-                    return debug::error(FUNCTION, "failed to find the checkpoint");
+                    /* Get the previous state. */
+                    state = state.Prev();
+                    if(!state)
+                        return debug::error(FUNCTION, "failed to find the checkpoint");
 
-                /* Set the checkpoint. */
-                hashCheckpoint    = state.hashCheckpoint;
+                    /* Set the checkpoint. */
+                    hashCheckpoint    = state.hashCheckpoint;
 
-                /* Get checkpoint state. */
-                BlockState stateCheckpoint;
-                if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
-                    return debug::error(FUNCTION, "failed to read checkpoint");
+                    /* Get checkpoint state. */
+                    BlockState stateCheckpoint;
+                    if(!LLD::Ledger->ReadBlock(state.hashCheckpoint, stateCheckpoint))
+                        return debug::error(FUNCTION, "failed to read checkpoint");
 
-                /* Set the correct height for the checkpoint. */
-                nCheckpointHeight = stateCheckpoint.nHeight;
+                    /* Set the correct height for the checkpoint. */
+                    nCheckpointHeight = stateCheckpoint.nHeight;
+                }
             }
+
+            /* Ensure the block height index is intact */
+            if(config::GetBoolArg("-indexheight"))
+            {
+                /* Try and retrieve the block state for the current block height via the height index.
+                    If this fails then we know the block height index is not fully intact so we repair it*/
+                TAO::Ledger::BlockState state;
+                if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::stateBest.load().nHeight, state))
+                     LLD::Ledger->RepairIndexHeight();
+            }
+
+            stateBest.load().print();
+
+            /* Log the weights. */
+            debug::log(0, FUNCTION, "WEIGHTS",
+                " Prime ", stateBest.load().nChannelWeight[1].Get64(),
+                " Hash ",  stateBest.load().nChannelWeight[2].Get64(),
+                " Stake ", stateBest.load().nChannelWeight[0].Get64());
+
+
+            /* Debug logging. */
+            debug::log(0, FUNCTION, config::fTestNet.load() ? "Test" : "Nexus", " Network: genesis=", Genesis().SubString(),
+            " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.load().SubString(),
+            " checkpoint=", hashCheckpoint.load().SubString()," height=", std::dec, stateBest.load().nHeight);
+
+            return true;
         }
 
-        /* Ensure the block height index is intact */
-        if(config::GetBoolArg("-indexheight"))
+
+        /* Get the hash of the genesis block. */
+        uint1024_t ChainState::Genesis()
         {
-            /* Try and retrieve the block state for the current block height via the height index.
-                If this fails then we know the block height index is not fully intact so we repair it*/
-            TAO::Ledger::BlockState state;
-            if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::stateBest.load().nHeight, state))
-                 LLD::Ledger->RepairIndexHeight();
+            return config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : TAO::Ledger::hashGenesis;
         }
-
-        stateBest.load().print();
-
-        /* Log the weights. */
-        debug::log(0, FUNCTION, "WEIGHTS",
-            " Prime ", stateBest.load().nChannelWeight[1].Get64(),
-            " Hash ",  stateBest.load().nChannelWeight[2].Get64(),
-            " Stake ", stateBest.load().nChannelWeight[0].Get64());
-
-
-        /* Debug logging. */
-        debug::log(0, FUNCTION, config::fTestNet.load() ? "Test" : "Nexus", " Network: genesis=", Genesis().SubString(),
-        " nBitsStart=0x", std::hex, bnProofOfWorkStart[0].GetCompact(), " best=", hashBestChain.load().SubString(),
-        " checkpoint=", hashCheckpoint.load().SubString()," height=", std::dec, stateBest.load().nHeight);
-
-        return true;
     }
-
-
-    /* Get the hash of the genesis block. */
-    uint1024_t ChainState::Genesis()
-    {
-        return config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : TAO::Ledger::hashGenesis;
-    }
-}
 }

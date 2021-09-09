@@ -18,70 +18,70 @@ ________________________________________________________________________________
 namespace TAO
 {
 
-/* Ledger namespace. */
-namespace Ledger
-{
-
-    /* Retrieves the current internal value for the block weight metric. */
-    double StakeMinter::GetBlockWeight() const
-    {
-        return nBlockWeight.load();
-    }
-
-
-    /* Retrieves the current block weight metric as a percentage of maximum. */
-    double StakeMinter::GetBlockWeightPercent() const
-    {
-        return (nBlockWeight.load() * 100.0 / 10.0);
-    }
-
-
-    /* Retrieves the current internal value for the trust weight metric. */
-    double StakeMinter::GetTrustWeight() const
-    {
-        return nTrustWeight.load();
-    }
-
-
-    /* Retrieves the current trust weight metric as a percentage of maximum. */
-    double StakeMinter::GetTrustWeightPercent() const
-    {
-        return (nTrustWeight.load() * 100.0 / 90.0);
-    }
-
-
-    /* Retrieves the current staking reward rate */
-    double StakeMinter::GetStakeRate() const
-    {
-        return nStakeRate.load();
-    }
-
-
-    /* Retrieves the current staking reward rate as an annual percentage */
-    double StakeMinter::GetStakeRatePercent() const
-    {
-        return nStakeRate.load() * 100.0;
-    }
-
-
-    /* Checks whether the stake minter is waiting for average coin
-     * age to reach the required minimum before staking Genesis.
-     */
-    bool StakeMinter::IsWaitPeriod() const
-    {
-        return fWait.load();
-    }
-
-
-    /* When IsWaitPeriod() is true, this method returns the remaining wait time before staking is active. */
-    uint64_t StakeMinter::GetWaitTime() const
+    /* Ledger namespace. */
+    namespace Ledger
     {
 
-        if(!fWait.load())
-            return 0;
+        /* Retrieves the current internal value for the block weight metric. */
+        double StakeMinter::GetBlockWeight() const
+        {
+            return nBlockWeight.load();
+        }
 
-        return nWaitTime.load();
-    }
 
-} // End Ledger namespace
+        /* Retrieves the current block weight metric as a percentage of maximum. */
+        double StakeMinter::GetBlockWeightPercent() const
+        {
+            return (nBlockWeight.load() * 100.0 / 10.0);
+        }
+
+
+        /* Retrieves the current internal value for the trust weight metric. */
+        double StakeMinter::GetTrustWeight() const
+        {
+            return nTrustWeight.load();
+        }
+
+
+        /* Retrieves the current trust weight metric as a percentage of maximum. */
+        double StakeMinter::GetTrustWeightPercent() const
+        {
+            return (nTrustWeight.load() * 100.0 / 90.0);
+        }
+
+
+        /* Retrieves the current staking reward rate */
+        double StakeMinter::GetStakeRate() const
+        {
+            return nStakeRate.load();
+        }
+
+
+        /* Retrieves the current staking reward rate as an annual percentage */
+        double StakeMinter::GetStakeRatePercent() const
+        {
+            return nStakeRate.load() * 100.0;
+        }
+
+
+        /* Checks whether the stake minter is waiting for average coin
+         * age to reach the required minimum before staking Genesis.
+         */
+        bool StakeMinter::IsWaitPeriod() const
+        {
+            return fWait.load();
+        }
+
+
+        /* When IsWaitPeriod() is true, this method returns the remaining wait time before staking is active. */
+        uint64_t StakeMinter::GetWaitTime() const
+        {
+
+            if(!fWait.load())
+                return 0;
+
+            return nWaitTime.load();
+        }
+
+    } // End Ledger namespace
 } // End TAO namespace

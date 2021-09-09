@@ -20,52 +20,52 @@ ________________________________________________________________________________
 namespace TAO
 {
 
-/* Operation Layer namespace. */
-namespace Operation
-{
-
-    /* Commit the final state to disk. */
-    bool Coinbase::Commit(const uint256_t& hashAddress, const uint512_t& hashTx, const uint8_t nFlags)
+    /* Operation Layer namespace. */
+    namespace Operation
     {
-        /* Check to contract caller. */
-        if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+
+        /* Commit the final state to disk. */
+        bool Coinbase::Commit(const uint256_t& hashAddress, const uint512_t& hashTx, const uint8_t nFlags)
         {
-            /* Write the event to the database. */
-            if(!LLD::Ledger->WriteEvent(hashAddress, hashTx))
-                return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
+            /* Check to contract caller. */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+            {
+                /* Write the event to the database. */
+                if(!LLD::Ledger->WriteEvent(hashAddress, hashTx))
+                    return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
+            }
+
+            return true;
         }
 
-        return true;
+
+        /* Verify append validation rules and caller. */
+        bool Coinbase::Verify(const Contract& contract)
+        {
+            /* Rewind back on byte. */
+            contract.Rewind(1, Contract::OPERATIONS);
+
+            /* Get operation byte. */
+            uint8_t OP = 0;
+            contract >> OP;
+
+            /* Check operation byte. */
+            if(OP != OP::COINBASE)
+                return debug::error(FUNCTION, "called with incorrect OP");
+
+            /* Extract the address from contract. */
+            uint256_t hashGenesis;
+            contract >> hashGenesis;
+
+            /* Check for valid genesis. */
+            if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
+                return debug::error(FUNCTION, "invalid genesis for coinbase");
+
+            /* Seek read position to first position. */
+            contract.Rewind(32, Contract::OPERATIONS);
+
+
+            return true;
+        }
     }
-
-
-    /* Verify append validation rules and caller. */
-    bool Coinbase::Verify(const Contract& contract)
-    {
-        /* Rewind back on byte. */
-        contract.Rewind(1, Contract::OPERATIONS);
-
-        /* Get operation byte. */
-        uint8_t OP = 0;
-        contract >> OP;
-
-        /* Check operation byte. */
-        if(OP != OP::COINBASE)
-            return debug::error(FUNCTION, "called with incorrect OP");
-
-        /* Extract the address from contract. */
-        uint256_t hashGenesis;
-        contract >> hashGenesis;
-
-        /* Check for valid genesis. */
-        if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
-            return debug::error(FUNCTION, "invalid genesis for coinbase");
-
-        /* Seek read position to first position. */
-        contract.Rewind(32, Contract::OPERATIONS);
-
-
-        return true;
-    }
-}
 }

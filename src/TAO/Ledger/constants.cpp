@@ -24,36 +24,36 @@ ________________________________________________________________________________
 namespace TAO
 {
 
-/* Ledger Layer namespace. */
-namespace Ledger
-{
-    /* Retrieve the number of blocks (confirmations) required for coinbase maturity for a given block. */
-    uint32_t MaturityCoinBase(const BlockState& block)
+    /* Ledger Layer namespace. */
+    namespace Ledger
     {
-        if(config::fTestNet)
-            return TESTNET_MATURITY_BLOCKS;
+        /* Retrieve the number of blocks (confirmations) required for coinbase maturity for a given block. */
+        uint32_t MaturityCoinBase(const BlockState& block)
+        {
+            if(config::fTestNet)
+                return TESTNET_MATURITY_BLOCKS;
 
-        /* Apply legacy interval for all versions prior to version 7.  If the caller is not able to provide a block to base
-           this calculation off, then we will use the stateBest instead */
-        if((!block.IsNull() ? block.nVersion : TAO::Ledger::ChainState::stateBest.load().nVersion) < 7 )
-            return NEXUS_MATURITY_LEGACY;
+            /* Apply legacy interval for all versions prior to version 7.  If the caller is not able to provide a block to base
+               this calculation off, then we will use the stateBest instead */
+            if((!block.IsNull() ? block.nVersion : TAO::Ledger::ChainState::stateBest.load().nVersion) < 7 )
+                return NEXUS_MATURITY_LEGACY;
 
-        return NEXUS_MATURITY_COINBASE;
+            return NEXUS_MATURITY_COINBASE;
+        }
+
+
+        /* Retrieve the number of blocks (confirmations) required for coinstake maturity for a given block. */
+        uint32_t MaturityCoinStake(const BlockState& block)
+        {
+            if(config::fTestNet)
+                return TESTNET_MATURITY_BLOCKS;
+
+            /* Apply legacy interval for all versions prior to version 7.  If the caller is not able to provide a block to base
+               this calculation off, then we will use the stateBest instead */
+            if((!block.IsNull() ? block.nVersion : TAO::Ledger::ChainState::stateBest.load().nVersion) < 7 )
+                return NEXUS_MATURITY_LEGACY;
+
+            return NEXUS_MATURITY_COINSTAKE;
+        }
     }
-
-
-    /* Retrieve the number of blocks (confirmations) required for coinstake maturity for a given block. */
-    uint32_t MaturityCoinStake(const BlockState& block)
-    {
-        if(config::fTestNet)
-            return TESTNET_MATURITY_BLOCKS;
-
-        /* Apply legacy interval for all versions prior to version 7.  If the caller is not able to provide a block to base
-           this calculation off, then we will use the stateBest instead */
-        if((!block.IsNull() ? block.nVersion : TAO::Ledger::ChainState::stateBest.load().nVersion) < 7 )
-            return NEXUS_MATURITY_LEGACY;
-
-        return NEXUS_MATURITY_COINSTAKE;
-    }
-}
 }
