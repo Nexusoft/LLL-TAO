@@ -58,12 +58,11 @@ namespace TAO
             contract >> hashGenesis;
 
             /* Check for valid genesis. */
-            if(hashGenesis.GetType() != (config::fTestNet.load() ? 0xa2 : 0xa1))
+            if(hashGenesis.GetType() != TAO::Ledger::GENESIS::UserType())
                 return debug::error(FUNCTION, "invalid genesis for coinbase");
 
             /* Seek read position to first position. */
             contract.Rewind(32, Contract::OPERATIONS);
-
 
             return true;
         }

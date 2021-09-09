@@ -246,7 +246,7 @@ namespace TAO
 
             /** Operator Overload <<
              *
-             *  Serializes data into vchOperations
+             *  Serializes data into vchState
              *
              *  @param[in] obj The object to serialize into ledger data
              *
@@ -262,7 +262,7 @@ namespace TAO
 
             /** Operator Overload >>
              *
-             *  Serializes data into vchOperations
+             *  Serializes data into vchState
              *
              *  @param[out] obj The object to de-serialize from ledger data
              *

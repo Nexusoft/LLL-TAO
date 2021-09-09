@@ -11,12 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLP/include/global.h>
 
 #include <LLP/types/apinode.h>
 #include <LLP/templates/events.h>
 
+#include <TAO/API/include/json.h>
+#include <TAO/API/types/commands.h>
 #include <TAO/API/types/exception.h>
-#include <TAO/API/include/global.h>
 
 #include <Util/include/string.h>
 #include <Util/include/urlencode.h>
@@ -56,7 +58,7 @@ namespace LLP
     /* Custom Events for Core API */
     void APINode::Event(uint8_t EVENT, uint32_t LENGTH)
     {
-
+        /* Reset this thread's errors on new connection. */
         if(EVENT == EVENTS::CONNECT)
         {
             /* Reset the error log for this thread */
@@ -68,96 +70,122 @@ namespace LLP
 
             return;
         }
+
+        /* Handle for a HEADER event. */
+        if(EVENT == EVENTS::HEADER)
+        {
+            /* Check for forward DDOS filter. */
+            if(INCOMING.mapHeaders.count("x-forwarded-for"))
+            {
+                /* Grab our forwarded address from headers. */
+                const std::string strAddress = INCOMING.mapHeaders["x-forwarded-for"];
+
+                /* Update the address inside this connection. */
+                this->addr = LLP::BaseAddress(strAddress);
+
+                /* Swap our new address back into DDOS map */
+                if(!API_SERVER->DDOS_MAP->count(this->addr))
+                    API_SERVER->DDOS_MAP->insert(std::make_pair(this->addr, new DDOS_Filter(API_SERVER->CONFIG.DDOS_TIMESPAN)));
+
+                /* Add a connection to score. */
+                this->DDOS = API_SERVER->DDOS_MAP->at(this->addr);
+                this->DDOS->cSCORE += 1;
+            }
+        }
     }
 
 
     /** Main message handler once a packet is recieved. **/
     bool APINode::ProcessPacket()
     {
-
+        /* Check our http-basic authentication for the API. */
         if(!Authorized(INCOMING.mapHeaders))
         {
-            debug::error(FUNCTION, "API incorrect password attempt from ", this->addr.ToString());
+            /* Log a warning to the console. */
+            debug::warning(FUNCTION, "API incorrect password attempt from ", this->addr.ToString());
 
             /* Deter brute-forcing short passwords.
              * If this results in a DOS the user really
              * shouldn't have their RPC port exposed. */
             if(config::GetArg("-apipassword", "").size() < 20)
-                runtime::sleep(250);
+                runtime::sleep(250); //XXX: lets add better DoS handling here, we want to throttle failed attempts for all passwords
 
+            /* Use code 401 for unauthorized as response. */
             PushResponse(401, "");
 
             return false;
         }
 
         /* Parse the packet request. */
-        std::string::size_type npos = INCOMING.strRequest.find('/', 1);
+        const std::string::size_type nPos = INCOMING.strRequest.find('/', 1);
 
         /* Extract the API requested. */
-        std::string strAPI = INCOMING.strRequest.substr(1, npos - 1);
-
-        /* Extract the method to invoke. */
-        std::string METHOD = INCOMING.strRequest.substr(npos + 1);
+        std::string strCommands = INCOMING.strRequest.substr(1, nPos - 1);
+        std::string strMethod   = INCOMING.strRequest.substr(nPos + 1);
 
         /* The JSON response */
-        json::json ret;
+        encoding::json jRet;
 
         /* The HTTP response status code, default to 200 unless an error is encountered */
         uint16_t nStatus = 200;
 
-        /* Flag indicating that the connection should be kept alive */
-        bool fKeepAlive = false;
+        /* Log the starting time for this command. */
+        runtime::timer tLatency;
+        tLatency.Start();
 
-        runtime::timer TIMER;
-        TIMER.Start();
-        uint32_t nStart = TIMER.ElapsedMilliseconds();
-
-        /* Extract the parameters. */
+        /* Handle basic HTTP logic here. */
+        encoding::json jParams;
         try
         {
-            json::json params;
+            /* Handle for the POST call. */
             if(INCOMING.strType == "POST")
             {
                 /* Only parse content if some has been provided */
-                if(INCOMING.strContent.size() > 0)
+                if(!INCOMING.strContent.empty())
                 {
                     /* Handle different content types. */
-                    if(INCOMING.mapHeaders.count("content-type"))
+                    if(!INCOMING.mapHeaders.count("content-type"))
+                        throw TAO::API::Exception(-5, "content-type [null or misisng] not supported");
+
+                    /* Form encoding. */
+                    if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
                     {
-                        /* Form encoding. */
-                        if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
-                        {
-                            /* Decode if url-form-encoded. */
-                            INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
+                        /* Decode if url-form-encoded. */
+                        INCOMING.strContent = encoding::urldecode(INCOMING.strContent);
 
-                            /* parse the querystring */
-                            params = QuerystringToJSON(INCOMING.strContent, METHOD);
-                        }
+                        /* Split by delimiter. */
+                        std::vector<std::string> vParams;
+                        ParseString(INCOMING.strContent, '&', vParams);
 
-                        /* JSON encoding. */
-                        else if(INCOMING.mapHeaders["content-type"] == "application/json")
-                            params = json::json::parse(INCOMING.strContent);
-                        else
-                            throw TAO::API::APIException(-5, debug::safe_printstr("content-type ", INCOMING.mapHeaders["content-type"], " not supported"));
+                        /* Grab our parameters. */
+                        jParams = TAO::API::ParamsToJSON(vParams);
+                    }
+
+                    /* JSON encoding. */
+                    else if(INCOMING.mapHeaders["content-type"] == "application/json")
+                    {
+                        /* Parse JSON like normal. */
+                        jParams = encoding::json::parse(INCOMING.strContent);
                     }
                     else
-                        throw TAO::API::APIException(-6, "content-type not provided when content included");
+                        throw TAO::API::Exception(-5, "content-type [", INCOMING.mapHeaders["content-type"], "] not supported");
                 }
             }
             else if(INCOMING.strType == "GET")
             {
                 /* Detect if it is url form encoding. */
-                std::string::size_type pos = METHOD.find("?");
-                if(pos != METHOD.npos)
+                const auto nPos = strMethod.find("?");
+                if(nPos != strMethod.npos)
                 {
-                    /* Parse the querystring */
-                    std::string strQuerystring = METHOD.substr(pos + 1);
-                    
-                    /* Parse the method. */
-                    METHOD = METHOD.substr(0, pos);
+                    /* Parse out the form entries by char '&' */
+                    std::vector<std::string> vParams;
+                    ParseString(encoding::urldecode(strMethod.substr(nPos + 1)), '&', vParams);
 
-                    /* parse the querystring */
-                    params = QuerystringToJSON(encoding::urldecode(strQuerystring), METHOD);
+                    /* Parse the form from the end of method. */
+                    strMethod = strMethod.substr(0, nPos);
+
+                    /* Grab our parameters. */
+                    jParams = TAO::API::ParamsToJSON(vParams);
                 }
             }
             else if(INCOMING.strType == "OPTIONS")
@@ -187,42 +215,26 @@ namespace LLP
                 return true;
             }
 
+            /* Check if we need to parse a where query. */
+            if(jParams.find("where") != jParams.end())
+                jParams["where"] = TAO::API::QueryToJSON(jParams["where"].get<std::string>());
+
+            /* Add our request information before invoking command. */
+            jParams["request"] =
+            {
+                {"commands", strCommands },
+                {"method",   strMethod   }
+            };
+
             /* Execute the api and methods. */
-            if(strAPI == "supply")
-                ret = { {"result", TAO::API::supply->Execute(METHOD, params) } };
-            else if(strAPI == "users")
-                ret = { {"result", TAO::API::users->Execute(METHOD, params) } };
-            else if(strAPI == "assets")
-                ret = { {"result", TAO::API::assets->Execute(METHOD, params) } };
-            else if(strAPI == "ledger")
-                ret = { {"result", TAO::API::ledger->Execute(METHOD, params) } };
-            else if(strAPI == "tokens")
-                ret = { {"result", TAO::API::tokens->Execute(METHOD, params) } };
-            else if(strAPI == "system")
-                ret = { {"result", TAO::API::system->Execute(METHOD, params) } };
-            else if(strAPI == "finance")
-                ret = { {"result", TAO::API::finance->Execute(METHOD, params) } };
-            else if(strAPI == "names")
-                ret = { {"result", TAO::API::names->Execute(METHOD, params) } };
-            else if(strAPI == "dex")
-                ret = { {"result", TAO::API::dex->Execute(METHOD, params) } };
-            else if(strAPI == "voting")
-                ret = { {"result", TAO::API::voting->Execute(METHOD, params) } };
-            else if(strAPI == "invoices")
-                ret = { {"result", TAO::API::invoices->Execute(METHOD, params) } };
-            else if(strAPI == "crypto")
-                ret = { {"result", TAO::API::crypto->Execute(METHOD, params) } };
-            else if(strAPI == "p2p")
-                ret = { {"result", TAO::API::p2p->Execute(METHOD, params) } };
-            else
-                throw TAO::API::APIException(-4, debug::safe_printstr("API not found: ", strAPI));
+            jRet = { {"result", TAO::API::Commands::Invoke(strCommands, strMethod, jParams) } };
         }
 
         /* Handle for custom API exceptions. */
-        catch(TAO::API::APIException& e)
+        catch(const TAO::API::Exception& e)
         {
             /* Get error from exception. */
-            json::json jsonError = e.ToJSON();
+            encoding::json jError = e.ToJSON();
 
             /* Check to see if the caller has specified an error code to use for general API errors */
             if(INCOMING.mapHeaders.count("api-error-code"))
@@ -230,8 +242,9 @@ namespace LLP
             else
                 /* Default error status code is 400. */
                 nStatus = 400;
-            
-            int32_t nError = jsonError["code"].get<int32_t>();
+
+            /* Cache our error code here. */
+            const int32_t nError = jError["code"].get<int32_t>();
 
             /* Set status by error code. */
             switch(nError)
@@ -253,8 +266,7 @@ namespace LLP
             }
 
             /* Populate the return JSON to the error */
-            ret = { { "error", jsonError } };
-
+            jRet = { { "error", jError } };
         }
 
 
@@ -267,28 +279,34 @@ namespace LLP
 
         /* Add the connection header */
         if(INCOMING.mapHeaders.count("connection") && INCOMING.mapHeaders["connection"] == "keep-alive")
-        {
             RESPONSE.mapHeaders["Connection"] = "keep-alive";
-            fKeepAlive = true;
-        }
         else
-        {
             RESPONSE.mapHeaders["Connection"] = "close";
-            fKeepAlive = true;
-        }
+
+        /* Track the stopping time of this command. */
+        const double nLatency = tLatency.ElapsedNanoseconds() / 1000000.0;
+
+        /* Add some micro-benchamrks to response data. */
+        jRet["info"] =
+        {
+            {"method",    strCommands + "/" + strMethod                      },
+            {"status",    TAO::API::Commands::Status(strCommands, strMethod) },
+            {"address",   this->addr.ToString()                              },
+            {"latency",   debug::safe_printstr(std::fixed, nLatency, " ms")  }
+        };
+
+        /* Log our response if argument is specified. */
+        if(config::GetBoolArg("-httpresponse", false))
+            debug::log(0, jRet.dump(4));
 
         /* Add content. */
-        RESPONSE.strContent = ret.dump();
-            
+        RESPONSE.strContent = jRet.dump();
+
         /* Write the response */
         this->WritePacket(RESPONSE);
 
-        uint32_t nStop = TIMER.ElapsedMilliseconds();
-                    
-        debug::log(3, "API Request ", strAPI +"/" +METHOD, " from ", this->addr.ToString(), " completed in ", nStop - nStart, " milliseconds");
-
-
-        return fKeepAlive;
+        return true; //XXX: assess if we can return false here, if my memory serves we had issues here a couple years ago
+        //because if we disconnect immediately, we break the pipe. We need to wait for buffer to clear before disconnect
     }
 
 
@@ -302,89 +320,16 @@ namespace LLP
         if(!mapHeaders.count("authorization"))
             return debug::error(FUNCTION, "no authorization in header");
 
-
+        /* Get the authorization encoding from the header. */
         std::string strAuth = mapHeaders["authorization"];
-        if(strAuth.substr(0,6) != "Basic ")
+        if(strAuth.substr(0, 5) != "Basic")
             return debug::error(FUNCTION, "incorrect authorization type");
 
         /* Get the encoded content */
-        std::string strUserPass64 = strAuth.substr(6);
-        trim(strUserPass64);
+        const std::string strUserPass64 = trim(strAuth.substr(6));
 
         /* Decode from base64 */
-        std::string strUserPass = encoding::DecodeBase64(strUserPass64);
-        std::string strAPIUserColonPass = config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", "");
-
-        return strUserPass == strAPIUserColonPass;
+        const std::string strUserPass = (config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", ""));
+        return encoding::DecodeBase64(strUserPass64) == strUserPass;
     }
-
-
-    /* Parses the querystring and coverts it to a json object of key=value pairs */
-    json::json APINode::QuerystringToJSON(const std::string& strQuerystring, const std::string& strMethod)
-    {
-        /* The json params to return */
-        json::json params;
-
-        /* Flag indicating that this is a list API call, in which case we need to parse the params differently */
-        bool fIsList = strMethod.find("list/") != strMethod.npos;
-
-        /* list of keywords that are acceptale parameters for a /list/xxx method.  Parameters not in this list will be converted
-           into a `where` array */
-        std::vector<std::string> vKeywords = {"genesis", "username", "verbose", "page", "limit", "offset", "sort", "order", "where"};
-
-        /* Parse out the form entries by char '&' */
-        std::vector<std::string> vParams;
-        ParseString(strQuerystring, '&', vParams);
-        
-        /* Check each form entry. */
-        for(std::string strParam : vParams)
-        {
-            std::string::size_type pos2 = std::string::npos;
-
-            if(fIsList)
-                pos2 = strParam.find_first_of("><=", 0);
-            else
-                pos2 = strParam.find('=', 0);
-
-            if(pos2 == strParam.npos)
-                break;
-            
-            /* Get the parameter key */
-            std::string key = strParam.substr(0, pos2);
-
-            /* If this is a list command, check to see if this is a where clause (not a keyword parameter supported by list)*/
-            if(fIsList && std::find(vKeywords.begin(), vKeywords.end(), key) == vKeywords.end())
-            {
-                /* add the where clause */
-                json::json jsonClause;
-                jsonClause["field"] = key;
-
-                /* Check to see if the parameter delimter is a two-character operand */
-                if(strParam.find_first_of("><=", pos2+1) != strParam.npos)
-                {
-                    /* Extract the operand */
-                    jsonClause["op"] = strParam.substr(pos2, 2);
-                    pos2++;
-                }
-                else
-                {
-                    /* Extract the operand */
-                    jsonClause["op"] = strParam.substr(pos2, 1);
-                }
-
-                /* Extract the value */
-                jsonClause["value"] = strParam.substr(pos2 + 1);
-
-                /* Add it to the where params*/
-                params["where"].push_back(jsonClause);
-            }
-            
-            /* Add the parameter as a JSON parameter regardless of whether it is has been added as where clause as it might be a
-               keyword required by a list method such as name or address */
-            params[key] =  strParam.substr(pos2 + 1);
-        }
-
-        return params;
-    } 
-
 }

@@ -21,21 +21,24 @@ ________________________________________________________________________________
 
 
 /*  IP Filtering Definitions. IP's are Filtered By Ports. */
-bool CheckPermissions(const std::string &strAddress, uint16_t nPort)
+bool CheckPermissions(const std::string &strAddress, const uint16_t nPort)
 {
     /* Bypass localhost addresses first. */
-    if(strAddress == "127.0.0.1" || strAddress == "::1")
+    if(strAddress == "127.0.0.1" || strAddress == "::1") //XXX: we may not want this rule, assess security
         return true;
 
     /* Split the Address into String Vector. */
-    std::vector<std::string> vAddress = Split(strAddress, '.');
+    std::vector<std::string> vAddress;
+    ParseString(strAddress, '.', vAddress);
+
+    /* Check our expected sizes. */
     if(vAddress.size() != 4)
         return debug::error("Address size not at least 4 bytes.");
 
     /* Determine whether or not the current port is open by default, or closed requiring an llpallowip whitelist.
      * Ports open by default can also use a whitelist, and will no longer be treated as open for other addresses */
     bool fOpen = false;
-    if(config::fTestNet.load())
+    if(config::fTestNet.load()) //XXX: icky, this should be cleaned up here
     {
         /* Testnet ports open only for testnet */
         if(nPort == static_cast<uint16_t>(config::GetArg(std::string("-serverport"), (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1))))
@@ -68,7 +71,8 @@ bool CheckPermissions(const std::string &strAddress, uint16_t nPort)
     for(const auto& strIPFilter : config::mapIPFilters[nPort])
     {
         /* Split the components of the IP so that we can check for wildcard ranges. */
-        std::vector<std::string> vCheck = Split(strIPFilter, '.');
+        std::vector<std::string> vCheck;
+        ParseString(strIPFilter, '.', vCheck);
 
         /* Skip invalid inputs. */
         if(vCheck.size() != 4)

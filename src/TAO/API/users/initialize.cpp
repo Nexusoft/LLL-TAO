@@ -12,83 +12,196 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/include/utils.h>
 
-namespace TAO
+#include <TAO/API/types/commands/invoices.h>
+#include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/operators/array.h>
+#include <TAO/API/types/operators/mean.h>
+#include <TAO/API/types/operators/mode.h>
+#include <TAO/API/types/operators/floor.h>
+#include <TAO/API/types/operators/sum.h>
+
+#include <TAO/API/include/check.h>
+#include <TAO/API/include/global.h>
+
+namespace TAO::API
 {
-    namespace API
+    /* Standard initialization function. */
+    void Users::Initialize()
     {
-        /* Standard initialization function. */
-        void Users::Initialize()
-        {
-            mapFunctions["create/user"]              = Function(std::bind(&Users::Create,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["login/user"]               = Function(std::bind(&Users::Login,         this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["logout/user"]              = Function(std::bind(&Users::Logout,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["lock/user"]                = Function(std::bind(&Users::Lock,          this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["unlock/user"]              = Function(std::bind(&Users::Unlock,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["update/user"]              = Function(std::bind(&Users::Update,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["recover/user"]             = Function(std::bind(&Users::Recover,       this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["get/status"]               = Function(std::bind(&Users::Status,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,  this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["process/notifications"]    = Function(std::bind(&Users::ProcessNotifications, this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/assets"]              = Function(std::bind(&Users::Assets,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/items"]               = Function(std::bind(&Users::Items,         this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,        this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,      this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/names"]               = Function(std::bind(&Users::Names,         this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/namespaces"]          = Function(std::bind(&Users::Namespaces,    this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["list/invoices"]            = Function(std::bind(&Users::Invoices,      this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["load/session"]             = Function(std::bind(&Users::Load,         this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["save/session"]             = Function(std::bind(&Users::Save,         this, std::placeholders::_1, std::placeholders::_2));
-            mapFunctions["has/session"]             = Function(std::bind(&Users::Has,         this, std::placeholders::_1, std::placeholders::_2));            
-        }
+        /* Handle for the ARRAY operator. */
+        mapOperators["array"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Array,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
 
-        /* Allows derived API's to handle custom/dynamic URL's where the strMethod does not
-        *  map directly to a function in the target API.  Insted this method can be overriden to
-        *  parse the incoming URL and route to a different/generic method handler, adding parameter
-        *  values if necessary.  E.g. get/myasset could be rerouted to get/asset with name=myasset
-        *  added to the jsonParams
-        *  The return json contains the modifed method URL to be called.
-        */
-        std::string Users::RewriteURL(const std::string& strMethod, json::json& jsonParams)
-        {
-            std::string strMethodRewritten = strMethod;
-            std::string strNameOrAddress;
+        /* Handle for the FLOOR operator. */
+        mapOperators["floor"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Floor,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the MEAN operator. */
+        mapOperators["mean"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Mean,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the MODE operator. */
+        mapOperators["mode"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Mode,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the SUM operator. */
+        mapOperators["sum"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Sum,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
 
 
-            if(strMethod.find("user/")          != std::string::npos
-            || strMethod.find("recovery/")      != std::string::npos
-            || strMethod.find("transactions/")  != std::string::npos
-            || strMethod.find("notifications/") != std::string::npos
-            || strMethod.find("assets/")        != std::string::npos
-            || strMethod.find("accounts/")      != std::string::npos
-            || strMethod.find("items/")         != std::string::npos
-            || strMethod.find("tokens/")        != std::string::npos
-            || strMethod.find("names/")         != std::string::npos
-            || strMethod.find("namespaces/")    != std::string::npos)
-            {
-                /* support passing the username after a list method e.g. list/assets/myusername */
-                size_t nPos = strMethod.find_last_of("/");
+        mapFunctions["create/user"]              = Function(std::bind(&Users::Create,        this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["login/user"]               = Function(std::bind(&Users::Login,         this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["logout/user"]              = Function(std::bind(&Users::Logout,        this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["lock/user"]                = Function(std::bind(&Users::Lock,          this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["unlock/user"]              = Function(std::bind(&Users::Unlock,        this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["update/user"]              = Function(std::bind(&Users::Update,        this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["recover/user"]             = Function(std::bind(&Users::Recover,       this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["get/status"]               = Function(std::bind(&Users::Status,        this, std::placeholders::_1, std::placeholders::_2));
 
-                if(nPos != std::string::npos)
-                {
-                    /* get the method name from the incoming string */
-                    strMethodRewritten = strMethod.substr(0, nPos);
+        mapFunctions["list/transactions"]        = Function(std::bind(&Users::Transactions,  this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["list/notifications"]       = Function(std::bind(&Users::Notifications, this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["process/notifications"]    = Function(std::bind(&Users::ProcessNotifications, this, std::placeholders::_1, std::placeholders::_2));
 
-                    /* Get the name or address that comes after the /item/ part */
-                    strNameOrAddress = strMethod.substr(nPos + 1);
+        mapFunctions["list/processed"]           = Function(std::bind(&Users::Processed,      this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["clear/processed"]          = Function(std::bind(&Users::Clear,      this, std::placeholders::_1, std::placeholders::_2));
 
-                    /* Determine whether the name/address is a valid register address and set the name or address parameter accordingly */
-                    if(IsRegisterAddress(strNameOrAddress))
-                        jsonParams["genesis"] = strNameOrAddress;
-                    else
-                        jsonParams["username"] = strNameOrAddress;
-                }
-            }
+        mapFunctions["load/session"]             = Function(std::bind(&Users::Load,         this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["save/session"]             = Function(std::bind(&Users::Save,         this, std::placeholders::_1, std::placeholders::_2));
+        mapFunctions["has/session"]              = Function(std::bind(&Users::Has,         this, std::placeholders::_1, std::placeholders::_2));
 
-            return strMethodRewritten;
-        }
 
+        //mapFunctions["list/items"]               = Function(std::bind(&Users::Items,         this, std::placeholders::_1, std::placeholders::_2));
+        //mapFunctions["list/tokens"]              = Function(std::bind(&Users::Tokens,        this, std::placeholders::_1, std::placeholders::_2));
+        //mapFunctions["list/accounts"]            = Function(std::bind(&Users::Accounts,      this, std::placeholders::_1, std::placeholders::_2));
+        //mapFunctions["list/names"]               = Function(std::bind(&Users::Names,         this, std::placeholders::_1, std::placeholders::_2));
+        //mapFunctions["list/namespaces"]          = Function(std::bind(&Users::Namespaces,    this, std::placeholders::_1, std::placeholders::_2));
+
+
+        /* DEPRECATED */
+        mapFunctions["list/assets"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use assets/list/assets instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/invoices"] = Function
+        (
+            std::bind
+            (
+                &Templates::List,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use invoices/list/invoices command instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/items"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use supply/list/items instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/tokens"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use finance/list/tokens instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/accounts"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use finance/list/accounts instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/names"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use names/list/names instead"
+        );
+
+        /* DEPRECATED */
+        mapFunctions["list/namespaces"] = Function
+        (
+            std::bind
+            (
+                &Templates::Deprecated,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , version::get_version(5, 1, 0)
+            , "please use names/list/namespaces instead"
+        );
     }
 }

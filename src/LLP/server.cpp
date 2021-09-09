@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
-#include <LLP/types/p2p.h>
 
 #include <LLP/include/trust_address.h>
 
@@ -46,124 +45,81 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    /*  Returns the name of the protocol type of this server. */
-    template <class ProtocolType>
-    std::string Server<ProtocolType>::Name()
-    {
-        return ProtocolType::Name();
-    }
-
-
     /** Constructor **/
     template <class ProtocolType>
-    Server<ProtocolType>::Server(const ServerConfig& config)
-    : PORT              (config.nPort)
-    , SSL_PORT          (config.nSSLPort)
-    , hListenSocket     (-1, -1)
-    , hSSLListenSocket  (-1, -1)
-    , fSSL              (config.fSSL)
-    , fSSLRequired      (config.fSSLRequired)
-    , DDOS_MAP          ( )
-    , fDDOS             (config.fDDOS)
-    , DDOS_TIMESPAN     (config.nDDOSTimespan)
-    , MAX_THREADS       (config.nMaxThreads)
-    , DATA_THREADS      ( )
-    , MANAGER           ( )
-    , LISTEN_THREAD     ( )
-    , SSL_LISTEN_THREAD ( )
-    , METER_THREAD      ( )
-    , UPNP_THREAD       ( )
-    , SSL_UPNP_THREAD   ( )
-    , MANAGER_THREAD    ( )
+    Server<ProtocolType>::Server(const Config& config)
+    : CONFIG            (config)
+    , DDOS_MAP          (new std::map<BaseAddress, DDOS_Filter*>())
+    , hListenBase       (-1, -1)
+    , hListenSSL        (-1, -1)
     , pAddressManager   (nullptr)
-    , nSleepTime        (config.nManagerInterval)
-    , nMaxIncoming      (config.nMaxIncoming)
-    , nMaxConnections   (config.nMaxConnections)
-    , fRemote           (config.fRemote)
+    , THREADS_DATA      ( )
+    , THREAD_LISTEN     ( )
+    , THREAD_METER      ( )
+    , THREAD_MANAGER    ( )
     {
         /* Add the individual data threads to the vector that will be holding their state. */
-        for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
+        for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
         {
-            DATA_THREADS.push_back(new DataThread<ProtocolType>(
-                nIndex, config.fDDOS, config.nDDOSRScore, config.nDDOSCScore, config.nTimeout, config.fMeter));
+            THREADS_DATA.push_back(new DataThread<ProtocolType>
+            (
+                nIndex,
+                CONFIG.ENABLE_DDOS,
+                CONFIG.DDOS_RSCORE,
+                CONFIG.DDOS_CSCORE,
+                CONFIG.SOCKET_TIMEOUT,
+                CONFIG.ENABLE_METERS
+            ));
         }
 
         /* Initialize the address manager. */
-        if(config.fManager)
+        if(CONFIG.ENABLE_MANAGER)
         {
-            pAddressManager = new AddressManager(PORT);
+            pAddressManager = new AddressManager(CONFIG.PORT_BASE);
             if(!pAddressManager)
-                debug::error(FUNCTION, "Failed to allocate memory for address manager on port ", PORT);
+                debug::warning(FUNCTION, "memory allocation failed for manager on port ", CONFIG.PORT_BASE);
 
-            MANAGER_THREAD = std::thread((std::bind(&Server::Manager, this)));
+            THREAD_MANAGER = std::thread((std::bind(&Server::Manager, this)));
         }
 
-        /* Initialize the listeners. */
-        if(config.fListen)
+        /* Open listeners if enabled. */
+        if(CONFIG.ENABLE_LISTEN)
         {
-            /* Open the required listening sockets */
+            /* Open listening sockets. */
             OpenListening();
 
-            /* Bind the listening threads */
-            if(!fSSLRequired)
-                LISTEN_THREAD = std::thread(std::bind(&Server::ListeningThread, this, true, false));  //IPv4 Listener
-
-            if(fSSL)
-                SSL_LISTEN_THREAD = std::thread(std::bind(&Server::ListeningThread, this, true, true));  //IPv4 SSL Listener
-
-            /* Initialize the UPnP thread if remote connections are allowed. */
-            if(fRemote && config::GetBoolArg(std::string("-upnp"), true))
-            {
-                if(!fSSLRequired)
-                    UPNP_THREAD = std::thread(std::bind(&Server::UPnP, this, PORT));
-
-                if(fSSL)
-                    SSL_UPNP_THREAD = std::thread(std::bind(&Server::UPnP, this, SSL_PORT));
-            }
-
+            /* Create our listening thread now. */
+            THREAD_LISTEN =
+                std::thread(std::bind(&Server::ListeningThread, this, true, false));
         }
 
-        /* Initialize the meter. */
-        if(config.fMeter)
-            METER_THREAD = std::thread(std::bind(&Server::Meter, this));
-
-        /* Configure the DDOS pointer. */
-        DDOS_MAP.store(new std::map<BaseAddress, DDOS_Filter*>());
+        /* Start meters if enabled. */
+        if(CONFIG.ENABLE_METERS)
+            THREAD_METER = std::thread(std::bind(&Server::Meter, this));
     }
+
 
     /** Default Destructor **/
     template <class ProtocolType>
     Server<ProtocolType>::~Server()
     {
         /* Wait for address manager. */
-        if(pAddressManager && MANAGER_THREAD.joinable())
-            MANAGER_THREAD.join();
+        if(THREAD_MANAGER.joinable())
+            THREAD_MANAGER.join();
 
         /* Wait for meter thread. */
-        if(METER_THREAD.joinable())
-            METER_THREAD.join();
-
-        /* Wait for UPnP thread */
-        if(UPNP_THREAD.joinable())
-            UPNP_THREAD.join();
-
-        /* Wait for SSL UPnP thread */
-        if(SSL_UPNP_THREAD.joinable())
-            SSL_UPNP_THREAD.join();
+        if(THREAD_METER.joinable())
+            THREAD_METER.join();
 
         /* Wait for listener thread. */
-        if(LISTEN_THREAD.joinable())
-            LISTEN_THREAD.join();
-
-        /* Wait for SSLlistener thread. */
-        if(SSL_LISTEN_THREAD.joinable())
-            SSL_LISTEN_THREAD.join();
+        if(THREAD_LISTEN.joinable())
+            THREAD_LISTEN.join();
 
         /* Delete the data threads. */
-        for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
+        for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
         {
-            delete DATA_THREADS[nIndex];
-            DATA_THREADS[nIndex] = nullptr;
+            delete THREADS_DATA[nIndex];
+            THREADS_DATA[nIndex] = nullptr;
         }
 
         /* Delete the DDOS entries. */
@@ -173,7 +129,6 @@ namespace LLP
             if(it->second)
                 delete it->second;
         }
-        DDOS_MAP.free();
 
         /* Clear the address manager. */
         if(pAddressManager)
@@ -184,11 +139,19 @@ namespace LLP
     }
 
 
+    /*  Returns the name of the protocol type of this server. */
+    template <class ProtocolType>
+    std::string Server<ProtocolType>::Name()
+    {
+        return ProtocolType::Name();
+    }
+
+
     /*  Returns the port number for this Server. */
     template <class ProtocolType>
     uint16_t Server<ProtocolType>::GetPort(bool fSSL) const
     {
-        return fSSL ? SSL_PORT : PORT;
+        return (fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
     }
 
 
@@ -200,19 +163,12 @@ namespace LLP
     }
 
 
-     /*  Cleanup and shutdown subsystems */
-    template <class ProtocolType>
-    void Server<ProtocolType>::Shutdown()
-    {
-    }
-
-
     /*  Add a node address to the internal address manager */
     template <class ProtocolType>
     void Server<ProtocolType>::AddNode(std::string strAddress, bool fLookup)
     {
        /* Assemble the address from input parameters. */
-       BaseAddress addr(strAddress, PORT, fLookup);
+       BaseAddress addr(strAddress, CONFIG.PORT_BASE, fLookup);
 
        /* Make sure address is valid. */
        if(!addr.IsValid())
@@ -230,14 +186,14 @@ namespace LLP
     {
         /* Iterate through threads */
         std::vector<std::shared_ptr<ProtocolType>> vConnections;
-        for(uint16_t nThread = 0; nThread < DATA_THREADS.size(); ++nThread)
+        for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
         {
             /* Loop through connections in data thread. */
-            uint16_t nSize = static_cast<uint16_t>(DATA_THREADS[nThread]->CONNECTIONS->size());
+            uint16_t nSize = static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 /* Get the current atomic_ptr. */
-                std::shared_ptr<ProtocolType> pConnection = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                std::shared_ptr<ProtocolType> pConnection = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
 
                 /* Check to see if it is null */
                 if(!pConnection)
@@ -258,8 +214,8 @@ namespace LLP
     {
         /* Tally the total connections by aggregating the values for each data thread. */
         uint32_t nConnections = 0;
-        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-            nConnections += DATA_THREADS[nThread]->GetConnectionCount(nFlags);
+        for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
+            nConnections += THREADS_DATA[nThread]->GetConnectionCount(nFlags);
 
         return nConnections;
     }
@@ -275,16 +231,16 @@ namespace LLP
 
         /* List of connections to return. */
         uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
-        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+        for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
         {
             /* Loop through connections in data thread. */
-            uint16_t nSize = static_cast<uint16_t>(DATA_THREADS[nThread]->CONNECTIONS->size());
+            uint16_t nSize = static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 try
                 {
                     /* Get the current atomic_ptr. */
-                    std::shared_ptr<ProtocolType> CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                    std::shared_ptr<ProtocolType> CONNECTION = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
                     if(!CONNECTION)
                         continue;
 
@@ -309,7 +265,7 @@ namespace LLP
         if(nRetThread == -1 || nRetIndex == -1)
             return pNULL;
 
-        return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
+        return THREADS_DATA[nRetThread]->CONNECTIONS->at(nRetIndex);
     }
 
 
@@ -323,10 +279,10 @@ namespace LLP
 
         /* List of connections to return. */
         uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
-        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+        for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
         {
             /* Loop through connections in data thread. */
-            uint16_t nSize = static_cast<uint16_t>(DATA_THREADS[nThread]->CONNECTIONS->size());
+            uint16_t nSize = static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 try
@@ -336,7 +292,7 @@ namespace LLP
                         continue;
 
                     /* Get the current atomic_ptr. */
-                    std::shared_ptr<ProtocolType> CONNECTION = DATA_THREADS[nThread]->CONNECTIONS->at(nIndex);
+                    std::shared_ptr<ProtocolType> CONNECTION = THREADS_DATA[nThread]->CONNECTIONS->at(nIndex);
                     if(!CONNECTION)
                         continue;
 
@@ -361,7 +317,7 @@ namespace LLP
         if(nRetThread == -1 || nRetIndex == -1)
             return pNULL;
 
-        return DATA_THREADS[nRetThread]->CONNECTIONS->at(nRetIndex);
+        return THREADS_DATA[nRetThread]->CONNECTIONS->at(nRetIndex);
     }
 
 
@@ -369,7 +325,7 @@ namespace LLP
     template<class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection(const uint32_t nDataThread, const uint32_t nDataIndex)
     {
-        return DATA_THREADS[nDataThread]->CONNECTIONS->at(nDataIndex);
+        return THREADS_DATA[nDataThread]->CONNECTIONS->at(nDataIndex);
     }
 
 
@@ -379,10 +335,10 @@ namespace LLP
     {
         /* Loop through the data threads. */
         std::vector<LegacyAddress> vAddr;
-        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+        for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
         {
             /* Get the data threads. */
-            DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+            DataThread<ProtocolType> *dt = THREADS_DATA[nThread];
 
             /* Lock the data thread. */
             uint16_t nSize = static_cast<uint16_t>(dt->CONNECTIONS->size());
@@ -415,8 +371,8 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::DisconnectAll()
     {
-        for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
-            DATA_THREADS[nIndex]->DisconnectAll();
+        for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
+            THREADS_DATA[nIndex]->DisconnectAll();
     }
 
 
@@ -426,8 +382,8 @@ namespace LLP
     void Server<ProtocolType>::NotifyEvent()
     {
         /* Notify the connection of each data thread that an event has occurred. */
-        for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
-            DATA_THREADS[nThread]->NotifyEvent();
+        for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
+            THREADS_DATA[nThread]->NotifyEvent();
     }
 
 
@@ -435,7 +391,7 @@ namespace LLP
     template <class ProtocolType>
     bool Server<ProtocolType>::SSLEnabled()
     {
-        return fSSL;
+        return CONFIG.ENABLE_SSL;
     }
 
 
@@ -443,7 +399,7 @@ namespace LLP
     template <class ProtocolType>
     bool Server<ProtocolType>::SSLRequired()
     {
-        return fSSLRequired;
+        return CONFIG.REQUIRE_SSL;
     }
 
 
@@ -457,14 +413,9 @@ namespace LLP
 
         debug::log(0, FUNCTION, Name(), " Connection Manager Started");
 
-        /* Address to select. */
-        BaseAddress addr = BaseAddress();
-
         /* Read the address database. */
         pAddressManager->ReadDatabase();
-
-        /* Set the port. */
-        pAddressManager->SetPort(PORT);
+        pAddressManager->SetPort(CONFIG.PORT_BASE);
 
         /* Timer to print the address manager debug info */
         runtime::timer TIMER;
@@ -473,9 +424,12 @@ namespace LLP
         /* Loop connections. */
         while(!config::fShutdown.load())
         {
+            /* Address to select. */
+            BaseAddress addr = BaseAddress();
+
             /* Get the number of incoming and total connection counts */
             uint32_t nConnections = GetConnectionCount(FLAGS::ALL);
-            uint32_t nIncoming = GetConnectionCount(FLAGS::INCOMING);
+            uint32_t nIncoming    = GetConnectionCount(FLAGS::INCOMING);
 
             /* Sleep between connection attempts.
                If there are no connections then sleep for a minimum interval until a connection is established. */
@@ -483,12 +437,11 @@ namespace LLP
                 runtime::sleep(10);
             else
                 /* Sleep in 1 second intervals for easy break on shutdown. */
-                for(int i = 0; i < (nSleepTime / 1000) && !config::fShutdown.load(); ++i)
+                for(int i = 0; i < (CONFIG.MANAGER_SLEEP / 1000) && !config::fShutdown.load(); ++i)
                     runtime::sleep(1000);
 
             /* Pick a weighted random priority from a sorted list of addresses. */
-            if(nConnections < nMaxIncoming && nIncoming< nMaxConnections
-            && pAddressManager->StochasticSelect(addr))
+            if(nConnections < CONFIG.MAX_CONNECTIONS && nIncoming < CONFIG.MAX_INCOMING && pAddressManager->StochasticSelect(addr))
             {
                 /* Check for invalid address */
                 if(!addr.IsValid())
@@ -506,11 +459,11 @@ namespace LLP
                 bool fConnected = false;
 
                 /* First attempt SSL if configured */
-                if(fSSL)
+                if(CONFIG.ENABLE_SSL)
                    fConnected = AddConnection(addr.ToStringIP(), GetPort(true), true, false);
 
                 /* If SSL connection failed or was not attempted and SSL is not required, attempt on the non-SSL port */
-                if(!fConnected && !fSSLRequired)
+                if(!fConnected && !CONFIG.REQUIRE_SSL)
                     fConnected = AddConnection(addr.ToStringIP(), GetPort(false), false, false);
 
                 if(fConnected)
@@ -540,10 +493,10 @@ namespace LLP
         int32_t nThread = -1;
         uint32_t nConnections = std::numeric_limits<uint32_t>::max();
 
-        for(uint16_t nIndex = 0; nIndex < MAX_THREADS; ++nIndex)
+        for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
         {
             /* Find least loaded thread */
-            DataThread<ProtocolType> *dt = DATA_THREADS[nIndex];
+            DataThread<ProtocolType> *dt = THREADS_DATA[nIndex];
             if((dt->nIncoming.load() + dt->nOutbound.load()) < nConnections)
             {
                 nThread = nIndex;
@@ -576,7 +529,6 @@ namespace LLP
             /* Set the listing socket descriptor on the pollfd.  We do this inside the loop in case the listening socket is
                explicitly closed and reopened whilst the app is running (used for mobile) */
             fds[0].fd = get_listening_socket(fIPv4, fSSL);
-
             if (fds[0].fd != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
@@ -617,8 +569,8 @@ namespace LLP
                 else
                 {
                     /* Check for max connections. */
-                    if(GetConnectionCount(FLAGS::INCOMING) >= nMaxIncoming
-                    || GetConnectionCount(FLAGS::ALL) >= nMaxConnections)
+                    if(GetConnectionCount(FLAGS::INCOMING) >= CONFIG.MAX_INCOMING
+                    || GetConnectionCount(FLAGS::ALL) >= CONFIG.MAX_CONNECTIONS)
                     {
                         debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
                         closesocket(hSocket);
@@ -629,8 +581,8 @@ namespace LLP
 
 
                     /* Create new DDOS Filter if Needed. */
-                    if(fDDOS.load() && !DDOS_MAP->count(addr))
-                        DDOS_MAP->insert(std::make_pair(addr, new DDOS_Filter(DDOS_TIMESPAN)));
+                    if(CONFIG.ENABLE_DDOS && !DDOS_MAP->count(addr))
+                        DDOS_MAP->insert(std::make_pair(addr, new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
 
                     /* Establish a new socket with SSL on or off according to server. */
                     Socket sockNew(hSocket, addr, fSSL);
@@ -645,14 +597,14 @@ namespace LLP
                     }
 
                     /* DDOS Operations: Only executed when DDOS is enabled. */
-                    if((fDDOS && DDOS_MAP->at(addr)->Banned()))
+                    if((CONFIG.ENABLE_DDOS && DDOS_MAP->at(addr)->Banned()))
                     {
                         debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
                         sockNew.Close();
 
                         continue;
                     }
-                    else if(!CheckPermissions(addr.ToStringIP(), fSSL ? SSL_PORT : PORT))
+                    else if(!CheckPermissions(addr.ToStringIP(), fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE))
                     {
                         debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
@@ -671,13 +623,13 @@ namespace LLP
                     }
 
                     /* Get the data thread. */
-                    DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+                    DataThread<ProtocolType> *dt = THREADS_DATA[nThread];
 
                     /* Accept an incoming connection. */
-                    dt->AddConnection(sockNew, fDDOS ? DDOS_MAP->at(addr) : nullptr);
+                    dt->AddConnection(sockNew, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addr) : nullptr);
 
                     /* Verbose output. */
-                    debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? SSL_PORT : PORT);
+                    debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
                 }
             }
             else
@@ -696,7 +648,7 @@ namespace LLP
 
     /*  Bind connection to a listening port. */
     template <class ProtocolType>
-    bool Server<ProtocolType>::BindListenPort(int32_t & hListenSocket, uint16_t nPort, bool fIPv4, bool fRemote)
+    bool Server<ProtocolType>::BindListenPort(int32_t & hListenBase, uint16_t nPort, bool fIPv4, bool fRemote)
     {
         std::string strError = "";
         /* Conditional declaration to avoid "unused variable" */
@@ -705,8 +657,8 @@ namespace LLP
 #endif
 
         /* Create socket for listening for incoming connections */
-        hListenSocket = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
-        if(hListenSocket == INVALID_SOCKET)
+        hListenBase = socket(fIPv4 ? AF_INET : AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+        if(hListenBase == INVALID_SOCKET)
         {
             debug::error("Couldn't open socket for incoming connections (socket returned error)", WSAGetLastError());
             return false;
@@ -714,22 +666,22 @@ namespace LLP
 
         /* Different way of disabling SIGPIPE on BSD */
 #ifdef SO_NOSIGPIPE
-        setsockopt(hListenSocket, SOL_SOCKET, SO_NOSIGPIPE, (void*)&nOne, sizeof(int32_t));
+        setsockopt(hListenBase, SOL_SOCKET, SO_NOSIGPIPE, (void*)&nOne, sizeof(int32_t));
 #endif
 
 
         /* Allow binding if the port is still in TIME_WAIT state after the program was closed and restarted.  Not an issue on windows. */
 #ifndef WIN32
-        setsockopt(hListenSocket, SOL_SOCKET, SO_REUSEADDR, (void*)&nOne, sizeof(int32_t));
+        setsockopt(hListenBase, SOL_SOCKET, SO_REUSEADDR, (void*)&nOne, sizeof(int32_t));
 #endif
 
 #ifndef WIN32
         /* Set the MSS to a lower than default value to support the increased bytes required for LISP */
         int nMaxSeg = 1300;
-        if(setsockopt(hListenSocket, IPPROTO_TCP, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
+        if(setsockopt(hListenBase, IPPROTO_TCP, TCP_MAXSEG, &nMaxSeg, sizeof(nMaxSeg)) == SOCKET_ERROR)
         { //TODO: this fails on OSX systems. Need to find out why
             //debug::error("setsockopt() MSS for connection failed: ", WSAGetLastError());
-            //closesocket(hListenSocket);
+            //closesocket(hListenBase);
 
             //return false;
         }
@@ -743,10 +695,10 @@ namespace LLP
             sockaddr.sin_family = AF_INET;
 
             /* Bind to all interfaces if fRemote has been specified, otherwise only use local interface */
-            sockaddr.sin_addr.s_addr = fRemote ? INADDR_ANY : htonl(INADDR_LOOPBACK);
+            sockaddr.sin_addr.s_addr = CONFIG.ENABLE_REMOTE ? INADDR_ANY : htonl(INADDR_LOOPBACK);
 
             sockaddr.sin_port = htons(nPort);
-            if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+            if(::bind(hListenBase, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
                 int32_t nErr = WSAGetLastError();
                 if (nErr == WSAEADDRINUSE)
@@ -755,7 +707,7 @@ namespace LLP
                     return debug::error("Unable to bind to port ", ntohs(sockaddr.sin_port), " on this computer (bind returned error )",  nErr);
             }
 
-            debug::log(0, FUNCTION,"(v4) Bound to port ", ntohs(sockaddr.sin_port));
+            debug::log(0, FUNCTION, "(v4) Bound to port ", ntohs(sockaddr.sin_port));
         }
         else
         {
@@ -763,14 +715,14 @@ namespace LLP
             memset(&sockaddr, 0, sizeof(sockaddr));
             sockaddr.sin6_family = AF_INET6;
 
-            /* Bind to all interfaces if fRemote has been specified, otherwise only use local interface */
-            if(fRemote)
+            /* Bind to all interfaces if CONFIG.ENABLE_REMOTE has been specified, otherwise only use local interface */
+            if(CONFIG.ENABLE_REMOTE)
                 sockaddr.sin6_addr = IN6ADDR_ANY_INIT;
             else
                 sockaddr.sin6_addr = IN6ADDR_LOOPBACK_INIT;
 
-            sockaddr.sin6_port = htons(PORT);
-            if(::bind(hListenSocket, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
+            sockaddr.sin6_port = htons(CONFIG.PORT_BASE);
+            if(::bind(hListenBase, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR)
             {
                 int32_t nErr = WSAGetLastError();
                 if (nErr == WSAEADDRINUSE)
@@ -783,7 +735,7 @@ namespace LLP
         }
 
         /* Listen for incoming connections */
-        if(listen(hListenSocket, 4096) == SOCKET_ERROR)
+        if(listen(hListenBase, 4096) == SOCKET_ERROR)
         {
             debug::error("Listening for incoming connections failed (listen returned error)", WSAGetLastError());
             return false;
@@ -798,7 +750,7 @@ namespace LLP
     void Server<ProtocolType>::Meter()
     {
         /* Exit if not enabled. */
-        if(!config::GetBoolArg("-meters", false))
+        if(!CONFIG.ENABLE_METERS)
             return;
 
         /* Keep track of elapsed time. */
@@ -814,9 +766,9 @@ namespace LLP
 
             /* Get total connection count. */
             uint32_t nGlobalConnections = 0;
-            for(uint16_t nThread = 0; nThread < MAX_THREADS; ++nThread)
+            for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
             {
-                DataThread<ProtocolType> *dt = DATA_THREADS[nThread];
+                DataThread<ProtocolType> *dt = THREADS_DATA[nThread];
                 nGlobalConnections += (dt->nIncoming.load() + dt->nOutbound.load());
             }
 
@@ -845,116 +797,6 @@ namespace LLP
     }
 
 
-    /* UPnP Thread. If UPnP is enabled then this thread will set up the required port forwarding. */
-    template <class ProtocolType>
-    void Server<ProtocolType>::UPnP(uint16_t nPort)
-    {
-#ifndef USE_UPNP
-        return;
-#else
-
-        if(!config::GetBoolArg("-upnp", true))
-            return;
-
-        char port[6];
-        sprintf(port, "%d", nPort);
-
-        const char * multicastif = 0;
-        const char * minissdpdpath = 0;
-        struct UPNPDev * devlist = 0;
-        char lanaddr[64];
-
-        #ifndef UPNPDISCOVER_SUCCESS
-            /* miniupnpc 1.5 */
-            devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0);
-        #elif MINIUPNPC_API_VERSION < 14
-            /* miniupnpc 1.6 */
-            int error = 0;
-            devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0, 0, &error);
-        #else
-            /* miniupnpc 1.9.20150730 */
-            int error = 0;
-            devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0, 0, 2, &error);
-        #endif
-
-        struct UPNPUrls urls;
-        struct IGDdatas data;
-        int nResult;
-
-        if(devlist == 0)
-        {
-            debug::error(FUNCTION, "No UPnP devices found");
-            return;
-        }
-
-        nResult = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr));
-        if (nResult == 1)
-        {
-
-            std::string strDesc = version::CLIENT_VERSION_BUILD_STRING;
-        #ifndef UPNPDISCOVER_SUCCESS
-                /* miniupnpc 1.5 */
-                nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
-                                    port, port, lanaddr, strDesc.c_str(), "TCP", 0);
-        #else
-                /* miniupnpc 1.6 */
-                nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
-                                    port, port, lanaddr, strDesc.c_str(), "TCP", 0, "0");
-        #endif
-
-            if(nResult != UPNPCOMMAND_SUCCESS)
-                debug::error(FUNCTION, "AddPortMapping(", port, ", ", port, ", ", lanaddr, ") failed with code ", nResult, " (", strupnperror(nResult), ")");
-            else
-                debug::log(1, "UPnP Port Mapping successful for port: ", nPort);
-
-            runtime::timer TIMER;
-            TIMER.Start();
-
-            while(!config::fShutdown.load())
-            {
-                if (TIMER.Elapsed() >= 600) // Refresh every 10 minutes
-                {
-                    TIMER.Reset();
-
-        #ifndef UPNPDISCOVER_SUCCESS
-                    /* miniupnpc 1.5 */
-                    nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
-                                        port, port, lanaddr, strDesc.c_str(), "TCP", 0);
-        #else
-                    /* miniupnpc 1.6 */
-                    nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
-                                        port, port, lanaddr, strDesc.c_str(), "TCP", 0, "0");
-        #endif
-
-                    if(nResult != UPNPCOMMAND_SUCCESS)
-                        debug::error(FUNCTION, "AddPortMapping(", port, ", ", port, ", ", lanaddr, ") failed with code ", nResult, " (", strupnperror(nResult), ")");
-                    else
-                        debug::log(1, "UPnP Port Mapping successful for port: ", nPort);
-                }
-                runtime::sleep(2000);
-            }
-
-            /* Shutdown sequence */
-            nResult = UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, port, "TCP", 0);
-            debug::log(1, "UPNP_DeletePortMapping() returned : ", nResult);
-            freeUPNPDevlist(devlist); devlist = 0;
-            FreeUPNPUrls(&urls);
-        }
-        else
-        {
-            debug::error(FUNCTION, "No valid UPnP IGDs found.");
-            freeUPNPDevlist(devlist); devlist = 0;
-            if (nResult != 0)
-                FreeUPNPUrls(&urls);
-
-            return;
-        }
-
-       debug::log(0, "UPnP closed.");
-#endif
-    }
-
-
     /* Gets the listening socket handle */
     template <class ProtocolType>
     SOCKET Server<ProtocolType>::get_listening_socket(bool fIPv4, bool fSSL)
@@ -962,9 +804,9 @@ namespace LLP
         SOCKET hListen;
 
         if(fSSL)
-            hListen = (fIPv4 ? hSSLListenSocket.first : hSSLListenSocket.second);
+            hListen = (fIPv4 ? hListenSSL.first : hListenSSL.second);
         else
-            hListen = (fIPv4 ? hListenSocket.first : hListenSocket.second);
+            hListen = (fIPv4 ? hListenBase.first : hListenBase.second);
 
         return hListen;
     }
@@ -977,17 +819,17 @@ namespace LLP
         debug::log(0, "Closing ", ProtocolType::Name(), " listening sockets");
 
         /* Close the listening sockets */
-        if(!fSSLRequired)
+        if(!CONFIG.REQUIRE_SSL)
         {
-            closesocket(hListenSocket.first);
-            hListenSocket.first = 0;
+            closesocket(hListenBase.first);
+            hListenBase.first = 0;
         }
 
         /* Close the ssl socket if running */
-        if(fSSL)
+        if(CONFIG.ENABLE_SSL)
         {
-            closesocket(hSSLListenSocket.first);
-            hSSLListenSocket.first = 0;
+            closesocket(hListenSSL.first);
+            hListenSSL.first = 0;
         }
 
     }
@@ -997,26 +839,28 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::OpenListening()
     {
-        debug::log(0, "Opening ", ProtocolType::Name(), " listening sockets");
-
         /* If SSL is required then don't listen on the standard port */
-        if(!fSSLRequired)
+        if(!CONFIG.REQUIRE_SSL)
         {
             /* Bind the Listener. */
-            if(!BindListenPort(hListenSocket.first, PORT, true, fRemote))
+            if(!BindListenPort(hListenBase.first, CONFIG.PORT_BASE, true, CONFIG.ENABLE_REMOTE))
             {
                 ::Shutdown();
                 return;
             }
+
+            debug::log(0, "Opening ", ProtocolType::Name(), " listening sockets on port ", CONFIG.PORT_BASE);
         }
 
-        if(fSSL)
+        if(CONFIG.ENABLE_SSL)
         {
-            if(!BindListenPort(hSSLListenSocket.first, SSL_PORT, true, fRemote))
+            if(!BindListenPort(hListenSSL.first, CONFIG.PORT_SSL, true, CONFIG.ENABLE_REMOTE))
             {
                 ::Shutdown();
                 return;
             }
+
+            debug::log(0, "Opening ", ProtocolType::Name(), " SSL listening sockets on port ", CONFIG.PORT_SSL);
         }
     }
 
@@ -1029,5 +873,4 @@ namespace LLP
     template class Server<APINode>;
     template class Server<RPCNode>;
     template class Server<Miner>;
-    template class Server<P2PNode>;
 }

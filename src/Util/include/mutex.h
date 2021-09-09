@@ -22,4 +22,8 @@ ________________________________________________________________________________
 #define LOCK2(mut) std::unique_lock<std::mutex> lk2(mut)
 #define RLOCK(mut) std::lock_guard<std::recursive_mutex> lk(mut)
 
+/* Variadic macro to support multiple locks in same macro. */
+#define CRITICAL(...) std::scoped_lock<std::mutex>            __LOCK(__VA_ARGS__)
+#define RECURSIVE(...) std::scoped_lock<std::recursive_mutex> __LOCK(__VA_ARGS__)
+
 #endif

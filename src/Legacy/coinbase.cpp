@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/API/include/format.h>
+
 #include <Util/include/debug.h>
 #include <Legacy/types/coinbase.h>
 
@@ -133,13 +135,13 @@ namespace Legacy
         uint64_t nTotal = 0;
         for(const auto& entry : vOutputs)
         {
-            debug::log(0, entry.first, ":", static_cast<double>(entry.second) / 1000000.0);
+            debug::log(0, entry.first, ":", TAO::API::FormatBalance(entry.second));
             nTotal += entry.second;
         }
 
-        debug::log(0, "Total Value of Coinbase = ", static_cast<double>(nTotal) / 1000000.0);
-        debug::log(0, "Set Value of Coinbase = ", static_cast<double>(nMaxValue) / 1000000.0);
-        debug::log(0, "WalletFee in Coinbase ", static_cast<double>(nWalletFee) / 1000000.0);
+        debug::log(0, "Total Value of Coinbase = ", TAO::API::FormatBalance(nTotal));
+        debug::log(0, "Set Value of Coinbase = ",   TAO::API::FormatBalance(nMaxValue));
+        debug::log(0, "WalletFee in Coinbase ",     TAO::API::FormatBalance(nWalletFee));
         debug::log(0, "Is Complete: ", IsValid() ? "TRUE" : "FALSE");
         debug::log(0, "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
     }

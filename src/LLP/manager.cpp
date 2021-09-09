@@ -222,6 +222,7 @@ namespace LLP
     {
         uint64_t hash = addr.GetHash();
         uint8_t nState = static_cast<uint8_t>(ConnectState::NEW);
+
         LOCK(MUTEX);
         auto it = mapTrustAddress.find(hash);
         if(it != mapTrustAddress.end())

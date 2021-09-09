@@ -42,6 +42,9 @@ namespace TAO
          **/
         class Transaction
         {
+            /** Class friends. **/
+            friend class MerkleTx;
+
         protected:
 
             /** For disk indexing on contract. **/
@@ -93,7 +96,7 @@ namespace TAO
             /* serialization macros */
             IMPLEMENT_SERIALIZE
             (
-                /* Contracts layers. */
+                /* Operations layers. */
                 READWRITE(vContracts);
 
                 /* Ledger layer */
@@ -157,6 +160,14 @@ namespace TAO
             ~Transaction();
 
 
+            /** Operator Overload <<
+             *
+             *  Add contracts to the internal vector.
+             *
+             **/
+            Transaction& operator<<(const TAO::Operation::Contract& rContract);
+
+
             /** Operator Overload >
              *
              *  Used for sorting transactions by sequence.
@@ -187,6 +198,16 @@ namespace TAO
              *
              **/
             TAO::Operation::Contract& operator[](const uint32_t n);
+
+
+            /** Contracts
+             *
+             *  Gets the list of contracts internal to transaction.
+             *
+             *  @return a reference of internal contracts list.
+             *
+             **/
+            const std::vector<TAO::Operation::Contract>& Contracts() const;
 
 
             /** Size
@@ -293,14 +314,14 @@ namespace TAO
             bool IsCoinStake() const;
 
 
-            /** IsPrivate
+            /** IsHybrid
              *
              *  Determines if the transaction is for a private block.
              *
              *  @return true if transaction is a coinbase.
              *
              **/
-            bool IsPrivate() const;
+            bool IsHybrid() const;
 
 
             /** IsTrust
@@ -373,10 +394,22 @@ namespace TAO
              *  Sets the Next Hash from the key
              *
              *  @param[in] hashSecret The secret phrase to generate the keys.
-             *  @param[in] nType The type of key to create with.
              *
              **/
-            void NextHash(const uint512_t& hashSecret, const uint8_t nType);
+            void NextHash(const uint512_t& hashSecret);
+
+
+            /** NextHash
+             *
+             *  Calculates a next-hash from given secret key.
+             *
+             *  @param[in] hashSecret The secret phrase to generate the keys.
+             *  @param[in] nType The type of key to create with.
+             *
+             *  @return the calculated next-hash
+             *
+             **/
+            static uint256_t NextHash(const uint512_t& hashSecret, const uint8_t nType);
 
 
             /** PrevHash
@@ -408,22 +441,22 @@ namespace TAO
 
 
              /** ToString
-             *
-             *  Create a transaction string
-             *
-             *  @return The string value to return;
-             *
-             **/
+              *
+              *  Create a transaction string
+              *
+              *  @return The string value to return;
+              *
+              **/
             std::string ToString() const;
 
 
              /** ToStringShort
-             *
-             *  Short form of the debug output.
-             *
-             *  @return The string value to return;
-             *
-             **/
+              *
+              *  Short form of the debug output.
+              *
+              *  @return The string value to return;
+              *
+              **/
             std::string ToStringShort() const;
 
 
@@ -438,17 +471,13 @@ namespace TAO
 
 
             /** Fees
-            *
-            *  Calculates and returns the total fee included in this transaction
-            *
-            *  @return The sum of all OP::FEE contracts in the transaction
-            *
-            **/
+             *
+             *  Calculates and returns the total fee included in this transaction
+             *
+             *  @return The sum of all OP::FEE contracts in the transaction
+             *
+             **/
             uint64_t Fees() const;
-
-
-            /** Class friends. **/
-            friend class MerkleTx;
 
         };
     }

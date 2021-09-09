@@ -11,19 +11,16 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/include/global.h>
 
 #include <LLP/types/rpcnode.h>
 #include <LLP/templates/events.h>
 
-#include <TAO/API/include/global.h>
 #include <TAO/API/types/exception.h>
 
 #include <Util/include/config.h>
 #include <Util/include/base64.h>
 #include <Util/include/string.h>
-
-// using alias to simplify using APIException liberally without having to reference the TAO:API namespace
-using APIException = TAO::API::APIException ;
 
 namespace LLP
 {
@@ -146,59 +143,59 @@ namespace LLP
             return false;
         }
 
-        json::json jsonID = nullptr;
+        encoding::json jID = nullptr;
         try
         {
             /* Get the parameters from the HTTP Packet. */
-            json::json jsonIncoming = json::json::parse(INCOMING.strContent);
+            encoding::json jIncoming = encoding::json::parse(INCOMING.strContent);
 
             /* Ensure the method is in the calling json. */
-            if(jsonIncoming["method"].is_null())
-                throw APIException(-32600, "Missing method");
+            if(jIncoming["method"].is_null())
+                throw TAO::API::Exception(-32600, "Missing method");
 
             /* Ensure the method is correct type. */
-            if(!jsonIncoming["method"].is_string())
-                throw APIException(-32600, "Method must be a string");
+            if(!jIncoming["method"].is_string())
+                throw TAO::API::Exception(-32600, "Method must be a string");
 
             /* Get the method string. */
-            std::string strMethod = jsonIncoming["method"].get<std::string>();
+            std::string strMethod = jIncoming["method"].get<std::string>();
 
             /* Check for parameters, if none set default value to empty array. */
-            json::json jsonParams = jsonIncoming["params"].is_null() ? "[]" : jsonIncoming["params"];
+            encoding::json jParams = jIncoming["params"].is_null() ? "[]" : jIncoming["params"];
 
             /* Extract the ID from the json */
-            if(!jsonIncoming["id"].is_null())
-                jsonID = jsonIncoming["id"];
+            if(!jIncoming["id"].is_null())
+                jID = jIncoming["id"];
 
             /* Check the parameters type for array. */
-            if(!jsonParams.is_array())
-                throw APIException(-32600, "Params must be an array");
+            if(!jParams.is_array())
+                throw TAO::API::Exception(-32600, "Params must be an array");
 
             /* Check that the node is initialized. */
             if(!config::fInitialized)
-                throw APIException(-1, "Daemon is still initializing");
+                throw TAO::API::Exception(-1, "Daemon is still initializing");
 
             /* Execute the RPC method. */
             #ifndef NO_WALLET
-            json::json jsonResult = TAO::API::RPCCommands->Execute(strMethod, jsonParams, false);
+            encoding::json jsonResult = Legacy::Commands->Execute(strMethod, jParams, false);
 
             /* Push the response data with json payload. */
-            PushResponse(200, JSONReply(jsonResult, nullptr, jsonID).dump());
+            PushResponse(200, JSONReply(jsonResult, nullptr, jID).dump());
             #endif
         }
 
         /* Handle for custom API exceptions. */
-        catch(APIException& e)
+        catch(TAO::API::Exception& e)
         {
-            ErrorReply(e.ToJSON(), jsonID);
+            ErrorReply(e.ToJSON(), jID);
 
             return debug::error("RPC Exception: ", e.what());
         }
 
         /* Handle for JSON exceptions. */
-        catch(const json::detail::exception& e)
+        catch(const encoding::detail::exception& e)
         {
-            ErrorReply(APIException(e.id, e.what()).ToJSON(), jsonID);
+            ErrorReply(TAO::API::Exception(e.id, e.what()).ToJSON(), jID);
 
             return debug::error("RPC Exception: ", e.what());
         }
@@ -206,7 +203,7 @@ namespace LLP
         /* Handle for STD exceptions. */
         catch(const std::exception& e)
         {
-            ErrorReply(APIException(-32700, e.what()).ToJSON(), jsonID);
+            ErrorReply(TAO::API::Exception(-32700, e.what()).ToJSON(), jID);
 
             return debug::error("RPC Exception: ", e.what());
         }
@@ -217,35 +214,35 @@ namespace LLP
 
 
     /* JSON Spec 1.0 Reply including error messages. */
-    json::json RPCNode::JSONReply(const json::json& jsonResponse, const json::json& jsonError, const json::json& jsonID)
+    encoding::json RPCNode::JSONReply(const encoding::json& jResponse, const encoding::json& jError, const encoding::json& jID)
     {
-        json::json jsonReply;
-        if(!jsonError.is_null())
+        encoding::json jReply;
+        if(!jError.is_null())
         {
-            jsonReply["result"] = nullptr;
-            jsonReply["error"] = jsonError;
+            jReply["result"] = nullptr;
+            jReply["error"] = jError;
         }
         else
         {
             //special case to handle help response so that we put the multiline help response striaght into
-            if(jsonResponse.is_string())
-                jsonReply["result"] = jsonResponse.get<std::string>();
+            if(jResponse.is_string())
+                jReply["result"] = jResponse.get<std::string>();
             else
-                jsonReply["result"] = jsonResponse;
+                jReply["result"] = jResponse;
 
-            jsonReply["error"] = nullptr;
+            jReply["error"] = nullptr;
         }
 
-        return jsonReply;
+        return jReply;
     }
 
-    void RPCNode::ErrorReply(const json::json& jsonError, const json::json& jsonID)
+    void RPCNode::ErrorReply(const encoding::json& jError, const encoding::json& jID)
     {
         /* Default error status code is 500. */
         uint16_t nStatus = 500;
 
         /* Get the error code from json. */
-        int32_t nError = jsonError["code"].get<int32_t>();
+        int32_t nError = jError["code"].get<int32_t>();
 
         /* Set status by error code. */
         switch(nError)
@@ -260,7 +257,7 @@ namespace LLP
         }
 
         /* Send the response packet. */
-        PushResponse(nStatus, JSONReply(json::json(nullptr), jsonError, jsonID).dump());
+        PushResponse(nStatus, JSONReply(encoding::json(nullptr), jError, jID).dump());
     }
 
     bool RPCNode::Authorized(std::map<std::string, std::string>& mapHeaders)
@@ -274,12 +271,11 @@ namespace LLP
             return debug::error(FUNCTION, "incorrect authorization type");
 
         /* Get the encoded content */
-        std::string strUserPass64 = strAuth.substr(6);
-        trim(strUserPass64);
+        const std::string strUserPass64 = trim(strAuth.substr(6));
 
         /* Decode from base64 */
-        std::string strUserPass = encoding::DecodeBase64(strUserPass64);
-        std::string strRPCUserColonPass = config::GetArg("-rpcuser", "") + ":" + config::GetArg("-rpcpassword", "");
+        const std::string strUserPass = encoding::DecodeBase64(strUserPass64);
+        const std::string strRPCUserColonPass = config::GetArg("-rpcuser", "") + ":" + config::GetArg("-rpcpassword", "");
 
         return strUserPass == strRPCUserColonPass;
     }

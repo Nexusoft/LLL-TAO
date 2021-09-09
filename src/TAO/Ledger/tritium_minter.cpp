@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -84,7 +84,7 @@ namespace TAO
             }
 
             /* Stake minter does not run in private or hybrid mode (at least for now) */
-            if(config::GetBoolArg("-private") || config::GetBoolArg("-hybrid"))
+            if(config::fHybrid.load())
             {
                 debug::log(0, "Stake Minter does not run in private/hybrid mode. Startup cancelled.");
                 return false;

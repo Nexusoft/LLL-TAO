@@ -57,8 +57,8 @@ namespace TAO
             }
             else
             {
-                /* Find the thread managing the least number of sessions */    
-            
+                /* Find the thread managing the least number of sessions */
+
                 /* The number of sessions being managed by the least loaded thread */
                 uint32_t nSessions = std::numeric_limits<uint32_t>::max();
 
@@ -73,9 +73,8 @@ namespace TAO
                 }
             }
 
-            /* Check that we found a thread */
+            /* Add the session to the thread */
             if(pThread)
-                /* Add the session to the thread */
                 pThread->Add(nSession);
         }
 

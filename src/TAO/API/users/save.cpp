@@ -14,65 +14,42 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/session-manager.h>
+#include <TAO/API/types/commands.h>
+
+#include <TAO/API/include/extract.h>
 
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/transaction.h>
 
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Saves the users session into the local DB so that it can be resumed later after a crash */
+    encoding::json Users::Save(const encoding::json& jParams, const bool fHelp)
     {
+        /* Pin parameter. */
+        const SecureString strPIN =
+            ExtractPIN(jParams);
 
-        /* Saves the users session into the local DB so that it can be resumed later after a crash */
-        json::json Users::Save(const json::json& params, bool fHelp)
+        /* Get the session */
+        Session& session =
+            GetSession(jParams);
+
+        /* Authenticate the users credentials */
+        if(!Commands::Get<Users>()->Authenticate(jParams))
+            throw Exception(-139, "Invalid credentials");
+
+        /* Save the session */
+        session.Save(strPIN);
+
+        /* populate reponse */;
+        const encoding::json jRet =
         {
-            /* JSON return value. */
-            json::json ret;
+            { "success", true}
+        };
 
-            /* Pin parameter. */
-            SecureString strPin;
-
-            /* Get the session */
-            Session& session = GetSession(params);
-
-            /* Check for pin parameter. Parse the pin parameter. */
-            if(params.find("pin") != params.end())
-                strPin = SecureString(params["pin"].get<std::string>().c_str());
-            else if(params.find("PIN") != params.end())
-                strPin = SecureString(params["PIN"].get<std::string>().c_str());
-            else
-                throw APIException(-129, "Missing PIN");
-
-            if(strPin.size() == 0)
-                throw APIException(-135, "Zero-length PIN");
-
-            /* Get the genesis ID. */
-            uint256_t hashGenesis = session.GetAccount()->Genesis();
-
-            /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
-            TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-138, "No previous transaction found");
-
-            /* Genesis Transaction. */
-            TAO::Ledger::Transaction tx;
-            tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, strPin), txPrev.nNextType);
-
-            /* Check for consistency. */
-            if(txPrev.hashNext != tx.hashNext)
-                throw APIException(-149, "Invalid PIN");
-            
-            /* Save the session */
-            session.Save(strPin);
-
-            /* populate reponse */;
-            ret["success"] = true;
-            return ret;
-        }
+        return jRet;
     }
 }

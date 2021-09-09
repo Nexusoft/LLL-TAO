@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/users/types/users.h>
 
 #include <TAO/Operation/include/cost.h>
 #include <TAO/Operation/include/execute.h>
@@ -32,6 +33,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/types/condition.h>
 
 #include <TAO/Register/include/rollback.h>
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/verify.h>
 #include <TAO/Register/include/build.h>
 #include <TAO/Register/include/unpack.h>
@@ -236,6 +238,16 @@ namespace TAO
         }
 
 
+        /* Add contracts to the internal vector. */
+        Transaction& Transaction::operator<<(const TAO::Operation::Contract& rContract)
+        {
+            /* We just push to internal vector here. */
+            vContracts.push_back(rContract);
+
+            return *this;
+        }
+
+
         /* Used for sorting transactions by sequence. */
         bool Transaction::operator>(const Transaction& tx) const
         {
@@ -282,6 +294,13 @@ namespace TAO
         }
 
 
+        /* Gets the list of contracts internal to transaction. */
+        const std::vector<TAO::Operation::Contract>& Transaction::Contracts() const
+        {
+            return vContracts;
+        }
+
+
         /* Get the total contracts in transaction. */
         uint32_t Transaction::Size() const
         {
@@ -313,15 +332,15 @@ namespace TAO
                 return debug::error(FUNCTION, "transaction with empty signature");
 
             /* Check the genesis first byte. */
-            if(hashGenesis.GetType() != GenesisType())
-                return debug::error(FUNCTION, "genesis using incorrect leading byte");
+            if(hashGenesis.GetType() != GENESIS::UserType())
+                return debug::error(FUNCTION, "user type [", std::hex, uint32_t(hashGenesis.GetType()), "] invalid, expected [", std::hex, uint32_t(GENESIS::UserType()), "]");
 
             /* Check for max contracts. */
             if(vContracts.size() > MAX_TRANSACTION_CONTRACTS)
                 return debug::error(FUNCTION, "transaction contract limit exceeded", vContracts.size());
 
             /* Check producer for coinstake transaction */
-            if(IsCoinStake() || IsPrivate())
+            if(IsCoinStake() || IsHybrid())
             {
                 /* Check for single contract. */
                 if(vContracts.size() != 1)
@@ -406,15 +425,14 @@ namespace TAO
                             default:
                             {
                                 /* Contract is strict for genesis when not in private mode. */
-                                if(!config::GetBoolArg("-private"))
+                                if(!config::fHybrid.load())
                                     return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
 
                                 break;
                             }
-
                         }
                     }
-                    else if(!config::GetBoolArg("-private"))
+                    else if(!config::fHybrid.load())
                         return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
 
                 }
@@ -426,20 +444,36 @@ namespace TAO
 
             /* If genesis then check that the only contracts are those for the default registers.
              * We do not make this limitation in private mode */
-            if(IsFirst() && !config::GetBoolArg("-private"))
+            if(IsFirst())
             {
-                //skip proof of work for unit tests
-                #ifndef UNIT_TESTS
+                /* Check for main-net proof of work. */
+                if(!config::fHybrid.load())
+                {
+                    //skip proof of work for unit tests
+                    #ifndef UNIT_TESTS
 
-                /* Check the difficulty of the hash. */
-                if(ProofHash() > FIRST_REQUIRED_WORK)
-                    return debug::error(FUNCTION, "first transaction not enough work");
+                    /* Check the difficulty of the hash. */
+                    if(ProofHash() > FIRST_REQUIRED_WORK)
+                        return debug::error(FUNCTION, "first transaction not enough work");
 
-                #endif
+                    #endif
 
-                /* Check that the there are not more than the allowable default contracts */
-                if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
-                    return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                    /* Check that the there are not more than the allowable default contracts */
+                    if(vContracts.size() > 5 || nNames > 2 || nTrust > 1 || nAccounts > 1 || nCrypto > 1)
+                        return debug::error(FUNCTION, "genesis transaction contains invalid contracts.");
+                }
+
+                /* Check our hybrid proofs. */
+                else
+                {
+                    /* Grab our hybrid network-id. */
+                    const std::string strHybrid = config::GetArg("-hybrid", "");
+
+                    /* Check our expected values. */
+                    const uint512_t hashCheck = LLC::SK512(strHybrid.begin(), strHybrid.end());
+                    if(hashCheck != hashPrevTx)
+                        return debug::error(FUNCTION, "invalid network-id (", hashPrevTx.ToString().substr(108, 128), ")");
+                }
             }
 
             /* Verify the block signature (if not synchronizing) */
@@ -675,7 +709,7 @@ namespace TAO
             uint64_t nRet = 0;
 
             /* There are no transaction costs in private mode */
-            if(config::GetBoolArg("-private", false))
+            if(config::fHybrid.load())
                 return 0;
 
             /* No transaction cost in the first transaction as this is where we set up default accounts */
@@ -747,7 +781,7 @@ namespace TAO
             #ifndef UNIT_TESTS
 
             /* Check for first. */
-            if(IsFirst() && !config::GetBoolArg("-private"))
+            if(IsFirst() && !config::fHybrid.load())
             {
                 /* Timer to track proof of work time. */
                 runtime::timer timer;
@@ -812,7 +846,7 @@ namespace TAO
                         debug::log(1, FUNCTION, "Processing DEVELOPER sigchain ", hashGenesis.SubString());
 
                         /* Check that the hashes match. */
-                        if(DEVELOPER.at(hashGenesis).first != PrevHash())
+                        if(Developer(nSwitchVersion).at(hashGenesis).first != PrevHash())
                             return debug::error(FUNCTION, "DEVELOPER sigchain using invalid credentials");
                     }
                 }
@@ -830,7 +864,7 @@ namespace TAO
                 /* We want to track the sigchain logged in so we can enforce certain rules for our own sigchain. */
                 uint256_t hashSigchain = 0;
                 if(config::fClient.load())
-                    hashSigchain = TAO::API::users->GetGenesis(0);
+                    hashSigchain = TAO::API::Commands::Get<TAO::API::Users>()->GetGenesis(0);
 
                 /* We want this to trigger for times not in -client mode. */
                 if(!config::fClient.load() || hashGenesis == hashSigchain)
@@ -940,16 +974,16 @@ namespace TAO
             /* Once we have executed the contracts we need to check the fees.
                NOTE there are fixed fees on the genesis transaction to allow for the default registers to be created.
                NOTE: There are no fees required in private mode.  */
-            if(!config::GetBoolArg("-private", false))
+            if(!config::fHybrid.load())
             {
                 /* The fee applied to this transaction */
                 uint64_t nFees = 0;
                 if(IsFirst())
                 {
                     /* For the genesis transaction we allow a fixed amount of default registers to be created for free. */
-                    nFees = 2 * TAO::Ledger::ACCOUNT_FEE    // 2 accounts
-                          + 2 * TAO::Ledger::NAME_FEE       // 2 names
-                          + 1 * TAO::Ledger::CRYPTO_FEE;    // 1 crypto register
+                    nFees = 2 * TAO::Register::ACCOUNT_FEE    // 2 accounts
+                          + 2 * TAO::Register::NAME_FEE       // 2 names
+                          + 1 * TAO::Register::CRYPTO_FEE;    // 1 crypto register
                 }
                 else
                     /* For all other transactions we check the actual fee contracts included in the transaction */
@@ -963,9 +997,6 @@ namespace TAO
             /* Write the last to disk. */
             if(nFlags == FLAGS::BLOCK && !LLD::Ledger->WriteLast(hashGenesis, hash))
                 return debug::error(FUNCTION, "failed to write last hash");
-
-            /* Notify subscribers of new transaction. */
-            Dispatch::GetInstance().DispatchTransaction(hash, true);
 
             return true;
         }
@@ -999,18 +1030,21 @@ namespace TAO
                         if(!LLD::Ledger->WriteStake(hashGenesis, hashLast))
                             return debug::error(FUNCTION, "failed to write last stake");
 
-                        /* If local database has a stake change request for this transaction that is marked as processed, reset it.
-                         * If it is later reconnected it can be marked as processed again. Otherwise, the stake minter will
-                         * recognize that the stake change is reset and implement it with the next stake block.
-                         */
-                        StakeChange request;
-                        if(LLD::Local->ReadStakeChange(hashGenesis, request) && request.fProcessed && request.hashTx == GetHash())
+                        /* If local database has a stake change request, update it to not processed. */
+                        StakeChange tRequest;
+                        if(LLD::Local->ReadStakeChange(hashGenesis, tRequest))
                         {
-                            request.fProcessed = false;
-                            request.hashTx = 0;
+                            /* Check for processed change that's also for this transaction. */
+                            if(tRequest.fProcessed && tRequest.hashTx == GetHash()) //XXX: this is ugly, needs improvement
+                            {
+                                /* Set the stake request to not processed now. */
+                                tRequest.fProcessed = false;
+                                tRequest.hashTx = 0;
 
-                            if(!LLD::Local->WriteStakeChange(hashGenesis, request))
-                                debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail
+                                /* Update stake change request on disconnect. */
+                                if(!LLD::Local->WriteStakeChange(hashGenesis, tRequest))
+                                    debug::error(FUNCTION, "unable to reinstate disconnected stake change request"); //don't fail
+                            }
                         }
                     }
                     else
@@ -1029,9 +1063,6 @@ namespace TAO
                 if(!TAO::Register::Rollback(*contract, nFlags))
                     return false;
             }
-
-            /* Notify subscribers of transaction disconnect. */
-            Dispatch::GetInstance().DispatchTransaction(GetHash(), false);
 
             return true;
         }
@@ -1060,7 +1091,7 @@ namespace TAO
 
 
         /* Determines if the transaction is for a private block. */
-        bool Transaction::IsPrivate() const
+        bool Transaction::IsHybrid() const
         {
             /* Check all contracts. */
             for(const auto& contract : vContracts)
@@ -1225,7 +1256,15 @@ namespace TAO
 
 
         /* Sets the Next Hash from the key */
-        void Transaction::NextHash(const uint512_t& hashSecret, const uint8_t nType)
+        void Transaction::NextHash(const uint512_t& hashSecret)
+        {
+            /* Set the next hash if void function. */
+            hashNext = Transaction::NextHash(hashSecret, nNextType);
+        }
+
+
+        /* Calculates a next-hash from given secret key. */
+        uint256_t Transaction::NextHash(const uint512_t& hashSecret, const uint8_t nType)
         {
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
@@ -1234,7 +1273,6 @@ namespace TAO
             /* Switch based on signature type. */
             switch(nType)
             {
-
                 /* Support for the FALCON signature scheeme. */
                 case SIGNATURE::FALCON:
                 {
@@ -1243,12 +1281,10 @@ namespace TAO
 
                     /* Set the secret key. */
                     if(!key.SetSecret(vchSecret))
-                        return;
+                        return 0;
 
                     /* Calculate the next hash. */
-                    hashNext = LLC::SK256(key.GetPubKey());
-
-                    break;
+                    return LLC::SK256(key.GetPubKey());
                 }
 
                 /* Support for the BRAINPOOL signature scheme. */
@@ -1259,22 +1295,14 @@ namespace TAO
 
                     /* Set the secret key. */
                     if(!key.SetSecret(vchSecret, true))
-                        return;
+                        return 0;
 
                     /* Calculate the next hash. */
-                    hashNext = LLC::SK256(key.GetPubKey());
-
-                    break;
-                }
-
-                default:
-                {
-                    /* Unsupported (this is a failure flag). */
-                    hashNext = 0;
-
-                    break;
+                    return LLC::SK256(key.GetPubKey());
                 }
             }
+
+            return 0;
         }
 
 

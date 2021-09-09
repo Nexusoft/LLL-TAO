@@ -232,19 +232,19 @@ namespace TAO
                 return false;
 
             /* Get current version. */
-            uint32_t nCurrent = CurrentTransactionVersion();
+            const uint32_t nCurrent = CurrentTransactionVersion();
 
             /* Check for version after current. */
             if(nVersion > nCurrent)
                 return false;
 
             /* Get the starting timelock for version. */
-            uint64_t nStart = StartTransactionTimelock(nVersion);
+            const uint64_t nStart = StartTransactionTimelock(nVersion);
             if(nStart == 0)
                 return false;
 
             /* Get the ending timelock for version. */
-            uint64_t nEnd = EndTransactionTimelock(nVersion);
+            const uint64_t nEnd = EndTransactionTimelock(nVersion);
 
             /* Current will not have an ending timelock, so that is valid */
             if((nVersion < nCurrent) && nEnd == 0)

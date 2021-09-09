@@ -32,10 +32,10 @@ std::string strRecovery = "this is the recovery seed that i want to use";
 TEST_CASE( "Test Users API", "[API/users]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
     
     /* Enure that we use low argon2 requirements for unit test to speed up the use of the sig chain */
     config::SoftSetArg("-argon2", "0");
@@ -496,10 +496,10 @@ TEST_CASE( "Test Users API", "[API/users]")
 TEST_CASE( "Test Users API Recovery User", "[API/users/recover/user]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
     
     /* Enure that we use low argon2 requirements for unit test to speed up the use of the sig chain */
     config::SoftSetArg("-argon2", "0");

@@ -21,7 +21,6 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
-#include <LLP/types/p2p.h>
 
 #include <Util/include/hex.h>
 
@@ -31,9 +30,9 @@ namespace LLP
 
     /** Default Constructor **/
     template <class ProtocolType>
-    DataThread<ProtocolType>::DataThread(uint32_t nID, bool ffDDOSIn,
-                                         uint32_t rScore, uint32_t cScore,
-                                         uint32_t nTimeout, bool fMeter)
+    DataThread<ProtocolType>::DataThread(const uint32_t nID, const bool ffDDOSIn,
+                                         const uint32_t rScore, const uint32_t cScore,
+                                         const uint32_t nTimeout, const bool fMeter)
     : fDDOS           (ffDDOSIn)
     , fMETER          (fMeter)
     , fDestruct       (false)
@@ -43,8 +42,8 @@ namespace LLP
     , TIMEOUT         (nTimeout)
     , DDOS_rSCORE     (rScore)
     , DDOS_cSCORE     (cScore)
-    , CONNECTIONS     (memory::atomic_ptr< std::vector<std::shared_ptr<ProtocolType>> >(new std::vector<std::shared_ptr<ProtocolType>>()))
-    , RELAY           (memory::atomic_ptr< std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >(new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
+    , CONNECTIONS     (util::atomic::lock_shared_ptr<std::vector<std::shared_ptr<ProtocolType>> >(new std::vector<std::shared_ptr<ProtocolType>>()))
+    , RELAY           (util::atomic::lock_shared_ptr<std::queue<std::pair<typename ProtocolType::message_t, DataStream>> >(new std::queue<std::pair<typename ProtocolType::message_t, DataStream>>()))
     , CONDITION       ( )
     , DATA_THREAD     (std::bind(&DataThread::Thread, this))
     , FLUSH_CONDITION ( )
@@ -59,15 +58,16 @@ namespace LLP
     {
         fDestruct = true;
         CONDITION.notify_all();
+
+        /* Wait for all data threads. */
         if(DATA_THREAD.joinable())
             DATA_THREAD.join();
 
         FLUSH_CONDITION.notify_all();
+
+        /* Wait for any threads still flushing buffers. */
         if(FLUSH_THREAD.joinable())
             FLUSH_THREAD.join();
-
-        CONNECTIONS.free();
-        RELAY.free();
     }
 
 
@@ -245,8 +245,14 @@ namespace LLP
                         continue;
                     }
 
+                    /* Generic event for Connection. */
+                    CONNECTION->Event(EVENTS::GENERIC);
+
+                    /* Work on Reading a Packet. **/
+                    CONNECTION->ReadPacket();
+
                     /* Handle any DDOS Filters. */
-                    if(fDDOS.load() && CONNECTION->DDOS)
+                    if(fDDOS.load() && CONNECTION->DDOS && !CONNECTION->addr.IsLocal())
                     {
                         /* Ban a node if it has too many Requests per Second. **/
                         if(CONNECTION->DDOS->rSCORE.Score() > DDOS_rSCORE
@@ -254,19 +260,13 @@ namespace LLP
                             CONNECTION->DDOS->Ban();
 
                         /* Remove a connection if it was banned by DDOS Protection. */
-                        if(CONNECTION->DDOS->Banned())
+                        if(!CONNECTION->GetAddress().IsLocal() && CONNECTION->DDOS->Banned())
                         {
                             debug::log(0, ProtocolType::Name(), " BANNED: ", CONNECTION->GetAddress().ToString());
                             remove_connection_with_event(nIndex, DISCONNECT::DDOS);
                             continue;
                         }
                     }
-
-                    /* Generic event for Connection. */
-                    CONNECTION->Event(EVENTS::GENERIC);
-
-                    /* Work on Reading a Packet. **/
-                    CONNECTION->ReadPacket();
 
                     /* If a Packet was received successfully, increment request count [and DDOS count if enabled]. */
                     if(CONNECTION->PacketComplete())
@@ -283,16 +283,16 @@ namespace LLP
                         if(fMETER)
                             ++ProtocolType::REQUESTS;
 
-                        /* Increment rScore. */
-                        if(fDDOS.load() && CONNECTION->DDOS)
-                            CONNECTION->DDOS->rSCORE += 1;
-
                         /* Packet Process return value of False will flag Data Thread to Disconnect. */
                         if(!CONNECTION->ProcessPacket())
                         {
                             remove_connection_with_event(nIndex, DISCONNECT::FORCE);
                             continue;
                         }
+
+                        /* Increment rScore. */
+                        if(fDDOS.load() && CONNECTION->DDOS)
+                            CONNECTION->DDOS->rSCORE += 1;
 
                         /* Run procssed event for connection triggers. */
                         CONNECTION->Event(EVENTS::PROCESSED);
@@ -499,5 +499,4 @@ namespace LLP
     template class DataThread<APINode>;
     template class DataThread<RPCNode>;
     template class DataThread<Miner>;
-    template class DataThread<P2PNode>;
 }

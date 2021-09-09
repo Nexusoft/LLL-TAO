@@ -27,6 +27,10 @@ namespace TAO
     /* Ledger Layer namespace. */
     namespace Ledger
     {
+        /** Hash to start a hybrid Blockchain. **/
+        uint1024_t hashGenesisHybrid;
+
+
         /* Retrieve the number of blocks (confirmations) required for coinbase maturity for a given block. */
         uint32_t MaturityCoinBase(const BlockState& block)
         {

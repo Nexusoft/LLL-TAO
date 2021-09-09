@@ -33,6 +33,14 @@ namespace TAO
         const BlockState LegacyGenesis();
 
 
+        /** HybridGenesis
+         *
+         *  Creates the hybrid network genesis block.
+         *
+         **/
+        const BlockState HybridGenesis();
+
+
         /** TritiumGenesis
          *
          *  Creates the tritium genesis block which is the first Tritium block mined.

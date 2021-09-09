@@ -32,17 +32,23 @@ ________________________________________________________________________________
 TEST_CASE("Arguments Tests", "[args]")
 {
     config::fTestNet = true;
+    config::mapArgs["-private"] = "1";
     config::mapArgs["-testnet"] = "92349234";
     config::mapArgs["-flushwallet"] = "false";
+    config::mapArgs["-apiauth"]     = "0";
+    config::mapArgs["-generate"]    = "password";
 
     /* To simplify the API testing we will always use multiuser mode */
     config::fMultiuser = true;
     config::mapArgs["-private"] = "1";
     config::mapArgs["-verbose"] = "3";
+    config::fHybrid    = true;
+
 
     REQUIRE(config::fTestNet.load() == true);
     REQUIRE(config::GetArg("-testnet", 0) == 92349234);
     REQUIRE(config::fMultiuser.load() == true);
+    REQUIRE(config::fHybrid.load() == true);
 
     //get the data directory
     std::string strPath = config::GetDataDir();
@@ -65,8 +71,8 @@ TEST_CASE("Arguments Tests", "[args]")
 
     //load wallet
     bool fFirstRun;
-    REQUIRE(Legacy::Wallet::InitializeWallet(Legacy::WalletDB::DEFAULT_WALLET_DB));
-    REQUIRE(Legacy::Wallet::GetInstance().LoadWallet(fFirstRun) == Legacy::DB_LOAD_OK);
+    REQUIRE(Legacy::Wallet::Initialize(Legacy::WalletDB::DEFAULT_WALLET_DB));
+    REQUIRE(Legacy::Wallet::LoadWallet(fFirstRun) == Legacy::DB_LOAD_OK);
 
 
     //initialize chain state
@@ -95,17 +101,16 @@ TEST_CASE("Arguments Tests", "[args]")
     TAO::API::Initialize();
 
     /* Create the Core API Server. */
-    LLP::ServerConfig config;
-    
-    config.nPort = TESTNET_API_PORT;
-    config.nSSLPort = TESTNET_API_SSL_PORT;
-    config.nMaxThreads = 10;
-    config.nTimeout = 30;
-    config.fDDOS = false;
-    config.fRemote = true;
-    config.fMeter = false;
-    config.fManager = false;
-    config.fSSL = false;
+    LLP::Config CONFIG    = LLP::Config(8080);
+    CONFIG.PORT_SSL       = TESTNET_API_SSL_PORT;
+    CONFIG.MAX_THREADS    = 10;
+    CONFIG.SOCKET_TIMEOUT = 30;
+    CONFIG.ENABLE_DDOS    = false;
+    CONFIG.ENABLE_REMOTE  = true;
+    CONFIG.ENABLE_LISTEN  = true;
+    CONFIG.ENABLE_METERS  = false;
+    CONFIG.ENABLE_MANAGER = false;
+    CONFIG.ENABLE_SSL     = false;
 
-    LLP::API_SERVER = new LLP::Server<LLP::APINode>(config);
+    LLP::API_SERVER = new LLP::Server<LLP::APINode>(CONFIG);
 }

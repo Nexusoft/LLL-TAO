@@ -117,14 +117,14 @@ namespace TAO
             bool Parse();
 
 
-            /** GetFieldNames
+            /** ListFields
              *
-             *  Get a list of field names for this Object.
+             *  Get a list of variable names for this Object.
              *
              *  @return Vector of field name strings.
              *
              **/
-            std::vector<std::string> GetFieldNames() const;
+            std::vector<std::string> ListFields() const;
 
 
             /** Type
@@ -153,16 +153,16 @@ namespace TAO
             bool Check(const std::string& strName, const uint8_t nType, bool fMutable) const;
 
 
-            /** CheckName
+            /** Check
              *
-             *  Check the name exists in the object register without checking type.
+             *  Check that given field name exists in the object.
              *
              *  @param[in] strName The name of the field to check
              *
              *  @return True if the field exist in the Object.
              *
              **/
-            bool CheckName(const std::string& strName) const;
+            bool Check(const std::string& strName) const;
 
 
             /** Size

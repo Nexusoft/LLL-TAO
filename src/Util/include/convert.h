@@ -22,9 +22,37 @@ ________________________________________________________________________________
 #include <Util/include/debug.h>
 #include <Util/include/json.h>
 
+#include <Util/include/math.h>
 
 namespace convert
 {
+    /** The maximum number of figures to use for decimal conversion and comparison. **/
+    const uint8_t MAX_DIGITS = 8;
+    
+
+    /* Break the Chain Age in Minutes into Days, Hours, and Minutes. */
+    inline void i64todays(const uint64_t nAge, uint32_t &nDays, uint32_t &nHours, uint32_t &nMinutes)
+    {
+        nDays    = nAge / 1440;
+        nHours   = (nAge - (nDays * 1440)) / 60;
+        nMinutes = nAge % 60;
+    }
+
+    /** dtoull
+     *
+     *  Handle conversion of a double to an unsigned int, using int to truncate figures.
+     *
+     *  @param[in] dValue The input double value.
+     *  @param[in] nDecimals The maximum number of figures.
+     *
+     *  @return an uint64_t representing double in whole integer values.
+     *
+     **/
+    inline uint64_t dtoi(const double dValue, const uint8_t nDecimals = MAX_DIGITS)
+    {
+        return dValue * math::pow(10, nDecimals);
+    }
+
     /** i64tostr
      *
      *  Converts a 64-bit signed integer into a string.
@@ -384,7 +412,7 @@ namespace convert
     *
     **/
     template<typename T>
-    void StringValueTo(json::json::value_type& value)
+    void StringValueTo(encoding::json::value_type& value)
     {
         if(value.is_string())
         {

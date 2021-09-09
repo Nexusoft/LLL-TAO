@@ -85,7 +85,7 @@ namespace TAO
                 switch(OPERATION)
                 {
 
-                    /* Handle for the && operator. */
+                    /* Handle for the ( operator. */
                     case OP::GROUP:
                     {
                         /* When grouping, add another group layer. */
@@ -102,7 +102,7 @@ namespace TAO
                     }
 
 
-                    /* Handle for the && operator. */
+                    /* Handle for the ) operator. */
                     case OP::UNGROUP:
                     {
                         /* Check that nothing has been evaluated. */

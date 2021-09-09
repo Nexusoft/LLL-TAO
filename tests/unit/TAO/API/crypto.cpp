@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/API/crypto/types/crypto.h>
+#include <TAO/API/types/commands/crypto.h>
 #include <TAO/API/include/global.h>
 
 #include <Util/include/convert.h>
@@ -105,10 +105,10 @@ uint256_t CRYPTO_GENESIS = 0;
 TEST_CASE( "Test Crypto API - list keys", "[crypto/list/keys]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);
@@ -132,7 +132,7 @@ TEST_CASE( "Test Crypto API - list keys", "[crypto/list/keys]")
         /* Must be at least nine entries */
         REQUIRE(result.size() == 9);
 
-        json::json key = result[0];
+        encoding::json key = result[0];
 
         REQUIRE(key.find("name") != key.end());
         REQUIRE(key.find("scheme") != key.end());
@@ -144,10 +144,10 @@ TEST_CASE( "Test Crypto API - list keys", "[crypto/list/keys]")
 TEST_CASE( "Test Crypto API - create key", "[crypto/create/key]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);
@@ -257,10 +257,10 @@ TEST_CASE( "Test Crypto API - create key", "[crypto/create/key]")
 TEST_CASE( "Test Crypto API - get key", "[crypto/get/key]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);
@@ -335,10 +335,10 @@ TEST_CASE( "Test Crypto API - get key", "[crypto/get/key]")
 TEST_CASE( "Test Crypto API - get public key", "[crypto/get/publickey]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);
@@ -461,10 +461,10 @@ TEST_CASE( "Test Crypto API - get public key", "[crypto/get/publickey]")
 TEST_CASE( "Test Crypto API - get private key", "[crypto/get/private]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);
@@ -543,10 +543,10 @@ TEST_CASE( "Test Crypto API - get private key", "[crypto/get/private]")
 TEST_CASE( "Test Crypto API - change scheme", "[crypto/change/scheme]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);
@@ -673,10 +673,10 @@ TEST_CASE( "Test Crypto API - change scheme", "[crypto/change/scheme]")
 TEST_CASE( "Test Crypto API - encrypt data", "[crypto/encrypt/data]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);
@@ -802,10 +802,10 @@ TEST_CASE( "Test Crypto API - encrypt data", "[crypto/encrypt/data]")
 TEST_CASE( "Test Crypto API - decrypt data", "[crypto/decrypt/data]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);
@@ -1079,10 +1079,10 @@ TEST_CASE( "Test Crypto API - decrypt data", "[crypto/decrypt/data]")
 TEST_CASE( "Test Crypto API - sign data", "[crypto/sign/data]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);
@@ -1214,10 +1214,10 @@ TEST_CASE( "Test Crypto API - sign data", "[crypto/sign/data]")
 TEST_CASE( "Test Crypto API - verify signature", "[crypto/verify/signature]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);
@@ -1400,10 +1400,10 @@ TEST_CASE( "Test Crypto API - verify signature", "[crypto/verify/signature]")
 TEST_CASE( "Test Crypto API - get hash", "[crypto/get/hash]")
 {
     /* Declare variables shared across test cases */
-    json::json params;
-    json::json ret;
-    json::json result;
-    json::json error;
+    encoding::json params;
+    encoding::json ret;
+    encoding::json result;
+    encoding::json error;
 
     /* Ensure user is created and logged in for testing */
     InitializeUser(CRYPTO_USERNAME, CRYPTO_PASSWORD, CRYPTO_PIN, CRYPTO_GENESIS, CRYPTO_SESSION);

@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/state.h>
 
 #include <Util/include/softfloat.h>
+#include <Util/include/convert.h>
 
 #include <Legacy/include/money.h>
 
@@ -33,12 +34,32 @@ namespace TAO
     namespace Ledger
     {
 
-        /* Break the Chain Age in Minutes into Days, Hours, and Minutes. */
-        void GetChainTimes(uint32_t nAge, uint32_t& nDays, uint32_t& nHours, uint32_t& nMinutes)
+        /* Gets the average timespan of given number of blocks. */
+        uint64_t GetAverageTimespan(const BlockState& rBlock, const uint32_t nMaximum)
         {
-            nDays = nAge / 1440;
-            nHours = (nAge - (nDays * 1440)) / 60;
-            nMinutes = nAge % 60;
+            /* Cache our last block state. */
+            BlockState tLastBlock = rBlock;
+
+            /* Loop until we have all timespans. */
+            uint64_t nTotalTime = 0, nTotal = 0;
+            do
+            {
+                /* Get the next block state. */
+                BlockState tNextBlock = tLastBlock.Prev();
+                if(!TAO::Ledger::GetLastState(tNextBlock, rBlock.nChannel))
+                    break;
+
+                /* Calculate our timespan. */
+                const uint32_t nTimespan =
+                    (tLastBlock.GetBlockTime() - tNextBlock.GetBlockTime());
+
+                /* Adjust our aggregate value. */
+                nTotalTime += nTimespan;
+                tLastBlock = tNextBlock;
+            }
+            while(++nTotal < nMaximum);
+
+            return (nTotalTime / nTotal);
         }
 
 
@@ -175,7 +196,7 @@ namespace TAO
             if(fDebug)
             {
                 uint32_t nDays, nHours, nMinutes;
-                GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
+                convert::i64todays(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
                 debug::log(2,
                     "RETARGET weighted time=", nBlockTime,
@@ -314,7 +335,7 @@ namespace TAO
             if(fDebug)
             {
                 uint32_t nDays, nHours, nMinutes;
-                GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
+                convert::i64todays(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
                 debug::log(2,
                     "RETARGET weighted time=", nBlockTime,
@@ -454,7 +475,7 @@ namespace TAO
             if(fDebug)
             {
                 uint32_t nDays, nHours, nMinutes;
-                GetChainTimes(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
+                convert::i64todays(GetChainAge(first.GetBlockTime()), nDays, nHours, nMinutes);
 
                 debug::log(2,
                     "RETARGET weighted time=", nBlockTime, " actual time ", std::max(first.GetBlockTime() - last.GetBlockTime(), (uint64_t) 1),

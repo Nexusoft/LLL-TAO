@@ -13,115 +13,63 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
-#include <TAO/API/types/sessionmanager.h>
+#include <TAO/API/types/commands/market.h>
+#include <TAO/API/users/types/users.h>
+#include <TAO/API/voting/types/voting.h>
+
+#include <TAO/API/types/commands/assets.h>
+#include <TAO/API/types/commands/ledger.h>
+#include <TAO/API/types/commands/supply.h>
+#include <TAO/API/types/commands/system.h>
+#include <TAO/API/types/commands/names.h>
+#include <TAO/API/types/commands/invoices.h>
+#include <TAO/API/types/commands/crypto.h>
+#include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/register.h>
+#include <TAO/API/types/commands/tokens.h>
+#include <TAO/API/types/commands.h>
+#include <TAO/API/types/indexing.h>
+
+#include <TAO/API/types/session-manager.h>
 
 #include <Util/include/debug.h>
 
-namespace TAO
+namespace TAO::API
 {
-    namespace API
+    std::map<std::string, Base*> Commands::mapTypes;
+
+    /*  Instantiate global instances of the API. */
+    void Initialize()
     {
-        /* The API global instance pointers. */
-        Assets*     assets;
-        Ledger*     ledger;
-        Register*   reg;
+        debug::log(0, FUNCTION, "Initializing API");
 
-        #ifndef NO_WALLET
-        RPC*        RPCCommands;
-        #endif
+        /* Create the API instances. */
+        Commands::Register<Assets>();
+        //Commands::Register<Crypto>();
+        Commands::Register<Market>();
+        Commands::Register<Finance>();
+        Commands::Register<Invoices>();
+        Commands::Register<Ledger>();
+        Commands::Register<Names>();
+        Commands::Register<Register>();
+        Commands::Register<Supply>();
+        Commands::Register<System>();
+        Commands::Register<Tokens>();
+        Commands::Register<Users>();
+        //Commands::Register<Voting>();
 
-        Supply*     supply;
-        System*     system;
-        Tokens*     tokens;
-        Users*      users;
-        Finance*    finance;
-        Names*      names;
-        DEX*        dex;
-        Voting*     voting;
-        Invoices*   invoices;
-        Crypto*     crypto;
-        P2P*        p2p;
-
-
-        /*  Instantiate global instances of the API. */
-        void Initialize()
-        {
-            debug::log(0, FUNCTION, "Initializing API");
-
-            /* Create the API instances. */
-            assets      = new Assets();
-            ledger      = new Ledger();
-            reg         = new Register();
-
-            #ifndef NO_WALLET
-            RPCCommands = new RPC();
-            #endif
-
-            supply      = new Supply();
-            system      = new System();
-            tokens      = new Tokens();
-            users       = new Users();
-            finance     = new Finance();
-            names       = new Names();
-            dex         = new DEX();
-            voting      = new Voting();
-            invoices    = new Invoices();
-            crypto      = new Crypto();
-            p2p         = new P2P();
-        }
+        /* Initialize our indexing services. */
+        Index::Initialize();
+    }
 
 
-        /*  Delete global instances of the API. */
-        void Shutdown()
-        {
-            debug::log(0, FUNCTION, "Shutting down API");
+    /*  Delete global instances of the API. */
+    void Shutdown()
+    {
+        debug::log(0, FUNCTION, "Shutting down API");
 
-            if(assets)
-                delete assets;
-
-            if(ledger)
-                delete ledger;
-
-            if(reg)
-                delete reg;
-
-            #ifndef NO_WALLET
-            if(RPCCommands)
-                delete RPCCommands;
-            #endif
-
-            if(supply)
-                delete supply;
-
-            if(system)
-                delete system;
-
-            if(tokens)
-                delete tokens;
-
-            if(users)
-                delete users;
-
-            if(finance)
-                delete finance;
-
-            if(names)
-                delete names;
-
-            if(dex)
-                delete dex;
-
-            if(voting)
-                delete voting;
-
-            if(invoices)
-                delete invoices;
-
-            if(crypto)
-                delete crypto;
-
-            if(p2p)
-                delete p2p;
-        }
+        /* Shut down our subsequent API's */
+        Commands::Shutdown();
+        Index::Shutdown();
     }
 }

@@ -16,9 +16,11 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
 
+#include <TAO/API/include/check.h>
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/global.h>
-#include <TAO/API/include/utils.h>
-#include <TAO/API/types/sessionmanager.h>
+
+#include <TAO/API/types/session-manager.h>
 #include <TAO/API/users/types/notifications_processor.h>
 
 #include <TAO/Ledger/include/chainstate.h>
@@ -42,10 +44,9 @@ namespace TAO
     {
         /* Default Constructor. */
         Users::Users()
-        : Base()
-        , fShutdown(false)
-        , LOGIN_THREAD()
-        , NOTIFICATIONS_PROCESSOR(nullptr)
+        : Derived<Users>          ( )
+        , LOGIN_THREAD            ( )
+        , NOTIFICATIONS_PROCESSOR (nullptr)
         {
             Initialize();
 
@@ -62,9 +63,6 @@ namespace TAO
         /* Destructor. */
         Users::~Users()
         {
-            /* Set the shutdown flag and join events processing thread. */
-            fShutdown = true;
-
             if(LOGIN_THREAD.joinable())
                 LOGIN_THREAD.join();
 
@@ -82,24 +80,14 @@ namespace TAO
 
 
         /*  Background thread to auto login user once connections are established. */
-        void Users::LoginThread()
+        void Users::LoginThread() //XXX: this isn't really needed, could easily be added before processing notifications, DELETE ME
         {
-            /* Mutex for this thread's condition variable */
-            std::mutex LOGIN_MUTEX;
-
-            /* The condition variable to wait on */
-            std::condition_variable LOGIN_CONDITION;
-
             /* Loop the events processing thread until shutdown. */
-            while(!fShutdown.load())
+            while(!config::fShutdown.load())
             {
-                /* retry every 5s if not logged in */
-                std::unique_lock<std::mutex> lock(LOGIN_MUTEX);
-                LOGIN_CONDITION.wait_for(lock, std::chrono::milliseconds(5000), [this]{return fShutdown.load();});
-
-                /* Check for a shutdown event. */
-                if(fShutdown.load())
-                    return;
+                /* We sleep in increments of 100ms so shutdown response is sub-second. */
+                for(uint32_t n = 0; n < 50; ++n)
+                    runtime::sleep(100);  //XXX: assess whether this should come before or after the login attempt
 
                 try
                 {
@@ -118,33 +106,33 @@ namespace TAO
 
 
         /* Returns the genesis ID from the calling session or the the account logged in.*/
-        uint256_t Users::GetCallersGenesis(const json::json & params) const
+        uint256_t Users::GetCallersGenesis(const encoding::json& jParams) const
         {
             /* default to session 0 unless using multiuser mode */
-            uint256_t nSession = 0;
+            uint256_t hashSession = 0;
 
-            if(config::fMultiuser.load() && params.find("session") != params.end())
-                nSession.SetHex(params["session"].get<std::string>());
+            if(config::fMultiuser.load() && jParams.find("session") != jParams.end())
+                hashSession.SetHex(jParams["session"].get<std::string>());
 
-            return GetGenesis(nSession);
+            return GetGenesis(hashSession);
         }
 
 
         /* Returns the genesis ID from the account logged in. */
-        uint256_t Users::GetGenesis(uint256_t nSession, bool fThrow) const
+        uint256_t Users::GetGenesis(const uint256_t& hashSession, bool fThrow) const
         {
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
-            uint256_t nSessionToUse = config::fMultiuser.load() ? nSession : 0;
+            uint256_t hashSessionToUse = config::fMultiuser.load() ? hashSession : 0;
 
-            if(!GetSessionManager().Has(nSessionToUse))
+            if(!GetSessionManager().Has(hashSessionToUse))
             {
                 if(fThrow)
                 {
                     if(config::fMultiuser.load())
-                        throw APIException(-9, debug::safe_printstr("Session ", nSessionToUse.ToString(), " doesn't exist"));
+                        throw Exception(-9, debug::safe_printstr("Session ", hashSessionToUse.ToString(), " doesn't exist"));
                     else
-                        throw APIException(-11, "User not logged in");
+                        throw Exception(-11, "User not logged in");
                 }
                 else
                 {
@@ -152,36 +140,33 @@ namespace TAO
                 }
             }
 
-            return GetSessionManager().Get(nSessionToUse, false).GetAccount()->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
+            return GetSessionManager().Get(hashSessionToUse, false).GetAccount()->Genesis(); //TODO: Assess the security of being able to generate genesis. Most likely this should be a localDB thing.
         }
 
 
         /* If the API is running in sessionless mode this method will return the currently
-         * active PIN (if logged in) or the pin from the params.  If not in sessionless mode
-         * then the method will return the pin from the params.  If no pin is available then
-         * an APIException is thrown */
-        SecureString Users::GetPin(const json::json params, uint8_t nUnlockAction) const
+         * active PIN (if logged in) or the pin from the jParams.  If not in sessionless mode
+         * then the method will return the pin from the jParams.  If no pin is available then
+         * an Exception is thrown */
+        SecureString Users::GetPin(const encoding::json& jParams, const uint8_t nUnlockAction) const
         {
-
-            /* Check for pin parameter. */
-            SecureString strPIN;
-
             /* Get the active session */
-            Session& session = GetSession(params, true, false);
+            Session& session = GetSession(jParams, true, false);
 
             /* If we have a pin already, check we are allowed to use it for the requested action */
             bool fNeedPin = session.GetActivePIN().IsNull() || session.GetActivePIN()->PIN().empty() || !(session.GetActivePIN()->UnlockedActions() & nUnlockAction);
             if(fNeedPin)
             {
-                /* If we need a pin then check it is in the params */
-                if(params.find("pin") == params.end())
-                    throw APIException(-129, "Missing PIN");
-                else
-                    strPIN = params["pin"].get<std::string>().c_str();
+                /* Grab our pin secure string. */
+                const SecureString strPIN =
+                    ExtractPIN(jParams);
+
+                return strPIN;
             }
-            else
-                /* If we don't need the pin then use the current active one */
-                strPIN = session.GetActivePIN()->PIN();
+
+            /* If we don't need the pin then use the current active one */
+            const SecureString strPIN =
+                session.GetActivePIN()->PIN();
 
             return strPIN;
         }
@@ -189,35 +174,35 @@ namespace TAO
 
         /* If the API is running in sessionless mode this method will return the default
          * session ID that is used to store the one and only session (ID 0). If the user is not
-         * logged in than an APIException is thrown, if fThrow is true.
-         * If not in sessionless mode then the method will return the session from the params.
-         * If the session is not is available in the params then an APIException is thrown, if fThrow is true. */
-        Session& Users::GetSession(const json::json params, bool fThrow, bool fLogActivity) const
+         * logged in than an Exception is thrown, if fThrow is true.
+         * If not in sessionless mode then the method will return the session from the jParams.
+         * If the session is not is available in the jParams then an Exception is thrown, if fThrow is true. */
+        Session& Users::GetSession(const encoding::json& jParams, const bool fThrow, const bool fLogActivity) const
         {
             /* Check for session parameter. */
-            uint256_t nSession = 0; // ID 0 is used for sessionless API
+            uint256_t hashSession = 0; // ID 0 is used for sessionless API
 
             if(config::fMultiuser.load())
             {
-                if(params.find("session") == params.end())
+                if(jParams.find("session") == jParams.end())
                 {
                     if(fThrow)
-                        throw APIException(-12, "Missing Session ID");
+                        throw Exception(-12, "Missing Session ID");
                 }
                 else
-                    nSession.SetHex(params["session"].get<std::string>());
-                
+                    hashSession.SetHex(jParams["session"].get<std::string>());
+
                 /* Check that the session ID is valid */
-                if(fThrow && !GetSessionManager().Has(nSession))
-                    throw APIException(-10, "Invalid session ID");
+                if(fThrow && !GetSessionManager().Has(hashSession))
+                    throw Exception(-10, "Invalid session ID");
             }
 
             /* Calling SessionManager.Get() with an invalid session ID will throw an exception.  Therefore if the caller has
                specified not to throw an exception we have to check whether the session exists first. */
-            if(!fThrow && !GetSessionManager().Has(nSession))
+            if(!fThrow && !GetSessionManager().Has(hashSession))
                 return null_session;
 
-            return GetSessionManager().Get(nSession, fLogActivity);
+            return GetSessionManager().Get(hashSession, fLogActivity);
         }
 
 
@@ -236,13 +221,13 @@ namespace TAO
                 {
                     if(session->second.GetAccount()->Genesis() == hashGenesis)
                         return GetSessionManager().Get(session->first, fLogActivity);
-                    
+
                     /* increment iterator */
                     ++session;
                 }
             }
 
-            throw APIException(-11, "User not logged in"); 
+            throw Exception(-11, "User not logged in");
         }
 
 
@@ -251,6 +236,7 @@ namespace TAO
         {
             return !config::fMultiuser.load() && GetSessionManager().Has(0);
         }
+
 
         /* Determine if a particular genesis is logged in on this node. */
         bool Users::LoggedIn(const uint256_t& hashGenesis) const
@@ -276,7 +262,7 @@ namespace TAO
 
 
         /* Returns a key from the account logged in. */
-        uint512_t Users::GetKey(uint32_t nKey, SecureString strSecret, const Session& session) const
+        uint512_t Users::GetKey(const uint32_t nKey, const SecureString& strSecret, const Session& session) const
         {
             return session.GetAccount()->Generate(nKey, strSecret);
         }
@@ -323,114 +309,102 @@ namespace TAO
 
         /* Create a new transaction object for signature chain, if allowed to do so */
         bool Users::CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                            TAO::Ledger::Transaction& tx)
+                            TAO::Ledger::Transaction& tx, const uint8_t nScheme)
         {
             /* No need to check connections or maturity in private mode as there is no PoS/Pow */
-            if(!config::GetBoolArg("-private"))
+            if(!config::fHybrid.load())
             {
                 /* If not on local-only testnet then we need to ensure we are connected to the network and
                 synchronized before allowing any sig chain transactions to be created */
                 bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
-
                 if(TAO::Ledger::ChainState::Synchronizing() || (LLP::TRITIUM_SERVER->GetConnectionCount() == 0 && !fLocalTestnet))
-                    throw APIException(-213, "Cannot create transactions whilst synchronizing");
+                    throw Exception(-213, "Cannot create transactions whilst synchronizing");
 
                 /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
                 CheckMature(user->Genesis());
             }
 
             /* Create the transaction and return */
-            return TAO::Ledger::CreateTransaction(user, pin, tx);
+            return TAO::Ledger::CreateTransaction(user, pin, tx, nScheme);
         }
 
-        /* Checks that the session/password/pin parameters have been provided (where necessary) and then verifies that the 
-        *  password and pin are correct.  
-        *  If authentication fails then the AuthAttempts counter in the callers session is incremented */
-        bool Users::Authenticate(const json::json& params)
+
+        /* Checks that the session/password/pin parameters have been provided and are correct credentials. */
+        bool Users::Authenticate(const encoding::json& jParams)
         {
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = users->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = users->GetSession(params);
+            Session& session = Commands::Get<Users>()->GetSession(jParams);
 
             /* Check the account. */
             if(!session.GetAccount())
-                throw APIException(-10, "Invalid session ID");
+                throw Exception(-10, "Invalid session ID");
+
+            /* Check for password requirement field. */
+            if(config::GetBoolArg("-requirepassword", false))
+            {
+                /* Grab our password from parameters. */
+                if(!CheckParameter(jParams, "password", "string"))
+                    throw Exception(-128, "-requirepassword active, must pass in password=<password> for all commands when enabled");
+
+                /* Parse out password. */
+                const SecureString strPassword =
+                    SecureString(jParams["password"].get<std::string>().c_str());
+
+                /* Check our password input compared to our internal sigchain password. */
+                if(session.GetAccount()->Password() != strPassword)
+                {
+                    /* Increment our auth attempts if failed password. */
+                    session.IncrementAuthAttempts();
+                    return false;
+                }
+            }
 
             /* The logged in sig chain genesis hash */
-            uint256_t hashGenesis = session.GetAccount()->Genesis();
+            const uint256_t hashGenesis =
+                session.GetAccount()->Genesis();
 
             /* Get the sig chain transaction to authenticate with, using the same hash that was used at login . */
             TAO::Ledger::Transaction txPrev;
             if(!LLD::Ledger->ReadTx(session.hashAuth, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                throw APIException(-138, "No previous transaction found");
+                throw Exception(-138, "No previous transaction found");
 
-            /* Generate a temporary transaction with the next hash based on the current password/pin */
-            TAO::Ledger::Transaction tx;
-            tx.NextHash(session.GetAccount()->Generate(txPrev.nSequence + 1, strPIN), txPrev.nNextType);
+            /* Generate our secret key from sigchain. */
+            const uint512_t hashSecret =
+                session.GetAccount()->Generate(txPrev.nSequence + 1, strPIN, false);
+
+            /* Calculate our next hash for auth check. */
+            const uint256_t hashNext =
+                TAO::Ledger::Transaction::NextHash(hashSecret, txPrev.nNextType);
 
             /* Validate the credentials */
-            if(txPrev.hashNext != tx.hashNext)
+            if(txPrev.hashNext != hashNext)
             {
                 /* If the hashNext does not match then credentials are invalid, so increment the auth attempts counter */
                 session.IncrementAuthAttempts();
 
-                /* If the number of failed auth attempts exceeds the configured allowed number then log this user out */
-                if(session.GetAuthAttempts() >= config::GetArg("-authattempts", 3))
-                {
-                    debug::log(0, FUNCTION, "Too many invalid password / pin attempts. Logging out user session:", session.ID().ToString() );
-                    
-                    /* Log the user out.  NOTE this also closes down the stake minter, removes this session from the notifications 
-                       processor, terminates any P2P connections, and removes the session from the session manager */
-                    TerminateSession(session.ID());
-
-                    throw APIException(-290, "Invalid credentials.  User logged out due to too many password / pin attempts");
-                    
-                }
-
                 return false;
             }
+
+            /* Set our internal cache if credentials passed. */
+            session.GetAccount()->SetCache(hashSecret, txPrev.nSequence + 1);
+            session.ResetAuthAttempts();
 
             return true;
         }
 
 
         /* Gracefully closes down a users session */
-        void Users::TerminateSession(const uint256_t& nSession)
+        void Users::TerminateSession(const uint256_t& hashSession)
         {
             /* Check that the session exists */
-            if(!GetSessionManager().Has(nSession))
-                throw APIException(-141, "Already logged out");
+            if(!GetSessionManager().Has(hashSession))
+                throw Exception(-141, "Already logged out");
 
             /* The genesis of the user logging out */
-            uint256_t hashGenesis = GetSessionManager().Get(nSession).GetAccount()->Genesis();
-
-            /* If P2P server is running, terminate any connections for this user */
-            if(LLP::P2P_SERVER)
-            {
-                /* Get the connections from the P2P server */
-                std::vector<std::shared_ptr<LLP::P2PNode>> vConnections = LLP::P2P_SERVER->GetConnections();
-
-                /* Iterate the connections*/
-                for(const auto& connection : vConnections)
-                {
-                    /* Skip over inactive connections. */
-                    if(!connection.get())
-                        continue;
-
-                    /* Push the active connection. */
-                    if(connection.get()->Connected())
-                    {
-                        /* Check that the connection is from this genesis hash  */
-                        if(connection.get()->hashGenesis != hashGenesis)
-                            continue;
-
-                        /* Send the terminate message to peer for graceful termination */
-                        connection.get()->PushMessage(LLP::P2P::ACTION::TERMINATE, connection.get()->nSession);
-                    }
-                }
-            }
+            uint256_t hashGenesis = GetSessionManager().Get(hashSession).GetAccount()->Genesis();
 
             /* If not using multi-user then we need to send a deauth message to all peers */
             if(!config::fMultiuser.load() && LLP::TRITIUM_SERVER)
@@ -440,16 +414,16 @@ namespace TAO
 
                 /* Check whether it is valid before relaying it to all peers */
                 if(ssMessage.size() > 0)
-                    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::Tritium::ACTION::DEAUTH), ssMessage);
+                    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::TritiumNode::ACTION::DEAUTH), ssMessage);
             }
-            
+
             /* Remove the session from the notifications processor */
             if(NOTIFICATIONS_PROCESSOR)
-                NOTIFICATIONS_PROCESSOR->Remove(nSession);
+                NOTIFICATIONS_PROCESSOR->Remove(hashSession);
 
             /* If this is session 0 and stake minter is running when logout, stop it */
             TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
-            if(nSession == 0 && stakeMinter.IsStarted())
+            if(hashSession == 0 && stakeMinter.IsStarted())
                 stakeMinter.Stop();
 
             /* If this user has previously saved their session to the local DB, then delete it */
@@ -457,7 +431,38 @@ namespace TAO
                 LLD::Local->EraseSession(hashGenesis);
 
             /* Finally remove the session from the session manager */
-            GetSessionManager().Remove(nSession);
+            GetSessionManager().Remove(hashSession);
+        }
+
+
+        /* Used for client mode, this method will download the signature chain transactions and events for a given genesis */
+        bool Users::DownloadSigChain(const uint256_t& hashGenesis, bool fSyncEvents)
+        {
+            /* Check that server is active. */
+            if(!LLP::TRITIUM_SERVER)
+                return debug::error(FUNCTION, "Tritium server not initialized...");
+
+            //XXX: GetConnection should return true/false and return connection by reference
+            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+            if(pNode != nullptr)
+            {
+                /* Log the start time to syncronize. */
+                uint64_t nStart = runtime::unifiedtimestamp(true); //true for ms timestamp
+                debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing Signatiure Chain");
+
+                /* Request the sig chain. */
+                debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+                LLP::TritiumNode::SyncSigChain(pNode.get(), hashGenesis, true, fSyncEvents);
+
+                /* Log the time it took to complete sigchain sync. */
+                uint64_t nStop = runtime::unifiedtimestamp(true); //true for ms timestamp
+                debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString(), " in ", nStop - nStart, " milliseconds");
+
+                return true;
+            }
+            else
+                return debug::error(FUNCTION, "no connections available...");
+
         }
     }
 }

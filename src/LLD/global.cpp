@@ -18,6 +18,7 @@ ________________________________________________________________________________
 namespace LLD
 {
     /* The LLD global instance pointers. */
+    LogicalDB*    Logical;
     ContractDB*   Contract;
     RegisterDB*   Register;
     LedgerDB*     Ledger;
@@ -72,7 +73,13 @@ namespace LLD
         /* Create the local database instance. */
         Local    = new LocalDB(
                         FLAGS::CREATE | FLAGS::FORCE);
-        
+
+
+        /* Create the local database instance. */
+        Logical    = new LogicalDB(
+                        FLAGS::CREATE | FLAGS::FORCE,
+                        (256 * 256 * 16));
+
 
         if(config::fClient.load())
         {
@@ -84,6 +91,9 @@ namespace LLD
 
         /* Handle database recovery mode. */
         TxnRecovery();
+
+        /* Check for reindexing entries. */
+        Register->Reindex();
     }
 
 
@@ -93,58 +103,36 @@ namespace LLD
         debug::log(0, FUNCTION, "Shutting down LLD");
 
         /* Cleanup the contract database. */
+        if(Logical)
+            delete Logical;
+
+        /* Cleanup the contract database. */
         if(Contract)
-        {
-            debug::log(2, FUNCTION, "Shutting down ContractDB");
             delete Contract;
-        }
 
         /* Cleanup the ledger database. */
         if(Ledger)
-        {
-            debug::log(2, FUNCTION, "Shutting down LedgerDB");
             delete Ledger;
-        }
-
 
         /* Cleanup the register database. */
         if(Register)
-        {
-            debug::log(2, FUNCTION, "Shutting down RegisterDB");
             delete Register;
-        }
-
 
         /* Cleanup the local database. */
         if(Local)
-        {
-            debug::log(2, FUNCTION, "Shutting down LocalDB");
             delete Local;
-        }
-
 
         /* Cleanup the client database. */
         if(Client)
-        {
-            debug::log(2, FUNCTION, "Shutting down ClientDB");
             delete Client;
-        }
-
 
         /* Cleanup the legacy database. */
         if(Legacy)
-        {
-            debug::log(2, FUNCTION, "Shutting down LegacyDB");
             delete Legacy;
-        }
-
 
         /* Cleanup the trust database. */
         if(Trust)
-        {
-            debug::log(2, FUNCTION, "Shutting down TrustDB");
             delete Trust;
-        }
     }
 
 
@@ -164,10 +152,6 @@ namespace LLD
 
         /* Check the ledger DB journal. */
         if(Ledger && !Ledger->TxnRecovery())
-            fRecovery = false;
-
-        /* Check the local DB journal. */
-        if(Local && !Local->TxnRecovery())
             fRecovery = false;
 
         /* Check the client DB journal. */
@@ -198,10 +182,6 @@ namespace LLD
             /* Commit ledger DB transaction. */
             if(Ledger)
                 Ledger->TxnCommit();
-
-            /* Commit the local DB transaction. */
-            if(Local)
-                Local->TxnCommit();
 
             /* Commit the client DB transaction. */
             if(Client)
@@ -252,10 +232,6 @@ namespace LLD
         if(Ledger)
             Ledger->TxnBegin();
 
-        /* Start the local DB transaction. */
-        if(Local)
-            Local->TxnBegin();
-
         /* Start the client DB transaction. */
         if(Client)
             Client->TxnBegin();
@@ -300,10 +276,6 @@ namespace LLD
         /* Abort the ledger DB transaction. */
         if(Ledger)
             Ledger->TxnRelease();
-
-        /* Abort the local DB transaction. */
-        if(Local)
-            Local->TxnRelease();
 
         /* Abort the client DB transaction. */
         if(Client)
@@ -350,10 +322,6 @@ namespace LLD
         if(Ledger)
             Ledger->TxnCheckpoint();
 
-        /* Set a checkpoint for local DB. */
-        if(Local)
-            Local->TxnCheckpoint();
-
         /* Set a checkpoint for client DB. */
         if(Client)
             Client->TxnCheckpoint();
@@ -379,10 +347,6 @@ namespace LLD
         if(Ledger)
             Ledger->TxnCommit();
 
-        /* Commit the local DB transaction. */
-        if(Local)
-            Local->TxnCommit();
-
         /* Commit the client DB transaction. */
         if(Client)
             Client->TxnCommit();
@@ -407,10 +371,6 @@ namespace LLD
         /* Abort the ledger DB transaction. */
         if(Ledger)
             Ledger->TxnRelease();
-
-        /* Abort the local DB transaction. */
-        if(Local)
-            Local->TxnRelease();
 
         /* Abort the client DB transaction. */
         if(Client)

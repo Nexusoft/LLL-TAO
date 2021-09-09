@@ -117,7 +117,7 @@ keccakf(uint64_t s[25])
 sha3_return_t
 sha3_Init(void *priv, unsigned bitSize) {
     sha3_context *ctx = (sha3_context *) priv;
-    if( bitSize != 256 && bitSize != 384 && bitSize != 512 )
+    if(bitSize != 256 && bitSize != 384 && bitSize != 512 )
         return SHA3_RETURN_BAD_PARAMS;
     memset(ctx, 0, sizeof(*ctx));
     ctx->capacityWords = 2 * bitSize / (8 * sizeof(uint64_t));
@@ -247,7 +247,7 @@ sha3_Finalize(void *priv)
 
     uint64_t t;
 
-    if( ctx->capacityWords & SHA3_USE_KECCAK_FLAG ) {
+    if(ctx->capacityWords & SHA3_USE_KECCAK_FLAG ) {
         /* Keccak version */
         t = (uint64_t)(((uint64_t) 1) << (ctx->byteIndex * 8));
     }
@@ -291,9 +291,9 @@ sha3_return_t sha3_HashBuffer( unsigned bitSize, enum SHA3_FLAGS flags, const vo
     sha3_context c;
 
     err = sha3_Init(&c, bitSize);
-    if( err != SHA3_RETURN_OK )
+    if(err != SHA3_RETURN_OK )
         return err;
-    if( sha3_SetFlags(&c, flags) != flags ) {
+    if(sha3_SetFlags(&c, flags) != flags ) {
         return SHA3_RETURN_BAD_PARAMS;
     }
     sha3_Update(&c, in, inBytes);

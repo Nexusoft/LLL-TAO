@@ -48,7 +48,7 @@ namespace LLP
 
 
         /* SSL object */
-        SSL *pSSL;
+        SSL* pSSL;
 
     protected:
 

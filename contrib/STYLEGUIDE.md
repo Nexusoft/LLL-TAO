@@ -15,18 +15,36 @@ The variable names have a prefix that defines the type. This helps us not lose t
 * (f)Variable ex. fVar - (f) denotes a boolean flag.
 * (p)Variable ex. pVar - (p) denotes the variable is a pointer.
 * (s)Variable ex. sVar - (s) denotes the variable is static.
+* {j}Variable ex. jVar - (j) denotes the variable is a json container.
+* (r)Variable ex. rVar - (r) denotes this variable is a reference.
 
 ### STL Types
 
 * (str)Variable ex. strVar - (str) denotes the type is a std::string.
-* (v)Variable ex. vArr     - (v)   denotes the type is a std::vector.
+* (v)Variable   ex. vArr     - (v)   denotes the type is a std::vector.
 * (map)Variable ex. mapVar - (map) denotes the type is a std::map
 * (set)Variable ex. setVar - (set) denotes the type is a std::set
+
+### TAO Types
+* (obj)Variable ex. objVar - (obj) denotes the type is TAO::Register::Object, if single word use full typename i.e. object
+* (ste)Variable ex. steVar - (ste) denotes the type is TAO::Register::State, if single word use full typename i.e. state
+* (txn)Variable ex. txnVar - (txn) denotes the type is TAO::Ledger::Transaction, if single word reduced typename i.e. tx
 
 
 ## Namespaces
 
 Always use namespaces to keep the code well ordered and organized. The guide to using namespaces is based around the folder the source files are in. Always declare a new namespace every time you increment a folder, to ensure it is easy to find objects, and there are no duplicate declarations.
+
+
+## Using 'auto' keyword
+
+Don't be liberal with the 'auto' keyword, we reserve its use for the following conditions:
+
+* foreach, such as for(const auto& tData : vData)
+* iterators, such as const auto it = mapData.begin();
+
+Otherwise please use explicit type so that it is easy to see intent and required data type. Auto is nice for specific cases, but
+can be a big risk to fall into bad habits with. So please watch this carefully.
 
 
 ## Indentation and Formatting
@@ -44,7 +62,8 @@ This section involves how to format the code due to carriage return
 
 There are certain types that cause more problems than they solve. Following is a list of types to be warned of using.
 
-* Avoid floating points in objects when possible to avoid floating point precision errors that can occur on certain hardware. One can easily convert from an integer into float by setting the significant figures. ex. unsigned int n = 1000000; printf("%f", n / 1000000.0);
+* Avoid floating points in objects and ALL consensus critical code. Always use cv::softfloat or cv::softdouble when floating points
+are required.
 
 
 ## Security Precautions

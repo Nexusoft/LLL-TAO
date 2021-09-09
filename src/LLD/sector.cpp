@@ -18,8 +18,6 @@ ________________________________________________________________________________
 
 #include <LLD/keychain/filemap.h>
 #include <LLD/keychain/hashmap.h>
-#include <LLD/keychain/shard_hashmap.h>
-#include <LLD/keychain/hashtree.h>
 
 #include <Util/include/filesystem.h>
 #include <Util/include/hex.h>
@@ -386,10 +384,11 @@ namespace LLD
             }
 
             /* Get current size */
-            uint64_t nSize = vData.size() + GetSizeOfCompactSize(vData.size());
+            const uint64_t nSize =
+                (vData.size() + GetSizeOfCompactSize(vData.size()));
 
             /* Create a new Sector Key. */
-            SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
+            const SectorKey key(STATE::READY, vKey, static_cast<uint16_t>(nCurrentFile),
                             nCurrentFileSize, static_cast<uint32_t>(nSize));
 
             /* Increment the current filesize */
@@ -460,7 +459,7 @@ namespace LLD
             return false;
 
         /* Check that this key isn't a keychain only entry. */
-        if(key.nSectorFile ==0 && key.nSectorSize == 0 && key.nSectorStart == 0)
+        if(key.nSectorFile == 0 && key.nSectorSize == 0 && key.nSectorStart == 0)
             return true;
 
         {
@@ -486,7 +485,7 @@ namespace LLD
             pstream->seekg(key.nSectorStart, std::ios::beg);
 
             /* Write the size of record. */
-            uint64_t nSize = ReadCompactSize(*pstream);
+            const uint64_t nSize = ReadCompactSize(*pstream);
 
             /* Seek to write at specific location. */
             pstream->seekp(key.nSectorStart + GetSizeOfCompactSize(nSize), std::ios::beg);
@@ -726,6 +725,7 @@ namespace LLD
                 cKey = mapIndex[item.second];
             else
             {
+                /* Check for the new indexing entry. */
                 if(!pSectorKeys->Get(item.second, cKey))
                     return debug::error(FUNCTION, "failed to read indexing entry");
 
@@ -759,7 +759,7 @@ namespace LLD
         stream.ignore(std::numeric_limits<std::streamsize>::max());
 
         /* Get the data buffer. */
-        uint32_t nSize = static_cast<uint32_t>(stream.gcount());
+        const uint32_t nSize = static_cast<uint32_t>(stream.gcount());
 
         /* Check journal size for 0. */
         if(nSize == 0)
@@ -768,7 +768,7 @@ namespace LLD
         /* Create buffer to read into. */
         std::vector<uint8_t> vBuffer(nSize, 0);
 
-        /* Read the keychain file. */
+        /* Read the journal file. */
         stream.seekg (0, std::ios::beg);
         stream.read((char*) &vBuffer[0], vBuffer.size());
         stream.close();
@@ -857,8 +857,5 @@ namespace LLD
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class SectorDatabase<BinaryHashMap,  BinaryLRU>;
-    //template class SectorDatabase<ShardHashMap,   BinaryLRU>;
-    //template class SectorDatabase<BinaryHashMap,  BinaryLFU>;
-    //template class SectorDatabase<BinaryHashTree, BinaryLRU>;
 
 }

@@ -12,10 +12,10 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_LEDGER_INCLUDE_DISPATCH_H
-#define NEXUS_TAO_LEDGER_INCLUDE_DISPATCH_H
 
 #include <LLC/types/uint1024.h>
+
+#include <Util/templates/singleton.h>
 
 #include <thread>
 #include <mutex>
@@ -23,90 +23,53 @@ ________________________________________________________________________________
 #include <condition_variable>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::Ledger
 {
-
-    /* Ledger Layer namespace. */
-    namespace Ledger
+    /** @class
+     *
+     *  This class is responsible for dispatching events triggered by a new block.
+     *  These events could be best chain pointers, transactions, contracts, or other relevant data.
+     *
+     **/
+    class Dispatch : public Singleton<Dispatch>
     {
-        
-        /** Function prototype for methods wanting to be notified of new blocks being added to the chain **/
-        typedef std::function<void(const uint1024_t&)> BlockDispatchFunction;
-
-        /** Function prototype for methods wanting to be notified of transactions **/
-        typedef std::function<void(const uint512_t&, bool)> TransactionDispatchFunction;
-
-        class Dispatch
-        {
-            /** Mutex to protect the queue. **/
-            std::mutex DISPATCH_MUTEX;
+        /** Queue to handle dispatch requests. **/
+        util::atomic::lock_shared_ptr<std::queue<uint1024_t>> DISPATCH_QUEUE;
 
 
-            /** List of subscribers to Block events  **/
-            std::vector<BlockDispatchFunction> vBlockDispatch;
-
-            /** List of subscribers to transaction events  **/
-            std::vector<TransactionDispatchFunction> vTransactionDispatch;
+        /** Thread for running dispatch. **/
+        std::thread DISPATCH_THREAD;
 
 
-        public:
-
-            /** Default Constructor. **/
-            Dispatch();
+        /** Condition variable to wake up the relay thread. **/
+        std::condition_variable CONDITION;
 
 
-            /** Default Destructor. **/
-            ~Dispatch();
+    public:
+
+        /** Default Constructor. **/
+        Dispatch();
 
 
-            /** Singleton instance. **/
-            static Dispatch& GetInstance();
+        /** Default Destructor. **/
+        ~Dispatch();
 
 
-            /** SubscribeBlock
-             *
-             *  Adds a subscripton for new blocks.
-             *
-             *  @param[in] notify The function to call for new block notifications.
-             *
-             **/
-            void SubscribeBlock(const BlockDispatchFunction& notify);
+        /** PushRelay
+         *
+         *  Dispatch a new block hash to relay thread.
+         *
+         *  @param[in] hashBlock The block hash to dispatch.
+         *
+         **/
+        void PushRelay(const uint1024_t& hashBlock);
 
 
-            /** SubscribeTransaction
-             *
-             *  Adds a subscripton for new transactions.
-             *
-             *  @param[in] notify The function to call for new transaction notifications.
-             *
-             **/
-            void SubscribeTransaction(const TransactionDispatchFunction& notify);
-
-
-            /** DispatchBlock
-             *
-             *  Notify all subscribers of a new block .
-             *
-             *  @param[in] hashBlock The block hash of the new block.
-             * 
-             **/
-            void DispatchBlock(const uint1024_t& hashBlock);
-
-
-            /** DispatchTransaction
-             *
-             *  Notify all subscribers of a new transaction .
-             *
-             *  @param[in] hashTx The hash of the new transaction.
-             *  @param[in] fConnect Flag indicating whether the transaction is being connected or disconnected from the chain.
-             *
-             **/
-            void DispatchTransaction(const uint512_t& hashTx, bool fConnect);
-
-
-        };
-
-    }
+        /** Relay Thread
+         *
+         *  Handle relays of all events for LLP when processing block.
+         *
+         **/
+        void Relay();
+    };
 }
-
-#endif

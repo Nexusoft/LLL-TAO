@@ -22,6 +22,8 @@ ________________________________________________________________________________
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
 
+#include <TAO/API/types/indexing.h>
+
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/enum.h>
@@ -45,9 +47,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/client.h>
-
-#include <Util/include/string.h>
-
 
 
 /* Global TAO namespace. */
@@ -609,7 +608,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "ambassador genesis mismatch ", genesis.SubString());
 
                             /* The total to be credited. */
-                            uint64_t nCredit = (nBalance * it->second.second) / 1000;
+                            const uint64_t nCredit = (nBalance * it->second.second) / 1000;
 
                             /* Check the value */
                             uint64_t nValue = 0;
@@ -743,7 +742,7 @@ namespace TAO
             }
 
             /* Add new weights for this channel. */
-            if(!IsPrivate())
+            if(!IsHybrid())
                 nChannelWeight[nChannel] += Weight();
 
             /* Compute the chain trust. */
@@ -754,7 +753,7 @@ namespace TAO
                 return debug::error(FUNCTION, "block state failed to write");
 
             /* Signal to set the best chain. */
-            if(nVersion >= 7 && !IsPrivate())
+            if(nVersion >= 7 && !IsHybrid())
             {
                 /* Set the chain trust. */
                 uint8_t nEquals  = 0;
@@ -931,7 +930,9 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to connect ", state->GetHash().SubString());
 
                     /* Harden a checkpoint if there is any. */
+                    #ifndef UNIT_TESTS
                     HardenCheckpoint(Prev());
+                    #endif
 
                     /* Insert into delete queue. */
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
@@ -1001,13 +1002,12 @@ namespace TAO
                 for(const auto& proof : vDelete)
                     mempool.Remove(proof.second);
 
-
-
                 /* Debug output about the best chain. */
                 uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
                 uint64_t nContractTime = swContract.ElapsedMicroseconds();
                 uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
 
+                /* Only output best chain data when not syncing. */
                 if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
                     debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
                         "New Best Block hash=", hash.SubString(),
@@ -1020,7 +1020,7 @@ namespace TAO
                         " [", std::setw(3), (::GetSerializeSize(*this, SER_LLD, nVersion) / 1024.0), " kb]");
 
                 /* Set the best chain variables. */
-                ChainState::stateBest          = *this;
+                ChainState::stateBest          = *this; //XXX: we are not getting all the data from connect, consider using pointer
                 ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
@@ -1034,13 +1034,10 @@ namespace TAO
                 nTotalInputs    = 0;
 
                 /* Broadcast the block to nodes if not synchronizing. */
+                #ifndef UNIT_TESTS
                 if(!ChainState::Synchronizing())
-                {
-                    /* Notify subscribers of new block. */
-                    Dispatch::GetInstance().DispatchBlock(hash);
-                }
-                else
-                    debug::log(3, FUNCTION, "Skipping relay until chain is done synchronizing");
+                    Dispatch::Instance().PushRelay(ChainState::hashBestChain.load());
+                #endif
             }
 
             return true;
@@ -1066,6 +1063,9 @@ namespace TAO
 
                     /* Get the transaction hash. */
                     const uint512_t& hash = proof.second;
+
+                    /* Push to our logical indexing in API. */
+                    TAO::API::Index::Instance().Push(hash);
 
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))
@@ -1102,7 +1102,7 @@ namespace TAO
 
                     /* Add legacy transactions to the wallet where appropriate */
                     #ifndef NO_WALLET
-                    Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+                    Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, *this, true);
                     #endif
 
                     /* Accumulate the fees. */
@@ -1127,16 +1127,20 @@ namespace TAO
                          * It also handles marking stake changes in stake pool as processed, because the block is likely
                          * mined by another node on the network, and stake change must be marked when that block is received.
                          */
-                        StakeChange request;
-                        if(LLD::Local->ReadStakeChange(tx.hashGenesis, request) && !request.fProcessed)
+                        StakeChange tRequest;
+                        if(LLD::Local->ReadStakeChange(tx.hashGenesis, tRequest))
                         {
-                            /* Mark as processed. */
-                            request.fProcessed = true;
-                            request.hashTx = tx.GetHash();
+                            /* Update stake change request if not processed. */
+                            if(!tRequest.fProcessed)
+                            {
+                                /* Mark as processed. */
+                                tRequest.fProcessed = true;
+                                tRequest.hashTx     = hash;
 
-                            /* Erase if we can't update it. */
-                            if(!LLD::Local->WriteStakeChange(tx.hashGenesis, request))
-                                LLD::Local->EraseStakeChange(tx.hashGenesis);
+                                /* Erase if we can't update it. */
+                                if(!LLD::Local->WriteStakeChange(tx.hashGenesis, tRequest))
+                                    LLD::Local->EraseStakeChange(tx.hashGenesis);
+                            }
                         }
                     }
 
@@ -1172,7 +1176,7 @@ namespace TAO
 
                     /* Add legacy transactions to the wallet where appropriate */
                     #ifndef NO_WALLET
-                    Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, *this, true);
+                    Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, *this, true);
                     #endif
 
                     /* Keep track of total inputs proceessed. */
@@ -1265,8 +1269,8 @@ namespace TAO
 
                     /* Wallets need to refund inputs when disonnecting coinstake */
                     #ifndef NO_WALLET
-                    if(tx.IsCoinStake() && Legacy::Wallet::GetInstance().IsFromMe(tx))
-                       Legacy::Wallet::GetInstance().DisableTransaction(tx);
+                    if(tx.IsCoinStake() && Legacy::Wallet::Instance().IsFromMe(tx))
+                       Legacy::Wallet::Instance().DisableTransaction(tx);
                     #endif
                 }
 

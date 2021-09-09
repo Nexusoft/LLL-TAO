@@ -14,9 +14,27 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <TAO/Ledger/include/enum.h>
 
 #include <Util/include/json.h>
 #include <LLC/types/uint1024.h>
+
+
+/** RandomTxid
+ *
+ *  Generate a random txid for use in unit tests.
+ *
+ **/
+uint512_t RandomTxid(const uint8_t nType = TAO::Ledger::TRITIUM);
+
+
+/** GenerateBlock
+ *
+ *  Generate a block and process for private mode.
+ *
+ */
+bool GenerateBlock();
+
 
 /** APICall
 *
@@ -28,7 +46,7 @@ ________________________________________________________________________________
 *  @return JSON returned by the API
 *
 **/
-json::json APICall(const std::string& strMethod, const json::json& jsonParams);
+encoding::json APICall(const std::string& strMethod, const encoding::json& jsonParams);
 
 
 /** InitializeUser

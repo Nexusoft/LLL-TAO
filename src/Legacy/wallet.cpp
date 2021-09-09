@@ -52,6 +52,14 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
+    /** Internal pointer for this class's instance. */
+    std::atomic<Wallet*> Wallet::INSTANCE = nullptr;
+
+
+    /* Track if wallet has been loaded from disk. */
+    bool Wallet::fFileBacked = false;
+    bool Wallet::fLoaded     = false;
+
 
     /* Nexus: Setting indicating wallet unlocked for block minting only */
     bool fWalletUnlockMintOnly = false;
@@ -74,9 +82,6 @@ namespace Legacy
     : CryptoKeyStore    ( )
     , nWalletVersion    (FEATURE_BASE)
     , nWalletMaxVersion (FEATURE_BASE)
-    , fFileBacked       (false)
-    , fLoaded           (false)
-    , strWalletFile     ("")
     , mapMasterKeys     ( )
     , nMasterKeyMaxID   (0)
     , addressBook       (AddressBook(*this))
@@ -96,36 +101,55 @@ namespace Legacy
     }
 
 
-    /* Implement static methods */
-
     /* Initializes the wallet instance. */
-    bool Wallet::InitializeWallet(const std::string& strWalletFileIn)
+    bool Wallet::Initialize(const std::string& strWalletFileIn)
     {
         if(Wallet::fWalletInitialized.load())
             return false;
         else
         {
-            Wallet& wallet = Wallet::GetInstance();
-            wallet.strWalletFile = strWalletFileIn;
-            wallet.fFileBacked = true;
+            /* Check for valid pointer and initialization. */
+            if(Wallet::INSTANCE.load() == nullptr)
+            {
+                Wallet::INSTANCE.store(new Wallet());
+                Wallet::fWalletInitialized.store(true);
+            }
 
-            WalletDB walletdb(strWalletFileIn);
-            walletdb.InitializeDatabase();
+            /* Initialize wallet static values. */
+            Wallet::Instance().fFileBacked = true;
+
+            /* Initialize database environment. */
+            WalletDB::Initialize(strWalletFileIn);
         }
 
         return true;
     }
 
 
-    Wallet& Wallet::GetInstance()
+    Wallet& Wallet::Instance()
     {
-        /* This will create a default initialized, memory only wallet file on first call (lazy instantiation) */
-        static Wallet wallet;
+        /* Check for null accesses. */
+        if(Wallet::INSTANCE.load() == nullptr)
+            throw debug::exception(FUNCTION, "-> access to nullptr");
 
-        if(!Wallet::fWalletInitialized.load())
-            Wallet::fWalletInitialized.store(true);
+        /* Return our instance. */
+        return *Wallet::INSTANCE.load();
+    }
 
-        return wallet;
+
+    /* Shutdown the wallet subsystems. */
+    void Wallet::Shutdown()
+    {
+        /* Check if instance needs to be initialized. */
+        if(Wallet::INSTANCE.load() != nullptr)
+        {
+            /* Cleanup our pointers. */
+            delete Wallet::INSTANCE.load();
+            Wallet::INSTANCE.store(nullptr);
+        }
+
+        /* Shut down wallet database environment. */
+        WalletDB::Shutdown();
     }
 
 
@@ -156,8 +180,7 @@ namespace Legacy
             if(fFileBacked)
             {
                 /* Store new version to database (overwrites old) */
-                WalletDB walletdb(strWalletFile);
-                walletdb.WriteMinVersion(nWalletVersion);
+                WalletDB::WriteMinVersion(nWalletVersion);
             }
         }
 
@@ -194,70 +217,67 @@ namespace Legacy
 
         fFirstRunRet = false;
 
-        WalletDB walletdb(strWalletFile);
-
         {
             /* Lock wallet so WalletDB can load all data into it */
             //RLOCK(cs_wallet);
 
-            uint32_t nLoadWalletRet = walletdb.LoadWallet(*this);
-
+            uint32_t nLoadWalletRet = WalletDB::LoadWallet();
             if(nLoadWalletRet != DB_LOAD_OK)
                 return nLoadWalletRet;
         }
 
         /* New wallet is indicated by an empty default key */
-        fFirstRunRet = vchDefaultKey.empty();
+        fFirstRunRet = Wallet::Instance().vchDefaultKey.empty();
 
         /* On first run, assign min/max version, generate key pool, and generate a default key for this wallet */
-        if(fFirstRunRet && !IsLocked())
+        if(fFirstRunRet && !Wallet::Instance().IsLocked())
         {
             /* For a newly created wallet, set the min and max version to the latest */
             debug::log(2, FUNCTION, "Setting wallet min version to ", FEATURE_LATEST);
 
-            SetMinVersion(FEATURE_LATEST);
+            Wallet::Instance().SetMinVersion(FEATURE_LATEST);
 
             std::vector<uint8_t> vchNewDefaultKey;
 
             /* For a new wallet, may need to generate initial key pool */
-            if(keyPool.GetKeyPoolSize() == 0)
-                keyPool.NewKeyPool();
+            if(Wallet::Instance().GetKeyPool().GetKeyPoolSize() == 0)
+                Wallet::Instance().GetKeyPool().NewKeyPool();
 
-            if(keyPool.GetKeyPoolSize() > 0)
+            if(Wallet::Instance().GetKeyPool().GetKeyPoolSize() > 0)
             {
                 debug::log(2, FUNCTION, "Adding wallet default key");
 
-                if(!keyPool.GetKeyFromPool(vchNewDefaultKey, false))
+                if(!Wallet::Instance().GetKeyPool().GetKeyFromPool(vchNewDefaultKey, false))
                 {
                     debug::error(FUNCTION, "Error adding wallet default key. Cannot get key from key pool.");
                     return DB_LOAD_FAIL;
                 }
 
-                SetDefaultKey(vchNewDefaultKey);
+                Wallet::Instance().SetDefaultKey(vchNewDefaultKey);
 
-                if(!addressBook.SetAddressBookName(NexusAddress(vchDefaultKey), "default"))
+                if(!Wallet::Instance().GetAddressBook().SetAddressBookName(NexusAddress(Wallet::Instance().vchDefaultKey), "default"))
                 {
                     debug::error(FUNCTION, "Error adding wallet default key. Unable to add key to address book.");
                     return DB_LOAD_FAIL;
                 }
             }
         }
-        else if(nWalletVersion == FEATURE_BASE)
+        else if(Wallet::Instance().nWalletVersion == FEATURE_BASE)
         {
             /* Old wallets set min version but it never got recorded because constructor defaulted the value.
              * This assures older wallet files have it stored.
              */
             uint32_t nStoredMinVersion = 0;
 
-            if(!walletdb.ReadMinVersion(nStoredMinVersion) || nStoredMinVersion == 0)
-                SetMinVersion(FEATURE_BASE);
+            if(!WalletDB::ReadMinVersion(nStoredMinVersion) || nStoredMinVersion == 0)
+                Wallet::Instance().SetMinVersion(FEATURE_BASE);
         }
 
         /* Max allowed version is always the current latest */
-        SetMaxVersion(FEATURE_LATEST);
+        Wallet::Instance().SetMaxVersion(FEATURE_LATEST);
 
         /* Launch background thread to periodically flush the wallet to the backing database */
-        WalletDB::StartFlushThread(strWalletFile);
+        WalletDB::StartFlushThread();
 
         fLoaded = true;
 
@@ -275,9 +295,7 @@ namespace Legacy
         if(fFileBacked)
         {
             bool result = false;
-
-            WalletDB walletdb(strWalletFile);
-            result = walletdb.WriteCryptedKey(vchPubKey, vchCryptedSecret);
+            result = WalletDB::WriteCryptedKey(vchPubKey, vchCryptedSecret);
 
             return result;
         }
@@ -316,8 +334,7 @@ namespace Legacy
         if(fFileBacked && !IsCrypted())
         {
             /* Only if wallet is not encrypted */
-            WalletDB walletdb(strWalletFile);
-            bool result = walletdb.WriteKey(key.GetPubKey(), key.GetPrivKey());
+            bool result = WalletDB::WriteKey(key.GetPubKey(), key.GetPrivKey());
 
             return result;
         }
@@ -339,8 +356,7 @@ namespace Legacy
 
             if(fFileBacked)
             {
-                WalletDB walletdb(strWalletFile);
-                bool result = walletdb.WriteScript(LLC::SK256(redeemScript), redeemScript);
+                bool result = WalletDB::WriteScript(LLC::SK256(redeemScript), redeemScript);
 
                 return result;
             }
@@ -376,8 +392,7 @@ namespace Legacy
 
             if(fFileBacked)
             {
-                WalletDB walletdb(strWalletFile);
-                bool result = walletdb.WriteDefaultKey(vchPubKey);
+                bool result = WalletDB::WriteDefaultKey(vchPubKey);
 
                 if(!result)
                     return false;
@@ -398,8 +413,7 @@ namespace Legacy
 
             if(fFileBacked)
             {
-                WalletDB walletdb(strWalletFile);
-                bool result = walletdb.WriteTrustKey(vchPubKey);
+                bool result = WalletDB::WriteTrustKey(vchPubKey);
 
                 if(!result)
                     return false;
@@ -420,8 +434,7 @@ namespace Legacy
 
             if(fFileBacked)
             {
-                WalletDB walletdb(strWalletFile);
-                bool result = walletdb.EraseTrustKey();
+                bool result = WalletDB::EraseTrustKey();
 
                 if(!result)
                     return false;
@@ -501,17 +514,16 @@ namespace Legacy
             /* Update the backing database. This will store the master key and encrypted keys, and remove old unencrypted keys */
             if(fFileBacked)
             {
-                WalletDB walletdb(strWalletFile);
                 bool fDbEncryptionSuccessful = false;
 
-                fDbEncryptionSuccessful = walletdb.EncryptDatabase(nNewMasterKeyId, kMasterKey, mapNewEncryptedKeys);
+                fDbEncryptionSuccessful = WalletDB::EncryptDatabase(nNewMasterKeyId, kMasterKey, mapNewEncryptedKeys);
 
                 if(!fDbEncryptionSuccessful)
                 {
                     /* Keys encrypted in memory, but not on disk...die to let the user reload their unencrypted wallet. */
                     config::fShutdown.store(true);
                     SHUTDOWN.notify_all();
-                    return debug::error(FUNCTION, "Unable to complete encryption for ", strWalletFile, ". Encryption aborted. Shutting down.");
+                    return debug::error(FUNCTION, "Unable to complete encryption for ", WalletDB::GetDatabaseFile(), ". Encryption aborted. Shutting down.");
                 }
             }
         }
@@ -526,7 +538,7 @@ namespace Legacy
         {
             RLOCK(cs_wallet);
 
-            keyPool.NewKeyPool();
+            Wallet::Instance().GetKeyPool().NewKeyPool();
         }
 
         /* Lock wallet again before rewrite */
@@ -541,8 +553,7 @@ namespace Legacy
 
             if(fFileBacked)
             {
-                WalletDB walletdb(strWalletFile);
-                rewriteResult = walletdb.DBRewrite();
+                rewriteResult = WalletDB::DBRewrite();
             }
         }
 
@@ -693,8 +704,7 @@ namespace Legacy
                     if(fFileBacked)
                     {
                         /* Store new master key encryption to the wallet database (overwrites old value) */
-                        WalletDB walletdb(strWalletFile);
-                        walletdb.WriteMasterKey(pMasterKey.first, pMasterKey.second);
+                        WalletDB::WriteMasterKey(pMasterKey.first, pMasterKey.second);
                     }
 
                     /* Relock file if it was locked when we started */
@@ -1016,10 +1026,10 @@ namespace Legacy
             {
                 std::vector<uint8_t> newDefaultKey;
 
-                if(keyPool.GetKeyFromPool(newDefaultKey, false))
+                if(Wallet::Instance().GetKeyPool().GetKeyFromPool(newDefaultKey, false))
                 {
                     SetDefaultKey(newDefaultKey);
-                    addressBook.SetAddressBookName(NexusAddress(vchDefaultKey), "");
+                    Wallet::Instance().GetAddressBook().SetAddressBookName(NexusAddress(vchDefaultKey), "");
                 }
             }
         }
@@ -1151,8 +1161,7 @@ namespace Legacy
 
             if(mapWallet.erase(hash))
             {
-                WalletDB walletdb(strWalletFile);
-                walletdb.EraseTx(hash);
+                WalletDB::EraseTx(hash);
             }
         }
 
@@ -1911,10 +1920,10 @@ namespace Legacy
                 continue;
 
             /* Check for accounts that don't exist to self. */
-            if(HaveKey(address) && !addressBook.GetAddressBookMap().count(address))
+            if(HaveKey(address) && !Wallet::Instance().GetAddressBook().GetAddressBookMap().count(address))
             {
                 /* Update address book entry. */
-                addressBook.SetAddressBookName(address, "default");
+                Wallet::Instance().GetAddressBook().SetAddressBookName(address, "default");
 
                 debug::log(0, FUNCTION, "Updated ", address.ToString(), " for send to self");
             }
@@ -2010,9 +2019,9 @@ namespace Legacy
                         {
                             /* Assign address book name for change key, or use "default" if blank or we received it with wildcard set */
                             if(wtxNew.strFromAccount == "" || wtxNew.strFromAccount == "*")
-                                addressBook.SetAddressBookName(address, "default");
+                                Wallet::Instance().GetAddressBook().SetAddressBookName(address, "default");
                             else
-                                addressBook.SetAddressBookName(address, wtxNew.strFromAccount);
+                                Wallet::Instance().GetAddressBook().SetAddressBookName(address, wtxNew.strFromAccount);
                         }
                     }
                     else
@@ -2140,7 +2149,7 @@ namespace Legacy
             vCoins.push_back(item.first);
 
         /* Randomly order the transactions as potential inputs */
-        std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
+        LLC::random_shuffle(vCoins.begin(), vCoins.end());
 
         /* Add Each Input to Transaction. */
         std::vector<const WalletTx*> vInputs;
@@ -2297,7 +2306,7 @@ namespace Legacy
             vCoins.push_back(item.first);
 
         /* Randomly order the transactions as potential inputs */
-        std::random_shuffle(vCoins.begin(), vCoins.end(), LLC::GetRandInt);
+        LLC::random_shuffle(vCoins.begin(), vCoins.end());
 
         /* Loop through all transactions, finding and adding available unspent balance to the list of outputs until reach nTargetValue */
         for(const uint512_t& hash : vCoins)
@@ -2354,9 +2363,9 @@ namespace Legacy
                     if(!ExtractAddress(wtx->vout[i].scriptPubKey, address) || !address.IsValid())
                         continue;
 
-                    if(addressBook.HasAddress(address))
+                    if(Wallet::Instance().GetAddressBook().HasAddress(address))
                     {
-                        std::string strEntry = addressBook.GetAddressBookName(address);
+                        std::string strEntry = Wallet::Instance().GetAddressBook().GetAddressBookName(address);
                         if(strEntry == "")
                             strEntry = "default";
 

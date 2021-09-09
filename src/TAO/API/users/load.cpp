@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/types/sessionmanager.h>
-#include <TAO/API/include/utils.h>
+#include <TAO/API/types/session-manager.h>
+
 
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/stake_minter.h>
@@ -32,10 +32,10 @@ namespace TAO
     {
 
         /* Loads and resumes the users session from the local DB */
-        json::json Users::Load(const json::json& params, bool fHelp)
+        encoding::json Users::Load(const encoding::json& params, const bool fHelp)
         {
             /* JSON return value. */
-            json::json ret;
+            encoding::json ret;
 
             /* Pin parameter. */
             SecureString strPin;
@@ -46,10 +46,10 @@ namespace TAO
             else if(params.find("PIN") != params.end())
                 strPin = SecureString(params["PIN"].get<std::string>().c_str());
             else
-                throw APIException(-129, "Missing PIN");
+                throw Exception(-129, "Missing PIN");
 
             if(strPin.size() == 0)
-                throw APIException(-135, "Zero-length PIN");
+                throw Exception(-135, "Zero-length PIN");
 
 
             /* Get the Genesis ID. */
@@ -65,14 +65,14 @@ namespace TAO
                 hashGenesis = TAO::Ledger::SignatureChain::Genesis(params["username"].get<std::string>().c_str());
 
             else
-                throw APIException(-111, "Missing genesis / username");
+                throw Exception(-111, "Missing genesis / username");
 
             /* Load the session */
             Session& session = GetSessionManager().Load(hashGenesis, strPin);
 
             /* Check that it was loaded correctly */
             if(session.IsNull())
-                throw APIException(-309, "Error loading session.");
+                throw Exception(-309, "Error loading session.");
 
             /* Add the session to the notifications processor if it is not already in there*/
             if(NOTIFICATIONS_PROCESSOR && NOTIFICATIONS_PROCESSOR->FindThread(session.ID()) == nullptr)
@@ -82,13 +82,13 @@ namespace TAO
 
             ret["session"] = session.ID().ToString();
 
-            
+
             /* If in client mode, download the users signature chain transactions asynchronously. */
-            if(config::fClient.load())
+            if(config::fClient.load()) //XXX: so hacky, NEVER spawn a new thread, always use a thread pool
             {
                 std::thread([&]()
                 {
-                    TAO::API::DownloadSigChain(hashGenesis, true);
+                    DownloadSigChain(hashGenesis, true);
                 }).detach();
             }
 

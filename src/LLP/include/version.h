@@ -16,15 +16,16 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_VERSION_H
 
 #include <string>
+#include <Util/include/debug.h>
 
 namespace LLP
 {
 
     /* The current Protocol Version. */
-    #define PROTOCOL_MAJOR       3
-    #define PROTOCOL_MINOR       0
-    #define PROTOCOL_REVISION    0
-    #define PROTOCOL_BUILD       0
+    const uint32_t PROTOCOL_MAJOR     = 3;
+    const uint32_t PROTOCOL_MINOR     = 1;
+    const uint32_t PROTOCOL_REVISION  = 0;
+    const uint32_t PROTOCOL_BUILD     = 0;
 
 
     /* Used to determine the features available in the Nexus Network */
@@ -35,18 +36,41 @@ namespace LLP
                      +       1 * PROTOCOL_BUILD;
 
 
-    /* Used to Lock-Out Nodes that are running a protocol version that is too old,
-     * Or to allow certain new protocol changes without confusing Old Nodes. */
+    /* Used to Lock-Out Nodes that are running a protocol version that is too old, */
     const uint32_t MIN_PROTO_VERSION = 20000;
 
 
-    /* Used to define the baseline of Tritium Versioning. */
+    /* Used to define the baseline of Tritium Version. */
     const uint32_t MIN_TRITIUM_VERSION = 3000000;
 
 
     /* The name that will be shared with other nodes. */
     const std::string strProtocolName = "Tritium";
 
+
+    /* Track the current minor version in whole inrements for checking on the network. */
+    inline uint16_t MajorVersion(const uint32_t nProtocolVersion = PROTOCOL_VERSION)
+    {
+        return (nProtocolVersion / 1000000);
+    }
+
+
+    /* Track the current minor version in whole inrements for checking on the network. */
+    inline int16_t MinorVersion(const uint32_t nProtocolVersion, const uint32_t nMajor)
+    {
+        /* Find our base major version number. */
+        uint32_t nVersionMajor = (nMajor * 1000000);
+        if(nVersionMajor > nProtocolVersion)
+            return int16_t(-1); //we return -1 here if below current major protocol version
+
+        return ((nProtocolVersion - nVersionMajor) / 10000);
+    }
+
+
+    //TODO: we want to add a version filtering system into TritiumNode that allows designated messages based on version.
+    //this will allow us to expand the messaging protocol much easier, this method above is one step towards this aim.
+    //this could be a static table, where each message enum has a version number its allowed on. This could also be added
+    //to our flags inside packet header to reject messages that don't mask to the correct flag.
 }
 
 #endif

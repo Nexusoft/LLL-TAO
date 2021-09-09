@@ -66,6 +66,9 @@ namespace TAO
             static std::atomic<uint64_t> nLastTime;
 
             bool fSynchronizing = true;
+            if(!config::GetBoolArg("-sync", true)) //hard value to rely on if needed
+                return false;
+
             /* Persistent switch once synchronized. */
             //if(!fSynchronizing.load())
             //    return false;
@@ -87,7 +90,7 @@ namespace TAO
             if(config::fTestNet.load())
             {
                 /* Check for specific conditions such as local testnet or available connections. */
-                bool fLocalTestnet   = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+                bool fLocalTestnet   = config::fTestNet.load() && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
                 bool fHasConnections = LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() > 0;
 
                 /* Set the synchronizing flag. */
@@ -98,7 +101,7 @@ namespace TAO
                         && stateBest.load().GetBlockTime() < runtime::unifiedtimestamp() - 20 * 60)
 
                     /* If local testnet with connections then rely on LLP flag  */
-                    || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load() )
+                    || (fLocalTestnet && fHasConnections && !LLP::TritiumNode::fSynchronized.load())
 
                     /* If local testnet with no connections then assume sync'd if the last block was more than 30s ago
                        and block age is more than 20 mins, which gives us a 30s window to connect to a local peer */
@@ -270,13 +273,102 @@ namespace TAO
             }
 
             /* Ensure the block height index is intact */
-            if(config::GetBoolArg("-indexheight"))
+            if(config::GetBoolArg("-indexheight") || config::GetBoolArg("-reindexheight"))
             {
-                /* Try and retrieve the block state for the current block height via the height index.
-                    If this fails then we know the block height index is not fully intact so we repair it*/
-                TAO::Ledger::BlockState state;
-                if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::stateBest.load().nHeight, state))
-                     LLD::Ledger->RepairIndexHeight();
+                /* Build our indexing height. */
+                TAO::Ledger::BlockState tLastBlock;
+                if(config::GetBoolArg("-reindexheight") || !LLD::Ledger->ReadBlock(nCheckpointHeight.load(), tLastBlock))
+                {
+                    /* Set our last block as genesis. */
+                    tLastBlock = stateGenesis;
+
+                    /* Use genesis as our hash start. */
+                    uint1024_t hashStart = tLastBlock.GetHash();
+
+                    /* Track our timing. */
+                    runtime::timer tElapsed;
+                    tElapsed.Start();
+
+                    /* List our blocks via a batch read for efficiency. */
+                    std::vector<TAO::Ledger::BlockState> vStates;
+                    while(!config::fShutdown.load() && hashStart != TAO::Ledger::ChainState::hashBestChain.load() &&
+                        LLD::Ledger->BatchRead(hashStart, "block", vStates, 1000, true))
+                    {
+                        /* Loop through all available states. */
+                        for(auto& tBlock : vStates)
+                        {
+                            /* Update start every iteration. */
+                            hashStart = tBlock.GetHash();
+
+                            /* Skip if not in main chain. */
+                            if(!tBlock.IsInMainChain())
+                                continue;
+
+                            /* Check for matching hashes. */
+                            if(tBlock.hashPrevBlock != tLastBlock.GetHash())
+                            {
+                                /* Read the correct block from next index. */
+                                if(!LLD::Ledger->ReadBlock(tLastBlock.hashNextBlock, tBlock))
+                                    return debug::error("Block not found: ", tLastBlock.hashNextBlock.SubString());
+
+                                /* Update hashStart. */
+                                hashStart = tBlock.GetHash();
+                            }
+
+                            /* Cache the block hash. */
+                            tLastBlock = tBlock;
+
+                            /* Add a meter for progress output. */
+                            if(tLastBlock.nHeight % 10000 == 0)
+                            {
+                                /* Calculate our percentage completed. */
+                                const double dPercentage = (100.0 * tLastBlock.nHeight) / TAO::Ledger::ChainState::nBestHeight.load();
+
+                                /* Get elapsed timestamp. */
+                                const uint64_t nElapsed = tElapsed.ElapsedMilliseconds() + 1;
+
+                                /* Find remaining time. */
+                                const uint64_t nRemaining =
+                                    uint64_t(nElapsed * TAO::Ledger::ChainState::nBestHeight.load()) / tBlock.nHeight;
+
+                                /* Log status message of completion time. */
+                                debug::log(0, "Completed ", tLastBlock.nHeight, "/",
+                                    TAO::Ledger::ChainState::nBestHeight.load(), std::fixed, " [", dPercentage, " %]",
+                                    "[", (nRemaining - nElapsed) / 1000, "s remaining]");
+                            }
+
+                            /* Write the new heights to disk. */
+                            if(!LLD::Ledger->IndexBlock(tBlock.nHeight, hashStart))
+                                return debug::error("Failed to index height: ", hashStart.SubString());
+                        }
+                    }
+                }
+            }
+
+            /* Check if we need to persist the -indexheight flag. */
+            else
+            {
+                /* Build our indexing height. */
+                TAO::Ledger::BlockState tLastBlock;
+                if(LLD::Ledger->ReadBlock(nCheckpointHeight.load(), tLastBlock))
+                {
+                    /* Check there is no argument supplied. */
+                    if(!config::HasArg("-indexheight"))
+                    {
+                        /* Warn that -indexheight is persistent. */
+                        debug::log(0, FUNCTION, "-indexheight enabled from valid indexes, to disable please use -noindexheight");
+
+                        /* Set indexing argument now. */
+                        LOCK(config::ARGS_MUTEX);
+                        config::mapArgs["-indexheight"] = "1";
+                    }
+                    else
+                    {
+                        /* Check for disabled mode. */
+                        if(!config::GetBoolArg("-indexheight"))
+                            debug::warning(FUNCTION, "-indexheight disabled with valid indexes, to enable please remove -noindexheight");
+                    }
+                }
             }
 
             stateBest.load().print();
@@ -300,7 +392,7 @@ namespace TAO
         /* Get the hash of the genesis block. */
         uint1024_t ChainState::Genesis()
         {
-            return config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : (config::fClient.load() ? TAO::Ledger::hashTritium : TAO::Ledger::hashGenesis);
+            return (config::fHybrid.load() ? TAO::Ledger::hashGenesisHybrid : config::fTestNet.load() ? TAO::Ledger::hashGenesisTestnet : (config::fClient.load() ? TAO::Ledger::hashTritium : TAO::Ledger::hashGenesis));
         }
     }
 }

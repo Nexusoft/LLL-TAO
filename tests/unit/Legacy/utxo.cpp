@@ -46,7 +46,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
     {
         //reserve key from temp wallet
-        Legacy::ReserveKey* pReserveKey = new Legacy::ReserveKey(&Legacy::Wallet::GetInstance());
+        Legacy::ReserveKey* pReserveKey = new Legacy::ReserveKey(&Legacy::Wallet::Instance());
 
         //dummy coinbase
         Legacy::Coinbase coinbase;
@@ -72,10 +72,10 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
 
         //add to wallet
-        REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+        REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
 
         //check balance
-        REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1000000);
+        REQUIRE(Legacy::Wallet::Instance().GetBalance() == 1000000);
     }
 
 
@@ -198,7 +198,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE_FALSE(tx.Verify());
 
             //add to wallet
-            REQUIRE_THROWS(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE_THROWS(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
         }
 
 
@@ -216,7 +216,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
 
             //legacy get key
             std::vector<uint8_t> vKey;
-            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            REQUIRE(Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vKey, false));
             Legacy::NexusAddress address(vKey);
 
             //legacy payload
@@ -251,7 +251,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Ledger->IndexBlock(hashTx, TAO::Ledger::ChainState::stateGenesis.GetHash()));
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
 
             //check register values
             {
@@ -266,7 +266,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             }
 
             //check wallet balance
-            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1900000);
+            REQUIRE(Legacy::Wallet::Instance().GetBalance() == 1900000);
         }
 
         //try to spend an OP::LEGACY
@@ -311,7 +311,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         {
             //legacy get key
             std::vector<uint8_t> vKey;
-            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            REQUIRE(Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vKey, false));
             Legacy::NexusAddress address(vKey);
 
             //create a transaction
@@ -326,11 +326,11 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             Legacy::WalletTx wtx;
 
             //for change
-            Legacy::ReserveKey changeKey(Legacy::Wallet::GetInstance());
+            Legacy::ReserveKey changeKey(Legacy::Wallet::Instance());
 
             //create transaction
             int64_t nFees;
-            REQUIRE(Legacy::Wallet::GetInstance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
+            REQUIRE(Legacy::Wallet::Instance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
 
             //get best
             TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
@@ -351,10 +351,10 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(wtx, state, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(wtx, state, true));
 
             //check wallet balance
-            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1890000);
+            REQUIRE(Legacy::Wallet::Instance().GetBalance() == 1890000);
         }
 
         //set best
@@ -370,7 +370,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         {
             //legacy get key
             std::vector<uint8_t> vKey;
-            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            REQUIRE(Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vKey, false));
             Legacy::NexusAddress address(vKey);
 
             //create a transaction
@@ -385,11 +385,11 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             Legacy::WalletTx wtx;
 
             //for change
-            Legacy::ReserveKey changeKey(Legacy::Wallet::GetInstance());
+            Legacy::ReserveKey changeKey(Legacy::Wallet::Instance());
 
             //create transaction
             int64_t nFees;
-            REQUIRE(Legacy::Wallet::GetInstance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
+            REQUIRE(Legacy::Wallet::Instance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
 
             //get inputs
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
@@ -405,10 +405,10 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(wtx, state, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(wtx, state, true));
 
             //check wallet balance
-            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1880000);
+            REQUIRE(Legacy::Wallet::Instance().GetBalance() == 1880000);
         }
 
 
@@ -435,11 +435,11 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             Legacy::WalletTx wtx;
 
             //for change
-            Legacy::ReserveKey changeKey(Legacy::Wallet::GetInstance());
+            Legacy::ReserveKey changeKey(Legacy::Wallet::Instance());
 
             //create transaction
             int64_t nFees;
-            REQUIRE(Legacy::Wallet::GetInstance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
+            REQUIRE(Legacy::Wallet::Instance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
 
             //get inputs
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
@@ -455,10 +455,10 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(wtx, state, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(wtx, state, true));
 
             //check wallet balance
-            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1850000);
+            REQUIRE(Legacy::Wallet::Instance().GetBalance() == 1850000);
 
             //set the hash to spend
             hashTx = wtx.GetHash();
@@ -481,7 +481,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         {
             //legacy get key
             std::vector<uint8_t> vKey;
-            REQUIRE(Legacy::Wallet::GetInstance().GetKeyPool().GetKeyFromPool(vKey, false));
+            REQUIRE(Legacy::Wallet::Instance().GetKeyPool().GetKeyFromPool(vKey, false));
             Legacy::NexusAddress address(vKey);
 
             //create a transaction
@@ -501,7 +501,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
                         break;
 
                 wtx.vin.push_back(Legacy::TxIn(hashTx, nOut));
-                REQUIRE_FALSE(Legacy::SignSignature(Legacy::Wallet::GetInstance(), tx, wtx, 0));
+                REQUIRE_FALSE(Legacy::SignSignature(Legacy::Wallet::Instance(), tx, wtx, 0));
             }
 
             wtx.vout.push_back(Legacy::TxOut(10000, scriptPubKey));
@@ -514,7 +514,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE_FALSE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //check wallet balance
-            REQUIRE(Legacy::Wallet::GetInstance().GetBalance() == 1850000);
+            REQUIRE(Legacy::Wallet::Instance().GetBalance() == 1850000);
         }
  */
 
