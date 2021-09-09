@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2021
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -57,14 +57,6 @@ ________________________________________________________________________________
 #define MAINNET_MINING_LLP_PORT 9325
 #endif
 
-#ifndef MAINNET_P2P_PORT
-#define MAINNET_P2P_PORT 9326
-#endif
-
-#ifndef MAINNET_P2P_SSL_PORT
-#define MAINNET_P2P_SSL_PORT 7326
-#endif
-
 
 /* Testnet */
 
@@ -98,14 +90,6 @@ ________________________________________________________________________________
 
 #ifndef TESTNET_MINING_LLP_PORT
 #define TESTNET_MINING_LLP_PORT 8325
-#endif
-
-#ifndef TESTNET_P2P_PORT
-#define TESTNET_P2P_PORT 8326
-#endif
-
-#ifndef TESTNET_P2P_SSL_PORT
-#define TESTNET_P2P_SSL_PORT 6326
 #endif
 
 

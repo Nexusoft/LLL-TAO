@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2021
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -31,120 +31,116 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-    namespace Tritium
+    /** Actions invoke behavior in remote node. **/
+    namespace ACTION
     {
-        /** Actions invoke behavior in remote node. **/
-        namespace ACTION
+        enum
         {
-            enum
-            {
-                RESERVED     = 0,
+            RESERVED     = 0,
 
-                /* Verbs. */
-                LIST         = 0x10,
-                GET          = 0x11,
-                NOTIFY       = 0x12,
-                AUTH         = 0x13,
-                DEAUTH       = 0x14,
-                VERSION      = 0x15,
-                SUBSCRIBE    = 0x16,
-                UNSUBSCRIBE  = 0x17,
-                VALIDATE     = 0x18,
-                REQUEST      = 0x19,
+            /* Verbs. */
+            LIST         = 0x10,
+            GET          = 0x11,
+            NOTIFY       = 0x12,
+            AUTH         = 0x13,
+            DEAUTH       = 0x14,
+            VERSION      = 0x15,
+            SUBSCRIBE    = 0x16,
+            UNSUBSCRIBE  = 0x17,
+            VALIDATE     = 0x18,
+            REQUEST      = 0x19,
 
-                /* Protocol. */
-                PING         = 0x1a,
-                PONG         = 0x1b
+            /* Protocol. */
+            PING         = 0x1a,
+            PONG         = 0x1b
 
-            };
-        }
+        };
+    }
 
 
-        /** Types are objects that can be sent in packets. **/
-        namespace TYPES
+    /** Types are objects that can be sent in packets. **/
+    namespace TYPES
+    {
+        enum
         {
-            enum
-            {
-                /* Key Types. */
-                UINT256_T     = 0x20,
-                UINT512_T     = 0x21,
-                UINT1024_T    = 0x22,
-                STRING        = 0x23,
-                BYTES         = 0x24,
-                LOCATOR       = 0x25,
-                LASTINDEX     = 0x26, //sends a last index notify after list
+            /* Key Types. */
+            UINT256_T     = 0x20,
+            UINT512_T     = 0x21,
+            UINT1024_T    = 0x22,
+            STRING        = 0x23,
+            BYTES         = 0x24,
+            LOCATOR       = 0x25,
+            LASTINDEX     = 0x26, //sends a last index notify after list
 
-                /* Object Types. */
-                BLOCK         = 0x30,
-                TRANSACTION   = 0x31,
-                TIMESEED      = 0x32,
-                BESTHEIGHT    = 0x33,
-                CHECKPOINT    = 0x34,
-                ADDRESS       = 0x35,
-                BESTCHAIN     = 0x36,
-                MEMPOOL       = 0x37,
-                SIGCHAIN      = 0x38,
-                MERKLE        = 0x39,
-                GENESIS       = 0x3a,
-                NOTIFICATION  = 0x3b,
-                TRIGGER       = 0x3c,
-                REGISTER      = 0x3d,
-                P2PCONNECTION = 0x3e,
-                PEERADDRESS   = 0x3f,
-            };
-        }
+            /* Object Types. */
+            BLOCK         = 0x30,
+            TRANSACTION   = 0x31,
+            TIMESEED      = 0x32,
+            BESTHEIGHT    = 0x33,
+            CHECKPOINT    = 0x34,
+            ADDRESS       = 0x35,
+            BESTCHAIN     = 0x36,
+            MEMPOOL       = 0x37,
+            SIGCHAIN      = 0x38,
+            MERKLE        = 0x39,
+            GENESIS       = 0x3a,
+            NOTIFICATION  = 0x3b,
+            TRIGGER       = 0x3c,
+            REGISTER      = 0x3d,
+            P2PCONNECTION = 0x3e,
+            PEERADDRESS   = 0x3f,
+        };
+    }
 
 
-        /** Specifiers describe object type in greater detail. **/
-        namespace SPECIFIER
+    /** Specifiers describe object type in greater detail. **/
+    namespace SPECIFIER
+    {
+        enum
         {
-            enum
-            {
-                /* Specifier. */
-                LEGACY       = 0x40, //specify for legacy data types
-                TRITIUM      = 0x41, //specify for tritium data types
-                SYNC         = 0x42, //specify a sync block type
-                TRANSACTIONS = 0x43, //specify to send memory transactions first
-                CLIENT       = 0x44, //specify for blocks to be sent and received for clients
-            };
-        }
+            /* Specifier. */
+            LEGACY       = 0x40, //specify for legacy data types
+            TRITIUM      = 0x41, //specify for tritium data types
+            SYNC         = 0x42, //specify a sync block type
+            TRANSACTIONS = 0x43, //specify to send memory transactions first
+            CLIENT       = 0x44, //specify for blocks to be sent and received for clients
+        };
+    }
 
 
-        /** Status returns available states. **/
-        namespace RESPONSE
+    /** Status returns available states. **/
+    namespace RESPONSE
+    {
+        enum
         {
-            enum
-            {
-                ACCEPTED     = 0x50,
-                REJECTED     = 0x51,
-                STALE        = 0x52,
-                UNSUBSCRIBED = 0x53, //let node know it was unsubscribed successfully
-                AUTHORIZED   = 0x54,
-                COMPLETED    = 0x55, //let node know an event was completed
-                VALIDATED    = 0x56,
-            };
-        }
+            ACCEPTED     = 0x50,
+            REJECTED     = 0x51,
+            STALE        = 0x52,
+            UNSUBSCRIBED = 0x53, //let node know it was unsubscribed successfully
+            AUTHORIZED   = 0x54,
+            COMPLETED    = 0x55, //let node know an event was completed
+            VALIDATED    = 0x56,
+        };
+    }
 
 
-        /** Subscription flags. */
-        namespace SUBSCRIPTION
+    /** Subscription flags. */
+    namespace SUBSCRIPTION
+    {
+        enum
         {
-            enum
-            {
-                BLOCK           = (1 << 1),
-                TRANSACTION     = (1 << 2),
-                TIMESEED        = (1 << 3),
-                BESTHEIGHT      = (1 << 4),
-                CHECKPOINT      = (1 << 5),
-                ADDRESS         = (1 << 6),
-                LASTINDEX       = (1 << 7),
-                BESTCHAIN       = (1 << 8),
-                SIGCHAIN        = (1 << 9),
-                NOTIFICATION    = (1 << 10),
-            };
-        }
-
-    } // end namespace Tritium
+            BLOCK           = (1 << 1),
+            TRANSACTION     = (1 << 2),
+            TIMESEED        = (1 << 3),
+            BESTHEIGHT      = (1 << 4),
+            CHECKPOINT      = (1 << 5),
+            ADDRESS         = (1 << 6),
+            LASTINDEX       = (1 << 7),
+            BESTCHAIN       = (1 << 8),
+            SIGCHAIN        = (1 << 9),
+            NOTIFICATION    = (1 << 10),
+        };
+    }
 
 
     /** TritiumNode
@@ -525,20 +521,20 @@ namespace LLP
         {
             /* Create our trigger nonce. */
             uint64_t nNonce = LLC::GetRand();
-            pNode->PushMessage(LLP::Tritium::TYPES::TRIGGER, nNonce);
+            pNode->PushMessage(LLP::TYPES::TRIGGER, nNonce);
 
             /* Request the inventory message. */
             pNode->PushMessage(nMsg, std::forward<Args>(args)...);
 
             /* Create the condition variable trigger. */
             LLP::Trigger REQUEST_TRIGGER;
-            pNode->AddTrigger(LLP::Tritium::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
+            pNode->AddTrigger(LLP::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
 
             /* Process the event. */
             REQUEST_TRIGGER.wait_for_nonce(nNonce, nTimeout);
 
             /* Cleanup our event trigger. */
-            pNode->Release(LLP::Tritium::RESPONSE::COMPLETED);
+            pNode->Release(LLP::RESPONSE::COMPLETED);
 
         }
 

@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2021
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -248,7 +248,7 @@ namespace LLD
 
                         /* Request the sig chain. */
                         debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
-                        LLP::TritiumNode::BlockingMessage(5000, pNode.get(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::REGISTER), hashRegister);
+                        LLP::TritiumNode::BlockingMessage(5000, pNode.get(), LLP::ACTION::GET, uint8_t(LLP::TYPES::REGISTER), hashRegister);
                         debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
                     }
                     else

@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2021
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -81,14 +81,6 @@ namespace LLP
 
     /* Declaration of sessions sets. (private). */
     std::map<uint64_t, std::pair<uint32_t, uint32_t>> TritiumNode::mapSessions;
-
-
-    /** Mutex for controlling access to the p2p requests map. **/
-    std::mutex TritiumNode::P2P_REQUESTS_MUTEX;
-
-
-    /** map of P2P request timestamps by source genesis hash. **/
-    std::map<uint256_t, uint64_t> TritiumNode::mapP2PRequests;
 
 
     /* Declaration of block height at the start of last sync. */
@@ -3440,135 +3432,6 @@ namespace LLP
                 break;
             }
 
-            case ACTION::REQUEST:
-            {
-                /* deserialize the type */
-                uint8_t nType;
-                ssPacket >> nType;
-
-                switch(nType)
-                {
-                    /* Caller is requesting a peer to peer connection to communicate via the messaging LLP*/
-                    case TYPES::P2PCONNECTION:
-                    {
-                        /* get the source genesis hash */
-                        uint256_t hashFrom;
-                        ssPacket >> hashFrom;
-
-                        /* Get the connection request */
-                        LLP::P2P::ConnectionRequest request;
-                        ssPacket >> request;
-
-                        /* Get the public key. */
-                        std::vector<uint8_t> vchPubKey;
-                        ssPacket >> vchPubKey;
-
-                        /* Get the signature. */
-                        std::vector<uint8_t> vchSig;
-                        ssPacket >> vchSig;
-
-                        /* Check the timestamp. If the request is older than 30s then it is stale so ignore the message */
-                        if(request.nTimestamp > runtime::unifiedtimestamp() || request.nTimestamp < runtime::unifiedtimestamp() - 30)
-                        {
-                            debug::log(3, NODE, "ACTION::REQUEST::P2P: timestamp out of range (stale)");
-                            return true;
-                        }
-
-                        /* See whether we have processed a P2P request from this user in the last 5 seconds.
-                           If so then ignore the message. If not then relay the message to our peers. */
-                        {
-                            LOCK(P2P_REQUESTS_MUTEX);
-                            if(mapP2PRequests.count(hashFrom) == 0 || mapP2PRequests[hashFrom] < request.nTimestamp - 5)
-                            {
-                                /* Check that the source and destination genesis exists before relaying. We skip this
-                                   in client mode as we will only have local scope and not know about all genesis hashes */
-                                if(!config::fClient.load())
-                                {
-                                    /* Check that the source genesis exists. */
-                                    if(!LLD::Ledger->HasGenesis(request.hashPeer))
-                                        return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid destination genesis hash");
-
-                                    /* Check that the source genesis exists. */
-                                    if(!LLD::Ledger->HasGenesis(hashFrom))
-                                        return debug::drop(NODE, "ACTION::REQUEST::P2P: invalid source genesis hash");
-                                }
-
-                                /* Verify the signature before relaying.  Again we don't do this in client mode as we only have
-                                   local scope and won't be able to access the crypto object register of the hashFrom */
-                                if(!config::fClient.load())
-                                {
-                                    /* Build the byte stream from the request data in order to verify the signature */
-                                    DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
-                                    ssCheck << hashFrom << request;
-
-                                    /* Verify the signature */
-                                    if(!TAO::Ledger::SignatureChain::Verify(hashFrom, "network", ssCheck.Bytes(), vchPubKey, vchSig))
-                                        return debug::error(NODE, "ACTION::REQUEST::P2P: invalid transaction signature");
-
-                                    /* Reset the packet data pointer */
-                                    ssPacket.Reset();
-
-                                    /* Relay the P2P request */
-                                    TRITIUM_SERVER->Relay
-                                    (
-                                        uint8_t(ACTION::REQUEST),
-                                        uint8_t(TYPES::P2PCONNECTION),
-                                        hashFrom,
-                                        request,
-                                        vchPubKey,
-                                        vchSig
-                                    );
-                                }
-
-                                /* Check to see whether the destination genesis is logged in on this node */
-                                if(TAO::API::users->LoggedIn(request.hashPeer))
-                                {
-                                    /* Get the users session */
-                                    TAO::API::Session& session = TAO::API::users->GetSession(request.hashPeer);
-
-                                    /* If an incoming request already exists from this peer then remove it */
-                                    if(session.HasP2PRequest(request.strAppID, hashFrom, true))
-                                        session.DeleteP2PRequest(request.strAppID, hashFrom, true);
-
-                                    /* Add this incoming request to the P2P requests queue for this user */
-                                    LLP::P2P::ConnectionRequest requestIncoming = { runtime::unifiedtimestamp(), request.strAppID, hashFrom, request.nSession, request.address, request.nPort, request.nSSLPort };
-                                    session.AddP2PRequest(requestIncoming, true);
-
-                                    debug::log(3, NODE, "P2P Request received from " , hashFrom.ToString(), " for appID ", request.strAppID );
-                                }
-                            }
-
-                            /* Log this request */
-                            mapP2PRequests[hashFrom] = request.nTimestamp;
-                        }
-
-                        break;
-                    }
-                    default:
-                    {
-                        return debug::drop(NODE, "ACTION::REQUEST invalid type specified");
-                    }
-                }
-
-                break;
-            }
-
-            case TYPES::PEERADDRESS:
-            {
-                /* Ignore the message if we have already obtained our IP address */
-                if(!addrThis.load().IsValid())
-                {
-                    /* Deserialize the address */
-                    BaseAddress addr;
-                    ssPacket >> addr;
-
-                    /* Store in atomic value. */
-                    addrThis.store(addr);
-                }
-
-                break;
-            }
-
             default:
                 return debug::drop(NODE, "invalid protocol message ", INCOMING.MESSAGE);
         }
@@ -3968,34 +3831,6 @@ namespace LLP
         /* Switch based on message type */
         switch(nMsg)
         {
-            /* Filter out request messages so that we don't send them to peers on older protocol versions */
-            case ACTION::REQUEST :
-            {
-                /* Get the request type */
-                uint8_t nType = 0;
-                ssData >> nType;
-
-                /* Switch based on type. */
-                switch(nType)
-                {
-                    case TYPES::P2PCONNECTION:
-                    {
-                        /* Ensure the peer is on a high enough version to receive the P2PCONNECTION message */
-                        if(nProtocolVersion >= MIN_TRITIUM_VERSION)
-                            ssRelay = ssData;
-                        break;
-                    }
-                    default:
-                    {
-                        /* Default to letting the message be relayed */
-                        ssRelay = ssData;
-                        break;
-                    }
-                }
-
-                break;
-            }
-
             /* Filter notifications. */
             case ACTION::NOTIFY:
             {
@@ -4347,18 +4182,18 @@ namespace LLP
         /* Relay the block and bestchain. */
         LLP::TRITIUM_SERVER->Relay
         (
-            LLP::Tritium::ACTION::NOTIFY,
+            LLP::ACTION::NOTIFY,
 
             /* Relay BLOCK notification. */
-            uint8_t(LLP::Tritium::TYPES::BLOCK),
+            uint8_t(LLP::TYPES::BLOCK),
             hashBlock,
 
             /* Relay BESTCHAIN notification. */
-            uint8_t(LLP::Tritium::TYPES::BESTCHAIN),
+            uint8_t(LLP::TYPES::BESTCHAIN),
             hashBlock,
 
             /* Relay BESTHEIGHT notification. */
-            uint8_t(LLP::Tritium::TYPES::BESTHEIGHT),
+            uint8_t(LLP::TYPES::BESTHEIGHT),
             block.nHeight
         );
 
@@ -4480,7 +4315,7 @@ namespace LLP
         }
 
         /* Relay all of our SIGCHAIN events. */
-        LLP::TRITIUM_SERVER->_Relay(LLP::Tritium::ACTION::NOTIFY, ssRelay);
+        LLP::TRITIUM_SERVER->_Relay(LLP::ACTION::NOTIFY, ssRelay);
 
         /* Report status once complete. */
         debug::log(0, FUNCTION, "Relay for ", hashBlock.SubString(), " completed in ", swTimer.ElapsedMilliseconds(), " ms [", (nTotalEvents * 1000000) / (swTimer.ElapsedMicroseconds() + 1), " events/s]");
@@ -4524,9 +4359,9 @@ namespace LLP
 
             /* Request the sig chain from all. */
             if(bWait)
-                TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                TritiumNode::BlockingMessage(10000, pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
             else
-                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::SIGCHAIN), hashGenesis, hashLast);
 
             /* Get the last event txid */
             uint512_t hashLastEvent;
@@ -4537,10 +4372,10 @@ namespace LLP
             {
                 /* Request notifications/events. */
                 if(bWait)
-                    TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
+                    TritiumNode::BlockingMessage(10000, pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
 
                 else
-                    pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
+                    pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
 
                 /* Get the last legacy event txid*/
                 uint512_t hashLastLegacyEvent;
@@ -4548,9 +4383,9 @@ namespace LLP
 
                 /* Request legacy notifications/events. */
                 if(bWait)
-                    TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
+                    TritiumNode::BlockingMessage(10000, pNode, LLP::ACTION::LIST, uint8_t(LLP::SPECIFIER::LEGACY), uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
                 else
-                    pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::SPECIFIER::LEGACY), uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
+                    pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::SPECIFIER::LEGACY), uint8_t(LLP::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
 
 
                 /* Request notifications for any tokens we own, or any tokens that we have accounts for */
@@ -4570,9 +4405,9 @@ namespace LLP
 
                         /* Request existing notifications/events. */
                         if(bWait)
-                            TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                            TritiumNode::BlockingMessage(10000, pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
                         else
-                            pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                            pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
 
                     }
                     else if(hashAddress.IsAccount())
@@ -4597,9 +4432,9 @@ namespace LLP
 
                             /* Request existing notifications/events. */
                             if(bWait)
-                                TritiumNode::BlockingMessage(10000, pNode, LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                                TritiumNode::BlockingMessage(10000, pNode, LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
                             else
-                                pNode->PushMessage(LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
+                                pNode->PushMessage(LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashAddress, hashLastEvent);
                         }
                     }
                 }

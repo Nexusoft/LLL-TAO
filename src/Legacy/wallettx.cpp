@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2021
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -748,9 +748,9 @@ namespace Legacy
                     {
                         LLP::TRITIUM_SERVER->Relay
                         (
-                            LLP::Tritium::ACTION::NOTIFY,
-                            uint8_t(LLP::Tritium::SPECIFIER::LEGACY),
-                            uint8_t(LLP::Tritium::TYPES::TRANSACTION),
+                            LLP::ACTION::NOTIFY,
+                            uint8_t(LLP::SPECIFIER::LEGACY),
+                            uint8_t(LLP::TYPES::TRANSACTION),
                             hash
                         );
                     }
@@ -775,9 +775,9 @@ namespace Legacy
                 {
                     LLP::TRITIUM_SERVER->Relay
                     (
-                        LLP::Tritium::ACTION::NOTIFY,
-                        uint8_t(LLP::Tritium::SPECIFIER::LEGACY),
-                        uint8_t(LLP::Tritium::TYPES::TRANSACTION),
+                        LLP::ACTION::NOTIFY,
+                        uint8_t(LLP::SPECIFIER::LEGACY),
+                        uint8_t(LLP::TYPES::TRANSACTION),
                         hash
                     );
                 }

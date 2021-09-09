@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2021
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -42,9 +42,7 @@ bool CheckPermissions(const std::string &strAddress, uint16_t nPort)
             || nPort == static_cast<uint16_t>(config::GetArg(std::string("-serversslport"), (TRITIUM_TESTNET_SSL_PORT + (config::GetArg("-testnet", 0) - 1))))
             || nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1))))
             || nPort == static_cast<uint16_t>(config::GetArg(std::string("-sslport"), (TRITIUM_TESTNET_SSL_PORT + (config::GetArg("-testnet", 0) - 1))))
-            || nPort == static_cast<uint16_t>(TESTNET_TIME_LLP_PORT)
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), TESTNET_P2P_PORT ))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-p2psslport"), TESTNET_P2P_SSL_PORT )))
+            || nPort == static_cast<uint16_t>(TESTNET_TIME_LLP_PORT))
             fOpen = true;
     }
     else
@@ -54,9 +52,7 @@ bool CheckPermissions(const std::string &strAddress, uint16_t nPort)
             || nPort == static_cast<uint16_t>(config::GetArg(std::string("-serversslport"), TRITIUM_MAINNET_SSL_PORT))
             || nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), TRITIUM_MAINNET_PORT))
             || nPort == static_cast<uint16_t>(config::GetArg(std::string("-sslport"), TRITIUM_MAINNET_SSL_PORT))
-            || nPort == static_cast<uint16_t>(MAINNET_TIME_LLP_PORT)
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), MAINNET_P2P_PORT ))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-p2psslport"), MAINNET_P2P_SSL_PORT )))
+            || nPort == static_cast<uint16_t>(MAINNET_TIME_LLP_PORT))
             fOpen = true;
     }
 

@@ -2,7 +2,7 @@
 
 			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-			(c) Copyright The Nexus Developers 2014 - 2019
+			(c) Copyright The Nexus Developers 2014 - 2021
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -153,8 +153,8 @@ namespace TAO
                         ++nTotal;
 
                         /* Push to stream: NOTE: we need to ask for both types here since we don't have any good way to determine with */
-                        ssResponse << uint8_t(LLP::Tritium::TYPES::TRANSACTION) << vin.prevout.hash; // 100% certainty what input tx type is
-                        ssResponse << uint8_t(LLP::Tritium::SPECIFIER::LEGACY) << uint8_t(LLP::Tritium::TYPES::TRANSACTION) << vin.prevout.hash;
+                        ssResponse << uint8_t(LLP::TYPES::TRANSACTION) << vin.prevout.hash; // 100% certainty what input tx type is
+                        ssResponse << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::TRANSACTION) << vin.prevout.hash;
 
                         /* Debug output. */
                         debug::log(2, FUNCTION, "Requesting missing tx ", vin.prevout.hash.SubString());
@@ -168,10 +168,10 @@ namespace TAO
                     if(pnode)
                     {
                         /* Push to stream. */
-                        ssResponse << uint8_t(LLP::Tritium::SPECIFIER::LEGACY) << uint8_t(LLP::Tritium::TYPES::TRANSACTION) << hashTx;
+                        ssResponse << uint8_t(LLP::SPECIFIER::LEGACY) << uint8_t(LLP::TYPES::TRANSACTION) << hashTx;
 
                         /* Push the packet response. */
-                        pnode->WritePacket(LLP::TritiumNode::NewMessage(LLP::Tritium::ACTION::GET, ssResponse));
+                        pnode->WritePacket(LLP::TritiumNode::NewMessage(LLP::ACTION::GET, ssResponse));
 
                         /* Update consecutive orphans. */
                         ++pnode->nConsecutiveOrphans;
@@ -237,9 +237,9 @@ namespace TAO
                 /* Relay the transaction notification. */
                 LLP::TRITIUM_SERVER->Relay
                 (
-                    LLP::Tritium::ACTION::NOTIFY,
-                    uint8_t(LLP::Tritium::SPECIFIER::LEGACY),
-                    uint8_t(LLP::Tritium::TYPES::TRANSACTION),
+                    LLP::ACTION::NOTIFY,
+                    uint8_t(LLP::SPECIFIER::LEGACY),
+                    uint8_t(LLP::TYPES::TRANSACTION),
                     hashTx
                 );
             }

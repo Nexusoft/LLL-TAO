@@ -13,8 +13,6 @@ ________________________________________________________________________________
 
 #pragma once
 
-#include <LLP/types/p2p.h>
-
 #include <TAO/Ledger/types/sigchain.h>
 #include <TAO/Ledger/types/pinunlock.h>
 
@@ -70,7 +68,7 @@ namespace TAO
                 std::mutex CREATE_MUTEX;
 
 
-                /** The txid of the transaction that was used to authenticate them on login.  This is cached so that we can 
+                /** The txid of the transaction that was used to authenticate them on login.  This is cached so that we can
                     use this for subsequent authentication of transactions, unlock etc **/
                 uint512_t hashAuth;
 
@@ -78,15 +76,15 @@ namespace TAO
                 /** Initialize
                  *
                  *  Initializes the session from username / password / pin
-                 * 
+                 *
                  *  @param[in] pSigChain Signature chain of the user starting their session
                  *  @param[in] strPin Pin of the user starting their session
                  *  @param[in] nSessionID The ID for this session
-                 * 
+                 *
                  *  @return The newly created session instance
-                 * 
+                 *
                  **/
-                void Initialize(const TAO::Ledger::SignatureChain& pUser, 
+                void Initialize(const TAO::Ledger::SignatureChain& pUser,
                         const SecureString& strPin,
                         const uint256_t& nSessionID);
 
@@ -125,9 +123,9 @@ namespace TAO
                 /** UpdatePassword
                  *
                  *  Updates the password stored in the internal sig chain
-                 * 
+                 *
                  *  @param[in] strPassword The new password to set to update.
-                 * 
+                 *
                  **/
                 void UpdatePassword(const SecureString& strPassword);
 
@@ -135,10 +133,10 @@ namespace TAO
                 /** UpdatePIN
                  *
                  *  Updates the cached pin and its unlocked actions
-                 * 
+                 *
                  *  @param[in] strPin The PIN to update.
                  *  @param[in] nUnlockedActions Bitmask of the unlocked actions for the pin.
-                 * 
+                 *
                  **/
                 void UpdatePIN(const SecureString& strPin, uint8_t nUnlockedActions);
 
@@ -222,7 +220,7 @@ namespace TAO
                 /** GetNetworkKey
                 *
                 *  Returns the private key for the network public key for a logged in session
-                * 
+                *
                 *  @param[in] nSession The session identifier.
                 *
                 *  @return the private key for the auth public key
@@ -233,8 +231,8 @@ namespace TAO
 
                 /** AddP2PRequest
                 *
-                *  Adds a new P2P Request. 
-                * 
+                *  Adds a new P2P Request.
+                *
                 *  @param[in] request The request to add.
                 *  @param[in] fIncoming Flag indicating whether this is an incoming or outgoing request .
                 *
@@ -244,13 +242,13 @@ namespace TAO
 
                 /** GetP2PRequest
                 *
-                *  Gets P2P Request matching the app id / hashPeer criteria.  
-                * 
+                *  Gets P2P Request matching the app id / hashPeer criteria.
+                *
                 *  @param[in] request The application ID of the request to search for.
                 *  @param[in] request The peer genesis hash of the request to search for.
                 *  @param[in] fIncoming Flag indicating whether this is an incoming or outgoing request .
                 *
-                *  @return The connection request.  
+                *  @return The connection request.
                 *
                 **/
                 LLP::P2P::ConnectionRequest GetP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming) const;
@@ -258,13 +256,13 @@ namespace TAO
 
                 /** HasP2PRequest
                 *
-                *  Checks to see if a P2P Request matching the app id / hashPeer criteria exists.  
-                * 
+                *  Checks to see if a P2P Request matching the app id / hashPeer criteria exists.
+                *
                 *  @param[in] request The application ID of the request to search for.
                 *  @param[in] request The peer genesis hash of the request to search for.
                 *  @param[in] fIncoming Flag indicating whether this is an incoming or outgoing request .
                 *
-                *  @return True if a matching connection exists.  
+                *  @return True if a matching connection exists.
                 *
                 **/
                 bool HasP2PRequest(const std::string& strAppID, const uint256_t& hashPeer, bool fIncoming) const;
@@ -272,8 +270,8 @@ namespace TAO
 
                 /** DeleteP2PRequest
                 *
-                *  Deletes the P2P Request matching the app id / hashPeer criteria exists.  
-                * 
+                *  Deletes the P2P Request matching the app id / hashPeer criteria exists.
+                *
                 *  @param[in] request The application ID of the request to search for.
                 *  @param[in] request The peer genesis hash of the request to search for.
                 *  @param[in] fIncoming Flag indicating whether this is an incoming or outgoing request .
@@ -284,12 +282,12 @@ namespace TAO
 
                 /** GetP2PRequests
                 *
-                *  Returns a vector of all connection requests.  NOTE: This will copy the internal vector to protect against 
+                *  Returns a vector of all connection requests.  NOTE: This will copy the internal vector to protect against
                 *  direct manipulation by calling code
-                * 
+                *
                 *  @param[in] fIncoming Flag indicating whether to return incoming or outgoing requests .
                 *
-                *  @return The vector of connection requests.  
+                *  @return The vector of connection requests.
                 *
                 **/
                 const std::vector<LLP::P2P::ConnectionRequest> GetP2PRequests(bool fIncoming) const;
@@ -314,10 +312,10 @@ namespace TAO
 
                 /** Save
                  *
-                 *  Encrypts the current session and saves it to the local database 
-                 * 
+                 *  Encrypts the current session and saves it to the local database
+                 *
                  *  @param[in] strPin The pin to use to save the session.
-                 * 
+                 *
                  **/
                 void Save(const SecureString& strPin) const;
 
@@ -325,12 +323,12 @@ namespace TAO
 
                 /** Load
                  *
-                 *  Decrypts and loads an existing session from disk  
-                 * 
+                 *  Decrypts and loads an existing session from disk
+                 *
                  *  @param[in] nSessionID The new ID for this session
                  *  @param[in] hashGenesis The genesis hash of the user to load the session for.
                  *  @param[in] strPin The pin to use to load the session.
-                 * 
+                 *
                  **/
                 void Load(const uint256_t& nSessionID, const uint256_t& hashGenesis, const SecureString& strPin);
 
@@ -345,10 +343,10 @@ namespace TAO
                 /** The session ID **/
                 uint256_t nID;
 
-                
+
                 /** Timstamp when the session started **/
                 uint64_t nStarted;
-                
+
 
                 /** Timstamp when the session was last active **/
                 uint64_t nLastActive;
@@ -356,7 +354,7 @@ namespace TAO
 
                 /** Number of incorrect authentication attempts recorded for this session **/
                 uint8_t nAuthAttempts;
-                
+
 
                 /** Encrypted pointer of signature chain **/
                 memory::encrypted_ptr<TAO::Ledger::SignatureChain> pSigChain;
@@ -371,7 +369,7 @@ namespace TAO
 
 
                 /** Vector of P2P connection requests that have been made TO this sig chain but not yet established **/
-                std::vector<LLP::P2P::ConnectionRequest> vP2PIncoming; 
+                std::vector<LLP::P2P::ConnectionRequest> vP2PIncoming;
 
 
                 /** Vector of P2P connection requests that have been made BY this sig chain but not yet established **/

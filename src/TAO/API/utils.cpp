@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2021
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -1235,7 +1235,7 @@ namespace TAO
                             /* Request the sig chain. */
                             debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashToken.SubString());
 
-                            LLP::TritiumNode::BlockingMessage(30000, pNode.get(), LLP::Tritium::ACTION::LIST, uint8_t(LLP::Tritium::TYPES::NOTIFICATION), hashToken, hashLast);
+                            LLP::TritiumNode::BlockingMessage(30000, pNode.get(), LLP::ACTION::LIST, uint8_t(LLP::TYPES::NOTIFICATION), hashToken, hashLast);
 
                             debug::log(1, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashToken.SubString());
                         }

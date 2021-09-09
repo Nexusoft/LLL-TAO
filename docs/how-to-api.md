@@ -107,7 +107,7 @@ NOTE: some of the commands in this API require LOGIN. Make sure to use the users
 
 ## Ledger API
 
-The ledger API provides access to the ledger, primarily to create and retrieve blocks and transactions, but also to query for ledger state information. 
+The ledger API provides access to the ledger, primarily to create and retrieve blocks and transactions, but also to query for ledger state information.
 
 The Ledger API can be found in the following repo path:
 
@@ -141,23 +141,3 @@ The Invoices API provides users and application developers the ability to issue 
 The Invoices API can be found in the following repo path:
 
 [LLL-TAO/docs/API/INVOICES.MD](API/INVOICES.MD)
-
-
-## Crypto API
-
-The Crypto API provides methods to generate public-private key pairs, encrypt and decrypt data, and manage the public key hashes held in the signature chain's crypto object register. 
-
-
-The Crypto API can be found in the following repo path:
-
-[LLL-TAO/docs/API/CRYPTO.MD](API/CRYPTO.MD)
-
-
-## P2P API
-
-The P2P API can be used to establish a secure peer-to-peer connection between two nodes and then send and receive arbitrary data messages between them.  Callers do **not** need to know the IP address of the peer node as connections are requested only to the username or genesis hash of the peer. Once the peer accepts a connection request, a direct connection is made between the two nodes and communication commences.      
-
-
-The P2P API can be found in the following repo path:
-
-[LLL-TAO/docs/API/P2P.MD](API/P2P.MD)

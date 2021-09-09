@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2021
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -131,7 +131,7 @@ namespace TAO
                         /* Request the genesis hash from the peer. */
                         debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::GENESIS for ", hashRecipient.SubString());
 
-                        LLP::TritiumNode::BlockingMessage(10000, pNode.get(), LLP::Tritium::ACTION::GET, uint8_t(LLP::Tritium::TYPES::GENESIS), hashRecipient);
+                        LLP::TritiumNode::BlockingMessage(10000, pNode.get(), LLP::ACTION::GET, uint8_t(LLP::TYPES::GENESIS), hashRecipient);
 
                         debug::log(1, FUNCTION, "CLIENT MODE: GET::GENESIS received for ", hashRecipient.SubString());
                     }
