@@ -406,19 +406,27 @@ namespace LLP
                 ssPacket >> strFullVersion;
 
                 /* Check for outdated versions. */
-                if(nProtocolVersion < 30000 && config::GetBoolArg("-removeobsolete", true))
+                if(config::GetBoolArg("-removeobsolete", true))
                 {
                     /* Check for invalid versions. */
                     if(strFullVersion.find("5.0.3 Tritium CLI") != strFullVersion.npos)
                         return debug::drop(NODE, "invalid client version ", strFullVersion);
 
-                    /* Get the remaining time to activate. */
-                    const int64_t nTimeLeft =
-                        (TAO::Ledger::EndTransactionTimelock(3) - runtime::unifiedtimestamp());
+                    /* Check for invalid node versions. */
+                    if(strFullVersion.find("5.1.0-pre Tritium CLI") != strFullVersion.npos)
+                        return debug::drop(NODE, "invalid client version ", strFullVersion);
 
-                    /* Check for the activation timestamp for LLP. */
-                    if(nTimeLeft <= 0)
-                        return debug::drop(NODE, "node is using obsolete protocol version ", strFullVersion);
+                    /* Check for invalid protocol versions. */
+                    if(nProtocolVersion < 30000)
+                    {
+                        /* Get the remaining time to activate. */
+                        const int64_t nTimeLeft =
+                            (TAO::Ledger::EndTransactionTimelock(3) - runtime::unifiedtimestamp());
+
+                        /* Check for the activation timestamp for LLP. */
+                        if(nTimeLeft <= 0)
+                            return debug::drop(NODE, "node is using obsolete protocol version ", strFullVersion);
+                    }
                 }
 
                 /* Check for invalid session-id. */
