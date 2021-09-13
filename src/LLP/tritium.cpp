@@ -414,7 +414,7 @@ namespace LLP
 
                     /* Get the remaining time to activate. */
                     const int64_t nTimeLeft =
-                        (TAO::Ledger::EndTransactionTimelock(4) - runtime::unifiedtimestamp());
+                        (TAO::Ledger::EndTransactionTimelock(3) - runtime::unifiedtimestamp());
 
                     /* Check for the activation timestamp for LLP. */
                     if(nTimeLeft <= 0)
