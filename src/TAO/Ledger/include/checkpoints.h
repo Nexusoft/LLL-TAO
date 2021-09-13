@@ -68,7 +68,7 @@ namespace TAO
          *  The height of the last hardcoded checkpoint.
          *
          **/
-        const uint32_t CHECKPOINT_HEIGHT = 2694194;
+        const uint32_t CHECKPOINT_HEIGHT = 4039333;
 
 
         /** MapCheckpoints
