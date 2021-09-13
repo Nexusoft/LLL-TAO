@@ -28,7 +28,7 @@ namespace LLP
 {
 
     /** Max send buffer size. **/
-    const uint64_t MAX_SEND_BUFFER = 3 * 1024 * 1024; //3MB max send buffer
+    const uint64_t MAX_SEND_BUFFER = 30 * 1024 * 1024; //30MB max send buffer
 
 
     /** Socket
