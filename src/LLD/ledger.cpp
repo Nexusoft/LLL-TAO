@@ -810,8 +810,8 @@ namespace LLD
         /* If the caller has requested to include mempool transactions then check there first*/
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            TAO::Ledger::Transaction tx;
-            if(TAO::Ledger::mempool.Get(hashGenesis, tx))
+            /* Check if mempool has given genesis. */
+            if(TAO::Ledger::mempool.Has(hashGenesis))
                 return true;
         }
 
