@@ -805,8 +805,16 @@ namespace LLD
 
 
     /* Checks if a genesis transaction exists. */
-    bool LedgerDB::HasGenesis(const uint256_t& hashGenesis)
+    bool LedgerDB::HasGenesis(const uint256_t& hashGenesis, const uint8_t nFlags)
     {
+        /* If the caller has requested to include mempool transactions then check there first*/
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        {
+            TAO::Ledger::Transaction tx;
+            if(TAO::Ledger::mempool.Get(hashGenesis, tx))
+                return true;
+        }
+
         return Exists(std::make_pair(std::string("genesis"), hashGenesis));
     }
 
@@ -822,6 +830,13 @@ namespace LLD
     bool LedgerDB::ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTx)
     {
         return Read(std::make_pair(std::string("genesis"), hashGenesis), hashTx);
+    }
+
+
+    /* Erases a genesis-id from disk. */
+    bool LedgerDB::EraseGenesis(const uint256_t& hashGenesis)
+    {
+        return Erase(std::make_pair(std::string("genesis"), hashGenesis));
     }
 
 

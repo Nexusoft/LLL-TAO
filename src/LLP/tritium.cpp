@@ -2153,15 +2153,7 @@ namespace LLP
                         {
                             /* Check for obsolete transaction version and ban accordingly. */
                             if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
-                            {
-                                /* Cache self-address in the banned list of the Address Manager. */
-                                if(TRITIUM_SERVER->pAddressManager)
-                                    TRITIUM_SERVER->pAddressManager->Ban(GetAddress());
-
-                                /* Ban from DDOS server as well. */
-                                if(DDOS)
-                                    DDOS->Ban();
-                            }
+                                return debug::drop(NODE, "invalid transaction version, dropping node");
 
                             ++nConsecutiveFails;
                         }

@@ -664,11 +664,12 @@ namespace LLD
          *  Checks if a genesis transaction exists.
          *
          *  @param[in] hashGenesis The genesis ID to check for.
+         *  @param[in] nFlags The flags to determine what state to check for.
          *
          *  @return True if the genesis exists, false otherwise.
          *
          **/
-        bool HasGenesis(const uint256_t& hashGenesis);
+        bool HasGenesis(const uint256_t& hashGenesis, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteGenesis
@@ -695,6 +696,18 @@ namespace LLD
          *
          **/
         bool ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTx);
+
+
+        /** EraseGenesis
+         *
+         *  Erases a genesis-id from disk.
+         *
+         *  @param[in] hashGenesis The genesis ID to check for.
+         *
+         *  @return True if the genesis exists, false otherwise.
+         *
+         **/
+        bool EraseGenesis(const uint256_t& hashGenesis);
 
 
         /** MemoryBegin
