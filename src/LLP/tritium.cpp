@@ -412,20 +412,12 @@ namespace LLP
                     if(strFullVersion.find("5.0.3 Tritium CLI") != strFullVersion.npos)
                         return debug::drop(NODE, "invalid client version ", strFullVersion);
 
-                    /* Check for invalid node versions. */
-                    if(strFullVersion.find("5.1.0-pre Tritium CLI") != strFullVersion.npos)
-                        return debug::drop(NODE, "invalid client version ", strFullVersion);
-
                     /* Check for invalid protocol versions. */
-                    if(nProtocolVersion < 30000)
+                    if(nProtocolVersion < 3020000)
                     {
-                        /* Get the remaining time to activate. */
-                        const int64_t nTimeLeft =
-                            (TAO::Ledger::EndTransactionTimelock(3) - runtime::unifiedtimestamp());
-
                         /* Check for the activation timestamp for LLP. */
-                        if(nTimeLeft <= 0)
-                            return debug::drop(NODE, "node is using obsolete protocol version ", strFullVersion);
+                        if(runtime::unifiedtimestamp() > TAO::Ledger::EndTransactionTimelock(3) + 3600)
+                            return debug::drop(NODE, "node protocol version ", strFullVersion, " disabled after v4 activation");
                     }
                 }
 
@@ -2158,7 +2150,22 @@ namespace LLP
                             nConsecutiveOrphans = 0;
                         }
                         else
+                        {
+                            /* Check for obsolete versions. */
+                            if(tx.nVersion == 2)
+                            {
+                                /* Cache self-address in the banned list of the Address Manager. */
+                                if(TRITIUM_SERVER->pAddressManager)
+                                    TRITIUM_SERVER->pAddressManager->Ban(GetAddress());
+
+                                /* Ban from DDOS server as well. */
+                                if(DDOS)
+                                    DDOS->Ban();
+                            }
+
                             ++nConsecutiveFails;
+                        }
+
 
 
                         break;
@@ -2170,7 +2177,7 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
+                if(nConsecutiveFails >= 100)
                     return debug::drop(NODE, "TX::node reached failure limit");
 
                 /* Check for orphan limit on node. */
