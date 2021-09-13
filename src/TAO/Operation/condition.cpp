@@ -248,18 +248,18 @@ namespace Operation
     /* Evaluate the condition. */
     bool Condition::Evaluate()
     {
-        /* Call the correct version of the evaluate function based on the transaction version.  This process allows us to change
-           the conditions processing logic based on the activation of new transaction versions, without resulting in forks.
-           NOTE: the version switch is based on the caller contract, as that is the contract created in the new transaction. */
-        switch(caller.Version())
-        {
-        case 1:
+        /* Grab the current version now. */
+        const uint32_t nCallerVersion = caller.Version();
+
+        /* Check for version 1 activation. */
+        if(nCallerVersion == 1)
             return EvaluateV1();
-        case 2:
+
+        /* Check for version 2 activation. */
+        if(nCallerVersion >= 2 && nCallerVersion != 3)
             return EvaluateV2();
-        default:
-            return debug::error(FUNCTION, "Unknown transaction version");
-        }
+
+        return debug::error(FUNCTION, "Unknown transaction version");
     }
 
 
