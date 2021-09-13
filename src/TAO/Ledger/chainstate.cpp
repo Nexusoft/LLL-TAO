@@ -24,7 +24,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-    
+
 /* Ledger Layer namespace. */
 namespace Ledger
 {

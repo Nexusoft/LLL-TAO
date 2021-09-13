@@ -2151,8 +2151,8 @@ namespace LLP
                         }
                         else
                         {
-                            /* Check for obsolete versions. */
-                            if(tx.nVersion == 2)
+                            /* Check for obsolete transaction version and ban accordingly. */
+                            if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
                             {
                                 /* Cache self-address in the banned list of the Address Manager. */
                                 if(TRITIUM_SERVER->pAddressManager)
@@ -2165,8 +2165,6 @@ namespace LLP
 
                             ++nConsecutiveFails;
                         }
-
-
 
                         break;
                     }
