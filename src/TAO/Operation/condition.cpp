@@ -255,11 +255,18 @@ namespace Operation
         if(nCallerVersion == 1)
             return EvaluateV1();
 
-        /* Check for version 2 activation. */
-        if(nCallerVersion >= 2 && nCallerVersion != 3)
-            return EvaluateV2();
+        /* Check for version 3 errors. */
+        if(nCallerVersion == 3)
+        {
+            /* Get the remaining time to activate. */
+            const int64_t nTimeLeft =
+                (TAO::Ledger::EndTransactionTimelock(nCallerVersion) - runtime::unifiedtimestamp());
 
-        return debug::error(FUNCTION, "Unknown transaction version");
+            EvaluateV2(); //we need to execute to continue processing contract
+            return debug::error(FUNCTION, "Conditions disabled for ", nTimeLeft, " seconds");
+        }
+
+        return EvaluateV2();
     }
 
 

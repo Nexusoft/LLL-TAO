@@ -78,7 +78,7 @@ namespace Ledger
         1572325200,        //--- Transaction Version 1 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
         1582946400,        //--- Transaction Version 2 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
         1631046780,        //--- Transaction Version 3 Testnet Activation:  09/07/2021 13:33:00 GMT - 7
-        1631557320         //--- Transaction Version 4 Testnet Activation:  09/13/2021 11:18:00 GMT - 7
+        1631563980         //--- Transaction Version 4 Testnet Activation:  09/13/2021 13:13:00 GMT - 7
     };
 
 
