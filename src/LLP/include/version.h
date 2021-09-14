@@ -21,8 +21,8 @@ namespace LLP
 {
 
     /* The current Protocol Version. */
-    #define PROTOCOL_MAJOR       3
-    #define PROTOCOL_MINOR       2
+    #define PROTOCOL_MAJOR       0
+    #define PROTOCOL_MINOR       3
     #define PROTOCOL_REVISION    0
     #define PROTOCOL_BUILD       0
 

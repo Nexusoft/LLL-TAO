@@ -405,22 +405,6 @@ namespace LLP
                 /* Get the version string. */
                 ssPacket >> strFullVersion;
 
-                /* Check for outdated versions. */
-                if(config::GetBoolArg("-removeobsolete", true))
-                {
-                    /* Check for invalid versions. */
-                    if(strFullVersion.find("5.0.3 Tritium CLI") != strFullVersion.npos)
-                        return debug::drop(NODE, "invalid client version ", strFullVersion);
-
-                    /* Check for invalid protocol versions. */
-                    if(nProtocolVersion < 3020000)
-                    {
-                        /* Check for the activation timestamp for LLP. */
-                        if(runtime::unifiedtimestamp() > TAO::Ledger::EndTransactionTimelock(3) + 3600)
-                            return debug::drop(NODE, "node protocol version ", strFullVersion, " disabled after v4 activation");
-                    }
-                }
-
                 /* Check for invalid session-id. */
                 if(nCurrentSession == 0)
                     return debug::drop(NODE, "invalid session-id");
