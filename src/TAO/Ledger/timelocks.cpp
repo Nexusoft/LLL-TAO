@@ -31,11 +31,11 @@ namespace TAO
 
 
         /* The network current transaction version. */
-        const uint32_t NETWORK_TRANSACTION_CURRENT_VERSION = 3;
+        const uint32_t NETWORK_TRANSACTION_CURRENT_VERSION = 4;
 
 
         /* The testnet current transaction version. */
-        const uint32_t TESTNET_TRANSACTION_CURRENT_VERSION = 3;
+        const uint32_t TESTNET_TRANSACTION_CURRENT_VERSION = 4;
 
 
          /* Activated test network at timestamp. */
@@ -81,7 +81,8 @@ namespace TAO
         {
             1572325200,        //--- Transaction Version 1 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
             1582946400,        //--- Transaction Version 2 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
-            1631046780         //--- Transaction Version 3 Testnet Activation:  09/07/2021 13:33:00 GMT - 7
+            1631046780,        //--- Transaction Version 3 Testnet Activation:  09/07/2021 13:33:00 GMT - 7
+            1631563980         //--- Transaction Version 4 Testnet Activation:  09/13/2021 13:13:00 GMT - 7
         };
 
 
@@ -90,7 +91,8 @@ namespace TAO
         {
             1573539371,        //--- Transaction Version 1 Activation:      11/11/2019 23:11:11 GMT - 6
             1584676140,        //--- Transaction Version 2 Activation:      03/19/2020 20:49:00 GMT - 7
-            1631301120         //--- Transaction Version 3 Activation:      09/10/2021 12:12:00 GMT - 7
+            1631301120,        //--- Transaction Version 3 Activation:      09/10/2021 12:12:00 GMT - 7
+            1631819333         //--- Transaction Version 4 Activation:      09/16/2021 12:08:53 GMT - 7
         };
 
 

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/timelocks.h>
@@ -24,7 +25,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-
+    
     /* Ledger Layer namespace. */
     namespace Ledger
     {
@@ -204,6 +205,40 @@ namespace TAO
             /* Check database consistency. */
             if(stateBest.load().GetHash() != hashBestChain.load())
                 return debug::error(FUNCTION, "disk index inconsistent with best chain");
+
+            /* Reverse iterator to find the most recent common ancestor. */
+            BlockState stateFork;
+            for(auto it = mapCheckpoints.rbegin(); it != mapCheckpoints.rend(); ++it)
+            {
+                /* Check that we are within correct height ranges. */
+                if(it->first > stateBest.load().nHeight)
+                    continue;
+
+                /* Load the block from disk. */
+                BlockState stateCheck;
+                if(!LLD::Ledger->ReadBlock(it->second, stateCheck))
+                {
+                    /* Find nearest ancestory block. */
+                    auto iAncestor = it;
+                    iAncestor++;
+
+                    /* Find the most common ancestor. */
+                    BlockState stateAncestor;
+                    if(LLD::Ledger->ReadBlock(iAncestor->second, stateAncestor))
+                    {
+                        /* Debug output if ancestor was found. */
+                        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "WARNING: ", ANSI_COLOR_RESET,
+                            " REVERTING TO HARDCODED Ancestor ", iAncestor->first, " Hash ", iAncestor->second.SubString());
+
+                        /* Set the best to older block. */
+                        LLD::TxnBegin();
+                        stateAncestor.SetBest();
+                        LLD::TxnCommit();
+
+                        break;
+                    }
+                }
+            }
 
             /* Rewind the chain a total number of blocks. */
             int64_t nForkblocks = config::GetArg("-forkblocks", 0);
