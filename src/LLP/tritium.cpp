@@ -3100,8 +3100,13 @@ namespace LLP
                             nConsecutiveOrphans = 0;
                         }
                         else
-                            ++nConsecutiveFails;
+                        {
+                            /* Check for obsolete transaction version and ban accordingly. */
+                            if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
+                                return debug::drop(NODE, "invalid transaction version, dropping node");
 
+                            ++nConsecutiveFails;
+                        }
 
                         break;
                     }
@@ -3112,7 +3117,7 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
+                if(nConsecutiveFails >= 100)
                     return debug::drop(NODE, "TX::node reached failure limit");
 
                 /* Check for orphan limit on node. */

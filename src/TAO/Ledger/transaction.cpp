@@ -986,8 +986,16 @@ namespace TAO
             if(nFlags == FLAGS::BLOCK)
             {
                 /* Erase last for genesis. */
-                if(IsFirst() && !LLD::Ledger->EraseLast(hashGenesis))
-                    return debug::error(FUNCTION, "failed to erase last hash");
+                if(IsFirst())
+                {
+                    /* Erase our last hash now. */
+                    if(!LLD::Ledger->EraseLast(hashGenesis))
+                        return debug::error(FUNCTION, "failed to erase last hash");
+
+                    /* Erase our genesis-id now. */
+                    if(!LLD::Ledger->EraseGenesis(hashGenesis))
+                        return debug::error(FUNCTION, "failed to erase genesis");
+                }
 
                 /* Write proper last hash index. */
                 else if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
