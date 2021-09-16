@@ -11,8 +11,6 @@
 
 #include <LLC/include/random.h>
 
-#include <openssl/rand.h>
-
 #include <LLC/aes/aes.h>
 
 #include <TAO/Operation/types/condition.h>

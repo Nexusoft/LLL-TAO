@@ -146,10 +146,69 @@ const uint256_t hashSeed = 55;
 
 #include <Util/encoding/include/utf-8.h>
 
+#include <LLC/prime/fermat.h>
+
+#include <LLC/types/bignum.h>
+#include <openssl/bn.h>
+
+/* Used after Miller-Rabin and Divisor tests to verify primality. */
+LLC::CBigNum FermatTest2(const LLC::CBigNum& bnPrime)
+{
+    LLC::CAutoBN_CTX pctx;
+    LLC::CBigNum bnExp = bnPrime - 1;
+
+    LLC::CBigNum bnResult;
+    LLC::CBigNum bnBase(2);
+    BN_mod_exp(bnResult.getBN(), bnBase.getBN(), bnExp.getBN(), bnPrime.getBN(), pctx);
+
+    return bnResult;
+}
+
+
+uint1024_t FermatTest(const uint1024_t &p)
+{
+    uint1024_t r;
+    uint32_t e[32];
+    uint32_t table[WINDOW_SIZE * 32];
+
+
+    uint32_t *rr = (uint32_t *)r.begin();
+    uint32_t *pp = (uint32_t *)p.begin();
+
+    sub_ui<32>(e, pp, 1);
+
+    pow2m<32>(rr, e, pp, table);
+    //pow2m<32>(rr, e, pp);
+
+    return r;
+}
+
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+
+    uint1024_t hashNumber = uint1024_t("0x010009f035e34e85a13fe2c51d56d96781ace0b2df31fecff9ff09094e7772db452d335fe59dfaab61a6bafcf399a5705e98a9b2e1b368e37d267f76693388ffe8255177a734eb77ceac385f0a994288f24bc2526d4c53499aaf270232eb9d31f6ee6c78627bbd490ac899c5a814d861acafd17f51882e68dc01f7330db013cc");
+    uint64_t nonce = uint64_t(5190024797402611181);
+
+    uint1024_t bn1 = hashNumber + nonce;
+    LLC::CBigNum bn2(bn1);
+
+    runtime::stopwatch swFermat;
+    swFermat.start();
+    fermat_prime(bn1);
+    swFermat.stop();
+
+
+    runtime::stopwatch swBN;
+    swBN.start();
+    FermatTest2(bn2);
+    swBN.stop();
+
+    debug::log(0, "Fermat ", swFermat.ElapsedMicroseconds(), " BN ", swBN.ElapsedMicroseconds());
+
+    return 0;
+
     /* Read the configuration file. Pass argc and argv for possible -datadir setting */
     config::ReadConfigFile(config::mapArgs, config::mapMultiArgs, argc, argv);
 
