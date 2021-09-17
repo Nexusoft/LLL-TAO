@@ -189,6 +189,13 @@
    #error BRAINPOOLP512R1_SUPPORT parameter is not valid
 #endif
 
+//brainpoolP512t1 elliptic curve support
+#ifndef BRAINPOOLP512T1_SUPPORT
+   #define BRAINPOOLP512T1_SUPPORT DISABLED
+#elif (BRAINPOOLP512T1_SUPPORT != ENABLED && BRAINPOOLP512T1_SUPPORT != DISABLED)
+   #error BRAINPOOLP512T1_SUPPORT parameter is not valid
+#endif
+
 //Curve25519 elliptic curve support
 #ifndef X25519_SUPPORT
    #define X25519_SUPPORT DISABLED
@@ -242,6 +249,7 @@
 #define BRAINPOOLP320R1_CURVE (&brainpoolP320r1Curve)
 #define BRAINPOOLP384R1_CURVE (&brainpoolP384r1Curve)
 #define BRAINPOOLP512R1_CURVE (&brainpoolP512r1Curve)
+#define BRAINPOOLP512T1_CURVE (&brainpoolP512t1Curve)
 
 //Montgomery curves
 #define X25519_CURVE (&x25519Curve)
@@ -335,6 +343,7 @@ extern const uint8_t BRAINPOOLP256R1_OID[9];
 extern const uint8_t BRAINPOOLP320R1_OID[9];
 extern const uint8_t BRAINPOOLP384R1_OID[9];
 extern const uint8_t BRAINPOOLP512R1_OID[9];
+extern const uint8_t BRAINPOOLP512T1_OID[9];
 extern const uint8_t X25519_OID[3];
 extern const uint8_t X448_OID[3];
 extern const uint8_t ED25519_OID[3];
@@ -362,6 +371,7 @@ extern const EcCurveInfo brainpoolP256r1Curve;
 extern const EcCurveInfo brainpoolP320r1Curve;
 extern const EcCurveInfo brainpoolP384r1Curve;
 extern const EcCurveInfo brainpoolP512r1Curve;
+extern const EcCurveInfo brainpoolP512t1Curve;
 extern const EcCurveInfo x25519Curve;
 extern const EcCurveInfo x448Curve;
 extern const EcCurveInfo ed25519Curve;
