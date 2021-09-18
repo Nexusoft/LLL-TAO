@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/market.h>
 #include <TAO/API/types/commands/names.h>
+#include <TAO/API/types/contracts/exchange.h>
+#include <TAO/API/types/contracts/verify.h>
 #include <TAO/API/include/execute.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -42,49 +44,53 @@ namespace TAO::API
             /* Check that transaction has a condition. */
             case TAO::Operation::OP::CONDITION:
             {
-                try //in case de-serialization fails from non-standard contracts
+                /* Check for valid exchange contract. */
+                if(Contracts::Verify(Contracts::Exchange::Token[0], rContract)) //checking for version 1
                 {
-                    /* Get the next OP. */
-                    rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
+                    try //in case de-serialization fails from non-standard contracts
+                    {
+                        /* Get the next OP. */
+                        rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
 
-                    /* Get the comparison bytes. */
-                    TAO::Operation::Stream ssBytes;
-                    rContract >= ssBytes;
+                        /* Get the comparison bytes. */
+                        TAO::Operation::Stream ssBytes;
+                        rContract >= ssBytes;
 
-                    /* Skip ahead to our token-id. */
-                    ssBytes.seek(33, STREAM::BEGIN);
+                        /* Skip ahead to our token-id. */
+                        ssBytes.seek(33, STREAM::BEGIN);
 
-                    /* Grab our deposit token-id now. */
-                    uint256_t hashDeposit;
-                    ssBytes >> hashDeposit;
+                        /* Grab our deposit token-id now. */
+                        uint256_t hashDeposit;
+                        ssBytes >> hashDeposit;
 
-                    /* Read the object to get token-id. */
-                    TAO::Register::Object oDeposit;
-                    if(!LLD::Register->ReadObject(hashDeposit, oDeposit))
-                        return;
+                        /* Read the object to get token-id. */
+                        TAO::Register::Object oDeposit;
+                        if(!LLD::Register->ReadObject(hashDeposit, oDeposit))
+                            return;
 
-                    /* Grab our other withdraw token-id from pre-state. */
-                    TAO::Register::Object oWithdraw =
-                        rContract.PreState();
+                        /* Grab our other withdraw token-id from pre-state. */
+                        TAO::Register::Object oWithdraw =
+                            rContract.PreState();
 
-                    /* Skip over non objects for now. */
-                    if(oWithdraw.nType != TAO::Register::REGISTER::OBJECT)
-                        return;
+                        /* Skip over non objects for now. */
+                        if(oWithdraw.nType != TAO::Register::REGISTER::OBJECT)
+                            return;
 
-                    /* Parse pre-state if needed. */
-                    oWithdraw.Parse();
+                        /* Parse pre-state if needed. */
+                        oWithdraw.Parse();
 
-                    /* Create our market-pair. */
-                    const std::pair<uint256_t, uint256_t> pairMarket =
-                        std::make_pair(oDeposit.get<uint256_t>("token"), oWithdraw.get<uint256_t>("token"));
+                        /* Create our market-pair. */
+                        const std::pair<uint256_t, uint256_t> pairMarket =
+                            std::make_pair(oDeposit.get<uint256_t>("token"), oWithdraw.get<uint256_t>("token"));
 
-                    /* Write the order to logical database. */
-                    if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
-                        debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
-                }
-                catch(const std::exception& e)
-                {
-                    debug::warning(e.what());
+                        /* Write the order to logical database. */
+                        if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
+                            debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
+                    }
+                    catch(const std::exception& e)
+                    {
+                        debug::warning(e.what());
+                    }
                 }
 
                 break;

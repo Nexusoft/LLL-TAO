@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/contracts/expiring.h>
+#include <TAO/API/types/contracts/exchange.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -29,17 +29,31 @@ namespace TAO::API
         using PLACEHOLDER = TAO::Operation::PLACEHOLDER;
 
         /* Build a binary stream to check conditions against. */
-        const std::vector<uint8_t> Token =
+        const std::vector<std::vector<uint8_t>> Token =
         {
-            OP::GROUP,
-            OP::CALLER::OPERATIONS, OP::CONTAINS,    PLACEHOLDER::_1, OP::TYPES::BYTES,
-            OP::AND,
-            OP::CALLER::PRESTATE::VALUE, OP::EQUALS, PLACEHOLDER::_2, OP::TYPES::UINT256_T,
-            OP::UNGROUP,
-            OP::OR,
-            OP::GROUP,
-            OP::CALLER::GENESIS, OP::EQUALS, OP::CONTRACT::GENESIS,
-            OP::UNGROUP
+            //Version 1 contract.
+            {
+                OP::GROUP,
+                OP::CALLER::OPERATIONS, OP::CONTAINS,    PLACEHOLDER::_1, OP::TYPES::BYTES,
+                OP::AND,
+                OP::CALLER::PRESTATE::VALUE, OP::EQUALS, PLACEHOLDER::_2, OP::TYPES::UINT256_T,
+                OP::UNGROUP,
+                OP::OR,
+                OP::GROUP,
+                OP::CALLER::GENESIS, OP::EQUALS, OP::CONTRACT::GENESIS,
+                OP::UNGROUP
+            },
+
+            //Version 2 contract.
+            {
+                OP::GROUP,
+                OP::CALLER::OPERATIONS, OP::CONTAINS, PLACEHOLDER::_1, OP::TYPES::BYTES,
+                OP::UNGROUP,
+                OP::OR,
+                OP::GROUP,
+                OP::CALLER::GENESIS, OP::EQUALS, OP::CONTRACT::GENESIS,
+                OP::UNGROUP
+            }
         };
 
 

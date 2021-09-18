@@ -35,7 +35,7 @@ namespace TAO::API
          *  An exchange contract that exchanges two tokens for one another.
          *
          **/
-        extern const std::vector<uint8_t> Token;
+        extern const std::vector<std::vector<uint8_t>> Token;
 
 
         /** Asset
