@@ -107,30 +107,6 @@ public:
 };
 
 
-/*
-Hash Tables:
-
-Set max tables per timestamp.
-
-Keep disk index of all timestamps in memory.
-
-Keep caches of Disk Index files (LRU) for low memory footprint
-
-Check the timestamp range of bucket whether to iterate forwards or backwards
-
-
-_hashmap.000.0000
-_name.shard.file
-  t0 t1 t2
-  |  |  |
-
-  timestamp each hashmap file if specified
-  keep indexes in TemplateLRU
-
-  search from nTimestamp < timestamp[nShard][nHashmap]
-
-*/
-
 #include <TAO/Ledger/include/genesis_block.h>
 
 const uint256_t hashSeed = 55;
@@ -146,10 +122,13 @@ const uint256_t hashSeed = 55;
 
 #include <Util/encoding/include/utf-8.h>
 
+#include <TAO/API/types/contracts/verify.h>
+
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+
     /* Read the configuration file. Pass argc and argv for possible -datadir setting */
     config::ReadConfigFile(config::mapArgs, config::mapMultiArgs, argc, argv);
 

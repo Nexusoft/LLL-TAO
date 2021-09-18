@@ -187,6 +187,11 @@ namespace TAO::API
             recipient is from the sending sig chain  */
             if(fTokenizedDebit)
             {
+                //(caller.genesis == uint256_t("0xfffffff")
+                // AND contract.operations.subdata(1, 32) != contract.operations.subdata(101, 32)
+                // AND contract.timestamp + 800 > ledger.timestamp)
+                //tx.submit();
+
                 contract <= uint8_t(OP::OR);
 
                 contract <= uint8_t(OP::GROUP);

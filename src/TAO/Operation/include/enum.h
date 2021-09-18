@@ -202,6 +202,51 @@ namespace TAO::Operation
     };
 
 
+    /** PLACEHOLDER
+     *
+     *  This structure holds enumeration values for parameter placeholders for generating a conditional contract.
+     *
+     **/
+    struct PLACEHOLDER
+    {
+        /* Standard parameter placeholder enumeration. */
+        enum : uint8_t
+        {
+            //marker of beginning range
+            RESERVED1 = 0,
+
+            //supports up to maximum of 9 parameters
+            _1       = 1,
+            _2       = 2,
+            _3       = 3,
+            _4       = 4,
+            _5       = 5,
+            _6       = 6,
+            _7       = 7,
+            _8       = 8,
+            _9       = 9,
+
+            //marker of ending range
+            RESERVED2 = 10
+        };
+
+
+        /** Valid
+         *
+         *  Detect if the operation codee is a valid parameter placeholder.
+         *
+         *  @param[in] nCode The operation code to check against.
+         *
+         *  @return true if the operation is a valid placeholder.
+         *
+         **/
+        static bool Valid(const uint8_t nCode)
+        {
+            return (nCode > RESERVED1 && nCode < RESERVED2);
+        }
+    };
+
+
     /** Transfer operation enumeration. **/
     struct TRANSFER
     {
