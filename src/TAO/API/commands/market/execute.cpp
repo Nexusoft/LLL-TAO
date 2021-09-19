@@ -68,9 +68,23 @@ namespace TAO::API
                 /* Check that transaction has a condition. */
                 case TAO::Operation::OP::CONDITION:
                 {
+                    /* Get the next OP. */
+                    rContract.Seek(1, TAO::Operation::Contract::OPERATIONS);
+
                     /* Verify the contract byte-code now. */
                     if(Contracts::Verify(Contracts::Exchange::Token[0], rContract)) //checking for version 1
                     {
+                        /* Extract our source address. */
+                        uint256_t hashFrom;
+                        rContract >> hashFrom;
+
+                        /* Get the next OP. */
+                        rContract.Seek(32, TAO::Operation::Contract::OPERATIONS);
+
+                        /* Get the received amount. */
+                        uint64_t nOrderAmount;
+                        rContract >> nOrderAmount;
+
                         /* Get the next OP. */
                         rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
 
@@ -99,8 +113,12 @@ namespace TAO::API
                         vContracts.push_back(tValidate);
 
                         /* if we passed all of these checks then insert the credit contract into the tx */
-                        if(!BuildCredit(jParams, nContract, rContract, vContracts))
-                            throw Exception(-43, "No valid contracts in tx.");
+                        TAO::Operation::Contract tCredit;
+                        tCredit << uint8_t(TAO::Operation::OP::CREDIT) << hashOrder << uint32_t(nContract);
+                        tCredit << hashCredit << hashFrom << nOrderAmount;
+
+                        /* Add contract to our queue. */
+                        vContracts.push_back(tCredit);
                     }
 
                     break;

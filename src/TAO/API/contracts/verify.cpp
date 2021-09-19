@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
+#include <Util/include/hex.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -27,21 +29,19 @@ namespace TAO::API
         using OP = TAO::Operation::OP;
 
         /* Grab a reference of our conditional contract. */
-        const TAO::Operation::Stream ssContract = rContract.Conditions();
+        const TAO::Operation::Stream ssContract =
+            TAO::Operation::Stream(rContract.Conditions());
 
         /* Check our contract data byte by byte. */
         uint32_t nPos = 0; //so we can skip through conditions vector.
         while(!ssContract.end())
         {
             /* Get our current opcode. */
-            const uint8_t nCode = vByteCode[nPos];
+            const uint8_t nCode = vByteCode[nPos++];
 
             /* Check for a valid placeholder. */
             if(TAO::Operation::PLACEHOLDER::Valid(nCode))
-            {
-                ++nPos;
                 continue;
-            }
 
             /* Check for a valid parameter type. */
             switch(nCode)
@@ -49,14 +49,14 @@ namespace TAO::API
                 /* Handle for standard 8-bit unsigned integer. */
                 case OP::TYPES::UINT8_T:
                 {
-                    ssContract.seek(1);
+                    ssContract.seek(2);
                     break;
                 }
 
                 /* Handle for standard 16-bit unsigned integer. */
                 case OP::TYPES::UINT16_T:
                 {
-                    ssContract.seek(2);
+                    ssContract.seek(3);
                     break;
                 }
 
@@ -64,35 +64,35 @@ namespace TAO::API
                 case OP::TYPES::UINT32_T:
                 case OP::SUBDATA: //subdata is just two shorts concatenated
                 {
-                    ssContract.seek(4);
+                    ssContract.seek(5);
                     break;
                 }
 
                 /* Handle for standard 64-bit unsigned integer. */
                 case OP::TYPES::UINT64_T:
                 {
-                    ssContract.seek(8);
+                    ssContract.seek(9);
                     break;
                 }
 
                 /* Handle for standard 256-bit unsigned integer. */
                 case OP::TYPES::UINT256_T:
                 {
-                    ssContract.seek(32);
+                    ssContract.seek(33);
                     break;
                 }
 
                 /* Handle for standard 512-bit unsigned integer. */
                 case OP::TYPES::UINT512_T:
                 {
-                    ssContract.seek(64);
+                    ssContract.seek(65);
                     break;
                 }
 
                 /* Handle for standard 1024-bit unsigned integer. */
                 case OP::TYPES::UINT1024_T:
                 {
-                    ssContract.seek(128);
+                    ssContract.seek(129);
                     break;
                 }
 
@@ -101,12 +101,14 @@ namespace TAO::API
                 case OP::TYPES::STRING:
                 case OP::CALLER::PRESTATE::VALUE:
                 {
+                    ssContract.seek(1);
+
                     /* Get the size of our byte vector. */
                     const uint64_t nSize =
                         ReadCompactSize(ssContract);
 
                     /* Seek over the byte vector now. */
-                    ssContract.seek(nSize);
+                    ssContract.seek(nSize, STREAM::CURSOR);
                     break;
                 }
 
@@ -119,7 +121,7 @@ namespace TAO::API
                 case OP::REGISTER::VALUE:
                 {
                     /* A register code requires a 256-bit input parameter. */
-                    ssContract.seek(32);
+                    ssContract.seek(33);
 
                     /* Register value requires string. */
                     if(nCode == OP::REGISTER::VALUE)
@@ -130,20 +132,25 @@ namespace TAO::API
 
                         /* Seek over the requested field now. */
                         ssContract.seek(nSize);
-                        break;
                     }
 
                     break;
                 }
+
+                /* Check our codes if not hitting any core instructions. */
+                default:
+                {
+                    /* Get our current operation code. */
+                    uint8_t nCheck;
+                    ssContract >> nCheck;
+
+                    /* Check our current op code. */
+                    if(nCheck != nCode)
+                        return debug::error("invalid instruction at ", nPos);
+
+
+                }
             }
-
-            /* Get our current operation code. */
-            uint8_t nCheck;
-            ssContract >> nCheck;
-
-            /* Check our current op code. */
-            if(nCheck != nCode)
-                return debug::error("invalid instruction at ", nPos);
         }
 
         return true;
