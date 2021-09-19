@@ -17,6 +17,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/extract.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/market.h>
+#include <TAO/API/types/contracts/exchange.h>
+#include <TAO/API/types/contracts/verify.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -45,6 +47,10 @@ namespace TAO::API
         if(!LLD::Ledger->ReadTx(hashOrder, tx))
             throw Exception(-40, "Previous transaction not found.");
 
+        /* Check for from parameter. */
+        const uint256_t hashCredit =
+            ExtractAddress(jParams, "to");
+
         /* Loop through all transactions. */
         std::vector<TAO::Operation::Contract> vContracts;
         for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
@@ -62,32 +68,40 @@ namespace TAO::API
                 /* Check that transaction has a condition. */
                 case TAO::Operation::OP::CONDITION:
                 {
-                    /* Get the next OP. */
-                    rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
+                    /* Verify the contract byte-code now. */
+                    if(Contracts::Verify(Contracts::Exchange::Token[0], rContract)) //checking for version 1
+                    {
+                        /* Get the next OP. */
+                        rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
 
-                    /* Get the comparison bytes. */
-                    std::vector<uint8_t> vBytes;
-                    rContract >= vBytes;
+                        /* Get the comparison bytes. */
+                        std::vector<uint8_t> vBytes;
+                        rContract >= vBytes;
 
-                    /* Extract the data from the bytes. */
-                    TAO::Operation::Stream ssCompare(vBytes);
-                    ssCompare.seek(33);
+                        /* Extract the data from the bytes. */
+                        TAO::Operation::Stream ssCompare(vBytes);
+                        ssCompare.seek(33);
 
-                    /* Get the address to. */
-                    uint256_t hashTo;
-                    ssCompare >> hashTo;
+                        /* Get the address to. */
+                        uint256_t hashTo;
+                        ssCompare >> hashTo;
 
-                    /* Get the amount requested. */
-                    uint64_t nAmount = 0;
-                    ssCompare >> nAmount;
+                        /* Get the amount requested. */
+                        uint64_t nAmount = 0;
+                        ssCompare >> nAmount;
 
-                    /* Build the transaction. */
-                    TAO::Operation::Contract tContract;
-                    tContract << uint8_t(TAO::Operation::OP::VALIDATE) << hashOrder   << nContract;
-                    tContract << uint8_t(TAO::Operation::OP::DEBIT)    << hashAddress << hashTo << nAmount << uint64_t(0);
+                        /* Build the transaction. */
+                        TAO::Operation::Contract tValidate;
+                        tValidate << uint8_t(TAO::Operation::OP::VALIDATE) << hashOrder   << nContract;
+                        tValidate << uint8_t(TAO::Operation::OP::DEBIT)    << hashAddress << hashTo << nAmount << uint64_t(0);
 
-                    /* Add contract to our queue. */
-                    vContracts.push_back(tContract);
+                        /* Add contract to our queue. */
+                        vContracts.push_back(tValidate);
+
+                        /* if we passed all of these checks then insert the credit contract into the tx */
+                        if(!BuildCredit(jParams, nContract, rContract, vContracts))
+                            throw Exception(-43, "No valid contracts in tx.");
+                    }
 
                     break;
                 }
