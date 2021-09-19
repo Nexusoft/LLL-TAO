@@ -115,7 +115,7 @@ namespace TAO::API
                         ReadCompactSize(ssContract);
 
                     /* Seek over the byte vector now. */
-                    ssContract.seek(nSize, STREAM::CURSOR);
+                    ssContract.seek(nSize);
                     break;
                 }
 
