@@ -43,56 +43,64 @@ namespace TAO::API
             if(TAO::Operation::PLACEHOLDER::Valid(nCode))
                 continue;
 
+            /* Read our instruction from contract. */
+            uint8_t nCheck;
+            ssContract >> nCheck;
+
+            /* Check our current op code. */
+            if(nCheck != nCode)
+                return debug::error("invalid instruction ", std::hex, uint32_t(nCheck), " to ", uint32_t(nCode));
+
             /* Check for a valid parameter type. */
             switch(nCode)
             {
                 /* Handle for standard 8-bit unsigned integer. */
                 case OP::TYPES::UINT8_T:
                 {
-                    ssContract.seek(2);
+                    ssContract.seek(1);
                     break;
                 }
 
                 /* Handle for standard 16-bit unsigned integer. */
                 case OP::TYPES::UINT16_T:
                 {
-                    ssContract.seek(3);
+                    ssContract.seek(2);
                     break;
                 }
 
                 /* Handle for standard 32-bit unsigned integer. */
                 case OP::TYPES::UINT32_T:
-                case OP::SUBDATA: //subdata is just two shorts concatenated
+                case OP::SUBDATA: //subdata is just two shorts concatenated so handle on 32 bit case
                 {
-                    ssContract.seek(5);
+                    ssContract.seek(4);
                     break;
                 }
 
                 /* Handle for standard 64-bit unsigned integer. */
                 case OP::TYPES::UINT64_T:
                 {
-                    ssContract.seek(9);
+                    ssContract.seek(8);
                     break;
                 }
 
                 /* Handle for standard 256-bit unsigned integer. */
                 case OP::TYPES::UINT256_T:
                 {
-                    ssContract.seek(33);
+                    ssContract.seek(32);
                     break;
                 }
 
                 /* Handle for standard 512-bit unsigned integer. */
                 case OP::TYPES::UINT512_T:
                 {
-                    ssContract.seek(65);
+                    ssContract.seek(64);
                     break;
                 }
 
                 /* Handle for standard 1024-bit unsigned integer. */
                 case OP::TYPES::UINT1024_T:
                 {
-                    ssContract.seek(129);
+                    ssContract.seek(128);
                     break;
                 }
 
@@ -101,8 +109,6 @@ namespace TAO::API
                 case OP::TYPES::STRING:
                 case OP::CALLER::PRESTATE::VALUE:
                 {
-                    ssContract.seek(1);
-
                     /* Get the size of our byte vector. */
                     const uint64_t nSize =
                         ReadCompactSize(ssContract);
@@ -121,7 +127,7 @@ namespace TAO::API
                 case OP::REGISTER::VALUE:
                 {
                     /* A register code requires a 256-bit input parameter. */
-                    ssContract.seek(33);
+                    ssContract.seek(32);
 
                     /* Register value requires string. */
                     if(nCode == OP::REGISTER::VALUE)
@@ -135,20 +141,6 @@ namespace TAO::API
                     }
 
                     break;
-                }
-
-                /* Check our codes if not hitting any core instructions. */
-                default:
-                {
-                    /* Get our current operation code. */
-                    uint8_t nCheck;
-                    ssContract >> nCheck;
-
-                    /* Check our current op code. */
-                    if(nCheck != nCode)
-                        return debug::error("invalid instruction at ", nPos);
-
-
                 }
             }
         }
