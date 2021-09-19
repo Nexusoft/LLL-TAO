@@ -25,8 +25,9 @@ namespace TAO::API
     /* Verify that a given contract is wel formed and the binary data matches pattern. */
     bool Contracts::Verify(const std::vector<uint8_t> vByteCode, const TAO::Operation::Contract& rContract)
     {
-        /* So we can save a lot of typing. */
-        using OP = TAO::Operation::OP;
+        /* So we can save a lot of typing, only use 'using' in local scope source files. */
+        using OP          = TAO::Operation::OP;
+        using PLACEHOLDER = TAO::Operation::PLACEHOLDER;
 
         /* Grab a reference of our conditional contract. */
         const TAO::Operation::Stream ssContract =
@@ -40,7 +41,7 @@ namespace TAO::API
             const uint8_t nCode = vByteCode[nPos++];
 
             /* Check for a valid placeholder. */
-            if(TAO::Operation::PLACEHOLDER::Valid(nCode))
+            if(PLACEHOLDER::Valid(nCode))
                 continue;
 
             /* Read our instruction from contract. */
@@ -49,7 +50,7 @@ namespace TAO::API
 
             /* Check our current op code. */
             if(nCheck != nCode)
-                return debug::error("invalid instruction ", std::hex, uint32_t(nCheck), " to ", uint32_t(nCode));
+                return debug::error("invalid instruction ", std::hex, uint32_t(nCheck), " expecting ", uint32_t(nCode));
 
             /* Check for a valid parameter type. */
             switch(nCode)
