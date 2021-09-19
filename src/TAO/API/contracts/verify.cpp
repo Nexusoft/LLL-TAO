@@ -105,16 +105,16 @@ namespace TAO::API
                     break;
                 }
 
-                /* Handle for standard byte vector or string. */
+                /* Handle for standard byte vector or strings. */
                 case OP::TYPES::BYTES:
                 case OP::TYPES::STRING:
-                case OP::CALLER::PRESTATE::VALUE:
+                case OP::CALLER::PRESTATE::VALUE: //this instruction has a string parameter
                 {
-                    /* Get the size of our byte vector. */
+                    /* Get the size of our value. */
                     const uint64_t nSize =
                         ReadCompactSize(ssContract);
 
-                    /* Seek over the byte vector now. */
+                    /* Seek over the binary data. */
                     ssContract.seek(nSize);
                     break;
                 }
