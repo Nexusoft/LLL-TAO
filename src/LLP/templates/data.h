@@ -272,7 +272,7 @@ namespace LLP
         void Relay(const MessageType& message, Args&&... args)
         {
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            message_args(ssData, std::forward<Args>(args)...);
+            ((ssData << args), ...);
 
             /* Push the relay message to outbound queue. */
             RELAY->push(std::make_pair(message, ssData));

@@ -237,7 +237,7 @@ namespace debug
 
     /*  Writes log output to console and debug file with timestamps.
      *  Encapsulated log for improved compile time. Not thread safe. */
-    void log_(const time_t& nTimestamp, const std::string& strDebug)
+    void _log(const time_t& nTimestamp, const std::string& strDebug)
     {
         //#ifndef UNIT_TESTS
 

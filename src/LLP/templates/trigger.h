@@ -110,7 +110,7 @@ namespace LLP
 
             /* Clear the stream and unpack args. */
             ssArgs.clear();
-            message_args(ssArgs, std::forward<Args>(args)...);
+            ((ssArgs << args), ...);
 
             /* Reset read pointer. */
             ssArgs.Reset();

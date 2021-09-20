@@ -107,6 +107,7 @@ public:
 };
 
 
+
 #include <TAO/Ledger/include/genesis_block.h>
 
 const uint256_t hashSeed = 55;
@@ -122,12 +123,27 @@ const uint256_t hashSeed = 55;
 
 #include <Util/encoding/include/utf-8.h>
 
+#include <TAO/API/types/contracts/build.h>
+#include <TAO/API/types/contracts/expiring.h>
 #include <TAO/API/types/contracts/verify.h>
+
+
+
 
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    TAO::Operation::Contract tContract;
+
+    uint256_t hashGenesis;
+    if(!TAO::API::Contracts::Build(TAO::API::Contracts::Expiring::Sender, tContract, hashGenesis, uint32_t(86400), hashGenesis))
+        return debug::error("Failed to build contract");
+
+    if(!TAO::API::Contracts::Verify(TAO::API::Contracts::Expiring::Sender, tContract))
+        return debug::error("Contract binary template mismatch");
+
+    return 0;
 
     /* Read the configuration file. Pass argc and argv for possible -datadir setting */
     config::ReadConfigFile(config::mapArgs, config::mapMultiArgs, argc, argv);

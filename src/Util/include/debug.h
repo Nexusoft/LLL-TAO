@@ -141,38 +141,6 @@ namespace debug
     void LogStartup(int argc, char** argv);
 
 
-    /** print_args
-     *
-     *  Overload for varadaic templates.
-     *
-     *  @param[out] s The stream being written to.
-     *  @param[in] head The object being written to stream.
-     *
-     **/
-    template<class Head>
-    void print_args(std::ostream& s, Head&& head)
-    {
-        s << std::forward<Head>(head);
-    }
-
-
-    /** print_args
-     *
-     *  Handle for variadic template pack
-     *
-     *  @param[out] s The stream being written to.
-     *  @param[in] head The object being written to stream.
-     *  @param[in] tail The variadic parameters.
-     *
-     **/
-    template<class Head, class... Tail>
-    void print_args(std::ostream& s, Head&& head, Tail&&... tail)
-    {
-        s << std::forward<Head>(head);
-        print_args(s, std::forward<Tail>(tail)...);
-    }
-
-
     /** safe_printstr
      *
      *  Safe handle for writing objects into a string.
@@ -186,7 +154,7 @@ namespace debug
     std::string safe_printstr(Args&&... args)
     {
         std::ostringstream ss;
-        print_args(ss, std::forward<Args>(args)...);
+        ((ss << args), ...);
 
         return ss.str();
     }
@@ -198,7 +166,7 @@ namespace debug
      *  Encapsulated log for improved compile time. Not thread safe.
      *
      **/
-     void log_(const time_t& nTimestamp, const std::string& strDebug);
+     void _log(const time_t& nTimestamp, const std::string& strDebug);
 
 
     /** log
@@ -225,7 +193,7 @@ namespace debug
 
         /* Get the timestamp. */
         time_t nTimestamp = std::time(nullptr);
-        log_(nTimestamp, strDebug);
+        _log(nTimestamp, strDebug);
     }
 
 

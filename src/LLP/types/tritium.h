@@ -499,7 +499,7 @@ namespace LLP
         void PushMessage(const uint16_t nMsg, Args&&... args)
         {
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            message_args(ssData, std::forward<Args>(args)...);
+            ((ssData << args), ...);
 
             WritePacket(NewMessage(nMsg, ssData));
 
