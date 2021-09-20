@@ -210,15 +210,26 @@ namespace LLD
         {
             /* Read our current record. */
             if(!Read(std::make_pair(nSequence, pairMarket), pairOrder))
+            {
+                debug::log(0, "Failed to read ", nSequence, " for market ", pairMarket.first.SubString(), "/", pairMarket.second.SubString());
                 continue;
+            }
+
 
             /* Check for already executed contracts to omit. */
             if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL))
+            {
+                debug::log(0, "Found order for market ", pairMarket.first.SubString(), "/", pairMarket.second.SubString());
                 vExecuted.push_back(pairOrder);
+            }
+
 
             /* Increment our sequence number. */
             if(++nSequence >= nMarketSequence)
+            {
+                debug::log(0, "terminating at sequence ", nMarketSequence);
                 break;
+            }
         }
 
         return !vExecuted.empty();
