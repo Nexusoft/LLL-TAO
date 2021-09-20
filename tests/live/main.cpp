@@ -123,10 +123,10 @@ const uint256_t hashSeed = 55;
 
 #include <Util/encoding/include/utf-8.h>
 
-#include <TAO/API/types/contracts/build.h>
-#include <TAO/API/types/contracts/expiring.h>
-#include <TAO/API/types/contracts/verify.h>
+#include <TAO/API/include/contracts/build.h>
+#include <TAO/API/include/contracts/verify.h>
 
+#include <TAO/API/types/contracts/expiring.h>
 
 
 

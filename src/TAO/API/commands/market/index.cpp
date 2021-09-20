@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/market.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/contracts/exchange.h>
-#include <TAO/API/types/contracts/verify.h>
+#include <TAO/API/include/contracts/verify.h>
 #include <TAO/API/include/execute.h>
 
 #include <TAO/Operation/include/enum.h>

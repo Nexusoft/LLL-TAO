@@ -12,7 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/contracts/expiring.h>
-#include <TAO/API/types/contracts/verify.h>
+#include <TAO/API/include/contracts/verify.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
