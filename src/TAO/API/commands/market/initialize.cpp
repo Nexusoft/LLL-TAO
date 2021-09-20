@@ -96,13 +96,24 @@ namespace TAO::API
             )
         );
 
-
         /* Standard contract to execute an order. */
         mapFunctions["cancel"] = Function
         (
             std::bind
             (
                 &Market::Cancel,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Standard contract to create new order. */
+        mapFunctions["user"] = Function
+        (
+            std::bind
+            (
+                &Market::User,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

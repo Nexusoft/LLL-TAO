@@ -86,6 +86,19 @@ namespace TAO::API
         encoding::json List(const encoding::json& jParams, const bool fHelp);
 
 
+        /** User
+         *
+         *  Lists a user's order for the given marketplace.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json User(const encoding::json& jParams, const bool fHelp);
+
+
         /** Execute
          *
          *  Executes an order on the market
@@ -137,6 +150,6 @@ namespace TAO::API
          *
          **/
         __attribute__((pure)) encoding::json OrderToJSON(const TAO::Operation::Contract& rContract, const uint256_t& hashBase);
-        
+
     };
 }
