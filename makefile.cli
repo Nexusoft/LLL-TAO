@@ -913,7 +913,7 @@ LIBS+= $(BDB_LIB_PATH)/libdb_cxx.a \
 
 
 #OS Specific Compiler Flags
-CXXFLAGS+= -mmacosx-version-min=10.13 \
+CXXFLAGS+= -mmacosx-version-min=10.09 \
 	-O3 \
 	$(DEFS) \
 	$(DEBUG) \
@@ -1029,8 +1029,8 @@ endif
 
 IOS_ARCH ?= x86_64
 IOS_TYPE ?= ios-simulator
-IOS_SDK_VER ?= 13.2
-MIN_OS_VER ?= 10
+IOS_SDK_VER ?= 14.4
+MIN_OS_VER ?= 11
 
 
 #Configure OS Specific Compiler Output
