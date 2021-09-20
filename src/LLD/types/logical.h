@@ -134,6 +134,32 @@ namespace LLD
         bool ListOrders(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vOrders);
 
 
+        /** ListAllOrders
+         *
+         *  List the current active orders for given market pair.
+         *
+         *  @param[in] pairMarket The market-pair of token-id's
+         *  @param[in] vOrders The list of orders extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListAllOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders);
+
+
+        /** ListAllOrders
+         *
+         *  List the current active orders for given user's sigchain.
+         *
+         *  @param[in] hashGenesis The current genesis-id to grab orders by.
+         *  @param[in] vOrders The list of orders extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListAllOrders(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vOrders);
+
+
         /** ListExecuted
          *
          *  List the current completed orders for given user's sigchain.

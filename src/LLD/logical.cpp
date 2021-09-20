@@ -166,6 +166,55 @@ namespace LLD
         return !vOrders.empty();
     }
 
+    /* List the current active orders for given market pair. */
+    bool LogicalDB::ListAllOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders)
+    {
+        /* Cache our txid and contract as a pair. */
+        std::pair<uint512_t, uint32_t> pairOrder;
+
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Read our current record. */
+            if(!Read(std::make_pair(nSequence, pairMarket), pairOrder))
+                break;
+
+            /* Push order ot our list. */
+            vOrders.push_back(pairOrder);
+
+            /* Increment our sequence number. */
+            ++nSequence;
+        }
+
+        return !vOrders.empty();
+    }
+
+
+    /* List the current active orders for given user's sigchain. */
+    bool LogicalDB::ListAllOrders(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vOrders)
+    {
+        /* Cache our txid and contract as a pair. */
+        std::pair<uint512_t, uint32_t> pairOrder;
+
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Read our current record. */
+            if(!Read(std::make_pair(nSequence, hashGenesis), pairOrder))
+                break;
+
+            /* Push order ot our list. */
+            vOrders.push_back(pairOrder);
+
+            /* Increment our sequence number. */
+            ++nSequence;
+        }
+
+        return !vOrders.empty();
+    }
+
 
     /* List the current completed orders for given user's sigchain. */
     bool LogicalDB::ListExecuted(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vExecuted)
@@ -199,37 +248,20 @@ namespace LLD
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairOrder;
 
-        /* Check for maximum sequence. */
-        uint32_t nMarketSequence = 0;
-        if(!Read(std::make_pair(std::string("market.sequence"), pairMarket), nMarketSequence))
-            return debug::error(FUNCTION, "failed to read market sequence");
-
         /* Loop until we have failed. */
         uint32_t nSequence = 0;
         while(!config::fShutdown.load()) //we want to early terminate on shutdown
         {
             /* Read our current record. */
             if(!Read(std::make_pair(nSequence, pairMarket), pairOrder))
-            {
-                debug::log(0, "Failed to read ", nSequence, " for market ", pairMarket.first.SubString(), "/", pairMarket.second.SubString());
-                continue;
-            }
-
+                break;
 
             /* Check for already executed contracts to omit. */
             if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL))
-            {
-                debug::log(0, "Found order for market ", pairMarket.first.SubString(), "/", pairMarket.second.SubString());
                 vExecuted.push_back(pairOrder);
-            }
-
 
             /* Increment our sequence number. */
-            if(++nSequence >= nMarketSequence)
-            {
-                debug::log(0, "terminating at sequence ", nMarketSequence);
-                break;
-            }
+            ++nSequence;
         }
 
         return !vExecuted.empty();

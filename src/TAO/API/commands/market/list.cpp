@@ -38,7 +38,11 @@ namespace TAO::API
 
         /* Track if this is a catch-all. */
         const bool fAll =
-            (setTypes.find("order") != setTypes.end());
+            (setTypes.find("order") != setTypes.end() || setTypes.find("executed") != setTypes.end());
+
+        /* Track if looking at executed orders. */
+        const bool fExecuted =
+            (setTypes.find("executed") != setTypes.end());
 
         /* Grab our market pair. */
         const std::pair<uint256_t, uint256_t> pairMarket  = ExtractMarket(jParams);
@@ -60,7 +64,7 @@ namespace TAO::API
         {
             /* Get a list of our active orders. */
             std::vector<std::pair<uint512_t, uint32_t>> vBids;
-            if(LLD::Logical->ListOrders(pairMarket, vBids))
+            if(LLD::Logical->ListAllOrders(pairMarket, vBids))
             {
                 /* Build our object list and sort on insert. */
                 std::set<encoding::json, CompareResults> setBids({}, CompareResults(strOrder, strColumn));
@@ -68,6 +72,10 @@ namespace TAO::API
                 /* Build our list of orders now. */
                 for(const auto& pairOrder : vBids)
                 {
+                    /* Check for executed values. */
+                    if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL) != fExecuted)
+                        continue;
+
                     /* Get our contract now. */
                     const TAO::Operation::Contract tContract =
                         LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
@@ -123,7 +131,7 @@ namespace TAO::API
         {
             /* Get a list of our active orders. */
             std::vector<std::pair<uint512_t, uint32_t>> vAsks;
-            if(LLD::Logical->ListOrders(pairReverse, vAsks))
+            if(LLD::Logical->ListAllOrders(pairReverse, vAsks))
             {
                 /* Build our object list and sort on insert. */
                 std::set<encoding::json, CompareResults> setAsks({}, CompareResults(strOrder, strColumn));
@@ -131,6 +139,10 @@ namespace TAO::API
                 /* Build our list of orders now. */
                 for(const auto& pairOrder : vAsks)
                 {
+                    /* Check for executed values. */
+                    if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL) != fExecuted)
+                        continue;
+
                     /* Get our contract now. */
                     const TAO::Operation::Contract tContract =
                         LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
@@ -179,60 +191,6 @@ namespace TAO::API
             }
             else
                 jRet["asks"] = encoding::json::array();
-        }
-
-        /* Check for completed order summaries. */
-        if(setTypes.find("executed") != setTypes.end())
-        {
-            /* Get a list of our active orders. */
-            std::vector<std::pair<uint512_t, uint32_t>> vExecuted;
-            if(LLD::Logical->ListExecuted(pairReverse, vExecuted))
-            {
-                /* Build our object list and sort on insert. */
-                std::set<encoding::json, CompareResults> setExecuted({}, CompareResults(strOrder, strColumn));
-
-                /* Build our list of orders now. */
-                for(const auto& pairOrder : vExecuted)
-                {
-                    /* Get our contract now. */
-                    const TAO::Operation::Contract tContract =
-                        LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
-
-                    /* Get our order's json. */
-                    encoding::json jOrder =
-                        OrderToJSON(tContract, pairMarket);
-
-                    /* Check that we match our filters. */
-                    if(!FilterResults(jParams, jOrder))
-                        continue;
-
-                    /* Insert into set and automatically sort. */
-                    setExecuted.insert(jOrder);
-                }
-
-                /* Build our return value. */
-                encoding::json jExecuted = encoding::json::array();
-
-                /* Handle paging and offsets. */
-                uint32_t nTotal = 0;
-                for(const auto& jOrder : setExecuted)
-                {
-                    /* Check the offset. */
-                    if(++nTotal <= nOffset)
-                        continue;
-
-                    /* Check the limit */
-                    if(jExecuted.size() == nLimit)
-                        break;
-
-                    jExecuted.push_back(jOrder);
-                }
-
-                /* Add to our return value. */
-                jRet["executed"] = jExecuted;
-            }
-            else
-                jRet["executed"] = encoding::json::array();
         }
 
         /* Filter out our expected fieldnames if specified. */
