@@ -158,12 +158,16 @@ namespace TAO::API
         const std::string& strMarket = jParams["market"].get<std::string>();
 
         /* Parse into components. */
-        std::vector<std::string> vMarkets;
-        ParseString(strMarket, '/', vMarkets);
+        std::vector<std::string> vMarkets(2, "");
 
-        /* Check expected sizes match. */
-        if(vMarkets.size() != 2)
+        /* Find our last value here. */
+        const uint64_t nPos = strMarket.find_last_of("/");
+        if(nPos == strMarket.npos)
             throw Exception(-35, "Invalid parameter [market], expecting [ABC/DEF]");
+
+        /* Build our base pair now. */
+        vMarkets[0] = strMarket.substr(0, nPos);
+        vMarkets[1] = strMarket.substr(nPos + 1);
 
         /* Build our new pair and return. */
         return std::make_pair

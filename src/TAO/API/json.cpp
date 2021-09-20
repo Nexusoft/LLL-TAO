@@ -1674,6 +1674,10 @@ namespace TAO::API
                     strKey   = strParam.substr(0, nPos);
                     strValue = strParam.substr(nPos + 1);
 
+                    /* Check for valid parameter. */
+                    while(n < vParams.size() - 1 && vParams[n + 1].find("=") == vParams[n + 1].npos)
+                        strValue += " " + vParams[++n];
+
                     /* Check for empty value, due to ' ' or bad input. */
                     if(strValue.empty())
                         throw Exception(-58, "Empty Parameter [", strKey, "]");
