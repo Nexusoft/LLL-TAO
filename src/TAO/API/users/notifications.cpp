@@ -72,7 +72,7 @@ namespace TAO
         struct pair_hash
         {
             template <class T1, class T2>
-            std::size_t operator () (std::pair<T1, T2> const &pair) const
+            std::size_t operator () (const std::pair<T1, T2>& pair) const
             {
                 std::size_t h1 = std::hash<T1>()(pair.first);
                 std::size_t h2 = std::hash<T2>()(pair.second);
@@ -774,7 +774,7 @@ namespace TAO
             /* Cache of contracts by genesis hash for all contracts that we have already determined either do not have
                any conditions or have already been claimed/credited.  If any contract is already in this vector then we can skip
                it for all future invocations of the get_expired method. */
-            static std::unordered_set<std::pair<uint512_t, uint32_t>, pair_hash> cacheProcessed(256);
+            static std::unordered_set<std::pair<uint512_t, uint32_t>, pair_hash> cacheProcessed;
 
             /* Temporary transaction to use to evaluate the conditions */
             TAO::Ledger::Transaction voidTx;
@@ -808,11 +808,11 @@ namespace TAO
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                 {
                     /* Check to see whether this contract has already been processed */
-                    if(cacheProcessed.find(std::make_pair(hashLast, nContract)) != cacheProcessed.end() )
+                    if(cacheProcessed.find(std::make_pair(hashLast, nContract)) != cacheProcessed.end())
                         continue;
 
                     /* Reference to contract to check */
-                    TAO::Operation::Contract& contract = tx[nContract];
+                    const TAO::Operation::Contract& contract = tx[nContract];
 
                     /* First check to see if there are any conditions.  If not then they can't have expired! */
                     if(contract.Empty(TAO::Operation::Contract::CONDITIONS))

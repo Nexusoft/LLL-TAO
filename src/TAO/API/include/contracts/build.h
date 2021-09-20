@@ -90,47 +90,4 @@ namespace TAO::API::Contracts
 
         return build_contract(vByteCode, rContract, nCount, nPos, std::forward<Tail>(tail)...);
     }
-
-
-    /** Build
-     *
-     *  Build that a given contract with variadic parameters based on placeholder binary templates.
-     *
-     *  @param[in] vByteCode The binary template to build off of.
-     *  @param[in] rContract The contract we are checking against.
-     *  @param[in] args The variadic template pack
-     *
-     *  @return true if contract matches, false otherwise.
-     *
-     **/
-    template<class... Args>
-    bool Build(const std::vector<uint8_t> vByteCode, TAO::Operation::Contract &rContract, Args&&... args)
-    {
-        /* Reset our conditional stream each time this is called. */
-        rContract.Clear(TAO::Operation::Contract::CONDITIONS);
-
-        /* Unpack our parameter pack and place expected parameters over the PLACEHOLDERS. */
-        uint64_t nPos = 0;
-        if(!build_contract(vByteCode, rContract, nPos, std::forward<Args>(args)...))
-            return debug::error("failed to unpack parameters");
-
-        /* Loop through our byte-code to generate our contract. */
-        for(; nPos < vByteCode.size(); ++nPos)
-        {
-            /* Get our current operation code. */
-            const uint8_t nCode = vByteCode[nPos];
-
-            /* Check for valid placeholder. */
-            if(TAO::Operation::PLACEHOLDER::Valid(nCode))
-            {
-                if(!build_contract(vByteCode, rContract, nPos, std::forward<Args>(args)...))
-                    return debug::error("failed to unpack parameters");
-            }
-
-            /* Add the instructions. */
-            rContract <= nCode;
-        }
-
-        return true;
-    }
 }
