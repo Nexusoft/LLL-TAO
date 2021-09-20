@@ -95,7 +95,7 @@ namespace TAO::API
             }
 
             /* Build our return value. */
-            encoding::json jBids = encoding::json::array();
+            encoding::json jOrders = encoding::json::array();
 
             /* Handle paging and offsets. */
             uint32_t nTotal = 0;
@@ -106,14 +106,14 @@ namespace TAO::API
                     continue;
 
                 /* Check the limit */
-                if(jBids.size() == nLimit)
+                if(jOrders.size() == nLimit)
                     break;
 
-                jBids.push_back(jOrder);
+                jOrders.push_back(jOrder);
             }
 
             /* Add to our return value. */
-            jRet["bids"] = jBids;
+            jRet["orders"] = jOrders;
         }
 
         /* Filter out our expected fieldnames if specified. */
