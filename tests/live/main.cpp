@@ -123,22 +123,25 @@ const uint256_t hashSeed = 55;
 
 #include <Util/encoding/include/utf-8.h>
 
-#include <TAO/API/include/contracts/build.h>
 #include <TAO/API/include/contracts/verify.h>
 
 #include <TAO/API/types/contracts/expiring.h>
 
+#include <TAO/API/include/contracts/params.h>
 
-
+#include <TAO/Operation/include/enum.h>
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
     TAO::Operation::Contract tContract;
 
-    uint256_t hashGenesis;
-    if(!TAO::API::Contracts::Build(TAO::API::Contracts::Expiring::Sender, tContract, hashGenesis, uint32_t(86400), hashGenesis))
-        return debug::error("Failed to build contract");
+    TAO::API::Contracts::Params ssParams;
+    ssParams << uint256_t(1111);
+
+    
+
+    //debug::log(0, "First param is ", ssParams.find(0, uint8_t(TAO::Operation::OP::TYPES::UINT256_T)).ToString());
 
     if(!TAO::API::Contracts::Verify(TAO::API::Contracts::Expiring::Sender, tContract))
         return debug::error("Contract binary template mismatch");
