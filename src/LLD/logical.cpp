@@ -167,6 +167,32 @@ namespace LLD
     }
 
 
+    /* List the current completed orders for given user's sigchain. */
+    bool LogicalDB::ListExecuted(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vExecuted)
+    {
+        /* Cache our txid and contract as a pair. */
+        std::pair<uint512_t, uint32_t> pairOrder;
+
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Read our current record. */
+            if(!Read(std::make_pair(nSequence, hashGenesis), pairOrder))
+                break;
+
+            /* Check for already executed contracts to omit. */
+            if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL))
+                vExecuted.push_back(pairOrder);
+
+            /* Increment our sequence number. */
+            ++nSequence;
+        }
+
+        return !vExecuted.empty();
+    }
+
+
     /*  List the current completed orders for given market pair. */
     bool LogicalDB::ListExecuted(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vExecuted)
     {

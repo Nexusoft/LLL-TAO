@@ -33,12 +33,8 @@ namespace TAO::API
     encoding::json Market::User(const encoding::json& jParams, const bool fHelp)
     {
         /* Get our type strings. */
-        const std::string strType =
-            ExtractType(jParams);
-
-        /* Track if this is a catch-all. */
-        if(strType != "order")
-            throw Exception(-49, "Unsupported type [", strType, "] expecting [order]");
+        const std::set<std::string> setTypes =
+            ExtractTypes(jParams);
 
         /* Get our base currency. */
         const uint256_t hashBase =
@@ -59,61 +55,126 @@ namespace TAO::API
         encoding::json jRet =
             encoding::json::object();
 
-        /* Get a list of our active orders. */
-        std::vector<std::pair<uint512_t, uint32_t>> vOrders;
-        if(LLD::Logical->ListOrders(hashGenesis, vOrders))
+        /* Handle for our orders key. */
+        if(setTypes.find("order") != setTypes.end())
         {
-            /* Build our object list and sort on insert. */
-            std::set<encoding::json, CompareResults> setOrders({}, CompareResults(strOrder, strColumn));
-
-            /* Build our list of orders now. */
-            for(const auto& pairOrder : vOrders)
+            /* Get a list of our active orders. */
+            std::vector<std::pair<uint512_t, uint32_t>> vOrders;
+            if(LLD::Logical->ListOrders(hashGenesis, vOrders))
             {
-                /* Get our contract now. */
-                const TAO::Operation::Contract tContract =
-                    LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
+                /* Build our object list and sort on insert. */
+                std::set<encoding::json, CompareResults> setOrders({}, CompareResults(strOrder, strColumn));
 
-                /* Unpack our register address. */
-                uint256_t hashRegister;
-                if(!TAO::Register::Unpack(tContract, hashRegister))
-                    continue;
+                /* Build our list of orders now. */
+                for(const auto& pairOrder : vOrders)
+                {
+                    /* Get our contract now. */
+                    const TAO::Operation::Contract tContract =
+                        LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
 
-                /* Check for a spent proof already. */
-                if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second))
-                    continue;
+                    /* Unpack our register address. */
+                    uint256_t hashRegister;
+                    if(!TAO::Register::Unpack(tContract, hashRegister))
+                        continue;
 
-                /* Get our order's json. */
-                encoding::json jOrder =
-                    OrderToJSON(tContract, hashBase);
+                    /* Check for a spent proof already. */
+                    if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second))
+                        continue;
 
-                /* Check that we match our filters. */
-                if(!FilterResults(jParams, jOrder))
-                    continue;
+                    /* Get our order's json. */
+                    encoding::json jOrder =
+                        OrderToJSON(tContract, hashBase);
 
-                /* Insert into set and automatically sort. */
-                setOrders.insert(jOrder);
+                    /* Check that we match our filters. */
+                    if(!FilterResults(jParams, jOrder))
+                        continue;
+
+                    /* Insert into set and automatically sort. */
+                    setOrders.insert(jOrder);
+                }
+
+                /* Build our return value. */
+                encoding::json jOrders = encoding::json::array();
+
+                /* Handle paging and offsets. */
+                uint32_t nTotal = 0;
+                for(const auto& jOrder : setOrders)
+                {
+                    /* Check the offset. */
+                    if(++nTotal <= nOffset)
+                        continue;
+
+                    /* Check the limit */
+                    if(jOrders.size() == nLimit)
+                        break;
+
+                    jOrders.push_back(jOrder);
+                }
+
+                /* Add to our return value. */
+                jRet["orders"] = jOrders;
             }
+            else
+                jRet["orders"] = encoding::json::array();
+        }
 
-            /* Build our return value. */
-            encoding::json jOrders = encoding::json::array();
-
-            /* Handle paging and offsets. */
-            uint32_t nTotal = 0;
-            for(const auto& jOrder : setOrders)
+        /* Handle for our orders key. */
+        if(setTypes.find("executed") != setTypes.end())
+        {
+            /* Get a list of our active orders. */
+            std::vector<std::pair<uint512_t, uint32_t>> vOrders;
+            if(LLD::Logical->ListExecuted(hashGenesis, vOrders))
             {
-                /* Check the offset. */
-                if(++nTotal <= nOffset)
-                    continue;
+                /* Build our object list and sort on insert. */
+                std::set<encoding::json, CompareResults> setOrders({}, CompareResults(strOrder, strColumn));
 
-                /* Check the limit */
-                if(jOrders.size() == nLimit)
-                    break;
+                /* Build our list of orders now. */
+                for(const auto& pairOrder : vOrders)
+                {
+                    /* Get our contract now. */
+                    const TAO::Operation::Contract tContract =
+                        LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
 
-                jOrders.push_back(jOrder);
+                    /* Unpack our register address. */
+                    uint256_t hashRegister;
+                    if(!TAO::Register::Unpack(tContract, hashRegister))
+                        continue;
+
+                    /* Get our order's json. */
+                    encoding::json jOrder =
+                        OrderToJSON(tContract, hashBase);
+
+                    /* Check that we match our filters. */
+                    if(!FilterResults(jParams, jOrder))
+                        continue;
+
+                    /* Insert into set and automatically sort. */
+                    setOrders.insert(jOrder);
+                }
+
+                /* Build our return value. */
+                encoding::json jOrders = encoding::json::array();
+
+                /* Handle paging and offsets. */
+                uint32_t nTotal = 0;
+                for(const auto& jOrder : setOrders)
+                {
+                    /* Check the offset. */
+                    if(++nTotal <= nOffset)
+                        continue;
+
+                    /* Check the limit */
+                    if(jOrders.size() == nLimit)
+                        break;
+
+                    jOrders.push_back(jOrder);
+                }
+
+                /* Add to our return value. */
+                jRet["executed"] = jOrders;
             }
-
-            /* Add to our return value. */
-            jRet["orders"] = jOrders;
+            else
+                jRet["executed"] = encoding::json::array();
         }
 
         /* Filter out our expected fieldnames if specified. */
