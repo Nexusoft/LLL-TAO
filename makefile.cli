@@ -453,6 +453,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_market_execute.o \
 		build/API_commands_market_index.o \
 		build/API_commands_market_initialize.o \
+		build/API_commands_market_json.o \
 		build/API_commands_market_list.o \
 		build/API_commands_names_initialize.o \
 		build/API_commands_names_index.o \

@@ -111,5 +111,32 @@ namespace TAO::API
          **/
         encoding::json Cancel(const encoding::json& jParams, const bool fHelp);
 
+
+        /** OrderToJSON
+         *
+         *  Converts an order for marketplace into formatted JSON.
+         *
+         *  @param[in] rContract The contract to de-serialize
+         *  @param[in] pairMarket The market pair ordering.
+         *
+         *  @return the formatted JSON object
+         *
+         **/
+        __attribute__((pure)) encoding::json OrderToJSON(const TAO::Operation::Contract& rContract,
+                                                         const std::pair<uint256_t, uint256_t>& pairMarket);
+
+
+        /** OrderToJSON
+         *
+         *  Converts an order for marketplace into formatted JSON.
+         *
+         *  @param[in] rContract The contract to de-serialize
+         *  @param[in] hashBase The market base pair for ordering.
+         *
+         *  @return the formatted JSON object
+         *
+         **/
+        __attribute__((pure)) encoding::json OrderToJSON(const TAO::Operation::Contract& rContract, const uint256_t& hashBase);
+        
     };
 }
