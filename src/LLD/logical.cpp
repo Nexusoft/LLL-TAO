@@ -199,20 +199,26 @@ namespace LLD
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairOrder;
 
+        /* Check for maximum sequence. */
+        uint32_t nMarketSequence = 0;
+        if(!Read(std::make_pair(std::string("market.sequence"), pairMarket), nMarketSequence))
+            return debug::error(FUNCTION, "failed to read market sequence");
+
         /* Loop until we have failed. */
         uint32_t nSequence = 0;
         while(!config::fShutdown.load()) //we want to early terminate on shutdown
         {
             /* Read our current record. */
             if(!Read(std::make_pair(nSequence, pairMarket), pairOrder))
-                break;
+                continue;
 
             /* Check for already executed contracts to omit. */
             if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL))
                 vExecuted.push_back(pairOrder);
 
             /* Increment our sequence number. */
-            ++nSequence;
+            if(++nSequence >= nMarketSequence)
+                break;
         }
 
         return !vExecuted.empty();
