@@ -774,7 +774,7 @@ namespace TAO
             /* Cache of contracts by genesis hash for all contracts that we have already determined either do not have
                any conditions or have already been claimed/credited.  If any contract is already in this vector then we can skip
                it for all future invocations of the get_expired method. */
-            static std::unordered_set<std::pair<uint512_t, uint32_t>, pair_hash> cacheProcessed;
+            static std::set<std::pair<uint512_t, uint32_t>> cacheProcessed;
 
             /* Temporary transaction to use to evaluate the conditions */
             TAO::Ledger::Transaction voidTx;
