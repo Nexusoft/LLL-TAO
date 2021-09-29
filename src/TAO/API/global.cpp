@@ -15,7 +15,6 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/market.h>
 #include <TAO/API/users/types/users.h>
-#include <TAO/API/voting/types/voting.h>
 
 #include <TAO/API/types/commands/assets.h>
 #include <TAO/API/types/commands/ledger.h>
@@ -56,7 +55,6 @@ namespace TAO::API
         Commands::Register<System>();
         Commands::Register<Tokens>();
         Commands::Register<Users>();
-        //Commands::Register<Voting>();
 
         /* Initialize our indexing services. */
         Index::Initialize();
