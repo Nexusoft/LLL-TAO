@@ -186,9 +186,12 @@ namespace TAO
         uint512_t Session::GetNetworkKey() const
         {
             /* Lazily generate the network key the first time it is requested */
-            if(nNetworkKey.IsNull())
+            if(nNetworkKey.IsNull() && !pActivePIN.IsNull())
                 /* Generate and cache the network private key */
                  nNetworkKey = new memory::encrypted_type<uint512_t>(pSigChain->Generate("network", 0, pActivePIN->PIN()));
+
+            if(nNetworkKey.IsNull())
+                return 0;
 
             return nNetworkKey->DATA;
         }

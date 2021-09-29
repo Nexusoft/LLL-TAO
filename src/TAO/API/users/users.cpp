@@ -333,7 +333,8 @@ namespace TAO
         bool Users::Authenticate(const encoding::json& jParams)
         {
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            const SecureString strPIN =
+                Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
             Session& session = Commands::Get<Users>()->GetSession(jParams);
