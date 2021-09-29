@@ -25,7 +25,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-    
+
     /* Ledger Layer namespace. */
     namespace Ledger
     {
@@ -90,9 +90,13 @@ namespace TAO
             /* Special testnet rules*/
             if(config::fTestNet.load())
             {
-                /* Check for specific conditions such as local testnet or available connections. */
-                bool fLocalTestnet   = config::fTestNet.load() && (!config::GetBoolArg("-dns", true) || config::fHybrid.load());
-                bool fHasConnections = LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() > 0;
+                /* Check for specific conditions such as local testnet */
+                const bool fLocalTestnet   =
+                    (config::fTestNet.load() && (!config::GetBoolArg("-dns", true) || config::fHybrid.load()));
+
+                /* Check for active connections. */
+                bool fHasConnections =
+                    (LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() > 0);
 
                 /* Set the synchronizing flag. */
                 fSynchronizing =

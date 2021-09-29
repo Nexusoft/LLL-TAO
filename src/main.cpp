@@ -196,12 +196,12 @@ int main(int argc, char** argv)
     timer.Reset();
 
 
-    /* Shutdown network subsystem. */
-    LLP::Shutdown();
-
-
     /* Shutdown the API subsystems. */
     TAO::API::Shutdown();
+
+
+    /* Shutdown network subsystem. */
+    LLP::Shutdown();
 
 
     /* Shutdown LLL sub-systems. */
