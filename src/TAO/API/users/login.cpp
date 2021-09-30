@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 #include <LLP/types/tritium.h>
 
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/global.h>
 
@@ -57,28 +58,20 @@ namespace TAO
             const SecureString strPIN = ExtractPIN(jParams);
 
             /* Check for username parameter. */
-            if(jParams.find("username") == jParams.end())
+            if(!CheckParameter(jParams, "username", "string"))
                 throw Exception(-127, "Missing username");
 
             /* Parse out username. */
             const SecureString strUser =
                 SecureString(jParams["username"].get<std::string>().c_str());
 
-            /* Check for username size. */
-            if(strUser.size() == 0)
-                throw Exception(-133, "Zero-length username");
-
             /* Check for password parameter. */
-            if(jParams.find("password") == jParams.end())
+            if(!CheckParameter(jParams, "password", "string"))
                 throw Exception(-128, "Missing password");
 
             /* Parse out password. */
             const SecureString strPass =
                 SecureString(jParams["password"].get<std::string>().c_str());
-
-            /* Check for password size. */
-            if(strPass.size() == 0)
-                throw Exception(-134, "Zero-length password");
 
             /* Create a temp sig chain for checking credentials */
             TAO::Ledger::SignatureChain user(strUser, strPass);

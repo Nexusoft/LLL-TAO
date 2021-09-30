@@ -40,6 +40,10 @@ namespace TAO::API
         const uint256_t hashBase =
             ExtractToken(jParams);
 
+        /* Check for invalid token. */
+        if(hashBase == 0)
+            throw Exception(-56, "Missing Parameter [token]");
+
         /* Get our user genesis. */
         const uint256_t hashGenesis =
             ExtractGenesis(jParams);
@@ -84,6 +88,17 @@ namespace TAO::API
                     /* Get our order's json. */
                     encoding::json jOrder =
                         OrderToJSON(tContract, hashBase);
+
+                    /* Check for valid base token. */
+                    const std::pair<uint256_t, uint256_t> pairMarket = std::make_pair
+                    (
+                        TAO::Register::Address(jOrder["contract"]["token"].get<std::string>()),
+                        TAO::Register::Address(jOrder["order"]["token"].get<std::string>())
+                    );
+
+                    /* Check that this the market we are looking for. */
+                    if(hashBase != pairMarket.first && hashBase != pairMarket.second)
+                        continue;
 
                     /* Check that we match our filters. */
                     if(!FilterResults(jParams, jOrder))
@@ -143,6 +158,17 @@ namespace TAO::API
                     /* Get our order's json. */
                     encoding::json jOrder =
                         OrderToJSON(tContract, hashBase);
+
+                    /* Check for valid base token. */
+                    const std::pair<uint256_t, uint256_t> pairMarket = std::make_pair
+                    (
+                        TAO::Register::Address(jOrder["contract"]["token"].get<std::string>()),
+                        TAO::Register::Address(jOrder["order"]["token"].get<std::string>())
+                    );
+
+                    /* Check that this the market we are looking for. */
+                    if(hashBase != pairMarket.first && hashBase != pairMarket.second)
+                        continue;
 
                     /* Check that we match our filters. */
                     if(!FilterResults(jParams, jOrder))

@@ -17,11 +17,11 @@ ________________________________________________________________________________
 
 namespace LLC
 {
-    
+
 
     /* 256-bit hashing function */
-    uint256_t Argon2_256(const std::vector<uint8_t>& vchData, 
-                        const std::vector<uint8_t>& vchSalt, 
+    uint256_t Argon2_256(const std::vector<uint8_t>& vchData,
+                        const std::vector<uint8_t>& vchSalt,
                         const std::vector<uint8_t>& vchSecret,
                         uint32_t nCost, uint32_t nMemory)
     {
@@ -73,7 +73,7 @@ namespace LLC
         int32_t nRet = argon2id_ctx(&context);
         if(nRet != ARGON2_OK)
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-        
+
         uint256_t hashData;
         hashData.SetBytes(vHash);
 
@@ -82,8 +82,8 @@ namespace LLC
 
 
     /* 256-bit hashing function */
-    uint256_t Argon2Fast_256(const std::vector<uint8_t>& vchData, 
-                        const std::vector<uint8_t>& vchSalt, 
+    uint256_t Argon2Fast_256(const std::vector<uint8_t>& vchData,
+                        const std::vector<uint8_t>& vchSalt,
                         const std::vector<uint8_t>& vchSecret)
     {
         return Argon2_256(vchData, vchSalt, vchSecret, 2, (1 << 8));
@@ -91,8 +91,8 @@ namespace LLC
 
 
     /* 512-bit hashing function */
-    uint512_t Argon2_512(const std::vector<uint8_t>& vchData, 
-                        const std::vector<uint8_t>& vchSalt, 
+    uint512_t Argon2_512(const std::vector<uint8_t>& vchData,
+                        const std::vector<uint8_t>& vchSalt,
                         const std::vector<uint8_t>& vchSecret,
                         uint32_t nCost, uint32_t nMemory)
     {
@@ -144,7 +144,7 @@ namespace LLC
         int32_t nRet = argon2id_ctx(&context);
         if(nRet != ARGON2_OK)
             throw std::runtime_error(debug::safe_printstr(FUNCTION, "Argon2 failed with code ", nRet));
-        
+
         uint512_t hashData;
         hashData.SetBytes(vHash);
 
@@ -153,8 +153,8 @@ namespace LLC
 
 
     /* 512-bit hashing function */
-    uint512_t Argon2Fast_512(const std::vector<uint8_t>& vchData, 
-                        const std::vector<uint8_t>& vchSalt, 
+    uint512_t Argon2Fast_512(const std::vector<uint8_t>& vchData,
+                        const std::vector<uint8_t>& vchSalt,
                         const std::vector<uint8_t>& vchSecret)
     {
         return Argon2_512(vchData, vchSalt, vchSecret, 2, (1 << 8));

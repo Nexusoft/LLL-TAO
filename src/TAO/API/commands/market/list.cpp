@@ -36,13 +36,13 @@ namespace TAO::API
         const std::set<std::string> setTypes =
             ExtractTypes(jParams);
 
-        /* Track if this is a catch-all. */
-        const bool fAll =
-            (setTypes.find("order") != setTypes.end() || setTypes.find("executed") != setTypes.end());
-
         /* Track if looking at executed orders. */
         const bool fExecuted =
             (setTypes.find("executed") != setTypes.end());
+
+        /* Track if this is a catch-all. */
+        const bool fAll =
+            (setTypes.find("order") != setTypes.end() || fExecuted);
 
         /* Grab our market pair. */
         const std::pair<uint256_t, uint256_t> pairMarket  = ExtractMarket(jParams);
@@ -66,16 +66,14 @@ namespace TAO::API
             std::vector<std::pair<uint512_t, uint32_t>> vBids;
             if(LLD::Logical->ListAllOrders(pairMarket, vBids))
             {
+                debug::log(0, vBids.size(), " bid size");
+
                 /* Build our object list and sort on insert. */
                 std::set<encoding::json, CompareResults> setBids({}, CompareResults(strOrder, strColumn));
 
                 /* Build our list of orders now. */
                 for(const auto& pairOrder : vBids)
                 {
-                    /* Check for executed values. */
-                    if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL) != fExecuted)
-                        continue;
-
                     /* Get our contract now. */
                     const TAO::Operation::Contract tContract =
                         LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
@@ -85,8 +83,12 @@ namespace TAO::API
                     if(!TAO::Register::Unpack(tContract, hashRegister))
                         continue;
 
+                    /* Check if the order has been executed. */
+                    if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL) != fExecuted)
+                        continue;
+
                     /* Check for a spent proof already. */
-                    if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second))
+                    if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second) && !fExecuted)
                         continue;
 
                     /* Get our order's json. */
@@ -136,13 +138,11 @@ namespace TAO::API
                 /* Build our object list and sort on insert. */
                 std::set<encoding::json, CompareResults> setAsks({}, CompareResults(strOrder, strColumn));
 
+                debug::log(0, vAsks.size(), " ask size");
+
                 /* Build our list of orders now. */
                 for(const auto& pairOrder : vAsks)
                 {
-                    /* Check for executed values. */
-                    if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL) != fExecuted)
-                        continue;
-
                     /* Get our contract now. */
                     const TAO::Operation::Contract tContract =
                         LLD::Ledger->ReadContract(pairOrder.first, pairOrder.second);
@@ -152,8 +152,12 @@ namespace TAO::API
                     if(!TAO::Register::Unpack(tContract, hashRegister))
                         continue;
 
+                    /* Check if the order has been executed. */
+                    if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL) != fExecuted)
+                        continue;
+
                     /* Check for a spent proof already. */
-                    if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second))
+                    if(LLD::Ledger->HasProof(hashRegister, pairOrder.first, pairOrder.second) && !fExecuted)
                         continue;
 
                     /* Get our order's json. */
