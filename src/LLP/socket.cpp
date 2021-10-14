@@ -505,7 +505,6 @@ namespace LLP
 
                 return false;
             }
-
         }
 
         /* Reset the internal timers. */
@@ -519,7 +518,6 @@ namespace LLP
     int Socket::Available() const
     {
         LOCK(SOCKET_MUTEX);
-
 
     #ifdef WIN32
         long unsigned int nAvailable = 0;

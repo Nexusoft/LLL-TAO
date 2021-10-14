@@ -119,7 +119,7 @@ namespace LLP
             CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-apissl"));
             CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-apiremote"), false);
             CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-apisslrequired"), false);
-            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.PORT_SSL        = GetAPIPort(true); //switch API port based on boolean argument
             CONFIG.MAX_INCOMING    = 128;
             CONFIG.MAX_CONNECTIONS = 128;
             CONFIG.MAX_THREADS     = config::GetArg(std::string("-apithreads"), 8);

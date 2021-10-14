@@ -120,8 +120,20 @@ namespace LLP
      *  @return Returns a 16-bit port number for core mainnet or testnet.
      *
      **/
-    inline uint16_t GetAPIPort()
+    inline uint16_t GetAPIPort(const bool fSSL = false)
     {
+        /* Check for SSL port. */
+        if(fSSL)
+        {
+            return static_cast<uint16_t>
+            (
+                config::GetArg(std::string("-apisslport"),
+                config::fTestNet.load() ?
+                    TESTNET_API_SSL_PORT :
+                    MAINNET_API_SSL_PORT)
+            );
+        }
+
         return static_cast<uint16_t>
         (
             config::GetArg(std::string("-apiport"),

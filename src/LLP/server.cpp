@@ -88,9 +88,43 @@ namespace LLP
             /* Open listening sockets. */
             OpenListening();
 
-            /* Create our listening thread now. */
-            THREAD_LISTEN =
-                std::thread(std::bind(&Server::ListeningThread, this, true, false));
+            /* We don't create plaintext listener if SSL is required. */
+            if(!CONFIG.REQUIRE_SSL)
+            {
+                /* Create our listening thread now. */
+                THREAD_LISTEN.push_back
+                (
+                    std::thread
+                    (
+                        std::bind
+                        (
+                            &Server::ListeningThread,
+                            this,
+                            true, //IPv4
+                            false //No SSL
+                        )
+                    )
+                );
+            }
+
+            /* Add our SSL listener if enabled. */
+            if(CONFIG.ENABLE_SSL)
+            {
+                /* Create our listening thread now. */
+                THREAD_LISTEN.push_back
+                (
+                    std::thread
+                    (
+                        std::bind
+                        (
+                            &Server::ListeningThread,
+                            this,
+                            true, //IPv4
+                            true //Enable SSL
+                        )
+                    )
+                );
+            }
         }
 
         /* Start meters if enabled. */
@@ -111,9 +145,14 @@ namespace LLP
         if(THREAD_METER.joinable())
             THREAD_METER.join();
 
-        /* Wait for listener thread. */
-        if(THREAD_LISTEN.joinable())
-            THREAD_LISTEN.join();
+        /* Check all registered listening threads. */
+        for(auto& THREAD : THREAD_LISTEN)
+        {
+            /* Wait on listening threads. */
+            if(THREAD.joinable())
+                THREAD.join();
+        }
+
 
         /* Delete the data threads. */
         for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)

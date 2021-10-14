@@ -81,7 +81,7 @@ namespace LLP
 
 
         /** Listener Thread for accepting incoming connections. **/
-        std::thread THREAD_LISTEN;
+        std::vector<std::thread> THREAD_LISTEN;
 
 
         /** Meter Thread for tracking incoming and outgoing packet counts. **/
