@@ -299,8 +299,19 @@ namespace TAO::API
                 if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::LOOKUP))
                     throw Exception(-209, "Recipient is not a valid account");
 
-                /* Track our token we will be using. */
-                const uint256_t hashToken = objTo.get<uint256_t>("token");
+                /* Check that we are not debiting to tokenized asset. */
+                uint256_t hashToken = ~uint256_t(0); //default value should fail
+                if(objTo.Base() == TAO::Register::OBJECTS::NONSTANDARD)
+                {
+                    /* Check that we don't have multiple accounts that would come from any/all. */
+                    if(mapAccounts.size() != 1)
+                        throw Exception(-65, "Cannot debit/any to tokenized asset");
+
+                    /* Get the token-id we will work with. */
+                    hashToken = mapAccounts.begin()->first;
+                }
+                else //otherwise check by account token
+                    hashToken = objTo.get<uint256_t>("token");
 
                 /* Check that we have an available account to debit. */
                 if(!mapAccounts.count(hashToken))
