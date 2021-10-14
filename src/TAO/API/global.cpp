@@ -42,6 +42,9 @@ namespace TAO::API
     {
         debug::log(0, FUNCTION, "Initializing API");
 
+        /* Others depend on users. */
+        Commands::Register<Users>();
+
         /* Create the API instances. */
         Commands::Register<Assets>();
         //Commands::Register<Crypto>();
@@ -54,7 +57,6 @@ namespace TAO::API
         Commands::Register<Supply>();
         Commands::Register<System>();
         Commands::Register<Tokens>();
-        Commands::Register<Users>();
 
         /* Initialize our indexing services. */
         Index::Initialize();

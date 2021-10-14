@@ -237,6 +237,23 @@ namespace debug
     }
 
 
+    /** notice
+     *
+     *  Safe constant format debugging notice logs.
+     *  Dumps to console or to log file.
+     *
+     *  @param[in] args The variadic template arguments in.
+     *
+     *  @return Returns false always. (Assumed to return an error.)
+     *
+     **/
+    template<class... Args>
+    void notice(Args&&... args)
+    {
+        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "NOTICE: ", ANSI_COLOR_RESET, args...);
+    }
+
+
     /** drop
      *
      *  Safe constant format debugging network drror logs.

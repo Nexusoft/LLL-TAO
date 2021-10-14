@@ -28,11 +28,17 @@ namespace TAO::API
      **/
     class Market : public Derived<Market>
     {
+
+        /** Handle for fee parameters. **/
+        std::map<uint256_t, std::pair<uint256_t, uint64_t>> mapFees;
+
+
     public:
 
         /** Default Constructor. **/
         Market()
         : Derived<Market>()
+        , mapFees        ()
         {
         }
 

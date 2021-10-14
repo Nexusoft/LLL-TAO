@@ -15,10 +15,12 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/build.h>
 #include <TAO/API/include/extract.h>
+#include <TAO/API/include/format.h>
+#include <TAO/API/include/contracts/verify.h>
+
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/market.h>
 #include <TAO/API/types/contracts/exchange.h>
-#include <TAO/API/include/contracts/verify.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -35,9 +37,13 @@ namespace TAO::API
             ExtractAddress(jParams, "from");
 
         /* Get the token / account object. */
-        TAO::Register::Object tObject;
-        if(!LLD::Register->ReadObject(hashAddress, tObject, TAO::Ledger::FLAGS::MEMPOOL))
-            throw Exception(-13, "Object not found");
+        TAO::Register::Object tObjFrom;
+        if(!LLD::Register->ReadObject(hashAddress, tObjFrom, TAO::Ledger::FLAGS::MEMPOOL))
+            throw Exception(-13, "Object [from] not found");
+
+        /* Check for valid types. */
+        if(tObjFrom.Base() != TAO::Register::OBJECTS::ACCOUNT)
+            throw Exception(-13, "Object [from] is not an account");
 
         /* Get our txid. */
         const uint512_t hashOrder   = ExtractHash(jParams);
@@ -50,6 +56,15 @@ namespace TAO::API
         /* Check for from parameter. */
         const uint256_t hashCredit =
             ExtractAddress(jParams, "to");
+
+        /* Get the token / account object. */
+        TAO::Register::Object tObjTo;
+        if(!LLD::Register->ReadObject(hashCredit, tObjTo, TAO::Ledger::FLAGS::MEMPOOL))
+            throw Exception(-13, "Object [to] not found");
+
+        /* Check for valid types. */
+        if(tObjTo.Base() != TAO::Register::OBJECTS::ACCOUNT)
+            throw Exception(-13, "Object [from] is not an account");
 
         /* Loop through all transactions. */
         std::vector<TAO::Operation::Contract> vContracts;
@@ -78,6 +93,15 @@ namespace TAO::API
                         uint256_t hashFrom;
                         rContract >> hashFrom;
 
+                        /* Get the token / account object. */
+                        TAO::Register::Object tOrderFrom;
+                        if(!LLD::Register->ReadObject(hashFrom, tOrderFrom, TAO::Ledger::FLAGS::MEMPOOL))
+                            throw Exception(-13, "Object not found");
+
+                        /* Check that we have the correct token types. */
+                        if(tObjTo.get<uint256_t>("token") != tOrderFrom.get<uint256_t>("token"))
+                            throw Exception(-26, "Invalid parameter [to], [type] requires correct token");
+
                         /* Get the next OP. */
                         rContract.Seek(32, TAO::Operation::Contract::OPERATIONS);
 
@@ -100,17 +124,43 @@ namespace TAO::API
                         uint256_t hashTo;
                         ssCompare >> hashTo;
 
+                        /* Get the token / account object. */
+                        TAO::Register::Object tOrderTo;
+                        if(!LLD::Register->ReadObject(hashTo, tOrderTo, TAO::Ledger::FLAGS::MEMPOOL))
+                            throw Exception(-13, "Object [from] not found");
+
                         /* Get the amount requested. */
                         uint64_t nAmount = 0;
                         ssCompare >> nAmount;
 
-                        /* Build the transaction. */
+                        /* Check that we have the correct token types. */
+                        if(tObjFrom.get<uint256_t>("token") != tOrderTo.get<uint256_t>("token"))
+                            throw Exception(-26, "Invalid parameter [from], [type] requires correct token");
+
+                        /* Build the contract. */
                         TAO::Operation::Contract tValidate;
                         tValidate << uint8_t(TAO::Operation::OP::VALIDATE) << hashOrder   << nContract;
                         tValidate << uint8_t(TAO::Operation::OP::DEBIT)    << hashAddress << hashTo << nAmount << uint64_t(0);
 
                         /* Add contract to our queue. */
                         vContracts.push_back(tValidate);
+
+                        /* Check for a token match for from account. */
+                        uint256_t hashToken = tObjFrom.get<uint256_t>("token");
+                        if(mapFees.count(hashToken))
+                        {
+                            /* Calcuate our debit amount now. */
+                            const uint64_t nFees =
+                                (nAmount * mapFees[hashToken].second) / 100000;
+
+                            /* Build the contract. */
+                            TAO::Operation::Contract tDebit;
+                            tDebit << uint8_t(TAO::Operation::OP::DEBIT) << hashAddress;
+                            tDebit << mapFees[hashToken].first << nFees << uint64_t(0);
+
+                            /* Add contract to our queue. */
+                            vContracts.push_back(tDebit);
+                        }
 
                         /* if we passed all of these checks then insert the credit contract into the tx */
                         TAO::Operation::Contract tCredit;
@@ -119,6 +169,23 @@ namespace TAO::API
 
                         /* Add contract to our queue. */
                         vContracts.push_back(tCredit);
+
+                        /* Check for a token match for from account. */
+                        hashToken = tObjTo.get<uint256_t>("token");
+                        if(mapFees.count(hashToken))
+                        {
+                            /* Calcuate our debit amount now. */
+                            const uint64_t nFees =
+                                (nAmount * mapFees[hashToken].second) / 100000;
+
+                            /* Build the contract. */
+                            TAO::Operation::Contract tDebit;
+                            tDebit << uint8_t(TAO::Operation::OP::DEBIT) << hashCredit;
+                            tDebit << mapFees[hashToken].first << nFees << uint64_t(0);
+
+                            /* Add contract to our queue. */
+                            vContracts.push_back(tDebit);
+                        }
                     }
 
                     break;
