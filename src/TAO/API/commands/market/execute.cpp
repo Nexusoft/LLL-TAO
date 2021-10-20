@@ -176,7 +176,7 @@ namespace TAO::API
                         {
                             /* Calcuate our debit amount now. */
                             const uint64_t nFees =
-                                (nAmount * mapFees[hashToken].second) / 100000;
+                                (nOrderAmount * mapFees[hashToken].second) / 100000;
 
                             /* Build the contract. */
                             TAO::Operation::Contract tDebit;
