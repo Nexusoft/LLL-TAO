@@ -92,7 +92,7 @@ namespace TAO
             uint256_t hashGenesis;
 
             /* Check the local DB first */
-            if(LLD::Local->ReadGenesis(strUsername, hashGenesis))
+            if(LLD::Local && LLD::Local->ReadGenesis(strUsername, hashGenesis))
                 return hashGenesis;
 
             /* Generate the Secret Phrase */
@@ -103,7 +103,8 @@ namespace TAO
             hashGenesis.SetType(TAO::Ledger::GENESIS::UserType());
 
             /* Cache this username-genesis pair in the local db*/
-            LLD::Local->WriteGenesis(strUsername, hashGenesis);
+            if(LLD::Local)
+                LLD::Local->WriteGenesis(strUsername, hashGenesis);
 
             return hashGenesis;
         }

@@ -211,35 +211,38 @@ namespace TAO
                 return debug::error(FUNCTION, "disk index inconsistent with best chain");
 
             /* Reverse iterator to find the most recent common ancestor. */
-            BlockState stateFork;
-            for(auto it = mapCheckpoints.rbegin(); it != mapCheckpoints.rend(); ++it)
+            if(!config::fHybrid.load())
             {
-                /* Check that we are within correct height ranges. */
-                if(it->first > stateBest.load().nHeight)
-                    continue;
-
-                /* Load the block from disk. */
-                BlockState stateCheck;
-                if(!LLD::Ledger->ReadBlock(it->second, stateCheck))
+                BlockState stateFork;
+                for(auto it = mapCheckpoints.rbegin(); it != mapCheckpoints.rend(); ++it)
                 {
-                    /* Find nearest ancestory block. */
-                    auto iAncestor = it;
-                    iAncestor++;
+                    /* Check that we are within correct height ranges. */
+                    if(it->first > stateBest.load().nHeight)
+                        continue;
 
-                    /* Find the most common ancestor. */
-                    BlockState stateAncestor;
-                    if(LLD::Ledger->ReadBlock(iAncestor->second, stateAncestor))
+                    /* Load the block from disk. */
+                    BlockState stateCheck;
+                    if(!LLD::Ledger->ReadBlock(it->second, stateCheck))
                     {
-                        /* Debug output if ancestor was found. */
-                        debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "WARNING: ", ANSI_COLOR_RESET,
-                            " REVERTING TO HARDCODED Ancestor ", iAncestor->first, " Hash ", iAncestor->second.SubString());
+                        /* Find nearest ancestory block. */
+                        auto iAncestor = it;
+                        iAncestor++;
 
-                        /* Set the best to older block. */
-                        LLD::TxnBegin();
-                        stateAncestor.SetBest();
-                        LLD::TxnCommit();
+                        /* Find the most common ancestor. */
+                        BlockState stateAncestor;
+                        if(LLD::Ledger->ReadBlock(iAncestor->second, stateAncestor))
+                        {
+                            /* Debug output if ancestor was found. */
+                            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "WARNING: ", ANSI_COLOR_RESET,
+                                " REVERTING TO HARDCODED Ancestor ", iAncestor->first, " Hash ", iAncestor->second.SubString());
 
-                        break;
+                            /* Set the best to older block. */
+                            LLD::TxnBegin();
+                            stateAncestor.SetBest();
+                            LLD::TxnCommit();
+
+                            break;
+                        }
                     }
                 }
             }
