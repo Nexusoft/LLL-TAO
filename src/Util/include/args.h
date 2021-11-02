@@ -30,6 +30,8 @@ namespace config
     extern std::map<std::string, std::vector<std::string> > mapMultiArgs;
     extern std::map<uint16_t, std::vector<std::string> > mapIPFilters;
 
+    extern std::atomic<uint64_t> nTransactionActivation;
+
 
     extern std::atomic<bool> fShutdown;
     extern std::atomic<bool> fDebug;

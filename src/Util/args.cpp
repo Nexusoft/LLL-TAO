@@ -277,5 +277,54 @@ namespace config
                 mapIPFilters[nRPCPort].push_back(entry);
         }
 
+
+        /* Handle reading our activation data for transactions. */
+        if(fHybrid.load() || fTestNet.load()) //this rule is only to activate private, hybrid, or testnets
+        {
+            LOCK(ARGS_MUTEX);
+
+            /* Handle for our market fees. */
+            if(config::mapMultiArgs["-activatetx"].size() > 0)
+            {
+                /* Add our activation timestamps and versions. */
+                for(const std::string& strActivate : config::mapMultiArgs["-activatetx"])
+                {
+                    /* Split the string by delimiter. */
+                    std::vector<std::string> vActivate;
+                    ParseString(strActivate, ':', vActivate);
+
+                    /* Check for valid tranaction versions. */
+                    if(vActivate.size() != 2)
+                        throw debug::exception("-activatetx, too many parameters: ", strActivate);
+
+                    /* Extract our activation version. */
+                    const uint32_t nVersion =
+                        std::stoi(vActivate[0]);
+
+                    /* Get our activation timestamp. */
+                    const uint64_t nTimestamp =
+                        std::stoull(vActivate[1]);
+
+                    /* Check our timelocks variable. */
+                    const uint32_t nCurrentVersion = TAO::Ledger::CurrentTransactionVersion();
+                    if(nVersion != nCurrentVersion)
+                        throw debug::exception("-activatetx, cannot activate for ", VARIABLE(nVersion), " must be ", VARIABLE(nCurrentVersion));
+
+                    /* Check our current time-lock. */
+                    const uint64_t nTimelock = TAO::Ledger::StartTransactionTimelock(nCurrentVersion - 1);
+                    if(nTimestamp <= nTimelock)
+                        throw debug::exception("-activatetx, cannot activate before ", VARIABLE(nTimelock));
+
+                    /* Log the activation timestamp to our console. */
+                    debug::notice("Activation created for ", VARIABLE(nVersion), " at ", VARIABLE(nTimestamp));
+
+                    /* Add to our timelocks code now. */
+                    if(fTestNet.load())
+                        TAO::Ledger::TESTNET_TRANSACTION_VERSION_TIMELOCK[nVersion - 1] = nTimestamp;
+                    else
+                        TAO::Ledger::NETWORK_TRANSACTION_VERSION_TIMELOCK[nVersion - 1] = nTimestamp;
+                }
+            }
+        }
     }
 }

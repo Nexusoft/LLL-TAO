@@ -77,7 +77,7 @@ namespace TAO
 
 
         /* Lock for the Nexus transaction version upgrades. */
-        const uint32_t TESTNET_TRANSACTION_VERSION_TIMELOCK[]   =
+        uint32_t TESTNET_TRANSACTION_VERSION_TIMELOCK[]   =
         {
             1572325200,        //--- Transaction Version 1 Testnet Activation:  10/28/2019 22:00:00 GMT - 7
             1582946400,        //--- Transaction Version 2 Testnet Activation:  02/28/2020 20:20:00 GMT - 7
@@ -87,7 +87,7 @@ namespace TAO
 
 
         /* Lock for the Nexus transaction version upgrades. */
-        const uint32_t NETWORK_TRANSACTION_VERSION_TIMELOCK[]   =
+        uint32_t NETWORK_TRANSACTION_VERSION_TIMELOCK[]   =
         {
             1573539371,        //--- Transaction Version 1 Activation:      11/11/2019 23:11:11 GMT - 6
             1584676140,        //--- Transaction Version 2 Activation:      03/19/2020 20:49:00 GMT - 7
@@ -283,7 +283,9 @@ namespace TAO
         /* Retrieve the timelock activation for a given transaction version on mainnet or testnet. */
         uint64_t StartTransactionTimelock(const uint32_t nVersion)
         {
-            uint32_t nCurrent = CurrentTransactionVersion();
+            /* Get our current transaction verison. */
+            const uint32_t nCurrent =
+                CurrentTransactionVersion();
 
             /* Version 0 or invalid versions that have no timelock activation */
             if((nVersion == 0) || (nVersion > nCurrent))
@@ -298,7 +300,9 @@ namespace TAO
         /* Retrieve the ending timelock for a given transaction version on mainnet or testnet. */
         uint64_t EndTransactionTimelock(const uint32_t nVersion)
         {
-            uint32_t nCurrent = CurrentTransactionVersion();
+            /* Get the transaction version. */
+            const uint32_t nCurrent =
+                CurrentTransactionVersion();
 
             /* Version 0 or versions that have no ending timelock (including current) */
             if((nVersion == 0) || (nVersion >= nCurrent))

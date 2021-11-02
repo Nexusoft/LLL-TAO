@@ -94,7 +94,7 @@ namespace TAO
          *  Lock for the Nexus transaction version upgrades.
          *
          **/
-        extern const uint32_t TESTNET_TRANSACTION_VERSION_TIMELOCK[];
+        extern uint32_t TESTNET_TRANSACTION_VERSION_TIMELOCK[];
 
 
         /** Network Transaction Version Timelock
@@ -102,7 +102,7 @@ namespace TAO
          *  Lock for the Nexus transaction version upgrades.
          *
          **/
-        extern const uint32_t NETWORK_TRANSACTION_VERSION_TIMELOCK[];
+        extern uint32_t NETWORK_TRANSACTION_VERSION_TIMELOCK[];
 
 
         /** Testnet Channel Timelock
