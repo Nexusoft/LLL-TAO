@@ -307,11 +307,11 @@ namespace config
 
                     /* Check our timelocks variable. */
                     const uint32_t nCurrentVersion = TAO::Ledger::CurrentTransactionVersion();
-                    if(nVersion != nCurrentVersion)
+                    if(nVersion > nCurrentVersion)
                         throw debug::exception("-activatetx, cannot activate for ", VARIABLE(nVersion), " must be ", VARIABLE(nCurrentVersion));
 
                     /* Check our current time-lock. */
-                    const uint64_t nTimelock = TAO::Ledger::StartTransactionTimelock(nCurrentVersion - 1);
+                    const uint64_t nTimelock = TAO::Ledger::StartTransactionTimelock(nVersion - 1);
                     if(nTimestamp <= nTimelock)
                         throw debug::exception("-activatetx, cannot activate before ", VARIABLE(nTimelock));
 
