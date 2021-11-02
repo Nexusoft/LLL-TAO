@@ -48,6 +48,9 @@ namespace LLP
         gethostname(chHostname, sizeof(chHostname));
         strHostname = std::string(chHostname);
 
+        /* Initialize API Pointers. */
+        TAO::API::Initialize();
+
         /* TRITIUM_SERVER instance */
         {
             /* Generate our config object and use correct settings. */
@@ -107,9 +110,6 @@ namespace LLP
         /* API_SERVER instance */
         if((config::mapArgs.count("-apiuser") && config::mapArgs.count("-apipassword")) || !config::GetBoolArg("-apiauth", true))
         {
-            /* Initialize API Pointers. */
-            TAO::API::Initialize();
-
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetAPIPort());
             CONFIG.ENABLE_LISTEN   = true;
