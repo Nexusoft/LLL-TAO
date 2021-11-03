@@ -36,7 +36,7 @@ namespace TAO::API
          *  An expiring contract that expires the receiver's ability to claim after a given time period.
          *
          **/
-        extern const std::vector<uint8_t> Receiver;
+        extern const std::vector<std::vector<uint8_t>> Receiver;
 
 
         /** Sender

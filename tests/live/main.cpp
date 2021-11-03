@@ -194,9 +194,9 @@ int main(int argc, char** argv)
     TAO::Operation::Contract tContract;
 
     //debug::log(0, "First param is ", ssParams.find(0, uint8_t(TAO::Operation::OP::TYPES::UINT256_T)).ToString());
-    Build(TAO::API::Contracts::Expiring::Sender, tContract, uint256_t(1111), uint64_t(3333));
+    Build(TAO::API::Contracts::Expiring::Receiver[1], tContract, uint64_t(3333));
 
-    if(!TAO::API::Contracts::Verify(TAO::API::Contracts::Expiring::Sender, tContract))
+    if(!TAO::API::Contracts::Verify(TAO::API::Contracts::Expiring::Receiver[1], tContract))
         return debug::error("Contract binary template mismatch");
 
     return 0;

@@ -29,21 +29,41 @@ namespace TAO::API
         using PLACEHOLDER = TAO::Operation::PLACEHOLDER;
 
         /* Build a binary stream to check conditions against. */
-        const std::vector<uint8_t> Receiver =
+        const std::vector<std::vector<uint8_t>> Receiver =
         {
-            OP::GROUP,
-            OP::CALLER::GENESIS, OP::NOTEQUALS, PLACEHOLDER::_1, OP::TYPES::UINT256_T,
-            OP::AND,
-            OP::CONTRACT::TIMESTAMP, OP::ADD,   PLACEHOLDER::_2, OP::TYPES::UINT64_T,
-            OP::GREATERTHAN, OP::LEDGER::TIMESTAMP,
-            OP::UNGROUP,
-            OP::OR,
-            OP::GROUP,
-            OP::CALLER::GENESIS, OP::EQUALS,    PLACEHOLDER::_1, OP::TYPES::UINT256_T,
-            OP::AND,
-            OP::CONTRACT::TIMESTAMP, OP::ADD,   PLACEHOLDER::_2, OP::TYPES::UINT64_T,
-            OP::LESSTHAN, OP::CALLER::TIMESTAMP,
-            OP::UNGROUP
+            //version 1 expiring contract
+            {
+                OP::GROUP,
+                OP::CALLER::GENESIS, OP::NOTEQUALS, PLACEHOLDER::_1, OP::TYPES::UINT256_T,
+                OP::AND,
+                OP::CONTRACT::TIMESTAMP, OP::ADD,   PLACEHOLDER::_2, OP::TYPES::UINT64_T,
+                OP::GREATERTHAN, OP::LEDGER::TIMESTAMP,
+                OP::UNGROUP,
+                OP::OR,
+                OP::GROUP,
+                OP::CALLER::GENESIS, OP::EQUALS,    PLACEHOLDER::_1, OP::TYPES::UINT256_T,
+                OP::AND,
+                OP::CONTRACT::TIMESTAMP, OP::ADD,   PLACEHOLDER::_2, OP::TYPES::UINT64_T,
+                OP::LESSTHAN, OP::CALLER::TIMESTAMP,
+                OP::UNGROUP
+            },
+
+            //version 2 expiring contract
+            {
+                OP::GROUP,
+                OP::CALLER::GENESIS, OP::NOTEQUALS, OP::CONTRACT::GENESIS,
+                OP::AND,
+                OP::CONTRACT::TIMESTAMP, OP::ADD, PLACEHOLDER::_1, OP::TYPES::UINT64_T,
+                OP::GREATERTHAN, OP::LEDGER::TIMESTAMP,
+                OP::UNGROUP,
+                OP::OR,
+                OP::GROUP,
+                OP::CALLER::GENESIS, OP::EQUALS, OP::CONTRACT::GENESIS,
+                OP::AND,
+                OP::CONTRACT::TIMESTAMP, OP::ADD, PLACEHOLDER::_1, OP::TYPES::UINT64_T,
+                OP::LESSTHAN, OP::LEDGER::TIMESTAMP,
+                OP::UNGROUP
+            },
         };
 
 
