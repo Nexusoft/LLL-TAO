@@ -170,7 +170,7 @@ namespace TAO::API
                         for(auto& strCheck : vNouns)
                         {
                             /* Grab our current noun. */
-                            const std::string strNoun = ((strCheck.back() == 's' && strVerb == "list")
+                            const std::string strNoun = ((strCheck.back() == 's' && (strVerb == "list" || strVerb == "user"))
                                 ? strCheck.substr(0, strCheck.size() - 1)
                                 : strCheck);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 

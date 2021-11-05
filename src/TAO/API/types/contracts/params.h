@@ -230,7 +230,7 @@ namespace TAO::API::Contracts
 
                 /* Default case is an exception. */
                 default:
-                    throw debug::exception(FUNCTION, "requesting parameter is not a valid type");
+                    throw debug::exception(FUNCTION, "requesting parameter is not a supported type");
             }
         }
 
