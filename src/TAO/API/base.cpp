@@ -160,14 +160,14 @@ namespace TAO::API
                     if(vMethods[n].find(",") != vMethods[n].npos)
                     {
                         /* Grab our components of the URL to rewrite. */
-                        std::vector<std::string> vNouns;
-                        ParseString(vMethods[n], ',', vNouns);
+                        std::vector<std::string> vComponents;
+                        ParseString(vMethods[n], ',', vComponents);
 
                         /* Build our request type as an array. */
                         jParams["request"]["type"] = encoding::json::array();
 
                         /* Loop through our nouns now. */
-                        for(auto& strCheck : vNouns)
+                        for(auto& strCheck : vComponents)
                         {
                             /* Grab our current noun. */
                             const std::string strNoun = ((strCheck.back() == 's' && (strVerb == "list" || strVerb == "user"))
