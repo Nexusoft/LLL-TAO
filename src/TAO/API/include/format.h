@@ -45,6 +45,18 @@ namespace TAO::API
     __attribute__((pure)) double FormatBalance(const uint64_t nBalance, const uint256_t& hashToken = TOKEN::NXS);
 
 
+    /** FormatMint
+     *
+     *  Outputs the correct balance in terms of a double that can be formatted for output.
+     *
+     *  @param[in] nBalance The balance to encode for output.
+     *
+     *  @return a double representation of the whole formatting.
+     *
+     **/
+    __attribute__((pure)) double FormatMint(const int32_t nBalance);
+
+
 
     /** FormatStake
      *

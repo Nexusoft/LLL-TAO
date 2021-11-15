@@ -85,7 +85,7 @@ namespace TAO::API
         result["nonce"]      = (uint64_t)block.nNonce;
         result["bits"]       = HexBits(block.nBits);
         result["difficulty"] = TAO::Ledger::GetDifficulty(block.nBits, block.nChannel);
-        result["mint"]       = FormatBalance(block.nMint);
+        result["mint"]       = FormatMint(block.nMint);
 
         /* Add previous block if not null. */
         if(block.hashPrevBlock != 0)

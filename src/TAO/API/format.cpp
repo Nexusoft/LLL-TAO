@@ -49,6 +49,12 @@ namespace TAO::API
         return double(nBalance) / math::pow(10, objToken.get<uint8_t>("decimals"));
     }
 
+    /* Outputs the correct balance in terms of a double that can be formatted for output. */
+    double FormatMint(const int32_t nBalance)
+    {
+        return double(nBalance) / TAO::Ledger::NXS_COIN;
+    }
+
 
     /* Outputs the correct stake change in terms of a double that can be formatted for output. */
     double FormatStake(const int64_t nStake)
