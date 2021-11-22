@@ -101,7 +101,7 @@ namespace TAO::API
         {
             /* Populate our stake change values. */
             jRet["change"]    = true;
-            jRet["amount"]    = FormatBalance(tStakeChange.nAmount);
+            jRet["amount"]    = FormatStake(tStakeChange.nAmount);
             jRet["requested"] = tStakeChange.nTime;
             jRet["expires"]   = tStakeChange.nExpires;
         }

@@ -98,7 +98,8 @@ namespace TAO::API
         /* Add the transaction data if the caller has requested it*/
         if(nVerbose > 0)
         {
-            encoding::json txinfo = encoding::json::array();
+            /* Build our transactions array seperate from results. */
+            encoding::json jTransactions = encoding::json::array();
 
             /* Iterate through each transaction hash in the block vtx*/
             for(const auto& vtx : block.vtx)
@@ -110,11 +111,12 @@ namespace TAO::API
                     if(LLD::Ledger->ReadTx(vtx.second, tx))
                     {
                         /* add the transaction JSON.  */
-                        const encoding::json jRet = TransactionToJSON(tx, block, nVerbose);
+                        const encoding::json jRet =
+                            TransactionToJSON(tx, block, nVerbose);
 
                         /* Only add the transaction if it has not been filtered out */
                         if(!jRet.empty())
-                            txinfo.push_back(jRet);
+                            jTransactions.push_back(jRet);
                     }
                 }
                 else if(vtx.first == TAO::Ledger::TRANSACTION::LEGACY)
@@ -124,18 +126,19 @@ namespace TAO::API
                     if(LLD::Legacy->ReadTx(vtx.second, tx))
                     {
                         /* add the transaction JSON.  */
-                        encoding::json jRet = TransactionToJSON(tx, block, nVerbose);
+                        const encoding::json jRet =
+                            TransactionToJSON(tx, block, nVerbose);
 
                         /* Only add the transaction if it has not been filtered out */
                         if(!jRet.empty())
-                            txinfo.push_back(jRet);
+                            jTransactions.push_back(jRet);
                     }
                 }
             }
 
             /* Check to see if any transactions were returned.  If not then return an empty tx array */
-            if(!txinfo.empty())
-                result["tx"] = txinfo;
+            if(!jTransactions.empty())
+                result["tx"] = jTransactions;
             else
                 result = encoding::json();
 
