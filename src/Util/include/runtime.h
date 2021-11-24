@@ -30,7 +30,55 @@ extern std::atomic<int32_t> UNIFIED_AVERAGE_OFFSET;
 
 
 namespace runtime
-{    
+{
+    /** strptime
+     *
+     *  Parse a time string into given time structure for generating unix timestamp from rfc1123
+     *
+     *  @param[in] s The time string we are parsing.
+     *  @param[out] tm The time structure we are outputting to.
+     *
+     *  @return true if at least one date item was parsed.
+     *
+     **/
+    inline bool strptime(const char* s, struct tm& tm)
+    {
+        /* Disable daylight savings. */
+        tm.tm_isdst = -1;
+        tm.tm_year  = 0;
+        tm.tm_mon   = 0;
+        tm.tm_mday  = 1;
+        tm.tm_hour  = 0;
+        tm.tm_min   = 0;
+        tm.tm_sec   = 0;
+
+        /* Scan up our date format into our time structure. */
+        const int nRet =
+        sscanf
+        (
+            s, "%i-%i-%i %i:%i:%i",
+            &tm.tm_year, &tm.tm_mon,
+            &tm.tm_mday, &tm.tm_hour,
+            &tm.tm_min, &tm.tm_sec
+        );
+
+        /* Adjust our internal values for mktime. */
+        if(tm.tm_year >= 1900)
+            tm.tm_year -= 1900;
+        else
+            return false;
+
+        /* Decrease if not using default values. */
+        if(tm.tm_mon)
+            tm.tm_mon  -= 1;
+
+        /* Check for a valid total. */
+        if(nRet >= 1)
+            return true;
+
+        return false;
+    }
+
 
     /** timestamp
      *
