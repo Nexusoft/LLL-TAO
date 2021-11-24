@@ -84,7 +84,7 @@ namespace TAO::API
         }
 
         /* Grab our name from object. */
-        strName = "~" + tName.get<std::string>("name"); //local name
+        strName = "local:" + tName.get<std::string>("name"); //local name
 
         return true;
     }
