@@ -32,13 +32,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "core.h"
-#include "thread.h"
-#include "blake2/blake2.h"
-#include "blake2/blake2-impl.h"
+#include <LLC/hash/argon2/core.h>
+#include <LLC/hash/argon2/thread.h>
+#include <LLC/hash/argon2/blake2/blake2.h>
+#include <LLC/hash/argon2/blake2/blake2-impl.h>
 
 #ifdef GENKAT
-#include "genkat.h"
+#include <LLC/hash/argon2/genkat.h>
 #endif
 
 #if defined(__clang__)

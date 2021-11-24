@@ -31,7 +31,7 @@
 
 #include <string.h>
 
-#include "inner.h"
+#include <LLC/falcon/inner.h>
 
 #if FALCON_ASM_CORTEXM4  // yyyASM_CORTEXM4+1
 

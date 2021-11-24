@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 #include <LLD/cache/binary_key.h>
 
-#include <LLP/types/tritium.h>
+#include <LLP/impl/tritium.h>
 #include <LLP/include/global.h>
 #include <LLP/include/manager.h>
 #include <LLP/templates/events.h>

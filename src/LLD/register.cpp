@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 
-#include <LLD/types/register.h>
+#include <LLD/impl/register.h>
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/unpack.h>

@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/types/tritium.h>
+#include <LLP/impl/tritium.h>
 #include <LLP/include/global.h>
 #include <LLP/include/inv.h>
 

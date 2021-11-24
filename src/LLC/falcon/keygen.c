@@ -29,7 +29,7 @@
  * @author   Thomas Pornin <thomas.pornin@nccgroup.com>
  */
 
-#include "inner.h"
+#include <LLC/falcon/inner.h>
 
 #define MKN(logn)   ((size_t)1 << (logn))
 

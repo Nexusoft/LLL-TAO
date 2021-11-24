@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/types/trust.h>
+#include <LLD/impl/trust.h>
 
 #include <Legacy/types/trustkey.h>
 

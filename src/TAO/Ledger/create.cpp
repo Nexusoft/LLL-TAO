@@ -22,7 +22,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <LLP/types/tritium.h>
+#include <LLP/impl/tritium.h>
 
 #include <TAO/Ledger/include/ambassador.h>
 #include <TAO/Ledger/include/developer.h>

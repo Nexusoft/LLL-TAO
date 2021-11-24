@@ -15,14 +15,14 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_INCLUDE_GLOBAL_H
 #define NEXUS_LLD_INCLUDE_GLOBAL_H
 
-#include <LLD/types/register.h>
-#include <LLD/types/ledger.h>
-#include <LLD/types/local.h>
-#include <LLD/types/logical.h>
-#include <LLD/types/client.h>
-#include <LLD/types/legacy.h>
-#include <LLD/types/trust.h>
-#include <LLD/types/contract.h>
+#include <LLD/impl/register.h>
+#include <LLD/impl/ledger.h>
+#include <LLD/impl/local.h>
+#include <LLD/impl/logical.h>
+#include <LLD/impl/client.h>
+#include <LLD/impl/legacy.h>
+#include <LLD/impl/trust.h>
+#include <LLD/impl/contract.h>
 
 namespace LLD
 {

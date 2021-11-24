@@ -15,10 +15,10 @@ ________________________________________________________________________________
 #include <TAO/API/include/cmd.h>
 #include <TAO/API/include/json.h>
 
-#include <LLP/types/apinode.h>
+#include <LLP/impl/apinode.h>
 #include <LLP/include/base_address.h>
 #include <LLP/include/port.h>
-#include <LLP/types/rpcnode.h>
+#include <LLP/impl/rpcnode.h>
 
 #include <Util/include/args.h>
 #include <Util/include/base64.h>

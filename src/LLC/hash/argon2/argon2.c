@@ -20,9 +20,8 @@
 #include <stdio.h>
 
 #include <LLC/hash/argon2.h>
-
-#include "encoding.h"
-#include "core.h"
+#include <LLC/hash/argon2/encoding.h>
+#include <LLC/hash/argon2/core.h>
 
 const char *argon2_type2string(argon2_type type, int uppercase) {
     switch (type) {

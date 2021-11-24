@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/global.h>
-#include <LLP/types/tritium.h>
+#include <LLP/impl/tritium.h>
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/session-manager.h>

@@ -19,8 +19,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
-#include "encoding.h"
-#include "core.h"
+#include <LLC/hash/argon2/encoding.h>
+#include <LLC/hash/argon2/core.h>
 
 /*
  * Example code for a decoder and encoder of "hash strings", with Argon2

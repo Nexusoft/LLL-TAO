@@ -430,7 +430,7 @@ XXH_PUBLIC_API XXH128_hash_t XXH3_128bits_withSeed(const void* data, size_t len,
 *  XXH_INLINE_ALL
 ************************************************************************/
 #if defined(XXH_INLINE_ALL) || defined(XXH_PRIVATE_API)
-#  include "xxhash.c"   /* include xxhash function bodies as `static`, for inlining */
+#include <LLD/hash/xxhash.c>   /* include xxhash function bodies as `static`, for inlining */
 #endif
 
 

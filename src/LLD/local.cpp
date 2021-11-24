@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/types/local.h>
+#include <LLD/impl/local.h>
 
 #include <TAO/Ledger/types/transaction.h>
 

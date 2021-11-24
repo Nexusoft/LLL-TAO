@@ -20,7 +20,7 @@ namespace TAO::API
 {
     /** ExecuteContract
      *
-     *  Checks a given string against value to find wildcard pattern matches.
+     *  Execute a given contract giving the post-state object register.
      *
      *  @param[in] rContract The contract that we want to execute state for
      *

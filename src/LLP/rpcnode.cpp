@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <Legacy/include/global.h>
 
-#include <LLP/types/rpcnode.h>
+#include <LLP/impl/rpcnode.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/API/types/exception.h>

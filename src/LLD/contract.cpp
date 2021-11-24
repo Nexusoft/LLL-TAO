@@ -14,7 +14,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/types/contract.h>
+#include <LLD/impl/contract.h>
 
 
 namespace LLD

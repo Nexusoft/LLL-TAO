@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 
-#include <LLP/types/apinode.h>
+#include <LLP/impl/apinode.h>
 #include <LLP/templates/events.h>
 
 #include <TAO/API/include/json.h>

@@ -45,7 +45,7 @@
 
 #undef XXH_INLINE_ALL   /* in case it's already defined */
 #define XXH_INLINE_ALL
-#include "xxhash.h"
+#include <LLD/hash/xxhash.h>
 
 #undef NDEBUG   /* avoid redefinition */
 #define NDEBUG

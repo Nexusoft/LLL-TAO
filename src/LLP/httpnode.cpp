@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLP/types/httpnode.h>
+#include <LLP/impl/httpnode.h>
 #include <LLP/templates/ddos.h>
 #include <LLP/templates/events.h>
 

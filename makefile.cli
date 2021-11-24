@@ -187,11 +187,11 @@ endif
 
 #Configure Build Environment
 ifneq ($(detected_OS),Windows)
-    INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/build $(CURDIR)/src $(CURDIR)/tests)\
+    INCLUDEPATHS+= $(addprefix -I, $(CURDIR) $(CURDIR)/src $(CURDIR)/include $(CURDIR)/tests)\
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
 ifeq ($(detected_OS),Windows)
-    INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/build" -I"$(CURDIR)/src" -I"$(CURDIR)/tests" \
+    INCLUDEPATHS+= -I"$(CURDIR)" -I"$(CURDIR)/src" -I"$(CURDIR)/include" -I"$(CURDIR)/tests" \
 	-I$(OPENSSL_INCLUDE_PATH)
 endif
 ifneq ($(detected_OS),OSX)

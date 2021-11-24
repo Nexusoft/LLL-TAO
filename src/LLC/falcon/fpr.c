@@ -32,7 +32,7 @@
  * @author   Thomas Pornin <thomas.pornin@nccgroup.com>
  */
 
-#include "inner.h"
+#include <LLC/falcon/inner.h>
 
 #if FALCON_FPEMU // yyyFPEMU+1
 

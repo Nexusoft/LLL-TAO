@@ -29,8 +29,8 @@
  * @author   Thomas Pornin <thomas.pornin@nccgroup.com>
  */
 
-#include "falcon.h"
-#include "inner.h"
+#include <LLC/falcon/falcon.h>
+#include <LLC/falcon/inner.h>
 
 /* see falcon.h */
 void

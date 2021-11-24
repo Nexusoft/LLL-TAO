@@ -24,7 +24,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 
 #include <LLP/include/global.h>
-#include <LLP/types/apinode.h>
+#include <LLP/impl/apinode.h>
 
 #include <Util/include/filesystem.h>
 #include <Util/include/args.h>

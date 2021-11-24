@@ -16,11 +16,11 @@ ________________________________________________________________________________
 #include <LLP/templates/ddos.h>
 #include <LLP/include/network.h>
 
-#include <LLP/types/tritium.h>
-#include <LLP/types/time.h>
-#include <LLP/types/apinode.h>
-#include <LLP/types/rpcnode.h>
-#include <LLP/types/miner.h>
+#include <LLP/impl/tritium.h>
+#include <LLP/impl/time.h>
+#include <LLP/impl/apinode.h>
+#include <LLP/impl/rpcnode.h>
+#include <LLP/impl/miner.h>
 
 #include <LLP/include/trust_address.h>
 

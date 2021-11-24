@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 
 #include <LLP/include/inv.h>
-#include <LLP/types/tritium.h>
+#include <LLP/impl/tritium.h>
 #include <LLP/include/global.h>
 
 #include <TAO/API/include/json.h>

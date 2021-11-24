@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/types/client.h>
+#include <LLD/impl/client.h>
 
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/client.h>

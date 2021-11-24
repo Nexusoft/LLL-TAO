@@ -59,7 +59,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake.h>
 
-#include <LLP/types/tritium.h>
+#include <LLP/impl/tritium.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/locator.h>

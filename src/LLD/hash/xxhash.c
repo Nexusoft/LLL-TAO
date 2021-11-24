@@ -102,7 +102,7 @@ static void* XXH_memcpy(void* dest, const void* src, size_t size) { return memcp
 #include <assert.h>   /* assert */
 
 #define XXH_STATIC_LINKING_ONLY
-#include "xxhash.h"
+#include <LLD/hash/xxhash.h>
 
 
 /* *************************************
@@ -1018,7 +1018,7 @@ XXH_PUBLIC_API XXH64_hash_t XXH64_hashFromCanonical(const XXH64_canonical_t* src
 *  New generation hash designed for speed on small keys and vectorization
 ************************************************************************ */
 
-#include "xxh3.h"
+#include <LLD/hash/xxh3.h>
 
 
 #endif  /* XXH_NO_LONG_LONG */

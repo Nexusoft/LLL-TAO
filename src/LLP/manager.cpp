@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <LLC/hash/SK.h>
 #include <LLC/include/random.h>
 
-#include <LLD/types/address.h>
+#include <LLD/impl/address.h>
 #include <LLD/include/version.h>
 
 #include <LLP/include/manager.h>

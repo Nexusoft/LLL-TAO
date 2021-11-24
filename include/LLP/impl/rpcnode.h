@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLP_TYPES_RPCNODE_H
 #define NEXUS_LLP_TYPES_RPCNODE_H
 
-#include <LLP/types/httpnode.h>
+#include <LLP/impl/httpnode.h>
 #include <LLP/templates/ddos.h>
 #include <TAO/API/types/base.h>
 #include <Util/include/json.h>

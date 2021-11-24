@@ -10,7 +10,7 @@
             "ad vocem populi" - To the Voice of the People
 ____________________________________________________________________________________________*/
 
-#include <LLP/types/time.h>
+#include <LLP/impl/time.h>
 #include <LLP/include/trust_address.h>
 #include <LLP/include/global.h>
 #include <LLP/include/manager.h>

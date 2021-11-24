@@ -11,7 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/types/address.h>
+#include <LLD/impl/address.h>
 
 namespace LLD
 {

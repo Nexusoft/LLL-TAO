@@ -13,9 +13,9 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 #include <LLP/include/port.h>
-#include <LLP/types/apinode.h>
-#include <LLP/types/rpcnode.h>
-#include <LLP/types/miner.h>
+#include <LLP/impl/apinode.h>
+#include <LLP/impl/rpcnode.h>
+#include <LLP/impl/miner.h>
 #include <LLP/include/lisp.h>
 #include <LLP/include/port.h>
 

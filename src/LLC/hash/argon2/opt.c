@@ -20,7 +20,7 @@
 #include <stdlib.h>
 
 #include <LLC/hash/argon2.h>
-#include "core.h"
+#include <LLC/hash/argon2/core.h>
 
 #include "blake2/blake2.h"
 #include "blake2/blamka-round-opt.h"

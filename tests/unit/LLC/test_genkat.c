@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <LLC/hash/argon2.h>
-#include "core.h"
+#include <LLC/hash/argon2/core.h>
 
 void initial_kat(const uint8_t *blockhash, const argon2_context *context,
                  argon2_type type) {

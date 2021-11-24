@@ -13,10 +13,10 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/global.h>
-#include <LLP/types/miner.h>
+#include <LLP/impl/miner.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
-#include <LLP/types/tritium.h>
+#include <LLP/impl/tritium.h>
 
 
 #include <TAO/API/include/global.h>

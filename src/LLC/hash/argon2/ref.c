@@ -20,11 +20,11 @@
 #include <stdlib.h>
 
 #include <LLC/hash/argon2.h>
-#include "core.h"
+#include <LLC/hash/argon2/core.h>
 
-#include "blake2/blamka-round-ref.h"
-#include "blake2/blake2-impl.h"
-#include "blake2/blake2.h"
+#include <LLC/hash/argon2/blake2/blamka-round-ref.h>
+#include <LLC/hash/argon2/blake2/blake2.h>
+#include <LLC/hash/argon2/blake2/blake2-impl.h>
 
 
 /*

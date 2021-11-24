@@ -29,7 +29,7 @@
  * @author   Thomas Pornin <thomas.pornin@nccgroup.com>
  */
 
-#include "inner.h"
+#include <LLC/falcon/inner.h>
 
 /* ===================================================================== */
 /*

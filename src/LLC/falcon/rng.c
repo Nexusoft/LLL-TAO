@@ -31,7 +31,7 @@
 
 #include <assert.h>
 
-#include "inner.h"
+#include <LLC/falcon/inner.h>
 
 // yyyNIST+0 yyyPQCLEAN+0
 /*

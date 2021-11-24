@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/global.h>
-#include <LLP/types/tritium.h>
+#include <LLP/impl/tritium.h>
 #include <LLP/templates/trigger.h>
 
 #include <TAO/API/include/list.h>
