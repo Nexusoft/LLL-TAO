@@ -1678,6 +1678,19 @@ namespace TAO::API
             return strName;
         }
 
+        /* Handle for address resolver. */
+        if(strVariable == "resolve")
+        {
+            /* Temporary value to pass. */
+            encoding::json jParams;
+
+            /* Build our address from name record. */
+            const uint256_t hashAddress =
+                Names::ResolveAddress(jParams, strParam, true);
+
+            return TAO::Register::Address(hashAddress).ToString();
+        }
+
         return strValue;
     }
 
