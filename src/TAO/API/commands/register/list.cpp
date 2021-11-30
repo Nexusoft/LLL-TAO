@@ -79,6 +79,10 @@ namespace TAO::API
                         if(!FilterObject(jParams, jRegister, rObject.second))
                             continue;
 
+                        /* Filter out our expected fieldnames if specified. */
+                        if(!FilterFieldname(jParams, jRegister))
+                            continue;
+
                         /* Insert into set and automatically sort. */
                         setRegisters.insert(jRegister);
                     }
@@ -109,6 +113,10 @@ namespace TAO::API
 
                         /* Check that we match our filters. */
                         if(!FilterObject(jParams, jRegister, rObject))
+                            continue;
+
+                        /* Filter out our expected fieldnames if specified. */
+                        if(!FilterFieldname(jParams, jRegister))
                             continue;
 
                         /* Insert into set and automatically sort. */
