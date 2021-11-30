@@ -58,8 +58,6 @@ namespace TAO::API
                 std::vector<std::pair<uint256_t, TAO::Register::Object>> vObjects;
                 if(LLD::Register->BatchRead(strType, vObjects, -1))
                 {
-                    debug::warning("found ", vObjects.size(), " records");
-
                     /* Add the register data to the response */
                     for(auto& rObject : vObjects)
                     {
@@ -94,8 +92,6 @@ namespace TAO::API
                 std::vector<TAO::Register::Object> vObjects;
                 if(LLD::Register->BatchRead(strType, vObjects, -1))
                 {
-                    debug::warning("found ", vObjects.size(), " records");
-
                     /* Add the register data to the response */
                     for(auto& rObject : vObjects)
                     {
