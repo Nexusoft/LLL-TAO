@@ -64,12 +64,16 @@ namespace TAO::API
         jRet["stake"]   = FormatBalance(objTrust.get<uint64_t>("stake"));
         jRet["trust"]   = nTrustScore;
 
+        /* Indexed trust account has genesis */
+        const bool fTrustIndexed =
+            LLD::Register->HasTrust(hashGenesis);
+
         /* Need the stake minter running for accessing current staking metrics.*/
         const TAO::Ledger::StakeMinter& rStakeMinter = TAO::Ledger::StakeMinter::GetInstance();
         if(rStakeMinter.IsStarted())
         {
             /* The trust account is on hold when it does not have genesis, and is waiting to reach minimum age to stake */
-            const bool fOnHold = (!LLD::Register->HasTrust(hashGenesis) || rStakeMinter.IsWaitPeriod());
+            const bool fOnHold = (!fTrustIndexed || rStakeMinter.IsWaitPeriod());
 
             /* When trust account is on hold pending minimum age return the time remaining in hold period. */
             jRet["onhold"] = fOnHold;
@@ -81,6 +85,9 @@ namespace TAO::API
             jRet["trustweight"] = rStakeMinter.GetTrustWeightPercent();
             jRet["blockweight"] = rStakeMinter.GetBlockWeightPercent();
             jRet["stakeweight"] = rStakeMinter.GetTrustWeight() + rStakeMinter.GetBlockWeight();
+
+            /* Flag to tell if staking genesis. */
+            jRet["new"] = (bool)(!fTrustIndexed);
             jRet["staking"]     = true;
         }
         else
@@ -92,6 +99,9 @@ namespace TAO::API
             jRet["trustweight"] = 0.0;
             jRet["blockweight"] = 0.0;
             jRet["stakeweight"] = 0.0;
+
+            /* Flag to tell if staking genesis. */
+            jRet["new"] = (bool)(!fTrustIndexed);
             jRet["staking"]     = false;
         }
 
