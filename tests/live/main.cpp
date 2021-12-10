@@ -1042,6 +1042,8 @@ namespace live::atomic
 {
     template<typename Type> class dequeue
     {
+        struct Anchor;
+
         struct Node
         {
             Type tData;
@@ -1077,6 +1079,12 @@ namespace live::atomic
             {
                 pPrev.store(reinterpret_cast<Node*>(uint64_t(ptr) | (1 << 2)));
             }
+        };
+
+        struct Anchor
+        {
+            Node* pNext;
+            Node* pPrev;
         };
 
         std::atomic<Node*> aHead;
@@ -1413,6 +1421,217 @@ void ListThread(live::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTime
 
 #include <atomic/types/queue.h>
 
+namespace proto::atomic
+{
+    template<typename Type>
+    class dequeue
+    {
+        static const uint64_t nMask = (~uint64_t(0) >> 1);
+
+
+        class Node
+        {
+        public:
+
+            /** Pointer to next node in linked list. **/
+            std::atomic<Node*> pPrev;
+
+
+            /** Pointer to prev node in linked list. **/
+            std::atomic<Node*> pNext;
+
+
+            /** Data item that is being stored in node. **/
+            Type tData;
+
+
+            /** Default Constructor. **/
+            Node() noexcept
+            : pPrev (nullptr)
+            , pNext (nullptr)
+            , tData ( )
+            {
+            }
+
+
+            /** Constructor taking data reference.
+             *
+             *  @param[in] tDataIn The data to store in this node.
+             *
+             **/
+            Node(const Type& tDataIn) noexcept
+            : pPrev (nullptr)
+            , pNext (nullptr)
+            , tData   (tDataIn)
+            {
+            }
+
+        };
+
+
+        class AnchorValue
+        {
+            /** Anchor pointer to next value in linked list. */
+            Node* pTail;
+
+
+            /** Anchor pointer to prev value in linked list. */
+            Node* pHead;
+
+
+        public:
+
+            enum : uint8_t
+            {
+                STABLE = 0,
+                RPUSH  = 1,
+                LPUSH  = 2,
+                ERROR  = 3,
+            };
+
+            AnchorValue() noexcept
+            : pTail (nullptr)
+            , pHead (nullptr)
+            {
+            }
+
+            void SetTail(const Node* pNode)
+            {
+                pTail = reinterpret_cast<Node*>(uint64_t(pNode) & nMask);
+
+                debug::log(0, FUNCTION, std::bitset<64>(pTail));
+            }
+
+            void SetHead(const Node* pNode)
+            {
+                pHead = reinterpret_cast<Node*>(uint64_t(pNode) & nMask);
+
+                debug::log(0, FUNCTION, std::bitset<64>(pHead));
+            }
+
+            Node* GetTail() const
+            {
+                const auto pNode = reinterpret_cast<Node*>(uint64_t(pTail) & nMask);
+
+                debug::log(0, FUNCTION, std::bitset<64>(pNode));
+                return pNode;
+            }
+
+            Node* GetHead() const
+            {
+                const auto pNode = reinterpret_cast<Node*>(uint64_t(pHead) & nMask);
+
+                debug::log(0, FUNCTION, std::bitset<64>(pNode));
+                return pNode;
+            }
+
+            uint8_t GetStatus() const
+            {
+                const bool fTail = (uint64_t(pTail) & (1 << 1));
+                const bool fHead = (uint64_t(pHead) & (1 << 1));
+
+                /* If both pointers have bitset of 0, anchor is stable. */
+                if(!fTail && !fHead)
+                    return STABLE;
+
+                /* If next pointer has bitset of 1, anchor is right-incoherent. */
+                if(fTail && !fHead)
+                    return RPUSH;
+
+                /* If prev pointer has biset of 1, anchor is left-incorherent. */
+                if(!fTail && fHead)
+                    return LPUSH;
+
+                return ERROR;
+            }
+
+            void SetStatus(const uint8_t nCode)
+            {
+                /* Switch based on our status code. */
+                switch(nCode)
+                {
+                    /* Stable is indicated as both prev and next being set to 0. */
+                    case STABLE:
+                    {
+                        pTail = reinterpret_cast<Node*>(uint64_t(pTail) & nMask);
+                        pHead = reinterpret_cast<Node*>(uint64_t(pHead) & nMask);
+
+                        return;
+                    }
+
+                    /* Right Push status is marked by a 0 on prev and a 1 on next. */
+                    case RPUSH:
+                    {
+                        pTail = reinterpret_cast<Node*>(uint64_t(pTail) | (1 << 1)); //we add a bit to pNext for rPUSH
+                        pHead = reinterpret_cast<Node*>(uint64_t(pHead) & nMask);
+
+                        return;
+                    }
+
+                    /* Left Push status is marked by a 0 on next and a 1 on prev. */
+                    case LPUSH:
+                    {
+                        pTail = reinterpret_cast<Node*>(uint64_t(pTail) & nMask);
+                        pHead = reinterpret_cast<Node*>(uint64_t(pHead) | (1 << 1)); //we add a bit to pPrev for LPUSH
+
+                        return;
+                    }
+                }
+
+                /* If we fall through here from invalid code, case will indicate an error by setting both bits to 1. */
+                pTail = reinterpret_cast<Node*>(uint64_t(pTail) | (1 << 1));
+                pHead = reinterpret_cast<Node*>(uint64_t(pHead) | (1 << 1));
+            }
+        };
+
+
+        class AnchorType
+        {
+        public:
+
+            std::atomic<AnchorValue> tValue;
+
+
+            void copy(AnchorType &tAnchor) __attribute__((noinline))
+            {
+                while(true) //loop CAS style
+                {
+                    AnchorValue tCopy = tValue.load();
+                    if(tCopy != tValue.load())
+                        continue;
+
+                    tAnchor.store(tCopy);
+                }
+            }
+
+
+            bool compare_exchange_weak(AnchorType* pExpectedIn, AnchorType* pNew)
+            {
+                AnchorValue tExpected = pExpectedIn->tValue.load();
+                if(tValue.compare_exchange_weak(tExpected, pNew->tValue.load()))
+                    return true;
+
+                return false;
+            }
+        };
+
+    public:
+
+
+        AnchorType tAnchor;
+
+        dequeue()
+        : tAnchor ( )
+        {
+        }
+    };
+
+
+
+
+
+}
+
 int main()
 {
     const uint64_t nThreads = 8;
@@ -1420,6 +1639,8 @@ int main()
     util::system::nTesting = 0;
 
     util::system::log(0, "Testing");
+
+    proto::atomic::dequeue<std::string> dequeue;
 
     {
 
