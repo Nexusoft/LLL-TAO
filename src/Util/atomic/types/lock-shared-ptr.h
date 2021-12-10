@@ -15,43 +15,8 @@ ________________________________________________________________________________
 
 #include <atomic/include/typedef.h>
 
-namespace util::memory
+namespace util::atomic
 {
-
-	/** lock_control
-	 *
-	 *  Track the current pointer references.
-	 *
-	 **/
-	struct lock_control
-	{
-	    /** Recursive mutex for locking safe_shared_ptr. **/
-	    std::recursive_mutex MUTEX;
-
-
-	    /** Reference counter for active copies. **/
-	    util::atomic::uint32_t nCount;
-
-
-	    /** Default Constructor. **/
-	    lock_control( )
-	    : MUTEX  ( )
-	    , nCount (1)
-	    {
-	    }
-
-
-	    /** count
-	     *
-	     *  Access atomic with easier syntax.
-	     *
-	     **/
-	    uint32_t count()
-	    {
-	        return nCount.load();
-	    }
-	};
-
 
 	/** lock_proxy
 	 *
@@ -110,14 +75,49 @@ namespace util::memory
 	};
 
 
-	/** safe_shared_ptr
+	/** lock_shared_ptr
 	 *
 	 *  Pointer with member access protected with a mutex.
 	 *
 	 **/
 	template<class TypeName>
-	class safe_shared_ptr
+	class lock_shared_ptr
 	{
+		/** lock_control
+		 *
+		 *  Track the current pointer references.
+		 *
+		 **/
+		struct lock_control
+		{
+			/** Recursive mutex for locking lock_shared_ptr. **/
+			std::recursive_mutex MUTEX;
+
+
+			/** Reference counter for active copies. **/
+			util::atomic::uint32_t nCount;
+
+
+			/** Default Constructor. **/
+			lock_control( )
+			: MUTEX  ( )
+			, nCount (1)
+			{
+			}
+
+
+			/** count
+			 *
+			 *  Access atomic with easier syntax.
+			 *
+			 **/
+			uint32_t count()
+			{
+				return nCount.load();
+			}
+		};
+
+
 	    /** The internal locking mutex. **/
 	    mutable lock_control* pRefs;
 
@@ -129,7 +129,7 @@ namespace util::memory
 	public:
 
 	    /** Default Constructor. **/
-	    safe_shared_ptr()
+	    lock_shared_ptr()
 	    : pRefs  (nullptr)
 	    , pData  (nullptr)
 	    {
@@ -137,7 +137,7 @@ namespace util::memory
 
 
 	    /** Constructor for storing. **/
-	    safe_shared_ptr(TypeName* pDataIn)
+	    lock_shared_ptr(TypeName* pDataIn)
 	    : pRefs  (new lock_control())
 	    , pData  (pDataIn)
 	    {
@@ -145,7 +145,7 @@ namespace util::memory
 
 
 	    /** Copy Constructor. **/
-	    safe_shared_ptr(const safe_shared_ptr<TypeName>& ptrIn)
+	    lock_shared_ptr(const lock_shared_ptr<TypeName>& ptrIn)
 	    : pRefs (ptrIn.pRefs)
 	    , pData (ptrIn.pData)
 	    {
@@ -156,7 +156,7 @@ namespace util::memory
 
 
 	    /** Move Constructor. **/
-	    safe_shared_ptr(const safe_shared_ptr<TypeName>&& ptrIn)
+	    lock_shared_ptr(const lock_shared_ptr<TypeName>&& ptrIn)
 	    : pRefs (std::move(ptrIn.pRefs))
 	    , pData (std::move(ptrIn.pData))
 	    {
@@ -164,7 +164,7 @@ namespace util::memory
 
 
 	    /** Destructor. **/
-	    ~safe_shared_ptr()
+	    ~lock_shared_ptr()
 	    {
 	        /* Adjust our reference count. */
 	        if(pRefs->count() > 0)
@@ -193,7 +193,7 @@ namespace util::memory
 
 
 	    /** Assignment operator. **/
-	    safe_shared_ptr& operator=(const safe_shared_ptr<TypeName>& ptrIn)
+	    lock_shared_ptr& operator=(const lock_shared_ptr<TypeName>& ptrIn)
 	    {
 	        /* Shallow copy pointer and control block. */
 	        pRefs  = ptrIn.pRefs;
@@ -207,7 +207,7 @@ namespace util::memory
 
 
 	    /** Assignment operator. **/
-	    safe_shared_ptr& operator=(TypeName* pDataIn) = delete;
+	    lock_shared_ptr& operator=(TypeName* pDataIn) = delete;
 
 
 	    /** Equivilent operator.
@@ -267,7 +267,7 @@ namespace util::memory
 
 	    /** Member access overload
 	     *
-	     *  Allow safe_shared_ptr access like a normal pointer.
+	     *  Allow lock_shared_ptr access like a normal pointer.
 	     *
 	     **/
 	    lock_proxy<TypeName> operator->()

@@ -1035,7 +1035,7 @@ namespace util::system
 }
 
 
-#include <memory/types/safe_shared_ptr.h>
+#include <atomic/types/lock-shared-ptr.h>
 
 
 namespace live::atomic
@@ -1341,15 +1341,15 @@ namespace live::atomic
 }
 
 
-void TestThread(util::memory::safe_shared_ptr<Test>& ptr)
+void TestThread(util::atomic::lock_shared_ptr<Test>& ptr)
 {
-    util::memory::safe_shared_ptr<Test> ptrNew = ptr;
+    util::atomic::lock_shared_ptr<Test> ptrNew = ptr;
 
     for(int i = 0; i < 10000; ++i)
         ptr->c++;
 }
 
-void ListThread2(util::memory::safe_shared_ptr<std::queue<uint32_t>>& ptr, runtime::stopwatch& swTimer, std::atomic<uint64_t>& raCount)
+void ListThread2(util::atomic::lock_shared_ptr<std::queue<uint32_t>>& ptr, runtime::stopwatch& swTimer, std::atomic<uint64_t>& raCount)
 {
     for(int n = 0; n < 100000; ++n)
     {
@@ -1460,8 +1460,8 @@ int main()
     {
         std::atomic<uint64_t> raCount(0);
 
-        util::memory::safe_shared_ptr<std::queue<uint32_t>> listTest =
-            util::memory::safe_shared_ptr<std::queue<uint32_t>>(new std::queue<uint32_t>());
+        util::atomic::lock_shared_ptr<std::queue<uint32_t>> listTest =
+            util::atomic::lock_shared_ptr<std::queue<uint32_t>>(new std::queue<uint32_t>());
 
 
 
@@ -1498,10 +1498,10 @@ int main()
     //std::atomic<std::string> ptr;
 
 
-    util::memory::safe_shared_ptr<Test> ptrTest = util::memory::safe_shared_ptr<Test>(new Test());
+    util::atomic::lock_shared_ptr<Test> ptrTest = util::atomic::lock_shared_ptr<Test>(new Test());
     {
-        util::memory::safe_shared_ptr<Test> ptrTest1 = ptrTest;
-        util::memory::safe_shared_ptr<Test> ptrTest2 = ptrTest1;
+        util::atomic::lock_shared_ptr<Test> ptrTest1 = ptrTest;
+        util::atomic::lock_shared_ptr<Test> ptrTest2 = ptrTest1;
 
 
         ptrTest->a = 55;
