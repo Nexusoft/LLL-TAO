@@ -1040,262 +1040,302 @@ namespace util::system
 
 namespace live::atomic
 {
-    template<typename T> class queue {
-    private:
-    	/**
-    	 * @brief back off is for performance reason. if a CAS operation failed and the hasBackoff is true, the
-    	 * loop will delay wait_for_backoff millisecond for reducing conflict.
-    	 */
-    	static const bool hasBackoff = false;
+    template<typename Type> class dequeue
+    {
+        struct Node
+        {
+            Type tData;
+            std::atomic<Node*> pNext;
+            std::atomic<Node*> pPrev;
 
-    	/*
-    	 * @brief Internal node used in the list-based queue
-    	 */
-    	class Node {
-    	public:
-    		T data;
-    		std::atomic<Node*> next;
-    		Node() {
-    			next.store(NULL, std::memory_order_seq_cst);
-    		}
+            Node(const Type& rData)
+            : tData (rData)
+            , pNext (nullptr)
+            , pPrev (nullptr)
+            {
+            }
 
-    		Node(const T& val) :
-    			data(val) {
-    			next.store(NULL, std::memory_order_seq_cst);
-    		}
-    	};
+            Node()
+            : tData ()
+            , pNext (nullptr)
+            , pPrev (nullptr)
+            {
+            }
 
-    	/**
-    	 * Pointer to the head node. initially it point to a dummy node
-    	 */
-    	std::atomic<Node*> head;
+            Node* Prev() const
+            {
+                return reinterpret_cast<Node*>(uint64_t(pPrev.load()) & (1 << 2));
+            }
 
-    	/**
-    	 * Pointer to the tail node. initially it point to a dummy node
-    	 */
-    	std::atomic<Node*> tail;
+            Node* Next() const
+            {
+                return reinterpret_cast<Node*>(uint64_t(pNext.load()) & (1 << 2));
+            }
 
-    	/* prevent the use of copy constructor and copy assignment*/
-    	queue(const queue& q) {
-    	}
 
-    	queue& operator=(const queue& q) {
-    	}
+            void Prev(const Node* ptr)
+            {
+                pPrev.store(reinterpret_cast<Node*>(uint64_t(ptr) | (1 << 2)));
+            }
+        };
+
+        std::atomic<Node*> aHead;
+        std::atomic<Node*> aTail;
+
+        std::atomic<size_t> nSize;
+
+        std::atomic<uint64_t> nForward;
 
     public:
-    	/**
-    	 * @brief constructor
-    	 */
-    	queue() {
 
-    		/*dummy node. not get it from mm, for simplicity*/
-    		Node* dummy = new Node();
-    		head.store(dummy, std::memory_order_seq_cst);
-    		tail.store(dummy, std::memory_order_seq_cst);
-    	}
-
-    	/**
-    	 * @brief destructor
-    	 */
-    	~queue() {
-    		Node* first = head.load(std::memory_order_seq_cst);
-    		Node* next = NULL;
-            while (NULL != first) {
-    			next = (first->next).load(std::memory_order_seq_cst);
-    			delete first;
-    			first = next;
-    		}
-    	}
-
-    	/**
-    	 * @brief insert an element into the tail of queue. Thread-safe
-    	 * @param d
-    	 * 			The element to be added
-    	 */
-    	void enqueue(const T& d) {
-    		Node *pTail ; /*tail*/
-    		Node *pTailNext ;
-
-    		int waitForBackoff = 1000;
-
-    		Node * node = new Node(d);
-
-    		while (true) {
-    			/* used as first parameter in compare_and_swap. compare_and_swap
-    			 * cannot accept NULL as its first parameter
-    			 */
-    			Node* temp = NULL;
-    			pTail = tail.load(std::memory_order_seq_cst);
-
-    			/*check if employ successful*/
-    			if (tail.load(std::memory_order_seq_cst) != pTail)
-    				continue;
-
-    			pTailNext = pTail->next.load(std::memory_order_seq_cst);
-
-    			/*are latest tail and t_next consistent?*/
-    			if (tail.load(std::memory_order_seq_cst) != pTail)
-    				continue;
-
-    			/*is tail pointing to the last node?*/
-    			if (pTailNext != NULL) {
-    				/*try to swing tail to the next node*/
-    				tail.compare_exchange_weak(pTail, pTailNext);
-    				continue;
-    			}
-
-    			/*enqueue by CAS tail pointer*/
-    			if (pTail->next.compare_exchange_weak(temp, node))
-    				break; /*enqueue is done*/
-
-    			if (hasBackoff) {
-    				usleep(waitForBackoff);
-    				waitForBackoff <<= 1;
-    			}
-    		}
-
-    		/*try to swing tail to the inserted node*/
-    		tail.compare_exchange_weak(pTail, node);
-    	}
-
-    	/**
-    	 * @brief remove and return an element from the head of queue. Thread-safe.
-    	 * @return return the head element of queue; return NULL(or 0) if queue is empty
-    	 */
-    	bool dequeue(T& ret) {
-    		Node *pHead ;
-    		Node *pTail ;
-    		Node *pHeadNext ;
-
-    		int waitForBackoff = 1000;
-
-    		while (true) {
-    			pHead = head.load(std::memory_order_seq_cst);
-
-    			/*check if employ successful*/
-    			if (head.load(std::memory_order_seq_cst) != pHead)
-    				continue;
-
-    			pHeadNext = pHead->next.load(std::memory_order_seq_cst);
-
-             	/*are head, tail, and h_next consistent?*/
-    			if (pHeadNext == NULL) /*empty queue*/
-                    return debug::error("empty queue");
-
-                if (head.load(std::memory_order_seq_cst) != pHead)
-    				continue;
-
-    			pTail = tail.load(std::memory_order_seq_cst);
-                if (pHead == pTail) { /*is tail falling behind*/
-    				tail.compare_exchange_weak(pTail, pHeadNext); /*try to advance pTail*/
-    				continue;
-    			}
-    			ret = pHeadNext->data;
-
-    			if (head.compare_exchange_weak(pHead, pHeadNext)) /*try to swing head to the next node*/
-    				break;
-
-    			if (hasBackoff) {
-    				usleep(waitForBackoff);
-    				waitForBackoff <<= 1;
-    			}
-    		}
-
-    		return true;
-    	}
-
-    	/**
-    	 * @brief Check to see if queue is empty. Thread-safe.
-    	 * @return true if empty, or false.
-    	 */
-    	bool empty() {
-    		return NULL == head.load(std::memory_order_seq_cst)->next.load(
-    				std::memory_order_seq_cst);
-    	}
-
-    	/**
-    	 * @brief Get the size of the queue at this point. compute on the fly.
-    	 * Not thread-safe.
-    	 * @return the number of elements in the queue
-    	 */
-    	int size() {
-    		int result = 0;
-    		Node *front = head.load(std::memory_order_seq_cst)->next.load(std::memory_order_seq_cst);
-    		while (front != NULL) {
-    			++result;
-    			if (front == tail.load(std::memory_order_seq_cst))
-    				break;
-    			front = front->next.load(std::memory_order_seq_cst);
-    		}
-    		return result;
-    	}
-
-    	/**
-    	 * @brief Get the first element of the queue. If the queue is empty return false, else return
-    	 * true and assign the first to the parameter. Thread-safe.
-    	 *
-    	 * @param ret
-    	 * 		The first element of the queue. It is valid if return true.
-    	 * @return
-    	 * 		If the queue is empty return false, else return true.
-    	 */
-    	bool front(T& top) {
-            Node *front = NULL;
-
-            while(true) {
-    		    front = (head.load(std::memory_order_seq_cst)->next).load(std::memory_order_seq_cst);
-                if (front == NULL) {
-    			    return false;
-    		    }
-
-                if(front != (head.load(std::memory_order_seq_cst)->next).load(std::memory_order_seq_cst))
-                {
-                    continue;
-                }
-
-    		    top = front->data;
-
-    		    return true;
-            }
-    	}
-
-        T front()
+        dequeue()
+        : aHead (nullptr)
+        , aTail (nullptr)
+        , nSize (0)
+        , nForward (0)
         {
-            Node *front = NULL;
+        }
 
-            while(true) {
-    		    front = (head.load(std::memory_order_seq_cst)->next).load(std::memory_order_seq_cst);
-                if (front == NULL) {
-    			    return T();
-    		    }
 
-                if(front != (head.load(std::memory_order_seq_cst)->next).load(std::memory_order_seq_cst))
+        void push_back(const Type& rData)
+        {
+            /* Create our new node to add to the queue. */
+    		Node* pNode = new Node(rData);
+
+            /* Check for our first insert. */
+            if(aHead.load() == nullptr)
+            {
+                /* Set our initial head and tail values to new element. */
+                aHead.store(pNode);
+                aTail.store(pNode);
+
+                /* Incrememnt our size atomically. */
+                ++nSize;
+
+                return;
+            }
+
+            /* Adjust our node's previous link now. */
+            //Node* pTemp = aTail.load();
+            //Node* pTail = aTail.load();
+            //while(!pNode->pPrev.compare_exchange_weak(pTemp, pTail));
+
+            /* We need this to hold our tail value for CAS for our tail pointer. */
+            Node* pTail = nullptr;
+            while(true)
+            {
+                /* Load our current tail pointer. */
+                pTail = aTail.load();
+
+                if(aTail.load() != pTail)
                 {
+                    debug::warning(FUNCTION, "Out of sync 1 ");
                     continue;
                 }
 
-    		    return front->data;
+                /* Check that tail doesn't have a next node. */
+                Node* pTailNext = pTail->pNext.load();
+                if(pTailNext)
+                {
+                    ++nForward;
+
+                    /* Bring tail forward to next node. */
+                    while(!aTail.compare_exchange_weak(pTail, pTailNext));
+                    continue;
+                }
+
+                if(aTail.load() != pTail)
+                {
+                    debug::warning(FUNCTION, "Out of sync 2");
+                    continue;
+                }
+
+                //pNode->Prev(pTail);
+
+                /* Swing our tail next pointer forward to our new node. */
+                if(pTail->pNext.compare_exchange_weak(pTailNext, pNode))
+                {
+                    pNode->pPrev.store(pTail);
+                    break;
+                }
+            }
+
+            /* Swing our new tail pointer to our new node. */
+            while(!aTail.compare_exchange_weak(pTail, pNode));
+
+            //while(!pNode->pPrev.compare_exchange_weak(pTail, pTail));
+            //pNode->pPrev.store(pTail);
+            //pNode->pPrev.store(pTail);
+
+            /* Incrememnt our size atomically. */
+            ++nSize;
+        }
+
+        void pop_back()
+        {
+            /* Grab our current head. */
+            Node* pTail = nullptr;
+
+            /* Loop to handle our CAS since we are using weak which can spuriously fail. */
+            while(true)
+            {
+                /* Load our current tail pointer. */
+                pTail = aTail.load();
+
+                if(aTail.load() != pTail)
+                {
+                    debug::warning(FUNCTION, "Out of sync 1");
+                    continue;
+                }
+
+                /* Load our next head pointer. */
+                Node* pTailPrev = pTail->pPrev.load();
+                if(!pTailPrev)
+                {
+                    debug::warning(FUNCTION, "no previous pointer for tail... empty?");
+                    return;
+                }
+
+                Node* pTailCheck = pTailPrev->pNext.load();
+                if(pTailCheck != pTail)
+                {
+                    debug::warning(FUNCTION, "incoherent pointer for tail, moving tail back...");
+
+                    /* Bring tail backward to prev node. */
+                    while(!pTailPrev->pNext.compare_exchange_weak(pTailCheck, pTail));
+                    continue;
+                }
+
+                pTailPrev->pNext.store(nullptr);
+
+                /* Swing our new atomic head to our next pointer. */
+                if(aTail.compare_exchange_weak(pTail, pTailPrev))
+                    break;
+            }
+
+            /* Decrement our size atomically. */
+            --nSize;
+        }
+
+
+        void pop_front()
+        {
+            /* Grab our current head. */
+            Node* pHead = aHead.load();
+
+            /* Loop to handle our CAS since we are using weak which can spuriously fail. */
+            while(true)
+            {
+                /* Load our next head pointer. */
+                Node* pHeadNext = pHead->pNext.load();
+                pHeadNext->pPrev.store(nullptr);
+
+                /* Swing our new atomic head to our next pointer. */
+                if(aHead.compare_exchange_weak(pHead, pHeadNext))
+                    break;
+            }
+
+            /* Decrement our size atomically. */
+            --nSize;
+        }
+
+
+        const Type& front() const
+        {
+            return aHead.load()->tData;
+        }
+
+        const Type& back() const
+        {
+            return aTail.load()->tData;
+        }
+
+        size_t size() const
+        {
+            return nSize.load();
+        }
+
+        bool empty() const
+        {
+            return (nSize.load() == 0);
+        }
+
+        uint32_t count() const
+        {
+            uint32_t nCount = 0;
+            Node* pStart = aHead.load();
+
+            while(pStart != nullptr)
+            {
+                pStart = pStart->pNext;
+
+                ++nCount;
+            }
+
+            return nCount;
+        }
+
+        void print_next() const
+        {
+            uint32_t nCount = 0;
+            Node* pStart = aHead.load();
+
+            while(pStart != nullptr)
+            {
+                debug::log(0, "[", nCount++, "] ", pStart->tData);
+                pStart = pStart->pNext.load();
             }
         }
 
 
-        T back()
+        void print_prev() const
         {
-            Node *back = NULL;
+            uint32_t nCount = 0;
+            Node* pStart = aTail.load();
 
-            while(true) {
-                back = (tail.load(std::memory_order_seq_cst)->next).load(std::memory_order_seq_cst);
-                if (back == NULL) {
-                    return T();
-                }
-
-                if(back != (head.load(std::memory_order_seq_cst)->next).load(std::memory_order_seq_cst))
-                {
-                    continue;
-                }
-
-                return back->data;
+            while(pStart != nullptr)
+            {
+                debug::log(0, "[", nCount++, "] ", pStart->tData);
+                pStart = pStart->pPrev.load();
             }
+        }
+
+
+        void check_coherent() const
+        {
+            std::vector<Type> vTypes;
+            {
+                Node* pStart = aHead.load();
+                while(pStart != nullptr)
+                {
+                    vTypes.push_back(pStart->tData);
+                    pStart = pStart->pNext.load();
+                }
+            }
+
+            {
+                Node* pStart = aTail.load();
+
+                uint32_t nCount = 0;
+
+                for(int32_t nIndex = vTypes.size() - 1; nIndex >= 0; --nIndex)
+                {
+                    if(pStart)
+                    {
+                        if(vTypes[nIndex] == pStart->tData)
+                            debug::log(0, "[", ++nCount, "] ", ANSI_COLOR_BRIGHT_GREEN, pStart->tData, ANSI_COLOR_RESET , " | ", vTypes[nIndex]);
+                        else
+                            debug::log(0, "[", ++nCount, "] ", ANSI_COLOR_BRIGHT_RED, pStart->tData, ANSI_COLOR_RESET, " | ", vTypes[nIndex]);
+
+                        pStart = pStart->pPrev.load();
+                    }
+                    else
+                        debug::log(0, "[", ++nCount, "] ", ANSI_COLOR_BRIGHT_RED, vTypes[nIndex], ANSI_COLOR_RESET);
+                }
+            }
+
+            if(nForward.load() > 0)
+                debug::warning(FUNCTION, "moved tail forward ", nForward.load(), " times");
         }
     };
 }
@@ -1309,44 +1349,145 @@ void TestThread(util::memory::safe_shared_ptr<Test>& ptr)
         ptr->c++;
 }
 
-
-void ListThread(live::atomic::queue<uint32_t>& ptr)
+void ListThread2(util::memory::safe_shared_ptr<std::queue<uint32_t>>& ptr, runtime::stopwatch& swTimer, std::atomic<uint64_t>& raCount)
 {
-    for(int i = 0; i < 100; ++i)
-        ptr.enqueue(i);
-
-    debug::log(0, "[PUSH]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
-
-    for(uint32_t i = 0; i < 50; ++i)
+    for(int n = 0; n < 100000; ++n)
     {
-        uint32_t n;
-        ptr.dequeue(n);
+        for(int i = 0; i < 4; ++i)
+        {
+            raCount++;
+
+            swTimer.start();
+            ptr->push(i);
+            swTimer.stop();
+        }
+
+        //debug::log(0, "[PUSH]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr->front()), " | ", VARIABLE(ptr->back()), " | ", VARIABLE(ptr->size()));
+
+        for(uint32_t i = 0; i < 3; ++i)
+        {
+            raCount++;
+
+            swTimer.start();
+            ptr->front();
+            ptr->pop();
+            swTimer.stop();
+        }
     }
+
 
     //debug::log(0, "[POP]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
 }
 
 
+void ListThread(live::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTimer, std::atomic<uint64_t>& raCount)
+{
+    for(int n = 0; n < 2; ++n)
+    {
+        for(int i = 0; i < 40; ++i)
+        {
+            raCount++;
+
+            swTimer.start();
+            ptr.push_back(LLC::GetRandInt(144));
+            swTimer.stop();
+        }
+
+        //debug::log(0, "[PUSH]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
+
+        for(uint32_t i = 0; i < 39; ++i)
+        {
+            raCount++;
+
+            swTimer.start();
+            ptr.front();
+            ptr.pop_back();
+            swTimer.stop();
+        }
+
+    }
+
+
+    //debug::log(0, "[POP]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
+}
+
+#include <atomic/types/queue.h>
+
 int main()
 {
+    const uint64_t nThreads = 8;
+
     util::system::nTesting = 0;
 
     util::system::log(0, "Testing");
 
     {
-        live::atomic::queue<uint32_t> listTest;
 
-        std::thread t1(ListThread, std::ref(listTest));
-        std::thread t2(ListThread, std::ref(listTest));
-        std::thread t3(ListThread, std::ref(listTest));
-        std::thread t4(ListThread, std::ref(listTest));
+        std::atomic<uint64_t> raCount(0);
 
-        t1.join();
-        t2.join();
-        t3.join();
-        t4.join();
+        live::atomic::dequeue<uint32_t> listTest;
 
-        debug::log(0, "[DONE] ", VARIABLE(listTest.front()), " | ", VARIABLE(listTest.back()), " | ", VARIABLE(listTest.size()));
+        std::vector<std::thread> vThreads(nThreads);
+        std::vector<runtime::stopwatch> vTimers(nThreads);
+        for(uint32_t n = 0; n < vThreads.size(); ++n)
+        {
+            vTimers[n]  = runtime::stopwatch();
+            vThreads[n] = std::thread(ListThread, std::ref(listTest), std::ref(vTimers[n]), std::ref(raCount));
+        }
+
+        for(uint32_t n = 0; n < vThreads.size(); ++n)
+            vThreads[n].join();
+
+        uint64_t nElapsed = 0;
+        for(uint32_t n = 0; n < vTimers.size(); ++n)
+            nElapsed += vTimers[n].ElapsedMilliseconds();
+
+        nElapsed /= vThreads.size();
+        //nElapsed = raCount.load() / (nElapsed / 1000);
+
+        double dRate = raCount.load() / (nElapsed / 1000.0);
+        debug::log(0, "[DONE] ", VARIABLE(listTest.size()), " | ",
+                                 VARIABLE(listTest.count()), " | in ", nElapsed, " | ", std::fixed, dRate / 1000000.0, " MM/s");
+
+        debug::warning("Completed ", raCount.load(), " ops");
+
+        listTest.check_coherent();
+
+        return 0;
+    }
+
+
+    {
+        std::atomic<uint64_t> raCount(0);
+
+        util::memory::safe_shared_ptr<std::queue<uint32_t>> listTest =
+            util::memory::safe_shared_ptr<std::queue<uint32_t>>(new std::queue<uint32_t>());
+
+
+
+        std::vector<std::thread> vThreads(nThreads);
+        std::vector<runtime::stopwatch> vTimers(nThreads);
+        for(uint32_t n = 0; n < vThreads.size(); ++n)
+        {
+            vTimers[n]  = runtime::stopwatch();
+            vThreads[n] = std::thread(ListThread2, std::ref(listTest), std::ref(vTimers[n]), std::ref(raCount));
+        }
+
+
+        for(uint32_t n = 0; n < vThreads.size(); ++n)
+            vThreads[n].join();
+
+        uint64_t nElapsed = 0;
+        for(uint32_t n = 0; n < vTimers.size(); ++n)
+            nElapsed += vTimers[n].ElapsedMilliseconds();
+
+        nElapsed /= vThreads.size();
+        //nElapsed = raCount.load() / (nElapsed / 1000);
+
+        double dRate = raCount.load() / (nElapsed / 1000.0);
+        debug::warning("Completed ", raCount.load(), " ops");
+        debug::log(0, "[DONE] ", VARIABLE(listTest->size()), " | in ", nElapsed, " | ", std::fixed, dRate / 1000000.0, " MM/s");
+        //listTest.print();
     }
 
 
@@ -1428,11 +1569,7 @@ int main()
 
 #include <atomic/include/typedef.h>
 
-#include <atomic/types/type.h>
-
 util::atomic::uint32_t nStreamReads;
-
-util::atomic::type<uint32_t> nTestReads;
 
 void BatchRead(mstream &stream, runtime::stopwatch &timer)
 {
