@@ -234,19 +234,19 @@ namespace TAO::API
 
                 /* Handle for 8-bit unsigned int. */
                 if(nFieldType == TAO::Register::TYPES::UINT8_T)
-                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT8_T) << ExtractInteger<uint8_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT8_T) << ExtractNumber<uint8_t>(jParams, strField);
 
                 /* Handle for 16-bit unsigned int. */
                 if(nFieldType == TAO::Register::TYPES::UINT16_T)
-                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT16_T) << ExtractInteger<uint16_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT16_T) << ExtractNumber<uint16_t>(jParams, strField);
 
                 /* Handle for 32-bit unsigned int. */
                 if(nFieldType == TAO::Register::TYPES::UINT32_T)
-                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT32_T) << ExtractInteger<uint32_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT32_T) << ExtractNumber<uint32_t>(jParams, strField);
 
                 /* Handle for 64-bit unsigned int. */
                 if(nFieldType == TAO::Register::TYPES::UINT64_T)
-                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT64_T) << ExtractInteger<uint64_t>(jParams, strField);
+                    ssPayload << uint8_t(TAO::Operation::OP::TYPES::UINT64_T) << ExtractNumber<uint64_t>(jParams, strField);
 
                 /* Handle for 256-bit unsigned int. */
                 if(nFieldType == TAO::Register::TYPES::UINT256_T)

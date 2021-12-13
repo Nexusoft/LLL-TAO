@@ -42,7 +42,7 @@ namespace TAO::API
 
         /* Convert the incoming height string to an int*/
         const uint32_t nHeight =
-            ExtractInteger<uint32_t>(jParams, "height", TAO::Ledger::ChainState::nBestHeight.load());
+            ExtractNumber<uint32_t>(jParams, "height", TAO::Ledger::ChainState::nBestHeight.load());
 
         /* Read the block state from the the ledger DB using the height index */
         TAO::Ledger::BlockState tBlock;

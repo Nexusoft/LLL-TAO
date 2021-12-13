@@ -127,7 +127,7 @@ namespace TAO::API
 
             /* If the caller specifies a maxlength then use this to set the size of the string */
             const uint64_t nMaxLength =
-                ExtractInteger<uint64_t>(jParams, "maxlength", ((strPayload.size() / 128) + 1) * 128, 1000); //128 bytes default padding
+                ExtractNumber<uint64_t>(jParams, "maxlength", ((strPayload.size() / 128) + 1) * 128, 1000); //128 bytes default padding
 
             /* Check for minimum ranges. */
             if(nMaxLength < strPayload.size())
@@ -229,7 +229,7 @@ namespace TAO::API
                 {
                     /* If the caller specifies a maxlength then use this to set the size of the string */
                     const uint64_t nMaxLength =
-                        ExtractInteger<uint64_t>(jParams, "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000); //64 bytes default padding
+                        ExtractNumber<uint64_t>(jParams, "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000); //64 bytes default padding
 
                     /* Check for minimum ranges. */
                     if(nMaxLength < strPayload.size())
@@ -325,19 +325,19 @@ namespace TAO::API
 
                 /* Handle for 8-bit unsigned int. */
                 if(strType == "uint8")
-                    tPayload << uint8_t(TAO::Register::TYPES::UINT8_T)   << ExtractInteger<uint8_t>((*it), "value");
+                    tPayload << uint8_t(TAO::Register::TYPES::UINT8_T)   << ExtractNumber<uint8_t>((*it), "value");
 
                 /* Handle for 16-bit unsigned int. */
                 if(strType == "uint16")
-                    tPayload << uint8_t(TAO::Register::TYPES::UINT16_T)  << ExtractInteger<uint16_t>((*it), "value");
+                    tPayload << uint8_t(TAO::Register::TYPES::UINT16_T)  << ExtractNumber<uint16_t>((*it), "value");
 
                 /* Handle for 32-bit unsigned int. */
                 if(strType == "uint32")
-                    tPayload << uint8_t(TAO::Register::TYPES::UINT32_T)  << ExtractInteger<uint32_t>((*it), "value");
+                    tPayload << uint8_t(TAO::Register::TYPES::UINT32_T)  << ExtractNumber<uint32_t>((*it), "value");
 
                 /* Handle for 64-bit unsigned int. */
                 if(strType == "uint64")
-                    tPayload << uint8_t(TAO::Register::TYPES::UINT64_T)  << ExtractInteger<uint64_t>((*it), "value");
+                    tPayload << uint8_t(TAO::Register::TYPES::UINT64_T)  << ExtractNumber<uint64_t>((*it), "value");
 
                 /* Handle for 256-bit unsigned int. */
                 if(strType == "uint256")
@@ -372,7 +372,7 @@ namespace TAO::API
                     {
                         /* If the caller specifies a maxlength then use this to set the size of the string */
                         const uint64_t nMaxLength =
-                            ExtractInteger<uint64_t>((*it), "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000);
+                            ExtractNumber<uint64_t>((*it), "maxlength", ((strPayload.size() / 64) + 1) * 64, 1000);
 
                         /* Check for minimum ranges. */
                         if(nMaxLength < strPayload.size())

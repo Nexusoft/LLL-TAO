@@ -311,22 +311,22 @@ namespace TAO::API
     }
 
 
-    /** ExtractInteger
+    /** ExtractNumber
      *
-     *  Extracts an integer value from given input parameters.
+     *  Extracts an number value from given input parameters.
      *
      *  @param[in] jParams The parameters that contain requesting value.
      *  @param[in] strKey The key that we are checking parameters for.
      *  @param[in] fRequired Determines if given parameter is required.
      *  @param[in] nLimit The numeric limits to bound this type to, that may be less than type's value.
      *
-     *  @return The extracted integer value.
+     *  @return The extracted number value.
      *
      **/
     template<typename Type>
-    Type ExtractInteger(const encoding::json& jParams, const std::string& strKey,
+    Type ExtractNumber(const encoding::json& jParams, const std::string& strKey,
                         const Type nDefault = std::numeric_limits<Type>::max(),
-                        const uint64_t nLimit = std::numeric_limits<Type>::max())
+                        const Type nLimit = std::numeric_limits<Type>::max())
     {
         /* Check for missing parameter. */
         if(jParams.find(strKey) != jParams.end())
@@ -335,14 +335,20 @@ namespace TAO::API
             try
             {
                 /* Build our return value. */
-                uint64_t nRet = 0;
+                Type nRet = 0;
 
                 /* Convert to value if in string form. */
                 if(jParams[strKey].is_string())
-                    nRet = std::stoull(jParams[strKey].get<std::string>());
-
-                /* Grab value regularly if it is integer. */
-                else if(jParams[strKey].is_number_integer())
+                {
+                    /* Check if templated type is an intergral. */
+                    if (std::is_integral_v<Type>)
+                        nRet = std::stoull(jParams[strKey].get<std::string>());
+                    /* Default to double. */
+                    else
+                        nRet = std::stod(jParams[strKey].get<std::string>());
+                }
+                /*Grab regularly if number. */
+                else if(jParams[strKey].is_number())
                     nRet = jParams[strKey].get<Type>();
 
                 /* Otherwise we have an invalid parameter. */

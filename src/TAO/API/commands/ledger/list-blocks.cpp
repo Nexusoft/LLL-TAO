@@ -59,7 +59,7 @@ namespace TAO::API
 
             /* Convert the incoming height string to an int*/
             const uint32_t nHeight =
-                ExtractInteger<uint32_t>(jParams, "height") + (strOrder == "desc" ? -nOffset : nOffset);
+                ExtractNumber<uint32_t>(jParams, "height") + (strOrder == "desc" ? -nOffset : nOffset);
 
             /* Check that the requested height is within our chain range*/
             if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())

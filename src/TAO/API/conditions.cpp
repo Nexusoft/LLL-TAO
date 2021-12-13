@@ -160,7 +160,7 @@ namespace TAO::API
         using namespace TAO::Operation;
 
         /* The optional expiration time */
-        const uint64_t nExpires = ExtractInteger<uint64_t>(params, "expires", 604800);
+        const uint64_t nExpires = ExtractNumber<uint64_t>(params, "expires", 604800);
 
         /* Check if there is an expiry set for the contract */
         if(nExpires > 0)

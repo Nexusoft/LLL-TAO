@@ -60,7 +60,7 @@ namespace TAO::API
             throw Exception(-69, "Insufficient funds");
 
         /* The optional payment reference */
-        const uint64_t nReference = ExtractInteger<uint64_t>(jParams, "reference", 0); //0: as our default parameter
+        const uint64_t nReference = ExtractNumber<uint64_t>(jParams, "reference", 0); //0: as our default parameter
 
         /* Submit the payload object. */
         std::vector<TAO::Operation::Contract> vContracts(1);

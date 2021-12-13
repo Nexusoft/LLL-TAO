@@ -112,8 +112,8 @@ namespace TAO::API
                 ExtractAmount((*it), nDigits);
 
             /* The item number of units */
-            const uint64_t nUnits =
-                ExtractInteger<uint64_t>((*it), "units");
+            const double nUnits =
+                ExtractNumber<double>((*it), "units");
 
             /* Rebuild our JSON to use correct formatting. */
             const encoding::json jItem =
