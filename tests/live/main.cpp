@@ -1423,11 +1423,13 @@ void ListThread(live::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTime
 
 namespace proto::atomic
 {
+
     template<typename Type>
     class dequeue
     {
-        static const uint64_t nMask = (~uint64_t(0) >> 1);
+    public:
 
+        static const uint64_t nMask = (~uint64_t(0) >> 1);
 
         class Node
         {
@@ -1499,21 +1501,21 @@ namespace proto::atomic
             {
                 pTail = reinterpret_cast<Node*>(uint64_t(pNode) & nMask);
 
-                debug::log(0, FUNCTION, std::bitset<64>(pTail));
+                debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pTail)));
             }
 
             void SetHead(const Node* pNode)
             {
                 pHead = reinterpret_cast<Node*>(uint64_t(pNode) & nMask);
 
-                debug::log(0, FUNCTION, std::bitset<64>(pHead));
+                debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pHead)));
             }
 
             Node* GetTail() const
             {
                 const auto pNode = reinterpret_cast<Node*>(uint64_t(pTail) & nMask);
 
-                debug::log(0, FUNCTION, std::bitset<64>(pNode));
+                debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pTail)));
                 return pNode;
             }
 
@@ -1521,14 +1523,14 @@ namespace proto::atomic
             {
                 const auto pNode = reinterpret_cast<Node*>(uint64_t(pHead) & nMask);
 
-                debug::log(0, FUNCTION, std::bitset<64>(pNode));
+                debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pHead)));
                 return pNode;
             }
 
             uint8_t GetStatus() const
             {
-                const bool fTail = (uint64_t(pTail) & (1 << 1));
-                const bool fHead = (uint64_t(pHead) & (1 << 1));
+                const bool fTail = (uint64_t(pTail) & ~nMask);
+                const bool fHead = (uint64_t(pHead) & ~nMask);
 
                 /* If both pointers have bitset of 0, anchor is stable. */
                 if(!fTail && !fHead)
@@ -1543,6 +1545,26 @@ namespace proto::atomic
                     return LPUSH;
 
                 return ERROR;
+            }
+
+
+            std::string StatusDebug() const
+            {
+                const uint8_t nStatus = GetStatus();
+
+                switch(nStatus)
+                {
+                    case STABLE:
+                        return "STABLE";
+
+                    case RPUSH:
+                        return "RIGHT PUSH";
+
+                    case LPUSH:
+                        return "LEFT PUSH";
+                }
+
+                return "INVALID ERROR";
             }
 
             void SetStatus(const uint8_t nCode)
@@ -1562,8 +1584,10 @@ namespace proto::atomic
                     /* Right Push status is marked by a 0 on prev and a 1 on next. */
                     case RPUSH:
                     {
-                        pTail = reinterpret_cast<Node*>(uint64_t(pTail) | (1 << 1)); //we add a bit to pNext for rPUSH
+                        pTail = reinterpret_cast<Node*>(uint64_t(pTail) | ~nMask); //we add a bit to pNext for rPUSH
                         pHead = reinterpret_cast<Node*>(uint64_t(pHead) & nMask);
+
+                        debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pTail)));
 
                         return;
                     }
@@ -1572,15 +1596,17 @@ namespace proto::atomic
                     case LPUSH:
                     {
                         pTail = reinterpret_cast<Node*>(uint64_t(pTail) & nMask);
-                        pHead = reinterpret_cast<Node*>(uint64_t(pHead) | (1 << 1)); //we add a bit to pPrev for LPUSH
+                        pHead = reinterpret_cast<Node*>(uint64_t(pHead) | ~nMask); //we add a bit to pPrev for LPUSH
+
+                        debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pHead)));
 
                         return;
                     }
                 }
 
                 /* If we fall through here from invalid code, case will indicate an error by setting both bits to 1. */
-                pTail = reinterpret_cast<Node*>(uint64_t(pTail) | (1 << 1));
-                pHead = reinterpret_cast<Node*>(uint64_t(pHead) | (1 << 1));
+                pTail = reinterpret_cast<Node*>(uint64_t(pTail) | ~nMask);
+                pHead = reinterpret_cast<Node*>(uint64_t(pHead) | ~nMask);
             }
         };
 
@@ -1617,12 +1643,21 @@ namespace proto::atomic
 
     public:
 
-
         AnchorType tAnchor;
 
-        dequeue()
+        dequeue   ( )
         : tAnchor ( )
         {
+        }
+
+        void push_back(const Type& rData)
+        {
+
+        }
+
+        Type pop_back()
+        {
+
         }
     };
 
@@ -1639,6 +1674,21 @@ int main()
     util::system::nTesting = 0;
 
     util::system::log(0, "Testing");
+
+    proto::atomic::dequeue<std::string>::AnchorValue pValue;
+    pValue.SetHead(new proto::atomic::dequeue<std::string>::Node("testing new head"));
+    pValue.SetTail(new proto::atomic::dequeue<std::string>::Node("testing new tail"));
+
+    pValue.SetStatus(proto::atomic::dequeue<std::string>::AnchorValue::STABLE);
+
+    debug::warning("Bitset is ", std::bitset<64>(proto::atomic::dequeue<std::string>::nMask));
+
+    debug::log(0, "Head is \"", pValue.GetHead()->tData, "\"");
+    debug::log(0, "Tail is \"", pValue.GetTail()->tData, "\"");
+
+    debug::log(0, "Anchor is ", pValue.StatusDebug());
+
+    return 0;
 
     proto::atomic::dequeue<std::string> dequeue;
 
