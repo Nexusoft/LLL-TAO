@@ -1388,37 +1388,6 @@ void ListThread2(util::atomic::lock_shared_ptr<std::queue<uint32_t>>& ptr, runti
 }
 
 
-void ListThread(live::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTimer, std::atomic<uint64_t>& raCount)
-{
-    for(int n = 0; n < 2; ++n)
-    {
-        for(int i = 0; i < 40; ++i)
-        {
-            raCount++;
-
-            swTimer.start();
-            ptr.push_back(LLC::GetRandInt(144));
-            swTimer.stop();
-        }
-
-        //debug::log(0, "[PUSH]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
-
-        for(uint32_t i = 0; i < 39; ++i)
-        {
-            raCount++;
-
-            swTimer.start();
-            ptr.front();
-            ptr.pop_back();
-            swTimer.stop();
-        }
-
-    }
-
-
-    //debug::log(0, "[POP]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
-}
-
 #include <atomic/types/queue.h>
 
 namespace proto::atomic
@@ -1429,7 +1398,7 @@ namespace proto::atomic
     {
     public:
 
-        static const uint64_t nMask = (~uint64_t(0) >> 1);
+        static const uintptr_t nMask = (~uintptr_t(0) >> 1);
 
         class Node
         {
@@ -1473,6 +1442,7 @@ namespace proto::atomic
 
         class AnchorValue
         {
+
             /** Anchor pointer to next value in linked list. */
             Node* pTail;
 
@@ -1485,10 +1455,10 @@ namespace proto::atomic
 
             enum : uint8_t
             {
-                STABLE = 0,
-                RPUSH  = 1,
-                LPUSH  = 2,
-                ERROR  = 3,
+                STABLE    = 0,
+                PUSH_TAIL = 1,
+                PUSH_HEAD = 2,
+                ERROR     = 3,
             };
 
             AnchorValue() noexcept
@@ -1497,40 +1467,66 @@ namespace proto::atomic
             {
             }
 
+            bool operator==(const AnchorValue& a) const
+            {
+                /* Check status first for quick short circuit. */
+                if(a.GetStatus() != GetStatus())
+                    return false;
+
+                /* Otherwise check our pointer values. */
+                return
+                (
+                    a.GetHead() == GetHead() && a.GetTail() == GetTail()
+                );
+            }
+
+            bool operator!=(const AnchorValue& a) const
+            {
+                /* Check status first for quick short circuit. */
+                if(a.GetStatus() != GetStatus())
+                    return true;
+
+                /* Otherwise check our pointer values. */
+                return
+                (
+                    a.GetHead() != GetHead() || a.GetTail() != GetTail()
+                );
+            }
+
             void SetTail(const Node* pNode)
             {
-                pTail = reinterpret_cast<Node*>(uint64_t(pNode) & nMask);
+                pTail = reinterpret_cast<Node*>(uintptr_t(pNode) & nMask);
 
-                debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pTail)));
+                //debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pTail)));
             }
 
             void SetHead(const Node* pNode)
             {
-                pHead = reinterpret_cast<Node*>(uint64_t(pNode) & nMask);
+                pHead = reinterpret_cast<Node*>(uintptr_t(pNode) & nMask);
 
-                debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pHead)));
+                //debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pHead)));
             }
 
             Node* GetTail() const
             {
-                const auto pNode = reinterpret_cast<Node*>(uint64_t(pTail) & nMask);
+                const auto pNode = reinterpret_cast<Node*>(uintptr_t(pTail) & nMask);
 
-                debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pTail)));
+                //debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pTail)));
                 return pNode;
             }
 
             Node* GetHead() const
             {
-                const auto pNode = reinterpret_cast<Node*>(uint64_t(pHead) & nMask);
+                const auto pNode = reinterpret_cast<Node*>(uintptr_t(pHead) & nMask);
 
-                debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pHead)));
+                //debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pHead)));
                 return pNode;
             }
 
             uint8_t GetStatus() const
             {
-                const bool fTail = (uint64_t(pTail) & ~nMask);
-                const bool fHead = (uint64_t(pHead) & ~nMask);
+                const bool fTail = (uintptr_t(pTail) & ~nMask);
+                const bool fHead = (uintptr_t(pHead) & ~nMask);
 
                 /* If both pointers have bitset of 0, anchor is stable. */
                 if(!fTail && !fHead)
@@ -1538,33 +1534,13 @@ namespace proto::atomic
 
                 /* If next pointer has bitset of 1, anchor is right-incoherent. */
                 if(fTail && !fHead)
-                    return RPUSH;
+                    return PUSH_TAIL;
 
                 /* If prev pointer has biset of 1, anchor is left-incorherent. */
                 if(!fTail && fHead)
-                    return LPUSH;
+                    return PUSH_HEAD;
 
                 return ERROR;
-            }
-
-
-            std::string StatusDebug() const
-            {
-                const uint8_t nStatus = GetStatus();
-
-                switch(nStatus)
-                {
-                    case STABLE:
-                        return "STABLE";
-
-                    case RPUSH:
-                        return "RIGHT PUSH";
-
-                    case LPUSH:
-                        return "LEFT PUSH";
-                }
-
-                return "INVALID ERROR";
             }
 
             void SetStatus(const uint8_t nCode)
@@ -1575,96 +1551,444 @@ namespace proto::atomic
                     /* Stable is indicated as both prev and next being set to 0. */
                     case STABLE:
                     {
-                        pTail = reinterpret_cast<Node*>(uint64_t(pTail) & nMask);
-                        pHead = reinterpret_cast<Node*>(uint64_t(pHead) & nMask);
+                        pTail = reinterpret_cast<Node*>(uintptr_t(pTail) & nMask);
+                        pHead = reinterpret_cast<Node*>(uintptr_t(pHead) & nMask);
 
                         return;
                     }
 
                     /* Right Push status is marked by a 0 on prev and a 1 on next. */
-                    case RPUSH:
+                    case PUSH_TAIL:
                     {
-                        pTail = reinterpret_cast<Node*>(uint64_t(pTail) | ~nMask); //we add a bit to pNext for rPUSH
-                        pHead = reinterpret_cast<Node*>(uint64_t(pHead) & nMask);
-
-                        debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pTail)));
+                        pTail = reinterpret_cast<Node*>(uintptr_t(pTail) | ~nMask); //we add a bit to pNext for rPUSH
+                        pHead = reinterpret_cast<Node*>(uintptr_t(pHead) & nMask);
 
                         return;
                     }
 
                     /* Left Push status is marked by a 0 on next and a 1 on prev. */
-                    case LPUSH:
+                    case PUSH_HEAD:
                     {
-                        pTail = reinterpret_cast<Node*>(uint64_t(pTail) & nMask);
-                        pHead = reinterpret_cast<Node*>(uint64_t(pHead) | ~nMask); //we add a bit to pPrev for LPUSH
-
-                        debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pHead)));
+                        pTail = reinterpret_cast<Node*>(uintptr_t(pTail) & nMask);
+                        pHead = reinterpret_cast<Node*>(uintptr_t(pHead) | ~nMask); //we add a bit to pPrev for PUSH_HEAD
 
                         return;
                     }
                 }
 
                 /* If we fall through here from invalid code, case will indicate an error by setting both bits to 1. */
-                pTail = reinterpret_cast<Node*>(uint64_t(pTail) | ~nMask);
-                pHead = reinterpret_cast<Node*>(uint64_t(pHead) | ~nMask);
+                pTail = reinterpret_cast<Node*>(uintptr_t(pTail) | ~nMask);
+                pHead = reinterpret_cast<Node*>(uintptr_t(pHead) | ~nMask);
             }
         };
 
-
-        class AnchorType
+        void stabilize_tail(AnchorValue &tAnchor)
         {
-        public:
+            /* Get a shallow copy of our head. */
+            Node* pHead = tAnchor.GetHead();
+            if(pHead != aAnchor.load().GetHead())
+                return;
 
-            std::atomic<AnchorValue> tValue;
+            /* Get a shallow copy of our tail. */
+            Node* pTail = tAnchor.GetTail();
+            if(pTail != aAnchor.load().GetTail())
+                return;
 
+            /* Check that anchor hasn't been swapped. */
+            if(tAnchor != aAnchor.load())
+                return;
 
-            void copy(AnchorType &tAnchor) __attribute__((noinline))
+            /* Get the expected previous pointer. */
+            Node* pPrev = pTail->pPrev.load();
+            if(pPrev == nullptr)
             {
-                while(true) //loop CAS style
-                {
-                    AnchorValue tCopy = tValue.load();
-                    if(tCopy != tValue.load())
-                        continue;
+                debug::warning(FUNCTION, "Prev pointer is null");
+                return;
+            }
 
-                    tAnchor.store(tCopy);
+            /* Check that anchor hasn't been swapped. */
+            if(tAnchor != aAnchor.load())
+                return;
+
+            /* Check for expected values. */
+            Node* pPrevNext = pPrev->pNext.load();
+            if(pPrevNext != pTail)
+            {
+                /* Check that anchor hasn't been swapped. */
+                if(tAnchor != aAnchor.load())
+                {
+                    debug::warning(FUNCTION, "1 anchor has changed ", uint32_t(aAnchor.load().GetStatus()), ", returning...");
+                    return;
+                }
+
+                /* Compare and swap our new pointer. */
+                if(!pPrev->pNext.compare_exchange_weak(pPrevNext, pTail))
+                    return;
+            }
+
+            /* Check that anchor hasn't been swapped. */
+            if(tAnchor != aAnchor.load())
+                return;
+
+            /* Create a new anchor value to swap. */
+            AnchorValue tAnchorNew;
+            tAnchorNew.SetHead(pHead);
+            tAnchorNew.SetTail(pTail);
+            tAnchorNew.SetStatus(AnchorValue::STABLE);
+
+            /* Compare and swap now. */
+            aAnchor.compare_exchange_weak(tAnchor, tAnchorNew);
+        }
+
+
+        void stabilize_head(AnchorValue &tAnchor)
+        {
+            /* Get a shallow copy of our head. */
+            Node* pHead = tAnchor.GetHead();
+            if(pHead != aAnchor.load().GetHead())
+                return;
+
+            /* Get a shallow copy of our tail. */
+            Node* pTail = tAnchor.GetTail();
+            if(pTail != aAnchor.load().GetTail())
+                return;
+
+            /* Check that anchor hasn't been swapped. */
+            if(tAnchor != aAnchor.load())
+                return;
+
+            /* Get the expected previous pointer. */
+            Node* pNext = pHead->pNext.load();
+            if(pNext == nullptr)
+            {
+                debug::warning(FUNCTION, "Next pointer is null");
+                return;
+            }
+
+            /* Check for expected values. */
+            Node* pNextPrev = pNext->pPrev.load();
+            if(pNextPrev != pHead)
+            {
+                /* Check that anchor hasn't been swapped. */
+                if(tAnchor != aAnchor.load())
+                    return;
+
+                /* Compare and swap our new pointer. */
+                if(!pNext->pPrev.compare_exchange_weak(pNextPrev, pHead))
+                {
+                    debug::warning(FUNCTION, "compare and swap failed...");
+                    return;
                 }
             }
 
+            /* Create a new anchor value to swap. */
+            AnchorValue tAnchorNew;
+            tAnchorNew.SetHead(pHead);
+            tAnchorNew.SetTail(pTail);
+            tAnchorNew.SetStatus(AnchorValue::STABLE);
 
-            bool compare_exchange_weak(AnchorType* pExpectedIn, AnchorType* pNew)
+            /* Compare and swap now. */
+            aAnchor.compare_exchange_weak(tAnchor, tAnchorNew);
+        }
+
+
+        void stabilize(AnchorValue &tAnchor)
+        {
+            /* Check our anchor's current status. */
+            const uint8_t nStatus = tAnchor.GetStatus();
+            switch(nStatus)
             {
-                AnchorValue tExpected = pExpectedIn->tValue.load();
-                if(tValue.compare_exchange_weak(tExpected, pNew->tValue.load()))
-                    return true;
+                case AnchorValue::PUSH_HEAD:
+                {
+                    stabilize_head(tAnchor);
+                    return;
+                }
 
-                return false;
+                case AnchorValue::PUSH_TAIL:
+                {
+                    stabilize_tail(tAnchor);
+                    return;
+                }
             }
-        };
+        }
 
     public:
 
-        AnchorType tAnchor;
+        std::atomic<AnchorValue> aAnchor;
+
+        std::atomic<uint64_t> nSize;
 
         dequeue   ( )
-        : tAnchor ( )
+        : aAnchor ( )
+        , nSize   (0)
         {
         }
 
         void push_back(const Type& rData)
         {
+            /* Create our new node to add to the queue. */
+    		Node* pNode = new Node(rData);
 
+            /* We need this to hold our tail value for CAS for our tail pointer. */
+            while(true)
+            {
+                /* Get a fresh copy of the anchor. */
+                AnchorValue tAnchor = aAnchor.load();
+
+                /* Load our current tail pointer. */
+                Node* pHead = tAnchor.GetHead();
+                Node* pTail = tAnchor.GetTail();
+
+                /* Handle for empty dequeue. */
+                if(pTail == nullptr)
+                {
+                    /* Create our new anchor object. */
+                    AnchorValue tAnchorNew;
+                    tAnchorNew.SetHead(pNode);
+                    tAnchorNew.SetTail(pNode);
+                    tAnchorNew.SetStatus(AnchorValue::STABLE);
+
+                    /* Swap out our anchor now. */
+                    if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
+                    {
+                        ++nSize;
+                        return;
+                    }
+                }
+
+                /* Handle for stable dequeue. */
+                else if(tAnchor.GetStatus() == AnchorValue::STABLE)
+                {
+                    /* Set our prev to old tail. */
+                    pNode->pPrev.store(pTail);
+
+                    /* Set our new anchor values. */
+                    AnchorValue tAnchorNew;
+                    tAnchorNew.SetHead(pHead);
+                    tAnchorNew.SetTail(pNode);
+                    tAnchorNew.SetStatus(AnchorValue::PUSH_TAIL);
+
+                    /* Compare and swap our anchor. */
+                    if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
+                    {
+                        /* Stabilize our new anchor when complete. */
+                        stabilize(tAnchor);
+
+                        ++nSize;
+                        return;
+                    }
+                }
+
+                /* Otherwise we have an unstable head. */
+                else
+                    stabilize(tAnchor);
+
+            }
         }
 
         Type pop_back()
         {
+            /* We need this to hold our tail value for CAS for our tail pointer. */
+            while(true)
+            {
+                /* Get a fresh copy of the anchor. */
+                AnchorValue tAnchor = aAnchor.load();
 
+                /* Load our current tail pointer. */
+                Node* pHead = tAnchor.GetHead();
+                Node* pTail = tAnchor.GetTail();
+
+                /* Handle for empty dequeue. */
+                if(pHead == pTail)
+                {
+                    /* Build an empty anchor. */
+                    AnchorValue tAnchorNew;
+                    tAnchorNew.SetHead(nullptr);
+                    tAnchorNew.SetTail(nullptr);
+                    tAnchorNew.SetStatus(AnchorValue::STABLE);
+
+                    /* Swap out our anchor now. */
+                    if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
+                    {
+                        --nSize;
+                        return pTail->tData;
+                    }
+                }
+
+                /* Handle for stable dequeue. */
+                else if(tAnchor.GetStatus() == AnchorValue::STABLE)
+                {
+                    /* Get our current tail pointer. */
+                    const Node* pPrev = pTail->pPrev.load();
+
+                    /* Set our new anchor values. */
+                    AnchorValue tAnchorNew;
+                    tAnchorNew.SetHead(pHead);
+                    tAnchorNew.SetTail(pPrev);
+                    tAnchorNew.SetStatus(AnchorValue::STABLE);
+
+                    /* Compare and swap our anchor. */
+                    if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
+                    {
+                        --nSize;
+                        return pTail->tData;
+                    }
+                }
+
+                /* Otherwise we have an unstable head. */
+                else
+                    stabilize(tAnchor);
+
+            }
+        }
+
+        Type pop_front()
+        {
+            /* We need this to hold our tail value for CAS for our tail pointer. */
+            while(true)
+            {
+                /* Get a fresh copy of the anchor. */
+                AnchorValue tAnchor = aAnchor.load();
+
+                /* Load our current tail pointer. */
+                Node* pHead = tAnchor.GetHead();
+                Node* pTail = tAnchor.GetTail();
+
+                /* Handle for empty dequeue. */
+                if(pHead == pTail)
+                {
+                    /* Build an empty anchor. */
+                    AnchorValue tAnchorNew;
+                    tAnchorNew.SetHead(nullptr);
+                    tAnchorNew.SetTail(nullptr);
+                    tAnchorNew.SetStatus(AnchorValue::STABLE);
+
+                    /* Swap out our anchor now. */
+                    if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
+                    {
+                        --nSize;
+                        return pHead->tData;
+                    }
+                }
+
+                /* Handle for stable dequeue. */
+                else if(tAnchor.GetStatus() == AnchorValue::STABLE)
+                {
+                    /* Get our current tail pointer. */
+                    const Node* pNext = pHead->pNext.load();
+
+                    /* Set our new anchor values. */
+                    AnchorValue tAnchorNew;
+                    tAnchorNew.SetHead(pNext);
+                    tAnchorNew.SetTail(pTail);
+                    tAnchorNew.SetStatus(AnchorValue::STABLE);
+
+                    //we can probably delete this
+                    if(tAnchor != aAnchor.load())
+                        continue;
+
+                    /* Compare and swap our anchor. */
+                    if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
+                    {
+                        --nSize;
+                        return pHead->tData;
+                    }
+
+                }
+
+                /* Otherwise we have an unstable head. */
+                else
+                    stabilize(tAnchor);
+
+            }
+        }
+
+        size_t size() const
+        {
+            return nSize.load();
+        }
+
+        size_t count() const
+        {
+            uint32_t nCount = 0;
+            Node* pStart = aAnchor.load().GetTail();
+
+            while(pStart != nullptr)
+            {
+                pStart = pStart->pPrev.load();
+
+                ++nCount;
+            }
+
+            return nCount;
+        }
+
+        void check_coherent() const
+        {
+            std::vector<Type> vTypes;
+            {
+                Node* pStart = aAnchor.load().GetHead();
+                while(pStart != nullptr)
+                {
+                    vTypes.push_back(pStart->tData);
+                    pStart = pStart->pNext.load();
+                }
+            }
+
+            {
+                Node* pStart = aAnchor.load().GetTail();
+
+                uint32_t nCount = 0;
+
+                for(int32_t nIndex = vTypes.size() - 1; nIndex >= 0; --nIndex)
+                {
+                    if(pStart)
+                    {
+                        if(vTypes[nIndex] == pStart->tData)
+                            debug::log(0, "[", ++nCount, "] ", ANSI_COLOR_BRIGHT_GREEN, pStart->tData, ANSI_COLOR_RESET , " | ", vTypes[nIndex]);
+                        else
+                            debug::log(0, "[", ++nCount, "] ", ANSI_COLOR_BRIGHT_RED, pStart->tData, ANSI_COLOR_RESET, " | ", vTypes[nIndex]);
+
+                        pStart = pStart->pPrev.load();
+                    }
+                    else
+                        debug::log(0, "[", ++nCount, "] ", ANSI_COLOR_BRIGHT_RED, vTypes[nIndex], ANSI_COLOR_RESET);
+                }
+            }
         }
     };
+}
 
 
+void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTimer, std::atomic<uint64_t>& raCount)
+{
+    for(int n = 0; n < 2; ++n)
+    {
+        for(int i = 0; i < 40; ++i)
+        {
+            raCount++;
+
+            swTimer.start();
+            ptr.push_back(LLC::GetRandInt(144));
+            swTimer.stop();
+        }
+
+        //debug::log(0, "[PUSH]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
+
+        for(uint32_t i = 0; i < 39; ++i)
+        {
+            raCount++;
+
+            swTimer.start();
+            //ptr.front();
+            ptr.pop_back();
+            swTimer.stop();
+        }
+
+    }
 
 
-
+    //debug::log(0, "[POP]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
 }
 
 int main()
@@ -1675,28 +1999,11 @@ int main()
 
     util::system::log(0, "Testing");
 
-    proto::atomic::dequeue<std::string>::AnchorValue pValue;
-    pValue.SetHead(new proto::atomic::dequeue<std::string>::Node("testing new head"));
-    pValue.SetTail(new proto::atomic::dequeue<std::string>::Node("testing new tail"));
-
-    pValue.SetStatus(proto::atomic::dequeue<std::string>::AnchorValue::STABLE);
-
-    debug::warning("Bitset is ", std::bitset<64>(proto::atomic::dequeue<std::string>::nMask));
-
-    debug::log(0, "Head is \"", pValue.GetHead()->tData, "\"");
-    debug::log(0, "Tail is \"", pValue.GetTail()->tData, "\"");
-
-    debug::log(0, "Anchor is ", pValue.StatusDebug());
-
-    return 0;
-
-    proto::atomic::dequeue<std::string> dequeue;
-
     {
 
         std::atomic<uint64_t> raCount(0);
 
-        live::atomic::dequeue<uint32_t> listTest;
+        proto::atomic::dequeue<uint32_t> listTest;
 
         std::vector<std::thread> vThreads(nThreads);
         std::vector<runtime::stopwatch> vTimers(nThreads);
