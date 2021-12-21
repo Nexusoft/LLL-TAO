@@ -1455,10 +1455,10 @@ namespace proto::atomic
 
             enum : uint8_t
             {
-                STABLE    = 0,
-                PUSH_TAIL = 1,
-                PUSH_HEAD = 2,
-                ERROR     = 3,
+                STABLE    = 1,
+                PUSH_TAIL = 2,
+                PUSH_HEAD = 3,
+                ERROR     = 4,
             };
 
             AnchorValue() noexcept
@@ -1584,15 +1584,9 @@ namespace proto::atomic
 
         void stabilize_tail(AnchorValue &tAnchor)
         {
-            /* Get a shallow copy of our head. */
+            /* Load our current tail pointer. */
             Node* pHead = tAnchor.GetHead();
-            if(pHead != aAnchor.load().GetHead())
-                return;
-
-            /* Get a shallow copy of our tail. */
             Node* pTail = tAnchor.GetTail();
-            if(pTail != aAnchor.load().GetTail())
-                return;
 
             /* Check that anchor hasn't been swapped. */
             if(tAnchor != aAnchor.load())
@@ -1601,10 +1595,7 @@ namespace proto::atomic
             /* Get the expected previous pointer. */
             Node* pPrev = pTail->pPrev.load();
             if(pPrev == nullptr)
-            {
-                debug::warning(FUNCTION, "Prev pointer is null");
                 return;
-            }
 
             /* Check that anchor hasn't been swapped. */
             if(tAnchor != aAnchor.load())
@@ -1616,19 +1607,12 @@ namespace proto::atomic
             {
                 /* Check that anchor hasn't been swapped. */
                 if(tAnchor != aAnchor.load())
-                {
-                    debug::warning(FUNCTION, "1 anchor has changed ", uint32_t(aAnchor.load().GetStatus()), ", returning...");
                     return;
-                }
 
                 /* Compare and swap our new pointer. */
                 if(!pPrev->pNext.compare_exchange_weak(pPrevNext, pTail))
                     return;
             }
-
-            /* Check that anchor hasn't been swapped. */
-            if(tAnchor != aAnchor.load())
-                return;
 
             /* Create a new anchor value to swap. */
             AnchorValue tAnchorNew;
@@ -1660,10 +1644,7 @@ namespace proto::atomic
             /* Get the expected previous pointer. */
             Node* pNext = pHead->pNext.load();
             if(pNext == nullptr)
-            {
-                debug::warning(FUNCTION, "Next pointer is null");
                 return;
-            }
 
             /* Check for expected values. */
             Node* pNextPrev = pNext->pPrev.load();
@@ -1688,7 +1669,8 @@ namespace proto::atomic
             tAnchorNew.SetStatus(AnchorValue::STABLE);
 
             /* Compare and swap now. */
-            aAnchor.compare_exchange_weak(tAnchor, tAnchorNew);
+            if(!aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
+                debug::warning("Anchor failed to update status to stable");
         }
 
 
@@ -1772,14 +1754,14 @@ namespace proto::atomic
                     if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
                     {
                         /* Stabilize our new anchor when complete. */
-                        stabilize(tAnchor);
+                        stabilize(tAnchorNew);
 
                         ++nSize;
                         return;
                     }
                 }
 
-                /* Otherwise we have an unstable head. */
+                /* Otherwise we have an unstable head or tail. */
                 else
                     stabilize(tAnchor);
 
@@ -1810,6 +1792,8 @@ namespace proto::atomic
                     /* Swap out our anchor now. */
                     if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
                     {
+                        debug::warning(FUNCTION, "popped single item from dequeue");
+
                         --nSize;
                         return pTail->tData;
                     }
@@ -1819,7 +1803,7 @@ namespace proto::atomic
                 else if(tAnchor.GetStatus() == AnchorValue::STABLE)
                 {
                     /* Get our current tail pointer. */
-                    const Node* pPrev = pTail->pPrev.load();
+                    Node* pPrev = pTail->pPrev.load();
 
                     /* Set our new anchor values. */
                     AnchorValue tAnchorNew;
@@ -1830,6 +1814,9 @@ namespace proto::atomic
                     /* Compare and swap our anchor. */
                     if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
                     {
+                        /* Set our new anchor pointer to null. */
+                        pPrev->pNext.store(nullptr);
+
                         --nSize;
                         return pTail->tData;
                     }
@@ -1838,7 +1825,6 @@ namespace proto::atomic
                 /* Otherwise we have an unstable head. */
                 else
                     stabilize(tAnchor);
-
             }
         }
 
@@ -1875,7 +1861,7 @@ namespace proto::atomic
                 else if(tAnchor.GetStatus() == AnchorValue::STABLE)
                 {
                     /* Get our current tail pointer. */
-                    const Node* pNext = pHead->pNext.load();
+                    Node* pNext = pHead->pNext.load();
 
                     /* Set our new anchor values. */
                     AnchorValue tAnchorNew;
@@ -1883,17 +1869,15 @@ namespace proto::atomic
                     tAnchorNew.SetTail(pTail);
                     tAnchorNew.SetStatus(AnchorValue::STABLE);
 
-                    //we can probably delete this
-                    if(tAnchor != aAnchor.load())
-                        continue;
-
                     /* Compare and swap our anchor. */
                     if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
                     {
+                        /* Set our new anchor pointer to null. */
+                        pNext->pPrev.store(nullptr);
+
                         --nSize;
                         return pHead->tData;
                     }
-
                 }
 
                 /* Otherwise we have an unstable head. */
@@ -1925,6 +1909,7 @@ namespace proto::atomic
 
         void check_coherent() const
         {
+            debug::warning(FUNCTION, "state is ", uint32_t(aAnchor.load().GetStatus()));
             std::vector<Type> vTypes;
             {
                 Node* pStart = aAnchor.load().GetHead();
@@ -1964,12 +1949,12 @@ void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTim
 {
     for(int n = 0; n < 2; ++n)
     {
-        for(int i = 0; i < 40; ++i)
+        for(int i = 0; i < 80; ++i)
         {
             raCount++;
 
             swTimer.start();
-            ptr.push_back(LLC::GetRandInt(144));
+            ptr.push_back(LLC::GetRandInt(1000000));
             swTimer.stop();
         }
 
@@ -1981,10 +1966,19 @@ void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTim
 
             swTimer.start();
             //ptr.front();
-            ptr.pop_back();
+            ptr.pop_front();
             swTimer.stop();
         }
 
+        for(uint32_t i = 0; i < 39; ++i)
+        {
+            raCount++;
+
+            swTimer.start();
+            //ptr.front();
+            ptr.pop_back();
+            swTimer.stop();
+        }
     }
 
 
