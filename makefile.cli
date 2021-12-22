@@ -29,7 +29,7 @@ ifndef 32BIT
 endif
 ifeq (${32BIT}, 1)
 	BUILD_ARCH=x86
-	CXXFLAGS+= -m32
+	CXXFLAGS+= -m32 -latomic
 
 else ifeq (${ARM64}, 1)
         BUILD_ARCH=aarch64
@@ -37,7 +37,7 @@ else ifeq (${ARM64}, 1)
 
 else
 	BUILD_ARCH=x64
-	CXXFLAGS+= -m64
+	CXXFLAGS+= -m64 -latomic
 endif
 
 LIBS := -l leveldb

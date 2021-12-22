@@ -1083,7 +1083,7 @@ namespace proto::atomic
 
     /** @class dequeue
      *
-     *  This dequeue is based on the algorithm defined in the following
+     *  This dequeue is loosely based on the algorithm defined in the following
      *  paper: CAS-Based Lock-Free Algorithm for Shared Deques By Maged M. Michael
      *  with some distinct differences to improve stability and thread safety.
      *
@@ -1318,11 +1318,11 @@ namespace proto::atomic
                 if(nTail == 0 && nHead == 3)
                     return PUSH_HEAD;
 
-                /* If next pointer has bitset of 01, anchor is right-incoherant. */
+                /* If next pointer has bitset of 01, anchor is not right-terminated. */
                 if(nTail == 2 && nHead == 0)
                     return POP_TAIL;
 
-                /* If prev pointer has biset of 01, anchor is left-incorherent. */
+                /* If prev pointer has biset of 01, anchor is not left-terminated. */
                 if(nTail == 0 && nHead == 2)
                     return POP_HEAD;
 
@@ -1930,10 +1930,19 @@ namespace proto::atomic
             return false; //we should never reach here
         }
 
+
+        /** size
+         *
+         *  Get the number of elements in the dequeue.
+         *
+         *  @return the current size of container.
+         *
+         **/
         size_t size() const
         {
             return nSize.load();
         }
+
 
         size_t count() const
         {
@@ -2001,7 +2010,7 @@ void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTim
             swTimer.stop();
         }
 
-        for(uint32_t i = 0; i < 39; ++i)
+        for(uint32_t i = 0; i < 40; ++i)
         {
             raCount++;
 
@@ -2038,7 +2047,7 @@ void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTim
 
 int main()
 {
-    const uint64_t nThreads = 8;
+    const uint64_t nThreads = 16;
 
     util::system::nTesting = 0;
 
