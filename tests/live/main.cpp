@@ -1393,13 +1393,43 @@ void ListThread2(util::atomic::lock_shared_ptr<std::queue<uint32_t>>& ptr, runti
 namespace proto::atomic
 {
 
+    /** @class dequeue
+     *
+     *  This dequeue is based on the algorithm defined in the following
+     *  paper: CAS-Based Lock-Free Algorithm for Shared Deques By Maged M. Michael
+     *
+     *  https://link.springer.com/content/pdf/10.1007/978-3-540-45209-6_92.pdf
+     *
+     *  It uses double word, single address compare and swap to allow adjusting two pointers atomically
+     *  without the need for DCAS (double-compare-and-swap) instructions making it portable and reliable
+     *  on most modern hardware that supports double word, single address CAS (compare-and-swap).
+     *
+     *  This is fully thread-safe, lock-free, and wait-free being O(1) complexity with no contention.
+     *
+     **/
     template<typename Type>
     class dequeue
     {
-    public:
+    protected:
 
-        static const uintptr_t nMask = (~uintptr_t(0) >> 1);
+        /* Enum for internal bitwise values. */
+        enum : uintptr_t
+        {
+            MASK = (~uintptr_t(0) >> 2),
+            PUSH = (~uintptr_t(0) >> 2),
+            POP  = (~uintptr_t(0) >> 1),
+        };
 
+        /** Mask to use to get or set our status bits that are stuffed into pointers. **/
+        static const uintptr_t nMask = (~uintptr_t(0) >> 2);
+        static const uintptr_t nPops = (~uintptr_t(0) >> 1);
+
+
+        /** @class Node
+         *
+         *  Internal class to hold the pointers for forward and reverse traversal along with data stored.
+         *
+         **/
         class Node
         {
         public:
@@ -1436,10 +1466,14 @@ namespace proto::atomic
             , tData   (tDataIn)
             {
             }
-
         };
 
 
+        /** @class AnchorValue
+         *
+         *  Class to hold anchor pointers including status bits so we can use double word CAS.
+         *
+         **/
         class AnchorValue
         {
 
@@ -1453,20 +1487,36 @@ namespace proto::atomic
 
         public:
 
+            /** Enum values for our anchor's current status. **/
             enum : uint8_t
             {
-                STABLE    = 1,
-                PUSH_TAIL = 2,
-                PUSH_HEAD = 3,
-                ERROR     = 4,
+                STABLE    = 0,
+                PUSH_TAIL = 1,
+                PUSH_HEAD = 2,
+                POP_TAIL  = 3,
+                POP_HEAD  = 4,
+
+                ERROR     = 5,
             };
 
+
+            /** Default Constructor. **/
             AnchorValue() noexcept
             : pTail (nullptr)
             , pHead (nullptr)
             {
             }
 
+
+            /** Comparison Operator
+             *
+             *  Compare two anchor values to determine if they are equal.
+             *
+             *  @param[in] a The other anchor value to compare to.
+             *
+             *  @return true if the two anchors are equal.
+             *
+             **/
             bool operator==(const AnchorValue& a) const
             {
                 /* Check status first for quick short circuit. */
@@ -1480,6 +1530,16 @@ namespace proto::atomic
                 );
             }
 
+
+            /** Comparison Operator
+             *
+             *  Compare two anchor values to determine if they are not equal.
+             *
+             *  @param[in] a The other anchor value to compare to.
+             *
+             *  @return true if the two anchors are equal.
+             *
+             **/
             bool operator!=(const AnchorValue& a) const
             {
                 /* Check status first for quick short circuit. */
@@ -1493,62 +1553,107 @@ namespace proto::atomic
                 );
             }
 
+
+            /** SetTail
+             *
+             *  Set the current tail pointer in the anchor node.
+             *
+             *  @param[in] pNode The node pointer to set our tail to.
+             *
+             **/
             void SetTail(const Node* pNode)
             {
                 pTail = reinterpret_cast<Node*>(uintptr_t(pNode) & nMask);
-
-                //debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pTail)));
             }
 
+
+            /** SetHead
+             *
+             *  Set the current head pointer in the anchor node.
+             *
+             *  @param[in] pNode The node pointer to set our tail to.
+             *
+             **/
             void SetHead(const Node* pNode)
             {
                 pHead = reinterpret_cast<Node*>(uintptr_t(pNode) & nMask);
-
-                //debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pHead)));
             }
 
+
+            /** GetTail
+             *
+             *  Get the current tail pointer masking off our status bits.
+             *
+             *  @return A masked pointer with tail's memory location.
+             *
+             **/
             Node* GetTail() const
             {
-                const auto pNode = reinterpret_cast<Node*>(uintptr_t(pTail) & nMask);
-
-                //debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pTail)));
-                return pNode;
+                return reinterpret_cast<Node*>(uintptr_t(pTail) & nMask);
             }
 
+
+            /** GetHead
+             *
+             *  Get the current head pointer masking off our status bits.
+             *
+             *  @return A masked pointer with head's memory location.
+             *
+             **/
             Node* GetHead() const
             {
-                const auto pNode = reinterpret_cast<Node*>(uintptr_t(pHead) & nMask);
-
-                //debug::log(0, FUNCTION, std::bitset<64>(uint64_t(pHead)));
-                return pNode;
+                return reinterpret_cast<Node*>(uintptr_t(pHead) & nMask);
             }
 
+
+            /** GetStatus
+             *
+             *  Get the current status code from our bits we have stuffed into the head and tail pointers.
+             *
+             **/
             uint8_t GetStatus() const
             {
-                const bool fTail = (uintptr_t(pTail) & ~nMask);
-                const bool fHead = (uintptr_t(pHead) & ~nMask);
+                /* Get our head and tail status bits. */
+                const uint8_t nTail = (uintptr_t(pTail) & ~nMask) >> uint8_t((sizeof(pTail) * 8) - 2);
+                const uint8_t nHead = (uintptr_t(pHead) & ~nMask) >> uint8_t((sizeof(pTail) * 8) - 2);
 
                 /* If both pointers have bitset of 0, anchor is stable. */
-                if(!fTail && !fHead)
+                if(nTail == 0 && nHead == 0)
                     return STABLE;
 
-                /* If next pointer has bitset of 1, anchor is right-incoherent. */
-                if(fTail && !fHead)
+                /* If next pointer has bitset of 11, anchor is right-incoherent. */
+                if(nTail == 3 && nHead == 0)
                     return PUSH_TAIL;
 
-                /* If prev pointer has biset of 1, anchor is left-incorherent. */
-                if(!fTail && fHead)
+                /* If prev pointer has biset of 11, anchor is left-incorherent. */
+                if(nTail == 0 && nHead == 3)
                     return PUSH_HEAD;
+
+                /* If next pointer has bitset of 01, anchor is right-incoherant. */
+                if(nTail == 2 && nHead == 0)
+                    return POP_TAIL;
+
+                /* If prev pointer has biset of 01, anchor is left-incorherent. */
+                if(nTail == 0 && nHead == 2)
+                    return POP_HEAD;
 
                 return ERROR;
             }
 
+
+            /** SetStatus
+             *
+             *  Set the status bits for our head and tail pointers to indicate if stable or incoherant.
+             *
+             *  @param[in] nCode The code value to add to the pointers.
+             *
+             **/
             void SetStatus(const uint8_t nCode)
             {
                 /* Switch based on our status code. */
                 switch(nCode)
                 {
-                    /* Stable is indicated as both prev and next being set to 0. */
+                    /* Stable is indicated as both head and tail being set to 0. */
                     case STABLE:
                     {
                         pTail = reinterpret_cast<Node*>(uintptr_t(pTail) & nMask);
@@ -1557,20 +1662,38 @@ namespace proto::atomic
                         return;
                     }
 
-                    /* Right Push status is marked by a 0 on prev and a 1 on next. */
+                    /* Right Push status is marked by a 00 on head and a 11 on tail. */
                     case PUSH_TAIL:
                     {
-                        pTail = reinterpret_cast<Node*>(uintptr_t(pTail) | ~nMask); //we add a bit to pNext for rPUSH
+                        pTail = reinterpret_cast<Node*>(uintptr_t(pTail) | ~nMask); //we add a bit to pNext for PUSH_TAIL
                         pHead = reinterpret_cast<Node*>(uintptr_t(pHead) & nMask);
 
                         return;
                     }
 
-                    /* Left Push status is marked by a 0 on next and a 1 on prev. */
+                    /* Left Push status is marked by a 0 on tail and a 11 on head. */
                     case PUSH_HEAD:
                     {
                         pTail = reinterpret_cast<Node*>(uintptr_t(pTail) & nMask);
                         pHead = reinterpret_cast<Node*>(uintptr_t(pHead) | ~nMask); //we add a bit to pPrev for PUSH_HEAD
+
+                        return;
+                    }
+
+                    /* Right pop status is marked by a 00 on head and a 01 on tail. */
+                    case POP_TAIL:
+                    {
+                        pTail = reinterpret_cast<Node*>(uintptr_t(pTail) | ~nPops); //we add a bit to pNext for PUSH_TAIL
+                        pHead = reinterpret_cast<Node*>(uintptr_t(pHead) & nMask);
+
+                        return;
+                    }
+
+                    /* Left pop status is marked by a 00 on tail and a 01 on head. */
+                    case POP_HEAD:
+                    {
+                        pTail = reinterpret_cast<Node*>(uintptr_t(pTail) & nMask);
+                        pHead = reinterpret_cast<Node*>(uintptr_t(pHead) | ~nPops); //we add a bit to pPrev for PUSH_HEAD
 
                         return;
                     }
@@ -1582,9 +1705,77 @@ namespace proto::atomic
             }
         };
 
+
+        void cleanup_tail(AnchorValue &tAnchor)
+        {
+            /* Load our current head and tail pointer. */
+            Node* pHead = tAnchor.GetHead();
+            Node* pTail = tAnchor.GetTail();
+
+            /* Get the expected previous pointer. */
+            Node* pNext = pTail->pNext.load();
+            if(pNext != nullptr)
+            {
+                /* Check that anchor hasn't been swapped. */
+                if(tAnchor != aAnchor.load())
+                    return;
+
+                /* Compare and swap our new pointer. */
+                if(!pTail->pNext.compare_exchange_weak(pNext, nullptr))
+                    return;
+            }
+
+            /* Create a new anchor value to swap. */
+            AnchorValue tAnchorNew;
+            tAnchorNew.SetHead(pHead);
+            tAnchorNew.SetTail(pTail);
+            tAnchorNew.SetStatus(AnchorValue::STABLE);
+
+            /* Compare and swap now. */
+            aAnchor.compare_exchange_weak(tAnchor, tAnchorNew);
+        }
+
+
+        void cleanup_head(AnchorValue &tAnchor)
+        {
+            /* Load our current head and tail pointer. */
+            Node* pHead = tAnchor.GetHead();
+            Node* pTail = tAnchor.GetTail();
+
+            /* Get the expected previous pointer. */
+            Node* pPrev = pHead->pPrev.load();
+            if(pPrev != nullptr)
+            {
+                /* Check that anchor hasn't been swapped. */
+                if(tAnchor != aAnchor.load())
+                    return;
+
+                /* Compare and swap our new pointer. */
+                if(!pHead->pPrev.compare_exchange_weak(pPrev, nullptr))
+                    return;
+            }
+
+            /* Create a new anchor value to swap. */
+            AnchorValue tAnchorNew;
+            tAnchorNew.SetHead(pHead);
+            tAnchorNew.SetTail(pTail);
+            tAnchorNew.SetStatus(AnchorValue::STABLE);
+
+            /* Compare and swap now. */
+            aAnchor.compare_exchange_weak(tAnchor, tAnchorNew);
+        }
+
+
+        /** stabilize_tail
+         *
+         *  Check coherance of our tail pointer and adjust with CAS if incoherent.
+         *
+         *  @param[out] tAnchor The anchor we are stabilizing from.
+         *
+         **/
         void stabilize_tail(AnchorValue &tAnchor)
         {
-            /* Load our current tail pointer. */
+            /* Load our current head and tail pointer. */
             Node* pHead = tAnchor.GetHead();
             Node* pTail = tAnchor.GetTail();
 
@@ -1625,17 +1816,18 @@ namespace proto::atomic
         }
 
 
+        /** stabilize_head
+         *
+         *  Check coherance of our head pointer and adjust with CAS if incoherent.
+         *
+         *  @param[out] tAnchor The anchor we are stabilizing from.
+         *
+         **/
         void stabilize_head(AnchorValue &tAnchor)
         {
-            /* Get a shallow copy of our head. */
+            /* Load our current head and tail pointer. */
             Node* pHead = tAnchor.GetHead();
-            if(pHead != aAnchor.load().GetHead())
-                return;
-
-            /* Get a shallow copy of our tail. */
             Node* pTail = tAnchor.GetTail();
-            if(pTail != aAnchor.load().GetTail())
-                return;
 
             /* Check that anchor hasn't been swapped. */
             if(tAnchor != aAnchor.load())
@@ -1656,11 +1848,12 @@ namespace proto::atomic
 
                 /* Compare and swap our new pointer. */
                 if(!pNext->pPrev.compare_exchange_weak(pNextPrev, pHead))
-                {
-                    debug::warning(FUNCTION, "compare and swap failed...");
                     return;
-                }
             }
+
+            /* Check that anchor hasn't been swapped. */
+            if(tAnchor != aAnchor.load())
+                return;
 
             /* Create a new anchor value to swap. */
             AnchorValue tAnchorNew;
@@ -1669,26 +1862,48 @@ namespace proto::atomic
             tAnchorNew.SetStatus(AnchorValue::STABLE);
 
             /* Compare and swap now. */
-            if(!aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
-                debug::warning("Anchor failed to update status to stable");
+            aAnchor.compare_exchange_weak(tAnchor, tAnchorNew);
         }
 
 
+        /** stabilize
+         *
+         *  Stabilize the current anchor value based on its current status.
+         *
+         *  @param[out] tAnchor The anchor value we are stabilizing.
+         *
+         **/
         void stabilize(AnchorValue &tAnchor)
         {
             /* Check our anchor's current status. */
             const uint8_t nStatus = tAnchor.GetStatus();
             switch(nStatus)
             {
+                /* Hande if the dequeue is left incoherant. */
                 case AnchorValue::PUSH_HEAD:
                 {
                     stabilize_head(tAnchor);
                     return;
                 }
 
+                /* Handle if the dequeue is right incoherant. */
                 case AnchorValue::PUSH_TAIL:
                 {
                     stabilize_tail(tAnchor);
+                    return;
+                }
+
+                /* Handle if the dequeue needs cleanup on head. */
+                case AnchorValue::POP_HEAD:
+                {
+                    cleanup_head(tAnchor);
+                    return;
+                }
+
+                /* Handle if the dequeue needs cleanup on tail. */
+                case AnchorValue::POP_TAIL:
+                {
+                    cleanup_tail(tAnchor);
                     return;
                 }
             }
@@ -1696,16 +1911,29 @@ namespace proto::atomic
 
     public:
 
+        /** The anchor stored as a single address, so we can use double word CAS to change it. **/
         std::atomic<AnchorValue> aAnchor;
 
+
+        /** The current size of the dequeue being incremented atomically. **/
         std::atomic<uint64_t> nSize;
 
+
+        /** Default constructor. **/
         dequeue   ( )
         : aAnchor ( )
         , nSize   (0)
         {
         }
 
+
+        /** push_back
+         *
+         *  Push a new node to the tail of the dequeue.
+         *
+         *  @param[in] rData The data we are adding to the dequeue.
+         *
+         **/
         void push_back(const Type& rData)
         {
             /* Create our new node to add to the queue. */
@@ -1792,7 +2020,7 @@ namespace proto::atomic
                     /* Swap out our anchor now. */
                     if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
                     {
-                        debug::warning(FUNCTION, "popped single item from dequeue");
+                        debug::warning(FUNCTION, "popped the last element in dequeue");
 
                         --nSize;
                         return pTail->tData;
@@ -1803,22 +2031,25 @@ namespace proto::atomic
                 else if(tAnchor.GetStatus() == AnchorValue::STABLE)
                 {
                     /* Get our current tail pointer. */
-                    Node* pPrev = pTail->pPrev.load();
+                    const Node* pPrev = pTail->pPrev.load();
 
                     /* Set our new anchor values. */
                     AnchorValue tAnchorNew;
                     tAnchorNew.SetHead(pHead);
                     tAnchorNew.SetTail(pPrev);
-                    tAnchorNew.SetStatus(AnchorValue::STABLE);
+                    tAnchorNew.SetStatus(AnchorValue::POP_TAIL);
 
                     /* Compare and swap our anchor. */
                     if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
                     {
-                        /* Set our new anchor pointer to null. */
-                        pPrev->pNext.store(nullptr);
+                        /* Stabilize the tail's next pointer. */
+                        stabilize(tAnchorNew);
 
+                        /* Make a copy of our pointer value. */
+                        const Type tData = pTail->tData;
                         --nSize;
-                        return pTail->tData;
+
+                        return tData;
                     }
                 }
 
@@ -1837,8 +2068,8 @@ namespace proto::atomic
                 AnchorValue tAnchor = aAnchor.load();
 
                 /* Load our current tail pointer. */
-                Node* pHead = tAnchor.GetHead();
-                Node* pTail = tAnchor.GetTail();
+                const Node* pHead = tAnchor.GetHead();
+                const Node* pTail = tAnchor.GetTail();
 
                 /* Handle for empty dequeue. */
                 if(pHead == pTail)
@@ -1852,6 +2083,7 @@ namespace proto::atomic
                     /* Swap out our anchor now. */
                     if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
                     {
+                        debug::warning(FUNCTION, "popped the last element in dequeue");
                         --nSize;
                         return pHead->tData;
                     }
@@ -1861,22 +2093,27 @@ namespace proto::atomic
                 else if(tAnchor.GetStatus() == AnchorValue::STABLE)
                 {
                     /* Get our current tail pointer. */
-                    Node* pNext = pHead->pNext.load();
+                    const Node* pNext = pHead->pNext.load();
 
                     /* Set our new anchor values. */
                     AnchorValue tAnchorNew;
                     tAnchorNew.SetHead(pNext);
                     tAnchorNew.SetTail(pTail);
-                    tAnchorNew.SetStatus(AnchorValue::STABLE);
+                    tAnchorNew.SetStatus(AnchorValue::POP_HEAD);
 
                     /* Compare and swap our anchor. */
                     if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
                     {
-                        /* Set our new anchor pointer to null. */
-                        pNext->pPrev.store(nullptr);
+                        /* Stabilize the tail's next pointer. */
+                        stabilize(tAnchorNew);
 
+                        /* Make a copy of our pointer value. */
+                        const Type tData = pHead->tData;
                         --nSize;
-                        return pHead->tData;
+
+                        /* Free our pointer now. */
+                        //delete pHead;
+                        return tData;
                     }
                 }
 
@@ -1947,7 +2184,8 @@ namespace proto::atomic
 
 void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTimer, std::atomic<uint64_t>& raCount)
 {
-    for(int n = 0; n < 2; ++n)
+    ptr.push_back(100);
+    for(int n = 0; n < 20000; ++n)
     {
         for(int i = 0; i < 80; ++i)
         {
@@ -1960,7 +2198,7 @@ void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTim
 
         //debug::log(0, "[PUSH]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
 
-        for(uint32_t i = 0; i < 39; ++i)
+        for(uint32_t i = 0; i < 40; ++i)
         {
             raCount++;
 
@@ -1970,7 +2208,7 @@ void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTim
             swTimer.stop();
         }
 
-        for(uint32_t i = 0; i < 39; ++i)
+        for(uint32_t i = 0; i < 40; ++i)
         {
             raCount++;
 
@@ -1987,7 +2225,7 @@ void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTim
 
 int main()
 {
-    const uint64_t nThreads = 8;
+    const uint64_t nThreads = 32;
 
     util::system::nTesting = 0;
 
