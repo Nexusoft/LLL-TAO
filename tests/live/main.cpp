@@ -1037,318 +1037,6 @@ namespace util::system
 
 #include <atomic/types/lock-shared-ptr.h>
 
-
-namespace live::atomic
-{
-    template<typename Type> class dequeue
-    {
-        struct Anchor;
-
-        struct Node
-        {
-            Type tData;
-            std::atomic<Node*> pNext;
-            std::atomic<Node*> pPrev;
-
-            Node(const Type& rData)
-            : tData (rData)
-            , pNext (nullptr)
-            , pPrev (nullptr)
-            {
-            }
-
-            Node()
-            : tData ()
-            , pNext (nullptr)
-            , pPrev (nullptr)
-            {
-            }
-
-            Node* Prev() const
-            {
-                return reinterpret_cast<Node*>(uint64_t(pPrev.load()) & (1 << 2));
-            }
-
-            Node* Next() const
-            {
-                return reinterpret_cast<Node*>(uint64_t(pNext.load()) & (1 << 2));
-            }
-
-
-            void Prev(const Node* ptr)
-            {
-                pPrev.store(reinterpret_cast<Node*>(uint64_t(ptr) | (1 << 2)));
-            }
-        };
-
-        struct Anchor
-        {
-            Node* pNext;
-            Node* pPrev;
-        };
-
-        std::atomic<Node*> aHead;
-        std::atomic<Node*> aTail;
-
-        std::atomic<size_t> nSize;
-
-        std::atomic<uint64_t> nForward;
-
-    public:
-
-        dequeue()
-        : aHead (nullptr)
-        , aTail (nullptr)
-        , nSize (0)
-        , nForward (0)
-        {
-        }
-
-
-        void push_back(const Type& rData)
-        {
-            /* Create our new node to add to the queue. */
-    		Node* pNode = new Node(rData);
-
-            /* Check for our first insert. */
-            if(aHead.load() == nullptr)
-            {
-                /* Set our initial head and tail values to new element. */
-                aHead.store(pNode);
-                aTail.store(pNode);
-
-                /* Incrememnt our size atomically. */
-                ++nSize;
-
-                return;
-            }
-
-            /* Adjust our node's previous link now. */
-            //Node* pTemp = aTail.load();
-            //Node* pTail = aTail.load();
-            //while(!pNode->pPrev.compare_exchange_weak(pTemp, pTail));
-
-            /* We need this to hold our tail value for CAS for our tail pointer. */
-            Node* pTail = nullptr;
-            while(true)
-            {
-                /* Load our current tail pointer. */
-                pTail = aTail.load();
-
-                if(aTail.load() != pTail)
-                {
-                    debug::warning(FUNCTION, "Out of sync 1 ");
-                    continue;
-                }
-
-                /* Check that tail doesn't have a next node. */
-                Node* pTailNext = pTail->pNext.load();
-                if(pTailNext)
-                {
-                    ++nForward;
-
-                    /* Bring tail forward to next node. */
-                    while(!aTail.compare_exchange_weak(pTail, pTailNext));
-                    continue;
-                }
-
-                if(aTail.load() != pTail)
-                {
-                    debug::warning(FUNCTION, "Out of sync 2");
-                    continue;
-                }
-
-                //pNode->Prev(pTail);
-
-                /* Swing our tail next pointer forward to our new node. */
-                if(pTail->pNext.compare_exchange_weak(pTailNext, pNode))
-                {
-                    pNode->pPrev.store(pTail);
-                    break;
-                }
-            }
-
-            /* Swing our new tail pointer to our new node. */
-            while(!aTail.compare_exchange_weak(pTail, pNode));
-
-            //while(!pNode->pPrev.compare_exchange_weak(pTail, pTail));
-            //pNode->pPrev.store(pTail);
-            //pNode->pPrev.store(pTail);
-
-            /* Incrememnt our size atomically. */
-            ++nSize;
-        }
-
-        void pop_back()
-        {
-            /* Grab our current head. */
-            Node* pTail = nullptr;
-
-            /* Loop to handle our CAS since we are using weak which can spuriously fail. */
-            while(true)
-            {
-                /* Load our current tail pointer. */
-                pTail = aTail.load();
-
-                if(aTail.load() != pTail)
-                {
-                    debug::warning(FUNCTION, "Out of sync 1");
-                    continue;
-                }
-
-                /* Load our next head pointer. */
-                Node* pTailPrev = pTail->pPrev.load();
-                if(!pTailPrev)
-                {
-                    debug::warning(FUNCTION, "no previous pointer for tail... empty?");
-                    return;
-                }
-
-                Node* pTailCheck = pTailPrev->pNext.load();
-                if(pTailCheck != pTail)
-                {
-                    debug::warning(FUNCTION, "incoherent pointer for tail, moving tail back...");
-
-                    /* Bring tail backward to prev node. */
-                    while(!pTailPrev->pNext.compare_exchange_weak(pTailCheck, pTail));
-                    continue;
-                }
-
-                pTailPrev->pNext.store(nullptr);
-
-                /* Swing our new atomic head to our next pointer. */
-                if(aTail.compare_exchange_weak(pTail, pTailPrev))
-                    break;
-            }
-
-            /* Decrement our size atomically. */
-            --nSize;
-        }
-
-
-        void pop_front()
-        {
-            /* Grab our current head. */
-            Node* pHead = aHead.load();
-
-            /* Loop to handle our CAS since we are using weak which can spuriously fail. */
-            while(true)
-            {
-                /* Load our next head pointer. */
-                Node* pHeadNext = pHead->pNext.load();
-                pHeadNext->pPrev.store(nullptr);
-
-                /* Swing our new atomic head to our next pointer. */
-                if(aHead.compare_exchange_weak(pHead, pHeadNext))
-                    break;
-            }
-
-            /* Decrement our size atomically. */
-            --nSize;
-        }
-
-
-        const Type& front() const
-        {
-            return aHead.load()->tData;
-        }
-
-        const Type& back() const
-        {
-            return aTail.load()->tData;
-        }
-
-        size_t size() const
-        {
-            return nSize.load();
-        }
-
-        bool empty() const
-        {
-            return (nSize.load() == 0);
-        }
-
-        uint32_t count() const
-        {
-            uint32_t nCount = 0;
-            Node* pStart = aHead.load();
-
-            while(pStart != nullptr)
-            {
-                pStart = pStart->pNext;
-
-                ++nCount;
-            }
-
-            return nCount;
-        }
-
-        void print_next() const
-        {
-            uint32_t nCount = 0;
-            Node* pStart = aHead.load();
-
-            while(pStart != nullptr)
-            {
-                debug::log(0, "[", nCount++, "] ", pStart->tData);
-                pStart = pStart->pNext.load();
-            }
-        }
-
-
-        void print_prev() const
-        {
-            uint32_t nCount = 0;
-            Node* pStart = aTail.load();
-
-            while(pStart != nullptr)
-            {
-                debug::log(0, "[", nCount++, "] ", pStart->tData);
-                pStart = pStart->pPrev.load();
-            }
-        }
-
-
-        void check_coherent() const
-        {
-            std::vector<Type> vTypes;
-            {
-                Node* pStart = aHead.load();
-                while(pStart != nullptr)
-                {
-                    vTypes.push_back(pStart->tData);
-                    pStart = pStart->pNext.load();
-                }
-            }
-
-            {
-                Node* pStart = aTail.load();
-
-                uint32_t nCount = 0;
-
-                for(int32_t nIndex = vTypes.size() - 1; nIndex >= 0; --nIndex)
-                {
-                    if(pStart)
-                    {
-                        if(vTypes[nIndex] == pStart->tData)
-                            debug::log(0, "[", ++nCount, "] ", ANSI_COLOR_BRIGHT_GREEN, pStart->tData, ANSI_COLOR_RESET , " | ", vTypes[nIndex]);
-                        else
-                            debug::log(0, "[", ++nCount, "] ", ANSI_COLOR_BRIGHT_RED, pStart->tData, ANSI_COLOR_RESET, " | ", vTypes[nIndex]);
-
-                        pStart = pStart->pPrev.load();
-                    }
-                    else
-                        debug::log(0, "[", ++nCount, "] ", ANSI_COLOR_BRIGHT_RED, vTypes[nIndex], ANSI_COLOR_RESET);
-                }
-            }
-
-            if(nForward.load() > 0)
-                debug::warning(FUNCTION, "moved tail forward ", nForward.load(), " times");
-        }
-    };
-}
-
-
 void TestThread(util::atomic::lock_shared_ptr<Test>& ptr)
 {
     util::atomic::lock_shared_ptr<Test> ptrNew = ptr;
@@ -1397,6 +1085,7 @@ namespace proto::atomic
      *
      *  This dequeue is based on the algorithm defined in the following
      *  paper: CAS-Based Lock-Free Algorithm for Shared Deques By Maged M. Michael
+     *  with some distinct differences to improve stability and thread safety.
      *
      *  https://link.springer.com/content/pdf/10.1007/978-3-540-45209-6_92.pdf
      *
@@ -1706,6 +1395,13 @@ namespace proto::atomic
         };
 
 
+        /** cleanup_tail
+         *
+         *  Cleanup our tails's next pointer by setting it to null based on anchor status.
+         *
+         *  @param[in] tAnchor The anchor we are cleaning for.
+         *
+         **/
         void cleanup_tail(AnchorValue &tAnchor)
         {
             /* Load our current head and tail pointer. */
@@ -1725,6 +1421,10 @@ namespace proto::atomic
                     return;
             }
 
+            /* Check that anchor hasn't been swapped. */
+            if(tAnchor != aAnchor.load())
+                return;
+
             /* Create a new anchor value to swap. */
             AnchorValue tAnchorNew;
             tAnchorNew.SetHead(pHead);
@@ -1736,6 +1436,13 @@ namespace proto::atomic
         }
 
 
+        /** cleanup_head
+         *
+         *  Cleanup our head's previous pointer by setting it to null based on anchor status.
+         *
+         *  @param[in] tAnchor The anchor we are cleaning for.
+         *
+         **/
         void cleanup_head(AnchorValue &tAnchor)
         {
             /* Load our current head and tail pointer. */
@@ -1754,6 +1461,10 @@ namespace proto::atomic
                 if(!pHead->pPrev.compare_exchange_weak(pPrev, nullptr))
                     return;
             }
+
+            /* Check that anchor hasn't been swapped. */
+            if(tAnchor != aAnchor.load())
+                return;
 
             /* Create a new anchor value to swap. */
             AnchorValue tAnchorNew;
@@ -1779,17 +1490,9 @@ namespace proto::atomic
             Node* pHead = tAnchor.GetHead();
             Node* pTail = tAnchor.GetTail();
 
-            /* Check that anchor hasn't been swapped. */
-            if(tAnchor != aAnchor.load())
-                return;
-
             /* Get the expected previous pointer. */
             Node* pPrev = pTail->pPrev.load();
             if(pPrev == nullptr)
-                return;
-
-            /* Check that anchor hasn't been swapped. */
-            if(tAnchor != aAnchor.load())
                 return;
 
             /* Check for expected values. */
@@ -1804,6 +1507,10 @@ namespace proto::atomic
                 if(!pPrev->pNext.compare_exchange_weak(pPrevNext, pTail))
                     return;
             }
+
+            /* Check that anchor hasn't been swapped. */
+            if(tAnchor != aAnchor.load())
+                return;
 
             /* Create a new anchor value to swap. */
             AnchorValue tAnchorNew;
@@ -1828,10 +1535,6 @@ namespace proto::atomic
             /* Load our current head and tail pointer. */
             Node* pHead = tAnchor.GetHead();
             Node* pTail = tAnchor.GetTail();
-
-            /* Check that anchor hasn't been swapped. */
-            if(tAnchor != aAnchor.load())
-                return;
 
             /* Get the expected previous pointer. */
             Node* pNext = pHead->pNext.load();
@@ -1996,7 +1699,17 @@ namespace proto::atomic
             }
         }
 
-        Type pop_back()
+
+        /** pop_back
+         *
+         *  Pop a value off of the tail of the dequeue.
+         *
+         *  @param[out] rData The data to return if successful.
+         *
+         *  @return true if the dequeue supplied an item to return.
+         *
+         **/
+        bool pop_back(Type &rData)
         {
             /* We need this to hold our tail value for CAS for our tail pointer. */
             while(true)
@@ -2007,6 +1720,10 @@ namespace proto::atomic
                 /* Load our current tail pointer. */
                 Node* pHead = tAnchor.GetHead();
                 Node* pTail = tAnchor.GetTail();
+
+                /* Check for an empty dequeue. */
+                if(pTail == nullptr)
+                    return false;
 
                 /* Handle for empty dequeue. */
                 if(pHead == pTail)
@@ -2020,10 +1737,11 @@ namespace proto::atomic
                     /* Swap out our anchor now. */
                     if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
                     {
-                        debug::warning(FUNCTION, "popped the last element in dequeue");
-
+                        /* Make a copy of our pointer value. */
+                        rData = pTail->tData;
                         --nSize;
-                        return pTail->tData;
+
+                        return true;
                     }
                 }
 
@@ -2046,10 +1764,10 @@ namespace proto::atomic
                         stabilize(tAnchorNew);
 
                         /* Make a copy of our pointer value. */
-                        const Type tData = pTail->tData;
+                        rData = pTail->tData;
                         --nSize;
 
-                        return tData;
+                        return true;
                     }
                 }
 
@@ -2057,9 +1775,91 @@ namespace proto::atomic
                 else
                     stabilize(tAnchor);
             }
+
+            return false; //we should never reach here
         }
 
-        Type pop_front()
+
+        /** push_front
+         *
+         *  Push a new node to the head of the dequeue.
+         *
+         *  @param[in] rData The data we are adding to the dequeue.
+         *
+         **/
+        void push_front(const Type& rData)
+        {
+            /* Create our new node to add to the queue. */
+            Node* pNode = new Node(rData);
+
+            /* We need this to hold our tail value for CAS for our tail pointer. */
+            while(true)
+            {
+                /* Get a fresh copy of the anchor. */
+                AnchorValue tAnchor = aAnchor.load();
+
+                /* Load our current tail pointer. */
+                Node* pHead = tAnchor.GetHead();
+                Node* pTail = tAnchor.GetTail();
+
+                /* Handle for empty dequeue. */
+                if(pHead == nullptr)
+                {
+                    /* Create our new anchor object. */
+                    AnchorValue tAnchorNew;
+                    tAnchorNew.SetHead(pNode);
+                    tAnchorNew.SetTail(pNode);
+                    tAnchorNew.SetStatus(AnchorValue::STABLE);
+
+                    /* Swap out our anchor now. */
+                    if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
+                    {
+                        ++nSize;
+                        return;
+                    }
+                }
+
+                /* Handle for stable dequeue. */
+                else if(tAnchor.GetStatus() == AnchorValue::STABLE)
+                {
+                    /* Set our prev to old tail. */
+                    pNode->pNext.store(pHead);
+
+                    /* Set our new anchor values. */
+                    AnchorValue tAnchorNew;
+                    tAnchorNew.SetHead(pNode);
+                    tAnchorNew.SetTail(pTail);
+                    tAnchorNew.SetStatus(AnchorValue::PUSH_HEAD);
+
+                    /* Compare and swap our anchor. */
+                    if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
+                    {
+                        /* Stabilize our new anchor when complete. */
+                        stabilize(tAnchorNew);
+
+                        ++nSize;
+                        return;
+                    }
+                }
+
+                /* Otherwise we have an unstable head or tail. */
+                else
+                    stabilize(tAnchor);
+
+            }
+        }
+
+
+        /** pop_front
+         *
+         *  Pop a value off of the head of the dequeue.
+         *
+         *  @param[out] rData The data to return if successful.
+         *
+         *  @return true if the dequeue supplied an item to return.
+         *
+         **/
+        bool pop_front(Type &rData)
         {
             /* We need this to hold our tail value for CAS for our tail pointer. */
             while(true)
@@ -2070,6 +1870,10 @@ namespace proto::atomic
                 /* Load our current tail pointer. */
                 const Node* pHead = tAnchor.GetHead();
                 const Node* pTail = tAnchor.GetTail();
+
+                /* Check for an empty dequeue. */
+                if(pHead == nullptr)
+                    return false;
 
                 /* Handle for empty dequeue. */
                 if(pHead == pTail)
@@ -2083,9 +1887,11 @@ namespace proto::atomic
                     /* Swap out our anchor now. */
                     if(aAnchor.compare_exchange_weak(tAnchor, tAnchorNew))
                     {
-                        debug::warning(FUNCTION, "popped the last element in dequeue");
+                        /* Make a copy of our pointer value. */
+                        rData = pHead->tData;
                         --nSize;
-                        return pHead->tData;
+
+                        return true;
                     }
                 }
 
@@ -2108,12 +1914,10 @@ namespace proto::atomic
                         stabilize(tAnchorNew);
 
                         /* Make a copy of our pointer value. */
-                        const Type tData = pHead->tData;
+                        rData = pHead->tData;
                         --nSize;
 
-                        /* Free our pointer now. */
-                        //delete pHead;
-                        return tData;
+                        return true;
                     }
                 }
 
@@ -2122,6 +1926,8 @@ namespace proto::atomic
                     stabilize(tAnchor);
 
             }
+
+            return false; //we should never reach here
         }
 
         size_t size() const
@@ -2184,10 +1990,9 @@ namespace proto::atomic
 
 void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTimer, std::atomic<uint64_t>& raCount)
 {
-    ptr.push_back(100);
-    for(int n = 0; n < 20000; ++n)
+    for(int n = 0; n < 2; ++n)
     {
-        for(int i = 0; i < 80; ++i)
+        for(int i = 0; i < 40; ++i)
         {
             raCount++;
 
@@ -2196,36 +2001,44 @@ void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTim
             swTimer.stop();
         }
 
-        //debug::log(0, "[PUSH]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
-
-        for(uint32_t i = 0; i < 40; ++i)
+        for(uint32_t i = 0; i < 39; ++i)
         {
             raCount++;
 
             swTimer.start();
             //ptr.front();
-            ptr.pop_front();
+
+            uint32_t nRet = 0;
+            ptr.pop_back(nRet);
             swTimer.stop();
         }
 
-        for(uint32_t i = 0; i < 40; ++i)
+        for(int i = 0; i < 40; ++i)
+        {
+            raCount++;
+
+            swTimer.start();
+            ptr.push_front(LLC::GetRandInt(1000000));
+            swTimer.stop();
+        }
+
+        for(uint32_t i = 0; i < 39; ++i)
         {
             raCount++;
 
             swTimer.start();
             //ptr.front();
-            ptr.pop_back();
+
+            uint32_t nRet = 0;
+            ptr.pop_front(nRet);
             swTimer.stop();
         }
     }
-
-
-    //debug::log(0, "[POP]", VARIABLE(std::this_thread::get_id()), " | ", VARIABLE(ptr.front()), " | ", VARIABLE(ptr.back()), " | ", VARIABLE(ptr.size()));
 }
 
 int main()
 {
-    const uint64_t nThreads = 32;
+    const uint64_t nThreads = 8;
 
     util::system::nTesting = 0;
 
