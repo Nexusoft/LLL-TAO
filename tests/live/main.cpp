@@ -1152,7 +1152,7 @@ namespace proto::atomic
             Node(const Type& tDataIn) noexcept
             : pPrev (nullptr)
             , pNext (nullptr)
-            , tData   (tDataIn)
+            , tData (tDataIn)
             {
             }
         };
@@ -1318,11 +1318,11 @@ namespace proto::atomic
                 if(nTail == 0 && nHead == 3)
                     return PUSH_HEAD;
 
-                /* If next pointer has bitset of 01, anchor is not right-terminated. */
+                /* If next pointer has bitset of 10, anchor is not right-terminated. */
                 if(nTail == 2 && nHead == 0)
                     return POP_TAIL;
 
-                /* If prev pointer has biset of 01, anchor is not left-terminated. */
+                /* If prev pointer has biset of 10, anchor is not left-terminated. */
                 if(nTail == 0 && nHead == 2)
                     return POP_HEAD;
 
@@ -1395,14 +1395,14 @@ namespace proto::atomic
         };
 
 
-        /** cleanup_tail
+        /** terminate_tail
          *
          *  Cleanup our tails's next pointer by setting it to null based on anchor status.
          *
          *  @param[in] tAnchor The anchor we are cleaning for.
          *
          **/
-        void cleanup_tail(AnchorValue &tAnchor)
+        void terminate_tail(AnchorValue &tAnchor)
         {
             /* Load our current head and tail pointer. */
             Node* pHead = tAnchor.GetHead();
@@ -1436,14 +1436,14 @@ namespace proto::atomic
         }
 
 
-        /** cleanup_head
+        /** terminate_head
          *
          *  Cleanup our head's previous pointer by setting it to null based on anchor status.
          *
          *  @param[in] tAnchor The anchor we are cleaning for.
          *
          **/
-        void cleanup_head(AnchorValue &tAnchor)
+        void terminate_head(AnchorValue &tAnchor)
         {
             /* Load our current head and tail pointer. */
             Node* pHead = tAnchor.GetHead();
@@ -1599,14 +1599,14 @@ namespace proto::atomic
                 /* Handle if the dequeue needs cleanup on head. */
                 case AnchorValue::POP_HEAD:
                 {
-                    cleanup_head(tAnchor);
+                    terminate_head(tAnchor);
                     return;
                 }
 
                 /* Handle if the dequeue needs cleanup on tail. */
                 case AnchorValue::POP_TAIL:
                 {
-                    cleanup_tail(tAnchor);
+                    terminate_tail(tAnchor);
                     return;
                 }
             }
@@ -1627,6 +1627,19 @@ namespace proto::atomic
         : aAnchor ( )
         , nSize   (0)
         {
+        }
+
+        ~dequeue()
+        {
+            Node* pStart = aAnchor.load().GetTail();
+            while(pStart != nullptr)
+            {
+                Node* pDelete = pStart;
+
+                pStart = pStart->pPrev.load();
+
+                delete pDelete;
+            }
         }
 
 
@@ -1994,6 +2007,278 @@ namespace proto::atomic
             }
         }
     };
+
+
+    template<typename Type>
+    class unique_ptr
+    {
+        class freenode
+        {
+        public:
+
+            Type* pFree;
+            freenode* pPrev;
+
+            freenode()
+            : pFree (nullptr)
+            , pPrev (nullptr)
+            {
+            }
+
+            freenode(Type* pFreeIn)
+            : pFree (pFreeIn)
+            , pPrev (nullptr)
+            {
+            }
+
+
+            Type* get()
+            {
+                return pFree;
+            }
+
+        };
+
+
+        void push_free(Type* pFree)
+        {
+            /* Create our new freenode. */
+            freenode* pNode = new freenode(pFree);
+
+            /* Check for our first insert. */
+            if(aFree.load() == nullptr)
+            {
+                /* Set our initial head and tail values to new element. */
+                aFree.store(pNode);
+
+                return;
+            }
+
+            /* Loop until the CAS succeeds. */
+            while(true)
+            {
+                /* Set our previous pointer. */
+                pNode->pPrev = aFree.load();
+
+                /* Swing our new tail pointer to our new node. */
+                if(aFree.compare_exchange_weak(pNode->pPrev, pNode))
+                    break;
+            }
+        }
+
+
+    public:
+
+        class ref
+        {
+            Type* pData;
+            util::atomic::uint32_t* nRefs;
+
+        public:
+
+            ref(Type* pDataIn, util::atomic::uint32_t* nRefsIn)
+            : pData (pDataIn)
+            , nRefs (nRefsIn)
+            {
+                ++(*nRefs);
+            }
+
+            ~ref()
+            {
+                debug::log(0, FUNCTION, "reference count is ", nRefs->load());
+
+                --(*nRefs);
+            }
+
+            Type* operator->()
+            {
+                return pData;
+            }
+
+            Type*& get()
+            {
+                return pData;
+            }
+        };
+
+        util::atomic::uint32_t* nRefs;
+        std::atomic<Type*> pData;
+
+        std::atomic<freenode*> aFree;
+
+
+        unique_ptr() noexcept
+        : nRefs (new util::atomic::uint32_t(1))
+        , pData (nullptr)
+        , aFree (nullptr)
+        {
+        }
+
+
+        /** Constructor for storing. **/
+        unique_ptr(Type* pDataIn)
+        : nRefs (new util::atomic::uint32_t(1))
+        , pData (pDataIn)
+        , aFree (nullptr)
+        {
+        }
+
+
+        /** Copy Constructor. **/
+        unique_ptr(const unique_ptr<Type>& ptrIn) = delete;
+
+
+        /** Move Constructor. **/
+        unique_ptr(unique_ptr<Type>&& ptrIn)
+        : nRefs (std::move(ptrIn.nRefs))
+        , pData (std::move(ptrIn.pData))
+        , aFree (std::move(ptrIn.aFree))
+        {
+        }
+
+        /** Copy Assignment. **/
+        unique_ptr& operator=(const unique_ptr<Type>& ptrIn) = delete;
+
+        /** Move Assignment operator. **/
+        unique_ptr& operator=(unique_ptr<Type> &&ptrIn)
+        {
+            /* Shallow copy pointer and control block. */
+            nRefs  = std::move(ptrIn.nRefs);
+            pData  = std::move(ptrIn.pData);
+            aFree  = std::move(ptrIn.aFree);
+        }
+
+
+        /** Assignment operator. **/
+        unique_ptr& operator=(Type* pDataIn)
+        {
+            store(pDataIn);
+
+            return *this;
+        }
+
+
+        /** Destructor. **/
+        ~unique_ptr()
+        {
+            /* Adjust our reference count. */
+            if(nRefs->load() > 0)
+                --(*nRefs);
+
+            /* Delete if no more references. */
+            if(nRefs->load() == 0)
+            {
+                /* Cleanup the main raw pointer. */
+                Type* pCheck = pData.load();
+                if(pCheck)
+                {
+                    debug::log(0, FUNCTION, "Deleting copy for reference ", nRefs->load());
+                    delete pCheck;
+                }
+
+                uint32_t nTotal = 0;
+
+                freenode* pFree = aFree.load();
+                while(pFree)
+                {
+                    Type* pDelete = pFree->get();
+
+                    freenode* pCleanup = pFree;
+                    pFree = pFree->pPrev;
+
+                    delete pDelete;
+                    delete pCleanup;
+                    ++nTotal;
+                }
+
+                if(nTotal > 0)
+                    debug::log(0, FUNCTION, "Freed a total of ", nTotal, " objects for reference ", nRefs->load());
+
+                delete nRefs;
+            }
+        }
+
+
+
+
+        ref operator->()
+        {
+            if(pData.load() == nullptr)
+            {
+                Type* pFree = aFree.load()->get();
+                if(pFree != nullptr)
+                    return ref(pFree, nRefs);
+
+                throw debug::exception(FUNCTION, "dereferencing nullptr");
+            }
+
+            return ref(pData.load(), nRefs);
+        }
+
+
+        Type operator*() const
+        {
+            if(pData.load() == nullptr)
+            {
+                Type* pFree = aFree.load()->get();
+                if(pFree != nullptr)
+                    return *pFree;
+
+                throw debug::exception(FUNCTION, "dereferencing nullptr");
+            }
+
+            return *pData.load();
+        }
+
+
+        ref load()
+        {
+            if(pData.load() == nullptr)
+            {
+                Type* pFree = aFree.load()->get();
+                if(pFree != nullptr)
+                    return ref(pFree, nRefs);
+            }
+
+            return ref(pData.load(), nRefs);
+        }
+
+
+        void store(Type* pDataIn)
+        {
+            /* Store as our freenode now. */
+            if(pDataIn == nullptr && pData.load() != nullptr)
+                push_free(pData.load());
+
+            pData.store(pDataIn);
+        }
+
+        bool compare_exchange_weak(ref &pExpected, unique_ptr<Type>& pNew)
+        {
+            Type* pArchive = pData.load();
+
+            /* Wrap around standard compare and swap returning if failed. */
+            if(!pData.compare_exchange_weak(pExpected.get(), pNew.load().get()))
+                return false;
+
+            util::atomic::uint32_t* pDelete = pNew.nRefs;
+
+            const uint32_t nTotal = (pDelete->load() + nRefs->load());
+
+            pNew.nRefs = nRefs;
+            //nRefs = pNew.nRefs;
+            //++(*pNew->nRefs);
+            //++(*nRefs); //to account for this new value
+            //nRefs->store(nTotal + nRefs->load());
+            nRefs->store(nTotal);
+
+            push_free(pArchive);
+
+            delete pDelete;
+
+            return true;
+        }
+    };
 }
 
 
@@ -2045,6 +2330,36 @@ void ListThread(proto::atomic::dequeue<uint32_t>& ptr, runtime::stopwatch& swTim
     }
 }
 
+struct TestStruct
+{
+    uint64_t a;
+    uint64_t b;
+};
+
+void NewThread(proto::atomic::unique_ptr<TestStruct>& ptr)
+{
+    for(int i = 0; i < 1000; ++i)
+    {
+        uint64_t a = ptr->a;
+
+        debug::log(0, VARIABLE(i), " | ", VARIABLE(a));
+
+        ptr->a += 10;
+    }
+
+    for(int i = 0; i < 1000; ++i)
+    {
+        uint64_t b = ptr->b;
+
+        debug::log(0, VARIABLE(i), " | ", VARIABLE(b));
+
+        ptr->b += 1;
+    }
+
+    debug::warning(FUNCTION, "setting ptr to nullptr now");
+    ptr = nullptr;
+}
+
 int main()
 {
     const uint64_t nThreads = 16;
@@ -2052,6 +2367,53 @@ int main()
     util::system::nTesting = 0;
 
     util::system::log(0, "Testing");
+
+
+
+    proto::atomic::unique_ptr<TestStruct> atom_ptr = proto::atomic::unique_ptr<TestStruct>(new TestStruct());
+
+    atom_ptr->a = 55;
+    atom_ptr->b = 77;
+
+    {
+        proto::atomic::unique_ptr<TestStruct> atom_swap = proto::atomic::unique_ptr<TestStruct>(new TestStruct());
+
+        atom_swap->a = 888;
+        atom_swap->b = 88;
+
+        auto pExpected = atom_ptr.load();
+        while(!atom_ptr.compare_exchange_weak(pExpected, atom_swap));
+    }
+
+    //atom_ptr.compare_exchange_weak(atom_ptr3, atom_ptr2);
+
+    debug::log(0, VARIABLE(atom_ptr->a), " | ", VARIABLE(atom_ptr->b));
+
+    std::thread t1 = std::thread(NewThread, std::ref(atom_ptr));
+    std::thread t2 = std::thread(NewThread, std::ref(atom_ptr));
+    std::thread t3 = std::thread(NewThread, std::ref(atom_ptr));
+    std::thread t4 = std::thread(NewThread, std::ref(atom_ptr));
+    std::thread t5 = std::thread(NewThread, std::ref(atom_ptr));
+    std::thread t6 = std::thread(NewThread, std::ref(atom_ptr));
+    std::thread t7 = std::thread(NewThread, std::ref(atom_ptr));
+    std::thread t8 = std::thread(NewThread, std::ref(atom_ptr));
+
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
+    t5.join();
+    t6.join();
+    t7.join();
+    t8.join();
+
+    debug::log(0, VARIABLE(atom_ptr->a), " | ", VARIABLE(atom_ptr->b));
+
+    TestStruct tData = *atom_ptr;
+
+    debug::log(0, VARIABLE(tData.a), " | ", VARIABLE(tData.b));
+
+    return 0;
 
     {
 
