@@ -2019,31 +2019,61 @@ namespace proto::atomic
             Type* pFree;
             freenode* pPrev;
 
+            util::atomic::uint32_t* pRefs;
+
             freenode()
             : pFree (nullptr)
             , pPrev (nullptr)
+            , pRefs (nullptr)
             {
             }
 
-            freenode(Type* pFreeIn)
+            freenode(Type* pFreeIn, util::atomic::uint32_t* pRefsIn)
             : pFree (pFreeIn)
             , pPrev (nullptr)
+            , pRefs (pRefsIn)
             {
             }
 
 
-            Type* get()
+            ~freenode()
+            {
+                if(pFree)
+                    delete pFree;
+
+                if(pRefs)
+                {
+                    if(pRefs->load() == 0)
+                        delete pRefs;
+
+                    debug::log(0, VARIABLE(pRefs->load()));
+                }
+            }
+
+
+            Type*& get()
             {
                 return pFree;
+            }
+
+            util::atomic::uint32_t*& refs()
+            {
+                return pRefs;
             }
 
         };
 
 
-        void push_free(Type* pFree)
+        void push_free(Type* pFree, util::atomic::uint32_t* pRefs = nullptr)
         {
+            if(!pFree)
+            {
+                debug::warning(FUNCTION, "pushing nullptr to stack");
+                return;
+            }
+
             /* Create our new freenode. */
-            freenode* pNode = new freenode(pFree);
+            freenode* pNode = new freenode(pFree, pRefs);
 
             /* Check for our first insert. */
             if(aFree.load() == nullptr)
@@ -2064,8 +2094,9 @@ namespace proto::atomic
                 if(aFree.compare_exchange_weak(pNode->pPrev, pNode))
                     break;
             }
-        }
 
+            debug::warning(FUNCTION, "pushing new node to list ", pRefs);
+        }
 
     public:
 
@@ -2085,12 +2116,12 @@ namespace proto::atomic
 
             ~ref()
             {
-                debug::log(0, FUNCTION, "reference count is ", nRefs->load());
+                //debug::log(0, FUNCTION, "reference count is ", *nRefs.load());
 
                 --(*nRefs);
             }
 
-            Type* operator->()
+            Type*& operator->()
             {
                 return pData;
             }
@@ -2101,7 +2132,9 @@ namespace proto::atomic
             }
         };
 
-        util::atomic::uint32_t* nRefs;
+        std::atomic<util::atomic::uint32_t*> nRefs;
+
+        //std::reference_wrapper<util::atomic::uint32_t> rRefs;
         std::atomic<Type*> pData;
 
         std::atomic<freenode*> aFree;
@@ -2136,8 +2169,10 @@ namespace proto::atomic
         {
         }
 
+
         /** Copy Assignment. **/
         unique_ptr& operator=(const unique_ptr<Type>& ptrIn) = delete;
+
 
         /** Move Assignment operator. **/
         unique_ptr& operator=(unique_ptr<Type> &&ptrIn)
@@ -2162,17 +2197,17 @@ namespace proto::atomic
         ~unique_ptr()
         {
             /* Adjust our reference count. */
-            if(nRefs->load() > 0)
-                --(*nRefs);
+            if(*nRefs.load() > 0)
+                --(*nRefs.load());
 
             /* Delete if no more references. */
-            if(nRefs->load() == 0)
+            if(*nRefs.load() == 0)
             {
                 /* Cleanup the main raw pointer. */
                 Type* pCheck = pData.load();
                 if(pCheck)
                 {
-                    debug::log(0, FUNCTION, "Deleting copy for reference ", nRefs->load());
+                    debug::log(0, FUNCTION, "Deleting copy for reference ", *nRefs.load());
                     delete pCheck;
                 }
 
@@ -2181,38 +2216,33 @@ namespace proto::atomic
                 freenode* pFree = aFree.load();
                 while(pFree)
                 {
-                    Type* pDelete = pFree->get();
-
-                    freenode* pCleanup = pFree;
+                    const freenode* pCleanup = pFree;
                     pFree = pFree->pPrev;
 
-                    delete pDelete;
                     delete pCleanup;
                     ++nTotal;
                 }
 
                 if(nTotal > 0)
-                    debug::log(0, FUNCTION, "Freed a total of ", nTotal, " objects for reference ", nRefs->load());
+                    debug::log(0, FUNCTION, "Freed a total of ", nTotal, " objects for reference ", *nRefs.load());
 
-                delete nRefs;
+                delete nRefs.load();
             }
         }
-
-
 
 
         ref operator->()
         {
             if(pData.load() == nullptr)
             {
-                Type* pFree = aFree.load()->get();
+                freenode* pFree = aFree.load();
                 if(pFree != nullptr)
-                    return ref(pFree, nRefs);
+                    return ref(pFree->get(), pFree->refs());
 
                 throw debug::exception(FUNCTION, "dereferencing nullptr");
             }
 
-            return ref(pData.load(), nRefs);
+            return ref(pData.load(), nRefs.load());
         }
 
 
@@ -2235,12 +2265,12 @@ namespace proto::atomic
         {
             if(pData.load() == nullptr)
             {
-                Type* pFree = aFree.load()->get();
+                freenode* pFree = aFree.load();
                 if(pFree != nullptr)
-                    return ref(pFree, nRefs);
+                    return ref(pFree->get(), pFree->refs());
             }
 
-            return ref(pData.load(), nRefs);
+            return ref(pData.load(), nRefs.load());
         }
 
 
@@ -2248,33 +2278,41 @@ namespace proto::atomic
         {
             /* Store as our freenode now. */
             if(pDataIn == nullptr && pData.load() != nullptr)
-                push_free(pData.load());
+            {
+                push_free(pData.load(), nRefs.load());
+
+                //--(*nRefs.load());
+            }
+
 
             pData.store(pDataIn);
         }
 
+
         bool compare_exchange_weak(ref &pExpected, unique_ptr<Type>& pNew)
         {
-            Type* pArchive = pData.load();
+            /* Get a snapshot of our old value to be replaced. */
+            Type* pDelete = pData.load();
 
             /* Wrap around standard compare and swap returning if failed. */
             if(!pData.compare_exchange_weak(pExpected.get(), pNew.load().get()))
                 return false;
 
-            util::atomic::uint32_t* pDelete = pNew.nRefs;
+            /* Get a copy of our ref that we will delete. */
+            util::atomic::uint32_t* pRefs = nRefs.load();
 
-            const uint32_t nTotal = (pDelete->load() + nRefs->load());
+            /* Store our new aggregate total of both ref's. */
+            ++(*pNew.nRefs);
+            --(*pRefs);
 
-            pNew.nRefs = nRefs;
-            //nRefs = pNew.nRefs;
-            //++(*pNew->nRefs);
-            //++(*nRefs); //to account for this new value
-            //nRefs->store(nTotal + nRefs->load());
-            nRefs->store(nTotal);
+            nRefs.store(pNew.nRefs.load());
 
-            push_free(pArchive);
+            //pNew.nRefs->store(nCount);
+            //nRefs = pNew.nRefs; //this should be atomic...
 
-            delete pDelete;
+            /* Push our data to remove. */
+            push_free(pDelete, pRefs);
+            //delete pRefs;
 
             return true;
         }
@@ -2338,20 +2376,27 @@ struct TestStruct
 
 void NewThread(proto::atomic::unique_ptr<TestStruct>& ptr)
 {
+    proto::atomic::unique_ptr<TestStruct> ptr_swap = new TestStruct();
+    ptr_swap->a = 77;
+    ptr_swap->b = 33;
+
+    //auto pExpected = ptr.load();
+    //while(!ptr.compare_exchange_weak(pExpected, ptr_swap));
+
     for(int i = 0; i < 1000; ++i)
     {
-        uint64_t a = ptr->a;
+        //uint64_t a = ptr->a;
 
-        debug::log(0, VARIABLE(i), " | ", VARIABLE(a));
+        //debug::log(0, VARIABLE(i), " | ", VARIABLE(a));
 
         ptr->a += 10;
     }
 
     for(int i = 0; i < 1000; ++i)
     {
-        uint64_t b = ptr->b;
+        //uint64_t b = ptr->b;
 
-        debug::log(0, VARIABLE(i), " | ", VARIABLE(b));
+        //debug::log(0, VARIABLE(i), " | ", VARIABLE(b));
 
         ptr->b += 1;
     }
@@ -2375,14 +2420,26 @@ int main()
     atom_ptr->a = 55;
     atom_ptr->b = 77;
 
+    proto::atomic::unique_ptr<TestStruct> atom_del = proto::atomic::unique_ptr<TestStruct>(new TestStruct());
+
     {
         proto::atomic::unique_ptr<TestStruct> atom_swap = proto::atomic::unique_ptr<TestStruct>(new TestStruct());
 
         atom_swap->a = 888;
         atom_swap->b = 88;
 
+        auto pCache = atom_ptr.load();
+
         auto pExpected = atom_ptr.load();
         while(!atom_ptr.compare_exchange_weak(pExpected, atom_swap));
+
+        debug::log(0, VARIABLE(pExpected->a), " | ", VARIABLE(pExpected->b));
+
+        auto pCheck = atom_ptr.load();
+        debug::log(0, VARIABLE(pCheck->a), " | ", VARIABLE(pCheck->b));
+
+
+        debug::log(0, VARIABLE(pCache->a), " | ", VARIABLE(pCache->b));
     }
 
     //atom_ptr.compare_exchange_weak(atom_ptr3, atom_ptr2);
