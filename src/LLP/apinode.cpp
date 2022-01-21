@@ -227,7 +227,8 @@ namespace LLP
             };
 
             /* Execute the api and methods. */
-            jRet = { {"result", TAO::API::Commands::Invoke(strCommands, strMethod, jParams) } };
+            jRet["result"] =
+                TAO::API::Commands::Invoke(strCommands, strMethod, jParams);
         }
 
         /* Handle for custom API exceptions. */
@@ -244,7 +245,8 @@ namespace LLP
                 nStatus = 400;
 
             /* Cache our error code here. */
-            const int32_t nError = jError["code"].get<int32_t>();
+            const int32_t nError =
+                jError["code"].get<int32_t>();
 
             /* Set status by error code. */
             switch(nError)
@@ -284,7 +286,8 @@ namespace LLP
             RESPONSE.mapHeaders["Connection"] = "close";
 
         /* Track the stopping time of this command. */
-        const double nLatency = tLatency.ElapsedNanoseconds() / 1000000.0;
+        const double nLatency =
+            (tLatency.ElapsedNanoseconds() / 1000000.0);
 
         /* Add some micro-benchamrks to response data. */
         jRet["info"] =
