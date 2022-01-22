@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/API/types/exception.h>
 #include <TAO/API/types/operators/array.h>
 
 #include <TAO/API/include/results.h>
@@ -22,7 +23,7 @@ namespace TAO::API
     encoding::json Operators::Array(const encoding::json& jParams, const encoding::json& jResult)
     {
         /* Check if already in array form. */
-        if(jResult.is_array() && jResult.back().is_primitive())
+        if(jResult.is_array() && !jResult.empty() && jResult.back().is_primitive())
             return jResult;
 
         /* Build our array object. */

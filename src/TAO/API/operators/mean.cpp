@@ -25,10 +25,12 @@ namespace TAO::API
     encoding::json Operators::Mean(const encoding::json& jParams, const encoding::json& jResult)
     {
         /* Extract our fieldname. */
-        const std::string strField = ExtractFieldname(jParams);
+        const std::string strField =
+            ExtractFieldname(jParams);
 
         /* Loop through to calculate sum. */
-        encoding::json jRet = Operators::Sum(jParams, jResult);
+        encoding::json jRet =
+            Operators::Sum(jParams, jResult);
 
         /* Handle for unsigned signed integers. */
         if(jRet[strField].is_number_unsigned())
