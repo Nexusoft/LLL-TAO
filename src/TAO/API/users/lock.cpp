@@ -11,11 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/users/types/users.h>
 #include <TAO/API/types/session-manager.h>
-#include <TAO/Ledger/types/stake_minter.h>
 
-#include <LLD/include/global.h>
+#include <TAO/API/include/extract.h>
+
+#include <TAO/Ledger/types/stake_minter.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -26,120 +29,135 @@ namespace TAO
     {
 
         /* Lock an account for mining (TODO: make this much more secure) */
-        encoding::json Users::Lock(const encoding::json& params, const bool fHelp)
+        encoding::json Users::Lock(const encoding::json& jParams, const bool fHelp)
         {
-            /* JSON return value. */
-            encoding::json ret;
+            /* Pin parameter. */
+            const SecureString strPin =
+                ExtractPIN(jParams);
 
             /* Get the session */
-            Session& session = GetSession(params);
+            Session& rSession = GetSession(jParams);
 
-            /* Check if already unlocked. */
-            if(session.GetActivePIN().IsNull() || (!session.GetActivePIN().IsNull() && session.GetActivePIN()->PIN() == ""))
-                throw Exception(-132, "Account already locked");
+            /* If it has already been locked then set the Unlocked actions to the current locked actions */
+            if(rSession.Locked())
+                throw Exception(-148, "Account already locked");
 
-            /* The current unlock actions */
-            uint8_t nUnlockedActions = session.GetActivePIN()->UnlockedActions();
+            /* Get our previous actions. */
+            const uint8_t nPreviousActions =
+                rSession.GetActivePIN()->UnlockedActions();;
+
+            /* Check for lock actions */
+            uint8_t nUnlockedActions = nPreviousActions;
 
             /* Check for mining flag. */
-            if(params.find("mining") != params.end())
+            if(ExtractBoolean(jParams, "mining"))
             {
-                std::string strMint = params["mining"].get<std::string>();
+                /* Can't unlock for mining in multiuser mode */
+                if(config::fMultiuser.load())
+                    throw Exception(-288, "Cannot lock for mining in multiuser mode");
 
-                if(strMint == "1" || strMint == "true")
-                {
-                     /* Check if already locked. */
-                    if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->CanMine())
-                        throw Exception(-196, "Account already locked for mining");
-                    else
-                        nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::MINING;
-                }
+                 /* Check if already locked. */
+                if(!rSession.CanMine())
+                    throw Exception(-146, "Account already locked for mining");
+
+                /* Adjust the locked flags. */
+                nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::MINING;
             }
 
             /* Check for staking flag. */
-            if(params.find("staking") != params.end())
+            if(ExtractBoolean(jParams, "staking"))
             {
-                std::string strMint = params["staking"].get<std::string>();
+                /* Can't unlock for staking in multiuser mode */
+                if(config::fMultiuser.load())
+                    throw Exception(-289, "Cannot lock for staking in multiuser mode");
 
-                if(strMint == "1" || strMint == "true")
-                {
-                     /* Check if already locked. */
-                    if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->CanStake())
-                        throw Exception(-197, "Account already locked for staking");
-                    else
-                        nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::STAKING;
-                }
+                 /* Check if already locked. */
+                if(!rSession.CanStake())
+                    throw Exception(-195, "Account already locked for staking");
+
+                /* Adjust the locked flags. */
+                nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::STAKING;
             }
 
             /* Check transactions flag. */
-            if(params.find("transactions") != params.end())
+            if(ExtractBoolean(jParams, "transactions"))
             {
-                std::string strTransactions = params["transactions"].get<std::string>();
+                 /* Check if already locked. */
+                if(!rSession.CanTransact())
+                    throw Exception(-147, "Account already locked for transactions");
 
-                if(strTransactions == "1" || strTransactions == "true")
-                {
-                     /* Check if already unlocked. */
-                    if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->CanTransact())
-                        throw Exception(-198, "Account already locked for transactions");
-                    else
-                        nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
-                }
+                /* Adjust the locked flags. */
+                nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
             }
 
             /* Check for notifications. */
-            if(params.find("notifications") != params.end())
+            if(ExtractBoolean(jParams, "notifications"))
             {
-                std::string strNotifications = params["notifications"].get<std::string>();
+                 /* Check if already locked. */
+                if(!rSession.CanProcessNotifications())
+                    throw Exception(-194, "Account already locked for notifications");
 
-                if(strNotifications == "1" || strNotifications == "true")
-                {
-                     /* Check if already unlocked. */
-                    if(!session.GetActivePIN().IsNull() && !session.GetActivePIN()->ProcessNotifications())
-                        throw Exception(-199, "Account already locked for notifications");
-                    else
-                        nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS;
-                }
+                /* Adjust the locked flags. */
+                nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS;
             }
 
-            /* Cache the pin here before we clear it so that we an use it for saving the session */
-            SecureString strPin = session.GetActivePIN()->PIN();
+            /* If no unlock actions have been specifically set then default it to all */
+            if(ExtractBoolean(jParams, "all"))
+            {
+                /* Check if already locked. */
+                if(!rSession.CanMine() && !rSession.CanStake() && !rSession.CanTransact() && !rSession.CanProcessNotifications())
+                    throw Exception(-148, "Account already locked");
 
-            /* Clear the pin */
-            /* If we have changed specific unlocked actions them set them on the pin */
-            if(nUnlockedActions != session.GetActivePIN()->UnlockedActions())
-            {
-                /* Set new unlock options */
-                session.UpdatePIN(strPin, nUnlockedActions);
-            }
-            else
-            {
-                /* If no unlock actions left then free the pin from cache */
-                session.ClearActivePIN();
+                /* Adjust the locked flags. */
+                nUnlockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::ALL;
             }
 
-            /* Stop the stake minter if it is no longer unlocked for staking */
-            if(session.GetActivePIN().IsNull() || (!(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)))
-            {
-                /* If stake minter is running, stop it */
-                TAO::Ledger::StakeMinter& stakeMinter = TAO::Ledger::StakeMinter::GetInstance();
-                if(stakeMinter.IsStarted())
-                    stakeMinter.Stop();
-            }
+            /* Check for no actions. */
+            if(nUnlockedActions == nPreviousActions)
+                throw Exception(-259, "You must specify at least one unlock action");
+
+            /* Authenticate the request. */
+            if(!Authenticate(jParams))
+                throw Exception(-139, "Invalid credentials");
+
+            /* update the locked actions */
+            rSession.UpdatePIN(strPin, nUnlockedActions);
+
+            /* Get the genesis ID. */
+            const uint256_t hashGenesis =
+                rSession.GetAccount()->Genesis();
 
             /* Update the saved session if there is one */
-            if(LLD::Local->HasSession(session.GetAccount()->Genesis()))
-                session.Save(strPin);
+            if(LLD::Local->HasSession(hashGenesis))
+                rSession.Save(strPin);
 
-            /* populate unlocked status */
-            encoding::json jsonUnlocked;
+            /* After lock complete, attempt to stop stake minter if locked for staking */
+            if(!rSession.CanStake())
+            {
+                /* Grab a reference of our stake minter. */
+                TAO::Ledger::StakeMinter& rStakeMinter =
+                    TAO::Ledger::StakeMinter::GetInstance();
 
-            jsonUnlocked["mining"] = !session.GetActivePIN().IsNull() && session.GetActivePIN()->CanMine();
-            jsonUnlocked["notifications"] = !session.GetActivePIN().IsNull() && session.GetActivePIN()->ProcessNotifications();
-            jsonUnlocked["staking"] = !session.GetActivePIN().IsNull() && session.GetActivePIN()->CanStake();
-            jsonUnlocked["transactions"] = !session.GetActivePIN().IsNull() && session.GetActivePIN()->CanTransact();
+                /* Start it if not started. */
+                if(!rStakeMinter.IsStarted())
+                    rStakeMinter.Stop();
+            }
 
-            ret["unlocked"] = jsonUnlocked;
-            return ret;
+            /* populate locked status */
+            const encoding::json jRet =
+            {
+                {
+                    "locked",
+                    {
+                        { "mining",        rSession.CanMine()                 },
+                        { "notifications", rSession.CanProcessNotifications() },
+                        { "staking",       rSession.CanStake()                },
+                        { "transactions",  rSession.CanTransact()             }
+                    }
+                }
+            };
+
+            return jRet;
         }
     }
 }

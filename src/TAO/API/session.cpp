@@ -145,7 +145,7 @@ namespace TAO
         /* Clears the active PIN for this session. */
         void Session::ClearActivePIN()
         {
-            LOCK(MUTEX);
+            //LOCK(MUTEX);
 
             /* Clean up the existing pin */
             if(!pActivePIN.IsNull())
@@ -156,7 +156,7 @@ namespace TAO
         /* Updates the cached pin and its unlocked actions */
         void Session::UpdatePIN(const SecureString& strPin, uint8_t nUnlockedActions)
         {
-            LOCK(MUTEX);
+            //LOCK(MUTEX);
 
             /* Clean up the existing pin */
             if(!pActivePIN.IsNull())
@@ -170,7 +170,7 @@ namespace TAO
         /* Updates the password stored in the internal sig chain */
         void Session::UpdatePassword(const SecureString& strPassword)
         {
-            LOCK(MUTEX);
+            //LOCK(MUTEX);
 
             /* Get the existing username so that we can use it for the new sig chain */
             SecureString strUsername = pSigChain->UserName();
@@ -218,7 +218,7 @@ namespace TAO
         /* Determine if the Users are locked. */
         bool Session::Locked() const
         {
-            LOCK(MUTEX);
+            //LOCK(MUTEX);
 
             if(pActivePIN.IsNull() || pActivePIN->PIN().empty())
                 return true;
@@ -230,7 +230,7 @@ namespace TAO
         /* Checks that the active sig chain has been unlocked to allow transactions. */
         bool Session::CanTransact() const
         {
-            LOCK(MUTEX);
+            //LOCK(MUTEX);
 
             if(!pActivePIN.IsNull() && pActivePIN->CanTransact())
                 return true;
@@ -242,7 +242,7 @@ namespace TAO
         /* Checks that the active sig chain has been unlocked to allow mining */
         bool Session::CanMine() const
         {
-            LOCK(MUTEX);
+            //LOCK(MUTEX);
 
             if(!config::fMultiuser.load() && (!pActivePIN.IsNull() && pActivePIN->CanMine()))
                 return true;
@@ -254,7 +254,7 @@ namespace TAO
         /* Checks that the active sig chain has been unlocked to allow staking */
         bool Session::CanStake() const
         {
-            LOCK(MUTEX);
+            //LOCK(MUTEX);
 
             if(!config::fMultiuser.load() &&(!pActivePIN.IsNull() && pActivePIN->CanStake()))
                 return true;
@@ -265,7 +265,7 @@ namespace TAO
         /* Checks that the active sig chain has been unlocked to allow notifications to be processed */
         bool Session::CanProcessNotifications() const
         {
-            LOCK(MUTEX);
+            //LOCK(MUTEX);
 
             if(!pActivePIN.IsNull() && pActivePIN->ProcessNotifications())
                 return true;

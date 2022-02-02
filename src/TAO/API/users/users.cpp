@@ -46,6 +46,7 @@ namespace TAO
         Users::Users()
         : Derived<Users>          ( )
         , LOGIN_THREAD            ( )
+        , MUTEX                   ( )
         , NOTIFICATIONS_PROCESSOR (nullptr)
         {
             Initialize();
@@ -121,6 +122,7 @@ namespace TAO
         /* Returns the genesis ID from the account logged in. */
         uint256_t Users::GetGenesis(const uint256_t& hashSession, bool fThrow) const
         {
+            RECURSIVE(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint256_t hashSessionToUse = config::fMultiuser.load() ? hashSession : 0;
@@ -150,6 +152,8 @@ namespace TAO
          * an Exception is thrown */
         SecureString Users::GetPin(const encoding::json& jParams, const uint8_t nUnlockAction) const
         {
+            RECURSIVE(MUTEX);
+
             /* Get the active session */
             Session& session = GetSession(jParams, true, false);
 
@@ -179,6 +183,8 @@ namespace TAO
          * If the session is not is available in the jParams then an Exception is thrown, if fThrow is true. */
         Session& Users::GetSession(const encoding::json& jParams, const bool fThrow, const bool fLogActivity) const
         {
+            RECURSIVE(MUTEX);
+
             /* Check for session parameter. */
             uint256_t hashSession = 0; // ID 0 is used for sessionless API
 
@@ -209,6 +215,8 @@ namespace TAO
         /*Gets the session ID for a given genesis, if it is logged in on this node. */
         Session& Users::GetSession(const uint256_t& hashGenesis, bool fLogActivity) const
         {
+            RECURSIVE(MUTEX);
+
             if(!config::fMultiuser.load())
             {
                 if(GetSessionManager().mapSessions.count(0) > 0 && GetSessionManager().mapSessions[0].GetAccount()->Genesis() == hashGenesis)
@@ -234,6 +242,8 @@ namespace TAO
         /* Determine if a sessionless user is logged in. */
         bool Users::LoggedIn() const
         {
+            RECURSIVE(MUTEX);
+
             return !config::fMultiuser.load() && GetSessionManager().Has(0);
         }
 
@@ -241,6 +251,8 @@ namespace TAO
         /* Determine if a particular genesis is logged in on this node. */
         bool Users::LoggedIn(const uint256_t& hashGenesis) const
         {
+            RECURSIVE(MUTEX);
+
             if(!config::fMultiuser.load())
             {
                 return GetSessionManager().Has(0) > 0 && GetSessionManager().Get(0, false).GetAccount()->Genesis() == hashGenesis;
@@ -264,6 +276,8 @@ namespace TAO
         /* Returns a key from the account logged in. */
         uint512_t Users::GetKey(const uint32_t nKey, const SecureString& strSecret, const Session& session) const
         {
+            RECURSIVE(MUTEX);
+
             return session.GetAccount()->Generate(nKey, strSecret);
         }
 
@@ -332,6 +346,8 @@ namespace TAO
         /* Checks that the session/password/pin parameters have been provided and are correct credentials. */
         bool Users::Authenticate(const encoding::json& jParams)
         {
+            RECURSIVE(MUTEX);
+
             /* Get the PIN to be used for this API call */
             const SecureString strPIN =
                 Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
@@ -400,6 +416,8 @@ namespace TAO
         /* Gracefully closes down a users session */
         void Users::TerminateSession(const uint256_t& hashSession)
         {
+            RECURSIVE(MUTEX);
+
             /* Check that the session exists */
             if(!GetSessionManager().Has(hashSession))
                 throw Exception(-141, "Already logged out");
@@ -408,15 +426,15 @@ namespace TAO
             uint256_t hashGenesis = GetSessionManager().Get(hashSession).GetAccount()->Genesis();
 
             /* If not using multi-user then we need to send a deauth message to all peers */
-            if(!config::fMultiuser.load() && LLP::TRITIUM_SERVER)
-            {
+            //if(!config::fMultiuser.load() && LLP::TRITIUM_SERVER)
+            //{
                 /* Generate an DEAUTH message to send to all peers */
-                DataStream ssMessage = LLP::TritiumNode::GetAuth(false);
+            //    DataStream ssMessage = LLP::TritiumNode::GetAuth(false);
 
                 /* Check whether it is valid before relaying it to all peers */
-                if(ssMessage.size() > 0)
-                    LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::TritiumNode::ACTION::DEAUTH), ssMessage);
-            }
+            //    if(ssMessage.size() > 0)
+            //        LLP::TRITIUM_SERVER->_Relay(uint8_t(LLP::TritiumNode::ACTION::DEAUTH), ssMessage);
+            //}
 
             /* Remove the session from the notifications processor */
             if(NOTIFICATIONS_PROCESSOR)

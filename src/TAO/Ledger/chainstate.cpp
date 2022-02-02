@@ -94,6 +94,10 @@ namespace TAO
                 const bool fLocalTestnet   =
                     (config::fTestNet.load() && (!config::GetBoolArg("-dns", true) || config::fHybrid.load()));
 
+                /* Check for shutdown. */
+                if(config::fShutdown.load())
+                    return false;
+
                 /* Check for active connections. */
                 bool fHasConnections =
                     (LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() > 0);

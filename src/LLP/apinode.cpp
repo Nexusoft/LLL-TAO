@@ -271,7 +271,6 @@ namespace LLP
             jRet = { { "error", jError } };
         }
 
-
         /* Build packet. */
         HTTPPacket RESPONSE(nStatus);
 

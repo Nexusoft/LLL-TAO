@@ -808,7 +808,7 @@ namespace TAO::Ledger
 
             /* Check for shutdown. */
             if(config::fShutdown.load())
-                return;
+                break;
 
             /* Keep block production to five seconds. */
             runtime::sleep(nLatency);
@@ -874,6 +874,9 @@ namespace TAO::Ledger
             if(!(nStatus & PROCESS::ACCEPTED))
                 continue;
         }
+
+        /* Cleanup pointer. */
+        user.free();
     }
 
 

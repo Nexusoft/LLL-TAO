@@ -58,6 +58,10 @@ namespace TAO::API
     public:
 
 
+        /** Mutex to lock around changes to sessions. **/
+        mutable std::recursive_mutex MUTEX;
+
+
         /** Default Constructor. **/
         Users();
 
