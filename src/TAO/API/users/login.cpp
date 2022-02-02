@@ -157,6 +157,7 @@ namespace TAO
                     throw Exception(-137, "Couldn't get transaction");
                 }
             }
+
             /* If we haven't looked up the txprev at this point, read the last known tx */
             else
             {
@@ -180,6 +181,8 @@ namespace TAO
 
             /* Check the sessions. */
             {
+                LOCK(GetSessionManager().MUTEX);
+
                 auto session = GetSessionManager().mapSessions.begin();
                 while(session != GetSessionManager().mapSessions.end())
                 {

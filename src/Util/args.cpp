@@ -222,11 +222,6 @@ namespace config
             /* Set our expected flags. */
             fHybrid.store(true);
             fTestNet.store(true);
-
-            /* Force consensus into testnet if -private is set with no network owner. */
-            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!!WARNING!!! PRIVATE TESTNET", ANSI_COLOR_RESET);
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "-private mode runs as a TESTNET.., DO NOT USE FOR PRODUCTION", ANSI_COLOR_RESET);
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "To run a production network, you must set hybrid=<username> in nexus.conf", ANSI_COLOR_RESET);
         }
 
         /* Hybrid Mode: Sub-Network MainNet. USE FOR PRODUCTION. */
@@ -240,8 +235,6 @@ namespace config
             /* Calculate their genesis-id. */
             hashNetworkOwner = TAO::Ledger::SignatureChain::Genesis(strOwner);
             hashNetworkOwner.SetType(TAO::Ledger::GENESIS::OwnerType());
-
-            debug::log(0, ANSI_COLOR_FUNCTION, "Hybrid Network-id: ", ANSI_COLOR_BRIGHT_GREEN, hashNetworkOwner.ToString(), ANSI_COLOR_RESET);
         }
 
 

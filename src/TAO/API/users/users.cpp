@@ -215,15 +215,19 @@ namespace TAO
         /*Gets the session ID for a given genesis, if it is logged in on this node. */
         Session& Users::GetSession(const uint256_t& hashGenesis, bool fLogActivity) const
         {
-            RECURSIVE(MUTEX);
+            //RECURSIVE(MUTEX);
 
             if(!config::fMultiuser.load())
             {
+                LOCK(GetSessionManager().MUTEX);
+
                 if(GetSessionManager().mapSessions.count(0) > 0 && GetSessionManager().mapSessions[0].GetAccount()->Genesis() == hashGenesis)
                     return GetSessionManager().Get(0, fLogActivity);
             }
             else
             {
+                LOCK(GetSessionManager().MUTEX);
+
                 auto session = GetSessionManager().mapSessions.begin();
                 while(session != GetSessionManager().mapSessions.end())
                 {
@@ -242,7 +246,7 @@ namespace TAO
         /* Determine if a sessionless user is logged in. */
         bool Users::LoggedIn() const
         {
-            RECURSIVE(MUTEX);
+            //RECURSIVE(MUTEX);
 
             return !config::fMultiuser.load() && GetSessionManager().Has(0);
         }
@@ -251,7 +255,7 @@ namespace TAO
         /* Determine if a particular genesis is logged in on this node. */
         bool Users::LoggedIn(const uint256_t& hashGenesis) const
         {
-            RECURSIVE(MUTEX);
+            //RECURSIVE(MUTEX);
 
             if(!config::fMultiuser.load())
             {
@@ -259,6 +263,8 @@ namespace TAO
             }
             else
             {
+                LOCK(GetSessionManager().MUTEX);
+
                 auto session = GetSessionManager().mapSessions.begin();
                 while(session != GetSessionManager().mapSessions.end())
                 {
