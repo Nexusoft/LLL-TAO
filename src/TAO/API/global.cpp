@@ -59,9 +59,11 @@ namespace TAO::API
         Commands::Register<Tokens>();
 
         /* Initialize our indexing services. */
+        Indexing::Register<Market>();
+        Indexing::Register<Names> ();
+
+        /* Kick off our indexing sub-system now. */
         Indexing::Initialize();
-        Indexing::Instance().Register<Market>();
-        Indexing::Instance().Register<Names> ();
     }
 
 

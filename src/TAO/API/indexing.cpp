@@ -28,24 +28,31 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Default Constructor. */
-    Indexing::Indexing()
-    : EVENTS_QUEUE  (new std::queue<uint512_t>())
-    , EVENTS_THREAD (std::bind(&Indexing::Manager, this))
-    , CONDITION     ( )
-    , REGISTERED    ( )
-    , MUTEX         ( )
-    {
-    }
+    /** Queue to handle dispatch requests. **/
+    util::atomic::lock_shared_ptr<std::queue<uint512_t>> Indexing::EVENTS_QUEUE;
 
 
-    /* Default destructor. */
-    Indexing::~Indexing()
+    /** Thread for running dispatch. **/
+    std::thread Indexing::EVENTS_THREAD;
+
+
+    /** Condition variable to wake up the indexing thread. **/
+    std::condition_variable Indexing::CONDITION;
+
+
+    /** Set to track active indexing entries. **/
+    std::set<std::string> Indexing::REGISTERED;
+
+
+    /** Mutex around registration. **/
+    std::mutex Indexing::MUTEX;
+
+
+    /* Initializes the current indexing systems. */
+    void Indexing::Initialize()
     {
-        /* Cleanup our dispatch thread. */
-        CONDITION.notify_all();
-        if(EVENTS_THREAD.joinable())
-            EVENTS_THREAD.join();
+        Indexing::EVENTS_QUEUE  = util::atomic::lock_shared_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
+        Indexing::EVENTS_THREAD = std::thread(&Indexing::Manager);
     }
 
 
@@ -151,19 +158,20 @@ namespace TAO::API
         /* Refresh our events. */
         RefreshEvents();
 
+        /* Main loop controlled by condition variable. */
         std::mutex CONDITION_MUTEX;
         while(!config::fShutdown.load())
         {
             /* Wait for entries in the queue. */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
             CONDITION.wait(CONDITION_LOCK,
-            [this]
+            []
             {
                 /* Check for shutdown. */
                 if(config::fShutdown.load())
                     return true;
 
-                return EVENTS_QUEUE->size() != 0;
+                return Indexing::EVENTS_QUEUE->size() != 0;
             });
 
             /* Check for shutdown. */
@@ -204,6 +212,22 @@ namespace TAO::API
             /* Write our last index now. */
             if(!LLD::Logical->WriteLastIndex(hashTx))
                 continue;
+        }
+    }
+
+
+    /* Default destructor. */
+    void Indexing::Shutdown()
+    {
+        /* Cleanup our dispatch thread. */
+        CONDITION.notify_all();
+        if(EVENTS_THREAD.joinable())
+            EVENTS_THREAD.join();
+
+        /* Clear open registrations. */
+        {
+            LOCK(MUTEX);
+            REGISTERED.clear();
         }
     }
 }
