@@ -33,6 +33,8 @@ namespace TAO::API
     : EVENTS_QUEUE  (new std::queue<uint512_t>())
     , EVENTS_THREAD (std::bind(&Indexing::Manager, this))
     , CONDITION     ( )
+    , REGISTERED    ( )
+    , MUTEX         ( )
     {
     }
 
@@ -95,9 +97,16 @@ namespace TAO::API
                     /* Grab contract reference. */
                     const TAO::Operation::Contract& rContract = tx[nContract];
 
-                    /* Process our command-set indexing. */
-                    Commands::Get("names") ->Index(rContract, nContract);
-                    Commands::Get("market")->Index(rContract, nContract);
+                    {
+                        LOCK(MUTEX);
+
+                        /* Loop through registered commands. */
+                        for(const auto& strCommands : REGISTERED)
+                        {
+                            debug::log(0, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
+                            Commands::Get(strCommands)->Index(rContract, nContract);
+                        }
+                    }
                 }
 
                 /* Update the scanned count for meters. */
@@ -180,9 +189,16 @@ namespace TAO::API
                 /* Grab contract reference. */
                 const TAO::Operation::Contract& rContract = tx[nContract];
 
-                /* Process our command-set indexing. */
-                Commands::Get("names") ->Index(rContract, nContract);
-                Commands::Get("market")->Index(rContract, nContract);
+                {
+                    LOCK(MUTEX);
+
+                    /* Loop through registered commands. */
+                    for(const auto& strCommands : REGISTERED)
+                    {
+                        debug::log(0, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
+                        Commands::Get(strCommands)->Index(rContract, nContract);
+                    }
+                }
             }
 
             /* Write our last index now. */

@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/API/types/commands.h>
+
 #include <Util/templates/singleton.h>
 #include <Util/types/lock_shared_ptr.h>
 
@@ -46,6 +48,14 @@ namespace TAO::API
         std::condition_variable CONDITION;
 
 
+        /** Set to track active indexing entries. **/
+        std::set<std::string> REGISTERED;
+
+
+        /** Mutex around registration. **/
+        std::mutex MUTEX;
+
+
     public:
 
 
@@ -73,6 +83,26 @@ namespace TAO::API
          *
          **/
         void Push(const uint512_t& hashTx);
+
+
+        /** Register
+         *
+         *  Register a new command-set to indexing by class type.
+         *
+         **/
+        template<typename Type>
+        void Register()
+        {
+            /* Grab a copy of our name. */
+            const std::string strCommands = Type::Name();
+            if(!Commands::Has(strCommands))
+                return; //we just exit if already registered
+
+            LOCK(MUTEX);
+            REGISTERED.insert(strCommands);
+
+            debug::log(0, FUNCTION, "Registered ", VARIABLE(strCommands));
+        }
 
 
         /** Relay Thread

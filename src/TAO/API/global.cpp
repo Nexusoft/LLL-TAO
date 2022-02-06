@@ -60,6 +60,8 @@ namespace TAO::API
 
         /* Initialize our indexing services. */
         Indexing::Initialize();
+        Indexing::Instance().Register<Market>();
+        Indexing::Instance().Register<Names> ();
     }
 
 

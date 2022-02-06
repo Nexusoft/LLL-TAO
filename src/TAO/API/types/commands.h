@@ -32,6 +32,21 @@ namespace TAO::API
     public:
 
 
+        /** Has
+         *
+         *  Checks if we currently have given name registered in commands.
+         *
+         *  @param[in] strAPI The API we are checking for
+         *
+         *  @return true if command string is registered.
+         *
+         **/
+        static bool Has(const std::string& strAPI)
+        {
+            return Commands::mapTypes.count(strAPI);
+        }
+
+
         /** Base
          *
          *  Gets the base instance of commands, this contains standards and functions pointers, but not the actual functions.
