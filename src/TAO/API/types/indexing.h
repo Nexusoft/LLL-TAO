@@ -32,7 +32,7 @@ namespace TAO::API
      *  These events are transactions that are unpacked into their according command-sets.
      *
      **/
-    class Index : public Singleton<Index>
+    class Indexing : public Singleton<Indexing>
     {
         /** Queue to handle dispatch requests. **/
         util::atomic::lock_shared_ptr<std::queue<uint512_t>> EVENTS_QUEUE;
@@ -42,18 +42,19 @@ namespace TAO::API
         std::thread EVENTS_THREAD;
 
 
-        /** Condition variable to wake up the relay thread. **/
+        /** Condition variable to wake up the indexing thread. **/
         std::condition_variable CONDITION;
 
 
     public:
 
+
         /** Default Constructor. **/
-        Index();
+        Indexing();
 
 
         /** Default Destructor. **/
-        ~Index();
+        ~Indexing();
 
 
         /** RefreshEvents

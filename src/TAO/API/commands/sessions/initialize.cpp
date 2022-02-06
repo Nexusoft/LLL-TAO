@@ -20,7 +20,7 @@ namespace TAO::API
     void Sessions::Initialize()
     {
         /* Handle for all CREATE operations. */
-        mapFunctions["create/session"] = Function
+        mapFunctions["create/local"] = Function
         (
             std::bind
             (

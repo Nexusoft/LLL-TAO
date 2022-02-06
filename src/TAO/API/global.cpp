@@ -59,7 +59,7 @@ namespace TAO::API
         Commands::Register<Tokens>();
 
         /* Initialize our indexing services. */
-        Index::Initialize();
+        Indexing::Initialize();
     }
 
 
@@ -70,6 +70,6 @@ namespace TAO::API
 
         /* Shut down our subsequent API's */
         Commands::Shutdown();
-        Index::Shutdown();
+        Indexing::Shutdown();
     }
 }

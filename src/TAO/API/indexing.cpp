@@ -29,16 +29,16 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Default Constructor. */
-    Index::Index()
+    Indexing::Indexing()
     : EVENTS_QUEUE  (new std::queue<uint512_t>())
-    , EVENTS_THREAD (std::bind(&Index::Manager, this))
+    , EVENTS_THREAD (std::bind(&Indexing::Manager, this))
     , CONDITION     ( )
     {
     }
 
 
     /* Default destructor. */
-    Index::~Index()
+    Indexing::~Indexing()
     {
         /* Cleanup our dispatch thread. */
         CONDITION.notify_all();
@@ -48,7 +48,7 @@ namespace TAO::API
 
 
     /* Checks current events against transaction history to ensure we are up to date. */
-    void Index::RefreshEvents()
+    void Indexing::RefreshEvents()
     {
         /* Our list of transactions to read. */
         std::vector<TAO::Ledger::Transaction> vtx;
@@ -129,7 +129,7 @@ namespace TAO::API
 
 
     /*  Index a new block hash to relay thread.*/
-    void Index::Push(const uint512_t& hashTx)
+    void Indexing::Push(const uint512_t& hashTx)
     {
         EVENTS_QUEUE->push(hashTx);
         CONDITION.notify_one();
@@ -137,7 +137,7 @@ namespace TAO::API
 
 
     /* Handle relays of all events for LLP when processing block. */
-    void Index::Manager()
+    void Indexing::Manager()
     {
         /* Refresh our events. */
         RefreshEvents();
