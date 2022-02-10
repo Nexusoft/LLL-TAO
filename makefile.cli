@@ -510,6 +510,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_unlock.o \
 		build/API_types_users_update.o \
 		build/API_types_users_users.o \
+		build/API_authentication.o \
 		build/API_base.o \
 		build/API_build.o \
 		build/API_check.o \

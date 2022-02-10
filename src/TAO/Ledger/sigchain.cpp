@@ -337,7 +337,6 @@ namespace TAO
             hashRet.SetType(nType);
 
             return hashRet;
-
         }
 
 
