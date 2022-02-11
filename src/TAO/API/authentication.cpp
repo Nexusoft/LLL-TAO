@@ -75,16 +75,20 @@ namespace TAO::API
 
         /* Read the crypto object register. */
         TAO::Register::Object oCrypto;
-        if(!LLD::Register->ReadState(hashCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
+        if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
             throw Exception(-139, "Invalid credentials");
 
         /* Read the key type from crypto object register. */
-        const uint8_t nKeyType =
-            oCrypto.get<uint256_t>("auth").GetType();
+        const uint256_t hashAuth =
+            oCrypto.get<uint256_t>("auth");
 
         /* Generate a key to check credentials against. */
-        const uint256_t hashAuth =
-            tSession.Credentials()->KeyHash("auth", 0, strPIN, nKeyType);
+        const uint256_t hashCheck =
+            tSession.Credentials()->KeyHash("auth", 0, strPIN, hashAuth.GetType());
+
+        /* Check for invalid authorization hash. */
+        if(hashAuth != hashCheck)
+            throw Exception(-139, "Invalid credentials");
 
         /* Check if already logged in. */
         uint256_t hashSession;
