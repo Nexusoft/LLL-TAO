@@ -154,7 +154,7 @@ namespace TAO::API
         static encoding::json Authenticate(const encoding::json& jParams);
 
 
-        /** SessionActive
+        /** Active
          *
          *  Check if user is already authenticated by genesis-id.
          *
@@ -164,7 +164,7 @@ namespace TAO::API
          *  @return true if session is authenticated.
          *
          **/
-        static bool SessionActive(const uint256_t& hashGenesis, uint256_t &hashSession);
+        static bool Active(const uint256_t& hashGenesis, uint256_t &hashSession);
 
 
         /** Authenticated

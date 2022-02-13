@@ -92,7 +92,7 @@ namespace TAO::API
 
         /* Check if already logged in. */
         uint256_t hashSession;
-        if(SessionActive(tSession.Genesis(), hashSession))
+        if(Active(tSession.Genesis(), hashSession))
         {
             /* Build return json data. */
             const encoding::json jRet =
@@ -122,7 +122,7 @@ namespace TAO::API
 
 
     /* Check if user is already authenticated by genesis-id. */
-    bool Authentication::SessionActive(const uint256_t& hashGenesis, uint256_t &hashSession)
+    bool Authentication::Active(const uint256_t& hashGenesis, uint256_t &hashSession)
     {
         RECURSIVE(MUTEX);
 
