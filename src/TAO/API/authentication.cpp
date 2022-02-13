@@ -71,7 +71,7 @@ namespace TAO::API
 
         /* Check for crypto object register. */
         const TAO::Register::Address hashCrypto =
-            TAO::Register::Address(std::string("crypto"), tSession.hashGenesis, TAO::Register::Address::CRYPTO);
+            TAO::Register::Address(std::string("crypto"), tSession.Genesis(), TAO::Register::Address::CRYPTO);
 
         /* Read the crypto object register. */
         TAO::Register::Object oCrypto;
@@ -92,12 +92,12 @@ namespace TAO::API
 
         /* Check if already logged in. */
         uint256_t hashSession;
-        if(SessionActive(tSession.hashGenesis, hashSession))
+        if(SessionActive(tSession.Genesis(), hashSession))
         {
             /* Build return json data. */
             const encoding::json jRet =
             {
-                { "genesis", tSession.hashGenesis.ToString() },
+                { "genesis", tSession.Genesis().ToString() },
                 { "session", hashSession.ToString() }
             };
 
@@ -113,7 +113,7 @@ namespace TAO::API
         /* Build return json data. */
         const encoding::json jRet =
         {
-            { "genesis", tSession.hashGenesis.ToString() },
+            { "genesis", tSession.Genesis().ToString() },
             { "session", hashSession.ToString() }
         };
 
@@ -130,7 +130,7 @@ namespace TAO::API
         for(const auto& rSession : mapSessions)
         {
             /* Check genesis to session. */
-            if(rSession.second.hashGenesis == hashGenesis)
+            if(rSession.second.Genesis() == hashGenesis)
             {
                 hashSession = rSession.first;
                 return true;

@@ -43,6 +43,14 @@ namespace TAO::API
             /** Our active sigchain object. **/
             memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials;
 
+
+            /** Cache of the genesis-id for this session. **/
+            uint256_t hashGenesis;
+
+
+            /** Cache of current session type. **/
+            uint8_t nType;
+
         public:
 
             /* Enum to track session type. */
@@ -53,14 +61,6 @@ namespace TAO::API
                 REMOTE  = 2,
                 NETWORK = 3,
             };
-
-
-            /** Cache of the genesis-id for this session. **/
-            const uint256_t hashGenesis;
-
-
-            /** Cache of current session type. **/
-            const uint8_t nType;
 
 
             /** Track failed authentication attempts. **/
@@ -104,6 +104,32 @@ namespace TAO::API
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials() const
             {
                 return pCredentials;
+            }
+
+
+            /** Genesis
+             *
+             *  Get the genesis-id of the current session.
+             *
+             *  @return the genesis-id of logged in session.
+             *
+             **/
+            uint256_t Genesis() const
+            {
+                return hashGenesis;
+            }
+
+
+            /** Type
+             *
+             *  Get the current session type
+             *
+             *  @return the genesis-id of logged in session.
+             *
+             **/
+            uint8_t Type() const
+            {
+                return nType;
             }
         };
 
