@@ -4054,10 +4054,15 @@ namespace LLP
     }
 
 
-    /* Determine whether a session is connected. */
-    bool TritiumNode::SessionActive(const uint64_t nSession)
+    /* Determine whether a node is syncing. */
+    bool TritiumNode::Syncing()
     {
         LOCK(SESSIONS_MUTEX);
+
+        /* Check if sync session is active. */
+        const uint64_t nSession = TAO::Ledger::nSyncSession.load();
+        if(nSession == 0)
+            return false;
 
         return mapSessions.count(nSession);
     }
