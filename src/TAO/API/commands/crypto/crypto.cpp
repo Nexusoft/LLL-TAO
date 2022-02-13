@@ -48,10 +48,10 @@ namespace TAO
             uint8_t nKeyType = TAO::Ledger::SIGNATURE::BRAINPOOL;
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Find<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+            Session& session = Commands::Find<Users>()->GetSession(params);
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();

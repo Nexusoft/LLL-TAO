@@ -222,7 +222,7 @@ namespace TAO
                 {
                     debug::log(3, FUNCTION, "Removing inactive API session: ", nSession.ToString() );
 
-                    Commands::Get<Users>()->TerminateSession(nSession);
+                    Commands::Find<Users>()->TerminateSession(nSession);
                 }
             }
         }

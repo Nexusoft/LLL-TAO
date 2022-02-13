@@ -66,10 +66,10 @@ namespace TAO
 
             /* use logged in session. */
             else
-                hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
+                hashGenesis = Commands::Find<Users>()->GetSession(params).GetAccount()->Genesis();
 
             /* Prevent foreign data lookup in client mode */
-            if(config::fClient.load() && hashGenesis != Commands::Get<Users>()->GetCallersGenesis(params))
+            if(config::fClient.load() && hashGenesis != Commands::Find<Users>()->GetCallersGenesis(params))
                 throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Check genesis exists */
@@ -139,14 +139,14 @@ namespace TAO
             encoding::json ret;
 
             /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(params))
+            if(!Commands::Find<Users>()->Authenticate(params))
                 throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Find<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+            Session& session = Commands::Find<Users>()->GetSession(params);
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
@@ -192,14 +192,14 @@ namespace TAO
             encoding::json ret;
 
             /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(params))
+            if(!Commands::Find<Users>()->Authenticate(params))
                 throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Find<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+            Session& session = Commands::Find<Users>()->GetSession(params);
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())
@@ -280,14 +280,14 @@ namespace TAO
             encoding::json ret;
 
             /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(params))
+            if(!Commands::Find<Users>()->Authenticate(params))
                 throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Find<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+            Session& session = Commands::Find<Users>()->GetSession(params);
 
             /* The logged in sig chain genesis hash */
             uint256_t hashGenesis = session.GetAccount()->Genesis();

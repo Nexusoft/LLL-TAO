@@ -81,7 +81,7 @@ namespace TAO::API
         if(!config::fHybrid.load())
         {
             /* Get the number of blocks to maturity for this sig chain */
-            const uint32_t nBlocksToMaturity = Commands::Get<Users>()->BlocksToMaturity(hashGenesis);
+            const uint32_t nBlocksToMaturity = Commands::Find<Users>()->BlocksToMaturity(hashGenesis);
             if(nBlocksToMaturity > 0)
                 throw Exception(-202, "Signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");
         }
@@ -149,7 +149,7 @@ namespace TAO::API
             return true;
 
         /* Check that we have the commands set. */
-        const Base* pBase = Commands::Get(jParams["request"]["commands"].get<std::string>());
+        const Base* pBase = Commands::Find(jParams["request"]["commands"].get<std::string>());
         if(!pBase)
             return true;
 

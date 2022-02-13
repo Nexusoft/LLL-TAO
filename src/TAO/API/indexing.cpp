@@ -111,7 +111,7 @@ namespace TAO::API
                         for(const auto& strCommands : REGISTERED)
                         {
                             debug::log(0, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
-                            Commands::Get(strCommands)->Index(rContract, nContract);
+                            Commands::Find(strCommands)->Index(rContract, nContract);
                         }
                     }
                 }
@@ -204,7 +204,7 @@ namespace TAO::API
                     for(const auto& strCommands : REGISTERED)
                     {
                         debug::log(0, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
-                        Commands::Get(strCommands)->Index(rContract, nContract);
+                        Commands::Find(strCommands)->Index(rContract, nContract);
                     }
                 }
             }

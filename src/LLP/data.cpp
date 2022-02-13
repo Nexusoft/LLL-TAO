@@ -13,7 +13,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/base_address.h>
 #include <LLP/templates/data.h>
-
+#include <LLP/templates/static.h>
 #include <LLP/templates/socket.h>
 
 #include <LLP/types/tritium.h>
@@ -27,7 +27,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-
     /** Default Constructor **/
     template <class ProtocolType>
     DataThread<ProtocolType>::DataThread(const uint32_t nID, const bool ffDDOSIn,

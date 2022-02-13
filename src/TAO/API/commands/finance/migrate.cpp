@@ -65,14 +65,14 @@ namespace TAO
             Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
             /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(jParams))
+            if(!Commands::Find<Users>()->Authenticate(jParams))
                 throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Find<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(jParams);
+            Session& session = Commands::Find<Users>()->GetSession(jParams);
 
 
             /* Check for walletpassphrase parameter. */

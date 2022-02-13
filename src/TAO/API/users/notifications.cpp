@@ -964,7 +964,7 @@ namespace TAO
 
             /* The genesis hash of the API caller, if logged in */
             const uint256_t hashCaller =
-                Commands::Get<Users>()->GetCallersGenesis(jParams);
+                Commands::Find<Users>()->GetCallersGenesis(jParams);
 
             /* Number of results to return. */
             uint32_t nLimit = 100, nOffset = 0;
@@ -1164,7 +1164,7 @@ namespace TAO
                 ExtractBoolean(jParams, "logactivity", true);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(jParams, true, fLogActivity);
+            Session& session = Commands::Find<Users>()->GetSession(jParams, true, fLogActivity);
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
@@ -1175,7 +1175,7 @@ namespace TAO
             uint256_t hashGenesis = user->Genesis();
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::NOTIFICATIONS);
+            SecureString strPIN = Commands::Find<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::NOTIFICATIONS);
 
             /* Retrieve user's default NXS account. This is only relevant when not in private mode (as there is no NXS)*/
             std::string strAccount = config::GetArg("-events_account", "default");

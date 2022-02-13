@@ -55,10 +55,10 @@ namespace TAO
 
             /* use logged in session. */
             else
-                hashGenesis = Commands::Get<Users>()->GetSession(params).GetAccount()->Genesis();
+                hashGenesis = Commands::Find<Users>()->GetSession(params).GetAccount()->Genesis();
 
             /* Prevent foreign data lookup in client mode */
-            if(config::fClient.load() && hashGenesis != Commands::Get<Users>()->GetCallersGenesis(params))
+            if(config::fClient.load() && hashGenesis != Commands::Find<Users>()->GetCallersGenesis(params))
                 throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Check genesis exists */

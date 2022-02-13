@@ -31,7 +31,7 @@ namespace TAO::API
     {
         /* Get the session to be used for this API call */
         const Session& session =
-            Commands::Get<Users>()->GetSession(jParams);
+            Commands::Find<Users>()->GetSession(jParams);
 
         /* The address of the crypto object register, which is deterministic based on the genesis */
         const uint256_t hashRegister =
@@ -51,7 +51,7 @@ namespace TAO::API
 
         /* Get the PIN to be used for generating our new key hashes */
         const SecureString strPIN =
-            Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            Commands::Find<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
         /* List our object fields for update. */
         const std::vector<std::string> vFieldNames = tCrypto.ListFields();

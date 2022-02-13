@@ -38,7 +38,7 @@ namespace TAO
             encoding::json ret;
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params, true, false);
+            Session& session = Commands::Find<Users>()->GetSession(params, true, false);
 
             /* The callers genesis */
             uint256_t hashGenesis = session.GetAccount()->Genesis();
@@ -50,7 +50,7 @@ namespace TAO
             if(config::fMultiuser.load() && params.find("pin") != params.end())
             {
                 /* Authenticate the users credentials */
-                if(!Commands::Get<Users>()->Authenticate(params))
+                if(!Commands::Find<Users>()->Authenticate(params))
                     throw Exception(-139, "Invalid credentials");
                 
                 /* Pin is valid so include the username */

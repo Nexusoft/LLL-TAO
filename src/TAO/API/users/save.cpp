@@ -38,7 +38,7 @@ namespace TAO::API
             GetSession(jParams);
 
         /* Authenticate the users credentials */
-        if(!Commands::Get<Users>()->Authenticate(jParams))
+        if(!Commands::Find<Users>()->Authenticate(jParams))
             throw Exception(-139, "Invalid credentials");
 
         /* Save the session */

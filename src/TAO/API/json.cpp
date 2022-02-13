@@ -1472,7 +1472,7 @@ namespace TAO::API
             throw Exception(-28, "Missing parameter [request::type] for command");
 
         /* Check that we have the commands set. */
-        const Base* pBase = Commands::Get(jParams["request"]["commands"].get<std::string>());
+        const Base* pBase = Commands::Find(jParams["request"]["commands"].get<std::string>());
         if(!pBase)
             throw Exception(-28, "Missing parameter [request::commands] for command");
 

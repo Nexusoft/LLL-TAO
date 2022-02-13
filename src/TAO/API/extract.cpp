@@ -71,7 +71,7 @@ namespace TAO::API
                     if(hashRegister == TAO::API::ADDRESS_NONE)
                         throw Exception(-101, "Unknown name: ", strLookup);
 
-                    return hashRegister;
+                    return std::move(hashRegister);
                 }
             }
 
@@ -189,7 +189,7 @@ namespace TAO::API
         if(CheckParameter(jParams, "username", "string"))
             return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());
 
-        return Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+        return Commands::Find<Users>()->GetSession(jParams).GetAccount()->Genesis();
     }
 
 

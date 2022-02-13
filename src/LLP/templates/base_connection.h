@@ -344,7 +344,6 @@ namespace LLP
         void WaitEvent();
 
     };
-
 }
 
 #endif
