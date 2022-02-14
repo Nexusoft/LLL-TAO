@@ -92,7 +92,7 @@ namespace TAO::API
 
         /* Check if already logged in. */
         uint256_t hashSession;
-        if(Authenticated(tSession.Genesis(), hashSession))
+        if(Authentication::Active(tSession.Genesis(), hashSession))
         {
             /* Build return json data. */
             const encoding::json jRet =
@@ -108,7 +108,7 @@ namespace TAO::API
         hashSession = LLC::GetRand256();
 
         /* Add the new session to sessions map. */
-        //mapSessions.emplace(std::make_pair(hashSession, tSession));
+        mapSessions.insert(std::make_pair(hashSession, std::move(tSession)));
 
         /* Build return json data. */
         const encoding::json jRet =
@@ -122,7 +122,7 @@ namespace TAO::API
 
 
     /* Check if user is already authenticated by genesis-id. */
-    bool Authentication::Authenticated(const uint256_t& hashGenesis, uint256_t &hashSession)
+    bool Authentication::Active(const uint256_t& hashGenesis, uint256_t &hashSession)
     {
         RECURSIVE(MUTEX);
 

@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/pinunlock.h>
 
 #include <Util/include/json.h>
 #include <Util/include/mutex.h>
@@ -44,6 +45,10 @@ namespace TAO::API
             memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials;
 
 
+            /** Our active pin unlock object. **/
+            memory::encrypted_ptr<TAO::Ledger::PinUnlock> pUnlock;
+
+
             /** Cache of the genesis-id for this session. **/
             uint256_t hashGenesis;
 
@@ -70,6 +75,7 @@ namespace TAO::API
             /** Default Constructor. **/
             Session()
             : pCredentials  (nullptr)
+            , pUnlock       (nullptr)
             , hashGenesis   (0)
             , nType         (LOCAL)
             , nAuthFailures (0)
@@ -77,9 +83,42 @@ namespace TAO::API
             }
 
 
+            /** Copy Constructor. **/
+            Session(const Session& rSession) = delete;
+
+
+            /** Move Constructor. **/
+            Session(Session&& rSession)
+            : pCredentials  (std::move(rSession.pCredentials))
+            , pUnlock       (std::move(rSession.pUnlock))
+            , hashGenesis   (std::move(rSession.hashGenesis))
+            , nType         (std::move(rSession.nType))
+            , nAuthFailures (rSession.nAuthFailures.load())
+            {
+            }
+
+
+            /** Copy Assignment. **/
+            Session& operator=(const Session& rSession) = delete;
+
+
+            /** Move Assignment. **/
+            Session& operator=(Session&& rSession)
+            {
+                pCredentials  = std::move(rSession.pCredentials);
+                pUnlock       = std::move(rSession.pUnlock);
+                hashGenesis   = std::move(rSession.hashGenesis);
+                nType         = std::move(rSession.nType);
+                nAuthFailures = rSession.nAuthFailures.load();
+
+                return *this;
+            }
+
+
             /** Constructor based on geneis. **/
             Session(const SecureString& strUsername, const SecureString& strPassword, const uint8_t nTypeIn = LOCAL)
             : pCredentials  (new TAO::Ledger::SignatureChain(strUsername, strPassword))
+            , pUnlock       (nullptr)
             , hashGenesis   (pCredentials->Genesis())
             , nType         (nTypeIn)
             , nAuthFailures (0)
@@ -90,7 +129,13 @@ namespace TAO::API
             /** Default Destructor. **/
             ~Session()
             {
-                pCredentials.free();
+                /* Cleanup the credentials object. */
+                if(!pCredentials.IsNull())
+                    pCredentials.free();
+
+                /* Cleanup the pin unlock object. */
+                if(!pUnlock.IsNull())
+                    pUnlock.free();
             }
 
 
@@ -154,17 +199,17 @@ namespace TAO::API
         static encoding::json Authenticate(const encoding::json& jParams);
 
 
-        /** Authenticated
+        /** Active
          *
-         *  Check if user is already authenticated by genesis-id.
+         *  Check if user is already authenticated by genesis-id and return the session.
          *
          *  @param[in] hashGenesis The current genesis-id to lookup for.
-         *  @param[in] hashSession The current session-id if logged in.
+         *  @param[out] hashSession The current session-id if logged in.
          *
          *  @return true if session is authenticated.
          *
          **/
-        static bool Authenticated(const uint256_t& hashGenesis, uint256_t &hashSession);
+        static bool Active(const uint256_t& hashGenesis, uint256_t &hashSession);
 
 
         /** Authenticated
@@ -198,6 +243,7 @@ namespace TAO::API
 
 
     private:
+
 
         /** Mutex to lock around critical data. **/
         static std::recursive_mutex MUTEX;
