@@ -183,6 +183,21 @@ namespace TAO::API
     }
 
 
+    /* Get the genesis-id of the given caller using session from params. */
+    bool Authentication::Caller(const encoding::json& jParams, uint256_t &hashCaller)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session");
+
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            return false;
+    }
+
+
     /* Terminate an active session by parameters. */
     void Authentication::Terminate(const encoding::json& jParams)
     {

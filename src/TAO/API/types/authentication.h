@@ -224,6 +224,19 @@ namespace TAO::API
         static bool Authenticated(const encoding::json& jParams);
 
 
+        /** Caller
+         *
+         *  Get the genesis-id of the given caller using session from params.
+         *
+         *  @param[in] jParams The incoming parameters to parse session from.
+         *  @param[out] hashCaller The genesis-id of the caller
+         *
+         *  @return True if the caller was found
+         *
+         **/
+        static bool Caller(const encoding::json& jParams, uint256_t &hashCaller);
+
+
         /** Terminate
          *
          *  Terminate an active session by parameters.
