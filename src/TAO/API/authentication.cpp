@@ -136,7 +136,13 @@ namespace TAO::API
             /* Check genesis to session. */
             if(rSession.second.Genesis() == hashGenesis)
             {
+                /* Set our returned session hash. */
                 hashSession = rSession.first;
+
+                /* Check if active. */
+                if(rSession.second.Active() > config::GetArg("-inactivetimeout", 3600))
+                    return false;
+
                 return true;
             }
         }
@@ -182,6 +188,9 @@ namespace TAO::API
                 return false;
             }
         }
+
+        /* Adjust our activity time if authenticated. */
+        rSession.nLastActive = runtime::unifiedtimestamp();
 
         return true;
     }

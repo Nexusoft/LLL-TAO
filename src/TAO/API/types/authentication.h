@@ -56,6 +56,7 @@ namespace TAO::API
             /** Cache of current session type. **/
             uint8_t nType;
 
+
         public:
 
             /* Enum to track session type. */
@@ -72,6 +73,10 @@ namespace TAO::API
             mutable std::atomic<uint64_t> nAuthFailures;
 
 
+            /** Track the last time session was active. **/
+            mutable std::atomic<uint64_t> nLastActive;
+
+
             /** Default Constructor. **/
             Session()
             : pCredentials  (nullptr)
@@ -79,6 +84,7 @@ namespace TAO::API
             , hashGenesis   (0)
             , nType         (LOCAL)
             , nAuthFailures (0)
+            , nLastActive   (runtime::unifiedtimestamp())
             {
             }
 
@@ -94,6 +100,7 @@ namespace TAO::API
             , hashGenesis   (std::move(rSession.hashGenesis))
             , nType         (std::move(rSession.nType))
             , nAuthFailures (rSession.nAuthFailures.load())
+            , nLastActive   (rSession.nLastActive.load())
             {
             }
 
@@ -110,6 +117,7 @@ namespace TAO::API
                 hashGenesis   = std::move(rSession.hashGenesis);
                 nType         = std::move(rSession.nType);
                 nAuthFailures = rSession.nAuthFailures.load();
+                nLastActive   = rSession.nLastActive.load();
 
                 return *this;
             }
@@ -122,6 +130,7 @@ namespace TAO::API
             , hashGenesis   (pCredentials->Genesis())
             , nType         (nTypeIn)
             , nAuthFailures (0)
+            , nLastActive   (runtime::unifiedtimestamp())
             {
             }
 
@@ -175,6 +184,19 @@ namespace TAO::API
             uint8_t Type() const
             {
                 return nType;
+            }
+
+
+            /** Active
+             *
+             *  Get the number of seconds a session has been active.
+             *
+             *  @return The number of seconds session has been active.
+             *
+             **/
+            uint64_t Active() const
+            {
+                return (runtime::unifiedtimestamp() - nLastActive.load());
             }
         };
 
