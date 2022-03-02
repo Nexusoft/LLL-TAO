@@ -80,7 +80,7 @@ namespace TAO::API
 
         /* Check for caller's genesis. */
         const uint256_t hashCaller =
-            Commands::Find<Users>()->GetCallersGenesis(jParams);
+            Commands::Instance<Users>()->GetCallersGenesis(jParams);
 
         /* Make sure we were able to get the caller. */
         if(hashCaller != 0)

@@ -189,7 +189,7 @@ namespace TAO::API
         if(CheckParameter(jParams, "username", "string"))
             return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());
 
-        return Commands::Find<Users>()->GetSession(jParams).GetAccount()->Genesis();
+        return Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
     }
 
 

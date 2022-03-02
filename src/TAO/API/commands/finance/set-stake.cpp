@@ -36,14 +36,14 @@ namespace TAO::API
         encoding::json ret;
 
         /* Get the PIN to be used for this API call */
-        SecureString strPin = Commands::Find<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        SecureString strPin = Commands::Instance<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
         /* Check for pin size. */
         if(strPin.size() == 0)
             throw Exception(-135, "Zero-length PIN");
 
         /* Get the session to be used for this API call */
-        Session& session = Commands::Find<Users>()->GetSession(jParams);
+        Session& session = Commands::Instance<Users>()->GetSession(jParams);
 
         /* Get the user account. */
         const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
@@ -51,7 +51,7 @@ namespace TAO::API
             throw Exception(-10, "Invalid session ID");
 
         /* Authenticate the users credentials */
-        if(!Commands::Find<Users>()->Authenticate(jParams))
+        if(!Commands::Instance<Users>()->Authenticate(jParams))
             throw Exception(-139, "Invalid credentials");
 
         /* Get the genesis ID. */

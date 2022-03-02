@@ -218,7 +218,7 @@ namespace TAO
             /* First check the callers local namespace to see if it exists */
             /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can check the
                other namespaces after */
-            Session& session = Commands::Find<Users>()->GetSession(params, false);
+            Session& session = Commands::Instance<Users>()->GetSession(params, false);
 
             /* Get the account. */
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();

@@ -47,7 +47,7 @@ namespace TAO::API
         }
 
 
-        /** Find
+        /** Instance
          *
          *  Gets the base instance of commands, this contains standards and functions pointers, but not the actual functions.
          *
@@ -56,23 +56,23 @@ namespace TAO::API
          *  @return a pointer to the base object indexed by commands name.
          *
          **/
-        static Base* Find(const std::string& strAPI)
+        static Base* Instance(const std::string& strAPI)
         {
             /* Check that set of commands exists. */
             if(!Commands::mapTypes.count(strAPI))
                 return nullptr; //we don't throw here as this function won't be used directly in commands body, more of a helper
 
-            return static_cast<Base*>(Commands::mapTypes[strAPI]->Find());
+            return static_cast<Base*>(Commands::mapTypes[strAPI]->Instance());
         }
 
 
-        /** Find
+        /** Instance
          *
          *  Find an instance of the API, indexed by our name.
          *
          **/
         template<typename Type>
-        static Type* Find()
+        static Type* Instance()
         {
             /* Grab a copy of our name. */
             const std::string strAPI = Type::Name();
@@ -81,7 +81,7 @@ namespace TAO::API
             if(!Commands::mapTypes.count(strAPI))
                 throw TAO::API::Exception(-4, "API Not Found: ", strAPI);
 
-            return static_cast<Type*>(Commands::mapTypes[Type::Name()]->Find());
+            return static_cast<Type*>(Commands::mapTypes[Type::Name()]->Instance());
         }
 
 

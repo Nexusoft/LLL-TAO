@@ -56,7 +56,7 @@ namespace TAO::API
             std::bind
             (
                 &Finance::Burn,
-                Commands::Find<Finance>(),
+                Commands::Instance<Finance>(),
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -87,7 +87,7 @@ namespace TAO::API
             std::bind
             (
                 &Finance::Credit,
-                Commands::Find<Finance>(),
+                Commands::Instance<Finance>(),
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -101,7 +101,7 @@ namespace TAO::API
             std::bind
             (
                 &Finance::Debit,
-                Commands::Find<Finance>(),
+                Commands::Instance<Finance>(),
                 std::placeholders::_1,
                 std::placeholders::_2
             )

@@ -125,7 +125,7 @@ namespace TAO
             }
 
             /* Authenticate the users credentials */
-            if(!Commands::Find<Users>()->Authenticate(jParams))
+            if(!Commands::Instance<Users>()->Authenticate(jParams))
                 throw Exception(-139, "Invalid credentials");
 
             /* Lock the signature chain in case another process attempts to create a transaction . */

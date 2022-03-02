@@ -26,10 +26,10 @@ namespace TAO::API
         encoding::json jRet = encoding::json::array();
 
         /* Get the Genesis ID. */
-        const uint256_t hashGenesis = Commands::Find<Users>()->GetSession(params).GetAccount()->Genesis();
+        const uint256_t hashGenesis = Commands::Instance<Users>()->GetSession(params).GetAccount()->Genesis();
 
         /* Load the session */
-        Session& session = Commands::Find<Users>()->GetSession(params);
+        Session& session = Commands::Instance<Users>()->GetSession(params);
 
         /* Check that it was loaded correctly */
         if(session.IsNull())

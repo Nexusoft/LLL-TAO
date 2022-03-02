@@ -82,6 +82,10 @@ namespace TAO::API
         const uint256_t hashAuth =
             oCrypto.get<uint256_t>("auth");
 
+        /* Check if the auth has is deactivated. */
+        if(hashAuth == 0)
+            throw Exception(-130, "Auth hash deactivated, please call sessions/initialize/credentials");
+
         /* Generate a key to check credentials against. */
         const uint256_t hashCheck =
             tSession.Credentials()->KeyHash("auth", 0, strPIN, hashAuth.GetType());
@@ -195,6 +199,15 @@ namespace TAO::API
         /* Check for active session. */
         if(!mapSessions.count(hashSession))
             return false;
+
+        /* Get a copy of our current active session. */
+        const Session& rSession =
+            mapSessions[hashSession];
+
+        /* Set the caller from our session data. */
+        hashCaller = rSession.Genesis();
+
+        return true;
     }
 
 
