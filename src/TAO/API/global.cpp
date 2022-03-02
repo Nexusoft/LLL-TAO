@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/finance.h>
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/tokens.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/indexing.h>
 
@@ -42,8 +43,11 @@ namespace TAO::API
     {
         debug::log(0, FUNCTION, "Initializing API");
 
+        /* Initialize our authentication system. */
+        Authentication::Initialize();
+
         /* Others depend on users. */
-        Commands::Register<Users>();
+        Commands::Register<Users>(); //TODO: this will be replace with above static class
 
         /* Create the API instances. */
         Commands::Register<Assets>();
@@ -75,5 +79,8 @@ namespace TAO::API
         /* Shut down our subsequent API's */
         Commands::Shutdown();
         Indexing::Shutdown();
+
+        /* Shut down our authentication system. */
+        Authentication::Shutdown();
     }
 }
