@@ -41,87 +41,13 @@ namespace TAO::API
     }
 
 
-    /* Authenticate a new session from incoming parameters. */
-    encoding::json Authentication::Authenticate(const encoding::json& jParams)
+    /* Insert a new session into authentication map. */
+    void Authentication::Insert(const uint256_t& hashSession, Session& rSession)
     {
         RECURSIVE(MUTEX);
 
-        /* Pin parameter. */
-        const SecureString strPIN = ExtractPIN(jParams);
-
-        /* Check for username parameter. */
-        if(!CheckParameter(jParams, "username", "string"))
-            throw Exception(-127, "Missing username");
-
-        /* Parse out username. */
-        const SecureString strUsername =
-            SecureString(jParams["username"].get<std::string>().c_str());
-
-        /* Check for password parameter. */
-        if(!CheckParameter(jParams, "password", "string"))
-            throw Exception(-128, "Missing password");
-
-        /* Parse out password. */
-        const SecureString strPassword =
-            SecureString(jParams["password"].get<std::string>().c_str());
-
-        /* Build new session object. */
-        Session tSession =
-            Session(strUsername, strPassword, Session::LOCAL);
-
-        /* Check for crypto object register. */
-        const TAO::Register::Address hashCrypto =
-            TAO::Register::Address(std::string("crypto"), tSession.Genesis(), TAO::Register::Address::CRYPTO);
-
-        /* Read the crypto object register. */
-        TAO::Register::Object oCrypto;
-        if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
-            throw Exception(-139, "Invalid credentials");
-
-        /* Read the key type from crypto object register. */
-        const uint256_t hashAuth =
-            oCrypto.get<uint256_t>("auth");
-
-        /* Check if the auth has is deactivated. */
-        if(hashAuth == 0)
-            throw Exception(-130, "Auth hash deactivated, please call users/initialize/credentials");
-
-        /* Generate a key to check credentials against. */
-        const uint256_t hashCheck =
-            tSession.Credentials()->KeyHash("auth", 0, strPIN, hashAuth.GetType());
-
-        /* Check for invalid authorization hash. */
-        if(hashAuth != hashCheck)
-            throw Exception(-139, "Invalid credentials");
-
-        /* Check if already logged in. */
-        uint256_t hashSession;
-        if(Authentication::Active(tSession.Genesis(), hashSession))
-        {
-            /* Build return json data. */
-            const encoding::json jRet =
-            {
-                { "genesis", tSession.Genesis().ToString() },
-                { "session", hashSession.ToString() }
-            };
-
-            return jRet;
-        }
-
-        /* Build a new session key. */
-        hashSession = LLC::GetRand256();
-
         /* Add the new session to sessions map. */
-        mapSessions.insert(std::make_pair(hashSession, std::move(tSession)));
-
-        /* Build return json data. */
-        const encoding::json jRet =
-        {
-            { "genesis", tSession.Genesis().ToString() },
-            { "session", hashSession.ToString() }
-        };
-
-        return jRet;
+        mapSessions.insert(std::make_pair(hashSession, std::move(rSession)));
     }
 
 

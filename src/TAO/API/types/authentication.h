@@ -246,16 +246,15 @@ namespace TAO::API
         static void Initialize();
 
 
-        /** Authenticate
+        /** Insert
          *
-         *  Authenticate a new session from incoming parameters.
+         *  Insert a new session into authentication map.
          *
-         *  @param[in] jParams The parameters to authenticate from.
-         *
-         *  @return the return json data if authentication succeeded.
+         *  @param[in] hashSession The session identifier to add by index.
+         *  @param[in] rSession The session to add to the map.
          *
          **/
-        static encoding::json Authenticate(const encoding::json& jParams);
+        static void Insert(const uint256_t& hashSession, Session& rSession);
 
 
         /** Active
