@@ -167,16 +167,34 @@ namespace TAO::API
             }
 
 
-            /** Pin
+            /** Unlock
              *
-             *  Get the active pin from current session.
+             *  Unlock and get the active pin from current session.
+             *
+             *  @param[out] strPIN The pin number to return by reference
+             *  @param[in] nRequestedActions The actions requested for PIN unlock.
              *
              *  @return The secure string containing active pin.
              *
              **/
-            const SecureString Pin() const
+            bool Unlock(SecureString &strPIN, const uint8_t nRequestedActions) const
             {
-                return pUnlock->PIN();
+                /* Check that we have initialized our PIN. */
+                if(pUnlock.IsNull())
+                    return false;
+
+                /* Check against our unlock actions. */
+                if(pUnlock->UnlockedActions() & nRequestedActions)
+                {
+                    /* Get a copy of our secure string. */
+                    strPIN = pUnlock->PIN();
+                    if(strPIN.empty())
+                        return false;
+
+                    return true;
+                }
+
+                return false;
             }
 
 
@@ -278,6 +296,31 @@ namespace TAO::API
         static bool Caller(const encoding::json& jParams, uint256_t &hashCaller);
 
 
+        /** Unlock
+         *
+         *  Unlock and get the active pin from current session.
+         *
+         *  @param[out] strPIN The pin number to return by reference
+         *  @param[in] nRequestedActions The actions requested for PIN unlock.
+         *
+         *  @return True if this unlock action was successful.
+         *
+         **/
+        static bool Unlock(const encoding::json& jParams, SecureString &strPIN,
+                           const uint8_t nRequestedActions = TAO::Ledger::PinUnlock::TRANSACTIONS);
+
+
+        /** Unlock
+         *
+         *  Unlock this session by inputing a valid pin and requested actions.
+         *
+         *  @param[in] jParams The incoming parameters including session to parse.
+         *  @param[in] nActions The actions that will be allowed on unlocked pin.
+         *
+         **/
+        static void Unlock(const encoding::json& jParams, const uint8_t nActions);
+
+
         /** Terminate
          *
          *  Terminate an active session by parameters.
@@ -327,5 +370,18 @@ namespace TAO::API
         static bool increment_failures(const uint256_t& hashSession);
 
 
+        /** get_session
+         *
+         *  Local helper to get the session and return by reference.
+         *
+         *  @param[in] jParams The incoming parameters to parse and search by.
+         *  @param[in] rSession The session reference if found.
+         *
+         *  @return true if the session was found.
+         **/
+        static bool get_session(const encoding::json& jParams, Session &rSession)
+        {
+            return false;
+        }
     };
 }

@@ -216,6 +216,52 @@ namespace TAO::API
     }
 
 
+    /* Unlock and get the active pin from current session. */
+    bool Authentication::Unlock(const encoding::json& jParams, SecureString &strPIN, const uint8_t nRequestedActions)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session");
+
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            return false;
+
+        /* Get a copy of our current active session. */
+        const Session& rSession =
+            mapSessions[hashSession];
+
+        /* Get the active pin if not currently stored. */
+        if(!rSession.Unlock(strPIN, nRequestedActions))
+            strPIN = ExtractPIN(jParams);
+
+        return true;
+    }
+
+
+    /* Unlock this session by inputing a valid pin and requested actions. */
+    void Authentication::Unlock(const encoding::json& jParams, const uint8_t nActions)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session");
+
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            return;
+
+        /* Get a copy of our current active session. */
+        //const Session& rSession =
+        //    mapSessions[hashSession];
+
+        return;
+    }
+
+
     /* Terminate an active session by parameters. */
     void Authentication::Terminate(const encoding::json& jParams)
     {

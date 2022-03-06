@@ -18,13 +18,14 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/assets.h>
 #include <TAO/API/types/commands/ledger.h>
-#include <TAO/API/types/commands/supply.h>
-#include <TAO/API/types/commands/system.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/types/commands/crypto.h>
 #include <TAO/API/types/commands/finance.h>
 #include <TAO/API/types/commands/register.h>
+#include <TAO/API/types/commands/sessions.h>
+#include <TAO/API/types/commands/supply.h>
+#include <TAO/API/types/commands/system.h>
 #include <TAO/API/types/commands/tokens.h>
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
@@ -58,6 +59,7 @@ namespace TAO::API
         Commands::Register<Ledger>();
         Commands::Register<Names>();
         Commands::Register<Register>();
+        Commands::Register<Sessions>();
         Commands::Register<Supply>();
         Commands::Register<System>();
         Commands::Register<Tokens>();

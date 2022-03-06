@@ -197,7 +197,7 @@ namespace TAO
              *  Provides access to the current unlocked actions set on this PIN
              *
              **/
-            uint8_t UnlockedActions()
+            uint8_t UnlockedActions() const
             {
                 return nUnlockedActions;
             }
