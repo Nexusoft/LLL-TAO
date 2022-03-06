@@ -288,5 +288,15 @@ namespace TAO::API
         static std::map<uint256_t, Session> mapSessions;
 
 
+        /** terminate_session
+         *
+         *  Terminate an active session by parameters.
+         *
+         *  @param[in] hashSession The incoming session to terminate.
+         *
+         **/
+        static void terminate_session(const uint256_t& hashSession);
+
+
     };
 }

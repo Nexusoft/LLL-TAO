@@ -84,7 +84,7 @@ namespace TAO::API
 
         /* Check if the auth has is deactivated. */
         if(hashAuth == 0)
-            throw Exception(-130, "Auth hash deactivated, please call sessions/initialize/credentials");
+            throw Exception(-130, "Auth hash deactivated, please call users/initialize/credentials");
 
         /* Generate a key to check credentials against. */
         const uint256_t hashCheck =
@@ -229,12 +229,8 @@ namespace TAO::API
         const uint256_t hashSession =
             ExtractHash(jParams, "session");
 
-        /* Check for active session. */
-        if(!mapSessions.count(hashSession))
-            return;
-
-        /* Erase the session from map. */
-        mapSessions.erase(hashSession);
+        /* Terminate the session now. */
+        terminate_session(hashSession);
     }
 
 
@@ -242,5 +238,17 @@ namespace TAO::API
     void Authentication::Shutdown()
     {
 
+    }
+
+
+    /* Terminate an active session by parameters. */
+    void Authentication::terminate_session(const uint256_t& hashSession)
+    {
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            return;
+
+        /* Erase the session from map. */
+        mapSessions.erase(hashSession);
     }
 }
