@@ -167,6 +167,19 @@ namespace TAO::API
             }
 
 
+            /** Pin
+             *
+             *  Get the active pin from current session.
+             *
+             *  @return The secure string containing active pin.
+             *
+             **/
+            const SecureString Pin() const
+            {
+                return pUnlock->PIN();
+            }
+
+
             /** Genesis
              *
              *  Get the genesis-id of the current session.
