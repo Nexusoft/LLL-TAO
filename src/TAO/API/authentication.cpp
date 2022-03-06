@@ -181,16 +181,12 @@ namespace TAO::API
 
             /* Check our password input compared to our internal sigchain password. */
             if(rSession.Credentials()->Password() != strPassword)
-            {
-                /* Increment our auth attempts if failed password. */
-                ++rSession.nAuthFailures;
-
-                return false;
-            }
+                return increment_failures(hashSession);
         }
 
         /* Adjust our activity time if authenticated. */
-        rSession.nLastActive = runtime::unifiedtimestamp();
+        rSession.nLastActive   = runtime::unifiedtimestamp();
+        rSession.nAuthFailures = 0;
 
         return true;
     }
@@ -250,5 +246,30 @@ namespace TAO::API
 
         /* Erase the session from map. */
         mapSessions.erase(hashSession);
+    }
+
+    /* Increment the failure counter to deauthorize user after failed auth. */
+    bool Authentication::increment_failures(const uint256_t& hashSession)
+    {
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            return false;
+
+        /* Get a copy of our current active session. */
+        const Session& rSession =
+            mapSessions[hashSession];
+
+        /* Increment the auth failures. */
+        if(++rSession.nAuthFailures >= config::GetArg("-authattempts", 3))
+        {
+            /* Terminate our internal session. */
+            terminate_session(hashSession);
+
+            /* Return failure to API endpoint. */
+            throw Exception(-290, "Too many invalid password/pin attempts (",
+                rSession.nAuthFailures.load(), "): Session ", hashSession.SubString(), " Terminated");
+        }
+
+        return false;
     }
 }

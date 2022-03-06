@@ -77,6 +77,10 @@ namespace TAO::API
             mutable std::atomic<uint64_t> nLastActive;
 
 
+            /** Internal mutex for creating new transactions. **/
+            mutable std::mutex CREATE_MUTEX;
+
+
             /** Default Constructor. **/
             Session()
             : pCredentials  (nullptr)
@@ -85,6 +89,7 @@ namespace TAO::API
             , nType         (LOCAL)
             , nAuthFailures (0)
             , nLastActive   (runtime::unifiedtimestamp())
+            , CREATE_MUTEX  ( )
             {
             }
 
@@ -101,6 +106,7 @@ namespace TAO::API
             , nType         (std::move(rSession.nType))
             , nAuthFailures (rSession.nAuthFailures.load())
             , nLastActive   (rSession.nLastActive.load())
+            , CREATE_MUTEX  ( )
             {
             }
 
@@ -296,6 +302,16 @@ namespace TAO::API
          *
          **/
         static void terminate_session(const uint256_t& hashSession);
+
+
+        /** increment_failures
+         *
+         *  Increment the failure counter to deauthorize user after failed auth.
+         *
+         *  @param[in] hashSession The incoming session to terminate.
+         *
+         **/
+        static bool increment_failures(const uint256_t& hashSession);
 
 
     };
