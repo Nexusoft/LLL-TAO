@@ -11,20 +11,20 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/types/commands/sessions.h>
+#include <TAO/API/types/commands/profiles.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
 {
     /* Standard initialization function. */
-    void Sessions::Initialize()
+    void Profiles::Initialize()
     {
         /* Handle for all CREATE operations. */
-        mapFunctions["create/local"] = Function
+        mapFunctions["create/master"] = Function
         (
             std::bind
             (
-                &Sessions::Create,
+                &Profiles::Create,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

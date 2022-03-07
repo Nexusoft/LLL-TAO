@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/conditions.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/commands.h>
 
@@ -37,6 +38,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -85,23 +87,21 @@ namespace TAO::API
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
     uint512_t BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
     {
-        /* Authenticate the users credentials */
-        if(!Commands::Get<Users>()->Authenticate(jParams))
-            throw Exception(-139, "Invalid credentials");
-
         /* Get the PIN to be used for this API call */
-        const SecureString strPIN =
-            Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        SecureString strPIN;
+        if(!Authentication::Unlock(jParams, strPIN, TAO::Ledger::PinUnlock::TRANSACTIONS))
+            throw Exception(-139, "Failed to unlock");
 
         /* Get the session to be used for this API call */
-        Session& session = Commands::Get<Users>()->GetSession(jParams);
+        const Authentication::Session& rSession =
+            Authentication::Instance(jParams);
 
         /* Handle auto-tx feature. */
-        if(config::GetBoolArg("-autotx", false))
+        if(config::GetBoolArg("-autotx", false)) //TODO: pipe in -autotx
         {
             /* Add our contracts to the notifications queue. */
-            for(const auto& tContract : vContracts)
-                session.vProcessQueue->push(tContract);
+            //for(const auto& tContract : vContracts)
+            //    session.vProcessQueue->push(tContract);
 
             return 0;
         }
@@ -111,15 +111,19 @@ namespace TAO::API
             throw Exception(-120, "Maximum number of contracts exceeded (99), please try again or use -autotx mode.");
 
         /* Otherwise let's lock the session to generate the tx. */
-        LOCK(session.CREATE_MUTEX);
+        LOCK(rSession.CREATE_MUTEX);
 
         /* The new key scheme */
         const uint8_t nScheme =
             ExtractScheme(jParams, "brainpool, falcon");
 
+        /* Get an instance of our credentials. */
+        const auto& pCredentials =
+            rSession.Credentials();
+
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;
-        if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx, nScheme))
+        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nScheme))
             throw Exception(-17, "Failed to create transaction");
 
         /* Add the contracts. */
@@ -134,7 +138,7 @@ namespace TAO::API
             throw Exception(-44, "Transaction failed to build");
 
         /* Sign the transaction. */
-        if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
+        if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
             throw Exception(-31, "Ledger failed to sign transaction");
 
         /* Double check our next hash if -safemode enabled. */
@@ -142,7 +146,7 @@ namespace TAO::API
         {
             /* Re-calculate our next hash if safemode forcing not to use cache. */
             const uint256_t hashNext =
-                TAO::Ledger::Transaction::NextHash(session.GetAccount()->Generate(tx.nSequence + 1, strPIN, false), tx.nNextType);
+                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN, false), tx.nNextType);
 
             /* Check that this next hash is what we are expecting. */
             if(tx.hashNext != hashNext)
@@ -290,7 +294,7 @@ namespace TAO::API
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
         /* Copy our txid out of the contract. */
         const uint512_t hashTx = rDebit.Hash();
@@ -552,7 +556,7 @@ namespace TAO::API
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
         /* Check that recipient is current session. */
         if(hashRecipient != hashGenesis)
@@ -584,7 +588,7 @@ namespace TAO::API
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
         /* Check that we aren't voiding a transaction not owned by us. */
         if(rDependent.Caller() != hashGenesis)
@@ -621,7 +625,7 @@ namespace TAO::API
             /* Add an optional name if supplied. */
             vContracts.push_back
             (
-                Names::CreateName(Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis(),
+                Names::CreateName(Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis(),
                 strName, strNamespace, hashRegister)
             );
         }
@@ -692,7 +696,7 @@ namespace TAO::API
         {
             /* Get our genesis-id for this call. */
             const uint256_t hashGenesis =
-                Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+                Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
             /* Check for required parameters. */
             if(!CheckParameter(jParams, "name", "string"))

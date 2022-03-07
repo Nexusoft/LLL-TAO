@@ -35,7 +35,7 @@ namespace TAO::API
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
         /* Extract some parameters from input data. */
         const uint256_t hashRegister  = ExtractAddress(jParams);

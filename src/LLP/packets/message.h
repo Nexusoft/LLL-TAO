@@ -24,8 +24,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-
-
     /** MessagePacket
      *
      *  Class to handle sending and receiving of More Complex Message LLP Packets.

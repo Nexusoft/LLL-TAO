@@ -433,16 +433,14 @@ namespace LLP
         static DataStream GetAuth(bool fAuth);
 
 
-        /** SessionActive
+        /** Syncing
          *
-         *  Determine whether a session is connected.
-         *
-         *  @param[in] nSession The session to check for
+         *  Determine whether a node is syncing.
          *
          *  @return true if session is connected.
          *
          **/
-        static bool SessionActive(const uint64_t nSession);
+        static bool Syncing();
 
 
         /** GetNode

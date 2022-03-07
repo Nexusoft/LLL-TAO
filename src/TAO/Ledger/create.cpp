@@ -625,7 +625,7 @@ namespace TAO::Ledger
                           TAO::Ledger::TritiumBlock& block, const bool fGenesis)
     {
         /* Lock this user's sigchain. */
-        LOCK(TAO::API::Commands::Get<TAO::API::Users>()->GetSession(user->Genesis()).CREATE_MUTEX);
+        LOCK(TAO::API::Commands::Instance<TAO::API::Users>()->GetSession(user->Genesis()).CREATE_MUTEX);
 
         /* Proof of stake has channel-id of 0. */
         const uint32_t nChannel = 0;

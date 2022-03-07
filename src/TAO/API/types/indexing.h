@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/API/types/commands.h>
+
 #include <Util/templates/singleton.h>
 #include <Util/types/lock_shared_ptr.h>
 
@@ -32,28 +34,36 @@ namespace TAO::API
      *  These events are transactions that are unpacked into their according command-sets.
      *
      **/
-    class Index : public Singleton<Index>
+    class Indexing
     {
         /** Queue to handle dispatch requests. **/
-        util::atomic::lock_shared_ptr<std::queue<uint512_t>> EVENTS_QUEUE;
+        static util::atomic::lock_shared_ptr<std::queue<uint512_t>> EVENTS_QUEUE;
 
 
         /** Thread for running dispatch. **/
-        std::thread EVENTS_THREAD;
+        static std::thread EVENTS_THREAD;
 
 
-        /** Condition variable to wake up the relay thread. **/
-        std::condition_variable CONDITION;
+        /** Condition variable to wake up the indexing thread. **/
+        static std::condition_variable CONDITION;
+
+
+        /** Set to track active indexing entries. **/
+        static std::set<std::string> REGISTERED;
+
+
+        /** Mutex around registration. **/
+        static std::mutex MUTEX;
 
 
     public:
 
-        /** Default Constructor. **/
-        Index();
-
-
-        /** Default Destructor. **/
-        ~Index();
+        /** Initialize
+         *
+         *  Initializes the current indexing systems.
+         *
+         **/
+        static void Initialize();
 
 
         /** RefreshEvents
@@ -61,7 +71,7 @@ namespace TAO::API
          *  Checks current events against transaction history to ensure we are up to date.
          *
          **/
-        void RefreshEvents();
+        static void RefreshEvents();
 
 
         /** Push
@@ -71,7 +81,27 @@ namespace TAO::API
          *  @param[in] hashTx The txid to dispatch indexing for.
          *
          **/
-        void Push(const uint512_t& hashTx);
+        static void Push(const uint512_t& hashTx);
+
+
+        /** Register
+         *
+         *  Register a new command-set to indexing by class type.
+         *
+         **/
+        template<typename Type>
+        static void Register()
+        {
+            /* Grab a copy of our name. */
+            const std::string strCommands = Type::Name();
+            if(!Commands::Has(strCommands))
+                return; //we just exit if already registered
+
+            LOCK(MUTEX);
+            REGISTERED.insert(strCommands);
+
+            debug::log(0, FUNCTION, "Registered ", VARIABLE(strCommands));
+        }
 
 
         /** Relay Thread
@@ -79,6 +109,14 @@ namespace TAO::API
          *  Handle indexing of all events for API.
          *
          **/
-        void Manager();
+        static void Manager();
+
+
+        /** Shutdown
+         *
+         *  Shuts down the current indexing systems.
+         *
+         **/
+        static void Shutdown();
     };
 }

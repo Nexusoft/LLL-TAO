@@ -414,16 +414,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
 		build/API_commands_assets_tokenize.o \
-		build/API_commands_crypto_change.o \
-		build/API_commands_crypto_create.o \
-		build/API_commands_crypto_crypto.o \
-		build/API_commands_crypto_decrypt.o \
-		build/API_commands_crypto_encrypt.o \
-		build/API_commands_crypto_get.o \
-		build/API_commands_crypto_initialize.o \
-		build/API_commands_crypto_list.o \
-		build/API_commands_crypto_sign.o \
-		build/API_commands_crypto_verify.o \
 		build/API_commands_finance_balances.o \
 		build/API_commands_finance_burn.o \
 		build/API_commands_finance_credit.o \
@@ -460,6 +450,8 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_names_index.o \
 		build/API_commands_names_names.o \
 		build/API_commands_names_resolve.o \
+		build/API_commands_profiles_create.o \
+		build/API_commands_profiles_initialize.o \
 		build/API_commands_register_initialize.o \
 		build/API_commands_register_list.o \
 		build/API_commands_register_json.o \
@@ -510,6 +502,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_types_users_unlock.o \
 		build/API_types_users_update.o \
 		build/API_types_users_users.o \
+		build/API_authentication.o \
 		build/API_base.o \
 		build/API_build.o \
 		build/API_check.o \
@@ -522,7 +515,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_format.o \
 		build/API_get.o \
 		build/API_global.o \
-		build/API_index.o \
+		build/API_indexing.o \
 		build/API_json.o \
 		build/API_list.o \
 		build/API_results.o \
@@ -769,6 +762,9 @@ build/API_commands_ledger_%.o: ./src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_names_%.o: ./src/TAO/API/commands/names/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_commands_profiles_%.o: ./src/TAO/API/commands/profiles/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_p2p_%.o: ./src/TAO/API/p2p/%.cpp $(HEADERS)
@@ -1362,6 +1358,13 @@ build/API_commands_ledger_%.o: src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_commands_names_%.o: src/TAO/API/commands/names/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_commands_profiles_%.o: src/TAO/API/commands/profiles/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

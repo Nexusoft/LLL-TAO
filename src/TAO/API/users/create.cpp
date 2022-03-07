@@ -125,7 +125,6 @@ namespace TAO::API
                     debug::log(1, FUNCTION, "CLIENT MODE: GET::GENESIS received for ", hashGenesis.SubString());
                 }
             }
-
         }
 
         /* Check for duplicates in ledger db. */

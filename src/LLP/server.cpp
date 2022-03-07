@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLP/templates/server.h>
 #include <LLP/templates/data.h>
 #include <LLP/templates/ddos.h>
+#include <LLP/templates/static.h>
 #include <LLP/include/network.h>
 
 #include <LLP/types/tritium.h>
@@ -44,7 +45,6 @@ ________________________________________________________________________________
 
 namespace LLP
 {
-
     /** Constructor **/
     template <class ProtocolType>
     Server<ProtocolType>::Server(const Config& config)

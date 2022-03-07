@@ -26,7 +26,7 @@ namespace TAO::API
         encoding::json jRet;
 
         /* Load the session */
-        Session& session = Commands::Get<Users>()->GetSession(jParams);
+        Session& session = Commands::Instance<Users>()->GetSession(jParams);
 
         /* Check that it was loaded correctly */
         if(session.IsNull())

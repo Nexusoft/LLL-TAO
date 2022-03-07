@@ -44,14 +44,14 @@ namespace TAO
             encoding::json ret;
 
             /* Authenticate the users credentials */
-            if(!Commands::Get<Users>()->Authenticate(params))
+            if(!Commands::Instance<Users>()->Authenticate(params))
                 throw Exception(-139, "Invalid credentials");
 
             /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Get<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
+            SecureString strPIN = Commands::Instance<Users>()->GetPin(params, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(params);
+            Session& session = Commands::Instance<Users>()->GetSession(params);
 
             /* Check the caller included the key name */
             if(params.find("name") == params.end() || params["name"].get<std::string>().empty())

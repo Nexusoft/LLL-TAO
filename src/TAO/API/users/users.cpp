@@ -356,10 +356,10 @@ namespace TAO
 
             /* Get the PIN to be used for this API call */
             const SecureString strPIN =
-                Commands::Get<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
+                Commands::Instance<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
 
             /* Get the session to be used for this API call */
-            Session& session = Commands::Get<Users>()->GetSession(jParams);
+            Session& session = Commands::Instance<Users>()->GetSession(jParams);
 
             /* Check the account. */
             if(!session.GetAccount())

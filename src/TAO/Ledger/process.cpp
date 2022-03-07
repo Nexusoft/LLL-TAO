@@ -156,7 +156,7 @@ namespace TAO
                 {
                     /* Grab the current sync node. */
                     uint32_t nHours = 0, nMinutes = 0, nSeconds = 0;
-                    if(LLP::TritiumNode::SessionActive(nSyncSession.load()))
+                    if(LLP::TritiumNode::Syncing())
                     {
                         /* Get the current connected legacy node. */
                         std::shared_ptr<LLP::TritiumNode> pnode = LLP::TritiumNode::GetNode(nSyncSession.load());

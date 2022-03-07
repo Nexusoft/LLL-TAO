@@ -90,12 +90,12 @@ namespace TAO::API
         virtual void Initialize() = 0;
 
 
-        /** Get
+        /** Instance
          *
          *  Abstract initializer so we don't need to copy this method for each derived class.
          *
          **/
-        virtual Base* Get() = 0;
+        virtual Base* Instance() = 0;
 
 
         /** Status
@@ -192,12 +192,12 @@ namespace TAO::API
     {
     public:
 
-        /** Get
+        /** Instance
          *
          *  Method to be used by commands class, to allow casting to and from parent and child classes.
          *
          **/
-        Base* Get() final override
+        Base* Instance() final override
         {
             return static_cast<Type*>(this);
         }

@@ -2346,7 +2346,7 @@ namespace LLP
                                 ssPacket >> hashSigchain;
 
                                 /* Check for expected genesis. */
-                                uint256_t hashLogin = TAO::API::Commands::Get<TAO::API::Users>()->GetGenesis(0);
+                                uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
                                 if(hashSigchain != hashLogin)
                                     return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashLogin.SubString());
                             }
@@ -2366,7 +2366,7 @@ namespace LLP
                                 ssPacket >> hashAddress;
 
                                 /* Get the genesis hash of the logged in user */
-                                uint256_t hashLogin = TAO::API::Commands::Get<TAO::API::Users>()->GetGenesis(0);
+                                uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
 
                                 /* If the address is a genesis hash, then make sure that it is for the currently logged in user */
                                 if(hashAddress.GetType() == TAO::Ledger::GENESIS::UserType())
@@ -3742,7 +3742,7 @@ namespace LLP
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
 
         /* Only send auth messages if the auth key has been cached */
-        if(TAO::API::Commands::Get<TAO::API::Users>()->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
+        if(TAO::API::Commands::Instance<TAO::API::Users>()->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
         {
             /* Get the Session */
             TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
@@ -4054,10 +4054,15 @@ namespace LLP
     }
 
 
-    /* Determine whether a session is connected. */
-    bool TritiumNode::SessionActive(const uint64_t nSession)
+    /* Determine whether a node is syncing. */
+    bool TritiumNode::Syncing()
     {
         LOCK(SESSIONS_MUTEX);
+
+        /* Check if sync session is active. */
+        const uint64_t nSession = TAO::Ledger::nSyncSession.load();
+        if(nSession == 0)
+            return false;
 
         return mapSessions.count(nSession);
     }

@@ -48,7 +48,7 @@ namespace TAO::API
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
-            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0, nTotal = 0;

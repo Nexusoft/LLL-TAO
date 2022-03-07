@@ -298,7 +298,7 @@ namespace TAO
                 const uint256_t hashSession = ID();
 
                 /* Log the user out and terminate all relevant actions. */
-                Commands::Get<Users>()->TerminateSession(hashSession);
+                Commands::Instance<Users>()->TerminateSession(hashSession);
                 throw Exception(-290, "Too many invalid password/pin attempts. Logging out user session: ", hashSession.ToString());
             }
         }

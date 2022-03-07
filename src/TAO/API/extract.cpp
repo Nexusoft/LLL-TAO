@@ -71,7 +71,7 @@ namespace TAO::API
                     if(hashRegister == TAO::API::ADDRESS_NONE)
                         throw Exception(-101, "Unknown name: ", strLookup);
 
-                    return hashRegister;
+                    return std::move(hashRegister);
                 }
             }
 
@@ -189,7 +189,7 @@ namespace TAO::API
         if(CheckParameter(jParams, "username", "string"))
             return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());
 
-        return Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+        return Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
     }
 
 
@@ -671,11 +671,21 @@ namespace TAO::API
      *  @return the converted object from string constructors.
      *
      **/
-    uint256_t ExtractHash(const encoding::json& jParams, const std::string& strKey)
+    uint256_t ExtractHash(const encoding::json& jParams, const std::string& strKey, const uint256_t& hashDefault)
     {
+        /* Check for default parameter. */
+        const bool fDefault =
+            (hashDefault < ~uint256_t(0));
+
         /* Check for missing parameter. */
         if(jParams.find(strKey) == jParams.end())
+        {
+            /* Allow extracting by default value if enabled. */
+            if(fDefault)
+                return hashDefault;
+
             throw Exception(-56, "Missing Parameter [", strKey, "]");
+        }
 
         /* Check for invalid type. */
         if(!jParams[strKey].is_string())
@@ -684,11 +694,22 @@ namespace TAO::API
         /* Check for hex encoding. */
         const std::string strHash = jParams[strKey].get<std::string>();
         if(IsHex(strHash))
-            return uint256_t(strHash);
+        {
+            /* Check that we don't conflict our default parameters. */
+            const uint256_t hashRet = uint256_t(strHash);
+            if(hashRet == ~uint256_t(0))
+                throw Exception(-35, "Invalid parameter [", strKey, "], value too large");
+
+            return hashRet;
+        }
 
         /* Otherwise assume Base58 encoding */
         const TAO::Register::Address hashRegister =
             TAO::Register::Address(strHash);
+
+        /* Check value doesn't exceed our allowed range. */
+        if(hashRegister == ~uint256_t(0))
+            throw Exception(-35, "Invalid parameter [", strKey, "], value too large");
 
         /* Check that this is a valid base58 string. */
         if(!hashRegister.IsValid())

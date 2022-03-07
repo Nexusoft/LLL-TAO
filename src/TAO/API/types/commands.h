@@ -32,7 +32,22 @@ namespace TAO::API
     public:
 
 
-        /** Base
+        /** Has
+         *
+         *  Checks if we currently have given name registered in commands.
+         *
+         *  @param[in] strAPI The API we are checking for
+         *
+         *  @return true if command string is registered.
+         *
+         **/
+        static bool Has(const std::string& strAPI)
+        {
+            return Commands::mapTypes.count(strAPI);
+        }
+
+
+        /** Instance
          *
          *  Gets the base instance of commands, this contains standards and functions pointers, but not the actual functions.
          *
@@ -41,23 +56,23 @@ namespace TAO::API
          *  @return a pointer to the base object indexed by commands name.
          *
          **/
-        static Base* Get(const std::string& strAPI)
+        static Base* Instance(const std::string& strAPI)
         {
             /* Check that set of commands exists. */
             if(!Commands::mapTypes.count(strAPI))
                 return nullptr; //we don't throw here as this function won't be used directly in commands body, more of a helper
 
-            return static_cast<Base*>(Commands::mapTypes[strAPI]->Get());
+            return static_cast<Base*>(Commands::mapTypes[strAPI]->Instance());
         }
 
 
-        /** Get
+        /** Instance
          *
-         *  Gets an instance of the API, indexed by our name.
+         *  Find an instance of the API, indexed by our name.
          *
          **/
         template<typename Type>
-        static Type* Get()
+        static Type* Instance()
         {
             /* Grab a copy of our name. */
             const std::string strAPI = Type::Name();
@@ -66,7 +81,7 @@ namespace TAO::API
             if(!Commands::mapTypes.count(strAPI))
                 throw TAO::API::Exception(-4, "API Not Found: ", strAPI);
 
-            return static_cast<Type*>(Commands::mapTypes[Type::Name()]->Get());
+            return static_cast<Type*>(Commands::mapTypes[Type::Name()]->Instance());
         }
 
 

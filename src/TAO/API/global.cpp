@@ -18,14 +18,17 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/assets.h>
 #include <TAO/API/types/commands/ledger.h>
-#include <TAO/API/types/commands/supply.h>
-#include <TAO/API/types/commands/system.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/types/commands/crypto.h>
 #include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/profiles.h>
 #include <TAO/API/types/commands/register.h>
+#include <TAO/API/types/commands/sessions.h>
+#include <TAO/API/types/commands/supply.h>
+#include <TAO/API/types/commands/system.h>
 #include <TAO/API/types/commands/tokens.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/indexing.h>
 
@@ -42,8 +45,11 @@ namespace TAO::API
     {
         debug::log(0, FUNCTION, "Initializing API");
 
+        /* Initialize our authentication system. */
+        Authentication::Initialize();
+
         /* Others depend on users. */
-        Commands::Register<Users>();
+        Commands::Register<Users>(); //TODO: this will be replace with above static class
 
         /* Create the API instances. */
         Commands::Register<Assets>();
@@ -53,13 +59,19 @@ namespace TAO::API
         Commands::Register<Invoices>();
         Commands::Register<Ledger>();
         Commands::Register<Names>();
+        Commands::Register<Profiles>();
         Commands::Register<Register>();
+        Commands::Register<Sessions>();
         Commands::Register<Supply>();
         Commands::Register<System>();
         Commands::Register<Tokens>();
 
         /* Initialize our indexing services. */
-        Index::Initialize();
+        Indexing::Register<Market>();
+        Indexing::Register<Names> ();
+
+        /* Kick off our indexing sub-system now. */
+        Indexing::Initialize();
     }
 
 
@@ -70,6 +82,9 @@ namespace TAO::API
 
         /* Shut down our subsequent API's */
         Commands::Shutdown();
-        Index::Shutdown();
+        Indexing::Shutdown();
+
+        /* Shut down our authentication system. */
+        Authentication::Shutdown();
     }
 }

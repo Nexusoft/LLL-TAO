@@ -43,7 +43,7 @@ namespace TAO::API
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
-            Commands::Get<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
 
         /* Retrieve the trust register address, which is based on the users genesis */
         const TAO::Register::Address hashRegister =
