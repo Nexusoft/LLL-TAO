@@ -69,10 +69,6 @@ namespace TAO::API
         if(strPIN.length() < 4)
             throw Exception(-193, "Pin must be a minimum of 4 characters");
 
-        /* The new key scheme */
-        const uint8_t nScheme =
-            ExtractScheme(jParams, "brainpool, falcon");
-
         /* Create a temp sig chain for checking credentials */
         memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials =
             new TAO::Ledger::SignatureChain(strUser, strPass);
@@ -89,7 +85,7 @@ namespace TAO::API
 
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;
-        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nScheme))
+        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, TAO::Ledger::SIGNATURE::BRAINPOOL))
         {
             pCredentials.free();
             throw Exception(-17, "Failed to create transaction");
@@ -127,18 +123,14 @@ namespace TAO::API
         const uint256_t hashCrypto =
             TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
 
-        /* The key type to use for the crypto keys */
-        const uint8_t nKeyType =
-            ((nScheme != uint8_t(TAO::Ledger::SIGNATURE::RESERVED)) ? uint8_t(TAO::Ledger::SIGNATURE::BRAINPOOL) : nScheme);
-
         /* Create the crypto object. */
         const TAO::Register::Object oCrypto =
             TAO::Register::CreateCrypto
             (
-                pCredentials->KeyHash("auth", 0, strPIN, nKeyType),
+                pCredentials->KeyHash("auth", 0, strPIN,    TAO::Ledger::SIGNATURE::BRAINPOOL),
                 0, //lisp key disabled for now
-                pCredentials->KeyHash("network", 0, strPIN, nKeyType),
-                pCredentials->KeyHash("sign", 0, strPIN, nKeyType),
+                pCredentials->KeyHash("network", 0, strPIN, TAO::Ledger::SIGNATURE::BRAINPOOL),
+                pCredentials->KeyHash("sign", 0, strPIN,    TAO::Ledger::SIGNATURE::BRAINPOOL),
                 0, //verify key disabled for now
                 0, //cert disabled for now
                 0, //app1 disabled for now
