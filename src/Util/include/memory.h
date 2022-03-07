@@ -667,7 +667,7 @@ namespace memory
             if(nRefs == 0)
             {
                 data->Encrypt();
-                
+
             }
 
             /* Unlock the mutex. */
@@ -871,6 +871,18 @@ namespace memory
 
             return data == nullptr;
        }
+       
+
+       /** SetNull
+        *
+        *  Sets this pointer to a null state without deleting the data.
+        *
+        **/
+       void SetNull()
+       {
+           RLOCK(MUTEX);
+           data = nullptr;
+       }
 
 
         /** store
@@ -886,7 +898,10 @@ namespace memory
 
             /* Delete already allocated memory. */
             if(data)
+            {
+                data->Encrypt();
                 delete data;
+            }
 
             /* Shallow copy the pointer. */
             data = pdata;
@@ -921,7 +936,7 @@ namespace memory
 
     /** encrypted_type
      *
-     *  Simple template class to allow primitive types to be used with encrypted_ptr  
+     *  Simple template class to allow primitive types to be used with encrypted_ptr
      *  without needing to inherit from memory::encrypted or provide their own Encrypt() implementation
      *
      **/

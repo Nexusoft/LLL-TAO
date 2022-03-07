@@ -450,6 +450,8 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_names_index.o \
 		build/API_commands_names_names.o \
 		build/API_commands_names_resolve.o \
+		build/API_commands_profiles_create.o \
+		build/API_commands_profiles_initialize.o \
 		build/API_commands_register_initialize.o \
 		build/API_commands_register_list.o \
 		build/API_commands_register_json.o \
@@ -760,6 +762,9 @@ build/API_commands_ledger_%.o: ./src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_names_%.o: ./src/TAO/API/commands/names/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_commands_profiles_%.o: ./src/TAO/API/commands/profiles/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_types_p2p_%.o: ./src/TAO/API/p2p/%.cpp $(HEADERS)
@@ -1353,6 +1358,13 @@ build/API_commands_ledger_%.o: src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_commands_names_%.o: src/TAO/API/commands/names/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_commands_profiles_%.o: src/TAO/API/commands/profiles/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

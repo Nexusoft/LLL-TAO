@@ -26,9 +26,6 @@ namespace TAO::API
     /* Login to a user account. */
     encoding::json Sessions::Create(const encoding::json& jParams, const bool fHelp)
     {
-        /* Pin parameter. */
-        const SecureString strPIN = ExtractPIN(jParams);
-
         /* Check for username parameter. */
         if(!CheckParameter(jParams, "username", "string"))
             throw Exception(-127, "Missing username");
@@ -44,6 +41,10 @@ namespace TAO::API
         /* Parse out password. */
         const SecureString strPassword =
             SecureString(jParams["password"].get<std::string>().c_str());
+
+        /* Pin parameter. */
+        const SecureString strPIN =
+            ExtractPIN(jParams);
 
         /* Build new session object. */
         Authentication::Session tSession =
@@ -64,7 +65,7 @@ namespace TAO::API
 
         /* Check if the auth has is deactivated. */
         if(hashAuth == 0)
-            throw Exception(-130, "Auth hash deactivated, please call users/initialize/credentials");
+            throw Exception(-130, "Auth hash deactivated, please call crypto/create/auth");
 
         /* Generate a key to check credentials against. */
         const uint256_t hashCheck =

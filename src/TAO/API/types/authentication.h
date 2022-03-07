@@ -108,6 +108,9 @@ namespace TAO::API
             , nLastActive   (rSession.nLastActive.load())
             , CREATE_MUTEX  ( )
             {
+                /* We wnat to reset our pointers here so they don't get sniped. */
+                rSession.pCredentials.SetNull();
+                rSession.pUnlock.SetNull();
             }
 
 
@@ -125,6 +128,10 @@ namespace TAO::API
                 nAuthFailures = rSession.nAuthFailures.load();
                 nLastActive   = rSession.nLastActive.load();
 
+                /* We wnat to reset our pointers here so they don't get sniped. */
+                rSession.pCredentials.SetNull();
+                rSession.pUnlock.SetNull();
+
                 return *this;
             }
 
@@ -137,6 +144,7 @@ namespace TAO::API
             , nType         (nTypeIn)
             , nAuthFailures (0)
             , nLastActive   (runtime::unifiedtimestamp())
+            , CREATE_MUTEX  ( )
             {
             }
 

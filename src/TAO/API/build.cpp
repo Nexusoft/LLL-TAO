@@ -38,6 +38,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/transaction.h>
 
@@ -126,7 +127,7 @@ namespace TAO::API
 
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;
-        if(!Users::CreateTransaction(pCredentials, strPIN, tx, nScheme))
+        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nScheme))
             throw Exception(-17, "Failed to create transaction");
 
         /* Add the contracts. */

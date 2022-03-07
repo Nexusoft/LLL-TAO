@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/types/commands/crypto.h>
 #include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/profiles.h>
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/sessions.h>
 #include <TAO/API/types/commands/supply.h>
@@ -58,6 +59,7 @@ namespace TAO::API
         Commands::Register<Invoices>();
         Commands::Register<Ledger>();
         Commands::Register<Names>();
+        Commands::Register<Profiles>();
         Commands::Register<Register>();
         Commands::Register<Sessions>();
         Commands::Register<Supply>();

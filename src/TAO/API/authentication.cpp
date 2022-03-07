@@ -49,6 +49,7 @@ namespace TAO::API
         /* Add the new session to sessions map. */
         mapSessions.insert(std::make_pair(hashSession, std::move(rSession)));
     }
+    
 
 
     /* Check if user is already authenticated by genesis-id. */
