@@ -159,7 +159,32 @@ namespace TAO::API
 
         /* Execute the operations layer. */
         if(!TAO::Ledger::mempool.Accept(tx))
+        {
+            /* Check if we have failed credentials check. */
+            const auto nFind = debug::strLastError.find("invalid signature chain credentials");
+            if(nFind != debug::strLastError.npos)
+            {
+                /* Increment the auth failures. */
+                if(++rSession.nAuthFailures >= config::GetArg("-authattempts", 3))
+                {
+                    /* Terminate our internal session. */
+                    Authentication::Terminate(jParams);
+
+                    /* Return failure to API endpoint. */
+                    throw Exception(-290, "Too many invalid password/pin attempts (",
+                        rSession.nAuthFailures.load(), "): Session Terminated");
+                }
+
+                /* Default catch here is invalid credentials. */
+                throw Exception(-139, "Invalid credentials ", rSession.nAuthFailures.load());
+            }
+
+            /* Default message shows failed to accept. */
             throw Exception(-32, "Failed to accept");
+        }
+
+        /* Reset our auth failures now. */
+        rSession.nAuthFailures = 0;
 
         //TODO: we want to add a localdb index here, so it can be re-broadcast on restart
         return tx.GetHash();

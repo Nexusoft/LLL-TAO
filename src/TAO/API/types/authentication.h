@@ -152,8 +152,6 @@ namespace TAO::API
             /** Default Destructor. **/
             ~Session()
             {
-                LOCK(CREATE_MUTEX); //TODO: this lock should wait if session is being used to build a tx.
-
                 /* Cleanup the credentials object. */
                 if(!pCredentials.IsNull())
                     pCredentials.free();

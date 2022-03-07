@@ -49,7 +49,7 @@ namespace TAO::API
         /* Add the new session to sessions map. */
         mapSessions.insert(std::make_pair(hashSession, std::move(rSession)));
     }
-    
+
 
 
     /* Check if user is already authenticated by genesis-id. */
@@ -113,7 +113,6 @@ namespace TAO::API
 
         /* Adjust our activity time if authenticated. */
         rSession.nLastActive   = runtime::unifiedtimestamp();
-        rSession.nAuthFailures = 0;
 
         return true;
     }
