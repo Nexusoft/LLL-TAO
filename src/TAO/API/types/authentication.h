@@ -144,6 +144,8 @@ namespace TAO::API
             /** Default Destructor. **/
             ~Session()
             {
+                LOCK(CREATE_MUTEX); //TODO: this lock should wait if session is being used to build a tx.
+
                 /* Cleanup the credentials object. */
                 if(!pCredentials.IsNull())
                     pCredentials.free();
@@ -295,10 +297,24 @@ namespace TAO::API
         static bool Caller(const encoding::json& jParams, uint256_t &hashCaller);
 
 
+        /** Instance
+         *
+         *  Get an instance of current session indexed by session-id.
+         *  This will throw if session not found, do not use without checking first.
+         *
+         *  @param[in] jParams The incoming parameters.
+         *
+         *  @return The active session.
+         *
+         **/
+        static Session& Instance(const encoding::json& jParams);
+
+
         /** Unlock
          *
          *  Unlock and get the active pin from current session.
          *
+         *  @param[in] jParams The incoming paramters to parse
          *  @param[out] strPIN The pin number to return by reference
          *  @param[in] nRequestedActions The actions requested for PIN unlock.
          *

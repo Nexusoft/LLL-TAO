@@ -89,7 +89,8 @@ namespace TAO::API
         }
 
         /* Build a new session key. */
-        hashSession = LLC::GetRand256();
+        hashSession =
+            LLC::GetRand256();
 
         /* Push the new session to auth. */
         Authentication::Insert(hashSession, tSession);

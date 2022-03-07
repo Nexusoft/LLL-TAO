@@ -142,6 +142,24 @@ namespace TAO::API
     }
 
 
+    /* Get an instance of current session indexed by session-id. */
+    Authentication::Session& Authentication::Instance(const encoding::json& jParams)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session");
+
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            throw Exception(-139, "Invalid credentials");
+
+        /* Get a copy of our current active session. */
+        return mapSessions[hashSession];
+    }
+
+
     /* Unlock and get the active pin from current session. */
     bool Authentication::Unlock(const encoding::json& jParams, SecureString &strPIN, const uint8_t nRequestedActions)
     {
