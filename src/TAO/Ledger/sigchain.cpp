@@ -318,6 +318,9 @@ namespace TAO
                     break;
 
                 }
+
+                default:
+                    throw debug::exception(FUNCTION, "unsupported key type ", uint32_t(nType));
             }
 
             /* return the public key */
