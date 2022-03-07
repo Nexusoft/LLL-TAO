@@ -76,32 +76,40 @@ namespace TAO::API
             throw Exception(-139, "Invalid credentials");
 
         /* Check if already logged in. */
-        uint256_t hashSession;
+        uint256_t hashSession = Authentication::SESSION::DEFAULT; //we fallback to this in single user mode.
         if(Authentication::Active(tSession.Genesis(), hashSession))
         {
             /* Build return json data. */
-            const encoding::json jRet =
+            encoding::json jRet =
             {
                 { "genesis", tSession.Genesis().ToString() },
                 { "session", hashSession.ToString() }
             };
 
+            /* Check for single user mode. */
+            if(!config::fMultiuser.load())
+                jRet.erase("session");
+
             return jRet;
         }
 
         /* Build a new session key. */
-        hashSession =
-            LLC::GetRand256();
+        if(config::fMultiuser.load())
+            hashSession = LLC::GetRand256();
 
         /* Push the new session to auth. */
         Authentication::Insert(hashSession, tSession);
 
         /* Build return json data. */
-        const encoding::json jRet =
+        encoding::json jRet =
         {
             { "genesis", tSession.Genesis().ToString() },
             { "session", hashSession.ToString() }
         };
+
+        /* Check for single user mode. */
+        if(!config::fMultiuser.load())
+            jRet.erase("session");
 
         return jRet;
     }

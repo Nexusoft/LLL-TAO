@@ -265,7 +265,7 @@ namespace TAO::API
      *  @return the converted object from string constructors.
      *
      **/
-    uint256_t ExtractHash(const encoding::json& jParams, const std::string& strKey);
+    uint256_t ExtractHash(const encoding::json& jParams, const std::string& strKey, const uint256_t& hashDefault = ~uint256_t(0));
 
 
     /** ExtractString

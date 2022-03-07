@@ -34,6 +34,14 @@ namespace TAO::API
     {
     public:
 
+        /* Enum to track default session indexes. */
+        enum SESSION : uint8_t
+        {
+            DEFAULT  = 0,
+            MINER    = 1,
+        };
+
+
         /** @class
          *
          *  Class to hold session related data for quick access.
@@ -152,6 +160,8 @@ namespace TAO::API
             /** Default Destructor. **/
             ~Session()
             {
+                LOCK(CREATE_MUTEX); //TODO: this lock should wait if session is being used to build a tx.
+
                 /* Cleanup the credentials object. */
                 if(!pCredentials.IsNull())
                     pCredentials.free();
@@ -278,18 +288,6 @@ namespace TAO::API
         static bool Active(const uint256_t& hashGenesis, uint256_t &hashSession);
 
 
-        /** Authenticated
-         *
-         *  Check if user is already authenticated by parameters.
-         *
-         *  @param[in] jParams The incoming parameters for lookup.
-         *
-         *  @return true if session is authenticated.
-         *
-         **/
-        static bool Authenticated(const encoding::json& jParams);
-
-
         /** Caller
          *
          *  Get the genesis-id of the given caller using session from params.
@@ -391,18 +389,11 @@ namespace TAO::API
         static bool increment_failures(const uint256_t& hashSession);
 
 
-        /** get_session
+        /** default_session
          *
-         *  Local helper to get the session and return by reference.
+         *  Checks for the correct session-id for single user mode.
          *
-         *  @param[in] jParams The incoming parameters to parse and search by.
-         *  @param[in] rSession The session reference if found.
-         *
-         *  @return true if the session was found.
          **/
-        static bool get_session(const encoding::json& jParams, Session &rSession)
-        {
-            return false;
-        }
+        static uint256_t default_session();
     };
 }
