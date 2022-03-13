@@ -202,9 +202,14 @@ int main(int argc, char** argv)
 
     /* Declare our return value. */
     const TAO::Register::Address hashRet = TAO::API::ExtractAddress(jRecipient, "to");
+
+    TAO::Register::Address hashCheck;
+    hashCheck.SetBase58("2R674V4QJo4u4c5NK1wMMNDyiqKkeyrfZQLF9DzGbAaGYMHAVNs");
+
         //TAO::Register::Address(addr.ToString());
 
     debug::log(0, VARIABLE(hashRet.ToString()));
+    debug::log(0, VARIABLE(hashCheck.ToString()));
 
     /* Check that it is valid */
     if(!hashRet.IsValid())
