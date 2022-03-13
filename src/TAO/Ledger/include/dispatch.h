@@ -34,7 +34,7 @@ namespace TAO::Ledger
     class Dispatch : public Singleton<Dispatch>
     {
         /** Queue to handle dispatch requests. **/
-        util::atomic::lock_shared_ptr<std::queue<uint1024_t>> DISPATCH_QUEUE;
+        util::atomic::lock_unique_ptr<std::queue<uint1024_t>> DISPATCH_QUEUE;
 
 
         /** Thread for running dispatch. **/

@@ -20,7 +20,7 @@ ________________________________________________________________________________
 
 #include <Util/include/mutex.h>
 #include <Util/include/memory.h>
-#include <Util/types/lock_shared_ptr.h>
+#include <Util/types/lock_unique_ptr.h>
 
 #include <LLC/include/random.h>
 
@@ -71,11 +71,11 @@ namespace TAO::API
 
 
         /** Shared processing queue for managing notifications and -autotx. **/
-        util::atomic::lock_shared_ptr<std::queue<TAO::Operation::Contract>> vProcessQueue;
+        util::atomic::lock_unique_ptr<std::queue<TAO::Operation::Contract>> vProcessQueue;
 
 
         /** Shared list of recently processed transactions. **/
-        util::atomic::lock_shared_ptr<std::vector<uint512_t>> vProcessed;
+        util::atomic::lock_unique_ptr<std::vector<uint512_t>> vProcessed;
 
 
         /** Initialize

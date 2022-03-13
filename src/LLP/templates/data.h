@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <Util/include/mutex.h>
-#include <Util/types/lock_shared_ptr.h>
+#include <Util/types/lock_unique_ptr.h>
 
 #include <Util/templates/datastream.h>
 
@@ -81,11 +81,11 @@ namespace LLP
 
 
         /* Vector to store Connections. */
-        util::atomic::lock_shared_ptr<std::vector< std::shared_ptr<ProtocolType>>> CONNECTIONS;
+        util::atomic::lock_unique_ptr<std::vector< std::shared_ptr<ProtocolType>>> CONNECTIONS;
 
 
         /** Queu to process outbound relay messages. **/
-        util::atomic::lock_shared_ptr<std::queue<std::pair<typename ProtocolType::message_t, DataStream>>> RELAY;
+        util::atomic::lock_unique_ptr<std::queue<std::pair<typename ProtocolType::message_t, DataStream>>> RELAY;
 
 
         /** The condition for thread sleeping. **/

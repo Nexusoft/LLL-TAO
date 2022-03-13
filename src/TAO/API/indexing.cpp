@@ -29,7 +29,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /** Queue to handle dispatch requests. **/
-    util::atomic::lock_shared_ptr<std::queue<uint512_t>> Indexing::EVENTS_QUEUE;
+    util::atomic::lock_unique_ptr<std::queue<uint512_t>> Indexing::EVENTS_QUEUE;
 
 
     /** Thread for running dispatch. **/
@@ -51,7 +51,7 @@ namespace TAO::API
     /* Initializes the current indexing systems. */
     void Indexing::Initialize()
     {
-        Indexing::EVENTS_QUEUE  = util::atomic::lock_shared_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
+        Indexing::EVENTS_QUEUE  = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
         Indexing::EVENTS_THREAD = std::thread(&Indexing::Manager);
     }
 

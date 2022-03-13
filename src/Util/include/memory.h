@@ -218,253 +218,6 @@ namespace memory
     };
 
 
-    /** lock_proxy
-     *
-     *  Temporary class that unlocks a mutex when outside of scope.
-     *  Useful for protecting member access to a raw pointer.
-     *
-     **/
-    template <class TypeName>
-    class lock_proxy
-    {
-        /** Reference of the mutex. **/
-        std::recursive_mutex& MUTEX;
-
-
-        /** The pointer being locked. **/
-        TypeName* data;
-
-
-    public:
-
-        /** Basic constructor
-         *
-         *  Assign the pointer and reference to the mutex.
-         *
-         *  @param[in] pData The pointer to shallow copy
-         *  @param[in] MUTEX_IN The mutex reference
-         *
-         **/
-        lock_proxy(TypeName* pData, std::recursive_mutex& MUTEX_IN)
-        : MUTEX(MUTEX_IN)
-        , data(pData)
-        {
-        }
-
-
-        /** Destructor
-        *
-        *  Unlock the mutex.
-        *
-        **/
-        ~lock_proxy()
-        {
-           MUTEX.unlock();
-        }
-
-
-        /** Member Access Operator.
-        *
-        *  Access the memory of the raw pointer.
-        *
-        **/
-        TypeName* operator->() const
-        {
-            if(data == nullptr)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
-
-            return data;
-        }
-    };
-
-
-    /** atomic_ptr
-     *
-     *  Protects a pointer with a mutex.
-     *
-     **/
-    template<class TypeName>
-    class atomic_ptr
-    {
-        /** The internal locking mutex. **/
-        mutable std::recursive_mutex MUTEX;
-
-
-        /** The internal raw poitner. **/
-        TypeName* data;
-
-
-    public:
-
-        /** Default Constructor. **/
-        atomic_ptr()
-        : MUTEX()
-        , data(nullptr)
-        {
-        }
-
-
-        /** Constructor for storing. **/
-        atomic_ptr(TypeName* dataIn)
-        : MUTEX()
-        , data(dataIn)
-        {
-        }
-
-
-        /** Copy Constructor. **/
-        atomic_ptr(const atomic_ptr<TypeName>& pointer) = delete;
-
-
-        /** Move Constructor. **/
-        atomic_ptr(const atomic_ptr<TypeName>&& pointer)
-        : data(pointer.data)
-        {
-        }
-
-
-        /** Destructor. **/
-        ~atomic_ptr()
-        {
-        }
-
-
-        /** Assignment operator. **/
-        atomic_ptr& operator=(const atomic_ptr<TypeName>& dataIn) = delete;
-
-
-        /** Assignment operator. **/
-        atomic_ptr& operator=(TypeName* dataIn) = delete;
-
-
-        /** Equivilent operator.
-         *
-         *  @param[in] a The data type to compare to.
-         *
-         **/
-        bool operator==(const TypeName& dataIn) const
-        {
-            RECURSIVE(MUTEX);
-
-            /* Throw an exception on nullptr. */
-            if(data == nullptr)
-                return false;
-
-            return *data == dataIn;
-        }
-
-
-        /** Equivilent operator.
-         *
-         *  @param[in] a The data type to compare to.
-         *
-         **/
-        bool operator==(const TypeName* ptr) const
-        {
-            RECURSIVE(MUTEX);
-
-            return data == ptr;
-        }
-
-
-        /** Not equivilent operator.
-         *
-         *  @param[in] a The data type to compare to.
-         *
-         **/
-        bool operator!=(const TypeName* ptr) const
-        {
-            RECURSIVE(MUTEX);
-
-            return data != ptr;
-        }
-
-        /** Not operator
-         *
-         *  Check if the pointer is nullptr.
-         *
-         **/
-        bool operator!(void)
-        {
-            RECURSIVE(MUTEX);
-
-            return data == nullptr;
-        }
-
-
-        /** Member access overload
-         *
-         *  Allow atomic_ptr access like a normal pointer.
-         *
-         **/
-        lock_proxy<TypeName> operator->()
-        {
-            MUTEX.lock();
-
-            return lock_proxy<TypeName>(data, MUTEX);
-        }
-
-
-        /** dereference operator overload
-         *
-         *  Load the object from memory.
-         *
-         **/
-        TypeName operator*() const
-        {
-            RECURSIVE(MUTEX);
-
-            /* Throw an exception on nullptr. */
-            if(data == nullptr)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "dereferencing a nullptr"));
-
-            return *data;
-        }
-
-        TypeName* load()
-        {
-            RECURSIVE(MUTEX);
-
-            return data;
-        }
-
-
-        /** store
-         *
-         *  Stores an object into memory.
-         *
-         *  @param[in] dataIn The data into protected memory.
-         *
-         **/
-        void store(TypeName* dataIn)
-        {
-            RECURSIVE(MUTEX);
-
-            if(data)
-                delete data;
-
-            data = dataIn;
-        }
-
-
-        /** free
-         *
-         *  Free the internal memory of the encrypted pointer.
-         *
-         **/
-        void free()
-        {
-            RECURSIVE(MUTEX);
-
-            if(data)
-                delete data;
-
-            data = nullptr;
-        }
-    };
-
-
-
     /** encrypted
      *
      *  Abstract base class for encrypting specific data types in a class.
@@ -606,91 +359,6 @@ namespace memory
     };
 
 
-    /** decrypted_proxy
-     *
-     *  Temporary class that unlocks a mutex when outside of scope.
-     *  Useful for protecting member access to a raw pointer and handling decryption.
-     *
-     **/
-    template <class TypeName>
-    class decrypted_proxy
-    {
-        /** Reference of the mutex. **/
-        std::recursive_mutex& MUTEX;
-
-        /** The pointer being locked. **/
-        TypeName* data;
-
-        /** The reference count to ensure it knows when to re-encrypt the memory. */
-        std::atomic<uint32_t>& nRefs;
-
-    public:
-
-        /** Basic constructor
-         *
-         *  Assign the pointer and reference to the mutex.
-         *
-         *  @param[in] pData The pointer to shallow copy
-         *  @param[in] MUTEX_IN The mutex reference
-         *
-         **/
-        decrypted_proxy(TypeName* pdata, std::recursive_mutex& MUTEX_IN, std::atomic<uint32_t>& nRefsIn)
-        : MUTEX(MUTEX_IN)
-        , data(pdata)
-        , nRefs(nRefsIn)
-        {
-            /* Lock the mutex. */
-            MUTEX.lock();
-
-            /* Decrypt memory on first proxy. */
-            if(nRefs == 0)
-            {
-                data->Encrypt();
-            }
-
-            /* Increment the reference count. */
-            ++nRefs;
-        }
-
-
-        /** Destructor
-        *
-        *  Unlock the mutex and encrypt memory.
-        *
-        **/
-        ~decrypted_proxy()
-        {
-            /* Decrement the ref count. */
-            --nRefs;
-
-            /* Encrypt memory again when ref count is 0. */
-            if(nRefs == 0)
-            {
-                data->Encrypt();
-
-            }
-
-            /* Unlock the mutex. */
-            MUTEX.unlock();
-        }
-
-
-        /** Member Access Operator.
-        *
-        *  Access the memory of the raw pointer.
-        *
-        **/
-        TypeName* operator->() const
-        {
-            /* Stop member access if poitner is null. */
-            if(data == nullptr)
-                throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
-
-            return data;
-        }
-    };
-
-
     /** encrypted_ptr
      *
      *  Protects a pointer with a mutex.
@@ -704,11 +372,97 @@ namespace memory
         /** The internal locking mutex. **/
         mutable std::recursive_mutex MUTEX;
 
+
         /** The internal raw poitner. **/
         TypeName* data;
 
+
         /** Reference count for decrypted_proxy. **/
         mutable std::atomic<uint32_t> nRefs;
+
+
+        /** decrypted_proxy
+         *
+         *  Temporary class that unlocks a mutex when outside of scope.
+         *  Useful for protecting member access to a raw pointer and handling decryption.
+         *
+         **/
+        class decrypted_proxy
+        {
+            /** Reference of the mutex. **/
+            std::recursive_mutex& MUTEX;
+
+            /** The pointer being locked. **/
+            TypeName* data;
+
+            /** The reference count to ensure it knows when to re-encrypt the memory. */
+            std::atomic<uint32_t>& nRefs;
+
+        public:
+
+            /** Basic constructor
+             *
+             *  Assign the pointer and reference to the mutex.
+             *
+             *  @param[in] pData The pointer to shallow copy
+             *  @param[in] MUTEX_IN The mutex reference
+             *
+             **/
+            decrypted_proxy(TypeName* pdata, std::recursive_mutex& MUTEX_IN, std::atomic<uint32_t>& nRefsIn)
+            : MUTEX(MUTEX_IN)
+            , data(pdata)
+            , nRefs(nRefsIn)
+            {
+                /* Lock the mutex. */
+                MUTEX.lock();
+
+                /* Decrypt memory on first proxy. */
+                if(nRefs == 0)
+                {
+                    data->Encrypt();
+                }
+
+                /* Increment the reference count. */
+                ++nRefs;
+            }
+
+
+            /** Destructor
+            *
+            *  Unlock the mutex and encrypt memory.
+            *
+            **/
+            ~decrypted_proxy()
+            {
+                /* Decrement the ref count. */
+                --nRefs;
+
+                /* Encrypt memory again when ref count is 0. */
+                if(nRefs == 0)
+                {
+                    data->Encrypt();
+
+                }
+
+                /* Unlock the mutex. */
+                MUTEX.unlock();
+            }
+
+
+            /** Member Access Operator.
+            *
+            *  Access the memory of the raw pointer.
+            *
+            **/
+            TypeName* operator->() const
+            {
+                /* Stop member access if poitner is null. */
+                if(data == nullptr)
+                    throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
+
+                return data;
+            }
+        };
 
     public:
 
@@ -852,9 +606,9 @@ namespace memory
          *  Allow encrypted_ptr access like a normal pointer.
          *
          **/
-        decrypted_proxy<TypeName> operator->() const
+        decrypted_proxy operator->() const
         {
-            return decrypted_proxy<TypeName>(data, MUTEX, nRefs);
+            return decrypted_proxy(data, MUTEX, nRefs);
         }
 
 
@@ -871,7 +625,7 @@ namespace memory
 
             return data == nullptr;
        }
-       
+
 
        /** SetNull
         *

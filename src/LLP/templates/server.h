@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <LLP/include/manager.h>
 #include <LLP/include/config.h>
 
-#include <Util/types/lock_shared_ptr.h>
+#include <Util/types/lock_unique_ptr.h>
 
 #include <map>
 #include <condition_variable>
@@ -59,7 +59,7 @@ namespace LLP
 
 
         /** The DDOS variables. **/
-        util::atomic::lock_shared_ptr<std::map<BaseAddress, DDOS_Filter*>> DDOS_MAP;
+        util::atomic::lock_unique_ptr<std::map<BaseAddress, DDOS_Filter*>> DDOS_MAP;
 
     private:
 

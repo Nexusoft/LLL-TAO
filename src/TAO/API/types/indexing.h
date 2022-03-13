@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands.h>
 
 #include <Util/templates/singleton.h>
-#include <Util/types/lock_shared_ptr.h>
+#include <Util/types/lock_unique_ptr.h>
 
 #include <thread>
 #include <mutex>
@@ -37,7 +37,7 @@ namespace TAO::API
     class Indexing
     {
         /** Queue to handle dispatch requests. **/
-        static util::atomic::lock_shared_ptr<std::queue<uint512_t>> EVENTS_QUEUE;
+        static util::atomic::lock_unique_ptr<std::queue<uint512_t>> EVENTS_QUEUE;
 
 
         /** Thread for running dispatch. **/
