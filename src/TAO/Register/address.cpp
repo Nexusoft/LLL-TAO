@@ -233,7 +233,7 @@ namespace TAO
         }
 
 
-        /* Check if type is set to LEGACY or LEGACY_TESTNET. */
+        /* Check if base hash maps to a valid legacy address. */
         bool Address::IsLegacy() const
         {
             /* Build a legacy address for this check. */
@@ -248,6 +248,17 @@ namespace TAO
         /* Sets the uint256_t value of this address from a base58 encoded string. */
         void Address::SetBase58(const std::string& str)
         {
+            /* Build a legacy address for this check. */
+            Legacy::NexusAddress addr =
+                Legacy::NexusAddress(str);
+
+            /* Special check for legacy address. */
+            if(addr.IsValid())
+            {
+                *this = addr.GetHash256();
+                return;
+            }
+
             /* The decoded bytes  */
             std::vector<uint8_t> bytes;
 
@@ -266,6 +277,10 @@ namespace TAO
         /* Returns a Base58 encoded string representation of the 256-bit address hash. */
         std::string Address::ToBase58() const
         {
+            /* Special case for encoding to base58. */
+            if(IsLegacy())
+                return Legacy::NexusAddress(*this).ToString();
+
             /* Get the bytes for the 256-bit hash */
             std::vector<uint8_t> vch = GetBytes();
 
