@@ -40,10 +40,6 @@ namespace TAO::API
         static util::atomic::lock_unique_ptr<std::queue<uint512_t>> EVENTS_QUEUE;
 
 
-        /** Set to handle active login indexes. **/
-        static util::atomic::lock_unique_ptr<std::set<uint256_t>> SESSIONS;
-
-
         /** Thread for running dispatch. **/
         static std::thread EVENTS_THREAD;
 
@@ -57,7 +53,15 @@ namespace TAO::API
 
 
         /** Mutex around registration. **/
-        static std::mutex MUTEX;
+        static std::mutex REGISTERED_MUTEX;
+
+
+        /** Set to track active indexing sessions. **/
+        static std::set<uint256_t> SESSIONS;
+
+
+        /** Mutex around sessions. **/
+        static std::mutex SESSIONS_MUTEX;
 
 
     public:
@@ -111,7 +115,7 @@ namespace TAO::API
             if(!Commands::Has(strCommands))
                 return; //we just exit if already registered
 
-            LOCK(MUTEX);
+            LOCK(REGISTERED_MUTEX);
             REGISTERED.insert(strCommands);
 
             debug::log(0, FUNCTION, "Registered ", VARIABLE(strCommands));
@@ -132,5 +136,27 @@ namespace TAO::API
          *
          **/
         static void Shutdown();
+
+    private:
+
+        /** initialize_genesis
+         *
+         *  Initialize a user's indexing entries.
+         *
+         *  @param[in] hashGenesis The genesis-id to initialize.
+         *
+         **/
+        static void initialize_genesis(const uint256_t& hashGenesis);
+
+
+        /** process_sessions
+         *
+         *  Process list of user level indexing entries.
+         *
+         *  @param[in] hashGenesis The genesis-id to initialize.
+         *
+         **/
+        static void process_sessions(const uint256_t& hashGenesis);
+
     };
 }

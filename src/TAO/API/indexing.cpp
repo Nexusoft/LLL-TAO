@@ -32,10 +32,6 @@ namespace TAO::API
     util::atomic::lock_unique_ptr<std::queue<uint512_t>> Indexing::EVENTS_QUEUE;
 
 
-    /* Set to handle active login indexes. */
-    util::atomic::lock_unique_ptr<std::set<uint256_t>> Indexing::SESSIONS;
-
-
     /* Thread for running dispatch. */
     std::thread Indexing::EVENTS_THREAD;
 
@@ -49,7 +45,15 @@ namespace TAO::API
 
 
     /* Mutex around registration. */
-    std::mutex Indexing::MUTEX;
+    std::mutex Indexing::REGISTERED_MUTEX;
+
+
+    /** Set to track active indexing sessions. **/
+    std::set<uint256_t> Indexing::SESSIONS;
+
+
+    /** Mutex around sessions. **/
+    std::mutex Indexing::SESSIONS_MUTEX;
 
 
     /* Initializes the current indexing systems. */
@@ -109,7 +113,7 @@ namespace TAO::API
                     const TAO::Operation::Contract& rContract = tx[nContract];
 
                     {
-                        LOCK(MUTEX);
+                        LOCK(REGISTERED_MUTEX);
 
                         /* Loop through registered commands. */
                         for(const auto& strCommands : REGISTERED)
@@ -159,9 +163,12 @@ namespace TAO::API
     /* Push a new session to monitor for indexes. */
     void Indexing::Session(const uint256_t& hashGenesis)
     {
-        /* Insert new session into our set to monitor. */
-        SESSIONS->insert(hashGenesis);
+        {
+            LOCK(SESSIONS_MUTEX);
 
+            /* Insert new session into our set to monitor. */
+            SESSIONS.insert(hashGenesis);
+        }
     }
 
 
@@ -211,7 +218,7 @@ namespace TAO::API
                 const TAO::Operation::Contract& rContract = tx[nContract];
 
                 {
-                    LOCK(MUTEX);
+                    LOCK(REGISTERED_MUTEX);
 
                     /* Loop through registered commands. */
                     for(const auto& strCommands : REGISTERED)
@@ -237,10 +244,31 @@ namespace TAO::API
         if(EVENTS_THREAD.joinable())
             EVENTS_THREAD.join();
 
+        /* Clear open sessions. */
+        {
+            LOCK(SESSIONS_MUTEX);
+            SESSIONS.clear();
+        }
+
         /* Clear open registrations. */
         {
-            LOCK(MUTEX);
+            LOCK(REGISTERED_MUTEX);
             REGISTERED.clear();
         }
+    }
+
+
+    /* Initialize a user's indexing entries. */
+    void Indexing::initialize_genesis(const uint256_t& hashGenesis)
+    {
+        /* Check for valid indexing entries. */
+
+    }
+
+
+    /* Process list of user level indexing entries. */
+    void Indexing::process_sessions(const uint256_t& hashGenesis)
+    {
+
     }
 }
