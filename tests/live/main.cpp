@@ -186,11 +186,29 @@ bool Build(const std::vector<uint8_t> vByteCode, TAO::Operation::Contract &rCont
     return true;
 }
 
-
+#include <Legacy/types/address.h>
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    Legacy::NexusAddress addr = Legacy::NexusAddress("2R674V4QJo4u4c5NK1wMMNDyiqKkeyrfZQLF9DzGbAaGYMHAVNs");
+
+    /* Declare our return value. */
+    const TAO::Register::Address hashRet = addr.GetHash256();
+        //TAO::Register::Address(addr.ToString());
+
+    /* Check that it is valid */
+    if(!hashRet.IsValid())
+        debug::warning("Address is invalid");
+
+    /* Build our legacy address. */
+    Legacy::NexusAddress addrLegacy = Legacy::NexusAddress(hashRet);
+
+    debug::log(0, addr.ToString());
+    debug::log(0, addrLegacy.ToString());
+
+    return 0;
+
     TAO::Operation::Contract tContract;
 
     //debug::log(0, "First param is ", ssParams.find(0, uint8_t(TAO::Operation::OP::TYPES::UINT256_T)).ToString());
