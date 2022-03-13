@@ -65,6 +65,88 @@ namespace LLD
     }
 
 
+    /* Reads the last txid that was indexed. */
+    bool LogicalDB::ReadLastIndex(const uint256_t& hashGenesis, uint512_t &hashTx)
+    {
+        return Read(std::make_pair(std::string("indexing"), hashGenesis), hashTx);
+    }
+
+
+    /* Writes the last txid that was indexed. */
+    bool LogicalDB::WriteLastIndex(const uint256_t& hashGenesis, const uint512_t& hashTx)
+    {
+        return Write(std::make_pair(std::string("indexing"), hashGenesis), hashTx);
+    }
+
+
+    /* Push an event to process for given genesis-id. */
+    bool LogicalDB::PushEvent(const uint256_t& hashGenesis, const TAO::Operation::Contract& rContract, const uint32_t nContract)
+    {
+        /* Grab a refernece of our txid. */
+        const uint512_t& hashTx =
+            rContract.Hash();
+
+        /* Check for already existing order. */
+        if(HasEvent(hashTx, nContract))
+            return false;
+
+        /* Get our current sequence number. */
+        uint32_t nOwnerSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("events.sequence"), hashGenesis), nOwnerSequence);
+
+        /* Start an ACID transaction for this set of records. */
+        TxnBegin();
+
+        /* Add our indexing entry by owner sequence number. */
+        if(!Write(std::make_tuple(std::string("events.index"), nOwnerSequence, hashGenesis), std::make_pair(hashTx, nContract)))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("events.sequence"), hashGenesis), ++nOwnerSequence))
+            return false;
+
+        /* Write our order proof. */
+        if(!Write(std::make_tuple(std::string("events"), hashTx, nContract)))
+            return false;
+
+        return TxnCommit();
+    }
+
+
+    /* List the current active events for given genesis-id. */
+    bool LogicalDB::ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents)
+    {
+        /* Cache our txid and contract as a pair. */
+        std::pair<uint512_t, uint32_t> pairEvent;
+
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Read our current record. */
+            if(!Read(std::make_tuple(std::string("events.index"), nSequence, hashGenesis), pairEvent))
+                break;
+
+            /* Check for already executed contracts to omit. */
+            vEvents.push_back(pairEvent);
+
+            /* Increment our sequence number. */
+            ++nSequence;
+        }
+
+        return !vEvents.empty();
+    }
+
+
+    /* Checks if an event has been indexed in the database already. */
+    bool LogicalDB::HasEvent(const uint512_t& hashTx, const uint32_t nContract)
+    {
+        return Exists(std::make_tuple(std::string("events"), hashTx, nContract));
+    }
+
+
     /* Pushes an order to the orderbook stack. */
     bool LogicalDB::PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket,
                               const TAO::Operation::Contract& rContract, const uint32_t nContract)

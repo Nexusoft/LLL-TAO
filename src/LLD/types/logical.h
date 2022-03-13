@@ -92,14 +92,79 @@ namespace LLD
         bool WriteLastIndex(const uint512_t& hashTx);
 
 
+        /** ReadLastIndex
+         *
+         *  Reads the last txid that was indexed.
+         *
+         *  @param[in] hashGenesis The genesis-id we are reading last index for.
+         *  @param[out] hashTx The txid of the last indexed transaction.
+         *
+         *  @return true if read successfully
+         *
+         **/
+        bool ReadLastIndex(const uint256_t& hashGenesis, uint512_t &hashTx);
+
+
+        /** WriteLastIndex
+         *
+         *  Writes the last txid that was indexed.
+         *
+         *  @param[in] hashGenesis The genesis-id we are writing last index for.
+         *  @param[out] hashTx The txid of the last indexed transaction.
+         *
+         *  @return true if read successfully
+         *
+         **/
+        bool WriteLastIndex(const uint256_t& hashGenesis, const uint512_t& hashTx);
+
+
+        /** PushEvent
+         *
+         *  Push an event to process for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push event for.
+         *  @param[in] rContract The contract that contains the existing order.
+         *  @param[in] nContract The contract-id that contains the order
+         *
+         *  @return true if event was pushed successfully.
+         *
+         **/
+        bool PushEvent(const uint256_t& hashGenesis, const TAO::Operation::Contract& rContract, const uint32_t nContract);
+
+
+        /** ListEvents
+         *
+         *  List the current active events for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to list events for.
+         *  @param[in] vEvents The list of events extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents);
+
+
+        /** HasEvent
+         *
+         *  Checks if an event has been indexed in the database already.
+         *
+         *  @param[in] hashTx The txid we are checking for.
+         *  @param[in] nContract The contract-id we are checking for
+         *
+         *  @return true if db contains the valid event
+         *
+         **/
+        bool HasEvent(const uint512_t& hashTx, const uint32_t nContract);
+
+
         /** PushOrder
          *
          *  Pushes an order to the orderbook stack.
          *
          *  @param[in] pairMarket The market-pair of token-id's
          *  @param[in] rContract The contract that contains the existing order.
-         *  @param[in] nAmount The amount debited for this order
-         *  @param[in] nRequest The requested amount in exchange for order.
+         *  @param[in] nContract The contract-id that contains the order
          *
          *  @return true if written successfully
          *

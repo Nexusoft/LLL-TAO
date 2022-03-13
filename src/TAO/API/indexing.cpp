@@ -161,6 +161,7 @@ namespace TAO::API
     {
         /* Insert new session into our set to monitor. */
         SESSIONS->insert(hashGenesis);
+
     }
 
 
