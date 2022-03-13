@@ -3349,7 +3349,7 @@ namespace LLP
                             TAO::Operation::Contract& contract = tx[nContract];
 
                             /* Lock the mempool at this point so that we can see if the transaction would be accepted into the mempool */
-                            RLOCK(TAO::Ledger::mempool.MUTEX);
+                            RECURSIVE(TAO::Ledger::mempool.MUTEX);
 
                             try
                             {

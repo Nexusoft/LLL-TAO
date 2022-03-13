@@ -67,7 +67,7 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Check the mempool. */
             if(mapLedger.count(hashTx))
@@ -83,7 +83,7 @@ namespace TAO
         /* Accepts a transaction with validation rules. */
         bool Mempool::Accept(const TAO::Ledger::Transaction& tx, LLP::TritiumNode* pnode)
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
@@ -227,7 +227,7 @@ namespace TAO
         /* Process orphan transactions if triggered in queue. */
         void Mempool::ProcessOrphans(const uint512_t& hash)
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Check orphan queue. */
             uint512_t hashTx = hash;
@@ -263,7 +263,7 @@ namespace TAO
         /* Gets a transaction from mempool */
         bool Mempool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Check in conflict memory. */
             if(mapConflicts.count(hashTx))
@@ -292,7 +292,7 @@ namespace TAO
         /* Gets a transaction from mempool */
         bool Mempool::Get(const uint512_t& hashTx, TAO::Ledger::Transaction &tx) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Check in ledger memory. */
             if(mapLedger.count(hashTx))
@@ -309,7 +309,7 @@ namespace TAO
         /* Get by genesis. */
         bool Mempool::Get(const uint256_t& hashGenesis, std::vector<TAO::Ledger::Transaction> &vtx) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Check through the ledger map for the genesis. */
             for(const auto& tx : mapLedger)
@@ -367,7 +367,7 @@ namespace TAO
         /* Checks if a transaction exists. */
         bool Mempool::Has(const uint512_t& hashTx) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             return mapLedger.count(hashTx) || mapLegacy.count(hashTx) || mapConflicts.count(hashTx);
         }
@@ -376,7 +376,7 @@ namespace TAO
         /* Checks if a genesis exists. */
         bool Mempool::Has(const uint256_t& hashGenesis) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Check through the ledger map for the genesis. */
             for(const auto& tx : mapLedger)
@@ -390,7 +390,7 @@ namespace TAO
         /* Remove a transaction from pool. */
         bool Mempool::Remove(const uint512_t& hashTx)
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Erase from conflicted memory. */
             if(mapConflicts.count(hashTx))
@@ -438,7 +438,7 @@ namespace TAO
         /* Check the memory pool for consistency. */
         void Mempool::Check()
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             //TODO: evict conflicted transctions from mempool
 
@@ -580,7 +580,7 @@ namespace TAO
         /* List transactions in memory pool. */
         bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount, bool fLegacy)
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             //TODO: need to check dependant transactions and sequence them properly otherwise this will fail
 
@@ -679,7 +679,7 @@ namespace TAO
         /* Gets the size of the memory pool. */
         uint32_t Mempool::Size()
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             return static_cast<uint32_t>(mapLedger.size() + mapLegacy.size());
         }

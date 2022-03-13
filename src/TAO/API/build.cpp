@@ -111,7 +111,7 @@ namespace TAO::API
             throw Exception(-120, "Maximum number of contracts exceeded (99), please try again or use -autotx mode.");
 
         /* Otherwise let's lock the session to generate the tx. */
-        LOCK(rSession.CREATE_MUTEX);
+        RECURSIVE(rSession.CREATE_MUTEX);
 
         /* The new key scheme */
         const uint8_t nScheme =

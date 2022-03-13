@@ -86,7 +86,7 @@ namespace TAO::API
 
 
             /** Internal mutex for creating new transactions. **/
-            mutable std::mutex CREATE_MUTEX;
+            mutable std::recursive_mutex CREATE_MUTEX;
 
 
             /** Default Constructor. **/
@@ -160,7 +160,7 @@ namespace TAO::API
             /** Default Destructor. **/
             ~Session()
             {
-                LOCK(CREATE_MUTEX); //TODO: this lock should wait if session is being used to build a tx.
+                RECURSIVE(CREATE_MUTEX); //TODO: this lock should wait if session is being used to build a tx.
 
                 /* Cleanup the credentials object. */
                 if(!pCredentials.IsNull())

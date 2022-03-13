@@ -344,7 +344,7 @@ namespace memory
          **/
         bool operator==(const TypeName& dataIn) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Throw an exception on nullptr. */
             if(data == nullptr)
@@ -361,7 +361,7 @@ namespace memory
          **/
         bool operator==(const TypeName* ptr) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             return data == ptr;
         }
@@ -374,7 +374,7 @@ namespace memory
          **/
         bool operator!=(const TypeName* ptr) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             return data != ptr;
         }
@@ -386,7 +386,7 @@ namespace memory
          **/
         bool operator!(void)
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             return data == nullptr;
         }
@@ -412,7 +412,7 @@ namespace memory
          **/
         TypeName operator*() const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Throw an exception on nullptr. */
             if(data == nullptr)
@@ -423,7 +423,7 @@ namespace memory
 
         TypeName* load()
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             return data;
         }
@@ -438,7 +438,7 @@ namespace memory
          **/
         void store(TypeName* dataIn)
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             if(data)
                 delete data;
@@ -454,7 +454,7 @@ namespace memory
          **/
         void free()
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             if(data)
                 delete data;
@@ -789,7 +789,7 @@ namespace memory
          **/
         bool operator==(const TypeName& dataIn) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Throw an exception on nullptr. */
             if(data == nullptr)
@@ -815,7 +815,7 @@ namespace memory
          **/
         bool operator!=(const TypeName& dataIn) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Throw an exception on nullptr. */
             if(data == nullptr)
@@ -841,7 +841,7 @@ namespace memory
          **/
         bool operator!(void) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             return data == nullptr;
         }
@@ -867,7 +867,7 @@ namespace memory
         **/
        bool IsNull() const
        {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             return data == nullptr;
        }
@@ -880,7 +880,7 @@ namespace memory
         **/
        void SetNull()
        {
-           RLOCK(MUTEX);
+           RECURSIVE(MUTEX);
            data = nullptr;
        }
 
@@ -894,7 +894,7 @@ namespace memory
          **/
         void store(TypeName* pdata)
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Delete already allocated memory. */
             if(data)
@@ -919,7 +919,7 @@ namespace memory
          **/
         void free()
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Free the memory. */
             if(data)

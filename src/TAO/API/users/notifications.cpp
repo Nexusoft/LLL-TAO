@@ -1687,7 +1687,7 @@ namespace TAO
             bool fSanitized = false;
 
             /* Lock the mempool at this point so that we can build and execute inside a mempool transaction */
-            RLOCK(TAO::Ledger::mempool.MUTEX);
+            RECURSIVE(TAO::Ledger::mempool.MUTEX);
 
             try
             {
