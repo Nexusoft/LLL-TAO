@@ -85,10 +85,6 @@ namespace TAO::API
             mutable std::atomic<uint64_t> nLastActive;
 
 
-            /** Internal mutex for creating new transactions. **/
-            mutable std::recursive_mutex CREATE_MUTEX;
-
-
             /** Default Constructor. **/
             Session()
             : pCredentials  (nullptr)
@@ -97,7 +93,6 @@ namespace TAO::API
             , nType         (LOCAL)
             , nAuthFailures (0)
             , nLastActive   (runtime::unifiedtimestamp())
-            , CREATE_MUTEX  ( )
             {
             }
 
@@ -114,7 +109,6 @@ namespace TAO::API
             , nType         (std::move(rSession.nType))
             , nAuthFailures (rSession.nAuthFailures.load())
             , nLastActive   (rSession.nLastActive.load())
-            , CREATE_MUTEX  ( )
             {
                 /* We wnat to reset our pointers here so they don't get sniped. */
                 rSession.pCredentials.SetNull();
@@ -152,7 +146,6 @@ namespace TAO::API
             , nType         (nTypeIn)
             , nAuthFailures (0)
             , nLastActive   (runtime::unifiedtimestamp())
-            , CREATE_MUTEX  ( )
             {
             }
 
@@ -160,8 +153,6 @@ namespace TAO::API
             /** Default Destructor. **/
             ~Session()
             {
-                RECURSIVE(CREATE_MUTEX); //TODO: this lock should wait if session is being used to build a tx.
-
                 /* Cleanup the credentials object. */
                 if(!pCredentials.IsNull())
                     pCredentials.free();
@@ -317,9 +308,9 @@ namespace TAO::API
         static bool Caller(const encoding::json& jParams, uint256_t &hashCaller);
 
 
-        /** Instance
+        /** Credentials
          *
-         *  Get an instance of current session indexed by session-id.
+         *  Get an instance of current session credentials indexed by session-id.
          *  This will throw if session not found, do not use without checking first.
          *
          *  @param[in] jParams The incoming parameters.
@@ -328,7 +319,6 @@ namespace TAO::API
          *
          **/
         static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const encoding::json& jParams);
-        //static Session& Instance(const encoding::json& jParams);
 
 
         /** Unlock

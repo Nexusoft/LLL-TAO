@@ -127,9 +127,8 @@ namespace TAO::API
     }
 
 
-    /* Get an instance of current session indexed by session-id. */
+    /* Get an instance of current session credentials indexed by session-id. */
     const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Authentication::Credentials(const encoding::json& jParams)
-    //Authentication::Session& Authentication::Instance(const encoding::json& jParams)
     {
         RECURSIVE(MUTEX);
 
@@ -283,7 +282,7 @@ namespace TAO::API
 
         throw Exception(-139, "Failed to unlock");
     }
-    
+
 
     /* Checks for the correct session-id for single user mode. */
     uint256_t Authentication::default_session()
