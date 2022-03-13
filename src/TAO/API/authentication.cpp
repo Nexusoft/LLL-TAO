@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLD/include/global.h>
+#include <LLD/hash/xxh3.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
@@ -34,10 +35,15 @@ namespace TAO::API
     std::map<uint256_t, Authentication::Session> Authentication::mapSessions;
 
 
+    /* Static initialize of map locks. */
+    std::vector<std::recursive_mutex> Authentication::vLocks;
+
+
     /* Initializes the current authentication systems. */
     void Authentication::Initialize()
     {
-
+        /* Create our session locks. */
+        vLocks = std::vector<std::recursive_mutex>(config::GetArg("-sessionlocks", 1024));
     }
 
 
@@ -78,6 +84,25 @@ namespace TAO::API
     }
 
 
+    /* Lock a session by session-id by modulating by hashmap value. */
+    std::recursive_mutex& Authentication::Lock(const encoding::json& jParams)
+    {
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        /* Get bytes of our session. */
+        const std::vector<uint8_t> vSession =
+            hashSession.GetBytes();
+
+        /* Get an xxHash. */
+        const uint64_t nHash =
+            XXH64(&vSession[0], vSession.size(), 0);
+
+        return vLocks[nHash % vLocks.size()];
+    }
+
+
     /* Get the genesis-id of the given caller using session from params. */
     bool Authentication::Caller(const encoding::json& jParams, uint256_t &hashCaller)
     {
@@ -103,7 +128,8 @@ namespace TAO::API
 
 
     /* Get an instance of current session indexed by session-id. */
-    Authentication::Session& Authentication::Instance(const encoding::json& jParams)
+    const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Authentication::Credentials(const encoding::json& jParams)
+    //Authentication::Session& Authentication::Instance(const encoding::json& jParams)
     {
         RECURSIVE(MUTEX);
 
@@ -113,101 +139,90 @@ namespace TAO::API
 
         /* Check for active session. */
         if(!mapSessions.count(hashSession))
-            throw Exception(-139, "Invalid credentials");
+            throw Exception(-9, "Session doesn't exist");
 
         /* Get a copy of our current active session. */
-        return mapSessions[hashSession];
+        return mapSessions[hashSession].Credentials();
     }
 
 
     /* Unlock and get the active pin from current session. */
-    bool Authentication::Unlock(const encoding::json& jParams, SecureString &strPIN, const uint8_t nRequestedActions)
+    std::recursive_mutex& Authentication::Unlock(const encoding::json& jParams, SecureString &strPIN, const uint8_t nRequestedActions)
     {
-        RECURSIVE(MUTEX);
-
         /* Get the current session-id. */
         const uint256_t hashSession =
             ExtractHash(jParams, "session", default_session());
 
-        /* Check for active session. */
-        if(!mapSessions.count(hashSession))
-            return false;
-
-        /* Get a copy of our current active session. */
-        const Session& rSession =
-            mapSessions[hashSession];
-
-        /* Check for password requirement field. */
-        if(config::GetBoolArg("-requirepassword", false))
         {
-            /* Grab our password from parameters. */
-            if(!CheckParameter(jParams, "password", "string"))
-                throw Exception(-128, "-requirepassword active, must pass in password=<password> for all commands when enabled");
+            RECURSIVE(MUTEX);
 
-            /* Parse out password. */
-            const SecureString strPassword =
-                SecureString(jParams["password"].get<std::string>().c_str());
+            /* Check for active session. */
+            if(!mapSessions.count(hashSession))
+                throw Exception(-9, "Session doesn't exist");
 
-            /* Check our password input compared to our internal sigchain password. */
-            if(rSession.Credentials()->Password() != strPassword)
-                return increment_failures(hashSession);
+            /* Get a copy of our current active session. */
+            const Session& rSession =
+                mapSessions[hashSession];
+
+            /* Check for password requirement field. */
+            if(config::GetBoolArg("-requirepassword", false))
+            {
+                /* Grab our password from parameters. */
+                if(!CheckParameter(jParams, "password", "string"))
+                    throw Exception(-128, "-requirepassword active, must pass in password=<password> for all commands when enabled");
+
+                /* Parse out password. */
+                const SecureString strPassword =
+                    SecureString(jParams["password"].get<std::string>().c_str());
+
+                /* Check our password input compared to our internal sigchain password. */
+                if(rSession.Credentials()->Password() != strPassword)
+                    increment_failures(hashSession);
+            }
+
+            /* Get the active pin if not currently stored. */
+            if(!rSession.Unlock(strPIN, nRequestedActions))
+                strPIN = ExtractPIN(jParams);
+
+            /* Check for crypto object register. */
+            const TAO::Register::Address hashCrypto =
+                TAO::Register::Address(std::string("crypto"), rSession.Genesis(), TAO::Register::Address::CRYPTO);
+
+            /* Read the crypto object register. */
+            TAO::Register::Object oCrypto;
+            if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
+                increment_failures(hashSession);
+
+            /* Read the key type from crypto object register. */
+            const uint256_t hashAuth =
+                oCrypto.get<uint256_t>("auth");
+
+            /* Check if the auth has is deactivated. */
+            if(hashAuth == 0)
+                increment_failures(hashSession);
+
+            /* Generate a key to check credentials against. */
+            const uint256_t hashCheck =
+                rSession.Credentials()->KeyHash("auth", 0, strPIN, hashAuth.GetType());
+
+            /* Check for invalid authorization hash. */
+            if(hashAuth != hashCheck)
+                increment_failures(hashSession);
+
+            /* Reset our activity and auth attempts if pin was successfully unlocked. */
+            rSession.nAuthFailures = 0;
+            rSession.nLastActive   = runtime::unifiedtimestamp();
         }
 
-        /* Get the active pin if not currently stored. */
-        if(!rSession.Unlock(strPIN, nRequestedActions))
-            strPIN = ExtractPIN(jParams);
+        /* Get bytes of our session. */
+        const std::vector<uint8_t> vSession =
+            hashSession.GetBytes();
 
-        /* Check for crypto object register. */
-        const TAO::Register::Address hashCrypto =
-            TAO::Register::Address(std::string("crypto"), rSession.Genesis(), TAO::Register::Address::CRYPTO);
+        /* Get an xxHash. */
+        const uint64_t nHash =
+            XXH64(&vSession[0], vSession.size(), 0);
 
-        /* Read the crypto object register. */
-        TAO::Register::Object oCrypto;
-        if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
-            return increment_failures(hashSession);
-
-        /* Read the key type from crypto object register. */
-        const uint256_t hashAuth =
-            oCrypto.get<uint256_t>("auth");
-
-        /* Check if the auth has is deactivated. */
-        if(hashAuth == 0)
-            return increment_failures(hashSession);
-
-        /* Generate a key to check credentials against. */
-        const uint256_t hashCheck =
-            rSession.Credentials()->KeyHash("auth", 0, strPIN, hashAuth.GetType());
-
-        /* Check for invalid authorization hash. */
-        if(hashAuth != hashCheck)
-            return increment_failures(hashSession);
-
-        /* Reset our activity and auth attempts if pin was successfully unlocked. */
-        rSession.nAuthFailures = 0;
-        rSession.nLastActive   = runtime::unifiedtimestamp();
-
-        return true;
-    }
-
-
-    /* Unlock this session by inputing a valid pin and requested actions. */
-    void Authentication::Unlock(const encoding::json& jParams, const uint8_t nActions)
-    {
-        RECURSIVE(MUTEX);
-
-        /* Get the current session-id. */
-        const uint256_t hashSession =
-            ExtractHash(jParams, "session", default_session());
-
-        /* Check for active session. */
-        if(!mapSessions.count(hashSession))
-            return;
-
-        /* Get a copy of our current active session. */
-        //const Session& rSession =
-        //    mapSessions[hashSession];
-
-        return;
+        return vLocks[nHash % vLocks.size()];
     }
 
 
@@ -243,12 +258,13 @@ namespace TAO::API
         mapSessions.erase(hashSession);
     }
 
+
     /* Increment the failure counter to deauthorize user after failed auth. */
-    bool Authentication::increment_failures(const uint256_t& hashSession)
+    void Authentication::increment_failures(const uint256_t& hashSession)
     {
         /* Check for active session. */
         if(!mapSessions.count(hashSession))
-            return false;
+            throw Exception(-9, "Session doesn't exist");
 
         /* Get a copy of our current active session. */
         const Session& rSession =
@@ -265,8 +281,9 @@ namespace TAO::API
                 rSession.nAuthFailures.load(), "): Session ", hashSession.SubString(), " Terminated");
         }
 
-        return false;
+        throw Exception(-139, "Failed to unlock");
     }
+    
 
     /* Checks for the correct session-id for single user mode. */
     uint256_t Authentication::default_session()

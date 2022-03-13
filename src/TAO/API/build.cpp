@@ -87,22 +87,9 @@ namespace TAO::API
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
     uint512_t BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
     {
-        /* Get the PIN to be used for this API call */
-        SecureString strPIN;
-        if(!Authentication::Unlock(jParams, strPIN, TAO::Ledger::PinUnlock::TRANSACTIONS))
-            throw Exception(-139, "Failed to unlock");
-
-        /* Get the session to be used for this API call */
-        const Authentication::Session& rSession =
-            Authentication::Instance(jParams);
-
         /* Handle auto-tx feature. */
         if(config::GetBoolArg("-autotx", false)) //TODO: pipe in -autotx
         {
-            /* Add our contracts to the notifications queue. */
-            //for(const auto& tContract : vContracts)
-            //    session.vProcessQueue->push(tContract);
-
             return 0;
         }
 
@@ -110,16 +97,19 @@ namespace TAO::API
         if(vContracts.size() >= 99)
             throw Exception(-120, "Maximum number of contracts exceeded (99), please try again or use -autotx mode.");
 
-        /* Otherwise let's lock the session to generate the tx. */
-        RECURSIVE(rSession.CREATE_MUTEX);
-
         /* The new key scheme */
         const uint8_t nScheme =
             ExtractScheme(jParams, "brainpool, falcon");
 
+        /* The PIN to be used for this API call */
+        SecureString strPIN;
+
+        /* Unlock grabbing the pin, while holding a new authentication lock */
+        RECURSIVE(Authentication::Unlock(jParams, strPIN, TAO::Ledger::PinUnlock::TRANSACTIONS));
+
         /* Get an instance of our credentials. */
         const auto& pCredentials =
-            rSession.Credentials();
+            Authentication::Credentials(jParams);
 
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;

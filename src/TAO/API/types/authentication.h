@@ -288,6 +288,22 @@ namespace TAO::API
         static bool Active(const uint256_t& hashGenesis, uint256_t &hashSession);
 
 
+        /** Lock
+         *
+         *  Lock a session by session-id by modulus for hashmap value.
+         *  It's safe to lock by session-id, because we don't allow login from same genesis to two sessions.
+         *
+         *  Hashmap collisions results in queueing of two sessions per lock.
+         *  Hashmap buckets is set by commandline argument -sessionlocks=N
+         *
+         *  @param[in] jParams The incoming json parameters to get session-id.
+         *
+         *  @return reference of lock in internal lock hashmap.
+         *
+         **/
+        static std::recursive_mutex& Lock(const encoding::json& jParams);
+
+
         /** Caller
          *
          *  Get the genesis-id of the given caller using session from params.
@@ -311,7 +327,8 @@ namespace TAO::API
          *  @return The active session.
          *
          **/
-        static Session& Instance(const encoding::json& jParams);
+        static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const encoding::json& jParams);
+        //static Session& Instance(const encoding::json& jParams);
 
 
         /** Unlock
@@ -325,19 +342,8 @@ namespace TAO::API
          *  @return True if this unlock action was successful.
          *
          **/
-        static bool Unlock(const encoding::json& jParams, SecureString &strPIN,
+        static std::recursive_mutex& Unlock(const encoding::json& jParams, SecureString &strPIN,
                            const uint8_t nRequestedActions = TAO::Ledger::PinUnlock::TRANSACTIONS);
-
-
-        /** Unlock
-         *
-         *  Unlock this session by inputing a valid pin and requested actions.
-         *
-         *  @param[in] jParams The incoming parameters including session to parse.
-         *  @param[in] nActions The actions that will be allowed on unlocked pin.
-         *
-         **/
-        static void Unlock(const encoding::json& jParams, const uint8_t nActions);
 
 
         /** Terminate
@@ -369,6 +375,10 @@ namespace TAO::API
         static std::map<uint256_t, Session> mapSessions;
 
 
+        /** Vector of our lock objects for session level locks. **/
+        static std::vector<std::recursive_mutex> vLocks;
+
+
         /** terminate_session
          *
          *  Terminate an active session by parameters.
@@ -386,7 +396,7 @@ namespace TAO::API
          *  @param[in] hashSession The incoming session to terminate.
          *
          **/
-        static bool increment_failures(const uint256_t& hashSession);
+        static void increment_failures(const uint256_t& hashSession);
 
 
         /** default_session
@@ -394,6 +404,6 @@ namespace TAO::API
          *  Checks for the correct session-id for single user mode.
          *
          **/
-        static uint256_t default_session();
+        __attribute__((const)) static uint256_t default_session();
     };
 }
