@@ -28,23 +28,27 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /** Queue to handle dispatch requests. **/
+    /* Queue to handle dispatch requests. */
     util::atomic::lock_unique_ptr<std::queue<uint512_t>> Indexing::EVENTS_QUEUE;
 
 
-    /** Thread for running dispatch. **/
+    /* Set to handle active login indexes. */
+    util::atomic::lock_unique_ptr<std::set<uint256_t>> Indexing::SESSIONS;
+
+
+    /* Thread for running dispatch. */
     std::thread Indexing::EVENTS_THREAD;
 
 
-    /** Condition variable to wake up the indexing thread. **/
+    /* Condition variable to wake up the indexing thread. */
     std::condition_variable Indexing::CONDITION;
 
 
-    /** Set to track active indexing entries. **/
+    /* Set to track active indexing entries. */
     std::set<std::string> Indexing::REGISTERED;
 
 
-    /** Mutex around registration. **/
+    /* Mutex around registration. */
     std::mutex Indexing::MUTEX;
 
 
@@ -149,6 +153,14 @@ namespace TAO::API
     {
         EVENTS_QUEUE->push(hashTx);
         CONDITION.notify_one();
+    }
+
+
+    /* Push a new session to monitor for indexes. */
+    void Indexing::Session(const uint256_t& hashGenesis)
+    {
+        /* Insert new session into our set to monitor. */
+        SESSIONS->insert(hashGenesis);
     }
 
 

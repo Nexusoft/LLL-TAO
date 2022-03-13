@@ -40,6 +40,10 @@ namespace TAO::API
         static util::atomic::lock_unique_ptr<std::queue<uint512_t>> EVENTS_QUEUE;
 
 
+        /** Set to handle active login indexes. **/
+        static util::atomic::lock_unique_ptr<std::set<uint256_t>> SESSIONS;
+
+
         /** Thread for running dispatch. **/
         static std::thread EVENTS_THREAD;
 
@@ -82,6 +86,16 @@ namespace TAO::API
          *
          **/
         static void Push(const uint512_t& hashTx);
+
+
+        /** Session
+         *
+         *  Push a new session to monitor for indexes.
+         *
+         *  @param[in] hashGenesis The active genesis of login session.
+         *
+         **/
+        static void Session(const uint256_t& hashGenesis);
 
 
         /** Register
