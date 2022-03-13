@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/types/address.h>
+
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
@@ -133,8 +135,6 @@ namespace TAO
             /* Return on valid types. */
             switch(GetType())
             {
-                case LEGACY:
-                case LEGACY_TESTNET:
                 case READONLY:
                 case APPEND:
                 case RAW:
@@ -148,6 +148,10 @@ namespace TAO
                 case WILDCARD:
                     return true;
             }
+
+            /* Check if is legacy. */
+            if(IsLegacy())
+                return true;
 
             return false;
         }
@@ -232,7 +236,12 @@ namespace TAO
         /* Check if type is set to LEGACY or LEGACY_TESTNET. */
         bool Address::IsLegacy() const
         {
-            return GetType() == LEGACY || GetType() == LEGACY_TESTNET;
+            /* Build a legacy address for this check. */
+            Legacy::NexusAddress addr =
+                Legacy::NexusAddress(*this);
+
+            return addr.IsValid();
+            //return GetType() == LEGACY || GetType() == LEGACY_TESTNET;
         }
 
 
