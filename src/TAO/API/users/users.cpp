@@ -122,7 +122,7 @@ namespace TAO
         /* Returns the genesis ID from the account logged in. */
         uint256_t Users::GetGenesis(const uint256_t& hashSession, bool fThrow) const
         {
-            RECURSIVE(MUTEX);
+            //RECURSIVE(MUTEX);
 
             /* For sessionless API use the active sig chain which is stored in session 0 */
             uint256_t hashSessionToUse = config::fMultiuser.load() ? hashSession : 0;
@@ -152,7 +152,7 @@ namespace TAO
          * an Exception is thrown */
         SecureString Users::GetPin(const encoding::json& jParams, const uint8_t nUnlockAction) const
         {
-            RECURSIVE(MUTEX);
+            //RECURSIVE(MUTEX);
 
             /* Get the active session */
             Session& session = GetSession(jParams, true, false);
@@ -183,7 +183,7 @@ namespace TAO
          * If the session is not is available in the jParams then an Exception is thrown, if fThrow is true. */
         Session& Users::GetSession(const encoding::json& jParams, const bool fThrow, const bool fLogActivity) const
         {
-            RECURSIVE(MUTEX);
+            //RECURSIVE(MUTEX);
 
             /* Check for session parameter. */
             uint256_t hashSession = 0; // ID 0 is used for sessionless API
@@ -215,7 +215,7 @@ namespace TAO
         /*Gets the session ID for a given genesis, if it is logged in on this node. */
         Session& Users::GetSession(const uint256_t& hashGenesis, bool fLogActivity) const
         {
-            //RECURSIVE(MUTEX);
+            ////RECURSIVE(MUTEX);
 
             if(!config::fMultiuser.load())
             {
@@ -246,7 +246,7 @@ namespace TAO
         /* Determine if a sessionless user is logged in. */
         bool Users::LoggedIn() const
         {
-            //RECURSIVE(MUTEX);
+            ////RECURSIVE(MUTEX);
 
             return !config::fMultiuser.load() && GetSessionManager().Has(0);
         }
@@ -255,7 +255,7 @@ namespace TAO
         /* Determine if a particular genesis is logged in on this node. */
         bool Users::LoggedIn(const uint256_t& hashGenesis) const
         {
-            //RECURSIVE(MUTEX);
+            ////RECURSIVE(MUTEX);
 
             if(!config::fMultiuser.load())
             {
@@ -282,7 +282,7 @@ namespace TAO
         /* Returns a key from the account logged in. */
         uint512_t Users::GetKey(const uint32_t nKey, const SecureString& strSecret, const Session& session) const
         {
-            RECURSIVE(MUTEX);
+            //RECURSIVE(MUTEX);
 
             return session.GetAccount()->Generate(nKey, strSecret);
         }
@@ -352,7 +352,7 @@ namespace TAO
         /* Checks that the session/password/pin parameters have been provided and are correct credentials. */
         bool Users::Authenticate(const encoding::json& jParams)
         {
-            RECURSIVE(MUTEX);
+            //RECURSIVE(MUTEX);
 
             /* Get the PIN to be used for this API call */
             const SecureString strPIN =
@@ -422,7 +422,7 @@ namespace TAO
         /* Gracefully closes down a users session */
         void Users::TerminateSession(const uint256_t& hashSession)
         {
-            RECURSIVE(MUTEX);
+            //RECURSIVE(MUTEX);
 
             /* Check that the session exists */
             if(!GetSessionManager().Has(hashSession))

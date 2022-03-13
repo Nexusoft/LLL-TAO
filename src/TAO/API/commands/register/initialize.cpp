@@ -73,7 +73,7 @@ namespace TAO::API
         );
 
         /* Populate our OBJECT standard. */
-        mapStandards["asset"] = Standard
+        mapStandards["object"] = Standard
         (
             /* Lambda expression to determine object standard. */
             [](const TAO::Register::Object& rObject)

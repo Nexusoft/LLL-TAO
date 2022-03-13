@@ -1568,6 +1568,13 @@ namespace TAO
             /* If any of the notifications have been matched, execute the operations layer and sign the transaction. */
             while(!session.vProcessQueue->empty())
             {
+                /* Grab a sleep time between making transactions. */
+                const uint64_t nSleep = config::GetArg("-autotxinterval", 1000);
+
+                /* Sleep and output to debug console. */
+                debug::log(2, "[AUTOTX] Waiting for contracts for ", nSleep, " ms");
+                runtime::sleep(nSleep);
+
                 /* Lock the signature chain. */
                 LOCK(session.CREATE_MUTEX);
 

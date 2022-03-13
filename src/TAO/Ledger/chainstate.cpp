@@ -214,8 +214,8 @@ namespace TAO
             if(stateBest.load().GetHash() != hashBestChain.load())
                 return debug::error(FUNCTION, "disk index inconsistent with best chain");
 
-            /* Reverse iterator to find the most recent common ancestor. */
-            if(!config::fHybrid.load())
+            /* Reverse iterator to find the most recent common ancestor. Skip if not on mainnet*/
+            if(!config::fHybrid.load() && !config::fTestNet.load() && !config::fClient.load())
             {
                 BlockState stateFork;
                 for(auto it = mapCheckpoints.rbegin(); it != mapCheckpoints.rend(); ++it)
