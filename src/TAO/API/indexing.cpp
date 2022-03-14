@@ -261,14 +261,39 @@ namespace TAO::API
     /* Initialize a user's indexing entries. */
     void Indexing::initialize_genesis(const uint256_t& hashGenesis)
     {
-        /* Check for valid indexing entries. */
+        /* Check our current last hash from ledger layer. */
+        uint512_t hashLast;
+        if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+        {
+            debug::log(0, FUNCTION, "No indexes for genesis=", hashGenesis.SubString());
+            return;
+        }
 
+        /* Check for valid indexing entries. */
+        uint512_t hashLastIndex;
+        if(!LLD::Logical->ReadLastIndex(hashGenesis, hashLastIndex))
+            debug::log(0, FUNCTION, "Buiding indexes for genesis=", hashGenesis.SubString());
+
+        /* Check that our last indexing entries match. */
+        if(hashLast == hashLastIndex)
+        {
+            debug::log(0, FUNCTION, "Indexes complete for genesis=", hashGenesis.SubString());
+            return;
+        }
     }
 
 
     /* Process list of user level indexing entries. */
     void Indexing::process_sessions(const uint256_t& hashGenesis)
     {
+        {
+            LOCK(SESSIONS_MUTEX);
 
+            /* Loop through registered commands. */
+            for(const auto& hashGenesis : SESSIONS)
+            {
+
+            }
+        }
     }
 }
