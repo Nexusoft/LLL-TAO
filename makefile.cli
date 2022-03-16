@@ -521,6 +521,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_results.o \
 		build/API_session.o \
 		build/API_session-manager.o \
+		build/API_transaction.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
 		build/Operation_coinbase.o \

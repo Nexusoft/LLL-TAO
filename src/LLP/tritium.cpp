@@ -3191,7 +3191,6 @@ namespace LLP
                                 TAO::Ledger::ClientBlock block;
                                 if(LLD::Client->ReadBlock(tx.hashBlock, block))
                                 {
-
                                     /* Check the merkle branch. */
                                     if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                         return debug::error(FUNCTION, "merkle transaction has invalid path");

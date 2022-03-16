@@ -108,7 +108,7 @@ namespace LLD
             return false;
 
         /* Write our order proof. */
-        if(!Write(std::make_tuple(std::string("events"), hashTx, nContract)))
+        if(!Write(std::make_tuple(std::string("events.proof"), hashTx, nContract)))
             return false;
 
         return TxnCommit();
@@ -143,7 +143,7 @@ namespace LLD
     /* Checks if an event has been indexed in the database already. */
     bool LogicalDB::HasEvent(const uint512_t& hashTx, const uint32_t nContract)
     {
-        return Exists(std::make_tuple(std::string("events"), hashTx, nContract));
+        return Exists(std::make_tuple(std::string("events.proof"), hashTx, nContract));
     }
 
 

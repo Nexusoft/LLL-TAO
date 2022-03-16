@@ -216,7 +216,7 @@ namespace TAO
             /* Set his block's hash. */
             hashBlock     = hashConfirmed;
 
-            return BuildMerkleBranch(state);;
+            return BuildMerkleBranch(state);
         }
 
 

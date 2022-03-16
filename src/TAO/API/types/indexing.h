@@ -25,9 +25,13 @@ ________________________________________________________________________________
 #include <queue>
 #include <condition_variable>
 
+//forward declarations
+namespace TAO::Ledger { class Transaction; }
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
     /** @class
      *
      *  This class is responsible for dispatching indexing events to the various API calls.
@@ -37,7 +41,11 @@ namespace TAO::API
     class Indexing
     {
         /** Queue to handle dispatch requests. **/
-        static util::atomic::lock_unique_ptr<std::queue<uint512_t>> EVENTS_QUEUE;
+        static util::atomic::lock_unique_ptr<std::queue<uint512_t>> DISPATCH;
+
+
+        /** Set to track active login sessions **/
+        static util::atomic::lock_unique_ptr<std::set<uint256_t>> SESSIONS;
 
 
         /** Thread for running dispatch. **/
@@ -54,14 +62,6 @@ namespace TAO::API
 
         /** Mutex around registration. **/
         static std::mutex REGISTERED_MUTEX;
-
-
-        /** Set to track active indexing sessions. **/
-        static std::set<uint256_t> SESSIONS;
-
-
-        /** Mutex around sessions. **/
-        static std::mutex SESSIONS_MUTEX;
 
 
     public:
@@ -149,14 +149,14 @@ namespace TAO::API
         static void initialize_genesis(const uint256_t& hashGenesis);
 
 
-        /** process_sessions
+        /** index_events
          *
-         *  Process list of user level indexing entries.
+         *  Index transaction level events for logged in sessions.
          *
-         *  @param[in] hashGenesis The genesis-id to initialize.
+         *  @param[in] tx The transaction to index events for.
          *
          **/
-        static void process_sessions(const uint256_t& hashGenesis);
+        static void index_events(const TAO::Ledger::Transaction& tx);
 
     };
 }

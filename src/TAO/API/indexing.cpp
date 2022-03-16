@@ -15,6 +15,9 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/indexing.h>
+#include <TAO/API/types/transaction.h>
+
+#include <TAO/Operation/include/enum.h>
 
 #include <TAO/Ledger/types/transaction.h>
 
@@ -29,7 +32,11 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Queue to handle dispatch requests. */
-    util::atomic::lock_unique_ptr<std::queue<uint512_t>> Indexing::EVENTS_QUEUE;
+    util::atomic::lock_unique_ptr<std::queue<uint512_t>> Indexing::DISPATCH;
+
+
+    /* Set to track active login sessions */
+    util::atomic::lock_unique_ptr<std::set<uint256_t>> Indexing::SESSIONS;
 
 
     /* Thread for running dispatch. */
@@ -48,18 +55,10 @@ namespace TAO::API
     std::mutex Indexing::REGISTERED_MUTEX;
 
 
-    /** Set to track active indexing sessions. **/
-    std::set<uint256_t> Indexing::SESSIONS;
-
-
-    /** Mutex around sessions. **/
-    std::mutex Indexing::SESSIONS_MUTEX;
-
-
     /* Initializes the current indexing systems. */
     void Indexing::Initialize()
     {
-        Indexing::EVENTS_QUEUE  = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
+        Indexing::DISPATCH  = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
         Indexing::EVENTS_THREAD = std::thread(&Indexing::Manager);
     }
 
@@ -155,7 +154,7 @@ namespace TAO::API
     /*  Index a new block hash to relay thread.*/
     void Indexing::Push(const uint512_t& hashTx)
     {
-        EVENTS_QUEUE->push(hashTx);
+        DISPATCH->push(hashTx);
         CONDITION.notify_one();
     }
 
@@ -163,12 +162,8 @@ namespace TAO::API
     /* Push a new session to monitor for indexes. */
     void Indexing::Session(const uint256_t& hashGenesis)
     {
-        {
-            LOCK(SESSIONS_MUTEX);
-
-            /* Insert new session into our set to monitor. */
-            SESSIONS.insert(hashGenesis);
-        }
+        /* Insert new session into our set to monitor. */
+        SESSIONS->insert(hashGenesis);
     }
 
 
@@ -191,7 +186,7 @@ namespace TAO::API
                 if(config::fShutdown.load())
                     return true;
 
-                return Indexing::EVENTS_QUEUE->size() != 0;
+                return Indexing::DISPATCH->size() != 0;
             });
 
             /* Check for shutdown. */
@@ -203,13 +198,18 @@ namespace TAO::API
             swTimer.start();
 
             /* Grab the next entry in the queue. */
-            const uint512_t hashTx = EVENTS_QUEUE->front();
-            EVENTS_QUEUE->pop();
+            const uint512_t hashTx = DISPATCH->front();
+            DISPATCH->pop();
+
+            //TODO: check for legacy transaction events for sigchain events.
 
             /* Make sure the transaction is on disk. */
             TAO::Ledger::Transaction tx;
             if(!LLD::Ledger->ReadTx(hashTx, tx))
                 continue;
+
+            /* Build our local sigchain events indexes. */
+            index_events(tx);
 
             /* Iterate the transaction contracts. */
             for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
@@ -245,10 +245,7 @@ namespace TAO::API
             EVENTS_THREAD.join();
 
         /* Clear open sessions. */
-        {
-            LOCK(SESSIONS_MUTEX);
-            SESSIONS.clear();
-        }
+        SESSIONS->clear();
 
         /* Clear open registrations. */
         {
@@ -283,16 +280,76 @@ namespace TAO::API
     }
 
 
-    /* Process list of user level indexing entries. */
-    void Indexing::process_sessions(const uint256_t& hashGenesis)
+    /* Index list of user level indexing entries. */
+    void Indexing::index_events(const TAO::Ledger::Transaction& tx)
     {
+        /* Check all the tx contracts. */
+        for(uint32_t n = 0; n < tx.Size(); ++n)
         {
-            LOCK(SESSIONS_MUTEX);
+            /* Grab reference of our contract. */
+            const TAO::Operation::Contract& rContract = tx[n];
 
-            /* Loop through registered commands. */
-            for(const auto& hashGenesis : SESSIONS)
+            /* Skip to our primitive. */
+            rContract.SeekToPrimitive();
+
+            /* Check the contract's primitive. */
+            uint8_t nOP = 0;
+            rContract >> nOP;
+            switch(nOP)
             {
+                case TAO::Operation::OP::TRANSFER:
+                case TAO::Operation::OP::DEBIT:
+                {
+                    /* Seek to recipient. */
+                    uint256_t hashTo;
+                    rContract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
+                    rContract >> hashTo;
 
+                    /* Read the owner of register. (check this for MEMPOOL, too) */
+                    TAO::Register::State state;
+                    if(!LLD::Register->ReadState(hashTo, state))
+                        continue;
+
+                    /* Check if we need to build index for this contract. */
+                    if(SESSIONS->count(state.hashOwner))
+                    {
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(state.hashOwner, rContract, n))
+                        {
+                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(state.hashOwner.SubString()), " | ", VARIABLE(n), ") to logical database");
+
+                            continue;
+                        }
+                    }
+
+                    debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                        "for genesis ", state.hashOwner.SubString());
+
+                    break;
+                }
+
+                case TAO::Operation::OP::COINBASE:
+                {
+                    /* Get the genesis. */
+                    uint256_t hashOwner;
+                    rContract >> hashOwner;
+
+                    /* Check if we need to build index for this contract. */
+                    if(SESSIONS->count(hashOwner))
+                    {
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(hashOwner, rContract, n))
+                        {
+                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashOwner.SubString()), " | ", VARIABLE(n), ") to logical database");
+
+                            continue;
+                        }
+
+                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashOwner.SubString());
+                    }
+
+                    break;
+                }
             }
         }
     }
