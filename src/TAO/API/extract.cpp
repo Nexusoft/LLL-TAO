@@ -81,14 +81,6 @@ namespace TAO::API
         /* Otherwise let's check for the raw address format. */
         else if(CheckParameter(jParams, strAddr, "string"))
         {
-            /* Check if it is a legacy address. */
-            const Legacy::NexusAddress hashLegacy =
-                Legacy::NexusAddress(jParams[strAddr].get<std::string>());
-
-            /* Check if is valid legacy address. */
-            if(hashLegacy.IsValid())
-                return hashLegacy.GetHash256();
-
             /* Declare our return value. */
             const TAO::Register::Address hashRet =
                 TAO::Register::Address(jParams[strAddr].get<std::string>());
@@ -142,14 +134,6 @@ namespace TAO::API
     /* Extract an address from a single string. */
     uint256_t ExtractAddress(const std::string& strAddress, const encoding::json& jParams)
     {
-        /* Check if it is a legacy address. */
-        const Legacy::NexusAddress hashLegacy =
-            Legacy::NexusAddress(strAddress);
-
-        /* Check if is valid legacy address. */
-        if(hashLegacy.IsValid())
-            return hashLegacy.GetHash256();
-
         /* Declare our return value. */
         const TAO::Register::Address hashRet =
             TAO::Register::Address(strAddress);
