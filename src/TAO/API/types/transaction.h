@@ -26,7 +26,22 @@ namespace TAO::API
      **/
     class Transaction : public TAO::Ledger::Transaction
     {
+        /** Track the last time this object was modified. **/
+        uint64_t nModified;
+
+
+        /*& Track our current status. **/
+        uint8_t nStatus;
+
     public:
+
+        /* Enum to track status. */
+        enum : uint8_t
+        {
+            PENDING  = 0x01, //peending means it was broadcast or created
+            BROADCAST = 0x02,
+            ACCEPTED = 0x02,
+        };
 
         /** Track the next transaction in the chain. **/
         uint512_t hashNextTx;
@@ -100,16 +115,38 @@ namespace TAO::API
             /* We don't want merkle information for gethash. */
             if(!(nSerType & SER_GETHASH))
             {
+                READWRITE(nModified);
+                READWRITE(nStatus);
                 READWRITE(hashNextTx);
             }
         )
 
 
-        /** BuildIndexes
+        /** Confirmed
          *
-         *  Builds the indexes for the previous transaction based on this new one.
+         *  Get if transaction is in a confirmed status.
          *
          **/
-        void BuildIndexes() const;
+        bool Confirmed();
+
+
+        /** Broadcast
+         *
+         *  Broadcast the transaction to all available nodes and update status.
+         *
+         **/
+        void Broadcast();
+
+
+        /** IndexLast
+         *
+         *  Index a last transaction into the ledger database.
+         *
+         *  @param[in] hash The txid to index the transaction by
+         *
+         *  @return true if this was indexed as last tx
+         *
+         **/
+        bool IndexLast(const uint512_t& hash);
     };
 }

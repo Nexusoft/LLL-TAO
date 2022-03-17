@@ -18,10 +18,12 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    
+
     /* The default constructor. */
     Transaction::Transaction()
     : TAO::Ledger::Transaction ( )
+    , nModified                (nTimestamp)
+    , nStatus                  (PENDING)
     , hashNextTx               ( )
     {
     }
@@ -30,6 +32,8 @@ namespace TAO::API
     /* Copy constructor. */
     Transaction::Transaction(const Transaction& tx)
     : TAO::Ledger::Transaction (tx)
+    , nModified                (tx.nModified)
+    , nStatus                  (tx.nStatus)
     , hashNextTx               (tx.hashNextTx)
     {
     }
@@ -38,6 +42,8 @@ namespace TAO::API
     /* Move constructor. */
     Transaction::Transaction(Transaction&& tx) noexcept
     : TAO::Ledger::Transaction (std::move(tx))
+    , nModified                (std::move(tx.nModified))
+    , nStatus                  (std::move(tx.nStatus))
     , hashNextTx               (std::move(tx.hashNextTx))
     {
     }
@@ -46,6 +52,8 @@ namespace TAO::API
     /* Copy constructor. */
     Transaction::Transaction(const TAO::Ledger::Transaction& tx)
     : TAO::Ledger::Transaction (tx)
+    , nModified                (tx.nTimestamp)
+    , nStatus                  (PENDING)
     , hashNextTx               (0)
     {
     }
@@ -54,6 +62,8 @@ namespace TAO::API
     /* Move constructor. */
     Transaction::Transaction(TAO::Ledger::Transaction&& tx) noexcept
     : TAO::Ledger::Transaction (std::move(tx))
+    , nModified                (std::move(tx.nTimestamp))
+    , nStatus                  (PENDING)
     , hashNextTx               (0)
     {
     }
@@ -75,6 +85,8 @@ namespace TAO::API
         vchPubKey     = tx.vchPubKey;
         vchSig        = tx.vchSig;
 
+        nModified     = tx.nModified;
+        nStatus       = tx.nStatus;
         hashNextTx    = tx.hashNextTx;
 
         return *this;
@@ -97,6 +109,8 @@ namespace TAO::API
         vchPubKey     = std::move(tx.vchPubKey);
         vchSig        = std::move(tx.vchSig);
 
+        nModified     = std::move(tx.nModified);
+        nStatus       = std::move(tx.nStatus);
         hashNextTx    = std::move(tx.hashNextTx);
 
         return *this;
@@ -119,6 +133,10 @@ namespace TAO::API
         vchPubKey     = tx.vchPubKey;
         vchSig        = tx.vchSig;
 
+        //private values
+        nModified     = tx.nTimestamp;
+        nStatus       = PENDING;
+
         return *this;
     }
 
@@ -139,6 +157,10 @@ namespace TAO::API
         vchPubKey     = std::move(tx.vchPubKey);
         vchSig        = std::move(tx.vchSig);
 
+        //private values
+        nModified     = std::move(tx.nTimestamp);
+        nStatus       = PENDING;
+
         return *this;
     }
 
@@ -146,5 +168,54 @@ namespace TAO::API
     /* Default Destructor */
     Transaction::~Transaction()
     {
+    }
+
+
+    /* Set the transaction to a confirmed status. */
+    bool Transaction::Confirmed()
+    {
+        return (nStatus == ACCEPTED);
+    }
+
+
+    /* Broadcast the transaction to all available nodes and update status. */
+    void Transaction::Broadcast()
+    {
+        /* Check our re-broadcast time. */
+        if(nModified + 10 > runtime::unifiedtimestamp())
+        {
+            /* Adjust our modified timestamp. */
+        }
+    }
+
+    /* Index a transaction into the ledger database. */
+    bool Transaction::IndexLast(const uint512_t& hash)
+    {
+        /* Push new transaction to database. */
+        if(!LLD::Logical->WriteTx(hash, *this))
+            return debug::error(FUNCTION, "failed to write ", VARIABLE(hash.SubString()));
+
+        /* Read our previous transaction. */
+        if(!IsFirst())
+        {
+            /* Read our previous transaction to build indexes for it. */
+            TAO::API::Transaction tx;
+            if(!LLD::Logical->ReadTx(hashPrevTx, tx))
+                return debug::error(FUNCTION, "failed to read previous ", VARIABLE(hashPrevTx.SubString()));
+
+            /* Set our forward iteration hash. */
+            tx.hashNextTx = hash;
+
+            /* Write our new transaction to disk. */
+            if(!LLD::Logical->WriteTx(hashPrevTx, tx))
+                return debug::error(FUNCTION, "failed to update previous ", VARIABLE(hashPrevTx.SubString()));
+        }
+
+        /* Write our last index to the database. */
+        if(!LLD::Logical->WriteLast(hashGenesis, hash))
+            return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
+
+
+        return true;
     }
 }

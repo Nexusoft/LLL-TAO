@@ -19,7 +19,8 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
-namespace TAO::Operation { class Contract; }
+namespace TAO::API       { class Transaction; }
+namespace TAO::Operation { class Contract;    }
 
 namespace LLD
 {
@@ -92,7 +93,7 @@ namespace LLD
         bool WriteLastIndex(const uint512_t& hashTx);
 
 
-        /** ReadLastIndex
+        /** ReadLast
          *
          *  Reads the last txid that was indexed.
          *
@@ -102,10 +103,10 @@ namespace LLD
          *  @return true if read successfully
          *
          **/
-        bool ReadLastIndex(const uint256_t& hashGenesis, uint512_t &hashTx);
+        bool ReadLast(const uint256_t& hashGenesis, uint512_t &hashTx);
 
 
-        /** WriteLastIndex
+        /** WriteLast
          *
          *  Writes the last txid that was indexed.
          *
@@ -115,7 +116,34 @@ namespace LLD
          *  @return true if read successfully
          *
          **/
-        bool WriteLastIndex(const uint256_t& hashGenesis, const uint512_t& hashTx);
+        bool WriteLast(const uint256_t& hashGenesis, const uint512_t& hashTx);
+
+
+        /** WriteTx
+         *
+         *  Writes a transaction to the Logical DB.
+         *
+         *  @param[in] hashTx The txid of transaction to write.
+         *  @param[in] tx The transaction object to write.
+         *
+         *  @return True if the transaction was successfully written, false otherwise.
+         *
+         **/
+        bool WriteTx(const uint512_t& hashTx, const TAO::API::Transaction& tx);
+
+
+        /** ReadTx
+         *
+         *  Reads a transaction from the Logical DB.
+         *
+         *  @param[in] hashTx The txid of transaction to read.
+         *  @param[out] tx The transaction object to read.
+         *  @param[in] nFlags The flags to determine memory pool or disk
+         *
+         *  @return True if the transaction was successfully read, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint512_t& hashTx, TAO::API::Transaction &tx);
 
 
         /** PushEvent

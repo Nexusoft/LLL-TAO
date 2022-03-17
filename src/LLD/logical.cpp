@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/types/transaction.h>
+
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Ledger/include/enum.h>
@@ -66,16 +68,30 @@ namespace LLD
 
 
     /* Reads the last txid that was indexed. */
-    bool LogicalDB::ReadLastIndex(const uint256_t& hashGenesis, uint512_t &hashTx)
+    bool LogicalDB::ReadLast(const uint256_t& hashGenesis, uint512_t &hashTx)
     {
         return Read(std::make_pair(std::string("indexing"), hashGenesis), hashTx);
     }
 
 
     /* Writes the last txid that was indexed. */
-    bool LogicalDB::WriteLastIndex(const uint256_t& hashGenesis, const uint512_t& hashTx)
+    bool LogicalDB::WriteLast(const uint256_t& hashGenesis, const uint512_t& hashTx)
     {
         return Write(std::make_pair(std::string("indexing"), hashGenesis), hashTx);
+    }
+
+
+    /* Writes a transaction to the Logical DB. */
+    bool LogicalDB::WriteTx(const uint512_t& hashTx, const TAO::API::Transaction& tx)
+    {
+        return Write(std::make_pair(std::string("tx"), hashTx), tx);
+    }
+
+
+    /* Reads a transaction from the Logical DB. */
+    bool LogicalDB::ReadTx(const uint512_t& hashTx, TAO::API::Transaction &tx)
+    {
+        return Read(std::make_pair(std::string("tx"), hashTx), tx);
     }
 
 

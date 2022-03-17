@@ -58,6 +58,9 @@ namespace TAO::API
     /* Initializes the current indexing systems. */
     void Indexing::Initialize()
     {
+        /* Read our list of active login sessions. */
+
+        /* Initialize our thread objects now. */
         Indexing::DISPATCH  = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
         Indexing::EVENTS_THREAD = std::thread(&Indexing::Manager);
     }
@@ -162,6 +165,10 @@ namespace TAO::API
     /* Push a new session to monitor for indexes. */
     void Indexing::Session(const uint256_t& hashGenesis)
     {
+        /* Check that session isn't already registered. */
+        if(SESSIONS->count(hashGenesis))
+            return;
+
         /* Insert new session into our set to monitor. */
         SESSIONS->insert(hashGenesis);
     }
@@ -209,7 +216,7 @@ namespace TAO::API
                 continue;
 
             /* Build our local sigchain events indexes. */
-            index_events(tx);
+            index_transaction(hashTx, tx);
 
             /* Iterate the transaction contracts. */
             for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
@@ -259,30 +266,40 @@ namespace TAO::API
     void Indexing::initialize_genesis(const uint256_t& hashGenesis)
     {
         /* Check our current last hash from ledger layer. */
-        uint512_t hashLast;
-        if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+        uint512_t hashLedger;
+        if(!LLD::Ledger->ReadLast(hashGenesis, hashLedger))
         {
             debug::log(0, FUNCTION, "No indexes for genesis=", hashGenesis.SubString());
             return;
         }
 
         /* Check for valid indexing entries. */
-        uint512_t hashLastIndex;
-        if(!LLD::Logical->ReadLastIndex(hashGenesis, hashLastIndex))
-            debug::log(0, FUNCTION, "Buiding indexes for genesis=", hashGenesis.SubString());
+        uint512_t hashLogical;
+        LLD::Logical->ReadLast(hashGenesis, hashLogical);
 
         /* Check that our last indexing entries match. */
-        if(hashLast == hashLastIndex)
+        if(hashLedger != hashLogical)
         {
-            debug::log(0, FUNCTION, "Indexes complete for genesis=", hashGenesis.SubString());
+            debug::log(0, FUNCTION, "Buiding indexes for genesis=", hashGenesis.SubString());
             return;
         }
     }
 
 
     /* Index list of user level indexing entries. */
-    void Indexing::index_events(const TAO::Ledger::Transaction& tx)
+    void Indexing::index_transaction(const uint512_t& hash, const TAO::Ledger::Transaction& tx)
     {
+        /* Check if we need to index the main sigchain. */
+        if(SESSIONS->count(tx.hashGenesis))
+        {
+            /* Build an API transaction. */
+            TAO::API::Transaction tIndex =
+                TAO::API::Transaction(tx);
+
+
+        }
+
+
         /* Check all the tx contracts. */
         for(uint32_t n = 0; n < tx.Size(); ++n)
         {
