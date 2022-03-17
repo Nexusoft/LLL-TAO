@@ -86,7 +86,7 @@ namespace TAO::Register
         if(!hashAddress.IsValid())
             return true;
 
-        return hashAddress >= uint8_t(SYSTEM::RESERVED) && hashAddress <= uint8_t(SYSTEM::LIMIT);
+        return hashAddress >= uint256_t(SYSTEM::RESERVED) && hashAddress <= uint256_t(SYSTEM::LIMIT);
     }
 
 
