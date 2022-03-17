@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
-#include <TAO/Register/include/reserved.h>
+#include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/address.h>
 
 #include <Util/include/encoding.h>
@@ -134,7 +134,7 @@ namespace TAO
         bool Address::IsValid() const
         {
             /* Check for invalid address ranges. */
-            if(Reserved(*this))
+            if(*this <= uint256_t(SYSTEM::LIMIT)) //we don't use Rserved as this would result in recursive call loop
                 return false;
 
             /* Return on valid types. */
