@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
+#include <TAO/Register/include/reserved.h>
 #include <TAO/Register/types/address.h>
 
 #include <Util/include/encoding.h>
@@ -132,6 +133,10 @@ namespace TAO
         /* Check if address has a valid type assoicated. */
         bool Address::IsValid() const
         {
+            /* Check for invalid address ranges. */
+            if(Reserved(*this))
+                return false;
+
             /* Return on valid types. */
             switch(GetType())
             {

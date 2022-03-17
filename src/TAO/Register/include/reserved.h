@@ -18,6 +18,9 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/enum.h>
 
+#include <set>
+#include <string>
+
 /* Global TAO namespace. */
 namespace TAO::Register
 {
