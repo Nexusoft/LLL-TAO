@@ -104,11 +104,9 @@ namespace LLP
             /* Log a warning to the console. */
             debug::warning(FUNCTION, "API incorrect password attempt from ", this->addr.ToString());
 
-            /* Deter brute-forcing short passwords.
-             * If this results in a DOS the user really
-             * shouldn't have their RPC port exposed. */
-            if(config::GetArg("-apipassword", "").size() < 20)
-                runtime::sleep(250); //XXX: lets add better DoS handling here, we want to throttle failed attempts for all passwords
+            /* Check for DDOS handle. */
+            if(this->DDOS)
+                this->DDOS->rSCORE += 10;
 
             /* Use code 401 for unauthorized as response. */
             PushResponse(401, "");
