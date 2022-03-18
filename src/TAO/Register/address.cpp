@@ -78,7 +78,7 @@ namespace TAO
 
             /* Check for valid. */
             if(!IsValid())
-                throw debug::exception(FUNCTION, "invalid type for random ", GetHex());
+                throw debug::exception(FUNCTION, "invalid type for random ", ToBase58());
         }
 
 
