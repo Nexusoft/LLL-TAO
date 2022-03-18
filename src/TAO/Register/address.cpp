@@ -88,14 +88,10 @@ namespace TAO
         {
             /* Set the internal value from the incoming base58 encoded address */
             SetBase58(strAddress);
-
-            /* Check for valid address types. */
-            //if(!IsValid()) XXX: disabled for now, we can don't always want an exception thrown here
-            //    throw debug::exception(FUNCTION, "invalid type for address");
         }
 
 
-        /* Build an address deterministically from a namespace name*/
+        /* Build an address deterministically from a namespace name */
         Address::Address(const std::string& strName, const uint8_t nType)
         : uint256_t(LLC::SK256(strName))
         {
@@ -246,7 +242,6 @@ namespace TAO
                 Legacy::NexusAddress(*this);
 
             return addr.IsValid();
-            //return GetType() == LEGACY || GetType() == LEGACY_TESTNET;
         }
 
 

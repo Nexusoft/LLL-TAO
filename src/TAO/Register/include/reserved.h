@@ -51,7 +51,7 @@ namespace TAO::Register
         /* Used for internal object register system memory. */
         "system",
 
-        /* Used for object register names. Reserved to never be changed. */
+        /* Used for internal object register names. */
         "name"
     };
 
