@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
+#include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/address.h>
 
 #include <Util/include/encoding.h>
@@ -132,6 +133,10 @@ namespace TAO
         /* Check if address has a valid type assoicated. */
         bool Address::IsValid() const
         {
+            /* Check for invalid address ranges. */
+            if(*this <= uint256_t(SYSTEM::LIMIT)) //we don't use Rserved as this would result in recursive call loop
+                return false;
+
             /* Return on valid types. */
             switch(GetType())
             {
@@ -248,28 +253,28 @@ namespace TAO
         /* Sets the uint256_t value of this address from a base58 encoded string. */
         void Address::SetBase58(const std::string& str)
         {
-            /* Build a legacy address for this check. */
-            Legacy::NexusAddress addr =
-                Legacy::NexusAddress(str);
-
-            /* Special check for legacy address. */
-            if(addr.IsValid())
-            {
-                *this = addr.GetHash256();
-                return;
-            }
-
             /* The decoded bytes  */
-            std::vector<uint8_t> bytes;
+            std::vector<uint8_t> vBytes;
 
             /* Decode the incoming string */
-            if(encoding::DecodeBase58Check(str, bytes))
+            if(encoding::DecodeBase58Check(str, vBytes))
             {
+                /* Build a legacy address for this check. */
+                const Legacy::NexusAddress addr =
+                    Legacy::NexusAddress(str);
+
+                /* Special check for legacy address. */
+                if(addr.IsValid())
+                {
+                    *this = addr.GetHash256();
+                    return;
+                }
+
                 /* Set the internal value based on the remainder of the decoded bytes after the leading type byte */
-                SetBytes(std::vector<uint8_t>(bytes.begin() +1, bytes.end()));
+                SetBytes(std::vector<uint8_t>(vBytes.begin() + 1, vBytes.end()));
 
                 /* Set the type */
-                SetType(bytes[0]);
+                SetType(vBytes[0]);
             }
         }
 
