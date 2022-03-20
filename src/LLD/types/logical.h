@@ -172,6 +172,84 @@ namespace LLD
         bool ReadTx(const uint512_t& hashTx, TAO::API::Transaction &tx);
 
 
+        /** PushRegister
+         *
+         *  Push an register to process for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push register for.
+         *  @param[in] rContract The contract that contains the register.
+         *
+         *  @return true if event was pushed successfully.
+         *
+         **/
+        bool PushRegister(const uint256_t& hashGenesis, const TAO::Operation::Contract& rContract);
+
+
+        /** ListRegisters
+         *
+         *  List the current active registers for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] vRegisters The list of events extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t> &vRegisters);
+
+
+        /** HasRegister
+         *
+         *  Checks if a register has been indexed in the database already.
+         *
+         *  @param[in] hashTx The txid we are checking for.
+         *  @param[in] nContract The contract-id we are checking for
+         *
+         *  @return true if db contains the valid event
+         *
+         **/
+        bool HasRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** WriteTransfer
+         *
+         *  Writes a key that indicates a register was transferred from sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] hashRegister The register address that is being transferred.
+         *
+         *  @return true if db wrote new transfer correctly.
+         *
+         **/
+        bool WriteTransfer(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** HasTransfer
+         *
+         *  Checks a key that indicates a register was transferred from sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] hashRegister The register address that is being transferred.
+         *
+         *  @return true if db wrote new transfer correctly.
+         *
+         **/
+        bool HasTransfer(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** EraseTransfer
+         *
+         *  Erases a key that indicates a register was transferred from sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] hashRegister The register address that is being transferred.
+         *
+         *  @return true if db wrote new transfer correctly.
+         *
+         **/
+        bool EraseTransfer(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
         /** PushEvent
          *
          *  Push an event to process for given genesis-id.

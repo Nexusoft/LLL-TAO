@@ -273,16 +273,67 @@ namespace TAO::API
             return;
         }
 
-        /* Check for valid indexing entries. */
-        uint512_t hashLogical;
-        LLD::Logical->ReadLast(hashGenesis, hashLogical);
-
         /* Check that our last indexing entries match. */
-        if(hashLedger != hashLogical)
+        uint512_t hashLogical;
+        if(!LLD::Logical->ReadLast(hashGenesis, hashLogical) || hashLedger != hashLogical)
         {
             debug::log(0, FUNCTION, "Buiding indexes for genesis=", hashGenesis.SubString());
+
+            /* Build list of transaction hashes. */
+            std::vector<uint512_t> vHashes;
+
+            /* Read all transactions from our last index. */
+            uint512_t hash = hashLedger;
+            while(hash != hashLogical && !config::fShutdown.load())
+            {
+                /* Read the transaction from the ledger database. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hash, tx))
+                {
+                    debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash.SubString()));
+                    return;
+                }
+
+                /* Push transaction to list. */
+                vHashes.push_back(hash); //NOTE: this will warm up cache if available for speed, or remain low footprint if not
+
+                /* Check for first. */
+                if(tx.IsFirst())
+                    break;
+
+                /* Set hash to previous hash. */
+                hash = tx.hashPrevTx;
+            }
+
+            /* Reverse iterate our list of entries. */
+            for(auto hash = vHashes.rbegin(); hash != vHashes.rend(); ++hash)
+            {
+                /* Read the transaction from the ledger database. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(*hash, tx))
+                {
+                    debug::warning(FUNCTION, "index for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash->SubString()));
+                    return;
+                }
+
+                /* Build an API transaction. */
+                TAO::API::Transaction tIndex =
+                    TAO::API::Transaction(tx);
+
+                /* Index the transaction to the database. */
+                if(!tIndex.Index(*hash))
+                    debug::warning(FUNCTION, "failed to index ", VARIABLE(hash->SubString()));
+            }
+
             return;
         }
+    }
+
+
+    /* Index registers for logged in sessions. */
+    void Indexing::index_registers(const uint512_t& hash, const TAO::Ledger::Transaction& tx)
+    {
+
     }
 
 
@@ -297,7 +348,8 @@ namespace TAO::API
                 TAO::API::Transaction(tx);
 
             /* Index the transaction to the database. */
-            tIndex.Index(hash);
+            if(!tIndex.Index(hash))
+                debug::warning(FUNCTION, "failed to index ", VARIABLE(hash.SubString()));
         }
 
 

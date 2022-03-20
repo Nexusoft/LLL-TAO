@@ -149,6 +149,17 @@ namespace TAO::API
         static void initialize_genesis(const uint256_t& hashGenesis);
 
 
+        /** index_registers
+         *
+         *  Index registers for logged in sessions.
+         *
+         *  @param[in] hash The txid of the transactioun
+         *  @param[in] tx The transaction to index events for.
+         *
+         **/
+        static void index_registers(const uint512_t& hash, const TAO::Ledger::Transaction& tx);
+
+
         /** index_events
          *
          *  Index transaction level events for logged in sessions.
@@ -158,6 +169,7 @@ namespace TAO::API
          *
          **/
         static void index_transaction(const uint512_t& hash, const TAO::Ledger::Transaction& tx);
+
 
     };
 }

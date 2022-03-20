@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/transaction.h>
 
+#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Ledger/include/enum.h>
@@ -105,6 +106,141 @@ namespace LLD
     bool LogicalDB::ReadTx(const uint512_t& hashTx, TAO::API::Transaction &tx)
     {
         return Read(std::make_pair(std::string("tx"), hashTx), tx);
+    }
+
+
+    /* Push an register to process for given genesis-id. */
+    bool LogicalDB::PushRegister(const uint256_t& hashGenesis, const TAO::Operation::Contract& rContract)
+    {
+        /* Track our register address we are operating on. */
+        TAO::Register::Address hashRegister;
+
+        /* Skip to our primitive. */
+        rContract.SeekToPrimitive();
+
+        /* Start an ACID transaction for this set of records. */
+        TxnBegin();
+
+        /* Check the contract's primitive. */
+        uint8_t nOP = 0;
+        rContract >> nOP;
+        switch(nOP)
+        {
+            /* Claims add register to our lists. */
+            case TAO::Operation::OP::CLAIM:
+            {
+                /* Seek past irrelevant data. */
+                rContract.Seek(68);
+
+                /* Extract the address from the contract. */
+                rContract >> hashRegister;
+
+                break;
+            }
+
+            /* Create and transfer add to list or add transfer key to skip. */
+            case TAO::Operation::OP::CREATE:
+            case TAO::Operation::OP::TRANSFER:
+            {
+                /* Extract the address from the contract. */
+                rContract >> hashRegister;
+
+                /* Transfer we need to mark this address as spent. */
+                if(nOP == TAO::Operation::OP::TRANSFER)
+                    return WriteTransfer(hashGenesis, hashRegister);
+
+                break;
+            }
+
+            /* Other operations can be skipped. */
+            default:
+                return false;
+        }
+
+        /* Check for an active transfer. */
+        if(HasTransfer(hashGenesis, hashRegister))
+            return EraseTransfer(hashGenesis, hashRegister);
+
+        /* Check for already existing order. */
+        if(HasRegister(hashGenesis, hashRegister))
+            return false;
+
+        /* Get our current sequence number. */
+        uint32_t nOwnerSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("registers.sequence"), hashGenesis), nOwnerSequence);
+
+        /* Add our indexing entry by owner sequence number. */
+        if(!Write(std::make_tuple(std::string("registers.index"), nOwnerSequence, hashGenesis), hashRegister))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("registers.sequence"), hashGenesis), ++nOwnerSequence))
+            return false;
+
+        /* Write our order proof. */
+        if(!Write(std::make_tuple(std::string("registers.proof"), hashGenesis, hashRegister)))
+            return false;
+
+        return TxnCommit();
+    }
+
+
+    /* List the current active registers for given genesis-id. */
+    bool LogicalDB::ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t> &vRegisters)
+    {
+        /* Cache our txid and contract as a pair. */
+        uint256_t hashRegister;
+
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Read our current record. */
+            if(!Read(std::make_tuple(std::string("registers.index"), nSequence, hashGenesis), hashRegister))
+                break;
+
+            /* Check for transfer keys. */
+            if(HasTransfer(hashGenesis, hashRegister))
+                continue; //NOTE: we skip over transfer keys
+
+            /* Check for already executed contracts to omit. */
+            vRegisters.push_back(hashRegister);
+
+            /* Increment our sequence number. */
+            ++nSequence;
+        }
+
+        return !vRegisters.empty();
+    }
+
+
+    /* Checks if a register has been indexed in the database already. */
+    bool LogicalDB::HasRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        return Exists(std::make_tuple(std::string("registers.proof"), hashGenesis, hashRegister));
+    }
+
+
+    /* Writes a key that indicates a register was transferred from sigchain. */
+    bool LogicalDB::WriteTransfer(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        return Write(std::make_tuple(std::string("registers.transfer"), hashGenesis, hashRegister));
+    }
+
+
+    /* Checks a key that indicates a register was transferred from sigchain. */
+    bool LogicalDB::HasTransfer(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        return Exists(std::make_tuple(std::string("registers.transfer"), hashGenesis, hashRegister));
+    }
+
+
+    /* Erases a key that indicates a register was transferred from sigchain. */
+    bool LogicalDB::EraseTransfer(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        return Erase(std::make_tuple(std::string("registers.transfer"), hashGenesis, hashRegister));
     }
 
 
