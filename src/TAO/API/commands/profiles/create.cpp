@@ -77,7 +77,7 @@ namespace TAO::API
         const uint256_t hashGenesis = pCredentials->Genesis();
 
         /* Check for duplicates in ledger db. */
-        if(LLD::Ledger->HasGenesis(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
+        if(LLD::Ledger->HasFirst(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
         {
             pCredentials.free();
             throw Exception(-130, "Account already exists");

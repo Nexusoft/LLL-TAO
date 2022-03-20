@@ -102,7 +102,7 @@ namespace TAO
                     throw Exception(-297, "Cannot log in while synchronizing");
 
                 /* First check to see if this is a new sig chain and the genesis is in the mempool */
-                bool fNewSigchain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
+                bool fNewSigchain = !LLD::Ledger->HasFirst(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
 
                 /* IF this is not a new sig chain, force a lookup of the crypto register */
                 if(!fNewSigchain)
@@ -131,7 +131,7 @@ namespace TAO
                 }
 
             }
-            else if(!LLD::Ledger->HasGenesis(hashGenesis))
+            else if(!LLD::Ledger->HasFirst(hashGenesis))
             {
                 /* If user genesis not in ledger, this will throw an exception. Just a matter of which one. */
 
@@ -276,7 +276,7 @@ namespace TAO
                             throw Exception(-297, "Cannot log in while synchronizing");
 
                         /* First check to see if this is a new sig chain and the genesis is in the mempool */
-                        bool fNewSigchain = !LLD::Ledger->HasGenesis(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
+                        bool fNewSigchain = !LLD::Ledger->HasFirst(hashGenesis) && TAO::Ledger::mempool.Has(hashGenesis);
 
                         /* IF this is not a new sig chain, force a lookup of the crypto register */
                         if(!fNewSigchain )
@@ -308,7 +308,7 @@ namespace TAO
                     /* See if the sig chain exists */
                     else
                     {
-                        if(!LLD::Ledger->HasGenesis(hashGenesis) && !TAO::Ledger::mempool.Has(hashGenesis))
+                        if(!LLD::Ledger->HasFirst(hashGenesis) && !TAO::Ledger::mempool.Has(hashGenesis))
                         {
                             /* If it doesn't exist then create it if configured to do so */
                             if(config::GetBoolArg("-autocreate"))

@@ -386,7 +386,7 @@ namespace TAO
                 if(IsFirst())
                 {
                     /* Check for transaction version 3. */
-                    if(nVersion >= 3 && LLD::Ledger->HasGenesis(hashGenesis))
+                    if(nVersion >= 3 && LLD::Ledger->HasFirst(hashGenesis))
                         return debug::error(FUNCTION, "invalid genesis-id ", hashGenesis.SubString());
 
                     /* Reset the contract operation stream */
@@ -826,7 +826,7 @@ namespace TAO
             if(IsFirst())
             {
                 /* Check for transaction version 3. */
-                if(nVersion >= 3 && LLD::Ledger->HasGenesis(hashGenesis))
+                if(nVersion >= 3 && LLD::Ledger->HasFirst(hashGenesis))
                     return debug::error(FUNCTION, "invalid genesis-id ", hashGenesis.SubString());
 
                 /* Check ambassador sigchains based on all versions, not the smaller subset of versions. */
@@ -863,7 +863,7 @@ namespace TAO
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
                     /* Write the genesis identifier. */
-                    if(!LLD::Ledger->WriteGenesis(hashGenesis, hash))
+                    if(!LLD::Ledger->WriteFirst(hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write genesis");
                 }
             }
@@ -1024,7 +1024,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to erase last hash");
 
                     /* Erase our genesis-id now. */
-                    if(!LLD::Ledger->EraseGenesis(hashGenesis))
+                    if(!LLD::Ledger->EraseFirst(hashGenesis))
                         return debug::error(FUNCTION, "failed to erase genesis");
                 }
 

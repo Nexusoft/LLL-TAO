@@ -62,7 +62,7 @@ namespace TAO
                 throw Exception(-300, "API can only be used to lookup data for the currently logged in signature chain when running in client mode");
 
             /* Check genesis exists */
-            if(!LLD::Ledger->HasGenesis(hashGenesis))
+            if(!LLD::Ledger->HasFirst(hashGenesis))
                 throw Exception(-258, "Unknown genesis");
 
             /* The address of the crypto object register, which is deterministic based on the genesis */

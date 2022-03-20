@@ -1629,7 +1629,7 @@ namespace LLP
 
                             /* Check for empty hash start. */
                             bool fGenesis = (hashStart == 0);
-                            if(hashStart == 0 && !LLD::Ledger->ReadGenesis(hashSigchain, hashStart))
+                            if(hashStart == 0 && !LLD::Ledger->ReadFirst(hashSigchain, hashStart))
                                 break;
 
                             /* Check for empty hash stop. */
@@ -2000,7 +2000,7 @@ namespace LLP
 
                             /* Get the genesis txid. */
                             uint512_t hashTx;
-                            if(LLD::Ledger->ReadGenesis(hashGenesis, hashTx))
+                            if(LLD::Ledger->ReadFirst(hashGenesis, hashTx))
                             {
                                 TAO::Ledger::Transaction tx;
                                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))

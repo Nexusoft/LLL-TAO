@@ -529,7 +529,7 @@ namespace TAO::Ledger
                     uint256_t hashGenesis = uint256_t(entry.first);
 
                     /* Ensure the address is valid. */
-                    if(!LLD::Ledger->HasGenesis(hashGenesis))
+                    if(!LLD::Ledger->HasFirst(hashGenesis))
                         return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
 
                     /* Set coinbase operation. */
@@ -760,7 +760,7 @@ namespace TAO::Ledger
 
         /* Check for duplicates in ledger db. */
         TAO::Ledger::Transaction txPrev;
-        if(LLD::Ledger->HasGenesis(hashGenesis))
+        if(LLD::Ledger->HasFirst(hashGenesis))
         {
             /* Get the last transaction. */
             uint512_t hashLast;

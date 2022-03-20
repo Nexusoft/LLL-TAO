@@ -109,7 +109,7 @@ namespace TAO::API
         /* In client mode, in order to check whether the username already exists we have to do things differently as it is
            possible that the local db does not have the genesis as it has never been used by the node.  In which case we
            need to request the genesis transaction from a peer and then check again */
-        if(config::fClient.load() && !LLD::Ledger->HasGenesis(hashGenesis))
+        if(config::fClient.load() && !LLD::Ledger->HasFirst(hashGenesis))
         {
              /* Check tritium server enabled. */
             if(LLP::TRITIUM_SERVER)
@@ -128,7 +128,7 @@ namespace TAO::API
         }
 
         /* Check for duplicates in ledger db. */
-        if(LLD::Ledger->HasGenesis(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
+        if(LLD::Ledger->HasFirst(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
         {
             user.free();
             throw Exception(-130, "Account already exists");

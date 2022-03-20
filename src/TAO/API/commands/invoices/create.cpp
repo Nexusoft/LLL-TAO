@@ -53,7 +53,7 @@ namespace TAO::API
         const uint256_t hashRecipient = ExtractRecipient(jParams);
 
         /* Check that the recipient genesis hash exists */
-        if(!LLD::Ledger->HasGenesis(hashRecipient))
+        if(!LLD::Ledger->HasFirst(hashRecipient))
             throw Exception(-230, "Recipient user does not exist");
 
         /* Add the mandatory invoice fields to the invoice JSON */

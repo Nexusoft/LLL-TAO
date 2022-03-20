@@ -424,7 +424,7 @@ namespace LLP
 
                     /* Validate the address. Disconnect immediately if an invalid address is provided. */
                     uint256_t hashGenesis(strAddress);
-                    if(!LLD::Ledger->HasGenesis(hashGenesis))
+                    if(!LLD::Ledger->HasFirst(hashGenesis))
                     {
                         respond(COINBASE_FAIL);
                         return debug::error(FUNCTION, "Invalid Tritium Address in Coinbase Tx: ", strAddress);

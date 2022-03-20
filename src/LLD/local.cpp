@@ -103,7 +103,7 @@ namespace LLD
 
 
     /* Writes a username - genesis hash pair to the local database. */
-    bool LocalDB::WriteGenesis(const SecureString& strUsername, const uint256_t& hashGenesis)
+    bool LocalDB::WriteFirst(const SecureString& strUsername, const uint256_t& hashGenesis)
     {
         std::vector<uint8_t> vKey(strUsername.begin(), strUsername.end());
         return Write(std::make_pair(std::string("genesis"), vKey), hashGenesis);
@@ -111,7 +111,7 @@ namespace LLD
 
 
     /* Reads a genesis hash from the local database for a given username */
-    bool LocalDB::ReadGenesis(const SecureString& strUsername, uint256_t &hashGenesis)
+    bool LocalDB::ReadFirst(const SecureString& strUsername, uint256_t &hashGenesis)
     {
         std::vector<uint8_t> vKey(strUsername.begin(), strUsername.end());
         return Read(std::make_pair(std::string("genesis"), vKey), hashGenesis);

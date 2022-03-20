@@ -74,7 +74,7 @@ namespace TAO
 
             /* Check that the genesis exists. */
             TAO::Ledger::Transaction txPrev;
-            if(!LLD::Ledger->HasGenesis(hashGenesis))
+            if(!LLD::Ledger->HasFirst(hashGenesis))
             {
                 throw Exception(-139, "Invalid credentials");
             }

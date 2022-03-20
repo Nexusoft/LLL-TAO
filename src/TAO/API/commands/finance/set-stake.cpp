@@ -58,13 +58,13 @@ namespace TAO::API
         uint256_t hashGenesis = user->Genesis();
 
         /* Verify the user login. */
-        if(!LLD::Ledger->HasGenesis(hashGenesis))
+        if(!LLD::Ledger->HasFirst(hashGenesis))
         {
             /* Check the memory pool for hashGenesis transaction. */
             if(!TAO::Ledger::mempool.Has(hashGenesis))
                 throw Exception(-136, "Account doesn't exist");
 
-            /* If present in mempool when HasGenesis() false, it is user create and not yet confirmed. Cannot set stake */
+            /* If present in mempool when HasFirst() false, it is user create and not yet confirmed. Cannot set stake */
             throw Exception(-222, "User create pending confirmation");
         }
 

@@ -163,7 +163,7 @@ namespace TAO
                     return false;
                 }
             }
-            else if(LLD::Ledger->HasGenesis(tx.hashGenesis))
+            else if(LLD::Ledger->HasFirst(tx.hashGenesis))
             {
                 /* Add to conflicts map. */
                 debug::error(FUNCTION, "CONFLICT: invalid genesis-id ", tx.hashGenesis.SubString());
