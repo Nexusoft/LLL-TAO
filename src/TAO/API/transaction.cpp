@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+
 #include <TAO/API/types/transaction.h>
 
 /* Global TAO namespace. */
@@ -52,7 +54,7 @@ namespace TAO::API
     /* Copy constructor. */
     Transaction::Transaction(const TAO::Ledger::Transaction& tx)
     : TAO::Ledger::Transaction (tx)
-    , nModified                (tx.nTimestamp)
+    , nModified                (nTimestamp)
     , nStatus                  (PENDING)
     , hashNextTx               (0)
     {
@@ -62,7 +64,7 @@ namespace TAO::API
     /* Move constructor. */
     Transaction::Transaction(TAO::Ledger::Transaction&& tx) noexcept
     : TAO::Ledger::Transaction (std::move(tx))
-    , nModified                (std::move(tx.nTimestamp))
+    , nModified                (nTimestamp)
     , nStatus                  (PENDING)
     , hashNextTx               (0)
     {
@@ -134,7 +136,7 @@ namespace TAO::API
         vchSig        = tx.vchSig;
 
         //private values
-        nModified     = tx.nTimestamp;
+        nModified     = nTimestamp;
         nStatus       = PENDING;
 
         return *this;
@@ -158,7 +160,7 @@ namespace TAO::API
         vchSig        = std::move(tx.vchSig);
 
         //private values
-        nModified     = std::move(tx.nTimestamp);
+        nModified     = nTimestamp;
         nStatus       = PENDING;
 
         return *this;
@@ -181,23 +183,48 @@ namespace TAO::API
     /* Broadcast the transaction to all available nodes and update status. */
     void Transaction::Broadcast()
     {
+        /* We don't need to re-broadcast confirmed transactions. */
+        if(Confirmed())
+            return;
+
         /* Check our re-broadcast time. */
         if(nModified + 10 > runtime::unifiedtimestamp())
         {
             /* Adjust our modified timestamp. */
+            nModified = runtime::unifiedtimestamp();
+
+            /* Relay tx if creating ourselves. */
+            if(LLP::TRITIUM_SERVER)
+            {
+                /* Relay the transaction notification. */
+                LLP::TRITIUM_SERVER->Relay
+                (
+                    LLP::TritiumNode::ACTION::NOTIFY,
+                    uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
+                    GetHash() //TODO: we need to cache this hash internally (viz branch)
+                );
+            }
         }
     }
 
     /* Index a transaction into the ledger database. */
-    bool Transaction::IndexLast(const uint512_t& hash)
+    bool Transaction::Index(const uint512_t& hash)
     {
-        /* Push new transaction to database. */
-        if(!LLD::Logical->WriteTx(hash, *this))
-            return debug::error(FUNCTION, "failed to write ", VARIABLE(hash.SubString()));
+        /* Start our ACID transaction. */
+        LLD::Logical->TxnBegin();
 
         /* Read our previous transaction. */
         if(!IsFirst())
         {
+            /* Check for valid last index. */
+            uint512_t hashLast;
+            if(!LLD::Logical->ReadLast(hashGenesis, hashLast))
+                return debug::error(FUNCTION, "failed to read last index for ", VARIABLE(hashGenesis.SubString()));
+
+            /* Check that last index matches expected values. */
+            if(hash != hashLast)
+                return debug::error(FUNCTION, VARIABLE(hashLast.SubString()), " mismatch to expected ", VARIABLE(hash.SubString()));
+
             /* Read our previous transaction to build indexes for it. */
             TAO::API::Transaction tx;
             if(!LLD::Logical->ReadTx(hashPrevTx, tx))
@@ -211,11 +238,14 @@ namespace TAO::API
                 return debug::error(FUNCTION, "failed to update previous ", VARIABLE(hashPrevTx.SubString()));
         }
 
+        /* Push new transaction to database. */
+        if(!LLD::Logical->WriteTx(hash, *this))
+            return debug::error(FUNCTION, "failed to write ", VARIABLE(hash.SubString()));
+
         /* Write our last index to the database. */
         if(!LLD::Logical->WriteLast(hashGenesis, hash))
             return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
 
-
-        return true;
+        return LLD::Logical->TxnCommit();
     }
 }

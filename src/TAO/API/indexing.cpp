@@ -296,7 +296,7 @@ namespace TAO::API
             TAO::API::Transaction tIndex =
                 TAO::API::Transaction(tx);
 
-
+            
         }
 
 

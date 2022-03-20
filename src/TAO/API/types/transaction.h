@@ -38,9 +38,8 @@ namespace TAO::API
         /* Enum to track status. */
         enum : uint8_t
         {
-            PENDING  = 0x01, //peending means it was broadcast or created
-            BROADCAST = 0x02,
-            ACCEPTED = 0x02,
+            PENDING   = 0x01, //peending means it was broadcast or created
+            ACCEPTED  = 0x02,
         };
 
         /** Track the next transaction in the chain. **/
@@ -138,7 +137,7 @@ namespace TAO::API
         void Broadcast();
 
 
-        /** IndexLast
+        /** Index
          *
          *  Index a last transaction into the ledger database.
          *
@@ -147,6 +146,6 @@ namespace TAO::API
          *  @return true if this was indexed as last tx
          *
          **/
-        bool IndexLast(const uint512_t& hash);
+        bool Index(const uint512_t& hash);
     };
 }
