@@ -182,7 +182,7 @@ namespace LLD
          *  @return true if event was pushed successfully.
          *
          **/
-        bool PushRegister(const uint256_t& hashGenesis, const TAO::Operation::Contract& rContract);
+        bool PushRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister);
 
 
         /** ListRegisters

@@ -17,7 +17,6 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/transaction.h>
 
-#include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Ledger/include/enum.h>
@@ -110,52 +109,10 @@ namespace LLD
 
 
     /* Push an register to process for given genesis-id. */
-    bool LogicalDB::PushRegister(const uint256_t& hashGenesis, const TAO::Operation::Contract& rContract)
+    bool LogicalDB::PushRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
-        /* Track our register address we are operating on. */
-        TAO::Register::Address hashRegister;
-
-        /* Skip to our primitive. */
-        rContract.SeekToPrimitive();
-
         /* Start an ACID transaction for this set of records. */
         TxnBegin();
-
-        /* Check the contract's primitive. */
-        uint8_t nOP = 0;
-        rContract >> nOP;
-        switch(nOP)
-        {
-            /* Claims add register to our lists. */
-            case TAO::Operation::OP::CLAIM:
-            {
-                /* Seek past irrelevant data. */
-                rContract.Seek(68);
-
-                /* Extract the address from the contract. */
-                rContract >> hashRegister;
-
-                break;
-            }
-
-            /* Create and transfer add to list or add transfer key to skip. */
-            case TAO::Operation::OP::CREATE:
-            case TAO::Operation::OP::TRANSFER:
-            {
-                /* Extract the address from the contract. */
-                rContract >> hashRegister;
-
-                /* Transfer we need to mark this address as spent. */
-                if(nOP == TAO::Operation::OP::TRANSFER)
-                    return WriteTransfer(hashGenesis, hashRegister);
-
-                break;
-            }
-
-            /* Other operations can be skipped. */
-            default:
-                return false;
-        }
 
         /* Check for an active transfer. */
         if(HasTransfer(hashGenesis, hashRegister))
