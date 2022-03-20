@@ -296,7 +296,8 @@ namespace TAO::API
             TAO::API::Transaction tIndex =
                 TAO::API::Transaction(tx);
 
-            
+            /* Index the transaction to the database. */
+            tIndex.Index(hash);
         }
 
 

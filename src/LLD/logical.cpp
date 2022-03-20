@@ -70,14 +70,27 @@ namespace LLD
     /* Reads the last txid that was indexed. */
     bool LogicalDB::ReadLast(const uint256_t& hashGenesis, uint512_t &hashTx)
     {
-        return Read(std::make_pair(std::string("indexing"), hashGenesis), hashTx);
+        return Read(std::make_pair(std::string("indexing.last"), hashGenesis), hashTx);
     }
 
 
     /* Writes the last txid that was indexed. */
     bool LogicalDB::WriteLast(const uint256_t& hashGenesis, const uint512_t& hashTx)
     {
-        return Write(std::make_pair(std::string("indexing"), hashGenesis), hashTx);
+        return Write(std::make_pair(std::string("indexing.last"), hashGenesis), hashTx);
+    }
+
+    /* Writes the first transaction-id to disk. */
+    bool LogicalDB::WriteFirst(const uint256_t& hashGenesis, const uint512_t& hashTx)
+    {
+        return Write(std::make_pair(std::string("indexing.first"), hashGenesis), hashTx);
+    }
+
+
+    /* Reads the first transaction-id from disk. */
+    bool LogicalDB::ReadFirst(const uint256_t& hashGenesis, uint512_t& hashTx)
+    {
+        return Read(std::make_pair(std::string("indexing.first"), hashGenesis), hashTx);
     }
 
 

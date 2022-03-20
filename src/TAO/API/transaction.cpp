@@ -237,6 +237,12 @@ namespace TAO::API
             if(!LLD::Logical->WriteTx(hashPrevTx, tx))
                 return debug::error(FUNCTION, "failed to update previous ", VARIABLE(hashPrevTx.SubString()));
         }
+        else
+        {
+            /* Write our first index if applicable. */
+            if(!LLD::Logical->WriteFirst(hashGenesis, hash))
+                return debug::error(FUNCTION, "failed to write first index for ", VARIABLE(hashGenesis.SubString()));
+        }
 
         /* Push new transaction to database. */
         if(!LLD::Logical->WriteTx(hash, *this))

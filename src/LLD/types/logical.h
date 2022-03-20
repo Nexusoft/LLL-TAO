@@ -119,6 +119,32 @@ namespace LLD
         bool WriteLast(const uint256_t& hashGenesis, const uint512_t& hashTx);
 
 
+        /** WriteFirst
+         *
+         *  Writes the first transaction-id to disk.
+         *
+         *  @param[in] hashGenesis The genesis ID to write for.
+         *  @param[in] hashTx The transaction-id to write for.
+         *
+         *  @return True if the genesis is written, false otherwise.
+         *
+         **/
+        bool WriteFirst(const uint256_t& hashGenesis, const uint512_t& hashTx);
+
+
+        /** ReadFirst
+         *
+         *  Reads the first transaction-id from disk.
+         *
+         *  @param[in] hashGenesis The genesis ID to read for.
+         *  @param[out] hashTx The transaction-id to read for.
+         *
+         *  @return True if the genesis was read, false otherwise.
+         *
+         **/
+        bool ReadFirst(const uint256_t& hashGenesis, uint512_t& hashTx);
+
+
         /** WriteTx
          *
          *  Writes a transaction to the Logical DB.
