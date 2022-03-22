@@ -348,7 +348,6 @@ namespace TAO::API
                 debug::warning(FUNCTION, "failed to index ", VARIABLE(hash.SubString()));
         }
 
-
         /* Check all the tx contracts. */
         for(uint32_t n = 0; n < tx.Size(); ++n)
         {
