@@ -343,8 +343,8 @@ namespace LLD
          *  Push an event to process for given genesis-id.
          *
          *  @param[in] hashGenesis The genesis-id to push event for.
-         *  @param[in] rContract The contract that contains the existing order.
-         *  @param[in] nContract The contract-id that contains the order
+         *  @param[in] rContract The contract that contains the existing event.
+         *  @param[in] nContract The contract-id that contains the event
          *
          *  @return true if event was pushed successfully.
          *
