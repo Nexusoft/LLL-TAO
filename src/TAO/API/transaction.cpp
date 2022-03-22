@@ -287,10 +287,6 @@ namespace TAO::API
             /* Erase our last index from the database. */
             if(!LLD::Logical->WriteLast(hashGenesis, hashPrevTx))
                 return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
-
-            /* Erase our transaction from the database. */
-            if(!LLD::Logical->EraseTx(hash))
-                return debug::error(FUNCTION, "failed to erase ", VARIABLE(hash.SubString()));
         }
         else
         {
@@ -302,6 +298,10 @@ namespace TAO::API
             if(!LLD::Logical->EraseLast(hashGenesis))
                 return debug::error(FUNCTION, "failed to write first index for ", VARIABLE(hashGenesis.SubString()));
         }
+
+        /* Erase our transaction from the database. */
+        if(!LLD::Logical->EraseTx(hash))
+            return debug::error(FUNCTION, "failed to erase ", VARIABLE(hash.SubString()));
 
         /* Index our transaction level data now. */
         deindex_registers();
