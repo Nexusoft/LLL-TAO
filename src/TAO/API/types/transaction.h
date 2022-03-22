@@ -147,5 +147,15 @@ namespace TAO::API
          *
          **/
         bool Index(const uint512_t& hash);
+
+
+    private:
+
+        /** index_registers
+         *
+         *  Index registers for logged in sessions.
+         *
+         **/
+        void index_registers();
     };
 }
