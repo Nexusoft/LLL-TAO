@@ -169,6 +169,9 @@ namespace TAO::API
         if(SESSIONS->count(hashGenesis))
             return;
 
+        /* Initialize our genesis sigchain. */
+        initialize_genesis(hashGenesis);
+
         /* Insert new session into our set to monitor. */
         SESSIONS->insert(hashGenesis);
     }
