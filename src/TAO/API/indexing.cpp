@@ -367,29 +367,38 @@ namespace TAO::API
                 case TAO::Operation::OP::DEBIT:
                 {
                     /* Seek to recipient. */
-                    uint256_t hashTo;
                     rContract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
-                    rContract >> hashTo;
 
-                    /* Read the owner of register. (check this for MEMPOOL, too) */
-                    TAO::Register::State oRegister;
-                    if(!LLD::Register->ReadState(hashTo, oRegister))
-                        continue;
+                    /* Deserialize recipient from contract. */
+                    uint256_t hashRecipient;
+                    rContract >> hashRecipient;
+
+                    /* Check for specific debits since transfer is to genesis. */
+                    if(nOP == TAO::Operation::OP::DEBIT)
+                    {
+                        /* Read the owner of register. (check this for MEMPOOL, too) */
+                        TAO::Register::State oRegister;
+                        if(!LLD::Register->ReadState(hashRecipient, oRegister))
+                            continue;
+
+                        /* Set our hash to based on owner. */
+                        hashRecipient = oRegister.hashOwner;
+                    }
 
                     /* Check if we need to build index for this contract. */
-                    if(SESSIONS->count(oRegister.hashOwner))
+                    if(SESSIONS->count(hashRecipient))
                     {
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(oRegister.hashOwner, rContract, n))
+                        if(!LLD::Logical->PushEvent(hashRecipient, rContract, n))
                         {
-                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(oRegister.hashOwner.SubString()), " | ", VARIABLE(n), ") to logical database");
+                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
 
                             continue;
                         }
                     }
 
                     debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
-                        "for genesis ", oRegister.hashOwner.SubString());
+                        "for genesis ", hashRecipient.SubString());
 
                     break;
                 }
@@ -397,21 +406,21 @@ namespace TAO::API
                 case TAO::Operation::OP::COINBASE:
                 {
                     /* Get the genesis. */
-                    uint256_t hashOwner;
-                    rContract >> hashOwner;
+                    uint256_t hashRecipient;
+                    rContract >> hashRecipient;
 
                     /* Check if we need to build index for this contract. */
-                    if(SESSIONS->count(hashOwner))
+                    if(SESSIONS->count(hashRecipient))
                     {
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashOwner, rContract, n))
+                        if(!LLD::Logical->PushEvent(hashRecipient, rContract, n))
                         {
-                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashOwner.SubString()), " | ", VARIABLE(n), ") to logical database");
+                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
 
                             continue;
                         }
 
-                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashOwner.SubString());
+                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString());
                     }
 
                     break;
