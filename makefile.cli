@@ -470,6 +470,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_system_initialize.o \
 		build/API_commands_system_metrics.o \
 		build/API_commands_system_validate.o \
+		build/API_commands_system_verifypin.o \
 		build/API_commands_templates_claim.o \
 		build/API_commands_templates_create.o \
 		build/API_commands_templates_get.o \

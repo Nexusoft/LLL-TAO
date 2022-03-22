@@ -133,6 +133,17 @@ namespace TAO::API
          **/
         encoding::json Metrics(const encoding::json& params, const bool fHelp);
 
+        /** VerifyPin
+         *
+         *  Returns boolean if supplied pin is the same as the active Pin 
+         *
+         *  @param[in] params The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json VerifyPin(const encoding::json& params, const bool fHelp);
 
 
     private:
