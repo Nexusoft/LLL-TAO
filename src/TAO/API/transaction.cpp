@@ -263,6 +263,53 @@ namespace TAO::API
     }
 
 
+    /* Delete this transaction from the logical database. */
+    bool Transaction::Delete(const uint512_t& hash)
+    {
+        /* Start our ACID transaction. */
+        LLD::Logical->TxnBegin();
+
+        /* Read our previous transaction. */
+        if(!IsFirst())
+        {
+            /* Read our previous transaction to build indexes for it. */
+            TAO::API::Transaction tx;
+            if(!LLD::Logical->ReadTx(hashPrevTx, tx))
+                return debug::error(FUNCTION, "failed to read previous ", VARIABLE(hashPrevTx.SubString()));
+
+            /* Set our forward iteration hash. */
+            tx.hashNextTx = 0;
+
+            /* Erase our new transaction to disk. */
+            if(!LLD::Logical->WriteTx(hashPrevTx, tx))
+                return debug::error(FUNCTION, "failed to update previous ", VARIABLE(hashPrevTx.SubString()));
+
+            /* Erase our last index from the database. */
+            if(!LLD::Logical->WriteLast(hashGenesis, hashPrevTx))
+                return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
+
+            /* Erase our transaction from the database. */
+            if(!LLD::Logical->EraseTx(hash))
+                return debug::error(FUNCTION, "failed to erase ", VARIABLE(hash.SubString()));
+        }
+        else
+        {
+            /* Erase our first index if applicable. */
+            if(!LLD::Logical->EraseFirst(hashGenesis))
+                return debug::error(FUNCTION, "failed to write first index for ", VARIABLE(hashGenesis.SubString()));
+
+            /* Erase our last index if applicable. */
+            if(!LLD::Logical->EraseLast(hashGenesis))
+                return debug::error(FUNCTION, "failed to write first index for ", VARIABLE(hashGenesis.SubString()));
+        }
+
+        /* Index our transaction level data now. */
+        deindex_registers();
+
+        return LLD::Logical->TxnCommit();
+    }
+
+
     /* Index registers for logged in sessions. */
     void Transaction::index_registers()
     {
@@ -289,30 +336,100 @@ namespace TAO::API
             uint8_t nOP = 0;
             rContract >> nOP;
 
-            /* Transfer we need to mark this address as spent. */
-            if(nOP == TAO::Operation::OP::TRANSFER)
+            switch(nOP)
             {
-                if(!LLD::Logical->WriteTransfer(hashGenesis, hashRegister))
-                    debug::warning(FUNCTION, "failed to write transfer for ", VARIABLE(hashRegister.SubString()));
+                /* Transfer we need to mark this address as spent. */
+                case TAO::Operation::OP::TRANSFER:
+                {
+                    if(!LLD::Logical->WriteTransfer(hashGenesis, hashRegister))
+                        debug::warning(FUNCTION, "failed to write transfer for ", VARIABLE(hashRegister.SubString()));
 
+                    continue;
+                }
+
+                /* Claim should unmark address as spent. */
+                case TAO::Operation::OP::CLAIM:
+                {
+                    if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
+                        debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
+
+                    continue;
+                }
+
+                case TAO::Operation::OP::CREATE:
+                {
+                    /* Write our register to database. */
+                    if(!LLD::Logical->PushRegister(hashGenesis, hashRegister))
+                    {
+                        debug::warning(FUNCTION, "failed to push register ", VARIABLE(hashGenesis.SubString()));
+                        continue;
+                    }
+                }
+            }
+
+            //handle our register transaction indexes now.
+        }
+    }
+
+
+    /* Index registers for logged in sessions. */
+    void Transaction::deindex_registers()
+    {
+        /* Track our register address. */
+        uint256_t hashRegister;
+
+        /* Check all the tx contracts. */
+        for(int32_t n = Size() - 1; n >= 0; --n)
+        {
+            /* Grab reference of our contract. */
+            const TAO::Operation::Contract& rContract = vContracts[n];
+
+            /* Check for valid contracts. */
+            if(!TAO::Register::Unpack(rContract, hashRegister))
+            {
+                debug::warning(FUNCTION, "failed to unpack register ", VARIABLE(GetHash().SubString()), " | ", VARIABLE(n));
                 continue;
             }
 
-            /* Claim should unmark address as spent. */
-            if(nOP == TAO::Operation::OP::CLAIM && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
-            {
-                if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
-                    debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
+            /* Skip to our primitive. */
+            rContract.SeekToPrimitive();
 
-                continue;
+            /* Check the contract's primitive. */
+            uint8_t nOP = 0;
+            rContract >> nOP;
+
+            switch(nOP)
+            {
+                /* Transfer we need to mark this address as spent. */
+                case TAO::Operation::OP::TRANSFER:
+                {
+                    if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
+                        debug::warning(FUNCTION, "failed to write transfer for ", VARIABLE(hashRegister.SubString()));
+
+                    continue;
+                }
+
+                /* Claim should unmark address as spent. */
+                case TAO::Operation::OP::CLAIM:
+                {
+                    if(!LLD::Logical->WriteTransfer(hashGenesis, hashRegister))
+                        debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
+
+                    continue;
+                }
+
+                case TAO::Operation::OP::CREATE:
+                {
+                    /* Write our register to database. */
+                    if(!LLD::Logical->EraseRegister(hashGenesis, hashRegister))
+                    {
+                        debug::warning(FUNCTION, "failed to push register ", VARIABLE(hashGenesis.SubString()));
+                        continue;
+                    }
+                }
             }
 
-            /* Write our register to database. */
-            if(!LLD::Logical->PushRegister(hashGenesis, hashRegister))
-            {
-                debug::warning(FUNCTION, "failed to push register ", VARIABLE(hashGenesis.SubString()));
-                continue;
-            }
+            //handle our register transaction indexes now.
         }
     }
 }

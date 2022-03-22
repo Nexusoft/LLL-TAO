@@ -145,6 +145,30 @@ namespace LLD
         bool ReadFirst(const uint256_t& hashGenesis, uint512_t& hashTx);
 
 
+        /** EraseLast
+         *
+         *  Erases the last txid that was indexed.
+         *
+         *  @param[in] hashGenesis The genesis-id we are writing last index for.
+         *
+         *  @return true if read successfully
+         *
+         **/
+        bool EraseLast(const uint256_t& hashGenesis);
+
+
+        /** EraseFirst
+         *
+         *  Erases the first transaction-id to disk.
+         *
+         *  @param[in] hashGenesis The genesis ID to write for.
+         *
+         *  @return True if the genesis is written, false otherwise.
+         *
+         **/
+        bool EraseFirst(const uint256_t& hashGenesis);
+
+
         /** WriteTx
          *
          *  Writes a transaction to the Logical DB.
@@ -156,6 +180,18 @@ namespace LLD
          *
          **/
         bool WriteTx(const uint512_t& hashTx, const TAO::API::Transaction& tx);
+
+
+        /** EraseTx
+         *
+         *  Erase a transaction from the Logical DB.
+         *
+         *  @param[in] hashTx The txid of transaction to erase.
+         *
+         *  @return True if the transaction was successfully erased, false otherwise.
+         *
+         **/
+        bool EraseTx(const uint512_t& hashTx);
 
 
         /** ReadTx
@@ -177,12 +213,25 @@ namespace LLD
          *  Push an register to process for given genesis-id.
          *
          *  @param[in] hashGenesis The genesis-id to push register for.
-         *  @param[in] rContract The contract that contains the register.
+         *  @param[in] hashRegister The address of register to push
          *
          *  @return true if event was pushed successfully.
          *
          **/
         bool PushRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** EraseRegister
+         *
+         *  Erase an register for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push register for.
+         *  @param[in] hashRegister The address of register to erase
+         *
+         *  @return true if event was pushed successfully.
+         *
+         **/
+        bool EraseRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister);
 
 
         /** ListRegisters
@@ -209,6 +258,45 @@ namespace LLD
          *
          **/
         bool HasRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** WriteDeindex
+         *
+         *  Writes a key that indicates a register was deindexed by reorganize
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] hashRegister The register address that is being transferred.
+         *
+         *  @return true if db wrote new transfer correctly.
+         *
+         **/
+        bool WriteDeindex(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** HasDeindex
+         *
+         *  Checks a key that indicates a register was deindexed by reorganize
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] hashRegister The register address that is being transferred.
+         *
+         *  @return true if db wrote new transfer correctly.
+         *
+         **/
+        bool HasDeindex(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** EraseTransfer
+         *
+         *  Erases a key that indicates a register was deindexed by reorganize
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] hashRegister The register address that is being transferred.
+         *
+         *  @return true if db wrote new transfer correctly.
+         *
+         **/
+        bool EraseDeindex(const uint256_t& hashGenesis, const uint256_t& hashRegister);
 
 
         /** WriteTransfer

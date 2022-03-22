@@ -139,7 +139,7 @@ namespace TAO::API
 
         /** Index
          *
-         *  Index a last transaction into the ledger database.
+         *  Index a last transaction into the logical database.
          *
          *  @param[in] hash The txid to index the transaction by
          *
@@ -147,6 +147,18 @@ namespace TAO::API
          *
          **/
         bool Index(const uint512_t& hash);
+
+
+        /** Delete
+         *
+         *  Delete this transaction from the logical database.
+         *
+         *  @param[in] hash The txid to delete the transaction index
+         *
+         *  @return true if this index was deleted
+         *
+         **/
+        bool Delete(const uint512_t& hash);
 
 
     private:
@@ -157,5 +169,13 @@ namespace TAO::API
          *
          **/
         void index_registers();
+
+
+        /** deindex_registers
+         *
+         *  Delete index of registers for logged in sessions.
+         *
+         **/
+        void deindex_registers();
     };
 }

@@ -94,10 +94,31 @@ namespace LLD
     }
 
 
+    /* Writes the last txid that was indexed. */
+    bool LogicalDB::EraseLast(const uint256_t& hashGenesis)
+    {
+        return Erase(std::make_pair(std::string("indexing.last"), hashGenesis));
+    }
+
+
+    /* Writes the first transaction-id to disk. */
+    bool LogicalDB::EraseFirst(const uint256_t& hashGenesis)
+    {
+        return Erase(std::make_pair(std::string("indexing.first"), hashGenesis));
+    }
+
+
     /* Writes a transaction to the Logical DB. */
     bool LogicalDB::WriteTx(const uint512_t& hashTx, const TAO::API::Transaction& tx)
     {
         return Write(std::make_pair(std::string("tx"), hashTx), tx);
+    }
+
+
+    /* Erase a transaction from the Logical DB. */
+    bool LogicalDB::EraseTx(const uint512_t& hashTx)
+    {
+        return Erase(std::make_pair(std::string("tx"), hashTx));
     }
 
 
@@ -114,9 +135,9 @@ namespace LLD
         /* Start an ACID transaction for this set of records. */
         TxnBegin();
 
-        /* Check for an active transfer. */
-        if(HasTransfer(hashGenesis, hashRegister))
-            return EraseTransfer(hashGenesis, hashRegister);
+        /* Check for an active de-index. */
+        if(HasDeindex(hashGenesis, hashRegister))
+            return EraseDeindex(hashGenesis, hashRegister);
 
         /* Check for already existing order. */
         if(HasRegister(hashGenesis, hashRegister))
@@ -144,6 +165,13 @@ namespace LLD
     }
 
 
+    /* Erase an register for given genesis-id. */
+    bool LogicalDB::EraseRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        return WriteDeindex(hashGenesis, hashRegister);
+    }
+
+
     /* List the current active registers for given genesis-id. */
     bool LogicalDB::ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t> &vRegisters)
     {
@@ -162,6 +190,10 @@ namespace LLD
             if(HasTransfer(hashGenesis, hashRegister))
                 continue; //NOTE: we skip over transfer keys
 
+            /* Check for de-indexed keys. */
+            if(HasDeindex(hashGenesis, hashRegister))
+                continue; //NOTE: we skip over deindexed keys
+
             /* Check for already executed contracts to omit. */
             vRegisters.push_back(hashRegister);
 
@@ -177,6 +209,27 @@ namespace LLD
     bool LogicalDB::HasRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
         return Exists(std::make_tuple(std::string("registers.proof"), hashGenesis, hashRegister));
+    }
+
+
+    /* Writes a key that indicates a register was transferred from sigchain. */
+    bool LogicalDB::WriteDeindex(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        return Write(std::make_tuple(std::string("registers.deindex"), hashGenesis, hashRegister));
+    }
+
+
+    /* Checks a key that indicates a register was transferred from sigchain. */
+    bool LogicalDB::HasDeindex(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        return Exists(std::make_tuple(std::string("registers.deindex"), hashGenesis, hashRegister));
+    }
+
+
+    /* Erases a key that indicates a register was transferred from sigchain. */
+    bool LogicalDB::EraseDeindex(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        return Erase(std::make_tuple(std::string("registers.deindex"), hashGenesis, hashRegister));
     }
 
 
