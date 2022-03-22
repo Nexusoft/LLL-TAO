@@ -372,24 +372,24 @@ namespace TAO::API
                     rContract >> hashTo;
 
                     /* Read the owner of register. (check this for MEMPOOL, too) */
-                    TAO::Register::State state;
-                    if(!LLD::Register->ReadState(hashTo, state))
+                    TAO::Register::State oRegister;
+                    if(!LLD::Register->ReadState(hashTo, oRegister))
                         continue;
 
                     /* Check if we need to build index for this contract. */
-                    if(SESSIONS->count(state.hashOwner))
+                    if(SESSIONS->count(oRegister.hashOwner))
                     {
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(state.hashOwner, rContract, n))
+                        if(!LLD::Logical->PushEvent(oRegister.hashOwner, rContract, n))
                         {
-                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(state.hashOwner.SubString()), " | ", VARIABLE(n), ") to logical database");
+                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(oRegister.hashOwner.SubString()), " | ", VARIABLE(n), ") to logical database");
 
                             continue;
                         }
                     }
 
                     debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
-                        "for genesis ", state.hashOwner.SubString());
+                        "for genesis ", oRegister.hashOwner.SubString());
 
                     break;
                 }
