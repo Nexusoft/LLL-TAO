@@ -28,6 +28,9 @@ namespace TAO
          **/
         class Address : public uint256_t
         {
+            /* Version to help with tracking legacy addresses. */
+            uint8_t nVersion;
+
         public:
 
             /** Different bytes that are prepended to addresses. */

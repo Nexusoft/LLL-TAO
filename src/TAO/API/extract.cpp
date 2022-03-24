@@ -33,7 +33,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractAddress(const encoding::json& jParams, const std::string& strSuffix, const std::string& strDefault)
+    TAO::Register::Address ExtractAddress(const encoding::json& jParams, const std::string& strSuffix, const std::string& strDefault)
     {
         /* Check for our raw suffix formats here i.e. to, from, proof. */
         if(CheckParameter(jParams, strSuffix, "string"))
@@ -121,7 +121,7 @@ namespace TAO::API
 
 
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractToken(const encoding::json& jParams)
+    TAO::Register::Address ExtractToken(const encoding::json& jParams)
     {
         /* If name is provided then use this to deduce the register address, */
         if(CheckParameter(jParams, "token", "string"))
@@ -132,7 +132,7 @@ namespace TAO::API
 
 
     /* Extract an address from a single string. */
-    uint256_t ExtractAddress(const std::string& strAddress, const encoding::json& jParams)
+    TAO::Register::Address ExtractAddress(const std::string& strAddress, const encoding::json& jParams)
     {
         /* Declare our return value. */
         const TAO::Register::Address hashRet =

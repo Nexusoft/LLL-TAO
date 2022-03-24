@@ -20,6 +20,9 @@ ________________________________________________________________________________
 
 #include <set>
 
+//forward declarations
+namespace TAO::Register { class Address; }
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -34,7 +37,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractAddress(const encoding::json& jParams, const std::string& strSuffix = "", const std::string& strDefault = "");
+    TAO::Register::Address ExtractAddress(const encoding::json& jParams, const std::string& strSuffix = "", const std::string& strDefault = "");
 
 
     /** ExtractToken
@@ -46,7 +49,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractToken(const encoding::json& jParams);
+    TAO::Register::Address ExtractToken(const encoding::json& jParams);
 
 
     /** ExtractAddress
@@ -59,7 +62,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractAddress(const std::string& strAddress, const encoding::json& jParams);
+    TAO::Register::Address ExtractAddress(const std::string& strAddress, const encoding::json& jParams);
 
 
     /** ExtractMarket

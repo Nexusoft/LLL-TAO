@@ -33,7 +33,7 @@ namespace TAO::API
     class Accounts
     {
         /** Vector of addresses and balances to check against. **/
-        std::vector<std::pair<uint256_t, uint64_t>> vAddresses;
+        std::vector<std::pair<TAO::Register::Address, uint64_t>> vAddresses;
 
 
         /** Set of addresses, to track duplicate entries. **/
@@ -167,7 +167,7 @@ namespace TAO::API
          *  @param[in] nBalance The balance to add to the vector.
          *
          **/
-        void Insert(const uint256_t& hashAddress, const uint64_t nBalance)
+        void Insert(const TAO::Register::Address& hashAddress, const uint64_t nBalance)
         {
             /* Check for duplicates (check to protect against misuse). */
             if(setAddresses.count(hashAddress))
@@ -223,7 +223,7 @@ namespace TAO::API
          *  Gets the current address of the account we are operating on.
          *
          **/
-        uint256_t GetAddress() const
+        TAO::Register::Address GetAddress() const
         {
             /* If we have exhausted our list of address, otherwise throw here. */
             if(nIterator >= vAddresses.size())

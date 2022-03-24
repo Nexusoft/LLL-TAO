@@ -660,7 +660,7 @@ namespace TAO::API
                     contract >> hashAddress;
 
                     /* Read the register transfer recipient. */
-                    TAO::Register::Address hashTransfer;
+                    uint256_t hashTransfer;
                     contract >> hashTransfer;
 
                     /* Get the flag byte. */
@@ -1029,7 +1029,7 @@ namespace TAO::API
     {
         /* Add the register owner */
         encoding::json jRet;
-        jRet["owner"]    = TAO::Register::Address(object.hashOwner).ToString();
+        jRet["owner"]    = object.hashOwner.ToString();
         jRet["version"]  = object.nVersion;
         jRet["created"]  = object.nCreated;
         jRet["modified"] = object.nModified;
@@ -1667,7 +1667,7 @@ namespace TAO::API
         if(strVariable == "name")
         {
             /* Build our address from base58. */
-            const uint256_t hashAddress =
+            const TAO::Register::Address hashAddress =
                 TAO::Register::Address(strParam);
 
             /* Check for a valid reverse lookup entry. */
@@ -1685,10 +1685,7 @@ namespace TAO::API
             encoding::json jParams;
 
             /* Build our address from name record. */
-            const uint256_t hashAddress =
-                Names::ResolveAddress(jParams, strParam, true);
-
-            return TAO::Register::Address(hashAddress).ToString();
+            return Names::ResolveAddress(jParams, strParam, true).ToString();
         }
 
         return strValue;
