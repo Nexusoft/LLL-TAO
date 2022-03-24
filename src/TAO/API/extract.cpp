@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/types/address.h>
+
 #include <LLD/include/global.h>
 
 #include <TAO/Register/types/address.h>
@@ -89,7 +91,7 @@ namespace TAO::API
             if(hashRet.IsValid())
                 return hashRet;
 
-            throw Exception(-35, "Invalid parameter [", strAddr, "], expecting [Base58]");
+            throw Exception(-35, "Invalid address [", hashRet.ToString(), "]");
         }
 
         /* Check for our default values. */
@@ -144,6 +146,43 @@ namespace TAO::API
 
         /* Allow address to be a name record as well. */
         return Names::ResolveAddress(jParams, strAddress, false);
+    }
+
+
+    /* Extract a legacy address from incoming parameters to derive from name or address field. */
+    bool ExtractLegacy(const encoding::json& jParams, Legacy::NexusAddress &addrLegacy, const std::string& strSuffix)
+    {
+        /* Check for our raw suffix formats here i.e. to, from, proof. */
+        if(CheckParameter(jParams, strSuffix, "string"))
+            return ExtractLegacy(jParams[strSuffix].get<std::string>(), addrLegacy);
+
+        /* Cache a couple keys we will be using. */
+        const std::string strAddr =
+            "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
+
+        /* Let's check for the raw address format. */
+        if(CheckParameter(jParams, strAddr, "string"))
+            return ExtractLegacy(jParams[strAddr].get<std::string>(), addrLegacy);
+
+        return false;
+    }
+
+
+    /* Extract a legacy address from a single string. */
+    bool ExtractLegacy(const std::string& strAddress, Legacy::NexusAddress &addrLegacy)
+    {
+        /* Build a legacy address for this check. */
+        Legacy::NexusAddress addr =
+            Legacy::NexusAddress(strAddress);
+
+        /* Check for invalid address. */
+        if(!addr.IsValid())
+            return debug::error(FUNCTION, strAddress, " is invalid: ", addr.ToString());
+
+        /* Set our internal legacy address hash. */
+        addrLegacy = std::move(addr);
+
+        return true;
     }
 
 

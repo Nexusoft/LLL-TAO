@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <set>
 
 //forward declarations
+namespace Legacy        { class NexusAddress; }
 namespace TAO::Register { class Address; }
 
 /* Global TAO namespace. */
@@ -63,6 +64,33 @@ namespace TAO::API
      *
      **/
     TAO::Register::Address ExtractAddress(const std::string& strAddress, const encoding::json& jParams);
+
+
+    /** ExtractLegacy
+     *
+     *  Extract a legacy address from incoming parameters to derive from name or address field.
+     *
+     *  @param[in] jParams The parameters to find address in.
+     *  @param[out] addrLegacy The address to return from legacy extract.
+     *  @param[in] strSuffix The suffix to append to end of parameter we are extracting.
+     *
+     *  @return The legacy address if valid.
+     *
+     **/
+    bool ExtractLegacy(const encoding::json& jParams, Legacy::NexusAddress &addrLegacy, const std::string& strSuffix = "");
+
+
+    /** ExtractLegacy
+     *
+     *  Extract a legacy address from a single string.
+     *
+     *  @param[in] strAddress The parameters to find address in.
+     *  @param[out] addrLegacy The outgoing address hash.
+     *
+     *  @return The register address if valid.
+     *
+     **/
+    bool ExtractLegacy(const std::string& strAddress, Legacy::NexusAddress &addrLegacy);
 
 
     /** ExtractMarket

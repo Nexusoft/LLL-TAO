@@ -1670,6 +1670,10 @@ namespace TAO::API
             const TAO::Register::Address hashAddress =
                 TAO::Register::Address(strParam);
 
+            /* Check for valid tritium address. */
+            if(!hashAddress.IsValid())
+                throw Exception(-121, "Query Syntax Error: name reverse lookup invalid address");
+
             /* Check for a valid reverse lookup entry. */
             std::string strName;
             if(!Names::ReverseLookup(hashAddress, strName))

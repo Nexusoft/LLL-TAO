@@ -31,7 +31,6 @@ namespace TAO
         /* Default constructor. */
         Address::Address()
         : uint256_t(0)
-        , nVersion (0)
         {
         }
 
@@ -39,7 +38,6 @@ namespace TAO
         /* Build from uint256_t.. */
         Address::Address(const uint256_t& hashAddress)
         : uint256_t(hashAddress)
-        , nVersion (0)
         {
         }
 
@@ -47,7 +45,6 @@ namespace TAO
         /* Move from uint256_t hash. */
         Address::Address(uint256_t&& hashAddress) noexcept
         : uint256_t(std::move(hashAddress))
-        , nVersion (0)
         {
         }
 
@@ -77,7 +74,6 @@ namespace TAO
         /* Default constructor. */
         Address::Address(const uint8_t nType)
         : uint256_t(LLC::GetRand256())
-        , nVersion (0)
         {
             /* Set type. */
             SetType(nType);
@@ -91,7 +87,6 @@ namespace TAO
         /* Build an address from a base58 encoded string.*/
         Address::Address(const std::string& strAddress)
         : uint256_t( )
-        , nVersion (0)
         {
             /* Set the internal value from the incoming base58 encoded address */
             SetBase58(strAddress);
@@ -105,7 +100,6 @@ namespace TAO
         /* Build an address deterministically from a namespace name*/
         Address::Address(const std::string& strName, const uint8_t nType)
         : uint256_t(LLC::SK256(strName))
-        , nVersion (0)
         {
             /* Check for valid types. */
             if(nType != NAMESPACE)
@@ -118,7 +112,6 @@ namespace TAO
         /* Build an address deterministically from a key and namespace hash. */
         Address::Address(const std::string& strKey, const uint256_t& hashNamespace, const uint8_t nType)
         : uint256_t(0)
-        , nVersion (0)
         {
             /* The data to hash into this address */
             std::vector<uint8_t> vData;
@@ -147,10 +140,6 @@ namespace TAO
             if(*this <= uint256_t(SYSTEM::LIMIT)) //we don't use Rserved as this would result in recursive call loop
                 return false;
 
-            /* Check if is legacy, we do this before GetType() to check for nVersion first. */
-            if(IsLegacy())
-                return true;
-
             /* Return on valid types. */
             switch(GetType())
             {
@@ -166,11 +155,6 @@ namespace TAO
                 case NAMESPACE:
                 case WILDCARD:
                     return true;
-
-                //If these bytes are set yet nVersion is 0, this means we may have a mixup with legacy type byte and versions
-                case LEGACY:
-                case LEGACY_TESTNET:
-                    return false; //NOTE: this is redundant but here to show the logic and intent
             }
 
             return false;
@@ -253,21 +237,6 @@ namespace TAO
         }
 
 
-        /* Check if base hash maps to a valid legacy address. */
-        bool Address::IsLegacy() const
-        {
-            /* Quick short circuit. */
-            if(nVersion == 0)
-                return false;
-
-            /* Build a legacy address for this check. */
-            Legacy::NexusAddress addr =
-                Legacy::NexusAddress(*this);
-
-            return addr.IsValid() && (nVersion == LEGACY || nVersion == LEGACY_TESTNET);
-        }
-
-
         /* Sets the uint256_t value of this address from a base58 encoded string. */
         void Address::SetBase58(const std::string& str)
         {
@@ -277,24 +246,6 @@ namespace TAO
             /* Decode the incoming string */
             if(encoding::DecodeBase58Check(str, vBytes))
             {
-                /* Check for legaacy address char. */
-                if(vBytes[0] == LEGACY || vBytes[0] == LEGACY_TESTNET)
-                {
-                    /* Build a legacy address for this check. */
-                    const Legacy::NexusAddress addr =
-                        Legacy::NexusAddress(str);
-
-                    /* Special check for legacy address. */
-                    if(addr.IsValid())
-                    {
-                        /* Set our internal data and version for leading byte. */
-                        *this    = addr.GetHash256();
-                        nVersion = vBytes[0];
-
-                        return;
-                    }
-                }
-
                 /* Set the internal value based on the remainder of the decoded bytes after the leading type byte */
                 SetBytes(std::vector<uint8_t>(vBytes.begin() + 1, vBytes.end()));
 
@@ -323,10 +274,6 @@ namespace TAO
         {
             if(*this == 0)
                 return "0";
-            else if(GetType() == SYSTEM || (GetType() >= RESERVED1 && GetType() <= RESERVED2))
-                return GetHex();
-            else if(IsLegacy())
-                return Legacy::NexusAddress(*this).ToString();
             else
                 return ToBase58();
         }

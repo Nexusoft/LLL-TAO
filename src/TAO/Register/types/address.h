@@ -28,9 +28,6 @@ namespace TAO
          **/
         class Address : public uint256_t
         {
-            /* Version to help with tracking legacy addresses. */
-            uint8_t nVersion;
-
         public:
 
             /** Different bytes that are prepended to addresses. */
@@ -42,8 +39,8 @@ namespace TAO
                 RESERVED2      = 0xbf, //this is the end of the gensis-id type range
 
                 /* To identify legacy addresses */
-                LEGACY         = 0x2a,
-                LEGACY_TESTNET = 0x6f,
+                //LEGACY         = 0x2a,
+                //LEGACY_TESTNET = 0x6f,
 
                 /*  Standard register type bytes.
                  *  These MUST be between 0xd1 and 0xed for the base58 encoded string to start with 8
@@ -264,16 +261,6 @@ namespace TAO
              *
              **/
             bool IsWildcard() const;
-
-
-            /** IsLegacy
-             *
-             *  Check if type is set to LEGACY or LEGACY_TESTNET.
-             *
-             *  @return True if using LEGACY or LEGACY_TESTNET type.
-             *
-             **/
-            bool IsLegacy() const;
 
 
             /** SetBase58
