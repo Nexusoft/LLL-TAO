@@ -245,7 +245,7 @@ namespace TAO
             Legacy::NexusAddress addr =
                 Legacy::NexusAddress(*this);
 
-            return addr.IsValid();
+            return addr.IsValid() && ToBase58()[0] != '8';
             //return GetType() == LEGACY || GetType() == LEGACY_TESTNET;
         }
 
@@ -259,15 +259,19 @@ namespace TAO
             /* Decode the incoming string */
             if(encoding::DecodeBase58Check(str, vBytes))
             {
-                /* Build a legacy address for this check. */
-                const Legacy::NexusAddress addr =
-                    Legacy::NexusAddress(str);
-
-                /* Special check for legacy address. */
-                if(addr.IsValid())
+                /* Check for legaacy address char. */
+                if(str[0] == '2' && (vBytes[0] == LEGACY || vBytes[0] == LEGACY_TESTNET))
                 {
-                    *this = addr.GetHash256();
-                    return;
+                    /* Build a legacy address for this check. */
+                    const Legacy::NexusAddress addr =
+                        Legacy::NexusAddress(str);
+
+                    /* Special check for legacy address. */
+                    if(addr.IsValid())
+                    {
+                        *this = addr.GetHash256();
+                        return;
+                    }
                 }
 
                 /* Set the internal value based on the remainder of the decoded bytes after the leading type byte */
@@ -282,10 +286,6 @@ namespace TAO
         /* Returns a Base58 encoded string representation of the 256-bit address hash. */
         std::string Address::ToBase58() const
         {
-            /* Special case for encoding to base58. */
-            if(IsLegacy())
-                return Legacy::NexusAddress(*this).ToString();
-
             /* Get the bytes for the 256-bit hash */
             std::vector<uint8_t> vch = GetBytes();
 
@@ -303,6 +303,8 @@ namespace TAO
                 return "0";
             else if(GetType() == SYSTEM || (GetType() >= RESERVED1 && GetType() <= RESERVED2))
                 return GetHex();
+            else if(IsLegacy())
+                return Legacy::NexusAddress(*this).ToString();
             else
                 return ToBase58();
         }

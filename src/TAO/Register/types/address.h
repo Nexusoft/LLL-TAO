@@ -39,8 +39,8 @@ namespace TAO
                 RESERVED2      = 0xbf, //this is the end of the gensis-id type range
 
                 /* To identify legacy addresses */
-                //LEGACY         = 0x2a,
-                //LEGACY_TESTNET = 0x6f,
+                LEGACY         = 0x2a,
+                LEGACY_TESTNET = 0x6f,
 
                 /*  Standard register type bytes.
                  *  These MUST be between 0xd1 and 0xed for the base58 encoded string to start with 8
