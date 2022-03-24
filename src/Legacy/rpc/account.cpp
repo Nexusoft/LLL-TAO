@@ -214,13 +214,10 @@ namespace Legacy
         /* Extract the address, which will either be a legacy address or a sig chain account address */
         std::string strAddress = params[0].get<std::string>();
         Legacy::NexusAddress address(strAddress);
-        TAO::Register::Address hashAccount;
+        TAO::Register::Address hashAccount(strAddress);
 
         /* The script to contain the recipient */
         Legacy::Script scriptPubKey;
-
-        /* Decode the address string */
-        hashAccount.SetBase58(strAddress);
 
         /* Check the type */
         if(hashAccount.IsValid() && (hashAccount.IsAccount() || hashAccount.IsTrust()))
@@ -247,7 +244,7 @@ namespace Legacy
 
             scriptPubKey.SetRegisterAddress(hashAccount);
         }
-        else if(hashAccount.IsValid() && hashAccount.IsLegacy())
+        else if(address.IsValid())
             scriptPubKey.SetNexusAddress(address);
         else
             throw TAO::API::Exception(-5, "Invalid Nexus address");
@@ -724,13 +721,10 @@ namespace Legacy
         /* Nexus Address (supports register addresses) */
         std::string strAddress = params[1].get<std::string>();
         Legacy::NexusAddress address(strAddress);
-        TAO::Register::Address hashAccount;
+        TAO::Register::Address hashAccount(strAddress);
 
         /* The script to contain the recipient */
         Legacy::Script scriptPubKey;
-
-        /* Decode the address string */
-        hashAccount.SetBase58(strAddress);
 
         /* Check the type */
         if(hashAccount.IsValid() && (hashAccount.IsAccount() || hashAccount.IsTrust()))
@@ -757,7 +751,7 @@ namespace Legacy
 
             scriptPubKey.SetRegisterAddress(hashAccount);
         }
-        else if(hashAccount.IsValid() && hashAccount.IsLegacy())
+        else if(address.IsValid())
             scriptPubKey.SetNexusAddress(address);
         else
             throw TAO::API::Exception(-5, "Invalid Nexus address");
