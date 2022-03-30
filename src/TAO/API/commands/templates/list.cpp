@@ -43,7 +43,7 @@ namespace TAO::API
 
         /* Get the list of registers owned by this sig chain */
         std::vector<TAO::Register::Address> vAddresses;
-        ListRegisters(hashGenesis, vAddresses);
+        LLD::Logical->ListRegisters(hashGenesis, vAddresses);
 
         /* Get any registers that have been transferred to this user but not yet paid (claimed) */
         std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;

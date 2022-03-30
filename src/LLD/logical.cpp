@@ -247,7 +247,7 @@ namespace LLD
 
 
     /* List the current active registers for given genesis-id. */
-    bool LogicalDB::ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t> &vRegisters)
+    bool LogicalDB::ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters)
     {
         /* Cache our txid and contract as a pair. */
         uint256_t hashRegister;

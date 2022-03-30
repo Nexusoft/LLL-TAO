@@ -285,7 +285,7 @@ namespace LLD
          *  @return true if written successfully
          *
          **/
-        bool ListRegisters(const uint256_t& hashGenesis, std::vector<uint256_t> &vRegisters);
+        bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
 
 
         /** HasRegister
