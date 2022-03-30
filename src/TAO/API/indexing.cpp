@@ -387,6 +387,10 @@ namespace TAO::API
                     /* Check if we need to build index for this contract. */
                     if(SESSIONS->count(hashRecipient))
                     {
+                        /* Check for local sessions. */
+                        //if(SESSIONS->at(hashRecipient).Type() != Authentication::Session::LOCAL)
+                        //    continue;
+
                         /* Write our events to database. */
                         if(!LLD::Logical->PushEvent(hashRecipient, rContract, n))
                         {
@@ -411,6 +415,10 @@ namespace TAO::API
                     /* Check if we need to build index for this contract. */
                     if(SESSIONS->count(hashRecipient))
                     {
+                        /* Check for local sessions. */
+                        //if(SESSIONS->at(hashRecipient).Type() != Authentication::Session::LOCAL)
+                        //    continue;
+
                         /* Write our events to database. */
                         if(!LLD::Logical->PushEvent(hashRecipient, rContract, n))
                         {
