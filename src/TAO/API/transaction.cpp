@@ -257,7 +257,7 @@ namespace TAO::API
             return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
 
         /* Index our transaction level data now. */
-        index_registers();
+        index_registers(hash);
 
         return LLD::Logical->TxnCommit();
     }
@@ -304,14 +304,14 @@ namespace TAO::API
             return debug::error(FUNCTION, "failed to erase ", VARIABLE(hash.SubString()));
 
         /* Index our transaction level data now. */
-        deindex_registers();
+        deindex_registers(hash);
 
         return LLD::Logical->TxnCommit();
     }
 
 
     /* Index registers for logged in sessions. */
-    void Transaction::index_registers()
+    void Transaction::index_registers(const uint512_t& hash)
     {
         /* Track our register address. */
         uint256_t hashRegister;
@@ -371,13 +371,20 @@ namespace TAO::API
                 }
             }
 
+            /* Push transaction to the queue so we can track what modified given register. */
+            if(!LLD::Logical->PushTransaction(hashGenesis, hashRegister, hash))
+            {
+                debug::warning(FUNCTION, "failed to push transaction ", VARIABLE(hash.SubString()));
+                continue;
+            }
+
             //handle our register transaction indexes now.
         }
     }
 
 
     /* Index registers for logged in sessions. */
-    void Transaction::deindex_registers()
+    void Transaction::deindex_registers(const uint512_t& hash)
     {
         /* Track our register address. */
         uint256_t hashRegister;
@@ -436,7 +443,12 @@ namespace TAO::API
                 }
             }
 
-            //handle our register transaction indexes now.
+            /* Erase transaction from the queue so we can track what modified given register. */
+            if(!LLD::Logical->EraseTransaction(hashGenesis, hashRegister))
+            {
+                debug::warning(FUNCTION, "failed to erase transaction ", VARIABLE(hash.SubString()));
+                continue;
+            }
         }
     }
 }

@@ -167,15 +167,19 @@ namespace TAO::API
          *
          *  Index registers for logged in sessions.
          *
+         *  @param[in] hash The transaction-id we are working on.
+         *
          **/
-        void index_registers();
+        void index_registers(const uint512_t& hash);
 
 
         /** deindex_registers
          *
          *  Delete index of registers for logged in sessions.
          *
+         *  @param[in] hash The transaction-id we are working on.
+         *
          **/
-        void deindex_registers();
+        void deindex_registers(const uint512_t& hash);
     };
 }
