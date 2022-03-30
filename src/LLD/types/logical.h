@@ -208,6 +208,47 @@ namespace LLD
         bool ReadTx(const uint512_t& hashTx, TAO::API::Transaction &tx);
 
 
+        /** PushTransaction
+         *
+         *  Push an register transaction to process for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push register for.
+         *  @param[in] hashRegister The address of register to push
+         *  @param[in] hashTx The txid of the transaction that modified register.
+         *
+         *  @return true if event was pushed successfully.
+         *
+         **/
+        bool PushTransaction(const uint256_t& hashGenesis, const uint256_t& hashRegister, const uint512_t& hashTx);
+
+
+        /** EraseTransaction
+         *
+         *  Erase an register transaction for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push register for.
+         *  @param[in] hashRegister The address of register to erase
+         *
+         *  @return true if event was pushed successfully.
+         *
+         **/
+        bool EraseTransaction(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** ListTransactions
+         *
+         *  List the txide's that modified a register state for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] hashRegister The address of register to list for
+         *  @param[in] vTransactions The list of events extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListTransactions(const uint256_t& hashGenesis, const uint256_t& hashRegister, std::vector<uint512_t> &vTransactions);
+
+
         /** PushRegister
          *
          *  Push an register to process for given genesis-id.

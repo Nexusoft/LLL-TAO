@@ -336,11 +336,13 @@ namespace TAO::API
             uint8_t nOP = 0;
             rContract >> nOP;
 
+            /* Switch based on our valid operations. */
             switch(nOP)
             {
                 /* Transfer we need to mark this address as spent. */
                 case TAO::Operation::OP::TRANSFER:
                 {
+                    /* Write a transfer index if transferring from our sigchain. */
                     if(!LLD::Logical->WriteTransfer(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to write transfer for ", VARIABLE(hashRegister.SubString()));
 
@@ -350,12 +352,14 @@ namespace TAO::API
                 /* Claim should unmark address as spent. */
                 case TAO::Operation::OP::CLAIM:
                 {
+                    /* Erase our transfer index if claiming a register. */
                     if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
 
                     continue;
                 }
 
+                /* Create should add the register to the list. */
                 case TAO::Operation::OP::CREATE:
                 {
                     /* Write our register to database. */
@@ -398,11 +402,13 @@ namespace TAO::API
             uint8_t nOP = 0;
             rContract >> nOP;
 
+            /* Switch based on relevant operations. */
             switch(nOP)
             {
                 /* Transfer we need to mark this address as spent. */
                 case TAO::Operation::OP::TRANSFER:
                 {
+                    /* Erase a transfer index if roling back a transfer. */
                     if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to write transfer for ", VARIABLE(hashRegister.SubString()));
 
@@ -412,6 +418,7 @@ namespace TAO::API
                 /* Claim should unmark address as spent. */
                 case TAO::Operation::OP::CLAIM:
                 {
+                    /* Write a transfer index if rolling back a claim. */
                     if(!LLD::Logical->WriteTransfer(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
 
