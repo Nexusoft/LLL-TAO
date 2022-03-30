@@ -61,7 +61,7 @@ namespace TAO::API
         /* Read our list of active login sessions. */
 
         /* Initialize our thread objects now. */
-        Indexing::DISPATCH  = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
+        Indexing::DISPATCH      = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
         Indexing::EVENTS_THREAD = std::thread(&Indexing::Manager);
     }
 
@@ -155,7 +155,7 @@ namespace TAO::API
 
 
     /*  Index a new block hash to relay thread.*/
-    void Indexing::Push(const uint512_t& hashTx)
+    void Indexing::PushIndex(const uint512_t& hashTx)
     {
         DISPATCH->push(hashTx);
         CONDITION.notify_one();
@@ -163,7 +163,7 @@ namespace TAO::API
 
 
     /* Push a new session to monitor for indexes. */
-    void Indexing::Session(const uint256_t& hashGenesis)
+    void Indexing::PushSession(const uint256_t& hashGenesis)
     {
         /* Check that session isn't already registered. */
         if(SESSIONS->count(hashGenesis))

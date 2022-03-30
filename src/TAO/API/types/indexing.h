@@ -82,24 +82,24 @@ namespace TAO::API
         static void RefreshEvents();
 
 
-        /** Push
+        /** PushIndex
          *
          *  Index a new transaction to relay thread.
          *
          *  @param[in] hashTx The txid to dispatch indexing for.
          *
          **/
-        static void Push(const uint512_t& hashTx);
+        static void PushIndex(const uint512_t& hashTx);
 
 
-        /** Session
+        /** PushSession
          *
          *  Push a new session to monitor for indexes.
          *
          *  @param[in] hashGenesis The active genesis of login session.
          *
          **/
-        static void Session(const uint256_t& hashGenesis);
+        static void PushSession(const uint256_t& hashGenesis);
 
 
         /** Register
