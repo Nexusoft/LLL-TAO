@@ -30,7 +30,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Claim an incoming transfer from recipient. */
+    /* Transfer a register to another recipient. */
     encoding::json Templates::Transfer(const encoding::json& jParams, const bool fHelp)
     {
         /* Get our genesis-id for this call. */

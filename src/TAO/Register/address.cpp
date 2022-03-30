@@ -52,6 +52,7 @@ namespace TAO
         /* Assignment operator. */
         Address& Address::operator=(const uint256_t& value)
         {
+            /* Set the internal 32 bit values. */
             for(uint8_t i = 0; i < WIDTH; ++i)
                 pn[i] = value.pn[i];
 
@@ -62,6 +63,7 @@ namespace TAO
         /* Move assignment operator. */
         Address& Address::operator=(uint256_t&& value) noexcept
         {
+            /* Set the internal 32 bit values. */
             for(uint8_t i = 0; i < WIDTH; ++i)
                 pn[i] = std::move(value.pn[i]);
 
@@ -84,7 +86,7 @@ namespace TAO
 
         /* Build an address from a base58 encoded string.*/
         Address::Address(const std::string& strAddress)
-        : uint256_t()
+        : uint256_t( )
         {
             /* Set the internal value from the incoming base58 encoded address */
             SetBase58(strAddress);
@@ -109,6 +111,7 @@ namespace TAO
 
         /* Build an address deterministically from a key and namespace hash. */
         Address::Address(const std::string& strKey, const uint256_t& hashNamespace, const uint8_t nType)
+        : uint256_t(0)
         {
             /* The data to hash into this address */
             std::vector<uint8_t> vData;
@@ -153,10 +156,6 @@ namespace TAO
                 case WILDCARD:
                     return true;
             }
-
-            /* Check if is legacy. */
-            if(IsLegacy())
-                return true;
 
             return false;
         }
@@ -238,18 +237,6 @@ namespace TAO
         }
 
 
-        /* Check if base hash maps to a valid legacy address. */
-        bool Address::IsLegacy() const
-        {
-            /* Build a legacy address for this check. */
-            Legacy::NexusAddress addr =
-                Legacy::NexusAddress(*this);
-
-            return addr.IsValid();
-            //return GetType() == LEGACY || GetType() == LEGACY_TESTNET;
-        }
-
-
         /* Sets the uint256_t value of this address from a base58 encoded string. */
         void Address::SetBase58(const std::string& str)
         {
@@ -259,17 +246,6 @@ namespace TAO
             /* Decode the incoming string */
             if(encoding::DecodeBase58Check(str, vBytes))
             {
-                /* Build a legacy address for this check. */
-                const Legacy::NexusAddress addr =
-                    Legacy::NexusAddress(str);
-
-                /* Special check for legacy address. */
-                if(addr.IsValid())
-                {
-                    *this = addr.GetHash256();
-                    return;
-                }
-
                 /* Set the internal value based on the remainder of the decoded bytes after the leading type byte */
                 SetBytes(std::vector<uint8_t>(vBytes.begin() + 1, vBytes.end()));
 
@@ -282,10 +258,6 @@ namespace TAO
         /* Returns a Base58 encoded string representation of the 256-bit address hash. */
         std::string Address::ToBase58() const
         {
-            /* Special case for encoding to base58. */
-            if(IsLegacy())
-                return Legacy::NexusAddress(*this).ToString();
-
             /* Get the bytes for the 256-bit hash */
             std::vector<uint8_t> vch = GetBytes();
 
@@ -296,13 +268,12 @@ namespace TAO
             return encoding::EncodeBase58Check(vch);
         }
 
+
         /* Returns a base58 encoded string representation of the address. */
         std::string Address::ToString() const
         {
             if(*this == 0)
                 return "0";
-            else if(GetType() == SYSTEM || (GetType() >= RESERVED1 && GetType() <= RESERVED2))
-                return GetHex();
             else
                 return ToBase58();
         }

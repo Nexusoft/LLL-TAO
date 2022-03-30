@@ -263,16 +263,6 @@ namespace TAO
             bool IsWildcard() const;
 
 
-            /** IsLegacy
-             *
-             *  Check if type is set to LEGACY or LEGACY_TESTNET.
-             *
-             *  @return True if using LEGACY or LEGACY_TESTNET type.
-             *
-             **/
-            bool IsLegacy() const;
-
-
             /** SetBase58
              *
              *  Sets the uint256_t value of this address from a base58 encoded string.
