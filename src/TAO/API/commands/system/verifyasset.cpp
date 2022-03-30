@@ -40,11 +40,9 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Verify if passed pin is correct */
-    encoding::json System::VerifyAsset(const encoding::json& jParams, const bool fHelp)
+    /* Verify if token is the token used to tokenize the provided asset */
+    encoding::json System::VerifyTokenizedAsset(const encoding::json& jParams, const bool fHelp)
     {
-
-        debug::log(0, "******** Start Verify Asset *********");
         /*Build JSON Obj */
         encoding::json jRet;
 
@@ -60,24 +58,21 @@ namespace TAO::API
 
         const TAO::Register::Address hashToken =
             TAO::Register::Address(strToken);
-
-        const TAO::Register::Address hashAsset =
-            TAO::Register::Address(strAsset);
+        if(!hashToken.IsValid())
+            throw Exception(-57,"Token address not valid");
 
         TAO::Register::Object tObject ;
-            LLD::Register->ReadObject(strAsset, tObject);
+        if (!LLD::Register->ReadObject(strAsset, tObject))
+            return jRet;
 
-        debug::log(0,hashToken.ToString());
-        debug::log(0,TAO::Register::Address(tObject.hashOwner).ToString());
-
-           
-
-        debug::log(0, "******** End Verify Asset *********");
+        if(!tObject.IsValid())
+            throw Exception(-57,"Asset not valid");
 
         std::string assetOwnerAddress = TAO::Register::Address(tObject.hashOwner).ToString();
         std::string tokenAddress = hashToken.ToString();
 
         jRet["valid"] = tokenAddress == assetOwnerAddress ? true : false ;
+        jRet["owner-token"] = assetOwnerAddress;
 
         /*return JSON */
         return jRet;
