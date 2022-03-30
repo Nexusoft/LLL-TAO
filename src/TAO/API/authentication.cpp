@@ -57,7 +57,6 @@ namespace TAO::API
     }
 
 
-
     /* Check if user is already authenticated by genesis-id. */
     bool Authentication::Active(const uint256_t& hashGenesis, uint256_t &hashSession)
     {
@@ -162,6 +161,10 @@ namespace TAO::API
             /* Get a copy of our current active session. */
             const Session& rSession =
                 mapSessions[hashSession];
+
+            /* Check that this is a local session. */
+            if(rSession.Type() != Session::LOCAL)
+                throw Exception(-9, "Only local sessions can be unlocked");
 
             /* Check for password requirement field. */
             if(config::GetBoolArg("-requirepassword", false))
