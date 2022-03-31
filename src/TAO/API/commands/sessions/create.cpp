@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/extract.h>
 
 #include <TAO/API/types/authentication.h>
+#include <TAO/API/types/indexing.h>
 #include <TAO/API/types/commands/sessions.h>
 
 /* Global TAO namespace. */
@@ -92,6 +93,9 @@ namespace TAO::API
 
             return jRet;
         }
+
+        /* Initialize our indexing session. */
+        Indexing::PushSession(tSession.Genesis());
 
         /* Build a new session key. */
         if(config::fMultiuser.load())

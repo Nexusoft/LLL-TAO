@@ -63,6 +63,9 @@ namespace TAO::API
         /* Initialize our thread objects now. */
         Indexing::DISPATCH      = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
         Indexing::EVENTS_THREAD = std::thread(&Indexing::Manager);
+
+        /* Initialize our sessions object now. */
+        Indexing::SESSIONS      = util::atomic::lock_unique_ptr<std::set<uint256_t>>(new std::set<uint256_t>());
     }
 
 

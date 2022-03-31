@@ -215,7 +215,7 @@ namespace TAO::API
     bool Transaction::Index(const uint512_t& hash)
     {
         /* Start our ACID transaction. */
-        LLD::Logical->TxnBegin();
+        //LLD::Logical->TxnBegin();
 
         /* Read our previous transaction. */
         if(!IsFirst())
@@ -259,7 +259,9 @@ namespace TAO::API
         /* Index our transaction level data now. */
         index_registers(hash);
 
-        return LLD::Logical->TxnCommit();
+        return true;
+
+        //return LLD::Logical->TxnCommit();
     }
 
 
@@ -267,7 +269,7 @@ namespace TAO::API
     bool Transaction::Delete(const uint512_t& hash)
     {
         /* Start our ACID transaction. */
-        LLD::Logical->TxnBegin();
+        //LLD::Logical->TxnBegin();
 
         /* Read our previous transaction. */
         if(!IsFirst())
@@ -306,7 +308,8 @@ namespace TAO::API
         /* Index our transaction level data now. */
         deindex_registers(hash);
 
-        return LLD::Logical->TxnCommit();
+        //return LLD::Logical->TxnCommit();
+        return true;
     }
 
 
