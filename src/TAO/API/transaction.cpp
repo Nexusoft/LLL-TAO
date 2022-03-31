@@ -226,7 +226,7 @@ namespace TAO::API
                 return debug::error(FUNCTION, "failed to read last index for ", VARIABLE(hashGenesis.SubString()));
 
             /* Check that last index matches expected values. */
-            if(hash != hashLast)
+            if(hashPrevTx != hashLast)
                 return debug::error(FUNCTION, VARIABLE(hashLast.SubString()), " mismatch to expected ", VARIABLE(hash.SubString()));
 
             /* Read our previous transaction to build indexes for it. */
