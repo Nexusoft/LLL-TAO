@@ -109,11 +109,11 @@ namespace TAO::API
         {
             /* If we are in client mode then if the hashGenesis is not for the logged in user we need to make sure we
                have downloaded their sig chain so that we have access to it */
-            if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
-            {
+            //if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
+            //{
                 /* Download the users signature chain transactions, but we do not need events */
                 //TAO::API::DownloadSigChain(hashGenesis, false);
-            }
+            //}
 
             /* Now lookup the name in this sig chain */
             name = Names::GetName(hashGenesis, hashRegister, hashNameObject);

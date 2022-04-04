@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/constants.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/session.h>
 #include <TAO/API/types/commands.h>
@@ -73,7 +74,7 @@ namespace TAO::API
                     if(hashRegister == TAO::API::ADDRESS_NONE)
                         throw Exception(-101, "Unknown name: ", strLookup);
 
-                    return std::move(hashRegister);
+                    return hashRegister;
                 }
             }
 
@@ -228,7 +229,7 @@ namespace TAO::API
         if(CheckParameter(jParams, "username", "string"))
             return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());
 
-        return Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+        return Authentication::Caller(jParams);
     }
 
 

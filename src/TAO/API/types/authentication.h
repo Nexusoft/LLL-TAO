@@ -308,6 +308,18 @@ namespace TAO::API
         static bool Caller(const encoding::json& jParams, uint256_t &hashCaller);
 
 
+        /** Caller
+         *
+         *  Get the genesis-id of the given caller using session from params. Throws exception if not found.
+         *
+         *  @param[in] jParams The incoming parameters to parse session from.
+         *
+         *  @return the caller if found
+         *
+         **/
+        static uint256_t Caller(const encoding::json& jParams);
+
+
         /** Credentials
          *
          *  Get an instance of current session credentials indexed by session-id.

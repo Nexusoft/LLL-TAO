@@ -126,6 +126,28 @@ namespace TAO::API
     }
 
 
+    /* Get the genesis-id of the given caller using session from params. */
+    uint256_t Authentication::Caller(const encoding::json& jParams)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            throw Exception(-11, "Session not found");
+
+        /* Get a copy of our current active session. */
+        const Session& rSession =
+            mapSessions[hashSession];
+
+        /* Set the caller from our session data. */
+        return rSession.Genesis();
+    }
+
+
     /* Get an instance of current session credentials indexed by session-id. */
     const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Authentication::Credentials(const encoding::json& jParams)
     {
