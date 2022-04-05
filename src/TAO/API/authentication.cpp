@@ -83,25 +83,6 @@ namespace TAO::API
     }
 
 
-    /* Lock a session by session-id by modulating by hashmap value. */
-    std::recursive_mutex& Authentication::Lock(const encoding::json& jParams)
-    {
-        /* Get the current session-id. */
-        const uint256_t hashSession =
-            ExtractHash(jParams, "session", default_session());
-
-        /* Get bytes of our session. */
-        const std::vector<uint8_t> vSession =
-            hashSession.GetBytes();
-
-        /* Get an xxHash. */
-        const uint64_t nHash =
-            XXH64(&vSession[0], vSession.size(), 0);
-
-        return vLocks[nHash % vLocks.size()];
-    }
-
-
     /* Get the genesis-id of the given caller using session from params. */
     bool Authentication::Caller(const encoding::json& jParams, uint256_t &hashCaller)
     {

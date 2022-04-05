@@ -279,22 +279,6 @@ namespace TAO::API
         static bool Active(const uint256_t& hashGenesis, uint256_t &hashSession);
 
 
-        /** Lock
-         *
-         *  Lock a session by session-id by modulus for hashmap value.
-         *  It's safe to lock by session-id, because we don't allow login from same genesis to two sessions.
-         *
-         *  Hashmap collisions results in queueing of two sessions per lock.
-         *  Hashmap buckets is set by commandline argument -sessionlocks=N
-         *
-         *  @param[in] jParams The incoming json parameters to get session-id.
-         *
-         *  @return reference of lock in internal lock hashmap.
-         *
-         **/
-        static std::recursive_mutex& Lock(const encoding::json& jParams);
-
-
         /** Caller
          *
          *  Get the genesis-id of the given caller using session from params.

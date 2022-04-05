@@ -80,21 +80,6 @@ namespace TAO::API
                                                    const std::string& strNamespace,
                                                    const TAO::Register::Address& hashRegister);
 
-
-        /** CreateName
-         *
-         *  Creates a new Name Object register for an object being transferred and adds it to a contract
-         *
-         *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
-         *  @param[in] hashTransfer The transaction ID of the transfer transaction being claimed
-         *
-         *  @return The contract to containing the Name object creation .
-         *
-         **/
-        static TAO::Operation::Contract CreateName(const uint256_t& hashGenesis,
-                                                   const uint512_t& hashTransfer);
-
-
         /** GetName
          *
          *  Retrieves a Name object by name.
@@ -154,21 +139,6 @@ namespace TAO::API
          *
          **/
         static bool ReverseLookup(const uint256_t& hashAddress, std::string &strName);
-
-
-
-        /** ResolveName
-         *
-         *  Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashObject address
-         *
-         *  @param[in] hashGenesis The sig chain genesis hash
-         *  @param[in] hashRegister register address of the object to look up
-         *
-         *  @return the name of the object, if one is found
-         *
-         **/
-        static std::string ResolveName(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister);
-
 
     };
 }

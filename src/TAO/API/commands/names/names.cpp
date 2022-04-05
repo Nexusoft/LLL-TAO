@@ -136,63 +136,7 @@ namespace TAO
 
             return contract;
         }
-
-
-        /* Creates a new Name Object register for an object being transferred */
-        TAO::Operation::Contract Names::CreateName(const uint256_t& hashGenesis,
-                                                   const uint512_t& hashTransfer)
-        {
-            /* Declare the contract for the response */
-            TAO::Operation::Contract contract;
-
-            /* Firstly retrieve the transfer transaction that is being claimed so that we can get the address of the object */
-            TAO::Ledger::Transaction txTransfer;
-
-            /* Check disk of writing new block. */
-            if(!LLD::Ledger->ReadTx(hashTransfer, txTransfer, TAO::Ledger::FLAGS::MEMPOOL))
-                throw Exception(-99, "Transfer transaction not found.");
-
-            /* Ensure we are not claiming our own Transfer.  If we are then no need to create a Name object as we already have one */
-            if(txTransfer.hashGenesis != hashGenesis)
-            {
-                /* Loop through the contracts. */
-                for(uint32_t nContract = 0; nContract < txTransfer.Size(); ++nContract)
-                {
-                    /* Get a reference of the contract. */
-                    const TAO::Operation::Contract& check = txTransfer[nContract];
-
-                    /* Extract the OP from tx. */
-                    uint8_t OP = 0;
-                    check >> OP;
-
-                    /* Check for proper op. */
-                    if(OP != TAO::Operation::OP::TRANSFER)
-                        continue;
-
-                    /* Extract the object register address  */
-                    TAO::Register::Address hashAddress;
-                    check >> hashAddress;
-
-                    /* Check to see if the caller already has a name for this register in their sig chain */
-                    if(!ResolveName(hashGenesis, hashAddress).empty())
-                        continue;
-
-                    /* Now check the previous owners Name records to see if there was a Name for this object */
-                    std::string strAssetName = ResolveName(txTransfer.hashGenesis, hashAddress);
-
-                    /* If a name was found then create a Name record for the new owner using the same name */
-                    if(!strAssetName.empty())
-                    {
-                        contract = Names::CreateName(hashGenesis, strAssetName, "", hashAddress);
-                    }
-
-                    /* If found break. */
-                    break;
-                }
-            }
-
-            return contract;
-        }
+        
 
         /* Retrieves a Name object by name. */
         TAO::Register::Object Names::GetName(const encoding::json& params, const std::string& strObjectName,
@@ -283,73 +227,9 @@ namespace TAO
             /* Declare the return val */
             TAO::Register::Object nameObject;
 
-            /* LRU register cache by genesis hash.  This caches the vector of register addresses along with the last txid of the
-               sig chain, so that we can determine whether any new transactions have been added, invalidating the cache.  */
-            static LLD::TemplateLRU<uint256_t, std::pair<uint512_t, std::map<TAO::Register::Address, TAO::Register::Address>>> cache(10);
-
-            /* Get the last transaction. */
-            uint512_t hashLast = 0;
-
-            /* Get the last transaction for this genesis.  NOTE that we include the mempool here as there may be registers that
-               have been created recently but not yet included in a block*/
-            if(!LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                return nameObject;
-
-            /* Flag indicating the cache is intact */
-            bool bCacheValid = false;
-
-            /* Check the cache to see if we have already cached the registers for this sig chain and it is still valid. */
-            if(cache.Has(hashGenesis))
-            {
-                /* The cached register list */
-                std::pair<uint512_t, std::map<TAO::Register::Address, TAO::Register::Address>> cacheEntry;
-
-                /* Retrieve the cached name-address map from the LRU cache */
-                cache.Get(hashGenesis, cacheEntry);
-
-                /* Check that the hashlast hasn't changed */
-                if(cacheEntry.first == hashLast)
-                {
-                    bCacheValid = true;
-
-                    /* Lookup the name by address if it exists */
-                    if(cacheEntry.second.count(hashObject) > 0)
-                    {
-                        hashNameObject = cacheEntry.second[hashObject];
-
-                        /* Get the object from the register DB.  We can read it as an Object and then check its nType
-                        to determine whether or not it is a Name. */
-                        TAO::Register::Object object;
-                        if(!LLD::Register->ReadState(hashNameObject, object, TAO::Ledger::FLAGS::MEMPOOL))
-                            throw Exception(-92, "Name not found.");
-
-                        if(object.nType == TAO::Register::REGISTER::OBJECT)
-                        {
-                            /* parse object so that the data fields can be accessed */
-                            if(!object.Parse())
-                                throw Exception(-36, "Failed to parse object register");
-
-                            /* Set the return values */
-                            nameObject = object;
-
-                            /* found the name in the cache so return */
-                            return nameObject;
-                        }
-                    }
-                }
-
-            }
-
-            /* If we've never cached names for this sig chain or if the cache is out of date, add a blank map to the cache */
-            if(!bCacheValid)
-                cache.Put(hashGenesis, std::make_pair(hashLast, std::map<TAO::Register::Address, TAO::Register::Address>()));
-
-
-            /* Not found in cache so have to look it up by scanning all registers */
-
             /* Get all object registers owned by this sig chain */
             std::vector<TAO::Register::Address> vRegisters;
-            if(ListRegisters(hashGenesis, vRegisters))
+            if(LLD::Logical->ListRegisters(hashGenesis, vRegisters))
             {
                 /* Iterate through these to find all Name registers */
                 for(const auto& hashRegister : vRegisters)
@@ -380,18 +260,6 @@ namespace TAO
                             /* Set the return values */
                             nameObject = object;
                             hashNameObject = hashRegister;
-
-                            /* The cached register list */
-                            std::pair<uint512_t, std::map<TAO::Register::Address, TAO::Register::Address>> cacheEntry;
-
-                            /* Retrieve the cached name-address map from the LRU cache */
-                            cache.Get(hashGenesis, cacheEntry);
-
-                            /* Add this name-address to the map */
-                            cacheEntry.second[hashObject] = hashNameObject;
-
-                            /* update the address-name map to the LRU cache */
-                            cache.Put(hashGenesis, cacheEntry);
 
                             /* break out since we have a match */
                             break;
