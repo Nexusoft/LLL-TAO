@@ -284,7 +284,7 @@ namespace TAO::API
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Copy our txid out of the contract. */
         const uint512_t hashTx = rDebit.Hash();
@@ -546,7 +546,7 @@ namespace TAO::API
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Check that recipient is current session. */
         if(hashRecipient != hashGenesis)
@@ -578,7 +578,7 @@ namespace TAO::API
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Check that we aren't voiding a transaction not owned by us. */
         if(rDependent.Caller() != hashGenesis)
@@ -615,7 +615,7 @@ namespace TAO::API
             /* Add an optional name if supplied. */
             vContracts.push_back
             (
-                Names::CreateName(Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis(),
+                Names::CreateName(Authentication::Caller(jParams),
                 strName, strNamespace, hashRegister)
             );
         }
@@ -686,7 +686,7 @@ namespace TAO::API
         {
             /* Get our genesis-id for this call. */
             const uint256_t hashGenesis =
-                Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+                Authentication::Caller(jParams);
 
             /* Check for required parameters. */
             if(!CheckParameter(jParams, "name", "string"))

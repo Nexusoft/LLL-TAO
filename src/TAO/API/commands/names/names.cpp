@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/templates/trigger.h>
 
 #include <TAO/API/include/list.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>
@@ -216,20 +217,8 @@ namespace TAO
             TAO::Register::Address hashNamespace;
 
             /* First check the callers local namespace to see if it exists */
-            /* Get the session to be used for this API call.  Note we pass in false for fThrow here so that we can check the
-               other namespaces after */
-            Session& session = Commands::Instance<Users>()->GetSession(params, false);
-
-            /* Get the account. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-            if(!user.IsNull())
-            {
-                /* Set the namespace name to be the user's genesis ID */
-                hashNamespace = user->Genesis();
-
-                /* Attempt to Read the Name Object */
+            if(Authentication::Caller(params, hashNamespace))
                 fFound = TAO::Register::GetNameRegister(hashNamespace, strName, nameObject);
-            }
 
             /* If it wasn't in the callers local namespace then check to see if the name was provided in either
                the userspace:name or namespace::name format */
