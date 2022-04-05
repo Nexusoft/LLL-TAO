@@ -56,7 +56,7 @@ namespace TAO::API
                 const std::string& strType = ExtractType(jParams);
 
                 /* Check for name or namespace resolution. */
-                if(strType == "name" || strType == "namespace")
+                if(strType == "name" || strType == "namespace" || strType == "global" || strType == "local")
                 {
                     /* Grab our name from incoming parameters. */
                     const std::string& strLookup =
