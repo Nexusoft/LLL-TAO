@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands.h>
 
-#include <TAO/API/users/types/users.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/finance.h>
 
@@ -48,7 +48,7 @@ namespace TAO::API
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0, nTotal = 0;

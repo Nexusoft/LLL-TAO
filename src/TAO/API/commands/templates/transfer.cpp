@@ -18,8 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/conditions.h>
 #include <TAO/API/include/extract.h>
 
-#include <TAO/API/users/types/users.h>
-
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/templates.h>
 #include <TAO/API/types/commands.h>
 
@@ -35,7 +34,7 @@ namespace TAO::API
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Extract some parameters from input data. */
         const uint256_t hashRegister  = ExtractAddress(jParams);

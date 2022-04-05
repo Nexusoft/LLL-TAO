@@ -23,10 +23,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/finance.h>
-
-#include <TAO/API/users/types/users.h>
 
 #include <TAO/API/include/conditions.h>
 
@@ -57,7 +56,7 @@ namespace TAO::API
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Let's keep our working accounts in a nice tidy multimap, mapped by token-id. */
         std::map<uint256_t, Accounts> mapAccounts;

@@ -17,7 +17,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/session-manager.h>
+#include <TAO/API/types/authentication.h>
 
 #include <TAO/API/types/commands/ledger.h>
 
@@ -43,11 +43,9 @@ namespace TAO::API
         if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
             throw Exception(-306, "No connections available");
 
-        /* Get the session to be used for this API call */
-        Session& session = Commands::Instance<Users>()->GetSession(params, true, false);
-
         /* The callers genesis */
-        uint256_t hashGenesis = session.GetAccount()->Genesis();
+        const uint256_t hashGenesis =
+            Authentication::Caller(params);
 
         /* Sync the sig chain */
         if(!Users::DownloadSigChain(hashGenesis, true))

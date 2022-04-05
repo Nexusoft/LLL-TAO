@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/system.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/global.h>
@@ -81,7 +82,7 @@ namespace TAO::API
 
         /* Check for caller's genesis. */
         const uint256_t hashCaller =
-            Commands::Instance<Users>()->GetCallersGenesis(jParams);
+            Authentication::Caller(jParams);
 
         /* Make sure we were able to get the caller. */
         if(hashCaller != 0)

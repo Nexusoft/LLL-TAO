@@ -64,17 +64,6 @@ namespace TAO
 
             Legacy::Wallet& wallet = Legacy::Wallet::Instance();
 
-            /* Authenticate the users credentials */
-            if(!Commands::Instance<Users>()->Authenticate(jParams))
-                throw Exception(-139, "Invalid credentials");
-
-            /* Get the PIN to be used for this API call */
-            SecureString strPIN = Commands::Instance<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
-
-            /* Get the session to be used for this API call */
-            Session& session = Commands::Instance<Users>()->GetSession(jParams);
-
-
             /* Check for walletpassphrase parameter. */
             SecureString strWalletPass;
             strWalletPass.reserve(100);
@@ -151,12 +140,23 @@ namespace TAO
             /* map of legacy account names to tritium account register addresses */
             std::map<std::string, TAO::Register::Address> mapAccountRegisters;
 
-            /* Lock the signature chain. */
-            LOCK(session.CREATE_MUTEX);
+            /* The PIN to be used for this API call */
+            SecureString strPIN;
+
+            /* Unlock grabbing the pin, while holding a new authentication lock */
+            RECURSIVE(Authentication::Unlock(jParams, strPIN, TAO::Ledger::PinUnlock::TRANSACTIONS));
+
+            /* Cache a copy of our genesis-id. */
+            const uint256_t hashGenesis =
+                Authentication::Caller(jParams);
+
+            /* Get an instance of our credentials. */
+            const auto& pCredentials =
+                Authentication::Credentials(jParams);
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
+            if(!Users::CreateTransaction(pCredentials, strPIN, tx))
                 throw Exception(-17, "Failed to create transaction");
 
             /* tracks how many contracts we have added to the current transaction */
@@ -179,7 +179,7 @@ namespace TAO
                 if(!hashAccount.IsValid())
                 {
                     std::vector<TAO::Register::Address> vAccounts;
-                    if(ListAccounts(session.GetAccount()->Genesis(), vAccounts, false, false))
+                    if(LLD::Logical->ListAccounts(hashGenesis, vAccounts, false, false))
                     {
                         for(const auto& hashRegister : vAccounts)
                         {
@@ -218,7 +218,7 @@ namespace TAO
                             throw Exception(-44, "Transaction failed to build");
 
                         /* Sign the transaction. */
-                        if(!tx.Sign(session.GetAccount()->Generate(tx.nSequence, strPIN)))
+                        if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
                             throw Exception(-31, "Ledger failed to sign transaction");
 
                         /* Execute the operations layer. */
@@ -227,7 +227,7 @@ namespace TAO
 
                         /* Create the next transaction and reset the counter */
                         tx = TAO::Ledger::Transaction();
-                        if(!Users::CreateTransaction(session.GetAccount(), strPIN, tx))
+                        if(!Users::CreateTransaction(pCredentials, strPIN, tx))
                             throw Exception(-17, "Failed to create transaction");
 
 
