@@ -19,12 +19,34 @@ namespace TAO::API
     /* Standard initialization function. */
     void Sessions::Initialize()
     {
+        /* Populate our local standard. */
+        mapStandards["local"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                return false;
+            }
+        );
+
         /* Handle for all CREATE operations. */
-        mapFunctions["create/local"] = Function
+        mapFunctions["create"] = Function
         (
             std::bind
             (
                 &Sessions::Create,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for all CREATE operations. */
+        mapFunctions["unlock"] = Function
+        (
+            std::bind
+            (
+                &Sessions::Unlock,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

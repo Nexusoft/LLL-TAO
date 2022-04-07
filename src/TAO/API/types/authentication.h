@@ -67,6 +67,7 @@ namespace TAO::API
 
         public:
 
+
             /* Enum to track session type. */
             enum : uint8_t
             {
@@ -141,7 +142,7 @@ namespace TAO::API
             /** Constructor based on geneis. **/
             Session(const SecureString& strUsername, const SecureString& strPassword, const uint8_t nTypeIn = LOCAL)
             : pCredentials  (new TAO::Ledger::SignatureChain(strUsername, strPassword))
-            , pUnlock       (nullptr)
+            , pUnlock       (new TAO::Ledger::PinUnlock())
             , hashGenesis   (pCredentials->Genesis())
             , nType         (nTypeIn)
             , nAuthFailures (0)
@@ -176,6 +177,29 @@ namespace TAO::API
             }
 
 
+            /** Authorized
+             *
+             *  Check if given sigchain was authorized for given actions.
+             *
+             *  @param[out] nRequestedActions The actions to check.
+             *
+             *  @return true if the actions were authroized.
+             *
+             **/
+            bool Authorized(uint8_t &nRequestedActions) const
+            {
+                /* Check that we have initialized our PIN. */
+                if(pUnlock.IsNull())
+                    return false;
+
+                /* Set our return by reference. */
+                nRequestedActions =
+                    pUnlock->UnlockedActions();
+
+                return true;
+            }
+
+
             /** Unlock
              *
              *  Unlock and get the active pin from current session.
@@ -204,6 +228,21 @@ namespace TAO::API
                 }
 
                 return false;
+            }
+
+
+            /** Update
+             *
+             *  Update our PIN object with new unlocked actions.
+             *
+             *  @param[in] strPIN The pin number to update.
+             *  @param[in] nUpdatedActions The actions to update.
+             *
+             **/
+            void Update(const SecureString& strPIN, const uint8_t nUpdatedActions)
+            {
+                /* Update the internal PIN object. */
+                pUnlock->Update(strPIN, nUpdatedActions);
             }
 
 
@@ -279,6 +318,19 @@ namespace TAO::API
         static bool Active(const uint256_t& hashGenesis, uint256_t &hashSession);
 
 
+        /** Authenticate
+         *
+         *  Authenticate a user's credentials against their sigchain.
+         *  This function requires the PIN to be inputed.
+         *
+         *  @param[in] jParams The parameters to check against.
+         *
+         *  @return true if sigchain was authenticated.
+         *
+         **/
+        static bool Authenticate(const encoding::json& jParams);
+
+
         /** Caller
          *
          *  Get the genesis-id of the given caller using session from params.
@@ -290,6 +342,19 @@ namespace TAO::API
          *
          **/
         static bool Caller(const encoding::json& jParams, uint256_t &hashCaller);
+
+
+        /** Unloacked
+         *
+         *  Determine if a sigchain is unlocked for given actions.
+         *
+         *  @param[in] jParams The incoming paramters to parse
+         *  @param[in] nRequestedActions The actions requested for PIN unlock.
+         *
+         *  @return true if the PIN is unlocked for given actions.
+         *
+         **/
+        static bool Unlocked(const encoding::json& jParams, uint8_t &nRequestedActions);
 
 
         /** Caller
@@ -332,6 +397,17 @@ namespace TAO::API
                            const uint8_t nRequestedActions = TAO::Ledger::PinUnlock::TRANSACTIONS);
 
 
+        /** Update
+         *
+         *  Update the allowed actions for given pin
+         *
+         *  @param[in] jParams the incoming parameters to parse
+         *  @param[in] nUpdatedActions The actions allowed for PIN unlock.
+         *
+         **/
+        static void Update(const encoding::json& jParams, const uint8_t nUpdatedActions);
+
+
         /** Terminate
          *
          *  Terminate an active session by parameters.
@@ -363,6 +439,19 @@ namespace TAO::API
 
         /** Vector of our lock objects for session level locks. **/
         static std::vector<std::recursive_mutex> vLocks;
+
+
+        /** authenticate
+         *
+         *  Authenticate and get the active pin from current session.
+         *
+         *  @param[in] strPIN The pin number to return by reference.
+         *  @param[in rSession The session object ot authenticate]
+         *
+         *  @return True if given crecentials were correct.
+         *
+         **/
+        static bool authenticate(const SecureString& strPIN, const Session& rSession);
 
 
         /** terminate_session

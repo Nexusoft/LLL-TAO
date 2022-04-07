@@ -83,6 +83,63 @@ namespace TAO::API
     }
 
 
+    /* Authenticate a user's credentials against their sigchain. */
+    bool Authentication::Authenticate(const encoding::json& jParams)
+    {
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        /* Extract the PIN from parameters. */
+        const SecureString strPIN =
+            ExtractPIN(jParams);
+
+        {
+            RECURSIVE(MUTEX);
+
+            /* Check for active session. */
+            if(!mapSessions.count(hashSession))
+                throw Exception(-11, "Session not found");
+
+            /* Get a copy of our current active session. */
+            const Session& rSession =
+                mapSessions[hashSession];
+
+            /* Check for password requirement field. */
+            if(config::GetBoolArg("-requirepassword", false))
+            {
+                /* Grab our password from parameters. */
+                if(!CheckParameter(jParams, "password", "string"))
+                    throw Exception(-128, "-requirepassword active, must pass in password=<password> for all commands when enabled");
+
+                /* Parse out password. */
+                const SecureString strPassword =
+                    SecureString(jParams["password"].get<std::string>().c_str());
+
+                /* Check our password input compared to our internal sigchain password. */
+                if(rSession.Credentials()->Password() != strPassword)
+                {
+                    /* Increment failure and return. */
+                    increment_failures(hashSession);
+
+                    return false;
+                }
+            }
+
+            /* Check internal authenticate function. */
+            if(!authenticate(strPIN, rSession))
+            {
+                /* Increment failure and return. */
+                increment_failures(hashSession);
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+
     /* Get the genesis-id of the given caller using session from params. */
     bool Authentication::Caller(const encoding::json& jParams, uint256_t &hashCaller)
     {
@@ -129,6 +186,32 @@ namespace TAO::API
     }
 
 
+    /* Determine if a sigchain is unlocked for given actions. */
+    bool Authentication::Unlocked(const encoding::json& jParams, uint8_t &nRequestedActions)
+    {
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        {
+            RECURSIVE(MUTEX);
+
+            /* Check for active session. */
+            if(!mapSessions.count(hashSession))
+                throw Exception(-11, "Session not found");
+
+            /* Get a copy of our current active session. */
+            const Session& rSession =
+                mapSessions[hashSession];
+
+            /* Check if actions are unlocked and allowed. */
+            return rSession.Authorized(nRequestedActions);
+        }
+
+        return false;
+    }
+
+
     /* Get an instance of current session credentials indexed by session-id. */
     const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Authentication::Credentials(const encoding::json& jParams)
     {
@@ -159,15 +242,11 @@ namespace TAO::API
 
             /* Check for active session. */
             if(!mapSessions.count(hashSession))
-                throw Exception(-9, "Session doesn't exist");
+                throw Exception(-11, "Session not found");
 
             /* Get a copy of our current active session. */
             const Session& rSession =
                 mapSessions[hashSession];
-
-            /* Check that this is a local session. */
-            if(rSession.Type() != Session::LOCAL)
-                throw Exception(-9, "Only local sessions can be unlocked");
 
             /* Check for password requirement field. */
             if(config::GetBoolArg("-requirepassword", false))
@@ -182,41 +261,26 @@ namespace TAO::API
 
                 /* Check our password input compared to our internal sigchain password. */
                 if(rSession.Credentials()->Password() != strPassword)
+                {
+                    /* Increment failure and throw. */
                     increment_failures(hashSession);
+
+                    throw Exception(-139, "Failed to unlock");
+                }
             }
 
             /* Get the active pin if not currently stored. */
             if(!rSession.Unlock(strPIN, nRequestedActions))
                 strPIN = ExtractPIN(jParams);
 
-            /* Check for crypto object register. */
-            const TAO::Register::Address hashCrypto =
-                TAO::Register::Address(std::string("crypto"), rSession.Genesis(), TAO::Register::Address::CRYPTO);
-
-            /* Read the crypto object register. */
-            TAO::Register::Object oCrypto;
-            if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
+            /* Check internal authenticate function. */
+            if(!authenticate(strPIN, rSession))
+            {
+                /* Increment failure and throw. */
                 increment_failures(hashSession);
 
-            /* Read the key type from crypto object register. */
-            const uint256_t hashAuth =
-                oCrypto.get<uint256_t>("auth");
-
-            /* Check if the auth has is deactivated. */
-            if(hashAuth == 0)
-                increment_failures(hashSession);
-
-            /* Generate a key to check credentials against. */
-            const uint256_t hashCheck =
-                rSession.Credentials()->KeyHash("auth", 0, strPIN, hashAuth.GetType());
-
-            /* Check for invalid authorization hash. */
-            if(hashAuth != hashCheck)
-                increment_failures(hashSession);
-
-            /* Reset our activity and auth attempts if pin was successfully unlocked. */
-            rSession.nAuthFailures = 0;
-            rSession.nLastActive   = runtime::unifiedtimestamp();
+                throw Exception(-139, "Failed to unlock");
+            }
         }
 
         /* Get bytes of our session. */
@@ -228,6 +292,38 @@ namespace TAO::API
             XXH64(&vSession[0], vSession.size(), 0);
 
         return vLocks[nHash % vLocks.size()];
+    }
+
+
+    /* Update the allowed actions for given pin. */
+    void Authentication::Update(const encoding::json& jParams, const uint8_t nUpdatedActions)
+    {
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        /* Extract the PIN from parameters. */
+        const SecureString strPIN =
+            ExtractPIN(jParams);
+
+        {
+            RECURSIVE(MUTEX);
+
+            /* Check for active session. */
+            if(!mapSessions.count(hashSession))
+                throw Exception(-9, "Session doesn't exist");
+
+            /* Get a copy of our current active session. */
+            Session& rSession =
+                mapSessions[hashSession];
+
+            /* Check that the new PIN value is authorized. */
+            //if(!authenticate(strPIN, rSession))
+            //    throw Exception(-11, "Invalid PIN");
+
+            /* Update our internal session. */
+            rSession.Update(strPIN, nUpdatedActions);
+        }
     }
 
 
@@ -249,6 +345,46 @@ namespace TAO::API
     void Authentication::Shutdown()
     {
 
+    }
+
+
+    /* Authenticate and get the active pin from current session. */
+    bool Authentication::authenticate(const SecureString& strPIN, const Session& rSession)
+    {
+        /* Check that this is a local session. */
+        if(rSession.Type() != Session::LOCAL)
+            throw Exception(-9, "Only local sessions can be unlocked");
+
+        /* Check for crypto object register. */
+        const TAO::Register::Address hashCrypto =
+            TAO::Register::Address(std::string("crypto"), rSession.Genesis(), TAO::Register::Address::CRYPTO);
+
+        /* Read the crypto object register. */
+        TAO::Register::Object oCrypto;
+        if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
+            return false;
+
+        /* Read the key type from crypto object register. */
+        const uint256_t hashAuth =
+            oCrypto.get<uint256_t>("auth");
+
+        /* Check if the auth has is deactivated. */
+        if(hashAuth == 0)
+            return false;
+
+        /* Generate a key to check credentials against. */
+        const uint256_t hashCheck =
+            rSession.Credentials()->KeyHash("auth", 0, strPIN, hashAuth.GetType());
+
+        /* Check for invalid authorization hash. */
+        if(hashAuth != hashCheck)
+            return false;
+
+        /* Reset our activity and auth attempts if pin was successfully unlocked. */
+        rSession.nAuthFailures = 0;
+        rSession.nLastActive   = runtime::unifiedtimestamp();
+
+        return true;
     }
 
 
@@ -285,8 +421,6 @@ namespace TAO::API
             throw Exception(-290, "Too many invalid password/pin attempts (",
                 rSession.nAuthFailures.load(), "): Session ", hashSession.SubString(), " Terminated");
         }
-
-        throw Exception(-139, "Failed to unlock");
     }
 
 

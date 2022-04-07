@@ -105,5 +105,18 @@ namespace TAO::API
          **/
         encoding::json Has(const encoding::json& jParams, const bool fHelp);
 
+
+        /** Unlock
+         *
+         *  Unlock an account for any given action
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Unlock(const encoding::json& jParams, const bool fHelp);
+
     };
 }

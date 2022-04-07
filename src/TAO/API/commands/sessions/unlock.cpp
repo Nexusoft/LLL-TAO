@@ -11,12 +11,11 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLD/include/global.h>
-
-#include <TAO/API/users/types/users.h>
-#include <TAO/API/types/session-manager.h>
 
 #include <TAO/API/include/extract.h>
+
+#include <TAO/API/types/authentication.h>
+#include <TAO/API/types/commands/sessions.h>
 
 #include <TAO/Ledger/types/stake_minter.h>
 
@@ -25,22 +24,16 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Unlock an account for mining (TODO: make this much more secure) */
-    encoding::json Users::Unlock(const encoding::json& jParams, const bool fHelp)
+    /* Unlock an account for any given action. */
+    encoding::json Sessions::Unlock(const encoding::json& jParams, const bool fHelp)
     {
-        /* Pin parameter. */
-        const SecureString strPin = ExtractPIN(jParams);
-
-        /* Get the session */
-        Session& rSession = GetSession(jParams);
-
         /* Check for unlock actions */
         uint8_t nUnlockedActions =
             TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
 
-        /* If it has already been unlocked then set the Unlocked actions to the current unlocked actions */
-        if(!rSession.Locked())
-            nUnlockedActions = rSession.GetActivePIN()->UnlockedActions();
+        /* Get our current unlocked status. */
+        uint8_t nCurrentActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
+        Authentication::Unlocked(jParams, nCurrentActions);
 
         /* Check for mining flag. */
         if(ExtractBoolean(jParams, "mining"))
@@ -50,7 +43,7 @@ namespace TAO::API
                 throw Exception(-288, "Cannot unlock for mining in multiuser mode");
 
              /* Check if already unlocked. */
-            if(rSession.CanMine())
+            if(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::MINING)
                 throw Exception(-146, "Account already unlocked for mining");
 
             /* Adjust the unlocked flags. */
@@ -65,7 +58,7 @@ namespace TAO::API
                 throw Exception(-289, "Cannot unlock for staking in multiuser mode");
 
              /* Check if already unlocked. */
-            if(rSession.CanStake())
+            if(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)
                 throw Exception(-195, "Account already unlocked for staking");
 
             /* Adjust the unlocked flags. */
@@ -76,7 +69,7 @@ namespace TAO::API
         if(ExtractBoolean(jParams, "transactions"))
         {
              /* Check if already unlocked. */
-            if(rSession.CanTransact())
+            if(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS)
                 throw Exception(-147, "Account already unlocked for transactions");
 
             /* Adjust the unlocked flags. */
@@ -87,7 +80,7 @@ namespace TAO::API
         if(ExtractBoolean(jParams, "notifications"))
         {
              /* Check if already unlocked. */
-            if(rSession.CanProcessNotifications())
+            if(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS)
                 throw Exception(-194, "Account already unlocked for notifications");
 
             /* Adjust the unlocked flags. */
@@ -98,7 +91,7 @@ namespace TAO::API
         if(ExtractBoolean(jParams, "all"))
         {
             /* Check if already unlocked. */
-            if(rSession.CanMine() && rSession.CanStake() && rSession.CanTransact() && rSession.CanProcessNotifications())
+            if(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::ALL)
                 throw Exception(-148, "Account already unlocked");
 
             /* Adjust the unlocked flags. */
@@ -106,26 +99,26 @@ namespace TAO::API
         }
 
         /* Check for no actions. */
-        if(nUnlockedActions == TAO::Ledger::PinUnlock::UnlockActions::NONE)
+        if(nUnlockedActions == nCurrentActions)
             throw Exception(-259, "You must specify at least one unlock action");
 
-        /* Authenticate the request. */
-        if(!Authenticate(jParams))
-            throw Exception(-139, "Invalid credentials");
+        /* Check for authenticated sigchain. */
+        if(!Authentication::Authenticate(jParams))
+            throw Exception(-333, "Account failed to authenticate");
 
-        /* update the unlocked actions */
-        rSession.UpdatePIN(strPin, nUnlockedActions);
+        /* Update our session with new pin. */
+        Authentication::Update(jParams, nUnlockedActions);
 
         /* Get the genesis ID. */
-        const uint256_t hashGenesis =
-            rSession.GetAccount()->Genesis();
+        //const uint256_t hashGenesis =
+        //    Authentication::Caller(jParams);
 
         /* Update the saved session if there is one */
-        if(LLD::Local->HasSession(hashGenesis))
-            rSession.Save(strPin);
+        //if(LLD::Local->HasSession(hashGenesis))
+        //    rSession.Save(strPin);
 
         /* After unlock complete, attempt to start stake minter if unlocked for staking */
-        if(rSession.CanStake())
+        if(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)
         {
             /* Grab a reference of our stake minter. */
             TAO::Ledger::StakeMinter& rStakeMinter =
@@ -142,10 +135,10 @@ namespace TAO::API
             {
                 "unlocked",
                 {
-                    { "mining",        rSession.CanMine()                 },
-                    { "notifications", rSession.CanProcessNotifications() },
-                    { "staking",       rSession.CanStake()                },
-                    { "transactions",  rSession.CanTransact()             }
+                    { "mining",        bool(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::MINING        )},
+                    { "notifications", bool(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS )},
+                    { "staking",       bool(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING       )},
+                    { "transactions",  bool(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS  )}
                 }
             }
         };
