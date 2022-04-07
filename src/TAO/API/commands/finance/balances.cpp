@@ -86,7 +86,8 @@ namespace TAO::API
                 continue;
 
             /* Get the token */
-            const uint256_t hashToken = object.get<uint256_t>("token");
+            const uint256_t hashToken =
+                object.get<uint256_t>("token");
 
             /* Cache the decimals for this token to use for display */
             if(!mapBalances.count(hashToken))
