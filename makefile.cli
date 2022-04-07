@@ -457,6 +457,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_register_list.o \
 		build/API_commands_register_json.o \
 		build/API_commands_sessions_create.o \
+		build/API_commands_sessions_lock.o \
 		build/API_commands_sessions_unlock.o \
 		build/API_commands_sessions_initialize.o \
 		build/API_commands_supply_initialize.o \
