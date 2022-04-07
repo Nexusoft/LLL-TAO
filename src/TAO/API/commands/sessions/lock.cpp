@@ -69,7 +69,7 @@ namespace TAO::API
         {
              /* Check if already unlocked. */
             if(!(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS))
-                throw Exception(-147, "Account already unlocked for transactions");
+                throw Exception(-147, "Account already locked for transactions");
 
             /* Adjust the unlocked flags. */
             nLockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
@@ -80,7 +80,7 @@ namespace TAO::API
         {
              /* Check if already unlocked. */
             if(!(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS))
-                throw Exception(-194, "Account already unlocked for notifications");
+                throw Exception(-194, "Account already locked for notifications");
 
             /* Adjust the unlocked flags. */
             nLockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS;
@@ -91,7 +91,7 @@ namespace TAO::API
         {
             /* Check if already unlocked. */
             if(!(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::ALL))
-                throw Exception(-148, "Account already unlocked");
+                throw Exception(-148, "Account already locked");
 
             /* Adjust the unlocked flags. */
             nLockedActions &= ~TAO::Ledger::PinUnlock::UnlockActions::ALL;

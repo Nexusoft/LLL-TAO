@@ -42,7 +42,7 @@ namespace TAO::API
             )
         );
 
-        /* Handle for all CREATE operations. */
+        /* Handle for all transactions operations. */
         mapFunctions["transactions"] = Function
         (
             std::bind

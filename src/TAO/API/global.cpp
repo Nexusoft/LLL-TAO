@@ -49,7 +49,7 @@ namespace TAO::API
         Authentication::Initialize();
 
         /* Others depend on users. */
-        Commands::Register<Users>(); //TODO: this will be replace with above static class
+        //Commands::Register<Users>(); //TODO: this will be replace with above static class
 
         /* Create the API instances. */
         Commands::Register<Assets>();
