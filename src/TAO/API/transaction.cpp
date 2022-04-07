@@ -217,6 +217,9 @@ namespace TAO::API
         /* Start our ACID transaction. */
         //LLD::Logical->TxnBegin();
 
+        /* Set our status to accepted. */
+        nStatus = ACCEPTED;
+
         /* Read our previous transaction. */
         if(!IsFirst())
         {
@@ -318,7 +321,7 @@ namespace TAO::API
     {
         return (hashNextTx != 0);
     }
-    
+
 
     /* Index registers for logged in sessions. */
     void Transaction::index_registers(const uint512_t& hash)
