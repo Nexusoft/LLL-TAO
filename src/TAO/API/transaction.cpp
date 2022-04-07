@@ -313,6 +313,13 @@ namespace TAO::API
     }
 
 
+    /* Check if transaction is last in sigchain. */
+    bool Transaction::IsLast() const
+    {
+        return (hashNextTx != 0);
+    }
+    
+
     /* Index registers for logged in sessions. */
     void Transaction::index_registers(const uint512_t& hash)
     {

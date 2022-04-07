@@ -19,12 +19,35 @@ namespace TAO::API
     /* Standard initialization function. */
     void Profiles::Initialize()
     {
+        /* Populate our MASTER standard. */
+        mapStandards["master"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                return false;
+            }
+        );
+
+
         /* Handle for all CREATE operations. */
-        mapFunctions["create/master"] = Function
+        mapFunctions["create"] = Function
         (
             std::bind
             (
                 &Profiles::Create,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for all CREATE operations. */
+        mapFunctions["transactions"] = Function
+        (
+            std::bind
+            (
+                &Profiles::Transactions,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

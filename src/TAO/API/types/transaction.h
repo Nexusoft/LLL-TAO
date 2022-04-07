@@ -161,6 +161,16 @@ namespace TAO::API
         bool Delete(const uint512_t& hash);
 
 
+        /** IsLast
+         *
+         *  Check if transaction is last in sigchain.
+         *
+         *  @return true if transaction is last in sigchain.
+         *
+         **/
+        bool IsLast() const;
+
+
     private:
 
         /** index_registers
