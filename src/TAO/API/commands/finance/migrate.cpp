@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/format.h>
 #include <TAO/API/include/list.h>
 
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
 
 #include <TAO/API/users/types/users.h>
@@ -48,275 +49,270 @@ ________________________________________________________________________________
 #include <vector>
 
 /* Global TAO namespace. */
-namespace TAO
+namespace TAO::API
 {
-
-    /* API Layer namespace. */
-    namespace API
+    /* Migrate all Legacy wallet accounts to corresponding accounts in the signature chain */
+    encoding::json Finance::MigrateAccounts(const encoding::json& jParams, const bool fHelp)
     {
-        /* Migrate all Legacy wallet accounts to corresponding accounts in the signature chain */
-        encoding::json Finance::MigrateAccounts(const encoding::json& jParams, const bool fHelp)
+        /* Return value array */
+        encoding::json ret = encoding::json::array();
+
+        #ifndef NO_WALLET
+
+        Legacy::Wallet& wallet = Legacy::Wallet::Instance();
+
+        /* Check for walletpassphrase parameter. */
+        SecureString strWalletPass;
+        strWalletPass.reserve(100);
+
+        if(jParams.find("walletpassphrase") != jParams.end())
+            strWalletPass = jParams["walletpassphrase"].get<std::string>().c_str();
+
+        /* Check to see if the caller has specified NOT to create a name (we do by default) */
+        bool fCreateName = jParams.find("createname") == jParams.end()
+                || (jParams["createname"].get<std::string>() != "0" && jParams["createname"].get<std::string>() != "false");
+
+        /* Save the current lock state of wallet */
+        bool fLocked = wallet.IsLocked();
+        bool fMintOnly = Legacy::fWalletUnlockMintOnly;
+
+        /* Must provide passphrase to send if wallet locked or unlocked for minting only */
+        if(wallet.IsCrypted() && (fLocked || fMintOnly))
         {
-            /* Return value array */
-            encoding::json ret = encoding::json::array();
+            if(strWalletPass.length() == 0)
+                throw Exception(-179, "Legacy wallet is locked. walletpassphrase required");
 
-            #ifndef NO_WALLET
-
-            Legacy::Wallet& wallet = Legacy::Wallet::Instance();
-
-            /* Check for walletpassphrase parameter. */
-            SecureString strWalletPass;
-            strWalletPass.reserve(100);
-
-            if(jParams.find("walletpassphrase") != jParams.end())
-                strWalletPass = jParams["walletpassphrase"].get<std::string>().c_str();
-
-            /* Check to see if the caller has specified NOT to create a name (we do by default) */
-            bool fCreateName = jParams.find("createname") == jParams.end()
-                    || (jParams["createname"].get<std::string>() != "0" && jParams["createname"].get<std::string>() != "false");
-
-            /* Save the current lock state of wallet */
-            bool fLocked = wallet.IsLocked();
-            bool fMintOnly = Legacy::fWalletUnlockMintOnly;
-
-            /* Must provide passphrase to send if wallet locked or unlocked for minting only */
-            if(wallet.IsCrypted() && (fLocked || fMintOnly))
+            /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
+            if(fMintOnly)
             {
-                if(strWalletPass.length() == 0)
-                    throw Exception(-179, "Legacy wallet is locked. walletpassphrase required");
-
-                /* Unlock returns true if already unlocked, but passphrase must be validated for mint only so must lock first */
-                if(fMintOnly)
-                {
-                    wallet.Lock();
-                    Legacy::fWalletUnlockMintOnly = false; //Assures temporary unlock is a full unlock for send
-                }
-
-                /* Handle temporary unlock (send false for fStartStake so stake minter does not start during send)
-                 * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
-                 */
-                if(!wallet.Unlock(strWalletPass, 0, false))
-                    throw Exception(-180, "Incorrect walletpassphrase for Legacy wallet");
+                wallet.Lock();
+                Legacy::fWalletUnlockMintOnly = false; //Assures temporary unlock is a full unlock for send
             }
 
-            /* Get a map of all account balances from the legacy wallet */
-            std::map<std::string, int64_t> mapAccountBalances;
-            for(const auto& entry : Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap())
+            /* Handle temporary unlock (send false for fStartStake so stake minter does not start during send)
+             * An incorrect passphrase will leave the wallet locked, even if it was previously unlocked for minting.
+             */
+            if(!wallet.Unlock(strWalletPass, 0, false))
+                throw Exception(-180, "Incorrect walletpassphrase for Legacy wallet");
+        }
+
+        /* Get a map of all account balances from the legacy wallet */
+        std::map<std::string, int64_t> mapAccountBalances;
+        for(const auto& entry : Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap())
+        {
+            if(Legacy::Wallet::Instance().HaveKey(entry.first)) // This address belongs to me
             {
-                if(Legacy::Wallet::Instance().HaveKey(entry.first)) // This address belongs to me
-                {
-                    if(entry.second == "" || entry.second == "default")
-                        mapAccountBalances["default"] = 0;
-                    else
-                        mapAccountBalances[entry.second] = 0;
-                }
-            }
-
-            /* Get the available addresses from the wallet */
-            std::map<Legacy::NexusAddress, int64_t> mapAddresses;
-            if(!Legacy::Wallet::Instance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
-                throw Exception(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
-
-            /* Find all the addresses in the list */
-            for(const auto& entry : mapAddresses)
-            {
-                if(Legacy::Wallet::Instance().GetAddressBook().HasAddress(entry.first))
-                {
-                    std::string strAccount = Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap().at(entry.first);
-
-                    /* Make sure to map blank legacy account to default */
-                    if(strAccount == "")
-                        strAccount = "default";
-
-                    mapAccountBalances[strAccount] += entry.second;
-                }
+                if(entry.second == "" || entry.second == "default")
+                    mapAccountBalances["default"] = 0;
                 else
-                {
-                    mapAccountBalances["default"] += entry.second;
-                }
+                    mapAccountBalances[entry.second] = 0;
             }
+        }
 
+        /* Get the available addresses from the wallet */
+        std::map<Legacy::NexusAddress, int64_t> mapAddresses;
+        if(!Legacy::Wallet::Instance().GetAddressBook().AvailableAddresses((uint32_t)runtime::unifiedtimestamp(), mapAddresses))
+            throw Exception(-3, "Error Extracting the Addresses from Wallet File. Please Try Again.");
 
-            /* map of legacy account names to tritium account register addresses */
-            std::map<std::string, TAO::Register::Address> mapAccountRegisters;
-
-            /* The PIN to be used for this API call */
-            SecureString strPIN;
-
-            /* Unlock grabbing the pin, while holding a new authentication lock */
-            RECURSIVE(Authentication::Unlock(jParams, strPIN, TAO::Ledger::PinUnlock::TRANSACTIONS));
-
-            /* Cache a copy of our genesis-id. */
-            const uint256_t hashGenesis =
-                Authentication::Caller(jParams);
-
-            /* Get an instance of our credentials. */
-            const auto& pCredentials =
-                Authentication::Credentials(jParams);
-
-            /* Create the transaction. */
-            TAO::Ledger::Transaction tx;
-            if(!Users::CreateTransaction(pCredentials, strPIN, tx))
-                throw Exception(-17, "Failed to create transaction");
-
-            /* tracks how many contracts we have added to the current transaction */
-            uint8_t nContracts = 0;
-
-            /* Iterate the legacy accounts */
-            std::vector<TAO::Operation::Contract> vContracts;
-            for(const auto& accountBalance :  mapAccountBalances)
+        /* Find all the addresses in the list */
+        for(const auto& entry : mapAddresses)
+        {
+            if(Legacy::Wallet::Instance().GetAddressBook().HasAddress(entry.first))
             {
-                /* The name of the legacy account */
-                std::string strAccount = accountBalance.first;
+                std::string strAccount = Legacy::Wallet::Instance().GetAddressBook().GetAddressBookMap().at(entry.first);
 
-                /* The new account address */
-                TAO::Register::Address hashAccount;
+                /* Make sure to map blank legacy account to default */
+                if(strAccount == "")
+                    strAccount = "default";
 
-                /* First check to see if an account exists with this name */
-                hashAccount = Names::ResolveAddress(jParams, strAccount, false);
+                mapAccountBalances[strAccount] += entry.second;
+            }
+            else
+            {
+                mapAccountBalances["default"] += entry.second;
+            }
+        }
 
-                /* If one does not exist then check to see if one exists with a matching data field, from a previous migration */
-                if(!hashAccount.IsValid())
+
+        /* map of legacy account names to tritium account register addresses */
+        std::map<std::string, TAO::Register::Address> mapAccountRegisters;
+
+        /* The PIN to be used for this API call */
+        SecureString strPIN;
+
+        /* Unlock grabbing the pin, while holding a new authentication lock */
+        RECURSIVE(Authentication::Unlock(jParams, strPIN, TAO::Ledger::PinUnlock::TRANSACTIONS));
+
+        /* Cache a copy of our genesis-id. */
+        const uint256_t hashGenesis =
+            Authentication::Caller(jParams);
+
+        /* Get an instance of our credentials. */
+        const auto& pCredentials =
+            Authentication::Credentials(jParams);
+
+        /* Create the transaction. */
+        TAO::Ledger::Transaction tx;
+        if(!Users::CreateTransaction(pCredentials, strPIN, tx))
+            throw Exception(-17, "Failed to create transaction");
+
+        /* tracks how many contracts we have added to the current transaction */
+        uint8_t nContracts = 0;
+
+        /* Iterate the legacy accounts */
+        std::vector<TAO::Operation::Contract> vContracts;
+        for(const auto& accountBalance :  mapAccountBalances)
+        {
+            /* The name of the legacy account */
+            std::string strAccount = accountBalance.first;
+
+            /* The new account address */
+            TAO::Register::Address hashAccount;
+
+            /* First check to see if an account exists with this name */
+            hashAccount = Names::ResolveAddress(jParams, strAccount, false);
+
+            /* If one does not exist then check to see if one exists with a matching data field, from a previous migration */
+            if(!hashAccount.IsValid())
+            {
+                std::vector<TAO::Register::Address> vAccounts;
+                if(ListAccounts(hashGenesis, vAccounts, false, false))
                 {
-                    std::vector<TAO::Register::Address> vAccounts;
-                    if(LLD::Logical->ListAccounts(hashGenesis, vAccounts, false, false))
+                    for(const auto& hashRegister : vAccounts)
                     {
-                        for(const auto& hashRegister : vAccounts)
+                        /* Retrieve the account */
+                        TAO::Register::Object object;
+                        if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+                            throw TAO::API::Exception(-13, "Object not found");
+
+                        /* Parse the object register. */
+                        if(!object.Parse())
+                            throw TAO::API::Exception(-14, "Object failed to parse");
+
+                        /* Check to see if it is a NXS account the data matches the account name */
+                        if(object.get<uint256_t>("token") == 0
+                            && object.Check("data") && object.get<std::string>("data") == strAccount)
                         {
-                            /* Retrieve the account */
-                            TAO::Register::Object object;
-                            if(!LLD::Register->ReadState(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
-                                throw TAO::API::Exception(-13, "Object not found");
-
-                            /* Parse the object register. */
-                            if(!object.Parse())
-                                throw TAO::API::Exception(-14, "Object failed to parse");
-
-                            /* Check to see if it is a NXS account the data matches the account name */
-                            if(object.get<uint256_t>("token") == 0
-                                && object.Check("data") && object.get<std::string>("data") == strAccount)
-                            {
-                                hashAccount = hashRegister;
-                                break;
-                            }
+                            hashAccount = hashRegister;
+                            break;
                         }
                     }
                 }
+            }
 
-                /* If we still haven't found an account then create a new one */
-                if(!hashAccount.IsValid())
+            /* If we still haven't found an account then create a new one */
+            if(!hashAccount.IsValid())
+            {
+                /* Make sure we have enough room in the current TX for this account and name. If not then submit this transaction
+                   and create a new one.  NOTE we add a maximum of 99 to leave room for the fee  */
+                if(nContracts +(fCreateName ? 1 : 2) >= 99)
                 {
-                    /* Make sure we have enough room in the current TX for this account and name. If not then submit this transaction
-                       and create a new one.  NOTE we add a maximum of 99 to leave room for the fee  */
-                    if(nContracts +(fCreateName ? 1 : 2) >= 99)
-                    {
-                        /* Add the fee */
-                        AddFee(tx);
+                    /* Add the fee */
+                    AddFee(tx);
 
-                        /* Execute the operations layer. */
-                        if(!tx.Build())
-                            throw Exception(-44, "Transaction failed to build");
+                    /* Execute the operations layer. */
+                    if(!tx.Build())
+                        throw Exception(-44, "Transaction failed to build");
 
-                        /* Sign the transaction. */
-                        if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
-                            throw Exception(-31, "Ledger failed to sign transaction");
+                    /* Sign the transaction. */
+                    if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
+                        throw Exception(-31, "Ledger failed to sign transaction");
 
-                        /* Execute the operations layer. */
-                        if(!TAO::Ledger::mempool.Accept(tx))
-                            throw Exception(-32, "Failed to accept");
+                    /* Execute the operations layer. */
+                    if(!TAO::Ledger::mempool.Accept(tx))
+                        throw Exception(-32, "Failed to accept");
 
-                        /* Create the next transaction and reset the counter */
-                        tx = TAO::Ledger::Transaction();
-                        if(!Users::CreateTransaction(pCredentials, strPIN, tx))
-                            throw Exception(-17, "Failed to create transaction");
+                    /* Create the next transaction and reset the counter */
+                    tx = TAO::Ledger::Transaction();
+                    if(!Users::CreateTransaction(pCredentials, strPIN, tx))
+                        throw Exception(-17, "Failed to create transaction");
 
 
-                        nContracts = 0;
-                    }
-
-                    /* Generate a random hash for this objects register address */
-                    hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
-
-                    /* Create an account object register for NXS (identifier 0). */
-                    TAO::Register::Object tAccount =
-                        TAO::Register::CreateAccount(0);
-
-                    /* Store the legacy account name in the data field. */
-                    tAccount << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << strAccount;
-
-                    /* Submit the payload object. */
-                    TAO::Operation::Contract tContract;
-                    tContract << uint8_t(TAO::Operation::OP::CREATE)      << hashAccount;
-                    tContract << uint8_t(TAO::Register::REGISTER::OBJECT) << tAccount.GetState();
-
-                    /* Add this contract to our payload. */
-                    vContracts.push_back(tContract);
-
-                    /* If user has not explicitly indicated not to create a name then create a Name Object register for it. */
-                    if(fCreateName)
-                        BuildName(jParams, hashAccount, vContracts);
+                    nContracts = 0;
                 }
 
-                /* Add this to the map */
-                mapAccountRegisters[strAccount] = hashAccount;
+                /* Generate a random hash for this objects register address */
+                hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
+
+                /* Create an account object register for NXS (identifier 0). */
+                TAO::Register::Object tAccount =
+                    TAO::Register::CreateAccount(0);
+
+                /* Store the legacy account name in the data field. */
+                tAccount << std::string("data") << uint8_t(TAO::Register::TYPES::STRING) << strAccount;
+
+                /* Submit the payload object. */
+                TAO::Operation::Contract tContract;
+                tContract << uint8_t(TAO::Operation::OP::CREATE)      << hashAccount;
+                tContract << uint8_t(TAO::Register::REGISTER::OBJECT) << tAccount.GetState();
+
+                /* Add this contract to our payload. */
+                vContracts.push_back(tContract);
+
+                /* If user has not explicitly indicated not to create a name then create a Name Object register for it. */
+                if(fCreateName)
+                    BuildName(jParams, hashAccount, vContracts);
             }
 
-            /* If there are accounts to create then submit the transaction */
-            if(!vContracts.empty())
-                BuildAndAccept(jParams, vContracts);
-
-            /* Once the accounts have been created transfer the balance from the legacy account to the new ones */
-            for(const auto& accountBalance :  mapAccountBalances)
-            {
-                /* Check that there is enough balance to send */
-                if(accountBalance.second <= Legacy::TRANSACTION_FEE)
-                    continue;
-
-                /* The account to send from */
-                std::string strAccount = accountBalance.first;
-
-                /* The account address to send to */
-                TAO::Register::Address hashAccount = mapAccountRegisters[strAccount];
-
-                /* The amount to send */
-                int64_t nAmount = accountBalance.second;
-
-                /* The script to contain the recipient */
-                Legacy::Script scriptPubKey;
-                scriptPubKey.SetRegisterAddress(hashAccount);
-
-                /* Legacy wallet transaction  */
-                Legacy::WalletTx wtx;
-
-                /* Set the from account */
-                wtx.strFromAccount = strAccount;
-
-                /* Create the legacy transaction */
-                std::string strException = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx, false, 1, true);
-
-                encoding::json entry;
-                entry["account"] = strAccount;
-                entry["address"] = hashAccount.ToString();
-                entry["amount"]  = FormatBalance(nAmount);
-
-                if(!strException.empty())
-                    entry["error"] = strException;
-                else
-                    entry["txid"] = wtx.GetHash().GetHex();
-
-                ret.push_back(entry);
-            }
-
-            /* If used walletpassphrase to temporarily unlock wallet, re-lock the wallet
-             * This does not return unlocked for minting state, because we are migrating from the trust key and
-             * the minter should not be re-started.
-             */
-            if(wallet.IsCrypted() && (fLocked || fMintOnly))
-                wallet.Lock();
-
-            #endif
-
-            return ret;
+            /* Add this to the map */
+            mapAccountRegisters[strAccount] = hashAccount;
         }
+
+        /* If there are accounts to create then submit the transaction */
+        if(!vContracts.empty())
+            BuildAndAccept(jParams, vContracts);
+
+        /* Once the accounts have been created transfer the balance from the legacy account to the new ones */
+        for(const auto& accountBalance :  mapAccountBalances)
+        {
+            /* Check that there is enough balance to send */
+            if(accountBalance.second <= Legacy::TRANSACTION_FEE)
+                continue;
+
+            /* The account to send from */
+            std::string strAccount = accountBalance.first;
+
+            /* The account address to send to */
+            TAO::Register::Address hashAccount = mapAccountRegisters[strAccount];
+
+            /* The amount to send */
+            int64_t nAmount = accountBalance.second;
+
+            /* The script to contain the recipient */
+            Legacy::Script scriptPubKey;
+            scriptPubKey.SetRegisterAddress(hashAccount);
+
+            /* Legacy wallet transaction  */
+            Legacy::WalletTx wtx;
+
+            /* Set the from account */
+            wtx.strFromAccount = strAccount;
+
+            /* Create the legacy transaction */
+            std::string strException = wallet.SendToNexusAddress(scriptPubKey, nAmount, wtx, false, 1, true);
+
+            encoding::json entry;
+            entry["account"] = strAccount;
+            entry["address"] = hashAccount.ToString();
+            entry["amount"]  = FormatBalance(nAmount);
+
+            if(!strException.empty())
+                entry["error"] = strException;
+            else
+                entry["txid"] = wtx.GetHash().GetHex();
+
+            ret.push_back(entry);
+        }
+
+        /* If used walletpassphrase to temporarily unlock wallet, re-lock the wallet
+         * This does not return unlocked for minting state, because we are migrating from the trust key and
+         * the minter should not be re-started.
+         */
+        if(wallet.IsCrypted() && (fLocked || fMintOnly))
+            wallet.Lock();
+
+        #endif
+
+        return ret;
     }
 }

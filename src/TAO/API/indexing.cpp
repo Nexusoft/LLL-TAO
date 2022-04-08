@@ -273,7 +273,7 @@ namespace TAO::API
     {
         /* Check our current last hash from ledger layer. */
         uint512_t hashLedger;
-        if(!LLD::Ledger->ReadLast(hashGenesis, hashLedger))
+        if(!LLD::Ledger->ReadLast(hashGenesis, hashLedger, TAO::Ledger::FLAGS::MEMPOOL))
         {
             debug::log(0, FUNCTION, "No indexes for genesis=", hashGenesis.SubString());
             return;
@@ -294,7 +294,7 @@ namespace TAO::API
             {
                 /* Read the transaction from the ledger database. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hash, tx))
+                if(!LLD::Ledger->ReadTx(hash, tx, TAO::Ledger::FLAGS::MEMPOOL))
                 {
                     debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash.SubString()));
                     return;

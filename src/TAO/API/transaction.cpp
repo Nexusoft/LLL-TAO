@@ -214,9 +214,6 @@ namespace TAO::API
     /* Index a transaction into the ledger database. */
     bool Transaction::Index(const uint512_t& hash)
     {
-        /* Start our ACID transaction. */
-        //LLD::Logical->TxnBegin();
-
         /* Set our status to accepted. */
         nStatus = ACCEPTED;
 
@@ -263,17 +260,12 @@ namespace TAO::API
         index_registers(hash);
 
         return true;
-
-        //return LLD::Logical->TxnCommit();
     }
 
 
     /* Delete this transaction from the logical database. */
     bool Transaction::Delete(const uint512_t& hash)
     {
-        /* Start our ACID transaction. */
-        //LLD::Logical->TxnBegin();
-
         /* Read our previous transaction. */
         if(!IsFirst())
         {
@@ -311,7 +303,6 @@ namespace TAO::API
         /* Index our transaction level data now. */
         deindex_registers(hash);
 
-        //return LLD::Logical->TxnCommit();
         return true;
     }
 
