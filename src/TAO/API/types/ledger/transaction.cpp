@@ -62,6 +62,8 @@ namespace TAO
                 nVerbose = 2;
             else if(strVerbose == "detail")
                 nVerbose = 3;
+            else if(strVerbose == "legacy")
+                nVerbose = 4;
 
             /* Get the return format */
             std::string strFormat = "JSON";
@@ -90,6 +92,8 @@ namespace TAO
             /* Get the transaction either from disk or mempool. */
             if(LLD::Ledger->ReadTx(hash, txTritium, TAO::Ledger::FLAGS::MEMPOOL))
             {
+                if (nVerbose == 4)
+                    throw APIException(-999, "Can not display Tritium transaction in Legacy format")
                 if(strFormat == "JSON")
                     ret = TAO::API::TransactionToJSON (hashCaller, txTritium, blockState, nVerbose);
                 else
