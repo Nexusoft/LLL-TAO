@@ -344,7 +344,11 @@ namespace TAO::API
     /* Shuts down the current authentication systems. */
     void Authentication::Shutdown()
     {
+        RECURSIVE(MUTEX);
 
+        /* Terminate each individual session. */
+        for(const auto& rSession : mapSessions)
+            terminate_session(rSession.first); //we terminate by key not value
     }
 
 

@@ -257,7 +257,7 @@ namespace TAO::API
     {
         /* Get all registers owned by the sig chain */
         std::vector<TAO::Register::Address> vRegisters;
-        ListRegisters(hashGenesis, vRegisters);
+        LLD::Logical->ListRegisters(hashGenesis, vRegisters);
 
         /* Filter out only those that are objects */
         for(const auto& address : vRegisters)
@@ -276,7 +276,7 @@ namespace TAO::API
     {
         /* Get all registers owned by the sig chain */
         std::vector<TAO::Register::Address> vRegisters;
-        ListRegisters(hashGenesis, vRegisters);
+        LLD::Logical->ListRegisters(hashGenesis, vRegisters);
 
         /* Filter out only those that are accounts */
         for(const auto& address : vRegisters)
