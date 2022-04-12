@@ -40,14 +40,17 @@ namespace TAO::API
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
 
         /* Read the register from DB. */
-        TAO::Register::State rObject;
-        if(!LLD::Register->ReadState(hashRegister, rObject))
+        TAO::Register::Object tObject;
+        if(!LLD::Register->ReadState(hashRegister, tObject))
             throw Exception(-13, "Object not found");
 
-        /* Use this asset to get our genesis-id adjusting if it is in system state. */
-        uint256_t hashGenesis = rObject.hashOwner;
-        if(hashGenesis.GetType() == TAO::Ledger::GENESIS::SYSTEM)
-            hashGenesis.SetType(TAO::Ledger::GENESIS::UserType());
+        /* Parse if we are checking an object. */
+        if(tObject.nType == TAO::Register::REGISTER::OBJECT && ! tObject.Parse())
+            throw Exception(-49, "Malformed register encoding");
+
+        /* Check that object matches correct standard. */
+        if(!CheckStandard(jParams, tObject))
+            throw Exception(-49, "Unsupported type for name/address");
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
@@ -58,136 +61,119 @@ namespace TAO::API
         /* Get the params to apply to the response. */
         ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
-        /* Get the last transaction. */
-        uint512_t hashLast = 0;
-        if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
-            throw Exception(-144, "No transactions found");
-
         /* Build our object list and sort on insert. */
         std::set<encoding::json, CompareResults> setHistory({}, CompareResults(strOrder, strColumn));
 
-        /* Loop until genesis. */
-        while(hashLast != 0)
+        /* Get the list of txid's that modified given register. */
+        std::vector<uint512_t> vTransactions;
+        if(LLD::Logical->ListTransactions(hashRegister, vTransactions))
         {
-            /* Get the transaction from disk. */
-            TAO::Ledger::Transaction tx;
-            if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                throw Exception(-108, "Failed to read transaction");
-
-            /* Set the next last. */
-            hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
-
-            /* Loop through our contracts to check if they match our address. */
-            for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)
+            /* Loop through all entries in list. */
+            for(const auto& hashLast : vTransactions)
             {
-                /* Get the contract. */
-                const TAO::Operation::Contract& rContract = tx[nContract];
+                /* Get the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                    throw Exception(-108, "Failed to read transaction");
 
-                /* Unpack the contract address. */
-                uint256_t hashContract;
-                if(!TAO::Register::Unpack(rContract, hashContract))
-                    continue;
-
-                /* Check that our address matches the contract. */
-                if(hashRegister != hashContract)
-                    continue;
-
-                /* Now let's grab our OP so we can generate some JSON. */
-                const uint8_t nPrimitive = rContract.Primitive();
-
-                /* Grab our register's pre-state. */
-                TAO::Register::Object tObject =
-                    ExecuteContract(rContract);
-
-                /* Check if object needs to be parsed. */
-                if(tObject.nType == TAO::Register::REGISTER::OBJECT)
-                    tObject.Parse();
-
-                /* Check that object matches correct standard. */
-                if(!CheckStandard(jParams, tObject))
-                    throw Exception(-49, "Unsupported type for name/address");
-
-                /* Let's start building our json object. */
-                encoding::json jRegister =
-                    RegisterToJSON(tObject, hashContract);
-
-                /* Now let's add some meta-data for given operation. */
-                switch(nPrimitive)
+                /* Loop through our contracts to check if they match our address. */
+                for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)
                 {
-                    /* Handle for CREATE modifier type. */
-                    case TAO::Operation::OP::CREATE:
+                    /* Get the contract. */
+                    const TAO::Operation::Contract& rContract = tx[nContract];
+
+                    /* Unpack the contract address. */
+                    uint256_t hashContract;
+                    if(!TAO::Register::Unpack(rContract, hashContract))
+                        continue;
+
+                    /* Check that our address matches the contract. */
+                    if(hashRegister != hashContract)
+                        continue;
+
+                    /* Now let's grab our OP so we can generate some JSON. */
+                    const uint8_t nPrimitive = rContract.Primitive();
+
+                    /* Grab our register's pre-state. */
+                    TAO::Register::Object tObject =
+                        ExecuteContract(rContract);
+
+                    /* Check if object needs to be parsed. */
+                    if(tObject.nType == TAO::Register::REGISTER::OBJECT)
+                        tObject.Parse();
+
+                    /* Let's start building our json object. */
+                    encoding::json jRegister =
+                        RegisterToJSON(tObject, hashContract);
+
+                    /* Now let's add some meta-data for given operation. */
+                    switch(nPrimitive)
                     {
-                        jRegister["action"] = "CREATE";
-                        break;
+                        /* Handle for CREATE modifier type. */
+                        case TAO::Operation::OP::CREATE:
+                        {
+                            jRegister["action"] = "CREATE";
+                            break;
+                        }
+
+                        /* Handle for MODIFY modifier type. */
+                        case TAO::Operation::OP::WRITE:
+                        case TAO::Operation::OP::APPEND:
+                        case TAO::Operation::OP::FEE:
+                        {
+                            jRegister["action"] = "MODIFY";
+                            break;
+                        }
+
+                        /* Handle for TRANSFER modifier type. */
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            jRegister["action"] = "TRANSFER";
+                            break;
+                        }
+
+                        /* Handle for CLAIM modifier type. */
+                        case TAO::Operation::OP::CLAIM:
+                        {
+                            jRegister["action"] = "CLAIM";
+                            break;
+                        }
+
+                        /* Handle for DEBIT modifier type. */
+                        case TAO::Operation::OP::DEBIT:
+                        case TAO::Operation::OP::LEGACY:
+                        {
+                            jRegister["action"] = "DEBIT";
+                            break;
+                        }
+
+                        /* Handle for CREDIT modifier type. */
+                        case TAO::Operation::OP::CREDIT:
+                        {
+                            jRegister["action"] = "CREDIT";
+                            break;
+                        }
+
+                        /* Handle for TRUST modifier type. */
+                        case TAO::Operation::OP::GENESIS:
+                        case TAO::Operation::OP::TRUST:
+                        case TAO::Operation::OP::MIGRATE:
+                        {
+                            jRegister["action"] = "TRUST";
+                            break;
+                        }
                     }
 
-                    /* Handle for MODIFY modifier type. */
-                    case TAO::Operation::OP::WRITE:
-                    case TAO::Operation::OP::APPEND:
-                    case TAO::Operation::OP::FEE:
-                    {
-                        jRegister["action"] = "MODIFY";
-                        break;
-                    }
+                    /* Check that we match our filters. */
+                    if(!FilterObject(jParams, jRegister, tObject))
+                        continue;
 
-                    /* Handle for TRANSFER modifier type. */
-                    case TAO::Operation::OP::TRANSFER:
-                    {
-                        jRegister["action"] = "TRANSFER";
-                        break;
-                    }
+                    /* Filter out our expected fieldnames if specified. */
+                    if(!FilterFieldname(jParams, jRegister))
+                        continue;
 
-                    /* Handle for CLAIM modifier type. */
-                    case TAO::Operation::OP::CLAIM:
-                    {
-                        jRegister["action"] = "CLAIM";
-                        break;
-                    }
-
-                    /* Handle for DEBIT modifier type. */
-                    case TAO::Operation::OP::DEBIT:
-                    case TAO::Operation::OP::LEGACY:
-                    {
-                        jRegister["action"] = "DEBIT";
-                        break;
-                    }
-
-                    /* Handle for CREDIT modifier type. */
-                    case TAO::Operation::OP::CREDIT:
-                    {
-                        jRegister["action"] = "CREDIT";
-                        break;
-                    }
-
-                    /* Handle for TRUST modifier type. */
-                    case TAO::Operation::OP::GENESIS:
-                    case TAO::Operation::OP::TRUST:
-                    case TAO::Operation::OP::MIGRATE:
-                    {
-                        jRegister["action"] = "TRUST";
-                        break;
-                    }
-                }
-
-                /* Check that we match our filters. */
-                if(!FilterObject(jParams, jRegister, tObject))
-                    continue;
-
-                /* Filter out our expected fieldnames if specified. */
-                if(!FilterFieldname(jParams, jRegister))
-                    continue;
-
-                /* Insert into set and automatically sort. */
-                setHistory.insert(jRegister);
-
-                /* Jump sigchains on CLAIM. */
-                if(nPrimitive == TAO::Operation::OP::CLAIM)
-                {
-                    /* Grab our tx-id now. */
-                    rContract.SeekToPrimitive(false);
-                    rContract >> hashLast;
-
-                    break;
+                    /* Insert into set and automatically sort. */
+                    setHistory.insert(jRegister);
                 }
             }
         }

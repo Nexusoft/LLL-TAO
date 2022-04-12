@@ -376,7 +376,7 @@ namespace TAO::API
             }
 
             /* Push transaction to the queue so we can track what modified given register. */
-            if(!LLD::Logical->PushTransaction(hashGenesis, hashRegister, hash))
+            if(!LLD::Logical->PushTransaction(hashRegister, hash))
             {
                 debug::warning(FUNCTION, "failed to push transaction ", VARIABLE(hash.SubString()));
                 continue;
@@ -448,7 +448,7 @@ namespace TAO::API
             }
 
             /* Erase transaction from the queue so we can track what modified given register. */
-            if(!LLD::Logical->EraseTransaction(hashGenesis, hashRegister))
+            if(!LLD::Logical->EraseTransaction(hashRegister))
             {
                 debug::warning(FUNCTION, "failed to erase transaction ", VARIABLE(hash.SubString()));
                 continue;

@@ -219,7 +219,7 @@ namespace LLD
          *  @return true if event was pushed successfully.
          *
          **/
-        bool PushTransaction(const uint256_t& hashGenesis, const uint256_t& hashRegister, const uint512_t& hashTx);
+        bool PushTransaction(const uint256_t& hashRegister, const uint512_t& hashTx);
 
 
         /** EraseTransaction
@@ -232,21 +232,20 @@ namespace LLD
          *  @return true if event was pushed successfully.
          *
          **/
-        bool EraseTransaction(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+        bool EraseTransaction(const uint256_t& hashRegister);
 
 
         /** ListTransactions
          *
-         *  List the txide's that modified a register state for given genesis-id.
+         *  List the txide's that modified a register state.
          *
-         *  @param[in] hashGenesis The genesis-id to list registers for.
          *  @param[in] hashRegister The address of register to list for
          *  @param[in] vTransactions The list of events extracted.
          *
          *  @return true if written successfully
          *
          **/
-        bool ListTransactions(const uint256_t& hashGenesis, const uint256_t& hashRegister, std::vector<uint512_t> &vTransactions);
+        bool ListTransactions(const uint256_t& hashRegister, std::vector<uint512_t> &vTransactions);
 
 
         /** PushRegister

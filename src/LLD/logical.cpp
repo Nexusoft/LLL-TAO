@@ -130,7 +130,7 @@ namespace LLD
 
 
     /* Push an register transaction to process for given genesis-id. */
-    bool LogicalDB::PushTransaction(const uint256_t& hashGenesis, const uint256_t& hashRegister, const uint512_t& hashTx)
+    bool LogicalDB::PushTransaction(const uint256_t& hashRegister, const uint512_t& hashTx)
     {
         /* Start an ACID transaction for this set of records. */
         TxnBegin();
@@ -139,14 +139,14 @@ namespace LLD
         uint32_t nOwnerSequence = 0;
 
         /* Read our sequences from disk. */
-        Read(std::make_tuple(std::string("transactions.sequence"), hashGenesis, hashRegister), nOwnerSequence);
+        Read(std::make_pair(std::string("transactions.sequence"), hashRegister), nOwnerSequence);
 
         /* Add our indexing entry by owner sequence number. */
-        if(!Write(std::make_tuple(std::string("transactions.index"), nOwnerSequence, hashGenesis, hashRegister), hashTx))
+        if(!Write(std::make_tuple(std::string("transactions.index"), nOwnerSequence, hashRegister), hashTx))
             return false;
 
         /* Write our new events sequence to disk. */
-        if(!Write(std::make_tuple(std::string("transactions.sequence"), hashGenesis, hashRegister), ++nOwnerSequence))
+        if(!Write(std::make_pair(std::string("transactions.sequence"), hashRegister), ++nOwnerSequence))
             return false;
 
         return TxnCommit();
@@ -154,7 +154,7 @@ namespace LLD
 
 
     /* Erase an register transaction for given genesis-id. */
-    bool LogicalDB::EraseTransaction(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    bool LogicalDB::EraseTransaction(const uint256_t& hashRegister)
     {
         /* Start an ACID transaction for this set of records. */
         TxnBegin();
@@ -163,15 +163,15 @@ namespace LLD
         uint32_t nOwnerSequence = 0;
 
         /* Read our sequences from disk. */
-        if(!Read(std::make_tuple(std::string("transactions.sequence"), hashGenesis, hashRegister), nOwnerSequence))
+        if(!Read(std::make_pair(std::string("transactions.sequence"), hashRegister), nOwnerSequence))
             return false;
 
         /* Add our indexing entry by owner sequence number. */
-        if(!Erase(std::make_tuple(std::string("transactions.index"), --nOwnerSequence, hashGenesis, hashRegister)))
+        if(!Erase(std::make_tuple(std::string("transactions.index"), --nOwnerSequence, hashRegister)))
             return false;
 
         /* Write our new events sequence to disk. */
-        if(!Write(std::make_tuple(std::string("transactions.sequence"), hashGenesis, hashRegister), nOwnerSequence))
+        if(!Write(std::make_pair(std::string("transactions.sequence"), hashRegister), nOwnerSequence))
             return false;
 
         return TxnCommit();
@@ -179,7 +179,7 @@ namespace LLD
 
 
     /* List the txide's that modified a register state for given genesis-id. */
-    bool LogicalDB::ListTransactions(const uint256_t& hashGenesis, const uint256_t& hashRegister, std::vector<uint512_t> &vTransactions)
+    bool LogicalDB::ListTransactions(const uint256_t& hashRegister, std::vector<uint512_t> &vTransactions)
     {
         /* Cache our txid and contract as a pair. */
         uint512_t hashTx;
@@ -189,7 +189,7 @@ namespace LLD
         while(!config::fShutdown.load()) //we want to early terminate on shutdown
         {
             /* Read our current record. */
-            if(!Read(std::make_tuple(std::string("transactions.index"), nSequence, hashGenesis, hashRegister), hashTx))
+            if(!Read(std::make_tuple(std::string("transactions.index"), nSequence, hashRegister), hashTx))
                 break;
 
             /* Check for already executed contracts to omit. */
