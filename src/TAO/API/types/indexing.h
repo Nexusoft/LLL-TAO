@@ -139,14 +139,14 @@ namespace TAO::API
 
     private:
 
-        /** initialize_genesis
+        /** initialize_sigchain
          *
          *  Initialize a user's indexing entries.
          *
          *  @param[in] hashGenesis The genesis-id to initialize.
          *
          **/
-        static void initialize_genesis(const uint256_t& hashGenesis);
+        static void initialize_sigchain(const uint256_t& hashGenesis);
 
 
         /** index_events

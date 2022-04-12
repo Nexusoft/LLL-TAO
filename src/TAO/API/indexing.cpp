@@ -173,7 +173,7 @@ namespace TAO::API
             return;
 
         /* Initialize our genesis sigchain. */
-        initialize_genesis(hashGenesis);
+        initialize_sigchain(hashGenesis);
 
         /* Insert new session into our set to monitor. */
         SESSIONS->insert(hashGenesis);
@@ -269,7 +269,7 @@ namespace TAO::API
 
 
     /* Initialize a user's indexing entries. */
-    void Indexing::initialize_genesis(const uint256_t& hashGenesis)
+    void Indexing::initialize_sigchain(const uint256_t& hashGenesis)
     {
         /* Check our current last hash from ledger layer. */
         uint512_t hashLedger;

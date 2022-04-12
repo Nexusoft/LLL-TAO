@@ -381,8 +381,6 @@ namespace TAO::API
                 debug::warning(FUNCTION, "failed to push transaction ", VARIABLE(hash.SubString()));
                 continue;
             }
-
-            //handle our register transaction indexes now.
         }
     }
 
