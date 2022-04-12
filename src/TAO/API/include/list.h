@@ -21,20 +21,6 @@ namespace TAO::Register { class Address; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /** ListRegisters
-     *
-     *  Scans a signature chain to work out all registers that it owns
-     *
-     *  @param[in] hashGenesis The genesis hash of the signature chain to scan
-     *  @param[out] vRegisters The list of register addresses from sigchain.
-     *  @param[in] hashLast The txid to list registers from.
-     *
-     *  @return A vector of register addresses owned by the sig chain
-     *
-     **/
-    bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters);
-
-
     /** ListObjects
      *
      *  Scans a signature chain to work out all non-standard object that it owns

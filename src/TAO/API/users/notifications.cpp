@@ -646,7 +646,7 @@ namespace TAO
         {
             /* Get the list of registers owned by this sig chain */
             std::vector<TAO::Register::Address> vRegisters;
-            if(!ListRegisters(hashGenesis, vRegisters))
+            if(!LLD::Logical->ListRegisters(hashGenesis, vRegisters))
                 throw Exception(-74, "No registers found");
 
             /* Iterate registers to find all token accounts. */
