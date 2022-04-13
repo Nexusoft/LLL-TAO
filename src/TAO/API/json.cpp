@@ -245,6 +245,12 @@ namespace TAO
                                 else
                                     throw APIException(-8, "Unable to Extract Input Address");
 
+                                if (nVerbosity == 4)
+                                {
+                                    input["txid"] = tx.vin[i].prevout.hash.ToString();
+                                    input["vout"] = std::to_string(i);
+                                }
+
                                 input["amount"] = (double) txPrev.vout[txin.prevout.n].nValue / TAO::Ledger::NXS_COIN;
                                 inputs.push_back(input);
                             }

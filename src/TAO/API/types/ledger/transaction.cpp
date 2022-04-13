@@ -93,7 +93,7 @@ namespace TAO
             if(LLD::Ledger->ReadTx(hash, txTritium, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 if (nVerbose == 4)
-                    throw APIException(-999, "Can not display Tritium transaction in Legacy format")
+                    throw APIException(-999, "Can not display Tritium transaction in Legacy format");
                 if(strFormat == "JSON")
                     ret = TAO::API::TransactionToJSON (hashCaller, txTritium, blockState, nVerbose);
                 else
