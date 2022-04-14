@@ -375,6 +375,8 @@ namespace TAO::API
 
                     /* Deserialize recipient from contract. */
                     uint256_t hashRecipient;
+                    rContract >> hashRecipient;
+
                     if(nOP == TAO::Operation::OP::DEBIT)
                     {
                         /* Read the owner of register. (check this for MEMPOOL, too) */
@@ -385,8 +387,6 @@ namespace TAO::API
                         /* Set our hash to based on owner. */
                         hashRecipient = oRegister.hashOwner;
                     }
-                    else
-                        rContract >> hashRecipient;
 
                     /* Check if we need to build index for this contract. */
                     if(SESSIONS->count(hashRecipient))
