@@ -79,5 +79,18 @@ namespace TAO::API
          **/
         encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
 
+
+        /** Notifications
+         *
+         *  Lists the current notifications for given user's sigchain.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
+
     };
 }

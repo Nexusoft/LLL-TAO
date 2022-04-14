@@ -301,7 +301,7 @@ namespace TAO::API
                 }
 
                 /* Push transaction to list. */
-                vHashes.push_back(hash); //NOTE: this will warm up cache if available for speed, or remain low footprint if not
+                vHashes.push_back(hash); //this will warm up the LLD cache if available, or remain low footprint if not
 
                 /* Check for first. */
                 if(tx.IsFirst())
@@ -373,9 +373,6 @@ namespace TAO::API
 
                     /* Deserialize recipient from contract. */
                     uint256_t hashRecipient;
-                    rContract >> hashRecipient;
-
-                    /* Check for specific debits since transfer is to genesis. */
                     if(nOP == TAO::Operation::OP::DEBIT)
                     {
                         /* Read the owner of register. (check this for MEMPOOL, too) */
@@ -386,6 +383,8 @@ namespace TAO::API
                         /* Set our hash to based on owner. */
                         hashRecipient = oRegister.hashOwner;
                     }
+                    else
+                        rContract >> hashRecipient;
 
                     /* Check if we need to build index for this contract. */
                     if(SESSIONS->count(hashRecipient))
@@ -432,6 +431,20 @@ namespace TAO::API
 
                         debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString());
                     }
+
+                    break;
+                }
+
+                //we want to tell clients or indexes that something was claimed for clients
+                case TAO::Operation::OP::CLAIM:
+                case TAO::Operation::OP::CREDIT:
+                {
+
+                    //check the txid to an active session
+                    //if(LLD::Logical->ReadTx(hashDependant, rTx))
+                    //{
+
+                    //}
 
                     break;
                 }

@@ -179,6 +179,18 @@ namespace TAO::API
             )
         );
 
+        /* Handle for all TOKENIZE operations. */
+        mapFunctions["tokenize"] = Function
+        (
+            std::bind
+            (
+                &Assets::Tokenize,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Handle for all TRANSACTIONS operations. */
         mapFunctions["transactions"] = Function
         (
@@ -218,11 +230,8 @@ namespace TAO::API
         );
 
 
-
-
         //mapFunctions["create/asset"]             = Function(std::bind(&Assets::Create,    this, std::placeholders::_1, std::placeholders::_2));
         //mapFunctions["update/asset"]             = Function(std::bind(&Assets::Update,    this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["tokenize/asset"]           = Function(std::bind(&Assets::Tokenize,  this, std::placeholders::_1, std::placeholders::_2));
 
 
         /* DEPRECATED */
