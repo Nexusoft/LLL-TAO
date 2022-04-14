@@ -333,6 +333,8 @@ namespace TAO::API
 
             return;
         }
+
+        //handle foreign sigchain events on sigchain sync by syncing up with recent events
     }
 
 

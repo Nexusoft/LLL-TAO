@@ -33,6 +33,10 @@ namespace TAO::API
         const uint256_t hashGenesis =
             Authentication::Caller(jParams);
 
+        /* Extract our verbose parameter. */
+        const uint32_t  nVerbose =
+            ExtractVerbose(jParams);
+
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
 
@@ -43,6 +47,53 @@ namespace TAO::API
         /* JSON return value. */
         encoding::json jRet =
             encoding::json::array();
+
+        /* List off our events available. */
+        std::vector<std::pair<uint512_t, uint32_t>> vEvents;
+        if(LLD::Logical->ListEvents(hashGenesis, vEvents))
+        {
+            /* Flip our list if ascending order. */
+            if(strOrder == "asc")
+                std::reverse(vEvents.begin(), vEvents.end());
+
+            /* List out our active events to process. */
+            uint32_t nTotal = 0;
+            for(const auto& rEvent : vEvents)
+            {
+                /* Grab a reference of our hash. */
+                const uint512_t& hashEvent = rEvent.first;
+
+                /* Get the transaction from disk. */
+                TAO::API::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashEvent, tx))
+                    throw Exception(-108, "Failed to read transaction");
+
+                /* Get the transaction JSON. */
+                encoding::json jContract =
+                    TAO::API::ContractToJSON(tx[rEvent.second], rEvent.second, nVerbose);
+
+                /* Check to see whether the transaction has had all children filtered out */
+                if(jContract.empty())
+                    continue;
+
+                /* Apply our where filters now. */
+                if(!FilterResults(jParams, jContract))
+                    continue;
+
+                /* Filter out our expected fieldnames if specified. */
+                FilterFieldname(jParams, jContract);
+
+                /* Check the offset. */
+                if(++nTotal <= nOffset)
+                    continue;
+
+                /* Check the limit */
+                if(nTotal - nOffset > nLimit)
+                    break;
+
+                jRet.push_back(jContract);
+            }
+        }
 
         return jRet;
     }
