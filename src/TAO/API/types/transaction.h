@@ -126,7 +126,20 @@ namespace TAO::API
          *  Get if transaction is in a confirmed status.
          *
          **/
-        bool Confirmed();
+        bool Confirmed() const;
+
+
+        /** Spent
+         *
+         *  Check if a specific contract has been spent already.
+         *
+         *  @param[in] hash The txid to check spends by.
+         *  @param[in] nContract The contract-id to check proofs for.
+         *
+         *  @return true if the contract has been spent.
+         *
+         **/
+        bool Spent(const uint512_t& hash, const uint32_t nContract) const;
 
 
         /** Broadcast

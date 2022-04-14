@@ -178,9 +178,56 @@ namespace TAO::API
 
 
     /* Set the transaction to a confirmed status. */
-    bool Transaction::Confirmed()
+    bool Transaction::Confirmed() const
     {
         return (nStatus == ACCEPTED);
+    }
+
+
+    /* Check if a specific contract has been spent already. */
+    bool Transaction::Spent(const uint512_t& hash, const uint32_t nContract) const
+    {
+        /* Get a reference of our internal contract. */
+        const TAO::Operation::Contract& rContract = vContracts[nContract];
+
+        /* Reset the contract to the position of the primitive. */
+        rContract.SeekToPrimitive();
+
+        /* The operation */
+        uint8_t nOP;
+        rContract >> nOP;
+
+        /* Check proofs based on spend type. */
+        switch(nOP)
+        {
+            /* Handle if checking for basic primitives. */
+            case TAO::Operation::OP::COINBASE:
+            case TAO::Operation::OP::DEBIT:
+            {
+                /* Get our proof to check. */
+                uint256_t hashProof;
+                rContract >> hashProof;
+
+                /* Check for a valid proof. */
+                return LLD::Ledger->HasProof(hashProof, hash, nContract, TAO::Ledger::FLAGS::MEMPOOL);
+            }
+
+            /* Handle if checking for a TRANSFER. */
+            case TAO::Operation::OP::TRANSFER:
+            {
+                /* Seek over our transfer address. */
+                rContract.Seek(32);
+
+                /* Get our proof to check. */
+                uint256_t hashProof;
+                rContract >> hashProof;
+
+                /* Check for a valid proof. */
+                return LLD::Ledger->HasProof(hashProof, hash, nContract, TAO::Ledger::FLAGS::MEMPOOL);
+            }
+        }
+
+        return false;
     }
 
 

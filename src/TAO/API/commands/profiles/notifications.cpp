@@ -68,6 +68,10 @@ namespace TAO::API
                 if(!LLD::Ledger->ReadTx(hashEvent, tx))
                     throw Exception(-108, "Failed to read transaction");
 
+                /* Check if contract has been spent. */
+                if(tx.Spent(hashEvent, rEvent.second))
+                    continue;
+
                 /* Get the transaction JSON. */
                 encoding::json jContract =
                     TAO::API::ContractToJSON(tx[rEvent.second], rEvent.second, nVerbose);
