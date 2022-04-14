@@ -178,7 +178,7 @@ namespace TAO::API
 
         /* Check for invalid address. */
         if(!addr.IsValid())
-            return debug::error(FUNCTION, strAddress, " is invalid: ", addr.ToString());
+            return false;
 
         /* Set our internal legacy address hash. */
         addrLegacy = std::move(addr);

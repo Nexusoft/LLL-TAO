@@ -80,11 +80,11 @@ namespace TAO::API
     {
         debug::log(0, FUNCTION, "Shutting down API");
 
-        /* Shut down our subsequent API's */
-        Commands::Shutdown();
-        Indexing::Shutdown();
-
         /* Shut down our authentication system. */
         Authentication::Shutdown();
+
+        /* Shut down our subsequent API's */
+        Indexing::Shutdown();
+        Commands::Shutdown();
     }
 }

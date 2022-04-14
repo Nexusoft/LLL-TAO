@@ -53,5 +53,17 @@ namespace TAO::API
                 std::placeholders::_2
             )
         );
+
+        /* Handle for all transactions operations. */
+        mapFunctions["list/notifications"] = Function
+        (
+            std::bind
+            (
+                &Profiles::Notifications,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
     }
 }
