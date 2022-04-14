@@ -375,21 +375,6 @@ namespace LLD
         bool EraseIndex(const uint32_t& nBlockHeight);
 
 
-        /** RepairIndex
-         *
-         *  Recover if an index is not found.
-         *  Fixes a corrupted database with a linear search for the hash tx up
-         *  to the chain height.
-         *
-         *  @param[in] hashTx The txid of transaction to write.
-         *  @param[in] state The block state of the block the transaction belongs to.
-         *
-         *  @return True if the transaction was successfully written, false otherwise.
-         *
-         **/
-        bool RepairIndex(const uint512_t& hashTx, const TAO::Ledger::BlockState &state);
-
-
         /** ReadBlock
          *
          *  Reads a block state from disk from a tx index.

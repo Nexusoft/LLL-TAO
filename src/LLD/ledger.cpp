@@ -461,51 +461,6 @@ namespace LLD
     }
 
 
-    /*  Recover if an index is not found.
-     *  Fixes a corrupted database with a linear search for the hash tx up
-     *  to the chain height. */
-    bool LedgerDB::RepairIndex(const uint512_t& hashTx, const TAO::Ledger::BlockState &state)
-    {
-        debug::log(0, FUNCTION, "repairing index for ", hashTx.SubString());
-
-        TAO::Ledger::BlockState currState = state;
-        uint1024_t hashBlock;
-
-        /* Loop until it is found. */
-        while(!config::fShutdown.load() && !currState.IsNull())
-        {
-            /* Give debug output of status. */
-            if(currState.nHeight % 100000 == 0)
-                debug::log(0, FUNCTION, "repairing index..... ", currState.nHeight);
-
-            /* Get the hash of the current block. */
-            hashBlock = currState.GetHash();
-
-            /* Check the state vtx size. */
-            if(currState.vtx.size() == 0)
-                debug::error(FUNCTION, "block ", hashBlock.SubString(), " has no transactions");
-
-            /* Check for the transaction. */
-            for(const auto& tx : currState.vtx)
-            {
-                /* If the transaction is found, write the index. */
-                if(tx.second == hashTx)
-                {
-                    /* Repair the index once it is found. */
-                    if(!IndexBlock(hashTx, hashBlock))
-                        return false;
-
-                    return true;
-                }
-            }
-
-            currState = currState.Prev();
-        }
-
-        return false;
-    }
-
-
     /* Reads a block state from disk from a tx index. */
     bool LedgerDB::ReadBlock(const uint512_t& hashTx, TAO::Ledger::BlockState &state)
     {
