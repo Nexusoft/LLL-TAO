@@ -396,7 +396,7 @@ namespace TAO::API
                         //    continue;
 
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, rContract, n))
+                        if(!LLD::Logical->PushEvent(hashRecipient, hash, n))
                         {
                             debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
 
@@ -424,7 +424,7 @@ namespace TAO::API
                         //    continue;
 
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, rContract, n))
+                        if(!LLD::Logical->PushEvent(hashRecipient, hash, n))
                         {
                             debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
 

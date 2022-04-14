@@ -329,12 +329,8 @@ namespace LLD
 
 
     /* Push an event to process for given genesis-id. */
-    bool LogicalDB::PushEvent(const uint256_t& hashGenesis, const TAO::Operation::Contract& rContract, const uint32_t nContract)
+    bool LogicalDB::PushEvent(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract)
     {
-        /* Grab a refernece of our txid. */
-        const uint512_t& hashTx =
-            rContract.Hash();
-
         /* Check for already existing order. */
         if(HasEvent(hashTx, nContract))
             return false;

@@ -383,13 +383,13 @@ namespace LLD
          *  Push an event to process for given genesis-id.
          *
          *  @param[in] hashGenesis The genesis-id to push event for.
-         *  @param[in] rContract The contract that contains the existing event.
+         *  @param[in] hashTx The txid we are adding event for.
          *  @param[in] nContract The contract-id that contains the event
          *
          *  @return true if event was pushed successfully.
          *
          **/
-        bool PushEvent(const uint256_t& hashGenesis, const TAO::Operation::Contract& rContract, const uint32_t nContract);
+        bool PushEvent(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract);
 
 
         /** ListEvents
