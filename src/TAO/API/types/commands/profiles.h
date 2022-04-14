@@ -90,7 +90,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
+        encoding::json Notifications(const encoding::json& jParams, const bool fHelp);
 
     };
 }
