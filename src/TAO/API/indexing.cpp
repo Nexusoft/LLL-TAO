@@ -330,9 +330,83 @@ namespace TAO::API
                 if(!tIndex.Index(*hash))
                     debug::warning(FUNCTION, "failed to index ", VARIABLE(hash->SubString()));
             }
-
-            return;
         }
+
+        /* Read our last sequence. */
+        uint32_t nSequence = 0;
+        LLD::Logical->ReadLastEvent(hashGenesis, nSequence);
+
+        /* Loop through our ledger level events. */
+        TAO::Ledger::Transaction tx;
+        while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
+        {
+            /* Check all the tx contracts. */
+            for(uint32_t n = 0; n < tx.Size(); ++n)
+            {
+                /* Grab reference of our contract. */
+                const TAO::Operation::Contract& rContract = tx[n];
+
+                /* Skip to our primitive. */
+                rContract.SeekToPrimitive();
+
+                /* Check the contract's primitive. */
+                uint8_t nOP = 0;
+                rContract >> nOP;
+                switch(nOP)
+                {
+                    case TAO::Operation::OP::TRANSFER:
+                    case TAO::Operation::OP::DEBIT:
+                    {
+                        /* Seek to recipient. */
+                        rContract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
+
+                        /* Deserialize recipient from contract. */
+                        uint256_t hashRecipient;
+                        rContract >> hashRecipient;
+
+                        /* Special check when handling a DEBIT. */
+                        if(nOP == TAO::Operation::OP::DEBIT)
+                        {
+                            /* Read the owner of register. (check this for MEMPOOL, too) */
+                            TAO::Register::State oRegister;
+                            if(!LLD::Register->ReadState(hashRecipient, oRegister))
+                                continue;
+
+                            /* Set our hash to based on owner. */
+                            hashRecipient = oRegister.hashOwner;
+                        }
+
+                        /* Ensure this is correct recipient. */
+                        if(hashRecipient != hashGenesis)
+                            continue;
+
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(hashRecipient, tx.GetHash(), n))
+                        {
+                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
+
+                            continue;
+                        }
+
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->IncrementLastEvent(hashRecipient))
+                        {
+                            debug::error(FUNCTION, "failed to increment last event");
+
+                            continue;
+                        }
+
+                        debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                            "for genesis ", hashRecipient.SubString());
+
+                        break;
+                    }
+                }
+            }
+
+            ++nSequence;
+        }
+
 
         //handle foreign sigchain events on sigchain sync by syncing up with recent events
     }
@@ -377,6 +451,7 @@ namespace TAO::API
                     uint256_t hashRecipient;
                     rContract >> hashRecipient;
 
+                    /* Special check when handling a DEBIT. */
                     if(nOP == TAO::Operation::OP::DEBIT)
                     {
                         /* Read the owner of register. (check this for MEMPOOL, too) */
@@ -399,6 +474,14 @@ namespace TAO::API
                         if(!LLD::Logical->PushEvent(hashRecipient, hash, n))
                         {
                             debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
+
+                            continue;
+                        }
+
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->IncrementLastEvent(hashRecipient))
+                        {
+                            debug::error(FUNCTION, "failed to increment last event");
 
                             continue;
                         }

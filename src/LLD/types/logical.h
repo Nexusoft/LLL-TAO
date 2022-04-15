@@ -405,6 +405,31 @@ namespace LLD
         bool ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents);
 
 
+        /** ReadLastEvent
+         *
+         *  Read the last event that was processed for given sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *  @param[out] nSequence The last sequence that was written.
+         *
+         *  @return if the record was read successfully.
+         *
+         **/
+        bool ReadLastEvent(const uint256_t& hashGenesis, uint32_t &nSequence);
+
+
+        /** IncrementLastEvent
+         *
+         *  Write the last event that was processed for given sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *
+         *  @return if the record was written successfully.
+         *
+         **/
+        bool IncrementLastEvent(const uint256_t& hashGenesis);
+
+
         /** HasEvent
          *
          *  Checks if an event has been indexed in the database already.

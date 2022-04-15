@@ -385,6 +385,24 @@ namespace LLD
     }
 
 
+    /* Read the last event that was processed for given sigchain. */
+    bool LogicalDB::ReadLastEvent(const uint256_t& hashGenesis, uint32_t &nSequence)
+    {
+        return Read(std::make_pair(std::string("indexing.sequence"), hashGenesis), nSequence);
+    }
+
+
+    /* Write the last event that was processed for given sigchain. */
+    bool LogicalDB::IncrementLastEvent(const uint256_t& hashGenesis)
+    {
+        /* Read our current sequence. */
+        uint32_t nSequence = 0;
+        ReadLastEvent(hashGenesis, nSequence);
+
+        return Write(std::make_pair(std::string("indexing.sequence"), hashGenesis), ++nSequence);
+    }
+
+
     /* Checks if an event has been indexed in the database already. */
     bool LogicalDB::HasEvent(const uint512_t& hashTx, const uint32_t nContract)
     {
