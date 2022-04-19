@@ -29,6 +29,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/version.h>
+#include <LLP/include/inv.h>
 
 #include <TAO/API/include/utils.h>
 #include <TAO/API/include/json.h>
@@ -1976,28 +1977,83 @@ namespace TAO
         If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it */
         json::json RPC::SendRawTransaction(const json::json& params, bool fHelp)
         {
-            if(fHelp || params.size() < 1 || params.size() > 2)
+
+            /* Declare the JSON return object */
+            json::json ret;
+
+            /* Extract the data out of the JSON params*/
+            std::vector<uint8_t> vData = ParseHex(params[0].get<std::string>());
+
+            DataStream ssData(vData, SER_NETWORK, LLP::PROTOCOL_VERSION);
+
+            /* Needs to have a catch
+            uint8_t nType;
+
+               
+            ssData >> nType;
+
+
+            if(nType != LLP::MSG_TX_LEGACY)
+            {
+                throw APIException(-999, "Can not submit non-legacy transactions");
+            }
+
+            */
+                
+            Legacy::Transaction tx;
+            ssData >> tx;
+
+
+            /* Check if we have it. */
+            if(!LLD::Legacy->HasTx(tx.GetHash()))
+            {
+                /* Check if tx is valid. */
+                if(!tx.CheckTransaction())
+                    throw APIException(-150, "Transaction rejected.");
+
+                /* Add the transaction to the memory pool. */
+                if(TAO::Ledger::mempool.Accept(tx))
+                {
+                    /* Add tx to legacy wallet */
+                   TAO::Ledger::BlockState notUsed;
+                    Legacy::Wallet::GetInstance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+
+                    ret["hash"] = tx.GetHash().ToString();
+                }
+                else
+                    throw APIException(-150, "Transaction rejected.");
+            }
+            else
+                throw APIException(-151, "Transaction already in database.");
+
+            
+
+            return ret;
+        }
+           
+           /* if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
                     "sendrawtransaction <hex std::string> [checkinputs=0]"
                     " - Submits raw transaction (serialized, hex-encoded) to local node and network."
                     " If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it.");
 
-        //     // parse hex std::string from parameter
-        //     std::vector<unsigned char> txData(ParseHex(params[0].get<std::string>()));
-        //     DataStream ssData(txData, SER_NETWORK, PROTOCOL_VERSION);
-        //     bool fCheckInputs = false;
-        //     if(params.size() > 1)
-        //         fCheckInputs = (params[1] != 0);
-        //     Core::CTransaction tx;
+            // parse hex std::string from parameter
+            std::vector<unsigned char> txData(ParseHex(params[0].get<std::string>()));
+            DataStream ssData(txData, SER_NETWORK, LLP::PROTOCOL_VERSION);
+            bool fCheckInputs = false;
+            if(params.size() > 1)
+                fCheckInputs = (params[1] != 0);
+            Legacy::Transaction tx;
 
-        //     // deserialize binary data stream
-        //     try {
-        //         ssData >> tx;
-        //     }
-        //     catch (const std::exception &e) {
-        //         throw APIException(-22, "TX decode failed");
-        //     }
-        //     uint512 hashTx = tx.GetHash();
+            // deserialize binary data stream
+            try {
+                 uint8_t nType;
+                 ssData >> nType;
+                 ssData >> tx;
+             }
+             catch (const std::exception &e) {
+               throw APIException(-22, "TX decode failed");
+             }
 
         //     // See if the transaction is already in a block
         //     // or in the memory pool:
@@ -2022,10 +2078,30 @@ namespace TAO
         //     RelayMessage(CInv(MSG_TX_LEGACY, hashTx), tx);
 
         //     return hashTx.GetHex();
-            json::json ret;
-            ret = "NOT AVAILABLE IN THIS RELEASE";
+
+        Legacy::Wallet* wallet = &Legacy::Wallet::GetInstance();
+json::json ret;
+        const Legacy::WalletTx wallettx = Legacy::WalletTx(wallet,tx);
+        if(wallettx.CheckTransaction())
+        {
+            if(wallettx.RelayWalletTransaction())
+            {
+            
+            
+            ret = "RElayed Transaction";
+            return ret;
+            }
+            else
+                ret = "Relay Failed";
+        }
+        else
+            ret = "Transaction validity failed";
+
+            //json::json ret;
+            //ret = "NOT AVAILABLE IN THIS RELEASE";
             return ret;
         }
+        */
 
         /* validateaddress <Nexusaddress>
         Return information about <Nexusaddress> */
