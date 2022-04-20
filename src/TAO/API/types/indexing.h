@@ -44,10 +44,6 @@ namespace TAO::API
         static util::atomic::lock_unique_ptr<std::queue<uint512_t>> DISPATCH;
 
 
-        /** Set to track active login sessions **/
-        static util::atomic::lock_unique_ptr<std::set<uint256_t>> SESSIONS;
-
-
         /** Thread for running dispatch. **/
         static std::thread EVENTS_THREAD;
 
@@ -74,6 +70,16 @@ namespace TAO::API
         static void Initialize();
 
 
+        /** Initialize
+         *
+         *  Initialize a user's indexing entries.
+         *
+         *  @param[in] hashGenesis The genesis-id to initialize.
+         *
+         **/
+        static void Initialize(const uint256_t& hashGenesis);
+
+
         /** RefreshEvents
          *
          *  Checks current events against transaction history to ensure we are up to date.
@@ -90,16 +96,6 @@ namespace TAO::API
          *
          **/
         static void PushIndex(const uint512_t& hashTx);
-
-
-        /** PushSession
-         *
-         *  Push a new session to monitor for indexes.
-         *
-         *  @param[in] hashGenesis The active genesis of login session.
-         *
-         **/
-        static void PushSession(const uint256_t& hashGenesis);
 
 
         /** Register
@@ -122,7 +118,7 @@ namespace TAO::API
         }
 
 
-        /** Relay Thread
+        /** Manager Thread
          *
          *  Handle indexing of all events for API.
          *
@@ -137,16 +133,8 @@ namespace TAO::API
          **/
         static void Shutdown();
 
-    private:
 
-        /** initialize_sigchain
-         *
-         *  Initialize a user's indexing entries.
-         *
-         *  @param[in] hashGenesis The genesis-id to initialize.
-         *
-         **/
-        static void initialize_sigchain(const uint256_t& hashGenesis);
+    private:
 
 
         /** index_events

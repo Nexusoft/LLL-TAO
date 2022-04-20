@@ -318,6 +318,18 @@ namespace TAO::API
         static bool Active(const uint256_t& hashGenesis, uint256_t &hashSession);
 
 
+        /** Active
+         *
+         *  Check if user is already authenticated by genesis-id.
+         *
+         *  @param[in] hashGenesis The current genesis-id to lookup for.
+         *
+         *  @return true if session is authenticated.
+         *
+         **/
+        static bool Active(const uint256_t& hashGenesis);
+
+
         /** Authenticate
          *
          *  Authenticate a user's credentials against their sigchain.
@@ -380,6 +392,16 @@ namespace TAO::API
          *
          **/
         static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const encoding::json& jParams);
+
+
+        /** Sessions
+         *
+         *  List the currently active sessions in manager.
+         *
+         *  @return the list of sessions if any found.
+         *
+         **/
+        static const std::vector<uint256_t> Sessions();
 
 
         /** Unlock

@@ -95,7 +95,7 @@ namespace TAO::API
         }
 
         /* Initialize our indexing session. */
-        Indexing::PushSession(tSession.Genesis());
+        Indexing::Initialize(tSession.Genesis());
 
         /* Build a new session key. */
         if(config::fMultiuser.load())

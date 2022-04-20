@@ -83,6 +83,15 @@ namespace TAO::API
     }
 
 
+    /* Check if user is already authenticated by genesis-id. */
+    bool Authentication::Active(const uint256_t& hashGenesis)
+    {
+        RECURSIVE(MUTEX);
+
+        return mapSessions.count(hashGenesis);
+    }
+
+
     /* Authenticate a user's credentials against their sigchain. */
     bool Authentication::Authenticate(const encoding::json& jParams)
     {
@@ -227,6 +236,24 @@ namespace TAO::API
 
         /* Get a copy of our current active session. */
         return mapSessions[hashSession].Credentials();
+    }
+
+
+    /* List the currently active sessions in manager. */
+    const std::vector<uint256_t> Authentication::Sessions()
+    {
+        /* Build our return vector. */
+        std::vector<uint256_t> vRet;
+
+        {
+            RECURSIVE(MUTEX);
+
+            /* Loop through sessions map. */
+            for(const auto& rSession : mapSessions)
+                vRet.push_back(rSession.first);
+        }
+
+        return vRet;
     }
 
 
