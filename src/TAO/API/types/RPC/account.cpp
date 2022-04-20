@@ -1977,6 +1977,12 @@ namespace TAO
         If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it */
         json::json RPC::SendRawTransaction(const json::json& params, bool fHelp)
         {
+            /* Return Help */
+            if(fHelp || params.size() < 1 || params.size() > 2)
+                return std::string(
+                    "sendrawtransaction <hex std::string> [checkinputs=0]"
+                    " - Submits raw transaction (serialized, hex-encoded) to local node and network."
+                    " If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it.");
 
             /* Declare the JSON return object */
             json::json ret;
@@ -1984,26 +1990,31 @@ namespace TAO
             /* Extract the data out of the JSON params*/
             std::vector<uint8_t> vData = ParseHex(params[0].get<std::string>());
 
+            /* Generate New DataStream from incoming Hex input */
             DataStream ssData(vData, SER_NETWORK, LLP::PROTOCOL_VERSION);
 
             /* Needs to have a catch
             uint8_t nType;
-
-               
             ssData >> nType;
-
-
             if(nType != LLP::MSG_TX_LEGACY)
             {
                 throw APIException(-999, "Can not submit non-legacy transactions");
             }
 
             */
-                
+            
+            /* The Legacy Transaction to write too */
             Legacy::Transaction tx;
-            ssData >> tx;
-
-
+            try
+            {   
+                /* Attempt to write incoming data into transaction */
+                ssData >> tx;
+            }
+            catch(const std::exception& e)
+            {
+                throw APIException(-939, "Failed to write data stream, please validate input");
+            }
+            
             /* Check if we have it. */
             if(!LLD::Legacy->HasTx(tx.GetHash()))
             {
@@ -2025,8 +2036,6 @@ namespace TAO
             }
             else
                 throw APIException(-151, "Transaction already in database.");
-
-            
 
             return ret;
         }
