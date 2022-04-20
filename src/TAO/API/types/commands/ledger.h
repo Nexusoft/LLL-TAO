@@ -146,19 +146,6 @@ namespace TAO::API
         encoding::json VoidTransaction(const encoding::json& jParams, const bool fHelp);
 
 
-        /** SyncSigChain
-         *
-         *  Synchronizes the signature chain for the currently logged in user.  Only applicable in lite / client mode
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json SyncSigChain(const encoding::json& jParams, const bool fHelp);
-
-
         /** SyncHeaders
          *
          *  Synchronizes the block header data from a peer. NOTE: the method call will return as soon as the synchronization

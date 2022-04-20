@@ -13,6 +13,9 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <LLP/include/global.h>
+#include <LLP/types/tritium.h>
+
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/indexing.h>
@@ -66,6 +69,38 @@ namespace TAO::API
     /* Initialize a user's indexing entries. */
     void Indexing::Initialize(const uint256_t& hashGenesis)
     {
+        /* Sync the sigchain if an active client before building our indexes. */
+        if(config::fClient.load())
+        {
+            /* Check for genesis. */
+            if(LLP::TRITIUM_SERVER)
+            {
+                /* Find an active connection to sync from. */
+                std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                if(pNode != nullptr)
+                {
+                    debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing client");
+
+                    /* Get the last txid in sigchain. */
+                    uint512_t hashLast;
+                    LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
+
+                    /* Request the sig chain. */
+                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+
+                    LLP::TritiumNode::BlockingMessage(30000, pNode.get(), LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast);
+
+                    debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
+
+                    /* Grab list of notifications. */
+                    pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis);
+                    pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis);
+                }
+                else
+                    debug::error(FUNCTION, "no connections available...");
+            }
+        }
+
         /* Check our current last hash from ledger layer. */
         uint512_t hashLedger;
         if(!LLD::Ledger->ReadLast(hashGenesis, hashLedger, TAO::Ledger::FLAGS::MEMPOOL))

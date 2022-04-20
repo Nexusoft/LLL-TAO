@@ -463,31 +463,7 @@ namespace TAO
         /* Used for client mode, this method will download the signature chain transactions and events for a given genesis */
         bool Users::DownloadSigChain(const uint256_t& hashGenesis, bool fSyncEvents)
         {
-            /* Check that server is active. */
-            if(!LLP::TRITIUM_SERVER)
-                return debug::error(FUNCTION, "Tritium server not initialized...");
-
-            //XXX: GetConnection should return true/false and return connection by reference
-            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-            if(pNode != nullptr)
-            {
-                /* Log the start time to syncronize. */
-                uint64_t nStart = runtime::unifiedtimestamp(true); //true for ms timestamp
-                debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing Signatiure Chain");
-
-                /* Request the sig chain. */
-                debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
-                LLP::TritiumNode::SyncSigChain(pNode.get(), hashGenesis, true, fSyncEvents);
-
-                /* Log the time it took to complete sigchain sync. */
-                uint64_t nStop = runtime::unifiedtimestamp(true); //true for ms timestamp
-                debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString(), " in ", nStop - nStart, " milliseconds");
-
-                return true;
-            }
-            else
-                return debug::error(FUNCTION, "no connections available...");
-
+            return debug::error(FUNCTION, "function disabled...");
         }
     }
 }

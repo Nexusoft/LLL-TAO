@@ -539,19 +539,6 @@ namespace LLP
         }
 
 
-        /** SyncSigChain
-         *
-         *  Requests missing sig chain / event transactions for the given signature chain.
-         *
-         *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
-         *  @param[in] hashGenesis The genesis hash of the sig chain to sync.
-         *  @param[in] bWait  Flag indicating that the method should wait until the sig chain is downloaded before returning
-         *  @param[in] bSyncEvents Flag indicating whether or not to also download events for the sig chain
-         *
-         **/
-        static void SyncSigChain(LLP::TritiumNode* pNode, const uint256_t& hashGenesis, bool bWait, bool bSyncEvents);
-
-
         /** Sync
          *
          *  Initiates a chain synchronization from the peer.

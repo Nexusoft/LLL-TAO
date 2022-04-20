@@ -143,18 +143,6 @@ namespace TAO::API
             )
         );
 
-        /* Handle for sync/sigchain. */
-        mapFunctions["sync/sigchain"] = Function
-        (
-            std::bind
-            (
-                &Ledger::SyncSigChain,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
         /* Handle for void/transaction. */
         mapFunctions["void/transaction"] = Function
         (
