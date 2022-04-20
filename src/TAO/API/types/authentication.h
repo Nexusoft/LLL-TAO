@@ -369,6 +369,19 @@ namespace TAO::API
         static bool Unlocked(const encoding::json& jParams, uint8_t &nRequestedActions);
 
 
+        /** Unloacked
+         *
+         *  Determine if a sigchain is unlocked for given actions.
+         *
+         *  @param[in] hashSession The given session-id to check our status for.
+         *  @param[in] nRequestedActions The actions requested for PIN unlock.
+         *
+         *  @return true if the PIN is unlocked for given actions.
+         *
+         **/
+        static bool Unlocked(const uint256_t& hashSession, const uint8_t nRequestedActions);
+
+
         /** Caller
          *
          *  Get the genesis-id of the given caller using session from params. Throws exception if not found.
@@ -401,7 +414,7 @@ namespace TAO::API
          *  @return the list of sessions if any found.
          *
          **/
-        static const std::vector<uint256_t> Sessions();
+        static const std::vector<std::pair<uint256_t, uint256_t>> Sessions();
 
 
         /** Unlock

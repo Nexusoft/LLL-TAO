@@ -88,7 +88,15 @@ namespace TAO::API
     {
         RECURSIVE(MUTEX);
 
-        return mapSessions.count(hashGenesis);
+        /* Loop through sessions map. */
+        for(const auto& rSession : mapSessions)
+        {
+            /* Check genesis to session. */
+            if(rSession.second.Genesis() == hashGenesis)
+                return true;
+        }
+
+        return false;
     }
 
 
@@ -220,6 +228,30 @@ namespace TAO::API
         return false;
     }
 
+    /* Determine if a sigchain is unlocked for given actions. */
+    bool Authentication::Unlocked(const uint256_t& hashSession, const uint8_t nRequestedActions)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            throw Exception(-11, "Session not found");
+
+        /* Get a copy of our current active session. */
+        const Session& rSession =
+            mapSessions[hashSession];
+
+        /* Check if actions are unlocked and allowed. */
+        uint8_t nAllowedActions =
+            nRequestedActions;
+
+        /* Check that we have a valid pin number. */
+        if(!rSession.Authorized(nAllowedActions))
+            return false;
+
+        return (nRequestedActions & nAllowedActions);
+    }
+
 
     /* Get an instance of current session credentials indexed by session-id. */
     const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Authentication::Credentials(const encoding::json& jParams)
@@ -240,17 +272,17 @@ namespace TAO::API
 
 
     /* List the currently active sessions in manager. */
-    const std::vector<uint256_t> Authentication::Sessions()
+    const std::vector<std::pair<uint256_t, uint256_t>> Authentication::Sessions()
     {
         /* Build our return vector. */
-        std::vector<uint256_t> vRet;
+        std::vector<std::pair<uint256_t, uint256_t>> vRet;
 
         {
             RECURSIVE(MUTEX);
 
             /* Loop through sessions map. */
             for(const auto& rSession : mapSessions)
-                vRet.push_back(rSession.first);
+                vRet.push_back(std::make_pair(rSession.first, rSession.second.Genesis()));
         }
 
         return vRet;

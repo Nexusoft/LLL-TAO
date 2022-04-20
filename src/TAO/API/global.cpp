@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/indexing.h>
+#include <TAO/API/types/notifications.h>
 
 #include <TAO/API/types/session-manager.h>
 
@@ -72,6 +73,9 @@ namespace TAO::API
 
         /* Kick off our indexing sub-system now. */
         Indexing::Initialize();
+
+        /* Fire up notifications processors. */
+        Notifications::Initialize();
     }
 
 
@@ -86,5 +90,8 @@ namespace TAO::API
         /* Shut down our subsequent API's */
         Indexing::Shutdown();
         Commands::Shutdown();
+
+        /* Shut down our notifications. */
+        Notifications::Shutdown();
     }
 }

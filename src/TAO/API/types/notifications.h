@@ -13,6 +13,9 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <thread>
+#include <vector>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -23,6 +26,10 @@ namespace TAO::API
      **/
     class Notifications
     {
+        /** Track the list of threads for processing. **/
+        static std::vector<std::thread> vThreads;
+
+
     public:
 
         /** Initialize
@@ -37,8 +44,10 @@ namespace TAO::API
          *
          *  Handle notification of all events for API.
          *
+         *  @param[in] nThread The current thread id we have assigned
+         *
          **/
-        static void Manager();
+        static void Manager(const uint32_t nThread);
 
 
         /** Shutdown
@@ -47,5 +56,5 @@ namespace TAO::API
          *
          **/
         static void Shutdown();
-    }
+    };
 }
