@@ -279,7 +279,7 @@ namespace TAO::API
         std::vector<TAO::Operation::Contract> &vContracts)
     {
         /* Extract some parameters from input data. */
-        const TAO::Register::Address hashCredit =
+        const TAO::Register::Address addrCredit =
             ExtractAddress(jParams, "", "default");
 
         /* Get our genesis-id for this call. */
@@ -297,7 +297,7 @@ namespace TAO::API
         if(nPrimitive == TAO::Operation::OP::COINBASE)
         {
             /* Enforce address resolution for coinbase. */
-            if(hashCredit == TAO::API::ADDRESS_NONE)
+            if(addrCredit == TAO::API::ADDRESS_NONE)
                 throw Exception(-35, "Invalid parameter [name], expecting [exists]");
 
             /* Get the genesisHash of the user who mined the coinbase*/
@@ -313,13 +313,13 @@ namespace TAO::API
             rDebit >> nAmount;
 
             /* Now lets check our expected types match. */
-            if(!CheckStandard(jParams, hashCredit))
+            if(!CheckStandard(jParams, addrCredit))
                 return false;
 
             /* if we passed all of these checks then insert the credit contract into the tx */
             TAO::Operation::Contract tContract;
             tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-            tContract << hashCredit << hashGenesis << nAmount;
+            tContract << addrCredit << hashGenesis << nAmount;
 
             /* Push to our contract queue. */
             vContracts.push_back(tContract);
@@ -330,42 +330,42 @@ namespace TAO::API
         /* Next check for debit credits. */
         else if(nPrimitive == TAO::Operation::OP::DEBIT)
         {
-            /* Get the hashFrom from the debit transaction. */
-            TAO::Register::Address hashFrom;
-            rDebit >> hashFrom;
+            /* Get the source account the debit transaction. */
+            TAO::Register::Address addrSource;
+            rDebit >> addrSource;
 
-            /* Get the hashCredit from the debit transaction. */
-            TAO::Register::Address hashTo;
-            rDebit >> hashTo;
+            /* Get the recipient from the debit transaction. */
+            TAO::Register::Address addrRecipient;
+            rDebit >> addrRecipient;
 
             /* Get the amount to respond to. */
             uint64_t nAmount = 0;
             rDebit >> nAmount;
 
             /* Check for a legacy output debit. */
-            if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
+            if(addrSource == TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Enforce address resolution for wildcard claim. */
-                if(hashCredit == TAO::API::ADDRESS_NONE)
+                if(addrCredit == TAO::API::ADDRESS_NONE)
                     throw Exception(-35, "Invalid parameter [name], expecting [exists]");
 
                 /* Read our crediting account. */
-                TAO::Register::Object objCredit;
-                if(!LLD::Register->ReadObject(hashCredit, objCredit, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oCredit;
+                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
 
                 /* Let's check our credit account is correct token. */
-                if(objCredit.get<uint256_t>("token") != 0)
+                if(oCredit.get<uint256_t>("token") != 0)
                     throw Exception(-59, "Account to credit is not a NXS account");
 
                 /* Now lets check our expected types match. */
-                if(!CheckStandard(jParams, objCredit))
+                if(!CheckStandard(jParams, oCredit))
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract tContract;
                 tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                tContract << hashCredit << hashFrom << nAmount;
+                tContract << addrCredit << addrSource << nAmount;
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);
@@ -374,10 +374,10 @@ namespace TAO::API
             }
 
             /* Check for wildcard for conditional contract (OP::VALIDATE). */
-            if(hashTo == TAO::Register::WILDCARD_ADDRESS)
+            if(addrRecipient == TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Enforce address resolution for wildcard claim. */
-                if(hashCredit == TAO::API::ADDRESS_NONE)
+                if(addrCredit == TAO::API::ADDRESS_NONE)
                     throw Exception(-35, "Invalid parameter [name], expecting [exists]");
 
                 /* Check for conditions. */
@@ -398,27 +398,27 @@ namespace TAO::API
                 }
 
                 /* Retrieve the account we are debiting from */
-                TAO::Register::Object objFrom;
-                if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oSource;
+                if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
 
                 /* Read our crediting account. */
-                TAO::Register::Object objCredit;
-                if(!LLD::Register->ReadObject(hashCredit, objCredit, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oCredit;
+                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::MEMPOOL))
                     throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Let's check our credit account is correct token. */
-                if(objFrom.get<uint256_t>("token") != objCredit.get<uint256_t>("token"))
+                if(oSource.get<uint256_t>("token") != oCredit.get<uint256_t>("token"))
                     throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Now lets check our expected types match. */
-                if(!CheckStandard(jParams, objCredit))
+                if(!CheckStandard(jParams, oCredit))
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract tContract;
                 tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                tContract << hashCredit << hashFrom << nAmount;
+                tContract << addrCredit << addrSource << nAmount;
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);
@@ -427,88 +427,88 @@ namespace TAO::API
             }
 
             /* Get the token / account object that the debit was made to. */
-            TAO::Register::Object objTo;
-            if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::MEMPOOL))
+            TAO::Register::Object oRecipient;
+            if(!LLD::Register->ReadObject(addrRecipient, oRecipient, TAO::Ledger::FLAGS::MEMPOOL))
                 return false;
 
             /* Check for standard credit to account. */
-            const uint8_t nStandardBase = objTo.Base();
+            const uint8_t nStandardBase = oRecipient.Base();
             if(nStandardBase == TAO::Register::OBJECTS::ACCOUNT)
             {
                 /* Check that the debit was made to an account that we own */
-                if(objTo.hashOwner != hashGenesis)
+                if(oRecipient.hashOwner != hashGenesis)
                     return false;
 
                 /* Now lets check our expected types match. */
-                if(!CheckStandard(jParams, objTo))
+                if(!CheckStandard(jParams, oRecipient))
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* Create our new contract now. */
                 TAO::Operation::Contract tContract;
                 tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                tContract << hashTo << hashFrom << nAmount; //we use hashTo from our debit contract instead of hashCredit
+                tContract << addrRecipient << addrSource << nAmount; //we use addrRecipient from our debit contract instead of addrCredit
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);
             }
 
             /* If addressed to non-standard object, this could be a tokenized debit, so do some checks to find out. */
-            else if(nStandardBase == TAO::Register::OBJECTS::NONSTANDARD)
+            else if(nStandardBase == TAO::Register::OBJECTS::NONSTANDARD || TAO::Register::REGISTER::STATE(nStandardBase))
             {
                 /* Enforce address resolution for wildcard claim. */
-                if(hashCredit == TAO::API::ADDRESS_NONE)
+                if(addrCredit == TAO::API::ADDRESS_NONE)
                     throw Exception(-35, "Invalid parameter [name], expecting [exists]");
 
                 /* Attempt to get the proof from the parameters. */
-                const TAO::Register::Address hashProof = ExtractAddress(jParams, "proof");
+                const TAO::Register::Address addrProof = ExtractAddress(jParams, "proof");
 
                 /* Check that the owner is a token. */
-                if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
+                if(oRecipient.hashOwner.GetType() != TAO::Register::Address::TOKEN)
                     return false;
 
                 /* Read our token contract now since we now know it's correct. */
-                TAO::Register::Object objOwner;
-                if(!LLD::Register->ReadObject(objTo.hashOwner, objOwner, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oToken;
+                if(!LLD::Register->ReadObject(oRecipient.hashOwner, oToken, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
 
                 /* We shouldn't ever evaluate to true here, but if we do let's not make things worse for ourselves. */
-                if(objOwner.Standard() != TAO::Register::OBJECTS::TOKEN)
+                if(oToken.Standard() != TAO::Register::OBJECTS::TOKEN)
                     return false;
 
                 /* Retrieve the hash proof account and check that it is the same token type as the asset owner */
-                TAO::Register::Object objProof;
-                if(!LLD::Register->ReadObject(hashProof, objProof, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oProof;
+                if(!LLD::Register->ReadObject(addrProof, oProof, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
 
                 /* Check that the proof is an account for the same token as the asset owner */
-                if(objProof.get<uint256_t>("token") != objOwner.get<uint256_t>("token"))
+                if(oProof.get<uint256_t>("token") != oToken.get<uint256_t>("token"))
                     throw Exception(-61, "Proof account is for a different token than the asset token.");
 
                 /* Retrieve the account to debit from. */
-                TAO::Register::Object objFrom;
-                if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oSource;
+                if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
 
                 /* Read our crediting account. */
-                TAO::Register::Object objCredit;
-                if(!LLD::Register->ReadObject(hashCredit, objCredit, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oCredit;
+                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::MEMPOOL))
                     throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Check that the account being debited from is the same token type as credit. */
-                if(objFrom.get<uint256_t>("token") != objCredit.get<uint256_t>("token"))
-                    throw Exception(-33, "Incorrect or missing name / address");
+                if(oSource.get<uint256_t>("token") != oCredit.get<uint256_t>("token"))
+                    throw Exception(-33, "Source token account mismatch with recipient token");
 
                 /* Now lets check our expected types match. */
-                if(!CheckStandard(jParams, objCredit))
+                if(!CheckStandard(jParams, oCredit))
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* Calculate the partial amount we want to claim based on our share of the proof tokens */
-                const uint64_t nPartial = (objProof.get<uint64_t>("balance") * nAmount) / objOwner.get<uint64_t>("supply");
+                const uint64_t nPartial = (oProof.get<uint64_t>("balance") * nAmount) / oToken.get<uint64_t>("supply");
 
                 /* Create our new contract now. */
                 TAO::Operation::Contract tContract;
                 tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                tContract << hashCredit << hashProof << nPartial;
+                tContract << addrCredit << addrProof << nPartial;
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);

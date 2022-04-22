@@ -22,22 +22,22 @@ namespace TAO::API
     encoding::json Assets::SchemaToJSON(const TAO::Register::Object& rObject, const uint256_t& hashRegister)
     {
         /* Get List of field names in this asset object */
-        const std::vector<std::string> vFieldNames = rObject.ListFields();
+        const std::vector<std::string> vMembers = rObject.Members();
 
         /* Declare type and data variables for unpacking the Object fields */
         encoding::json jRet = encoding::json::array();
-        for(const auto& strName : vFieldNames)
+        for(const auto& strMember : vMembers)
         {
             /* max field size (only applicable to mutable fields) */
             std::size_t nMaxSize = 0;
 
             /* Add the name */
             encoding::json jField =
-                {{ "name", strName }};
+                {{ "name", strMember }};
 
             /* Get the type */
             uint8_t nType = 0;
-            rObject.Type(strName, nType);
+            rObject.Type(strMember, nType);
 
             /* Switch based on type. */
             switch(nType)
@@ -47,7 +47,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint8";
-                    jField["value"] = rObject.get<uint8_t>(strName);
+                    jField["value"] = rObject.get<uint8_t>(strMember);
 
                     break;
                 }
@@ -57,7 +57,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint16";
-                    jField["value"] = rObject.get<uint16_t>(strName);
+                    jField["value"] = rObject.get<uint16_t>(strMember);
 
                     break;
                 }
@@ -67,7 +67,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint32";
-                    jField["value"] = rObject.get<uint32_t>(strName);
+                    jField["value"] = rObject.get<uint32_t>(strMember);
 
                     break;
                 }
@@ -77,7 +77,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint64";
-                    jField["value"] = rObject.get<uint64_t>(strName);
+                    jField["value"] = rObject.get<uint64_t>(strMember);
 
                     break;
                 }
@@ -87,7 +87,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint256";
-                    jField["value"] = rObject.get<uint256_t>(strName).GetHex();
+                    jField["value"] = rObject.get<uint256_t>(strMember).GetHex();
 
                     break;
                 }
@@ -97,7 +97,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint512";
-                    jField["value"] = rObject.get<uint512_t>(strName).GetHex();
+                    jField["value"] = rObject.get<uint512_t>(strMember).GetHex();
 
                     break;
                 }
@@ -107,7 +107,7 @@ namespace TAO::API
                 {
                     /* Set the return value from object register data. */
                     jField["type"]  = "uint1024";
-                    jField["value"] = rObject.get<uint1024_t>(strName).GetHex();
+                    jField["value"] = rObject.get<uint1024_t>(strMember).GetHex();
 
                     break;
                 }
@@ -120,7 +120,7 @@ namespace TAO::API
 
                     /* Set the return value from object register data. */
                     const std::string strRet =
-                        rObject.get<std::string>(strName);
+                        rObject.get<std::string>(strMember);
 
                     /* get the size */
                     nMaxSize = strRet.length();
@@ -139,7 +139,7 @@ namespace TAO::API
 
                     /* Set the return value from object register data. */
                     std::vector<uint8_t> vRet =
-                        rObject.get<std::vector<uint8_t>>(strName);
+                        rObject.get<std::vector<uint8_t>>(strMember);
 
                     /* get the size */
                     nMaxSize = vRet.size();
@@ -155,10 +155,10 @@ namespace TAO::API
             }
 
             /* Add mutable flag */
-            jField["mutable"] = rObject.mapData[strName].second;
+            jField["mutable"] = rObject.mapData[strMember].second;
 
             /* If mutable, add the max size */
-            if(rObject.mapData[strName].second && nMaxSize > 0)
+            if(rObject.mapData[strMember].second && nMaxSize > 0)
                 jField["maxlength"] = nMaxSize;
 
             /* Add the field to the response array */

@@ -50,6 +50,18 @@ namespace TAO
                 /* This type of register is special and for system update only. */
                 SYSTEM     = 0x05,
             };
+
+            /** STATE
+             *
+             *  Helper function to detect if state register.
+             *
+             *  @param[in] nType The enum type to deduce if state or not.
+             *
+             **/
+            __attribute__((const)) static inline uint8_t STATE(const uint8_t nType)
+            {
+                return (nType == READONLY || nType == APPEND || nType == RAW);
+            }
         };
 
 

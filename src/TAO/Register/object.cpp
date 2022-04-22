@@ -109,8 +109,13 @@ namespace TAO
         /* Get's the standard object type. */
         uint8_t Object::Standard() const
         {
+            /* Default short circuit for state registers being loaded as object. */
+            if(nType != REGISTER::OBJECT)
+                return nType;
+
             /* Set the return value. */
-            uint8_t nType = OBJECTS::NONSTANDARD;
+            uint8_t nStandard =
+                OBJECTS::NONSTANDARD;
 
             /* Search object register for key types. */
             if(mapData.size() == 1
@@ -118,7 +123,7 @@ namespace TAO
             {
                 /* If it only contains one field called namespace then it must be a namespace */
                 /* Set the return value. */
-                nType = OBJECTS::NAMESPACE;
+                nStandard = OBJECTS::NAMESPACE;
 
             }
             else if(mapData.size() == 9
@@ -133,7 +138,7 @@ namespace TAO
             && Check("app3",    TYPES::UINT256_T, true))
             {
                 /* Set the return value. */
-                nType = OBJECTS::CRYPTO;
+                nStandard = OBJECTS::CRYPTO;
             }
             else if(mapData.size() == 3
             && Check("namespace", TYPES::STRING, false)
@@ -141,54 +146,59 @@ namespace TAO
             && Check("address")) /* Name registers can store different types in the address so don't check the field type */
             {
                 /* Set the return value. */
-                nType = OBJECTS::NAME;
+                nStandard = OBJECTS::NAME;
 
             }
             else if(Check("token", TYPES::UINT256_T, false)
             && Check("balance",    TYPES::UINT64_T,  true))
             {
                 /* Set the return value. */
-                nType = OBJECTS::ACCOUNT;
+                nStandard = OBJECTS::ACCOUNT;
 
                 /* Make the supply immutable for now (add continued distribution later). */
                 if(Check("supply",   TYPES::UINT64_T, false)
                 && Check("decimals", TYPES::UINT8_T, false))
                 {
                     /* Set the return value. */
-                    nType = OBJECTS::TOKEN;
+                    nStandard = OBJECTS::TOKEN;
                 }
                 else if(Check("trust", TYPES::UINT64_T, true)
                      && Check("stake", TYPES::UINT64_T, true))
                 {
                     /* Set the return value. */
-                    nType = OBJECTS::TRUST;
+                    nStandard = OBJECTS::TRUST;
                 }
             }
 
-            return nType;
+            return nStandard;
         }
 
 
         /* Get's the standard object base type. */
         uint8_t Object::Base() const
         {
+            /* Default short circuit for state registers being loaded as object. */
+            if(nType != REGISTER::OBJECT)
+                return nType;
+
             /* Set the return value. */
-            uint8_t nType = OBJECTS::NONSTANDARD;
+            uint8_t nStandard =
+                OBJECTS::NONSTANDARD;
 
             /* Search object register for key types. */
             if(Check("token",   TYPES::UINT256_T, false)
             && Check("balance", TYPES::UINT64_T,  true))
             {
                 /* Set the return value. */
-                nType = OBJECTS::ACCOUNT;
+                nStandard = OBJECTS::ACCOUNT;
             }
             else if(Check("namespace", TYPES::STRING, false))
             {
                 /* Set the return value. */
-                nType = OBJECTS::NAMESPACE;
+                nStandard = OBJECTS::NAMESPACE;
             }
 
-            return nType;
+            return nStandard;
         }
 
 
@@ -264,14 +274,14 @@ namespace TAO
         /* Parses out the data members of an object register. */
         bool Object::Parse()
         {
+            /* Ensure that object register is of proper type. */
+            if(this->nType != REGISTER::OBJECT
+            || this->nType != REGISTER::SYSTEM)
+                return debug::error(FUNCTION, "register has invalid type ", uint32_t(this->nType));
+
             /* Check the map for empty. */
             if(!mapData.empty())
                 return false;
-
-            /* Ensure that object register is of proper type. */
-            if(this->nType != REGISTER::OBJECT
-            && this->nType != REGISTER::SYSTEM)
-                return debug::error(FUNCTION, "register has invalid type ", uint32_t(this->nType));
 
             /* Reset the read position. */
             nReadPos   = 0;
@@ -280,22 +290,22 @@ namespace TAO
             while(!end())
             {
                 /* Deserialize the named value. */
-                std::string name;
-                *this >> name;
+                std::string strName;
+                *this >> strName;
 
                 /* Disallow duplicate value entries. */
-                if(mapData.count(name))
+                if(mapData.count(strName))
                     return debug::error(FUNCTION, "duplicate value entries");
 
                 /* Deserialize the type. */
-                uint8_t nType;
-                *this >> nType;
+                uint8_t nCode;
+                *this >> nCode;
 
                 /* Mutable default: false (read only). */
                 bool fMutable = false;
 
                 /* Check for mutable specifier. */
-                if(nType == TYPES::MUTABLE)
+                if(nCode == TYPES::MUTABLE)
                 {
                     /* Set this type to be mutable. */
                     fMutable = true;
@@ -305,14 +315,14 @@ namespace TAO
                 }
 
                 /* Switch between supported types. */
-                switch(nType)
+                switch(nCode)
                 {
 
                     /* Standard type for C++ uint8_t. */
                     case TYPES::UINT8_T:
                     {
                         /* Track the binary position of type. */
-                        mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
+                        mapData.emplace(strName, std::make_pair(--nReadPos, fMutable));
 
                         /* Iterate the types size plus type byte. */
                         nReadPos += 2;
@@ -325,7 +335,7 @@ namespace TAO
                     case TYPES::UINT16_T:
                     {
                         /* Track the binary position of type. */
-                        mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
+                        mapData.emplace(strName, std::make_pair(--nReadPos, fMutable));
 
                         /* Iterate the types size plus type byte. */
                         nReadPos += 3;
@@ -338,7 +348,7 @@ namespace TAO
                     case TYPES::UINT32_T:
                     {
                         /* Track the binary position of type. */
-                        mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
+                        mapData.emplace(strName, std::make_pair(--nReadPos, fMutable));
 
                         /* Iterate the types size plus type byte. */
                         nReadPos += 5;
@@ -351,7 +361,7 @@ namespace TAO
                     case TYPES::UINT64_T:
                     {
                         /* Track the binary position of type. */
-                        mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
+                        mapData.emplace(strName, std::make_pair(--nReadPos, fMutable));
 
                         /* Iterate the types size plus type byte. */
                         nReadPos += 9;
@@ -364,7 +374,7 @@ namespace TAO
                     case TYPES::UINT256_T:
                     {
                         /* Track the binary position of type. */
-                        mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
+                        mapData.emplace(strName, std::make_pair(--nReadPos, fMutable));
 
                         /* Iterate the types size plus type byte. */
                         nReadPos += 33;
@@ -377,7 +387,7 @@ namespace TAO
                     case TYPES::UINT512_T:
                     {
                         /* Track the binary position of type. */
-                        mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
+                        mapData.emplace(strName, std::make_pair(--nReadPos, fMutable));
 
                         /* Iterate the types size plus type byte. */
                         nReadPos += 65;
@@ -390,7 +400,7 @@ namespace TAO
                     case TYPES::UINT1024_T:
                     {
                         /* Track the binary position of type. */
-                        mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
+                        mapData.emplace(strName, std::make_pair(--nReadPos, fMutable));
 
                         /* Iterate the types size plus type byte. */
                         nReadPos += 129;
@@ -403,13 +413,14 @@ namespace TAO
                     case TYPES::STRING:
                     {
                         /* Track the binary position of type. */
-                        mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
+                        mapData.emplace(strName, std::make_pair(--nReadPos, fMutable));
 
                         /* Iterate to start of size. */
                         ++nReadPos;
 
                         /* Find the serialized size of type. */
-                        uint64_t nSize = ReadCompactSize(*this);
+                        const uint64_t nSize =
+                            ReadCompactSize(*this);
 
                         /* Iterate the type size */
                         nReadPos += nSize;
@@ -422,13 +433,14 @@ namespace TAO
                     case TYPES::BYTES:
                     {
                         /* Track the binary position of type. */
-                        mapData.emplace(name, std::make_pair(--nReadPos, fMutable));
+                        mapData.emplace(strName, std::make_pair(--nReadPos, fMutable));
 
                         /* Iterate to start of size. */
                         ++nReadPos;
 
                         /* Find the serialized size of type. */
-                        uint64_t nSize = ReadCompactSize(*this);
+                        const uint64_t nSize =
+                            ReadCompactSize(*this);
 
                         /* Iterate the type size */
                         nReadPos += nSize;
@@ -439,7 +451,7 @@ namespace TAO
 
                     /* Fail if types are unknown. */
                     default:
-                        return debug::error(FUNCTION, "malformed object register (unexpected type ", uint32_t(nType), ")");
+                        return debug::error(FUNCTION, "malformed object register (unexpected instruction ", uint32_t(nCode), ")");
                 }
             }
 
@@ -448,7 +460,7 @@ namespace TAO
 
 
         /* Get a list of field names for this Object. */
-        std::vector<std::string> Object::ListFields() const
+        std::vector<std::string> Object::Members() const
         {
             /* Declare the vector of field names to return */
             std::vector<std::string> vFieldNames;

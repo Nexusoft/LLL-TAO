@@ -117,14 +117,14 @@ namespace TAO
             bool Parse();
 
 
-            /** ListFields
+            /** Members
              *
              *  Get a list of variable names for this Object.
              *
              *  @return Vector of field name strings.
              *
              **/
-            std::vector<std::string> ListFields() const;
+            std::vector<std::string> Members() const;
 
 
             /** Type
