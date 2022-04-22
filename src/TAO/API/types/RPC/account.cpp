@@ -1973,16 +1973,14 @@ namespace TAO
         }
 
         /* sendrawtransaction <hex std::string> [checkinputs=0]
-        Submits raw transaction (serialized, hex-encoded) to local node and network.
-        If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it */
+        Submits raw transaction (serialized, hex-encoded) to local node and network. */
         json::json RPC::SendRawTransaction(const json::json& params, bool fHelp)
         {
             /* Return Help */
             if(fHelp || params.size() < 1 || params.size() > 2)
                 return std::string(
                     "sendrawtransaction <hex std::string> [checkinputs=0]"
-                    " - Submits raw transaction (serialized, hex-encoded) to local node and network."
-                    " If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it.");
+                    " - Submits raw transaction (serialized, hex-encoded) to local node and network.");
 
             /* Declare the JSON return object */
             json::json ret;
@@ -2014,7 +2012,7 @@ namespace TAO
             {
                 throw APIException(-939, "Failed to write data stream, please validate input");
             }
-            
+
             /* Check if we have it. */
             if(!LLD::Legacy->HasTx(tx.GetHash()))
             {
@@ -2040,77 +2038,6 @@ namespace TAO
             return ret;
         }
            
-           /* if(fHelp || params.size() < 1 || params.size() > 2)
-                return std::string(
-                    "sendrawtransaction <hex std::string> [checkinputs=0]"
-                    " - Submits raw transaction (serialized, hex-encoded) to local node and network."
-                    " If checkinputs is non-zero, checks the validity of the inputs of the transaction before sending it.");
-
-            // parse hex std::string from parameter
-            std::vector<unsigned char> txData(ParseHex(params[0].get<std::string>()));
-            DataStream ssData(txData, SER_NETWORK, LLP::PROTOCOL_VERSION);
-            bool fCheckInputs = false;
-            if(params.size() > 1)
-                fCheckInputs = (params[1] != 0);
-            Legacy::Transaction tx;
-
-            // deserialize binary data stream
-            try {
-                 uint8_t nType;
-                 ssData >> nType;
-                 ssData >> tx;
-             }
-             catch (const std::exception &e) {
-               throw APIException(-22, "TX decode failed");
-             }
-
-        //     // See if the transaction is already in a block
-        //     // or in the memory pool:
-        //     Core::CTransaction existingTx;
-        //     uint1024 hashBlock = 0;
-        //     if(Core::GetTransaction(hashTx, existingTx, hashBlock))
-        //     {
-        //         if(hashBlock != 0)
-        //             throw APIException(-5, std::string("transaction already in block ")+hashBlock.GetHex());
-        //         // Not in block, but already in the memory pool; will drop
-        //         // through to re-relay it.
-        //     }
-        //     else
-        //     {
-        //         // push to local node
-        //         LLD::CIndexDB txdb("r");
-        //         if(!tx.AcceptToMemoryPool(txdb, fCheckInputs))
-        //             throw APIException(-22, "TX rejected");
-
-        //         SyncWithWallets(tx, NULL, true);
-        //     }
-        //     RelayMessage(CInv(MSG_TX_LEGACY, hashTx), tx);
-
-        //     return hashTx.GetHex();
-
-        Legacy::Wallet* wallet = &Legacy::Wallet::GetInstance();
-json::json ret;
-        const Legacy::WalletTx wallettx = Legacy::WalletTx(wallet,tx);
-        if(wallettx.CheckTransaction())
-        {
-            if(wallettx.RelayWalletTransaction())
-            {
-            
-            
-            ret = "RElayed Transaction";
-            return ret;
-            }
-            else
-                ret = "Relay Failed";
-        }
-        else
-            ret = "Transaction validity failed";
-
-            //json::json ret;
-            //ret = "NOT AVAILABLE IN THIS RELEASE";
-            return ret;
-        }
-        */
 
         /* validateaddress <Nexusaddress>
         Return information about <Nexusaddress> */
