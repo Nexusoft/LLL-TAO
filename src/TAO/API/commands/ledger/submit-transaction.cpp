@@ -31,78 +31,65 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Retrieves the transaction for the given hash. */
-    encoding::json Ledger::SubmitTransaction(const encoding::json& params, const bool fHelp)
+    encoding::json Ledger::SubmitTransaction(const encoding::json& jParams, const bool fHelp)
     {
         /* Declare the JSON return object */
         encoding::json jRet;
 
         /* Check for the transaction data parameter. */
-        if(params.find("data") == params.end())
+        if(jParams.find("data") == jParams.end())
             throw Exception(-18, "Missing data");
 
-        /* Extract the data out of the JSON params*/
-        std::vector<uint8_t> vData = ParseHex(params["data"].get<std::string>());
-
-        DataStream ssData(vData, SER_NETWORK, LLP::PROTOCOL_VERSION);
+        /* Extract the data out of the JSON parameters*/
+        const DataStream ssData =
+            DataStream(ParseHex(jParams["data"].get<std::string>()), SER_NETWORK, LLP::PROTOCOL_VERSION);
 
         /* Deserialize the tx. */
         uint8_t nType;
         ssData >> nType;
 
-        /* Check the transaction type so that we can deserialize the correct class */
+        /* Handle for a serialized tritium transaction. */
         if(nType == LLP::MSG_TX_TRITIUM)
         {
+            /* Deserialize the transaction object. */
             TAO::Ledger::Transaction tx;
             ssData >> tx;
 
-            /* Check if we have it. */
-            if(!LLD::Ledger->HasTx(tx.GetHash()))
-            {
-                /* Add the transaction to the memory pool. */
-                if(TAO::Ledger::mempool.Accept(tx, nullptr))
-                    jRet["hash"] = tx.GetHash().ToString();
-                else
-                    throw Exception(-150, "Transaction rejected.");
-            }
-            else
-                throw Exception(-151, "Transaction already in database.");
+            /* Accept the transaction to the memory pool. */
+            if(!TAO::Ledger::mempool.Accept(tx, nullptr))
+                throw Exception(-150, "Transaction rejected.");
 
+            /* If accepted add txid to returned json. */
+            jRet["hash"] = tx.GetHash().ToString();
         }
+
+        /* Handle for a serialized legacy transaction. */
         else if(nType == LLP::MSG_TX_LEGACY)
         {
+            /* Deserialize the transaction object. */
             Legacy::Transaction tx;
             ssData >> tx;
 
+            /* Check if tx is valid. */
+            if(!tx.CheckTransaction())
+                throw Exception(-150, "Transaction rejected.");
 
-            /* Check if we have it. */
-            if(!LLD::Legacy->HasTx(tx.GetHash()))
-            {
-                /* Check if tx is valid. */
-                if(!tx.CheckTransaction())
-                    throw Exception(-150, "Transaction rejected.");
+            /* Add the transaction to the memory pool. */
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw Exception(-150, "Transaction rejected.");
 
-                /* Add the transaction to the memory pool. */
-                if(TAO::Ledger::mempool.Accept(tx))
-                {
-                    #ifndef NO_WALLET
+#ifndef NO_WALLET
 
-                    /* Add tx to legacy wallet */
-                    TAO::Ledger::BlockState notUsed;
-                    Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, notUsed, true);
+            /* Add tx to legacy wallet */
+            TAO::Ledger::BlockState tDummy;
+            Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, tDummy, true);
 
-                    #endif
+#endif
 
-                    jRet["hash"] = tx.GetHash().ToString();
-                }
-                else
-                    throw Exception(-150, "Transaction rejected.");
-            }
-            else
-                throw Exception(-151, "Transaction already in database.");
-
+            /* If accepted add txid to returned json. */
+            jRet["hash"] = tx.GetHash().ToString();
         }
 
         return jRet;
-
     }
 }/* End Ledger namespace */
