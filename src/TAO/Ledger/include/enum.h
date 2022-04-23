@@ -219,7 +219,7 @@ namespace TAO
             };
 
             /* Track a mapping to enum. */
-            __attribute__((const)) static uint8_t TYPE(const std::string& strType)
+            __attribute__((const)) static inline uint8_t TYPE(const std::string& strType)
             {
                 /* Check for brainpool standard. */
                 if(strType == "brainpool")

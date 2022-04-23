@@ -460,7 +460,8 @@ namespace TAO::API
                     throw Exception(-35, "Invalid parameter [name], expecting [exists]");
 
                 /* Attempt to get the proof from the parameters. */
-                const TAO::Register::Address addrProof = ExtractAddress(jParams, "proof");
+                const TAO::Register::Address addrProof =
+                    ExtractAddress(jParams, "proof");
 
                 /* Check that the owner is a token. */
                 if(oRecipient.hashOwner.GetType() != TAO::Register::Address::TOKEN)
