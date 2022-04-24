@@ -276,7 +276,7 @@ namespace TAO
         {
             /* Ensure that object register is of proper type. */
             if(this->nType != REGISTER::OBJECT
-            || this->nType != REGISTER::SYSTEM)
+            && this->nType != REGISTER::SYSTEM)
                 return debug::error(FUNCTION, "register has invalid type ", uint32_t(this->nType));
 
             /* Check the map for empty. */
