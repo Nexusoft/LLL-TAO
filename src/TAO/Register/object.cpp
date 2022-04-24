@@ -311,7 +311,7 @@ namespace TAO
                     fMutable = true;
 
                     /* If mutable found, deserialize the type. */
-                    *this >> nType;
+                    *this >> nCode;
                 }
 
                 /* Switch between supported types. */

@@ -2346,10 +2346,11 @@ namespace LLP
                                 ssPacket >> hashSigchain;
 
                                 /* Check for expected genesis. */
-                                uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
-                                if(hashSigchain != hashLogin)
-                                    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashLogin.SubString());
+                                //uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
+                                //if(hashSigchain != hashLogin)
+                                //    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashLogin.SubString());
                             }
+
                             /* Notification validation */
                             else if(nType == TYPES::NOTIFICATION)
                             {
@@ -2366,14 +2367,14 @@ namespace LLP
                                 ssPacket >> hashAddress;
 
                                 /* Get the genesis hash of the logged in user */
-                                uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
+                                //uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
 
                                 /* If the address is a genesis hash, then make sure that it is for the currently logged in user */
                                 if(hashAddress.GetType() == TAO::Ledger::GENESIS::UserType())
                                 {
                                     /* Check for expected genesis. */
-                                    if(hashAddress != hashLogin)
-                                        return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected genesis-id ", hashAddress.SubString());
+                                    //if(hashAddress != hashLogin)
+                                    //    return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected genesis-id ", hashAddress.SubString());
                                 }
                             }
 
@@ -3739,6 +3740,8 @@ namespace LLP
     {
         /* Build auth message. */
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
+
+        return ssMessage;
 
         /* Only send auth messages if the auth key has been cached */
         if(TAO::API::Commands::Instance<TAO::API::Users>()->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
