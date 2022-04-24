@@ -293,7 +293,7 @@ namespace TAO::API
                         /* Loop through registered commands. */
                         for(const auto& strCommands : REGISTERED)
                         {
-                            debug::log(0, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
+                            debug::log(2, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
                             Commands::Instance(strCommands)->Index(rContract, nContract);
                         }
                     }
