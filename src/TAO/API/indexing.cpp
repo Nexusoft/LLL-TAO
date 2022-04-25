@@ -166,15 +166,18 @@ namespace TAO::API
         uint32_t nSequence = 0;
         LLD::Logical->ReadLastEvent(hashGenesis, nSequence);
 
+        /* Debug output so w4e can track our events indexes. */
+        debug::log(0, FUNCTION, "Building events indexes from ", nSequence, " for genesis=", hashGenesis.SubString());
+
         /* Loop through our ledger level events. */
-        TAO::Ledger::Transaction tx;
-        while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tx))
+        TAO::Ledger::Transaction tNext;
+        while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tNext))
         {
             /* Check all the tx contracts. */
-            for(uint32_t n = 0; n < tx.Size(); ++n)
+            for(uint32_t n = 0; n < tNext.Size(); ++n)
             {
                 /* Grab reference of our contract. */
-                const TAO::Operation::Contract& rContract = tx[n];
+                const TAO::Operation::Contract& rContract = tNext[n];
 
                 /* Skip to our primitive. */
                 rContract.SeekToPrimitive();
@@ -211,17 +214,9 @@ namespace TAO::API
                             continue;
 
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, tx.GetHash(), n))
+                        if(!LLD::Logical->PushEvent(hashRecipient, tNext.GetHash(), n))
                         {
                             debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
-
-                            continue;
-                        }
-
-                        /* Increment our sequence. */
-                        if(!LLD::Logical->IncrementLastEvent(hashRecipient))
-                        {
-                            debug::error(FUNCTION, "failed to increment last event");
 
                             continue;
                         }
@@ -234,8 +229,18 @@ namespace TAO::API
                 }
             }
 
+            /* Increment our sequence. */
+            if(!LLD::Logical->IncrementLastEvent(hashGenesis))
+            {
+                debug::error(FUNCTION, "failed to increment last event");
+
+                continue;
+            }
+
             ++nSequence;
         }
+
+        debug::log(0, FUNCTION, "Completed building indexes at ", nSequence, " for genesis=", hashGenesis.SubString());
     }
 
 
@@ -293,7 +298,7 @@ namespace TAO::API
                         /* Loop through registered commands. */
                         for(const auto& strCommands : REGISTERED)
                         {
-                            debug::log(2, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
+                            debug::log(3, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
                             Commands::Instance(strCommands)->Index(rContract, nContract);
                         }
                     }
@@ -391,7 +396,7 @@ namespace TAO::API
                     /* Loop through registered commands. */
                     for(const auto& strCommands : REGISTERED)
                     {
-                        debug::log(2, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
+                        debug::log(3, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
                         Commands::Instance(strCommands)->Index(rContract, nContract);
                     }
                 }

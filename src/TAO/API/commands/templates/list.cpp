@@ -46,12 +46,12 @@ namespace TAO::API
         LLD::Logical->ListRegisters(hashGenesis, vAddresses);
 
         /* Get any registers that have been transferred to this user but not yet paid (claimed) */
-        std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
-        Users::get_unclaimed(hashGenesis, vUnclaimed);
+        //std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
+        //Users::get_unclaimed(hashGenesis, vUnclaimed);
 
         /* Add the unclaimed register addresses to the list */
-        for(const auto& tUnclaimed : vUnclaimed)
-            vAddresses.push_back(std::get<2>(tUnclaimed));
+        //for(const auto& tUnclaimed : vUnclaimed)
+        //    vAddresses.push_back(std::get<2>(tUnclaimed));
 
         /* Check for empty return. */
         if(vAddresses.size() == 0)

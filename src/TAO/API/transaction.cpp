@@ -404,7 +404,7 @@ namespace TAO::API
                 case TAO::Operation::OP::CLAIM:
                 {
                     /* Erase our transfer index if claiming a register. */
-                    if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
+                    if(LLD::Logical->HasTransfer(hashGenesis, hashRegister) && !LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
 
                     continue;

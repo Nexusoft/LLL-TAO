@@ -257,7 +257,7 @@ namespace LLD
         while(!config::fShutdown.load()) //we want to early terminate on shutdown
         {
             /* Read our current record. */
-            if(!Read(std::make_tuple(std::string("registers.index"), nSequence, hashGenesis), hashRegister))
+            if(!Read(std::make_tuple(std::string("registers.index"), nSequence++, hashGenesis), hashRegister))
                 break;
 
             /* Check for transfer keys. */
@@ -272,7 +272,7 @@ namespace LLD
             vRegisters.push_back(hashRegister);
 
             /* Increment our sequence number. */
-            ++nSequence;
+            //++nSequence;
         }
 
         return !vRegisters.empty();
