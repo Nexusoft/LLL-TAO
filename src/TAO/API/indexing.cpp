@@ -221,20 +221,51 @@ namespace TAO::API
                             continue;
                         }
 
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->IncrementLastEvent(hashRecipient))
+                        {
+                            debug::error(FUNCTION, "failed to increment last event");
+
+                            continue;
+                        }
+
                         debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
                             "for genesis ", hashRecipient.SubString());
 
                         break;
                     }
+
+                    case TAO::Operation::OP::COINBASE:
+                    {
+                        /* Get the genesis. */
+                        uint256_t hashRecipient;
+                        rContract >> hashRecipient;
+
+                        /* Ensure this is correct recipient. */
+                        if(hashRecipient != hashGenesis)
+                            continue;
+
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(hashRecipient, tNext.GetHash(), n))
+                        {
+                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
+
+                            continue;
+                        }
+
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->IncrementLastEvent(hashRecipient))
+                        {
+                            debug::error(FUNCTION, "failed to increment last event");
+
+                            continue;
+                        }
+
+                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString());
+
+                        break;
+                    }
                 }
-            }
-
-            /* Increment our sequence. */
-            if(!LLD::Logical->IncrementLastEvent(hashGenesis))
-            {
-                debug::error(FUNCTION, "failed to increment last event");
-
-                continue;
             }
 
             ++nSequence;
@@ -523,6 +554,18 @@ namespace TAO::API
                         if(!LLD::Logical->PushEvent(hashRecipient, hash, n))
                         {
                             debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
+
+                            continue;
+                        }
+
+                        /* We don't increment our events index for miner coinbase contract. */
+                        if(hashRecipient == tx.hashGenesis)
+                            continue;
+
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->IncrementLastEvent(hashRecipient))
+                        {
+                            debug::error(FUNCTION, "failed to increment last event");
 
                             continue;
                         }

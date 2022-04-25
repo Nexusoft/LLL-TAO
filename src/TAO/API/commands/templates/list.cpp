@@ -15,9 +15,6 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/templates.h>
 
-//XXX: these static methods should be moved GetOutstanding, GetExpired, get_tokenized_debits, get_coinbases, etc
-#include <TAO/API/users/types/users.h>
-
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/compare.h>
 #include <TAO/API/include/extract.h>
