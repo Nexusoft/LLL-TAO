@@ -336,20 +336,20 @@ namespace LLD
             return false;
 
         /* Get our current sequence number. */
-        uint32_t nOwnerSequence = 0;
+        uint32_t nSequence = 0;
 
         /* Read our sequences from disk. */
-        Read(std::make_pair(std::string("events.sequence"), hashGenesis), nOwnerSequence);
+        Read(std::make_pair(std::string("events.sequence"), hashGenesis), nSequence);
 
         /* Start an ACID transaction for this set of records. */
         TxnBegin();
 
         /* Add our indexing entry by owner sequence number. */
-        if(!Write(std::make_tuple(std::string("events.index"), nOwnerSequence, hashGenesis), std::make_pair(hashTx, nContract)))
+        if(!Write(std::make_tuple(std::string("events.index"), nSequence, hashGenesis), std::make_pair(hashTx, nContract)))
             return false;
 
         /* Write our new events sequence to disk. */
-        if(!Write(std::make_pair(std::string("events.sequence"), hashGenesis), ++nOwnerSequence))
+        if(!Write(std::make_pair(std::string("events.sequence"), hashGenesis), ++nSequence))
             return false;
 
         /* Write our order proof. */
@@ -377,7 +377,6 @@ namespace LLD
             /* Check for already executed contracts to omit. */
             vEvents.push_back(pairEvent);
 
-            /* Increment our sequence number. */
             ++nSequence;
         }
 

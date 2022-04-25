@@ -215,9 +215,6 @@ namespace TAO::API
             /* Handle if checking for a TRANSFER. */
             case TAO::Operation::OP::TRANSFER:
             {
-                /* Seek over our transfer address. */
-                rContract.Seek(32);
-
                 /* Get our proof to check. */
                 uint256_t hashProof;
                 rContract >> hashProof;
