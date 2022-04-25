@@ -39,12 +39,8 @@ namespace TAO::API
 
         /* Read the register from DB. */
         TAO::Register::Object tObject;
-        if(!LLD::Register->ReadState(hashRegister, tObject))
+        if(!LLD::Register->ReadObject(hashRegister, tObject))
             throw Exception(-13, "Object not found");
-
-        /* Parse if we are checking an object. */
-        if(tObject.nType == TAO::Register::REGISTER::OBJECT && ! tObject.Parse())
-            throw Exception(-49, "Malformed register encoding");
 
         /* Now lets check our expected types match. */
         if(!CheckStandard(jParams, tObject))

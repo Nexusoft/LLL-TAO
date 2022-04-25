@@ -287,6 +287,32 @@ namespace LLD
         bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
 
 
+        /** PushUnclaimed
+         *
+         *  Push an unclaimed address event to process for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push event for.
+         *  @param[in] hashRegister The register address that is unclaimed
+         *
+         *  @return true if event was pushed successfully.
+         *
+         **/
+        bool PushUnclaimed(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** ListUnclaimed
+         *
+         *  List the current unclaimed registers for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] vRegisters The list of events extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListUnclaimed(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
+
+
         /** HasRegister
          *
          *  Checks if a register has been indexed in the database already.

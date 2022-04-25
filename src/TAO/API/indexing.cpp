@@ -190,8 +190,9 @@ namespace TAO::API
                     case TAO::Operation::OP::TRANSFER:
                     case TAO::Operation::OP::DEBIT:
                     {
-                        /* Seek to recipient. */
-                        rContract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
+                        /* Get our register address. */
+                        uint256_t hashAddress;
+                        rContract >> hashAddress;
 
                         /* Deserialize recipient from contract. */
                         uint256_t hashRecipient;
@@ -212,6 +213,18 @@ namespace TAO::API
                         /* Ensure this is correct recipient. */
                         if(hashRecipient != hashGenesis)
                             continue;
+
+                        /* Push to unclaimed indexes if processing incoming transfer. */
+                        if(nOP == TAO::Operation::OP::TRANSFER)
+                        {
+                            /* Write incoming transfer as unclaimed. */
+                            if(!LLD::Logical->PushUnclaimed(hashRecipient, hashAddress))
+                            {
+                                debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
+
+                                continue;
+                            }
+                        }
 
                         /* Write our events to database. */
                         if(!LLD::Logical->PushEvent(hashRecipient, tNext.GetHash(), n))
@@ -488,8 +501,9 @@ namespace TAO::API
                 case TAO::Operation::OP::TRANSFER:
                 case TAO::Operation::OP::DEBIT:
                 {
-                    /* Seek to recipient. */
-                    rContract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
+                    /* Get the register address. */
+                    uint256_t hashAddress;
+                    rContract >> hashAddress;
 
                     /* Deserialize recipient from contract. */
                     uint256_t hashRecipient;
@@ -513,6 +527,18 @@ namespace TAO::API
                         /* Check for local sessions. */
                         //if(SESSIONS->at(hashRecipient).Type() != Authentication::Session::LOCAL)
                         //    continue;
+
+                        /* Push to unclaimed indexes if processing incoming transfer. */
+                        if(nOP == TAO::Operation::OP::TRANSFER)
+                        {
+                            /* Write incoming transfer as unclaimed. */
+                            if(!LLD::Logical->PushUnclaimed(hashRecipient, hashAddress))
+                            {
+                                debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
+
+                                continue;
+                            }
+                        }
 
                         /* Write our events to database. */
                         if(!LLD::Logical->PushEvent(hashRecipient, hash, n))

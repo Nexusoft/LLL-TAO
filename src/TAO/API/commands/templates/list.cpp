@@ -41,14 +41,7 @@ namespace TAO::API
         /* Get the list of registers owned by this sig chain */
         std::vector<TAO::Register::Address> vAddresses;
         LLD::Logical->ListRegisters(hashGenesis, vAddresses);
-
-        /* Get any registers that have been transferred to this user but not yet paid (claimed) */
-        //std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
-        //Users::get_unclaimed(hashGenesis, vUnclaimed);
-
-        /* Add the unclaimed register addresses to the list */
-        //for(const auto& tUnclaimed : vUnclaimed)
-        //    vAddresses.push_back(std::get<2>(tUnclaimed));
+        LLD::Logical->ListUnclaimed(hashGenesis, vAddresses);
 
         /* Check for empty return. */
         if(vAddresses.size() == 0)
