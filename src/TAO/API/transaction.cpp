@@ -206,11 +206,26 @@ namespace TAO::API
             case TAO::Operation::OP::DEBIT:
             {
                 /* Get our proof to check. */
-                uint256_t hashProof;
-                rContract >> hashProof;
+                uint256_t hashRegister;
+                rContract >> hashRegister;
+
+                /* Check for forced transfers. */
+                if(nOP == TAO::Operation::OP::TRANSFER)
+                {
+                    /* Seek over recipient. */
+                    rContract.Seek(32);
+
+                    /* Read the force transfer flag */
+                    uint8_t nType = 0;
+                    rContract >> nType;
+
+                    /* Forced transfers don't require a proof. */
+                    if(nType == TAO::Operation::TRANSFER::FORCE)
+                        return true;
+                }
 
                 /* Check for a valid proof. */
-                return LLD::Ledger->HasProof(hashProof, hash, nContract, TAO::Ledger::FLAGS::MEMPOOL);
+                return LLD::Ledger->HasProof(hashRegister, hash, nContract, TAO::Ledger::FLAGS::MEMPOOL);
             }
         }
 
