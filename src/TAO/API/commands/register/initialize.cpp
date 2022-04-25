@@ -140,6 +140,16 @@ namespace TAO::API
             }
         );
 
+        /* Populate our ANY standard. */
+        mapStandards["any"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                return true;
+            }
+        );
+
 
         /* Handle for generic get operations. */
         mapFunctions["get"] = Function

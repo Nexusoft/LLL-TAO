@@ -85,7 +85,8 @@ namespace TAO::API
                     continue;
 
                 /* Filter out our expected fieldnames if specified. */
-                FilterFieldname(jParams, jContract);
+                if(!FilterFieldname(jParams, jContract))
+                    continue;
 
                 /* Check the offset. */
                 if(++nTotal <= nOffset)

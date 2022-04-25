@@ -13,12 +13,98 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/profiles.h>
 
+#include <TAO/API/types/operators/array.h>
+#include <TAO/API/types/operators/count.h>
+#include <TAO/API/types/operators/max.h>
+#include <TAO/API/types/operators/mean.h>
+#include <TAO/API/types/operators/min.h>
+#include <TAO/API/types/operators/mode.h>
+#include <TAO/API/types/operators/floor.h>
+#include <TAO/API/types/operators/sum.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
     /* Standard initialization function. */
     void Profiles::Initialize()
     {
+        /* Handle for the ARRAY operator. */
+        mapOperators["array"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Array,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the COUNT operator. */
+        mapOperators["count"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Count,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the FLOOR operator. */
+        mapOperators["floor"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Floor,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the MAX operator. */
+        mapOperators["max"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Max,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the MEAN operator. */
+        mapOperators["mean"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Mean,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the MIN operator. */
+        mapOperators["min"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Min,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for the SUM operator. */
+        mapOperators["sum"] = Operator
+        (
+            std::bind
+            (
+                &Operators::Sum,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Populate our MASTER standard. */
         mapStandards["master"] = Standard
         (
@@ -55,7 +141,7 @@ namespace TAO::API
         );
 
         /* Handle for all transactions operations. */
-        mapFunctions["list/notifications"] = Function
+        mapFunctions["notifications"] = Function
         (
             std::bind
             (

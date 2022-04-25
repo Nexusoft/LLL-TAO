@@ -85,7 +85,8 @@ namespace TAO::API
                     continue;
 
                 /* Filter out our expected fieldnames if specified. */
-                FilterFieldname(jParams, jResult);
+                if(!FilterFieldname(jParams, jResult))
+                    continue;
 
                 /* Check the offset. */
                 if(++nTotal <= nOffset)
@@ -133,7 +134,8 @@ namespace TAO::API
                     continue;
 
                 /* Filter out our expected fieldnames if specified. */
-                FilterFieldname(jParams, jResult);
+                if(!FilterFieldname(jParams, jResult))
+                    continue;
 
                 /* Check the offset. */
                 if(++nTotal <= nOffset)

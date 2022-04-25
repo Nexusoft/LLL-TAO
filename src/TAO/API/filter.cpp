@@ -224,7 +224,7 @@ namespace TAO::API
             /* Build our return value. */
             encoding::json jRet;
             if(!FilterFieldname(strField, jResponse, jRet))
-                throw Exception(-119, "[", strField, "] field does not exist for result");
+                return false;//throw Exception(-119, "[", strField, "] field does not exist for result");
 
             /* Set our return value. */
             jResponse = jRet;
@@ -247,7 +247,7 @@ namespace TAO::API
                 /* Build our filtered statements. */
                 encoding::json jFinal;
                 if(!FilterFieldname(strField, jResponse, jRet))
-                    throw Exception(-119, "[", strField, "] field does not exist for result");
+                    return false;//throw Exception(-119, "[", strField, "] field does not exist for result");
             }
 
             /* Build our single entry return value. */
