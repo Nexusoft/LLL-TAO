@@ -76,6 +76,10 @@ namespace TAO::API
                 encoding::json jContract =
                     TAO::API::ContractToJSON(tx[rEvent.second], rEvent.second, nVerbose);
 
+                /* Add some items from our transction. */
+                jContract["timestamp"] = tx.nTimestamp;
+                jContract["txid"]      = hashEvent.ToString();
+
                 /* Check to see whether the transaction has had all children filtered out */
                 if(jContract.empty())
                     continue;

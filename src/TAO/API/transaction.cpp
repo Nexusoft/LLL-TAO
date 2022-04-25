@@ -202,18 +202,8 @@ namespace TAO::API
         {
             /* Handle if checking for basic primitives. */
             case TAO::Operation::OP::COINBASE:
-            case TAO::Operation::OP::DEBIT:
-            {
-                /* Get our proof to check. */
-                uint256_t hashProof;
-                rContract >> hashProof;
-
-                /* Check for a valid proof. */
-                return LLD::Ledger->HasProof(hashProof, hash, nContract, TAO::Ledger::FLAGS::MEMPOOL);
-            }
-
-            /* Handle if checking for a TRANSFER. */
             case TAO::Operation::OP::TRANSFER:
+            case TAO::Operation::OP::DEBIT:
             {
                 /* Get our proof to check. */
                 uint256_t hashProof;
@@ -224,7 +214,8 @@ namespace TAO::API
             }
         }
 
-        return false;
+        /* Otherwise check for validated contract. */
+        return LLD::Contract->HasContract(std::make_pair(hash, nContract), TAO::Ledger::FLAGS::MEMPOOL);
     }
 
 
@@ -397,24 +388,23 @@ namespace TAO::API
                     continue;
                 }
 
-                /* Claim should unmark address as spent. */
-                case TAO::Operation::OP::CLAIM:
-                {
-                    /* Erase our transfer index if claiming a register. */
-                    if(LLD::Logical->HasTransfer(hashGenesis, hashRegister) && !LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
-                        debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
-
-                    continue;
-                }
-
                 /* Create should add the register to the list. */
                 case TAO::Operation::OP::CREATE:
+                case TAO::Operation::OP::CLAIM:
                 {
                     /* Write our register to database. */
                     if(!LLD::Logical->PushRegister(hashGenesis, hashRegister))
                     {
                         debug::warning(FUNCTION, "failed to push register ", VARIABLE(hashGenesis.SubString()));
                         continue;
+                    }
+
+                    /* Erase a transfer if claiming again after transferring. */
+                    if(nOP == TAO::Operation::OP::CLAIM && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
+                    {
+                        /* Erase our transfer index if claiming a register. */
+                        if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
+                            debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
                     }
                 }
             }

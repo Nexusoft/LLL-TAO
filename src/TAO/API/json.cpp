@@ -1066,7 +1066,7 @@ namespace TAO::API
                 {
                     /* The register address */
                     const TAO::Register::Address hashAddress =
-                        TAO::Register::Address("crypto", rObject.hashOwner, TAO::Register::Address::TRUST);
+                        TAO::Register::Address("crypto", rObject.hashOwner, TAO::Register::Address::CRYPTO);
 
                     /* Populate stake related information. */
                     jRet["address"] = hashAddress.ToString();
@@ -1465,7 +1465,7 @@ namespace TAO::API
 
 
     /* Encodes the object based on the given command-set standards. */
-    encoding::json StandardToJSON(const encoding::json& jParams, const TAO::Register::Object& rObject, const uint256_t& hashRegister)
+    encoding::json StandardToJSON(const encoding::json& jParams, const TAO::Register::Object& rObject, const TAO::Register::Address& hashRegister)
     {
         /* Check for our request parameters first, since this method can be called without */
         if(!CheckRequest(jParams, "type", "string, array"))

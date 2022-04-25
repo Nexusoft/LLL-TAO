@@ -219,7 +219,8 @@ namespace TAO::API
         if(jParams["request"]["fieldname"].is_string())
         {
             /* Grab our field string to rebuild response. */
-            const std::string strField = jParams["request"]["fieldname"].get<std::string>();
+            const std::string strField =
+                jParams["request"]["fieldname"].get<std::string>();
 
             /* Build our return value. */
             encoding::json jRet;

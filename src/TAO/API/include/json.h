@@ -102,7 +102,7 @@ namespace TAO::API
      *
      **/
     __attribute__((const)) encoding::json RegisterToJSON(const TAO::Register::Object& rObject,
-                                                         const TAO::Register::Address& hashRegister = 0);
+                                                         const TAO::Register::Address& hashRegister = uint256_t(0));
 
 
     /** MembersToJSON
@@ -152,8 +152,9 @@ namespace TAO::API
      *  @return True if the object type is what was specified.
      *
      **/
-    __attribute__((pure)) encoding::json StandardToJSON(const encoding::json& jParams, const TAO::Register::Object& rObject,
-                                                        const uint256_t& hashRegister = 0);
+    __attribute__((pure)) encoding::json StandardToJSON(const encoding::json& jParams,
+                                                        const TAO::Register::Object& rObject,
+                                                        const TAO::Register::Address& hashRegister = uint256_t(0));
 
 
     /** ChannelToJSON
