@@ -405,9 +405,16 @@ namespace TAO::API
     {
         RECURSIVE(MUTEX);
 
-        /* Terminate each individual session. */
+        /* Copy our session keys before deleting. */
+        std::set<uint256_t> setDelete;
+
+        /* Copy our session keys to our delete set. */
         for(const auto& rSession : mapSessions)
-            terminate_session(rSession.first); //we terminate by key not value
+            setDelete.insert(rSession.first);
+
+        /* Iterate through session keys to terminate. */
+        for(const auto& rDelete : setDelete)
+            terminate_session(rDelete);
     }
 
 
