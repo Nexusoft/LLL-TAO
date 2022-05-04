@@ -504,7 +504,8 @@ namespace TAO::API
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* Calculate the partial amount we want to claim based on our share of the proof tokens */
-                const uint64_t nPartial = (oProof.get<uint64_t>("balance") * nAmount) / oToken.get<uint64_t>("supply");
+                const uint64_t nPartial =
+                    (oProof.get<uint64_t>("balance") * nAmount) / oToken.get<uint64_t>("supply");
 
                 /* Create our new contract now. */
                 TAO::Operation::Contract tContract;

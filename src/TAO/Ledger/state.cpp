@@ -1055,6 +1055,9 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
+            /* Get a copy of our block hash. */
+            const uint1024_t hashBlock = GetHash();
+
             /* Reset the transaction fees. */
             nFees = 0;
 
@@ -1071,9 +1074,6 @@ namespace TAO
 
                     /* Get the transaction hash. */
                     const uint512_t& hash = proof.second;
-
-                    /* Push to our logical indexing in API. */
-                    TAO::API::Indexing::PushIndex(hash);
 
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))
@@ -1195,11 +1195,11 @@ namespace TAO
                     return debug::error(FUNCTION, "using an unknown transaction type");
 
                 /* Write the indexing entries. */
-                LLD::Ledger->IndexBlock(proof.second, GetHash());
+                LLD::Ledger->IndexBlock(proof.second, hashBlock);
             }
 
             if(config::nVerbose >= 3)
-                debug::log(3, "Block Height ", nHeight, " Hash ", GetHash().SubString());
+                debug::log(3, "Block Height ", nHeight, " Hash ", hashBlock.SubString());
 
 
             debug::log(3, "BLOCK END-------------------------------------");
@@ -1217,24 +1217,28 @@ namespace TAO
             debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, nMint > 0 ? "Generated " : "Destroyed ", std::fixed, (double)nMint / TAO::Ledger::NXS_COIN, " Nexus | Money Supply ", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN);
 
             /* Write the updated block state to disk. */
-            if(!LLD::Ledger->WriteBlock(GetHash(), *this))
+            if(!LLD::Ledger->WriteBlock(hashBlock, *this))
                 return debug::error(FUNCTION, "failed to update block state");
 
             /* Index the block by height if enabled. */
             if(config::GetBoolArg("-indexheight"))
-                LLD::Ledger->IndexBlock(nHeight, GetHash());
+                LLD::Ledger->IndexBlock(nHeight, hashBlock);
 
             /* Update chain pointer for previous block. */
             if(!prev.IsNull())
             {
-                prev.hashNextBlock = GetHash();
-                if(!LLD::Ledger->WriteBlock(prev.GetHash(), prev))
+                prev.hashNextBlock = hashBlock;
+                if(!LLD::Ledger->WriteBlock(hashPrevBlock, prev))
                     return debug::error(FUNCTION, "failed to update previous block state");
 
                 /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
-                if(prev.GetHash() == ChainState::Genesis())
+                if(hashPrevBlock == ChainState::Genesis())
                     ChainState::stateGenesis = prev;
             }
+
+            /* Push to our logical indexing in API. */
+            if(nTime > NEXUS_TRITIUM_TIMELOCK)
+                TAO::API::Indexing::PushBlock(hashBlock);
 
             return true;
         }

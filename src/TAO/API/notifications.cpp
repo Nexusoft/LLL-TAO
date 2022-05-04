@@ -115,12 +115,6 @@ namespace TAO::API
                                 encoding::json jParams =
                                 {
                                     { "session", hashSession.ToString() },
-                                    { "request",
-                                        {
-                                            { "commands", "finance" },
-                                            { "type",     "any"     }
-                                        }
-                                    },
                                 };
 
                                 /* If in mainnet mode, we want to check for events account. */
