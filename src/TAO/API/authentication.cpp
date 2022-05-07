@@ -272,7 +272,7 @@ namespace TAO::API
 
 
     /* List the currently active sessions in manager. */
-    const std::vector<std::pair<uint256_t, uint256_t>> Authentication::Sessions()
+    const std::vector<std::pair<uint256_t, uint256_t>> Authentication::Sessions(const int64_t nThread, const uint64_t nSize)
     {
         /* Build our return vector. */
         std::vector<std::pair<uint256_t, uint256_t>> vRet;
@@ -282,7 +282,23 @@ namespace TAO::API
 
             /* Loop through sessions map. */
             for(const auto& rSession : mapSessions)
-                vRet.push_back(std::make_pair(rSession.first, rSession.second.Genesis()));
+            {
+                /* Grab a copy of our genesis. */
+                const uint256_t hashGenesis =
+                    rSession.second.Genesis();
+
+                /* Check for no thread parameter. */
+                if(nThread == -1)
+                {
+                    vRet.push_back(std::make_pair(rSession.first, hashGenesis));
+                    continue;
+                }
+
+                /* Check if this is valid thread. */
+                if(hashGenesis % nSize == nThread)
+                    vRet.push_back(std::make_pair(rSession.first, hashGenesis));
+            }
+
         }
 
         return vRet;

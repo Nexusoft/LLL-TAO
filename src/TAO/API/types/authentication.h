@@ -411,10 +411,12 @@ namespace TAO::API
          *
          *  List the currently active sessions in manager.
          *
+         *  @param[in] nThread The thread-id to filter by if applicable.
+         *
          *  @return the list of sessions if any found.
          *
          **/
-        static const std::vector<std::pair<uint256_t, uint256_t>> Sessions();
+        static const std::vector<std::pair<uint256_t, uint256_t>> Sessions(const int64_t nThread = -1, const uint64_t nSize = 0);
 
 
         /** Unlock

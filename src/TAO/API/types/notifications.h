@@ -47,7 +47,7 @@ namespace TAO::API
          *  @param[in] nThread The current thread id we have assigned
          *
          **/
-        static void Manager(const uint32_t nThread);
+        static void Manager(const int64_t nThread);
 
 
         /** Shutdown

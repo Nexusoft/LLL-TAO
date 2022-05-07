@@ -35,17 +35,17 @@ namespace TAO::API
     void Notifications::Initialize()
     {
         /* Get the total manager threads. */
-        const uint32_t nThreads =
-            config::GetArg("-notificationsthreads", 1);
+        const int64_t nThreads =
+            config::GetArg("-notificationsthreads", 1); //we use int64_t to be consistent with Authentication::Sessions
 
         /* Build our list of threads. */
-        for(uint32_t n = 0; n < nThreads; ++n)
+        for(int64_t n = 0; n < nThreads; ++n)
             vThreads.push_back(std::thread(&Notifications::Manager, n));
     }
 
 
     /* Handle notification of all events for API. */
-    void Notifications::Manager(const uint32_t nThread)
+    void Notifications::Manager(const int64_t nThread)
     {
         /* Loop until shutdown. */
         while(!config::fShutdown.load())
@@ -54,7 +54,8 @@ namespace TAO::API
             runtime::sleep(100);
 
             /* Get a current list of our active sessions. */
-            const std::vector<std::pair<uint256_t, uint256_t>> vSessions = Authentication::Sessions();
+            const auto vSessions =
+                Authentication::Sessions(nThread, vThreads.size());
 
             /* Check if we are an active thread. */
             for(const auto& rSession : vSessions)
@@ -62,10 +63,6 @@ namespace TAO::API
                 /* Cache some local variables. */
                 const uint256_t& hashSession = rSession.first;
                 const uint256_t& hashGenesis = rSession.second;
-
-                /* Check if we are operating on an assigned session. */
-                if(hashGenesis % vThreads.size() != nThread)
-                    continue;
 
                 /* Check that account is unlocked. */
                 if(!Authentication::Unlocked(hashSession, TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS))
