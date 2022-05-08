@@ -45,9 +45,10 @@ namespace TAO::API
          *  Handle notification of all events for API.
          *
          *  @param[in] nThread The current thread id we have assigned
+         *  @param[in] nThreads The total threads that were allocated for events.
          *
          **/
-        static void Manager(const int64_t nThread);
+        static void Manager(const int64_t nThread, const uint64_t nThreads);
 
 
         /** Shutdown

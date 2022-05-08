@@ -500,12 +500,16 @@ namespace TAO::API
         /* Increment the auth failures. */
         if(++rSession.nAuthFailures >= config::GetArg("-authattempts", 3))
         {
+            /* Get a copy of our auth failures. */
+            const uint64_t nAuthFailures =
+                rSession.nAuthFailures.load();
+
             /* Terminate our internal session. */
             terminate_session(hashSession);
 
             /* Return failure to API endpoint. */
             throw Exception(-290, "Too many invalid password/pin attempts (",
-                rSession.nAuthFailures.load(), "): Session ", hashSession.SubString(), " Terminated");
+                nAuthFailures, "): Session ", hashSession.SubString(), " Terminated");
         }
     }
 

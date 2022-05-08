@@ -39,17 +39,17 @@ namespace TAO::API
     void Notifications::Initialize()
     {
         /* Get the total manager threads. */
-        const int64_t nThreads =
-            config::GetArg("-notificationsthreads", 1); //we use int64_t to be consistent with Authentication::Sessions
+        const uint64_t nThreads =
+            config::GetArg("-notificationsthreads", 1);
 
         /* Build our list of threads. */
-        for(int64_t n = 0; n < nThreads; ++n)
-            vThreads.push_back(std::thread(&Notifications::Manager, n));
+        for(int64_t nThread = 0; nThread < nThreads; ++nThread)
+            vThreads.push_back(std::thread(&Notifications::Manager, nThread, nThreads));
     }
 
 
     /* Handle notification of all events for API. */
-    void Notifications::Manager(const int64_t nThread)
+    void Notifications::Manager(const int64_t nThread, const uint64_t nThreads)
     {
         /* Loop until shutdown. */
         while(!config::fShutdown.load())
@@ -59,7 +59,7 @@ namespace TAO::API
 
             /* Get a current list of our active sessions. */
             const auto vSessions =
-                Authentication::Sessions(nThread, vThreads.size());
+                Authentication::Sessions(nThread, nThreads);
 
             /* Check if we are an active thread. */
             for(const auto& rSession : vSessions)
