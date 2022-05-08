@@ -367,7 +367,8 @@ namespace TAO::API
                 }
 
                 /* The optional payment reference */
-                const uint64_t nReference = ExtractInteger<uint64_t>(jRecipient, "reference", 0); //0: default reference of 0
+                const uint64_t nReference =
+                    ExtractInteger<uint64_t>(jRecipient, "reference", 0); //0: default reference of 0
 
                 /* Submit the payload object. */
                 TAO::Operation::Contract tContract;

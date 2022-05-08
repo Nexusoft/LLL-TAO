@@ -129,7 +129,7 @@ namespace TAO::API
                 rStakeMinter.Start();
         }
 
-        /* populate unlocked status */
+        /* Populate unlocked status */
         const encoding::json jRet =
         {
             {

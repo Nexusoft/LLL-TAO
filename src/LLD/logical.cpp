@@ -428,6 +428,9 @@ namespace LLD
     /* List the current active events for given genesis-id. */
     bool LogicalDB::ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents)
     {
+        /* Track our return success. */
+        bool fSuccess = false;
+
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairEvent;
 
@@ -442,10 +445,12 @@ namespace LLD
             /* Check for already executed contracts to omit. */
             vEvents.push_back(pairEvent);
 
+            /* Set our new sequence. */
             ++nSequence;
+            fSuccess = true;
         }
 
-        return !vEvents.empty();
+        return fSuccess;
     }
 
 
@@ -471,6 +476,74 @@ namespace LLD
     bool LogicalDB::HasEvent(const uint512_t& hashTx, const uint32_t nContract)
     {
         return Exists(std::make_tuple(std::string("events.proof"), hashTx, nContract));
+    }
+
+
+    /* Push an contract to process for given genesis-id. */
+    bool LogicalDB::PushContract(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract)
+    {
+        /* Check for already existing order. */
+        if(HasContract(hashTx, nContract))
+            return false;
+
+        /* Get our current sequence number. */
+        uint32_t nSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("contracts.sequence"), hashGenesis), nSequence);
+
+        /* Start an ACID transaction for this set of records. */
+        TxnBegin();
+
+        /* Add our indexing entry by owner sequence number. */
+        if(!Write(std::make_tuple(std::string("contracts.index"), nSequence, hashGenesis), std::make_pair(hashTx, nContract)))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("contracts.sequence"), hashGenesis), ++nSequence))
+            return false;
+
+        /* Write our order proof. */
+        if(!Write(std::make_tuple(std::string("contracts.proof"), hashTx, nContract)))
+            return false;
+
+        return TxnCommit();
+    }
+
+
+    /* List the current active contracts for given genesis-id. */
+    bool LogicalDB::ListContracts(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vContracts)
+    {
+        /* Track our return success. */
+        bool fSuccess = false;
+
+        /* Cache our txid and contract as a pair. */
+        std::pair<uint512_t, uint32_t> pairContract;
+
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Read our current record. */
+            if(!Read(std::make_tuple(std::string("contracts.index"), nSequence, hashGenesis), pairContract))
+                break;
+
+            /* Check for already executed contracts to omit. */
+            vContracts.push_back(pairContract);
+
+            /* Set our new sequence. */
+            ++nSequence;
+            fSuccess = true;
+        }
+
+        return fSuccess;
+    }
+
+
+    /* Checks if an contract has been indexed in the database already. */
+    bool LogicalDB::HasContract(const uint512_t& hashTx, const uint32_t nContract)
+    {
+        return Exists(std::make_tuple(std::string("contracts.proof"), hashTx, nContract));
     }
 
 
@@ -527,6 +600,9 @@ namespace LLD
     /* Pulls a list of orders from the orderbook stack. */
     bool LogicalDB::ListOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders)
     {
+        /* Track our return success. */
+        bool fSuccess = false;
+
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairOrder;
 
@@ -540,19 +616,25 @@ namespace LLD
 
             /* Check for already executed contracts to omit. */
             if(!LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL))
+            {
                 vOrders.push_back(pairOrder);
+                fSuccess = true;
+            }
 
-            /* Increment our sequence number. */
+            /* Set our new sequence. */
             ++nSequence;
         }
 
-        return !vOrders.empty();
+        return fSuccess;
     }
 
 
     /* List the current active orders for given user's sigchain. */
     bool LogicalDB::ListOrders(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vOrders)
     {
+        /* Track our return success. */
+        bool fSuccess = false;
+
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairOrder;
 
@@ -566,18 +648,24 @@ namespace LLD
 
             /* Check for already executed contracts to omit. */
             if(!LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL))
+            {
                 vOrders.push_back(pairOrder);
+                fSuccess = true;
+            }
 
             /* Increment our sequence number. */
             ++nSequence;
         }
 
-        return !vOrders.empty();
+        return fSuccess;
     }
 
     /* List the current active orders for given market pair. */
     bool LogicalDB::ListAllOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders)
     {
+        /* Track our return success. */
+        bool fSuccess = false;
+
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairOrder;
 
@@ -592,17 +680,21 @@ namespace LLD
             /* Push order ot our list. */
             vOrders.push_back(pairOrder);
 
-            /* Increment our sequence number. */
+            /* Set our new sequence. */
             ++nSequence;
+            fSuccess = true;
         }
 
-        return !vOrders.empty();
+        return fSuccess;
     }
 
 
     /* List the current active orders for given user's sigchain. */
     bool LogicalDB::ListAllOrders(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vOrders)
     {
+        /* Track our return success. */
+        bool fSuccess = false;
+
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairOrder;
 
@@ -617,17 +709,21 @@ namespace LLD
             /* Push order ot our list. */
             vOrders.push_back(pairOrder);
 
-            /* Increment our sequence number. */
+            /* Set our new sequence. */
             ++nSequence;
+            fSuccess = true;
         }
 
-        return !vOrders.empty();
+        return fSuccess;
     }
 
 
     /* List the current completed orders for given user's sigchain. */
     bool LogicalDB::ListExecuted(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vExecuted)
     {
+        /* Track our return success. */
+        bool fSuccess = false;
+
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairOrder;
 
@@ -641,19 +737,25 @@ namespace LLD
 
             /* Check for already executed contracts to omit. */
             if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL))
+            {
                 vExecuted.push_back(pairOrder);
+                fSuccess = true;
+            }
 
             /* Increment our sequence number. */
             ++nSequence;
         }
 
-        return !vExecuted.empty();
+        return fSuccess;
     }
 
 
     /*  List the current completed orders for given market pair. */
     bool LogicalDB::ListExecuted(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vExecuted)
     {
+        /* Track our return success. */
+        bool fSuccess = false;
+
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairOrder;
 
@@ -667,13 +769,16 @@ namespace LLD
 
             /* Check for already executed contracts to omit. */
             if(LLD::Contract->HasContract(pairOrder, TAO::Ledger::FLAGS::MEMPOOL))
+            {
                 vExecuted.push_back(pairOrder);
+                fSuccess = true;
+            }
 
             /* Increment our sequence number. */
             ++nSequence;
         }
 
-        return !vExecuted.empty();
+        return fSuccess;
     }
 
 

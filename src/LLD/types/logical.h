@@ -469,6 +469,46 @@ namespace LLD
         bool HasEvent(const uint512_t& hashTx, const uint32_t nContract);
 
 
+        /** PushEvent
+         *
+         *  Push an contract to process for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push event for.
+         *  @param[in] hashTx The txid we are adding event for.
+         *  @param[in] nContract The contract-id that contains the event
+         *
+         *  @return true if event was pushed successfully.
+         *
+         **/
+        bool PushContract(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract);
+
+
+        /** ListEvents
+         *
+         *  List the current active contracts for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to list events for.
+         *  @param[in] vEvents The list of events extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListContracts(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vContracts);
+
+
+        /** HasEvent
+         *
+         *  Checks if an contract has been indexed in the database already.
+         *
+         *  @param[in] hashTx The txid we are checking for.
+         *  @param[in] nContract The contract-id we are checking for
+         *
+         *  @return true if db contains the valid event
+         *
+         **/
+        bool HasContract(const uint512_t& hashTx, const uint32_t nContract);
+
+
         /** PushOrder
          *
          *  Pushes an order to the orderbook stack.

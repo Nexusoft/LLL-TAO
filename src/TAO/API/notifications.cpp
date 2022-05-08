@@ -55,7 +55,7 @@ namespace TAO::API
         while(!config::fShutdown.load())
         {
             /* We want to sleep while looping to not consume our cpu cycles. */
-            runtime::sleep(5000);
+            runtime::sleep(500);
 
             /* Get a current list of our active sessions. */
             const auto vSessions =
@@ -74,7 +74,7 @@ namespace TAO::API
 
                 /* Get a list of our active events. */
                 std::vector<std::pair<uint512_t, uint32_t>> vEvents;
-                if(LLD::Logical->ListEvents(hashGenesis, vEvents))
+                if(LLD::Logical->ListContracts(hashGenesis, vEvents) || LLD::Logical->ListEvents(hashGenesis, vEvents))
                 {
                     /* Build our list of contracts. */
                     std::vector<TAO::Operation::Contract> vContracts;
@@ -226,7 +226,7 @@ namespace TAO::API
         LLD::TxnBegin(TAO::Ledger::FLAGS::MINER);
 
         /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
-        //debug::fLogError = false;
+        debug::fLogError = false;
 
         try
         {

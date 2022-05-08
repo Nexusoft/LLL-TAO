@@ -437,7 +437,26 @@ namespace TAO::API
             {
                 /* Check that the debit was made to an account that we own */
                 if(oRecipient.hashOwner != hashGenesis)
-                    return false;
+                {
+                    /* Retrieve the account we are debiting from */
+                    TAO::Register::Object oSource;
+                    if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::MEMPOOL))
+                        return false;
+                        
+                    /* Check if we are the sender. */
+                    if(oSource.hashOwner != hashGenesis)
+                        return false;
+
+                    /* Otherwise build a credit back to self. */
+                    TAO::Operation::Contract tContract;
+                    tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
+                    tContract << addrSource << addrSource << nAmount; //we use addrRecipient from our debit contract instead of addrCredit
+
+                    /* Push to our contract queue. */
+                    vContracts.push_back(tContract);
+
+                    return true;
+                }
 
                 /* Now lets check our expected types match. */
                 if(!CheckStandard(jParams, oRecipient))
@@ -450,6 +469,8 @@ namespace TAO::API
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);
+
+                return true;
             }
 
             /* If addressed to non-standard object, this could be a tokenized debit, so do some checks to find out. */
