@@ -56,5 +56,33 @@ namespace TAO::API
          *
          **/
         static void Shutdown();
+
+    private:
+
+        /** sanitize_contract
+        *
+        *  Checks that the contract passes both Build() and Execute()
+        *
+        *  @param[in] rContract The contract to sanitize
+        *  @param[out] mapStates map of register states used by Build()
+        *
+        *  @return True if the contract was sanitized without errors.
+        *
+        **/
+        static bool sanitize_contract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates);
+
+
+        /** validate_transaction
+        *
+        *  Validate a transaction by sending it off to a peer, For use in -client mode.
+        *
+        *  @param[in] tx The transaction to validate
+        *  @param[out] nContract ID of the first failed contract
+        *
+        *  @return True if the transaction was validated without errors, false if an error was encountered.
+        *
+        **/
+        static bool validate_transaction(const TAO::Ledger::Transaction& tx, uint32_t& nContract);
+
     };
 }

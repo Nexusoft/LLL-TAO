@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <LLD/include/global.h>
+#include <LLP/include/global.h>
 
 #include <TAO/API/include/build.h>
 
@@ -21,6 +22,9 @@ ________________________________________________________________________________
 #include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
+
+#include <TAO/Register/include/build.h>
 
 #include <Util/include/args.h>
 
@@ -51,7 +55,7 @@ namespace TAO::API
         while(!config::fShutdown.load())
         {
             /* We want to sleep while looping to not consume our cpu cycles. */
-            runtime::sleep(100);
+            runtime::sleep(5000);
 
             /* Get a current list of our active sessions. */
             const auto vSessions =
@@ -148,28 +152,53 @@ namespace TAO::API
                     }
 
                     /* Build our transaction if there are contracts. */
-                    if(!vContracts.empty())
+                    while(!vContracts.empty())
                     {
-                        /* Log that we have completed this step. */
-                        debug::log(0, FUNCTION, "Building transaction for ", hashGenesis.SubString(), " with ", vContracts.size());
-
                         /* Build a json object. */
                         const encoding::json jParams =
                         {
                             { "session", hashSession.ToString() },
                         };
 
+                        /* Track our current index. */
+                        uint64_t nIndex = 0;
+
+                        /* Build a list of contracts for transaction. */
+                        std::vector<TAO::Operation::Contract> vSanitized;
+
+                        /* Sanitize our contract here to make sure we build a valid transaction. */
+                        std::map<uint256_t, TAO::Register::State> mapStates;
+                        for( ; vSanitized.size() < 100 && nIndex < vContracts.size(); ++nIndex)
+                        {
+                            /* Grab a reference of contract. */
+                            TAO::Operation::Contract& rContract = vContracts[nIndex];
+
+                            /* Bind our contract now to a timestamp and caller. */
+                            rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
+
+                            /* Sanitize the contract. */
+                            if(sanitize_contract(rContract, mapStates))
+                                vSanitized.emplace_back(std::move(rContract));
+                        }
+
+                        /* Erase all the contracts that were iterated. */
+                        vContracts.erase(vContracts.begin(), vContracts.begin() + nIndex);
+
+                        /* Check for available contracts. */
+                        if(vSanitized.empty())
+                            continue;
+
                         try
                         {
                             /* Now build our official transaction. */
                             const uint512_t hashTx =
-                                BuildAndAccept(jParams, vContracts);
+                                BuildAndAccept(jParams, vSanitized);
 
-                            debug::log(0, FUNCTION, "Built transaction ", hashTx.ToString());
+                            debug::log(0, FUNCTION, "Built ", hashTx.SubString(), " with ", vSanitized.size(), " contracts");
                         }
                         catch(const Exception& e)
                         {
-                            debug::warning(FUNCTION, "Failed to build tx for ", hashGenesis.SubString(), ": ", e.what());
+                            debug::warning(FUNCTION, "Failed to build ", hashGenesis.SubString(), ": ", e.what());
                         }
                     }
                 }
@@ -184,5 +213,113 @@ namespace TAO::API
         /* Loop and detach all threads. */
         for(auto& tThread : vThreads)
             tThread.join();
+    }
+
+
+    /* Checks that the contract passes both Build() and Execute() */
+    bool Notifications::sanitize_contract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates)
+    {
+        /* Return flag */
+        bool fSanitized = false;
+
+        /* Start a ACID transaction (to be disposed). */
+        LLD::TxnBegin(TAO::Ledger::FLAGS::MINER);
+
+        /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
+        //debug::fLogError = false;
+
+        try
+        {
+            /* Sanitize contract by building and executing it. */
+            fSanitized = TAO::Register::Build(rContract, mapStates, TAO::Ledger::FLAGS::MINER)
+            && TAO::Operation::Execute(rContract, TAO::Ledger::FLAGS::MINER);
+
+            /* Reenable error logging. */
+            debug::fLogError = true;
+        }
+        catch(const std::exception& e)
+        {
+            /* Just in case we encountered an exception whilst error logging was off, reenable error logging. */
+            debug::fLogError = true;
+
+            /* Log the error and attempt to continue processing */
+            debug::error(FUNCTION, e.what());
+        }
+
+        /* Abort the mempool ACID transaction once the contract is sanitized */
+        LLD::TxnAbort(TAO::Ledger::FLAGS::MINER);
+
+        return fSanitized;
+    }
+
+
+    /* Validate a transaction by sending it off to a peer, For use in -client mode. */
+    bool Notifications::validate_transaction(const TAO::Ledger::Transaction& tx, uint32_t& nContract)
+    {
+        bool fValid = false;
+
+        /* Check tritium server enabled. */
+        if(LLP::TRITIUM_SERVER)
+        {
+            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+            if(pNode != nullptr)
+            {
+                debug::log(1, FUNCTION, "CLIENT MODE: Validating transaction");
+
+                /* Create our trigger nonce. */
+                uint64_t nNonce = LLC::GetRand();
+                pNode->PushMessage(LLP::TritiumNode::TYPES::TRIGGER, nNonce);
+
+                /* Request the transaction validation */
+                pNode->PushMessage(LLP::TritiumNode::ACTION::VALIDATE, uint8_t(LLP::TritiumNode::TYPES::TRANSACTION), tx);
+
+                /* Create the condition variable trigger. */
+                LLP::Trigger REQUEST_TRIGGER;
+                pNode->AddTrigger(LLP::TritiumNode::RESPONSE::VALIDATED, &REQUEST_TRIGGER);
+
+                /* Process the event. */
+                REQUEST_TRIGGER.wait_for_nonce(nNonce, 10000);
+
+                /* Cleanup our event trigger. */
+                pNode->Release(LLP::TritiumNode::RESPONSE::VALIDATED);
+
+                debug::log(1, FUNCTION, "CLIENT MODE: RESPONSE::VALIDATED received");
+
+                /* Check the response args to see if it was valid */
+                if(REQUEST_TRIGGER.HasArgs())
+                {
+                    REQUEST_TRIGGER >> fValid;
+
+                    /* If it was not valid then deserialize the failing contract ID from the response */
+                    if(!fValid)
+                    {
+                        /* Deserialize the failing hash (which should be the one we sent) */
+                        uint512_t hashTx;
+                        REQUEST_TRIGGER >> hashTx;
+
+                        /* Deserialize the failing contract ID */
+                        REQUEST_TRIGGER >> nContract;
+
+                        /* Check the hash is valid */
+                        if(hashTx != tx.GetHash())
+                            throw Exception(0, "Invalid transaction ID received from RESPONSE::VALIDATED");
+
+                        /* Check the contract ID is valid */
+                        if(nContract > tx.Size() -1)
+                            throw Exception(0, "Invalid contract ID received from RESPONSE::VALIDATED");
+                    }
+                }
+                else
+                {
+                    throw Exception(0, "CLIENT MODE: timeout waiting for RESPONSE::VALIDATED");
+                }
+
+            }
+            else
+                debug::error(FUNCTION, "no connections available...");
+        }
+
+        /* return the valid flag */
+        return fValid;
     }
 }

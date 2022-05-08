@@ -286,6 +286,5 @@ namespace TAO
             /* Add the crypto update contract. */
             tx[tx.Size()] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();
         }
-
     }
 }

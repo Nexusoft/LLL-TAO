@@ -568,6 +568,12 @@ namespace TAO::API
 
                         /* Set our hash to based on owner. */
                         hashRecipient = oRegister.hashOwner;
+
+                        /* Check for active debit from with contract. */
+                        if(Authentication::Active(tx.hashGenesis))
+                        {
+                            
+                        }
                     }
 
                     /* Check if we need to build index for this contract. */

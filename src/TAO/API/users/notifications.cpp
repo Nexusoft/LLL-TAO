@@ -1692,26 +1692,22 @@ namespace TAO
         {
             /* Return flag */
             bool fSanitized = false;
-
-            /* Lock the mempool at this point so that we can build and execute inside a mempool transaction */
-            RECURSIVE(TAO::Ledger::mempool.MUTEX);
-
             try
             {
                 /* Start a ACID transaction (to be disposed). */
-                LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
+                LLD::TxnBegin(TAO::Ledger::FLAGS::MINER);
 
                 /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
                 debug::fLogError = false;
 
-                fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
-                             && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
+                fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MINER)
+                             && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MINER);
 
                 /* Reenable error logging. */
                 debug::fLogError = true;
 
                 /* Abort the mempool ACID transaction once the contract is sanitized */
-                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+                LLD::TxnAbort(TAO::Ledger::FLAGS::MINER);
 
             }
             catch(const std::exception& e)
@@ -1720,7 +1716,7 @@ namespace TAO
                 debug::fLogError = true;
 
                 /* Abort the mempool ACID transaction */
-                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
+                LLD::TxnAbort(TAO::Ledger::FLAGS::MINER);
 
                 /* Log the error and attempt to continue processing */
                 debug::error(FUNCTION, e.what());
