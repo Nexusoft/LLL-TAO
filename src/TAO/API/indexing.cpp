@@ -169,7 +169,7 @@ namespace TAO::API
         LLD::Logical->ReadLastEvent(hashGenesis, nSequence);
 
         /* Debug output so w4e can track our events indexes. */
-        debug::log(0, FUNCTION, "Building events indexes from ", nSequence, " for genesis=", hashGenesis.SubString());
+        debug::log(3, FUNCTION, "Building events indexes from ", nSequence, " for genesis=", hashGenesis.SubString());
 
         /* Loop through our ledger level events. */
         TAO::Ledger::Transaction tNext;
@@ -286,7 +286,7 @@ namespace TAO::API
             ++nSequence;
         }
 
-        debug::log(0, FUNCTION, "Completed building indexes at ", nSequence, " for genesis=", hashGenesis.SubString());
+        debug::log(3, FUNCTION, "Completed building indexes at ", nSequence, " for genesis=", hashGenesis.SubString());
     }
 
 
@@ -572,7 +572,7 @@ namespace TAO::API
                         /* Check for active debit from with contract. */
                         if(Authentication::Active(tx.hashGenesis))
                         {
-                            
+
                         }
                     }
 

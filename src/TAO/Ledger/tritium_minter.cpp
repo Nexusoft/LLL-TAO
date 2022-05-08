@@ -65,7 +65,7 @@ namespace TAO
             /* Disable stake minter if not in sessionless mode. */
             if(config::fMultiuser.load())
             {
-                debug::log(0, FUNCTION, "Stake minter disabled when use API sessions (multiuser).");
+                debug::log(3, FUNCTION, "Stake minter disabled when use API sessions (multiuser).");
                 return false;
             }
 
