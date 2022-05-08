@@ -340,12 +340,12 @@ namespace TAO::API
                     /* Increment failure and throw. */
                     increment_failures(hashSession);
 
-                    throw Exception(-139, "Failed to unlock");
+                    throw Exception(-139, "Failed to unlock (Invalid Password)");
                 }
             }
 
             /* Get the active pin if not currently stored. */
-            if(!rSession.Unlock(strPIN, nRequestedActions))
+            if(CheckParameter(jParams, "pin", "string, number") || !rSession.Unlock(strPIN, nRequestedActions))
                 strPIN = ExtractPIN(jParams);
 
             /* Check internal authenticate function. */
@@ -354,7 +354,7 @@ namespace TAO::API
                 /* Increment failure and throw. */
                 increment_failures(hashSession);
 
-                throw Exception(-139, "Failed to unlock");
+                throw Exception(-139, "Failed to unlock (Invalid PIN)");
             }
         }
 
