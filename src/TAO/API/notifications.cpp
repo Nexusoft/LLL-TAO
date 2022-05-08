@@ -72,9 +72,23 @@ namespace TAO::API
                 if(!Authentication::Unlocked(hashSession, TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS))
                     continue;
 
+                /* Build a json object. */
+                const encoding::json jSession =
+                {
+                    { "session", hashSession.ToString() },
+                };
+
                 /* Get a list of our active events. */
                 std::vector<std::pair<uint512_t, uint32_t>> vEvents;
-                if(LLD::Logical->ListContracts(hashGenesis, vEvents) || LLD::Logical->ListEvents(hashGenesis, vEvents))
+
+                /* Get our list of active contracts we have issued. */
+                LLD::Logical->ListContracts(hashGenesis, vEvents);
+
+                /* Get our list of active events we need to respond to. */
+                LLD::Logical->ListEvents(hashGenesis, vEvents);
+
+                /* Process contracts if we found from disk. */
+                if(!vEvents.empty())
                 {
                     /* Build our list of contracts. */
                     std::vector<TAO::Operation::Contract> vContracts;
@@ -112,20 +126,10 @@ namespace TAO::API
                             case TAO::Operation::OP::DEBIT:
                             case TAO::Operation::OP::COINBASE:
                             {
-                                /* Build a json object. */
-                                encoding::json jParams =
-                                {
-                                    { "session", hashSession.ToString() },
-                                };
-
-                                /* If in mainnet mode, we want to check for events account. */
-                                if(!config::fHybrid.load())
-                                    jParams["address"] = config::GetArg("-eventsaccount", "default");
-
                                 try
                                 {
                                     /* Build our credit contract now. */
-                                    if(!BuildCredit(jParams, rEvent.second, rContract, vContracts))
+                                    if(!BuildCredit(jSession, rEvent.second, rContract, vContracts))
                                         continue;
                                 }
                                 catch(const Exception& e)
@@ -139,6 +143,17 @@ namespace TAO::API
                             /* Handle for if we need to claim. */
                             case TAO::Operation::OP::TRANSFER:
                             {
+                                try
+                                {
+                                    /* Build our credit contract now. */
+                                    if(!BuildClaim(jSession, rEvent.second, rContract, vContracts))
+                                        continue;
+                                }
+                                catch(const Exception& e)
+                                {
+                                    debug::warning(FUNCTION, "failed to build claim for ", hashEvent.SubString(), ": ", e.what());
+                                }
+
                                 break;
                             }
 
