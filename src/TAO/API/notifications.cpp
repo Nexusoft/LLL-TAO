@@ -87,94 +87,88 @@ namespace TAO::API
                 /* Get our list of active events we need to respond to. */
                 LLD::Logical->ListEvents(hashGenesis, vEvents);
 
+                //we need to list our active legacy transaction events
+
                 /* Process contracts if we found from disk. */
-                if(!vEvents.empty())
+                if(vEvents.empty())
+                    continue;
+
+                /* Build our list of contracts. */
+                std::vector<TAO::Operation::Contract> vContracts;
+                for(const auto& rEvent : vEvents)
                 {
-                    /* Build our list of contracts. */
-                    std::vector<TAO::Operation::Contract> vContracts;
+                    /* Grab a reference of our hash. */
+                    const uint512_t& hashEvent = rEvent.first;
 
-                    /* List out our active events to process. */
-                    for(const auto& rEvent : vEvents)
+                    /* Get the transaction from disk. */
+                    TAO::API::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(hashEvent, tx))
+                        throw Exception(-108, "Failed to read transaction");
+
+                    /* Check if contract has been spent. */
+                    if(tx.Spent(hashEvent, rEvent.second))
+                        continue;
+
+                    /* Get a referecne of our contract. */
+                    const TAO::Operation::Contract& rContract = tx[rEvent.second];
+
+                    /* Seek our contract to primitive OP. */
+                    rContract.SeekToPrimitive();
+
+                    /* Get a copy of our primitive. */
+                    uint8_t nOP = 0;
+                    rContract >> nOP;
+
+                    /* Switch for valid primitives. */
+                    switch(nOP)
                     {
-                        /* Grab a reference of our hash. */
-                        const uint512_t& hashEvent = rEvent.first;
-
-                        /* Get the transaction from disk. */
-                        TAO::API::Transaction tx;
-                        if(!LLD::Ledger->ReadTx(hashEvent, tx))
-                            throw Exception(-108, "Failed to read transaction");
-
-                        /* Check if contract has been spent. */
-                        if(tx.Spent(hashEvent, rEvent.second))
-                            continue;
-
-                        /* Get a referecne of our contract. */
-                        const TAO::Operation::Contract& rContract = tx[rEvent.second];
-
-                        /* Seek our contract to primitive OP. */
-                        rContract.SeekToPrimitive();
-
-                        /* Get a copy of our primitive. */
-                        uint8_t nOP = 0;
-                        rContract >> nOP;
-
-                        /* Switch for valid primitives. */
-                        switch(nOP)
+                        /* Handle for if we need to credit. */
+                        case TAO::Operation::OP::LEGACY:
+                        case TAO::Operation::OP::DEBIT:
+                        case TAO::Operation::OP::COINBASE:
                         {
-                            /* Handle for if we need to credit. */
-                            case TAO::Operation::OP::LEGACY:
-                            case TAO::Operation::OP::DEBIT:
-                            case TAO::Operation::OP::COINBASE:
+                            try
                             {
-                                try
-                                {
-                                    /* Build our credit contract now. */
-                                    if(!BuildCredit(jSession, rEvent.second, rContract, vContracts))
-                                        continue;
-                                }
-                                catch(const Exception& e)
-                                {
-                                    debug::warning(FUNCTION, "failed to build crecit for ", hashEvent.SubString(), ": ", e.what());
-                                }
-
-                                break;
+                                /* Build our credit contract now. */
+                                if(!BuildCredit(jSession, rEvent.second, rContract, vContracts))
+                                    continue;
+                            }
+                            catch(const Exception& e)
+                            {
+                                debug::warning(FUNCTION, "failed to build crecit for ", hashEvent.SubString(), ": ", e.what());
                             }
 
-                            /* Handle for if we need to claim. */
-                            case TAO::Operation::OP::TRANSFER:
-                            {
-                                try
-                                {
-                                    /* Build our credit contract now. */
-                                    if(!BuildClaim(jSession, rEvent.second, rContract, vContracts))
-                                        continue;
-                                }
-                                catch(const Exception& e)
-                                {
-                                    debug::warning(FUNCTION, "failed to build claim for ", hashEvent.SubString(), ": ", e.what());
-                                }
+                            break;
+                        }
 
-                                break;
+                        /* Handle for if we need to claim. */
+                        case TAO::Operation::OP::TRANSFER:
+                        {
+                            try
+                            {
+                                /* Build our credit contract now. */
+                                if(!BuildClaim(jSession, rEvent.second, rContract, vContracts))
+                                    continue;
+                            }
+                            catch(const Exception& e)
+                            {
+                                debug::warning(FUNCTION, "failed to build claim for ", hashEvent.SubString(), ": ", e.what());
                             }
 
-                            /* Unknown ops we want to continue looping. */
-                            default:
-                            {
-                                debug::warning(FUNCTION, "unknown OP: ", std::hex, uint32_t(nOP));
-                                continue;
-                            }
+                            break;
+                        }
+
+                        /* Unknown ops we want to continue looping. */
+                        default:
+                        {
+                            debug::warning(FUNCTION, "unknown OP: ", std::hex, uint32_t(nOP));
+                            continue;
                         }
                     }
 
                     /* Build our transaction if there are contracts. */
                     while(!vContracts.empty())
                     {
-                        /* Build a json object. */
-                        const encoding::json jParams =
-                        {
-                            { "session", hashSession.ToString() },
-                        };
-
                         /* Track our current index. */
                         uint64_t nIndex = 0;
 
@@ -207,7 +201,7 @@ namespace TAO::API
                         {
                             /* Now build our official transaction. */
                             const uint512_t hashTx =
-                                BuildAndAccept(jParams, vSanitized);
+                                BuildAndAccept(jSession, vSanitized);
 
                             debug::log(0, FUNCTION, "Built ", hashTx.SubString(), " with ", vSanitized.size(), " contracts");
                         }
@@ -246,8 +240,8 @@ namespace TAO::API
         try
         {
             /* Sanitize contract by building and executing it. */
-            fSanitized = TAO::Register::Build(rContract, mapStates, TAO::Ledger::FLAGS::MINER)
-            && TAO::Operation::Execute(rContract, TAO::Ledger::FLAGS::MINER);
+            fSanitized =
+                TAO::Register::Build(rContract, mapStates, TAO::Ledger::FLAGS::MINER) && TAO::Operation::Execute(rContract, TAO::Ledger::FLAGS::MINER);
 
             /* Reenable error logging. */
             debug::fLogError = true;

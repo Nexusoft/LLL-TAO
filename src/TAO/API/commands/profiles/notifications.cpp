@@ -52,6 +52,8 @@ namespace TAO::API
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
         if(LLD::Logical->ListEvents(hashGenesis, vEvents))
         {
+            //we need to list unspent contracts awaiting fulfillment from LLD::Logical->ListContracts
+            
             /* Flip our list if ascending order. */
             if(strOrder == "asc")
                 std::reverse(vEvents.begin(), vEvents.end());
