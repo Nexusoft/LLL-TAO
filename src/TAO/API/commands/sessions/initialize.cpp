@@ -41,7 +41,7 @@ namespace TAO::API
             )
         );
 
-        /* Handle for all CREATE operations. */
+        /* Handle for all LOCK operations. */
         mapFunctions["lock"] = Function
         (
             std::bind
@@ -53,12 +53,24 @@ namespace TAO::API
             )
         );
 
-        /* Handle for all CREATE operations. */
+        /* Handle for all UNLOCK operations. */
         mapFunctions["unlock"] = Function
         (
             std::bind
             (
                 &Sessions::Unlock,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for all TERMINATE operations. */
+        mapFunctions["terminate"] = Function
+        (
+            std::bind
+            (
+                &Sessions::Terminate,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

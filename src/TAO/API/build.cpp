@@ -84,6 +84,17 @@ namespace TAO::API
     }
 
 
+    /* Build a response object that indicates a command succeeded. */
+    encoding::json BuildResponse(const encoding::json& jResponse)
+    {
+        /* Build our response from given parameters. */
+        encoding::json jRet = jResponse;
+        jRet["success"] = true; //little response to indicate success
+
+        return jRet;
+    }
+
+
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
     uint512_t BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
     {
@@ -442,7 +453,7 @@ namespace TAO::API
                     TAO::Register::Object oSource;
                     if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::MEMPOOL))
                         return false;
-                        
+
                     /* Check if we are the sender. */
                     if(oSource.hashOwner != hashGenesis)
                         return false;

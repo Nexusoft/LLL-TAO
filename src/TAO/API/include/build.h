@@ -59,6 +59,19 @@ namespace TAO::API
     encoding::json BuildResponse(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts);
 
 
+    /** BuildResponse
+     *
+     *  Build a response object that indicates a command succeeded.
+     *
+     *  @param[in] jParams The parameters for the relevant API call.
+     *  @param[in] vContracts The list of contracts this call has generated.
+     *
+     *  @return the formatted JSON response to return with.
+     *
+     **/
+    encoding::json BuildResponse(const encoding::json& jResponse = encoding::json::object());
+
+
     /** Build And Accept
      *
      *  Builds a transaction based on a list of contracts, to be deployed as a single tx or batched.

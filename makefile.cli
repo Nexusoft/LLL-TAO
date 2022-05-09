@@ -460,6 +460,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_sessions_lock.o \
 		build/API_commands_sessions_unlock.o \
 		build/API_commands_sessions_initialize.o \
+		build/API_commands_sessions_terminate.o \
 		build/API_commands_supply_initialize.o \
 		build/API_commands_system_lisp.o \
 		build/API_commands_system_initialize.o \

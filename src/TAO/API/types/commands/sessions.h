@@ -95,7 +95,7 @@ namespace TAO::API
 
         /** Has
          *
-         *  Checks to see if a saves session exists in the Logical DB for the given user
+         *  Checks to see if a saved session exists in the Logical DB for the given user
          *
          *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
@@ -117,6 +117,19 @@ namespace TAO::API
          *
          **/
         encoding::json Lock(const encoding::json& jParams, const bool fHelp);
+
+
+        /** Terminate
+         *
+         *  Terminates a given session by session-id.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Terminate(const encoding::json& jParams, const bool fHelp);
 
 
         /** Unlock
