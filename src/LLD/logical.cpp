@@ -280,7 +280,7 @@ namespace LLD
 
 
     /* Push a tokenized register to process for given genesis-id. */
-    bool LogicalDB::PushTokenized(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    bool LogicalDB::PushTokenized(const uint256_t& hashGenesis, const std::pair<uint256_t, uint256_t>& pairTokenized)
     {
         /* Start an ACID transaction for this set of records. */
         TxnBegin();
@@ -292,7 +292,7 @@ namespace LLD
         Read(std::make_pair(std::string("tokenized.sequence"), hashGenesis), nOwnerSequence);
 
         /* Add our indexing entry by owner sequence number. */
-        if(!Write(std::make_tuple(std::string("tokenized.index"), nOwnerSequence, hashGenesis), hashRegister))
+        if(!Write(std::make_tuple(std::string("tokenized.index"), nOwnerSequence, hashGenesis), pairTokenized))
             return false;
 
         /* Write our new events sequence to disk. */
@@ -300,7 +300,7 @@ namespace LLD
             return false;
 
         /* Write our order proof. */
-        if(!Write(std::make_tuple(std::string("tokenized.proof"), hashGenesis, hashRegister)))
+        if(!Write(std::make_tuple(std::string("tokenized.proof"), hashGenesis, pairTokenized)))
             return false;
 
         return TxnCommit();
@@ -308,36 +308,36 @@ namespace LLD
 
 
     /* Erase a tokenized register for given genesis-id. */
-    bool LogicalDB::EraseTokenized(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    bool LogicalDB::EraseTokenized(const uint256_t& hashGenesis, const std::pair<uint256_t, uint256_t>& pairTokenized)
     {
-        return WriteDeindex(hashGenesis, hashRegister);
+        return WriteDeindex(hashGenesis, pairTokenized.first);
     }
 
 
     /* List current active tokenized registers for given genesis-id. */
-    bool LogicalDB::ListTokenized(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters)
+    bool LogicalDB::ListTokenized(const uint256_t& hashGenesis, std::vector<std::pair<uint256_t, uint256_t>> &vRegisters)
     {
-        /* Cache our txid and contract as a pair. */
-        uint256_t hashRegister;
+        /* Cache our token and asset addresses as pair. */
+        std::pair<uint256_t, uint256_t> pairTokenized;
 
         /* Loop until we have failed. */
         uint32_t nSequence = 0;
         while(!config::fShutdown.load()) //we want to early terminate on shutdown
         {
             /* Read our current record. */
-            if(!Read(std::make_tuple(std::string("tokenized.index"), nSequence++, hashGenesis), hashRegister))
+            if(!Read(std::make_tuple(std::string("tokenized.index"), nSequence++, hashGenesis), pairTokenized))
                 break;
 
             /* Check for transfer keys. */
-            if(HasTransfer(hashGenesis, hashRegister))
+            if(HasTransfer(hashGenesis, pairTokenized.first))
                 continue; //NOTE: we skip over transfer keys
 
             /* Check for de-indexed keys. */
-            if(HasDeindex(hashGenesis, hashRegister))
+            if(HasDeindex(hashGenesis, pairTokenized.first))
                 continue; //NOTE: we skip over deindexed keys
 
             /* Check for already executed contracts to omit. */
-            vRegisters.push_back(hashRegister);
+            vRegisters.push_back(pairTokenized);
         }
 
         return !vRegisters.empty();

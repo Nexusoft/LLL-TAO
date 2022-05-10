@@ -368,7 +368,7 @@ namespace TAO::API
     void Transaction::index_registers(const uint512_t& hash)
     {
         /* Track our register address. */
-        uint256_t hashRegister;
+        TAO::Register::Address hashRegister;
 
         /* Check all the tx contracts. */
         for(uint32_t n = 0; n < Size(); ++n)
@@ -420,6 +420,68 @@ namespace TAO::API
                         /* Erase our transfer index if claiming a register. */
                         if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
                             debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
+                    }
+
+                    /* Check for accounts we can discover for tokenization. */
+                    if(hashRegister.IsAccount())
+                    {
+                        /* Handle some checks for tokenized assets. */
+                        TAO::Register::Object oRegister;
+                        if(LLD::Register->ReadObject(hashRegister, oRegister, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Check our token type. */
+                            const uint256_t hashToken =
+                                oRegister.get<uint256_t>("token");
+
+                            /* Check for our transfer event. */
+                            TAO::Ledger::Transaction tx;
+                            if(LLD::Ledger->ReadEvent(hashToken, 0, tx))
+                            {
+                                /* Loop through contracts to find the source event. */
+                                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                                {
+                                    /* Get a reference of the transaction contract. */
+                                    const TAO::Operation::Contract& rEvent = tx[nContract];
+
+                                    /* Reset the op stream */
+                                    rEvent.SeekToPrimitive();
+
+                                    /* The operation */
+                                    uint8_t nOp;
+                                    rEvent >> nOp;
+
+                                    /* Skip over non transfers. */
+                                    if(nOp != TAO::Operation::OP::TRANSFER)
+                                        continue;
+
+                                    /* The register address being transferred */
+                                    uint256_t hashTransfer;
+                                    rEvent >> hashTransfer;
+
+                                    /* Get the new owner hash */
+                                    uint256_t hashTokenized;
+                                    rEvent >> hashTokenized;
+
+                                    /* Check that the recipient of the transfer is the token */
+                                    if(hashTokenized != hashToken)
+                                        continue;
+
+                                    /* Read the force transfer flag */
+                                    uint8_t nType = 0;
+                                    rEvent >> nType;
+
+                                    /* Ensure this was a forced transfer (which tokenized asset transfers must be) */
+                                    if(nType != TAO::Operation::TRANSFER::FORCE)
+                                        continue;
+
+                                    /* Push our tokenized account to our indexes. */
+                                    if(!LLD::Logical->PushTokenized(hashGenesis, std::make_pair(hashRegister, hashTransfer)))
+                                        debug::warning(FUNCTION, "failed to push tokenized ", VARIABLE(hashGenesis.SubString()));
+
+                                    break; //we can exit now
+                                }
+                            }
+                        }
                     }
                 }
             }

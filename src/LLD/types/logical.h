@@ -297,7 +297,7 @@ namespace LLD
          *  @return true if event was pushed successfully.
          *
          **/
-        bool PushTokenized(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+        bool PushTokenized(const uint256_t& hashGenesis, const std::pair<uint256_t, uint256_t>& pairTokenized);
 
 
         /** EraseTokenized
@@ -310,7 +310,7 @@ namespace LLD
          *  @return true if event was pushed successfully.
          *
          **/
-        bool EraseTokenized(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+        bool EraseTokenized(const uint256_t& hashGenesis, const std::pair<uint256_t, uint256_t>& pairTokenized);
 
 
         /** ListTokenized
@@ -323,7 +323,7 @@ namespace LLD
          *  @return true if written successfully
          *
          **/
-        bool ListTokenized(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
+        bool ListTokenized(const uint256_t& hashGenesis, std::vector<std::pair<uint256_t, uint256_t>> &vRegisters);
 
 
         /** PushUnclaimed
