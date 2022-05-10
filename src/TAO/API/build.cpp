@@ -174,7 +174,7 @@ namespace TAO::API
         {
             /* Build our transactions in batches of 99 contracts at a time. */
             std::vector<TAO::Operation::Contract> vBuild;
-            for( ; vBuild.size() < 99 && nIndex < vContracts.size(); ++nIndex)
+            for( ; vBuild.size() < uint32_t(config::GetArg("-maxcontracts", 99)) && nIndex < vContracts.size(); ++nIndex)
                 vBuild.emplace_back(std::move(vContracts[nIndex]));
 
             /* Check for available contracts. */
