@@ -53,6 +53,18 @@ namespace TAO::API
             )
         );
 
+        /* Handle for all STATUS operations. */
+        mapFunctions["status"] = Function
+        (
+            std::bind
+            (
+                &Sessions::Status,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Handle for all TERMINATE operations. */
         mapFunctions["terminate"] = Function
         (

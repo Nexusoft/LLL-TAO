@@ -13,112 +13,73 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/check.h>
+
+#include <TAO/API/types/authentication.h>
+#include <TAO/API/types/transaction.h>
 #include <TAO/API/types/commands/sessions.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
 {
     /* Get status information for the currently logged in user. */
-    encoding::json Sessions::Status(const encoding::json& params, const bool fHelp)
+    encoding::json Sessions::Status(const encoding::json& jParams, const bool fHelp)
     {
-        /* JSON return value. */
-        encoding::json ret;
+        /* Get our calling genesis. */
+        const uint256_t hashGenesis =
+            Authentication::Caller(jParams);
 
-        /* Get the session to be used for this API call */
-        Session& session = Commands::Instance<Users>()->GetSession(params, true, false);
-
-        /* The callers genesis */
-        uint256_t hashGenesis = session.GetAccount()->Genesis();
-
-        /* Flag indicating whether to include the username in the response. If this is in multiuser mode then we
-           will only return the username if they have provided a valid pin */
+        /* We require PIN for status when in multiuser mode. */
         bool fUsername = false;
-
-        if(config::fMultiuser.load() && params.find("pin") != params.end())
-        {
-            /* Authenticate the users credentials */
-            if(!Commands::Instance<Users>()->Authenticate(params))
-                throw Exception(-139, "Invalid credentials");
-
-            /* Pin is valid so include the username */
+        if(config::fMultiuser.load())
+            fUsername = (CheckParameter(jParams, "pin", "string, number") && Authentication::Authenticate(jParams));
+        else
             fUsername = true;
-        }
-        else if(!config::fMultiuser.load())
-        {
-            /* Always return the username in single user mode */
-            fUsername = true;
-        }
 
-        /* populate response */
+        /* Populate Username */
+        encoding::json jRet;
         if(fUsername)
-            ret["username"] = session.GetAccount()->UserName().c_str();
+            jRet["username"] = Authentication::Credentials(jParams)->UserName().c_str();
+
+        /* We need this for our database queries. */
+        uint512_t hashLast = 0;
 
         /* Add the genesis */
-        ret["genesis"] = hashGenesis.GetHex();
-
-        /* Work out whether the sig chain creation is confirmed.  For this we just need to check the confirmatations on the
-           transaction that was used for login */
-        uint32_t nConfirms = 0;
-        LLD::Ledger->ReadConfirmations(session.hashAuth, nConfirms);
-
-        /* Add the genesis confirmed flag */
-        ret["confirmed"] = nConfirms > 0;
-
-        /* Add the last active timestamp */
-        ret["lastactive"] = session.GetLastActive();
-
-        /* sig chain transaction count */
-        uint32_t nTransactions = 0;
-
-        /* flag indicating recovery has been set */
-        bool fRecovery = false;
+        jRet["genesis"]      = hashGenesis.ToString();
+        jRet["confirmed"]    = bool(LLD::Logical->ReadFirst(hashGenesis, hashLast));
+        jRet["lastactive"]   = Authentication::Accessed(jParams);
+        jRet["recovery"]     = false;
+        jRet["transactions"] = 0;
 
         /* Read the last transaction for the sig chain */
-        uint512_t hashLast = 0;
-        if(LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+        if(LLD::Logical->ReadLast(hashGenesis, hashLast))
         {
             /* Get the transaction from disk. */
-            TAO::Ledger::Transaction tx;
-            if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+            Transaction tx;
+            if(!LLD::Logical->ReadTx(hashLast, tx))
                 throw Exception(-108, "Failed to read transaction");
 
-            /* Number of transactions is the last sequence number + 1 (since the sequence is 0 based) */
-            nTransactions = tx.nSequence + 1;
-
-            /* Set recovery flag if recovery hash has been set on the last transaction in the chain */
-            fRecovery = tx.hashRecovery != 0;
+            /* Populate transactional level data. */
+            jRet["transactions"] = tx.nSequence + 1;
+            jRet["recovery"]     = bool(tx.hashRecovery != 0);
         }
 
-        /* populate recovery flag */
-        ret["recovery"] = fRecovery;
+        /* Populate unlocked status */
+        uint8_t nCurrentActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
+        Authentication::Unlocked(jParams, nCurrentActions);
 
-        /* populate the transaction count */
-        ret["transactions"] = nTransactions;
+        /* Build all of our values now. */
+        const encoding::json jUnlocked =
+        {
+            { "mining",        bool(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::MINING        )},
+            { "notifications", bool(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS )},
+            { "staking",       bool(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING       )},
+            { "transactions",  bool(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS  )}
+        };
 
-        /* Get the notifications so that we can return the notification count. */
-        std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vContracts;
-        GetOutstanding(hashGenesis, false, vContracts);
+        /* Add unlocked to return. */
+        jRet["unlocked"] = jUnlocked;
 
-        /* Get any expired contracts not yet voided. */
-        GetExpired(hashGenesis, false, vContracts);
-
-        /* Get any legacy transactions . */
-        std::vector<std::pair<std::shared_ptr<Legacy::Transaction>, uint32_t>> vLegacyTx;
-        GetOutstanding(hashGenesis, false, vLegacyTx);
-
-        ret["notifications"] = vContracts.size() + vLegacyTx.size();
-
-
-        /* populate unlocked status */
-        encoding::json jsonUnlocked;
-
-        jsonUnlocked["mining"] = !session.GetActivePIN().IsNull() && session.CanMine();
-        jsonUnlocked["notifications"] = !session.GetActivePIN().IsNull() && session.CanProcessNotifications();
-        jsonUnlocked["staking"] = !session.GetActivePIN().IsNull() && session.CanStake();
-        jsonUnlocked["transactions"] = !session.GetActivePIN().IsNull() && session.CanTransact();
-
-        ret["unlocked"] = jsonUnlocked;
-
-        return ret;
+        return jRet;
     }
 }

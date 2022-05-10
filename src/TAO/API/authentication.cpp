@@ -100,6 +100,27 @@ namespace TAO::API
     }
 
 
+    /* Get the last time that session was accessed */
+    uint64_t Authentication::Accessed(const encoding::json& jParams)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            return 0;
+
+        /* Get a copy of our current active session. */
+        const Session& rSession =
+            mapSessions[hashSession];
+
+        return rSession.Accessed();
+    }
+
+
     /* Authenticate a user's credentials against their sigchain. */
     bool Authentication::Authenticate(const encoding::json& jParams)
     {
@@ -468,7 +489,7 @@ namespace TAO::API
 
         /* Reset our activity and auth attempts if pin was successfully unlocked. */
         rSession.nAuthFailures = 0;
-        rSession.nLastActive   = runtime::unifiedtimestamp();
+        rSession.nLastAccess   = runtime::unifiedtimestamp();
 
         return true;
     }

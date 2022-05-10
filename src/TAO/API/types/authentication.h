@@ -83,7 +83,7 @@ namespace TAO::API
 
 
             /** Track the last time session was active. **/
-            mutable std::atomic<uint64_t> nLastActive;
+            mutable std::atomic<uint64_t> nLastAccess;
 
 
             /** Default Constructor. **/
@@ -93,7 +93,7 @@ namespace TAO::API
             , hashGenesis   (0)
             , nType         (LOCAL)
             , nAuthFailures (0)
-            , nLastActive   (runtime::unifiedtimestamp())
+            , nLastAccess   (runtime::unifiedtimestamp())
             {
             }
 
@@ -109,7 +109,7 @@ namespace TAO::API
             , hashGenesis   (std::move(rSession.hashGenesis))
             , nType         (std::move(rSession.nType))
             , nAuthFailures (rSession.nAuthFailures.load())
-            , nLastActive   (rSession.nLastActive.load())
+            , nLastAccess   (rSession.nLastAccess.load())
             {
                 /* We wnat to reset our pointers here so they don't get sniped. */
                 rSession.pCredentials.SetNull();
@@ -129,7 +129,7 @@ namespace TAO::API
                 hashGenesis   = std::move(rSession.hashGenesis);
                 nType         = std::move(rSession.nType);
                 nAuthFailures = rSession.nAuthFailures.load();
-                nLastActive   = rSession.nLastActive.load();
+                nLastAccess   = rSession.nLastAccess.load();
 
                 /* We wnat to reset our pointers here so they don't get sniped. */
                 rSession.pCredentials.SetNull();
@@ -146,7 +146,7 @@ namespace TAO::API
             , hashGenesis   (pCredentials->Genesis())
             , nType         (nTypeIn)
             , nAuthFailures (0)
-            , nLastActive   (runtime::unifiedtimestamp())
+            , nLastAccess   (runtime::unifiedtimestamp())
             {
             }
 
@@ -272,6 +272,19 @@ namespace TAO::API
             }
 
 
+            /** Accessed
+             *
+             *  Get the last timestamp session was accessed.
+             *
+             *  @return The unix timestamp of last session access.
+             *
+             **/
+            uint64_t Accessed() const
+            {
+                return nLastAccess.load();
+            }
+
+
             /** Active
              *
              *  Get the number of seconds a session has been active.
@@ -281,7 +294,7 @@ namespace TAO::API
              **/
             uint64_t Active() const
             {
-                return (runtime::unifiedtimestamp() - nLastActive.load());
+                return (runtime::unifiedtimestamp() - nLastAccess.load());
             }
         };
 
@@ -328,6 +341,18 @@ namespace TAO::API
          *
          **/
         static bool Active(const uint256_t& hashGenesis);
+
+
+        /** Accessed
+         *
+         *  Get the last time that session was accessed
+         *
+         *  @param[in] jParams The parameters to check against.
+         *
+         *  @return the timestamp of last session access
+         *
+         **/
+        static uint64_t Accessed(const encoding::json& jParams);
 
 
         /** Authenticate
