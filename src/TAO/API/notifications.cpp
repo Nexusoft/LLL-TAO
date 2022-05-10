@@ -187,7 +187,7 @@ namespace TAO::API
                     for(const auto& pairAsset : mapAssets)
                     {
                         /* Get our current token we are working on. */
-                        const uint256_t hashToken = pairAsset.first;
+                        const uint256_t& hashToken = pairAsset.first;
 
                         /* Read our token now. */
                         TAO::Register::Object oToken;
@@ -195,7 +195,7 @@ namespace TAO::API
                             continue;
 
                         /* Cache our asset's address as reference. */
-                        const uint256_t hashAsset =
+                        const uint256_t& hashAsset =
                             pairAsset.second.second;
 
                         /* Check for sigchain sequence for given token. */
