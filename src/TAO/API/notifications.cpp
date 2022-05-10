@@ -225,8 +225,8 @@ namespace TAO::API
 
                             /* Check for sigchain sequence for given token. */
                             uint32_t nSequence = 1;
-                            if(!LLD::Ledger->ReadSequence(hashToken, nSequence))
-                                continue;
+                            //if(!LLD::Ledger->ReadSequence(hashToken, nSequence))
+                            //    continue;
 
                             /* Cache our account so we can run through events. */
                             Accounts& rAccounts =
