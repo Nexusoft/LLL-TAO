@@ -69,7 +69,7 @@ namespace TAO::API
                 const uint256_t& hashGenesis = rSession.second;
 
                 /* Check that account is unlocked. */
-                if(!Authentication::Unlocked(hashSession, TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS))
+                if(!Authentication::Unlocked(hashSession, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS))
                     continue;
 
                 /* Build a json object. */
@@ -201,7 +201,7 @@ namespace TAO::API
                         {
                             /* Now build our official transaction. */
                             const uint512_t hashTx =
-                                BuildAndAccept(jSession, vSanitized);
+                                BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
 
                             debug::log(0, FUNCTION, "Built ", hashTx.SubString(), " with ", vSanitized.size(), " contracts");
                         }

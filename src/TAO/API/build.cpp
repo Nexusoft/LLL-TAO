@@ -60,7 +60,7 @@ namespace TAO::API
         jRet["address"] = hashRegister.ToString();
 
         /* Handle passing txid if not in -autotx mode. */
-        const uint512_t hashTx = BuildAndAccept(jParams, vContracts);
+        const uint512_t hashTx = BuildAndAccept(jParams, vContracts, TAO::Ledger::PinUnlock::TRANSACTIONS);
         if(hashTx != 0)
             jRet["txid"] = hashTx.ToString();
 
@@ -76,7 +76,7 @@ namespace TAO::API
         jRet["success"] = true; //just a little response for if using -autotx
 
         /* Handle passing txid if not in -autotx mode. */
-        const uint512_t hashTx = BuildAndAccept(jParams, vContracts);
+        const uint512_t hashTx = BuildAndAccept(jParams, vContracts, TAO::Ledger::PinUnlock::TRANSACTIONS);
         if(hashTx != 0)
             jRet["txid"] = hashTx.ToString();
 
@@ -96,7 +96,8 @@ namespace TAO::API
 
 
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
-    uint512_t BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
+    uint512_t BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts,
+                             const uint8_t nUnlockedActions)
     {
         /* Handle auto-tx feature. */
         if(config::GetBoolArg("-autotx", false)) //TODO: pipe in -autotx
@@ -120,6 +121,8 @@ namespace TAO::API
         if(vContracts.size() >= 99)
             throw Exception(-120, "Maximum number of contracts exceeded (99), please try again or use -autotx mode.");
 
+        //TODO: we want to automatically build multiple transactions if contracts exceed 99 rather than throwing an error
+
         /* The new key scheme */
         const uint8_t nScheme =
             ExtractScheme(jParams, "brainpool, falcon");
@@ -128,7 +131,7 @@ namespace TAO::API
         SecureString strPIN;
 
         /* Unlock grabbing the pin, while holding a new authentication lock */
-        RECURSIVE(Authentication::Unlock(jParams, strPIN, TAO::Ledger::PinUnlock::TRANSACTIONS));
+        RECURSIVE(Authentication::Unlock(jParams, strPIN, nUnlockedActions));
 
         /* Get an instance of our credentials. */
         const auto& pCredentials =

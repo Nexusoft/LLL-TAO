@@ -147,18 +147,6 @@ namespace TAO::API
         const uint256_t hashGenesis =
             Authentication::Caller(jParams);
 
-        /* Get an instance of our credentials. */
-        const auto& pCredentials =
-            Authentication::Credentials(jParams);
-
-        /* Create the transaction. */
-        TAO::Ledger::Transaction tx;
-        if(!Users::CreateTransaction(pCredentials, strPIN, tx))
-            throw Exception(-17, "Failed to create transaction");
-
-        /* tracks how many contracts we have added to the current transaction */
-        uint8_t nContracts = 0;
-
         /* Iterate the legacy accounts */
         std::vector<TAO::Operation::Contract> vContracts;
         for(const auto& accountBalance :  mapAccountBalances)
@@ -203,34 +191,6 @@ namespace TAO::API
             /* If we still haven't found an account then create a new one */
             if(!hashAccount.IsValid())
             {
-                /* Make sure we have enough room in the current TX for this account and name. If not then submit this transaction
-                   and create a new one.  NOTE we add a maximum of 99 to leave room for the fee  */
-                if(nContracts +(fCreateName ? 1 : 2) >= 99)
-                {
-                    /* Add the fee */
-                    AddFee(tx);
-
-                    /* Execute the operations layer. */
-                    if(!tx.Build())
-                        throw Exception(-44, "Transaction failed to build");
-
-                    /* Sign the transaction. */
-                    if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
-                        throw Exception(-31, "Ledger failed to sign transaction");
-
-                    /* Execute the operations layer. */
-                    if(!TAO::Ledger::mempool.Accept(tx))
-                        throw Exception(-32, "Failed to accept");
-
-                    /* Create the next transaction and reset the counter */
-                    tx = TAO::Ledger::Transaction();
-                    if(!Users::CreateTransaction(pCredentials, strPIN, tx))
-                        throw Exception(-17, "Failed to create transaction");
-
-
-                    nContracts = 0;
-                }
-
                 /* Generate a random hash for this objects register address */
                 hashAccount = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
@@ -260,7 +220,7 @@ namespace TAO::API
 
         /* If there are accounts to create then submit the transaction */
         if(!vContracts.empty())
-            BuildAndAccept(jParams, vContracts);
+            BuildAndAccept(jParams, vContracts, TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS);
 
         /* Once the accounts have been created transfer the balance from the legacy account to the new ones */
         for(const auto& accountBalance :  mapAccountBalances)
