@@ -165,51 +165,42 @@ namespace TAO::API
                             continue;
                         }
                     }
+                }
 
-                    /* Build our transaction if there are contracts. */
-                    while(!vContracts.empty())
-                    {
-                        /* Track our current index. */
-                        uint64_t nIndex = 0;
+                /* Build our transaction if there are contracts. */
+                if(vContracts.empty())
+                    continue;
 
-                        /* Build a list of contracts for transaction. */
-                        std::vector<TAO::Operation::Contract> vSanitized;
+                /* Build a list of contracts for transaction. */
+                std::vector<TAO::Operation::Contract> vSanitized;
 
-                        /* Sanitize our contract here to make sure we build a valid transaction. */
-                        std::map<uint256_t, TAO::Register::State> mapStates;
-                        for( ; vSanitized.size() < 100 && nIndex < vContracts.size(); ++nIndex)
-                        {
-                            /* Grab a reference of contract. */
-                            TAO::Operation::Contract& rContract = vContracts[nIndex];
+                /* Sanitize our contract here to make sure we build a valid transaction. */
+                std::map<uint256_t, TAO::Register::State> mapStates;
+                for(auto& rContract : vContracts)
+                {
+                    /* Bind our contract now to a timestamp and caller. */
+                    rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
 
-                            /* Bind our contract now to a timestamp and caller. */
-                            rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
+                    /* Sanitize the contract. */
+                    if(sanitize_contract(rContract, mapStates))
+                        vSanitized.emplace_back(std::move(rContract));
+                }
 
-                            /* Sanitize the contract. */
-                            if(sanitize_contract(rContract, mapStates))
-                                vSanitized.emplace_back(std::move(rContract));
-                        }
+                /* Check for available contracts. */
+                if(vSanitized.empty())
+                    continue;
 
-                        /* Erase all the contracts that were iterated. */
-                        vContracts.erase(vContracts.begin(), vContracts.begin() + nIndex);
+                try
+                {
+                    /* Now build our official transaction. */
+                    const std::vector<uint512_t> vHashes =
+                        BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
 
-                        /* Check for available contracts. */
-                        if(vSanitized.empty())
-                            continue;
-
-                        try
-                        {
-                            /* Now build our official transaction. */
-                            const uint512_t hashTx =
-                                BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
-
-                            debug::log(0, FUNCTION, "Built ", hashTx.SubString(), " with ", vSanitized.size(), " contracts");
-                        }
-                        catch(const Exception& e)
-                        {
-                            debug::warning(FUNCTION, "Failed to build ", hashGenesis.SubString(), ": ", e.what());
-                        }
-                    }
+                    debug::log(0, FUNCTION, "Built ", vHashes.size(), "transactions for ", vSanitized.size(), " contracts");
+                }
+                catch(const Exception& e)
+                {
+                    debug::warning(FUNCTION, "Failed to build ", hashGenesis.SubString(), ": ", e.what());
                 }
             }
         }

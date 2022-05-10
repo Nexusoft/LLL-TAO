@@ -80,11 +80,11 @@ namespace TAO::API
      *  @param[in] vContracts The list of contracts to build tx for.
      *  @param[in] nUnlockActions The specific action that is being requested in building transaction.
      *
-     *  @return the txid of the transaction that was just built.
+     *  @return a list of txid's of the transactions that were just built.
      *
      **/
-    uint512_t BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts,
-                             const uint8_t nUnlockedAction);
+    std::vector<uint512_t> BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts,
+                                          const uint8_t nUnlockedAction);
 
 
     /** AddFee

@@ -60,9 +60,26 @@ namespace TAO::API
         jRet["address"] = hashRegister.ToString();
 
         /* Handle passing txid if not in -autotx mode. */
-        const uint512_t hashTx = BuildAndAccept(jParams, vContracts, TAO::Ledger::PinUnlock::TRANSACTIONS);
-        if(hashTx != 0)
-            jRet["txid"] = hashTx.ToString();
+        const std::vector<uint512_t> vHashes = BuildAndAccept(jParams, vContracts, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        if(!vHashes.empty())
+        {
+            /* Check for single item. */
+            if(vHashes.size() == 1)
+                jRet["txid"] = vHashes[0].ToString();
+            else
+            {
+                /* Build an array of hashes in response. */
+                encoding::json jHashes =
+                    encoding::json::array();
+
+                /* Iterate our hashes and add to json array. */
+                for(const auto& rHash : vHashes)
+                    jHashes.push_back(rHash.ToString());
+
+                /* Add to return value as array now. */
+                jRet["txid"] = jHashes;
+            }
+        }
 
         return jRet;
     }
@@ -76,9 +93,26 @@ namespace TAO::API
         jRet["success"] = true; //just a little response for if using -autotx
 
         /* Handle passing txid if not in -autotx mode. */
-        const uint512_t hashTx = BuildAndAccept(jParams, vContracts, TAO::Ledger::PinUnlock::TRANSACTIONS);
-        if(hashTx != 0)
-            jRet["txid"] = hashTx.ToString();
+        const std::vector<uint512_t> vHashes = BuildAndAccept(jParams, vContracts, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        if(!vHashes.empty())
+        {
+            /* Check for single item. */
+            if(vHashes.size() == 1)
+                jRet["txid"] = vHashes[0].ToString();
+            else
+            {
+                /* Build an array of hashes in response. */
+                encoding::json jHashes =
+                    encoding::json::array();
+
+                /* Iterate our hashes and add to json array. */
+                for(const auto& rHash : vHashes)
+                    jHashes.push_back(rHash.ToString());
+
+                /* Add to return value as array now. */
+                jRet["txid"] = jHashes;
+            }
+        }
 
         return jRet;
     }
@@ -96,13 +130,13 @@ namespace TAO::API
 
 
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
-    uint512_t BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts,
-                             const uint8_t nUnlockedActions)
+    std::vector<uint512_t> BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts,
+                                          const uint8_t nUnlockedActions)
     {
         /* Handle auto-tx feature. */
         if(config::GetBoolArg("-autotx", false)) //TODO: pipe in -autotx
         {
-            return 0;
+            return std::vector<uint512_t>();
         }
 
         /* Check for sigchain maturity on mainnet. */
@@ -116,12 +150,6 @@ namespace TAO::API
             if(!CheckMature(hashGenesis))
                 throw Exception(-202, "Signature chain not mature. Please wait for coinbase/coinstake maturity");
         }
-
-        /* Let's check our contract size isn't out of bounds. */
-        if(vContracts.size() >= 99)
-            throw Exception(-120, "Maximum number of contracts exceeded (99), please try again or use -autotx mode.");
-
-        //TODO: we want to automatically build multiple transactions if contracts exceed 99 rather than throwing an error
 
         /* The new key scheme */
         const uint8_t nScheme =
@@ -137,44 +165,64 @@ namespace TAO::API
         const auto& pCredentials =
             Authentication::Credentials(jParams);
 
-        /* Create the transaction. */
-        TAO::Ledger::Transaction tx;
-        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nScheme))
-            throw Exception(-17, "Failed to create transaction");
+        /* Build our return value list. */
+        std::vector<uint512_t> vHashes;
 
-        /* Add the contracts. */
-        for(const auto& rContract : vContracts)
-            tx << rContract;
-
-        /* Add the contract fees. */
-        AddFee(tx); //XXX: this returns true/false if fee was added, don't think we need this since it doesn't appear to be used
-
-        /* Execute the operations layer. */
-        if(!tx.Build())
-            throw Exception(-44, "Transaction failed to build");
-
-        /* Sign the transaction. */
-        if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
-            throw Exception(-31, "Ledger failed to sign transaction");
-
-        /* Double check our next hash if -safemode enabled. */
-        if(config::GetBoolArg("-safemode", false))
+        /* Build our transaction if there are contracts. */
+        uint64_t nIndex = 0;
+        while(nIndex < vContracts.size())
         {
-            /* Re-calculate our next hash if safemode forcing not to use cache. */
-            const uint256_t hashNext =
-                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN, false), tx.nNextType);
+            /* Build our transactions in batches of 99 contracts at a time. */
+            std::vector<TAO::Operation::Contract> vBuild;
+            for( ; vBuild.size() < 99 && nIndex < vContracts.size(); ++nIndex)
+                vBuild.emplace_back(std::move(vContracts[nIndex]));
 
-            /* Check that this next hash is what we are expecting. */
-            if(tx.hashNext != hashNext)
-                throw Exception(-67, "-safemode next hash mismatch, broadcast terminated");
+            /* Check for available contracts. */
+            if(vBuild.empty())
+                break;
+
+            /* Create the transaction. */
+            TAO::Ledger::Transaction tx;
+            if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nScheme))
+                throw Exception(-17, "Failed to create transaction");
+
+            /* Add the contracts. */
+            for(const auto& rContract : vBuild)
+                tx << rContract;
+
+            /* Add the contract fees. */
+            if(!AddFee(tx) && nIndex < vContracts.size())
+                tx << vContracts[++nIndex]; //add additional contract and iterate our index
+
+            /* Execute the operations layer. */
+            if(!tx.Build())
+                throw Exception(-44, "Transaction failed to build");
+
+            /* Sign the transaction. */
+            if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
+                throw Exception(-31, "Ledger failed to sign transaction");
+
+            /* Double check our next hash if -safemode enabled. */
+            if(config::GetBoolArg("-safemode", false))
+            {
+                /* Re-calculate our next hash if safemode forcing not to use cache. */
+                const uint256_t hashNext =
+                    TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN, false), tx.nNextType);
+
+                /* Check that this next hash is what we are expecting. */
+                if(tx.hashNext != hashNext)
+                    throw Exception(-67, "-safemode next hash mismatch, broadcast terminated");
+            }
+
+            /* Execute the operations layer. */
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw Exception(-32, "Failed to accept");
+
+            /* Add our hashes to a return vector. */
+            vHashes.push_back(tx.GetHash());
         }
 
-        /* Execute the operations layer. */
-        if(!TAO::Ledger::mempool.Accept(tx))
-            throw Exception(-32, "Failed to accept");
-
-        //TODO: we want to add a localdb index here, so it can be re-broadcast on restart
-        return tx.GetHash();
+        return vHashes;
     }
 
 
