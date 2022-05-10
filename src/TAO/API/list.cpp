@@ -13,7 +13,10 @@ ________________________________________________________________________________
 
 #include <unordered_set>
 
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
+
+#include <TAO/API/types/accounts.h>
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -24,7 +27,6 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/transaction.h>
 
 #include <LLD/include/global.h>
-#include <LLP/include/global.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -70,150 +72,40 @@ namespace TAO::API
 
 
     /* Lists all object registers partially owned by way of tokens that the sig chain owns  */
-    bool ListPartial(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters)
+    bool ListPartial(const uint256_t& hashGenesis, std::map<uint256_t, std::pair<Accounts, uint256_t>> &mapAssets)
     {
-        /* Find all token accounts owned by the caller */
-        std::vector<TAO::Register::Address> vAccounts;
-        if(!ListAccounts(hashGenesis, vAccounts, true, false))
+        /* Get the list of registers owned by this sig chain */
+        std::vector<std::pair<uint256_t, uint256_t>> vAddresses;
+        LLD::Logical->ListTokenized(hashGenesis, vAddresses);
+
+        /* Check for empty return. */
+        if(vAddresses.size() == 0)
             return false;
 
-        /* Loop through all accounts to find partial account ownerships. */
-        for(const auto& rAddress : vAccounts)
+        /* Add the register data to the response */
+        for(const auto& pairTokenized : vAddresses)
         {
-            /* Make sure it is an account or the token itself (in case not all supply has been distributed)*/
-            if(!rAddress.IsAccount() && !rAddress.IsToken())
+            /* Grab our object from disk. */
+            TAO::Register::Object oAccount;
+            if(!LLD::Register->ReadObject(pairTokenized.first, oAccount))
                 continue;
 
-            /* Get the account from the register DB. */
-            TAO::Register::Object tObject;
-            if(!LLD::Register->ReadObject(rAddress, tObject, TAO::Ledger::FLAGS::MEMPOOL))
-                throw Exception(-13, "Object not found");
-
-            /* Check that this is an account or token */
-            if(tObject.Base() != TAO::Register::OBJECTS::ACCOUNT)
+            /* Check for available balance. */
+            if(oAccount.get<uint64_t>("balance") == 0)
                 continue;
 
-            /* Get the token*/
-            const TAO::Register::Address hashToken =
-                tObject.get<uint256_t>("token") ;
+            /* Get a copy of our token-id. */
+            const uint256_t hashToken =
+                oAccount.get<uint256_t>("token");
 
-            /* NXS can't be used to tokenize an asset so if this is a NXS account we can skip it */
-            if(hashToken == 0)
-                continue;
+            /* Initialize our map if required. */
+            if(!mapAssets.count(hashToken))
+                mapAssets[hashToken] = std::make_pair(Accounts(GetDecimals(oAccount)), pairTokenized.second);
 
-            /* Get all objects owned by this token */
-            std::vector<TAO::Register::Address> vTokenizedObjects;
-            ListTokenizedObjects(hashGenesis, hashToken, vTokenizedObjects);
-
-            /* Add them to the list if they are not already in there */
-            for(const auto& address : vTokenizedObjects)
-            {
-                if(std::find(vRegisters.begin(), vRegisters.end(), address) == vRegisters.end())
-                    vRegisters.push_back(address);
-            }
+            /* Add our new value to our map now. */
+            mapAssets[hashToken].first.Insert(pairTokenized.first, oAccount.get<uint64_t>("balance"));
         }
 
-        return vRegisters.size() > 0;
-    }
-
-
-    /* Finds all objects that have been tokenized and therefore owned by hashToken */
-    bool ListTokenizedObjects(const uint256_t& hashGenesis, const TAO::Register::Address& hashToken,
-                              std::vector<TAO::Register::Address>& vObjects)
-    {
-        /* There is no index of the assets owned by a token.  Therefore, to determine which assets the token owns, we can scan
-           through the events for the token itself to find all object transfers where the new owner is the token. */
-
-
-        /* If we are in client mode we need to first check whether we own the token or not.  If we don't then we have to
-           download the sig chain of the token owner so that we have access to all of the token's events. */
-        if(config::fClient.load())
-        {
-            /* First grab the token object */
-            TAO::Register::Object token;
-            if(!LLD::Register->ReadState(hashToken, token, TAO::Ledger::FLAGS::LOOKUP))
-                throw Exception(-125, "Token not found");
-
-            /* Now check the owner.  We should already be subscribed to events for any tokens that the caller owns, so if this
-               token owner is not the caller then we need to synchronize to the events of the token */
-            if(token.hashOwner != hashGenesis)
-            {
-                if(LLP::TRITIUM_SERVER)
-                {
-                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                    if(pNode != nullptr)
-                    {
-                        /* The transaction ID of the last event */
-                        uint512_t hashLast = 0;
-                        LLD::Ledger->ReadLastEvent(hashToken, hashLast);
-
-                        debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing events for foreign token");
-
-                        /* Request the sig chain. */
-                        debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashToken.SubString());
-
-                        LLP::TritiumNode::BlockingMessage(30000, pNode.get(), LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashToken, hashLast);
-
-                        debug::log(1, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashToken.SubString());
-                    }
-                    else
-                        debug::error(FUNCTION, "no connections available...");
-                }
-            }
-        }
-
-        /* Transaction for the event. */
-        TAO::Ledger::Transaction tx;
-
-        /* Iterate all events in the sig chain */
-        uint32_t nSequence = 0;
-        while(LLD::Ledger->ReadEvent(hashToken, nSequence, tx))
-        {
-            /* Loop through transaction contracts. */
-            uint32_t nContracts = tx.Size();
-            for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
-            {
-                /* Reset the op stream */
-                tx[nContract].Reset();
-
-                /* The operation */
-                uint8_t nOp;
-                tx[nContract] >> nOp;
-
-                if(nOp == TAO::Operation::OP::TRANSFER)
-                {
-                    /* The register address being transferred */
-                    TAO::Register::Address hashRegister;
-                    tx[nContract] >> hashRegister;
-
-                    /* Get the new owner hash */
-                    TAO::Register::Address hashTo;
-                    tx[nContract] >> hashTo;
-
-                    /* Read the force transfer flag */
-                    uint8_t nType = 0;
-                    tx[nContract] >> nType;
-
-                    /* Ensure this was a forced transfer (which tokenized asset transfers must be) */
-                    if(nType != TAO::Operation::TRANSFER::FORCE)
-                        continue;
-
-                    /* Check that the recipient of the transfer is the token */
-                    if(hashToken != hashTo)
-                        continue;
-
-                    vObjects.push_back(hashRegister);
-                }
-
-                else
-                    continue;
-            }
-
-            /* Iterate the sequence id forward. */
-            ++nSequence;
-        }
-
-        /* Return true if we found any objects owned by the token */
-        return vObjects.size() > 0;
+        return !mapAssets.empty();
     }
 } // End TAO namespace

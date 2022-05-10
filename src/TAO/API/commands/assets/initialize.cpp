@@ -179,6 +179,18 @@ namespace TAO::API
             )
         );
 
+        /* Handle for all LIST operations with noun PARTIAL. */
+        mapFunctions["list/partial"] = Function
+        (
+            std::bind
+            (
+                &Assets::Partial,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Handle for all TOKENIZE operations. */
         mapFunctions["tokenize"] = Function
         (

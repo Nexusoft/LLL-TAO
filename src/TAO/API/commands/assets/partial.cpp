@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/authentication.h>
-#include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/commands/assets.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/compare.h>
@@ -27,7 +27,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Generic method to list object registers by sig chain*/
-    encoding::json Templates::List(const encoding::json& jParams, const bool fHelp)
+    encoding::json Assets::Partial(const encoding::json& jParams, const bool fHelp)
     {
         /* Get the Genesis ID. */
         const uint256_t hashGenesis =
@@ -41,9 +41,8 @@ namespace TAO::API
         ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
         /* Get the list of registers owned by this sig chain */
-        std::vector<TAO::Register::Address> vAddresses;
-        LLD::Logical->ListRegisters(hashGenesis, vAddresses);
-        LLD::Logical->ListUnclaimed(hashGenesis, vAddresses);
+        std::vector<std::pair<uint256_t, uint256_t>> vAddresses;
+        LLD::Logical->ListTokenized(hashGenesis, vAddresses);
 
         /* Check for empty return. */
         if(vAddresses.size() == 0)
@@ -53,23 +52,36 @@ namespace TAO::API
         std::set<encoding::json, CompareResults> setRegisters({}, CompareResults(strOrder, strColumn));
 
         /* Add the register data to the response */
-        for(const auto& hashRegister : vAddresses)
+        for(const auto& pairTokenized : vAddresses)
         {
             /* Grab our object from disk. */
-            TAO::Register::Object tObject;
-            if(!LLD::Register->ReadObject(hashRegister, tObject))
+            TAO::Register::Object oAccount;
+            if(!LLD::Register->ReadObject(pairTokenized.first, oAccount))
                 continue;
 
-            /* Check our object standards. */
-            if(!CheckStandard(jParams, tObject))
+            /* Check for available balance. */
+            if(oAccount.get<uint64_t>("balance") == 0)
+                continue;
+
+            /* Grab our asset from disk. */
+            TAO::Register::Object oAsset;
+            if(!LLD::Register->ReadObject(pairTokenized.second, oAsset))
                 continue;
 
             /* Populate the response */
             encoding::json jRegister =
-                StandardToJSON(jParams, tObject, hashRegister);
+                StandardToJSON(jParams, oAsset, pairTokenized.second);
+
+            /* Read our token now. */
+            TAO::Register::Object oToken;
+            if(!LLD::Register->ReadObject(oAsset.hashOwner, oToken))
+                continue;
+
+            /* Calculate our total ownership. */
+
 
             /* Check that we match our filters. */
-            if(!FilterObject(jParams, jRegister, tObject))
+            if(!FilterObject(jParams, jRegister, oAsset))
                 continue;
 
             /* Filter out our expected fieldnames if specified. */

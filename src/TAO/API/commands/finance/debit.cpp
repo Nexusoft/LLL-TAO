@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
+#include <TAO/API/types/accounts.h>
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/finance.h>
@@ -45,8 +46,6 @@ ________________________________________________________________________________
 #include <Util/templates/datastream.h>
 #include <Util/include/string.h>
 #include <Util/include/math.h>
-
-#include "accounts.h" //same directory
 
 /* Global TAO namespace. */
 namespace TAO::API

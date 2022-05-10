@@ -413,6 +413,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_trust_address.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
+		build/API_commands_assets_partial.o \
 		build/API_commands_assets_tokenize.o \
 		build/API_commands_finance_balances.o \
 		build/API_commands_finance_burn.o \

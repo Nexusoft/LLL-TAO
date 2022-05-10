@@ -17,6 +17,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/exception.h>
 
+#include <TAO/Register/types/address.h>
+
 #include <Util/include/math.h>
 
 #include <vector>

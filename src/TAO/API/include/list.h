@@ -14,6 +14,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <map>
+
 /* Forward declarations. */
 namespace TAO::Register { class Address; }
 
@@ -21,6 +23,10 @@ namespace TAO::Register { class Address; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    //forward declarations
+    class Accounts;
+
+
     /** ListObjects
      *
      *  Scans a signature chain to work out all non-standard object that it owns
@@ -54,26 +60,11 @@ namespace TAO::API
      *  Lists all object registers partially owned by way of tokens that the sig chain owns
      *
      *  @param[in] hashGenesis The genesis hash of the signature chain to scan
-     *  @param[out] vObjects The list of object register addresses from sigchain.
+     *  @param[out] mapAssets A compiled map of all accounts supporting given tokenized asset.
      *
-     *  @return A vector of register addresses partially owned by the sig chain
-     *
-     **/
-    bool ListPartial(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vRegisters);
-
-
-    /** ListTokenizedObjects
-     *
-     *  Finds all objects that have been tokenized and therefore owned by hashToken
-     *
-     *  @param[in] hashGenesis The genesis hash for the sig chain owner.
-     *  @param[in] hashToken The token to find objects for
-     *  @param[out] vObjects The list of object register addresses owned by the token.
-     *
-     *  @return A vector of register addresses owned by the token
+     *  @return true if we found partially owned assets
      *
      **/
-    bool ListTokenizedObjects(const uint256_t& hashGenesis, const TAO::Register::Address& hashToken,
-                              std::vector<TAO::Register::Address>& vObjects);
+    bool ListPartial(const uint256_t& hashGenesis, std::map<uint256_t, std::pair<Accounts, uint256_t>> &mapAssets);
 
 }
