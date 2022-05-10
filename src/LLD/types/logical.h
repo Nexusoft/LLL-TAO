@@ -287,6 +287,45 @@ namespace LLD
         bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
 
 
+        /** PushTokenized
+         *
+         *  Push a tokenized register to process for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push register for.
+         *  @param[in] hashRegister The address of register to push
+         *
+         *  @return true if event was pushed successfully.
+         *
+         **/
+        bool PushTokenized(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** EraseTokenized
+         *
+         *  Erase a tokenized register for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push register for.
+         *  @param[in] hashRegister The address of register to erase
+         *
+         *  @return true if event was pushed successfully.
+         *
+         **/
+        bool EraseTokenized(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
+        /** ListTokenized
+         *
+         *  List current active tokenized registers for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] vRegisters The list of events extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListTokenized(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
+
+
         /** PushUnclaimed
          *
          *  Push an unclaimed address event to process for given genesis-id.

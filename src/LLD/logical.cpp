@@ -279,6 +279,71 @@ namespace LLD
     }
 
 
+    /* Push a tokenized register to process for given genesis-id. */
+    bool LogicalDB::PushTokenized(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        /* Start an ACID transaction for this set of records. */
+        TxnBegin();
+
+        /* Get our current sequence number. */
+        uint32_t nOwnerSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("tokenized.sequence"), hashGenesis), nOwnerSequence);
+
+        /* Add our indexing entry by owner sequence number. */
+        if(!Write(std::make_tuple(std::string("tokenized.index"), nOwnerSequence, hashGenesis), hashRegister))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("tokenized.sequence"), hashGenesis), ++nOwnerSequence))
+            return false;
+
+        /* Write our order proof. */
+        if(!Write(std::make_tuple(std::string("tokenized.proof"), hashGenesis, hashRegister)))
+            return false;
+
+        return TxnCommit();
+    }
+
+
+    /* Erase a tokenized register for given genesis-id. */
+    bool LogicalDB::EraseTokenized(const uint256_t& hashGenesis, const uint256_t& hashRegister)
+    {
+        return WriteDeindex(hashGenesis, hashRegister);
+    }
+
+
+    /* List current active tokenized registers for given genesis-id. */
+    bool LogicalDB::ListTokenized(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters)
+    {
+        /* Cache our txid and contract as a pair. */
+        uint256_t hashRegister;
+
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Read our current record. */
+            if(!Read(std::make_tuple(std::string("tokenized.index"), nSequence++, hashGenesis), hashRegister))
+                break;
+
+            /* Check for transfer keys. */
+            if(HasTransfer(hashGenesis, hashRegister))
+                continue; //NOTE: we skip over transfer keys
+
+            /* Check for de-indexed keys. */
+            if(HasDeindex(hashGenesis, hashRegister))
+                continue; //NOTE: we skip over deindexed keys
+
+            /* Check for already executed contracts to omit. */
+            vRegisters.push_back(hashRegister);
+        }
+
+        return !vRegisters.empty();
+    }
+
+
     /* Push an unclaimed address event to process for given genesis-id. */
     bool LogicalDB::PushUnclaimed(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
