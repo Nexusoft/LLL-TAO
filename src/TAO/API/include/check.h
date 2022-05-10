@@ -74,8 +74,10 @@ namespace TAO::API
      *
      *  @param[in] hashGenesis The genesis hash of the signature chain to check
      *
+     *  @return true if the sigchain is mature and ready to process transactions.
+     *
      **/
-    void CheckMature(const uint256_t& hashGenesis);
+    bool CheckMature(const uint256_t& hashGenesis);
 
 
     /** CheckContract

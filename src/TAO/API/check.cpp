@@ -76,11 +76,8 @@ namespace TAO::API
 
     /*  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
      *  Throws an appropriate Exception if it is not mature. */
-    void CheckMature(const uint256_t& hashGenesis)
+    bool CheckMature(const uint256_t& hashGenesis)
     {
-        /* The number of blocks to maturity to return */
-        uint32_t nBlocksToMaturity = 0;
-
         /* Get the user configurable required maturity */
         const uint32_t nMaturityRequired =
             config::GetArg("-maturityrequired", config::fTestNet ? 2 : 33);
@@ -95,7 +92,7 @@ namespace TAO::API
                 /* Get the last transaction from disk for this sig chain */
                 TAO::API::Transaction tx;
                 if(!LLD::Logical->ReadTx(hashLast, tx))
-                    throw Exception(-203, "Failed to read last transaction");
+                    return false;
 
                 /* If the previous transaction is a coinbase or coinstake then check the maturity */
                 if(tx.IsCoinBase() || tx.IsCoinStake())
@@ -106,14 +103,12 @@ namespace TAO::API
 
                     /* Check to see if it is mature */
                     if(nConfirms < nMaturityRequired)
-                        nBlocksToMaturity = nMaturityRequired - nConfirms;
+                        return false;
                 }
             }
         }
 
-        /* Check that blocks to maturity are correct. */
-        if(nBlocksToMaturity > 0)
-            throw Exception(-202, "Signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");
+        return true;
     }
 
 

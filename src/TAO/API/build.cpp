@@ -112,7 +112,8 @@ namespace TAO::API
                 Authentication::Caller(jParams);
 
             /* Check if sigchain is mature. */
-            CheckMature(hashGenesis);
+            if(!CheckMature(hashGenesis))
+                throw Exception(-202, "Signature chain not mature. Please wait for coinbase/coinstake maturity");
         }
 
         /* Let's check our contract size isn't out of bounds. */
