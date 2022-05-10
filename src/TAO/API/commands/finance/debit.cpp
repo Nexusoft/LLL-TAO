@@ -288,7 +288,7 @@ namespace TAO::API
             /* Get the recipent token / account object. */
             TAO::Register::Object objTo;
             if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::LOOKUP))
-                throw Exception(-209, "Recipient is not a valid account");
+                throw Exception(-209, "Recipient account doesn't exist");
 
             /* Check that we are not debiting to tokenized asset. */
             uint256_t hashToken = ~uint256_t(0); //default value should fail

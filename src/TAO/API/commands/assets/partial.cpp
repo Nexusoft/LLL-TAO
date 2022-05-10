@@ -71,7 +71,7 @@ namespace TAO::API
 
             /* Populate the response */
             encoding::json jRegister =
-                StandardToJSON(jParams, oAsset, pairAsset.second.second);
+                RegisterToJSON(oAsset, pairAsset.second.second);
 
             /* Add our ownership value to register. */
             jRegister["ownership"] = double(nOwnership / 100.0);

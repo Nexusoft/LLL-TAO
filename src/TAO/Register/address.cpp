@@ -79,8 +79,8 @@ namespace TAO
             SetType(nType);
 
             /* Check for valid. */
-            if(!IsValid())
-                throw debug::exception(FUNCTION, "invalid type for random ", ToBase58());
+            //if(!IsValid())
+            //    throw debug::exception(FUNCTION, "invalid type for random ", ToBase58());
         }
 
 
