@@ -124,22 +124,17 @@ namespace TAO::API
         encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
 
 
-    private:
-
-
-        /** update_crypto_keys
+        /** Update
          *
-         *  Update the public keys in crypto object register.
+         *  Updates a given sigchain's credentials or recovery phrase
          *
-         *  @param[in] pCredentials The sigchain credential object for signing keys.
-         *  @param[in] strPIN The PIN number to be used in generating new keys.
-         *  @param[in] nKeyType The key to be used for signing given object.
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
          *
-         *  @return a contract containing code to update all specified keys.
+         *  @return The return object in JSON.
          *
          **/
-        TAO::Operation::Contract update_crypto_keys(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
-                                                    const SecureString& strPIN, const uint8_t nKeyType);
+        encoding::json Update(const encoding::json& jParams, const bool fHelp);
 
     };
 }

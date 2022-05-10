@@ -15,13 +15,13 @@ ________________________________________________________________________________
 #include <TAO/Register/types/address.h>
 
 #include <Util/include/json.h>
+#include <Util/include/memory.h>
 
 /* Forward Declarations. */
 namespace TAO::Operation { class Contract;    }
 namespace TAO::Register  { class Object;      }
-namespace TAO::Ledger    { class Transaction; }
+namespace TAO::Ledger    { class Transaction; class SignatureChain; }
 //namespace TAO::Register { class Address;     }
-
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -30,6 +30,23 @@ namespace TAO::API
     /* Alias for our build function types. */
     using build_function_t = std::function<bool (const encoding::json&, const uint32_t,
                                                  const TAO::Operation::Contract&, std::vector<TAO::Operation::Contract>&)>;
+
+    /** BuildCredentials
+     *
+     *  Build a credential set that engages sigchain or modifies its authentication data. This is done not logged in.
+     *
+     *  @param[in] pCredentials The credential object for generating new tx
+     *  @param[in] strPass The new password to build credentials with
+     *  @param[in] strPIN  The new PIN to build credentials with
+     *  @param[in] nKeyType The new key type to build credentials with
+     *  @param[out] tx The transaction object to return by reference.
+     *
+     *  @return the formatted JSON response to return with.
+     *
+     **/
+    bool BuildCredentials(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+                          const SecureString& strPass, const SecureString& strPIN, const uint8_t nKeyType,
+                          TAO::Ledger::Transaction &tx);
 
     /** BuildResponse
      *
@@ -63,8 +80,7 @@ namespace TAO::API
      *
      *  Build a response object that indicates a command succeeded.
      *
-     *  @param[in] jParams The parameters for the relevant API call.
-     *  @param[in] vContracts The list of contracts this call has generated.
+     *  @param[in] jResponse The parameters to append to status message.
      *
      *  @return the formatted JSON response to return with.
      *
@@ -203,4 +219,19 @@ namespace TAO::API
      *
      **/
     TAO::Register::Object BuildObject(uint256_t &hashRegister, const uint16_t nUserType);
+
+
+    /** BuildCrypto
+     *
+     *  Build the active public keys in crypto object register.
+     *
+     *  @param[in] pCredentials The sigchain credential object for signing keys.
+     *  @param[in] strPIN The PIN number to be used in generating new keys.
+     *  @param[in] nKeyType The key to be used for signing given object.
+     *
+     *  @return a contract containing code to update all specified keys.
+     *
+     **/
+    TAO::Operation::Contract BuildCrypto(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+                                         const SecureString& strPIN, const uint8_t nKeyType);
 }

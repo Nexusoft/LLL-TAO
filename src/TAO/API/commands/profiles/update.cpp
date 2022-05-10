@@ -26,7 +26,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Recover a sig chain and set new credentials by supplying the recovery seed */
-    encoding::json Profiles::Recover(const encoding::json& jParams, const bool fHelp)
+    encoding::json Profiles::Update(const encoding::json& jParams, const bool fHelp)
     {
         /* Check for username parameter. */
         if(!CheckParameter(jParams, "username", "string"))

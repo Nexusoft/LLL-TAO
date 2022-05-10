@@ -451,7 +451,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_names_names.o \
 		build/API_commands_names_resolve.o \
 		build/API_commands_profiles_create.o \
-		build/API_commands_profiles_crypto.o \
 		build/API_commands_profiles_initialize.o \
 		build/API_commands_profiles_notifications.o \
 		build/API_commands_profiles_status.o \

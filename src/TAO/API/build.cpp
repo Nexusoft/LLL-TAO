@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <Legacy/include/evaluate.h>
 
 #include <TAO/API/include/build.h>
@@ -41,8 +43,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/transaction.h>
-
-#include <LLD/include/global.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/convert.h>
 #include <Util/include/math.h>
@@ -50,6 +51,40 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /* Build a credential set that engages sigchain or modifies its authentication data. This is done not logged in. */
+    bool BuildCredentials(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+                          const SecureString& strPass, const SecureString& strPIN, const uint8_t nKeyType,
+                          TAO::Ledger::Transaction &tx)
+    {
+        /* Create the transaction. */
+        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nKeyType))
+            return false;
+
+        /* We need at least one contract to change our next hash. */
+        tx << BuildCrypto(pCredentials, strPIN, nKeyType);
+
+        /* Now set the new credentials */
+        tx.NextHash(pCredentials->Generate(tx.nSequence + 1, strPass, strPIN));
+
+        /* Execute the operations layer. */
+        if(!tx.Build())
+            return false;
+
+        /* Double check our next hash if -safemode enabled. */
+        if(config::GetBoolArg("-safemode", false))
+        {
+            /* Re-calculate our next hash if safemode forcing not to use cache. */
+            const uint256_t hashNext =
+                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPass, strPIN), tx.nKeyType);
+
+            /* Check that this next hash is what we are expecting. */
+            if(tx.hashNext != hashNext)
+                return false;
+        }
+
+        return true;
+    }
+
     /* Build a response object for a transaction that was built. */
     encoding::json BuildResponse(const encoding::json& jParams, const TAO::Register::Address& hashRegister,
                              const std::vector<TAO::Operation::Contract>& vContracts)
@@ -926,5 +961,64 @@ namespace TAO::API
             TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         return tObject;
+    }
+
+
+    /* Update the public keys in crypto object register. */
+    TAO::Operation::Contract BuildCrypto(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+                                         const SecureString& strPIN, const uint8_t nKeyType)
+    {
+        /* Generate register address for crypto register deterministically */
+        const TAO::Register::Address addrCrypto =
+            TAO::Register::Address(std::string("crypto"), pCredentials->Genesis(), TAO::Register::Address::CRYPTO);
+
+        /* Read the existing crypto object register. */
+        TAO::Register::Object oCrypto;
+        if(!LLD::Register->ReadObject(addrCrypto, oCrypto))
+            throw Exception(-33, "Failed to read crypto object register");
+
+        /* Declare operation stream to serialize all of the field updates*/
+        TAO::Operation::Stream ssUpdate;
+
+        /* Update the AUTH key if enabled. */
+        if(oCrypto.get<uint256_t>("auth") != 0)
+        {
+            ssUpdate << std::string("auth") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+            ssUpdate << pCredentials->KeyHash("auth", 0, strPIN, nKeyType);
+        }
+
+        /* Update the LISP network key if enabled. */
+        if(oCrypto.get<uint256_t>("lisp") != 0)
+        {
+            ssUpdate << std::string("lisp") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+            ssUpdate << pCredentials->KeyHash("lisp", 0, strPIN, nKeyType);
+        }
+
+        /* Update the NETWORK key if enabled. */
+        if(oCrypto.get<uint256_t>("network") != 0)
+        {
+            ssUpdate << std::string("network") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+            ssUpdate << pCredentials->KeyHash("network", 0, strPIN, nKeyType);
+        }
+
+        /* Update the SIGN key if enabled. */
+        if(oCrypto.get<uint256_t>("sign") != 0)
+        {
+            ssUpdate << std::string("sign") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+            ssUpdate << pCredentials->KeyHash("sign", 0, strPIN, nKeyType);
+        }
+
+        /* Update the VERIFY key if enabled. */
+        if(oCrypto.get<uint256_t>("verify") != 0)
+        {
+            ssUpdate << std::string("verify") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+            ssUpdate << pCredentials->KeyHash("verify", 0, strPIN, nKeyType);
+        }
+
+        /* Add the crypto update contract. */
+        TAO::Operation::Contract tContract;
+        tContract << uint8_t(TAO::Operation::OP::WRITE) << addrCrypto << ssUpdate.Bytes();
+
+        return tContract;
     }
 } // End TAO namespace

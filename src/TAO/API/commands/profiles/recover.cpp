@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/build.h>
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
 
@@ -107,23 +108,10 @@ namespace TAO::API
 
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;
-        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nKeyType))
+        if(!BuildCredentials(pCredentials, strPass, strPIN, nKeyType, tx))
         {
             pCredentials.free();
             throw Exception(-17, "Failed to create transaction");
-        }
-
-        /* We need at least one contract to change our next hash. */
-        tx << update_crypto_keys(pCredentials, strPIN, nKeyType);
-
-        /* Now set the new credentials */
-        tx.NextHash(pCredentials->Generate(tx.nSequence + 1, strPass, strPIN));
-
-        /* Execute the operations layer. */
-        if(!tx.Build())
-        {
-            pCredentials.free();
-            throw Exception(-44, "Transaction failed to build");
         }
 
         /* Sign the transaction. */
@@ -131,21 +119,6 @@ namespace TAO::API
         {
             pCredentials.free();
             throw Exception(-31, "Ledger failed to sign transaction");
-        }
-
-        /* Double check our next hash if -safemode enabled. */
-        if(config::GetBoolArg("-safemode", false))
-        {
-            /* Re-calculate our next hash if safemode forcing not to use cache. */
-            const uint256_t hashNext =
-                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPass, strPIN), tx.nKeyType);
-
-            /* Check that this next hash is what we are expecting. */
-            if(tx.hashNext != hashNext)
-            {
-                pCredentials.free();
-                throw Exception(-67, "-safemode next hash mismatch, broadcast terminated");
-            }
         }
 
         /* Execute the operations layer. */
