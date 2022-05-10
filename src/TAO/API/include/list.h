@@ -14,6 +14,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/API/types/accounts.h>
+
 #include <map>
 
 /* Forward declarations. */
@@ -23,9 +25,6 @@ namespace TAO::Register { class Address; }
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    //forward declarations
-    class Accounts;
-
 
     /** ListObjects
      *

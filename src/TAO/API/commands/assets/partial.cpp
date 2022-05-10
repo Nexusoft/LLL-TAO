@@ -41,44 +41,40 @@ namespace TAO::API
         ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
         /* Get the list of registers owned by this sig chain */
-        std::vector<std::pair<uint256_t, uint256_t>> vAddresses;
-        LLD::Logical->ListTokenized(hashGenesis, vAddresses);
-
-        /* Check for empty return. */
-        if(vAddresses.size() == 0)
+        std::map<uint256_t, std::pair<Accounts, uint256_t>> mapAssets;
+        if(!ListPartial(hashGenesis, mapAssets))
             throw Exception(-74, "No registers found");
 
         /* Build our object list and sort on insert. */
         std::set<encoding::json, CompareResults> setRegisters({}, CompareResults(strOrder, strColumn));
 
         /* Add the register data to the response */
-        for(const auto& pairTokenized : vAddresses)
+        for(const auto& pairAsset : mapAssets)
         {
-            /* Grab our object from disk. */
-            TAO::Register::Object oAccount;
-            if(!LLD::Register->ReadObject(pairTokenized.first, oAccount))
-                continue;
-
-            /* Check for available balance. */
-            if(oAccount.get<uint64_t>("balance") == 0)
-                continue;
-
             /* Grab our asset from disk. */
             TAO::Register::Object oAsset;
-            if(!LLD::Register->ReadObject(pairTokenized.second, oAsset))
+            if(!LLD::Register->ReadObject(pairAsset.second.second, oAsset))
                 continue;
-
-            /* Populate the response */
-            encoding::json jRegister =
-                StandardToJSON(jParams, oAsset, pairTokenized.second);
 
             /* Read our token now. */
             TAO::Register::Object oToken;
             if(!LLD::Register->ReadObject(oAsset.hashOwner, oToken))
                 continue;
 
-            /* Calculate our total ownership. */
+            /* Cache our maximum balance for given token. */
+            const uint64_t nBalance =
+                pairAsset.second.first.MaxBalance();
 
+            /* Calculate our partial ownership now. */
+            const uint64_t nOwnership =
+                (nBalance * 10000) / oToken.get<uint64_t>("supply"); //we use 10000 as 100 * 100 for 100.00 percent displayed
+
+            /* Populate the response */
+            encoding::json jRegister =
+                StandardToJSON(jParams, oAsset, pairAsset.second.second);
+
+            /* Add our ownership value to register. */
+            jRegister["ownership"] = double(nOwnership / 100.0);
 
             /* Check that we match our filters. */
             if(!FilterObject(jParams, jRegister, oAsset))

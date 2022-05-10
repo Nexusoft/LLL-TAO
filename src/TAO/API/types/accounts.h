@@ -220,6 +220,24 @@ namespace TAO::API
         }
 
 
+        /** MaxBalance
+         *
+         *  Get the max balance of current token for all accounts
+         *
+         **/
+        uint64_t MaxBalance() const
+        {
+            /* Keep track of return value. */
+            uint64_t nBalance = 0;
+
+            /* Iterate all of our addresses. */
+            for(const auto& rAddress : vAddresses)
+                nBalance += rAddress.second;
+
+            return nBalance;
+        }
+
+
         /** GetAddress
          *
          *  Gets the current address of the account we are operating on.
