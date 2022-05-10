@@ -155,7 +155,7 @@ namespace TAO
             }
 
             /* Update the Crypto keys with the new pin */
-            update_crypto_keys(userUpdated, strNewPin, tx);
+            //update_crypto_keys(userUpdated, strNewPin, tx);
 
             /* Calculate the prestates and poststates. */
             if(!tx.Build())
@@ -243,48 +243,6 @@ namespace TAO
             jsonRet["txid"]  = tx.GetHash().ToString();
 
             return jsonRet;
-        }
-
-
-        /* Generates new keys in the Crypto object register for a signature chain, using the specified pin, and adds the update
-        *  contract to the transaction. */
-        void Users::update_crypto_keys(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN, TAO::Ledger::Transaction& tx )
-        {
-            /* Generate register address for crypto register deterministically */
-            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), user->Genesis(), TAO::Register::Address::CRYPTO);
-
-            /* The Crypto object for this sig chain */
-            TAO::Register::Object crypto;
-
-            /* Retrieve the existing Crypto register so that we can update the keys. */
-            if(!LLD::Register->ReadState(hashCrypto, crypto))
-                throw Exception(-219, "Could not retrieve Crypto object");
-
-            /* Parse the crypto object register so that we can read the current fields. */
-            if(!crypto.Parse())
-                throw Exception(-14, "Object failed to parse");
-
-            /* Declare operation stream to serialize all of the field updates*/
-            TAO::Operation::Stream ssOperationStream;
-
-            /* Update the keys */
-            if(crypto.get<uint256_t>("auth") != 0)
-                ssOperationStream << std::string("auth") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("auth", 0, strPIN, tx.nKeyType);
-
-            if(crypto.get<uint256_t>("lisp") != 0)
-                ssOperationStream << std::string("lisp") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("lisp", 0, strPIN, tx.nKeyType);
-
-            if(crypto.get<uint256_t>("network") != 0)
-                ssOperationStream << std::string("network") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("network", 0, strPIN, tx.nKeyType);
-
-            if(crypto.get<uint256_t>("sign") != 0)
-                ssOperationStream << std::string("sign") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("sign", 0, strPIN, tx.nKeyType);
-
-            if(crypto.get<uint256_t>("verify") != 0)
-                ssOperationStream << std::string("verify") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T) << user->KeyHash("verify", 0, strPIN, tx.nKeyType);
-
-            /* Add the crypto update contract. */
-            tx[tx.Size()] << uint8_t(TAO::Operation::OP::WRITE) << hashCrypto << ssOperationStream.Bytes();
         }
     }
 }

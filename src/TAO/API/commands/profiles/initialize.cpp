@@ -104,7 +104,7 @@ namespace TAO::API
                 std::placeholders::_2
             )
         );
-        
+
 
         /* Populate our MASTER standard. */
         mapStandards["master"] = Standard
@@ -135,6 +135,18 @@ namespace TAO::API
             std::bind
             (
                 &Profiles::Notifications,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for all RECOVER operations. */
+        mapFunctions["recover"] = Function
+        (
+            std::bind
+            (
+                &Profiles::Recover,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

@@ -15,6 +15,11 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
+#include <Util/include/memory.h>
+
+namespace TAO::Operation { class Contract;       }
+namespace TAO::Ledger    { class SignatureChain; }
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -80,6 +85,19 @@ namespace TAO::API
         encoding::json Notifications(const encoding::json& jParams, const bool fHelp);
 
 
+        /** Recover
+         *
+         *  Recovers a profile using recovery phrase.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Recover(const encoding::json& jParams, const bool fHelp);
+
+
         /** Status
          *
          *  Gets the status of given profile
@@ -104,6 +122,24 @@ namespace TAO::API
          *
          **/
         encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
+
+
+    private:
+
+
+        /** update_crypto_keys
+         *
+         *  Update the public keys in crypto object register.
+         *
+         *  @param[in] pCredentials The sigchain credential object for signing keys.
+         *  @param[in] strPIN The PIN number to be used in generating new keys.
+         *  @param[in] nKeyType The key to be used for signing given object.
+         *
+         *  @return a contract containing code to update all specified keys.
+         *
+         **/
+        TAO::Operation::Contract update_crypto_keys(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+                                                    const SecureString& strPIN, const uint8_t nKeyType);
 
     };
 }
