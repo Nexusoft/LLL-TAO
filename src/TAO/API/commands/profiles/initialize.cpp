@@ -104,6 +104,7 @@ namespace TAO::API
                 std::placeholders::_2
             )
         );
+        
 
         /* Populate our MASTER standard. */
         mapStandards["master"] = Standard
@@ -129,11 +130,11 @@ namespace TAO::API
         );
 
         /* Handle for all transactions operations. */
-        mapFunctions["transactions"] = Function
+        mapFunctions["notifications"] = Function
         (
             std::bind
             (
-                &Profiles::Transactions,
+                &Profiles::Notifications,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
@@ -141,11 +142,23 @@ namespace TAO::API
         );
 
         /* Handle for all transactions operations. */
-        mapFunctions["notifications"] = Function
+        mapFunctions["status"] = Function
         (
             std::bind
             (
-                &Profiles::Notifications,
+                &Profiles::Status,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for all transactions operations. */
+        mapFunctions["transactions"] = Function
+        (
+            std::bind
+            (
+                &Profiles::Transactions,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

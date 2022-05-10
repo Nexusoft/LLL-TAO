@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #include <TAO/API/include/check.h>
 
 #include <TAO/API/types/authentication.h>
-#include <TAO/API/types/transaction.h>
 #include <TAO/API/types/commands/sessions.h>
 
 /* Global TAO namespace. */
@@ -25,53 +24,6 @@ namespace TAO::API
     /* Get status information for the currently logged in user. */
     encoding::json Sessions::Status(const encoding::json& jParams, const bool fHelp)
     {
-        /* Get our calling genesis. */
-        const uint256_t hashGenesis =
-            Authentication::Caller(jParams);
-
-        /* We require PIN for status when in multiuser mode. */
-        bool fUsername = false;
-        if(config::fMultiuser.load())
-        {
-            /* We want to drop call if we have incorrect pin attempt. */
-            if(CheckParameter(jParams, "pin", "string, number") && !Authentication::Authenticate(jParams))
-                throw Exception(-333, "Account failed to authenticate");
-
-            /* If we made it here, either pin wasn't added or we passed authentication. */
-            fUsername = true;
-        }
-        else
-            fUsername = true;
-
-        /* Populate Username */
-        encoding::json jRet;
-        if(fUsername)
-            jRet["username"] = Authentication::Credentials(jParams)->UserName().c_str();
-
-        /* We need this for our database queries. */
-        uint512_t hashLast = 0;
-
-        /* Add the genesis */
-        jRet["genesis"]      = hashGenesis.ToString();
-        jRet["confirmed"]    = bool(LLD::Logical->ReadFirst(hashGenesis, hashLast));
-        jRet["lastactive"]   = Authentication::Accessed(jParams);
-        jRet["location"]     = jParams["request"]["type"]; //replace this with Authentication::Location(jParams);
-        jRet["recovery"]     = false;
-        jRet["transactions"] = 0;
-
-        /* Read the last transaction for the sig chain */
-        if(LLD::Logical->ReadLast(hashGenesis, hashLast))
-        {
-            /* Get the transaction from disk. */
-            Transaction tx;
-            if(!LLD::Logical->ReadTx(hashLast, tx))
-                throw Exception(-108, "Failed to read transaction");
-
-            /* Populate transactional level data. */
-            jRet["transactions"] = tx.nSequence + 1;
-            jRet["recovery"]     = bool(tx.hashRecovery != 0);
-        }
-
         /* Populate unlocked status */
         uint8_t nCurrentActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
         Authentication::Unlocked(jParams, nCurrentActions);
@@ -85,8 +37,18 @@ namespace TAO::API
             { "transactions",  bool(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS  )}
         };
 
-        /* Add unlocked to return. */
-        jRet["unlocked"] = jUnlocked;
+        /* Get our calling genesis. */
+        const uint256_t hashGenesis =
+            Authentication::Caller(jParams);
+
+        /* Add the genesis */
+        const encoding::json jRet =
+        {
+            { "genesis",  hashGenesis.ToString()            },
+            { "accessed", Authentication::Accessed(jParams) },
+            { "location", jParams["request"]["type"]        }, //replace this with Authentication::Location(jParams);
+            { "unlocked", jUnlocked                         }
+        };
 
         return jRet;
     }
