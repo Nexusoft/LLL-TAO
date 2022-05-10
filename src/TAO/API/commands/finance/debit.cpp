@@ -224,10 +224,6 @@ namespace TAO::API
             mapAccounts[hashToken].Insert(hashFrom, objFrom.get<uint64_t>("balance"));
         }
 
-        /* Check that there are not too many recipients to fit into one transaction */
-        if(vRecipients.size() > 99)
-            throw Exception(-215, "Max number of recipients (99) exceeded");
-
         /* Build our list of contracts. */
         std::vector<TAO::Operation::Contract> vContracts;
         for(const auto& jRecipient : vRecipients)
