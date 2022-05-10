@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/contracts/exchange.h>
 
+#include <Util/include/math.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -153,25 +155,51 @@ namespace TAO::API
                     if(Names::ReverseLookup(hashRequest, strName))
                         jRequired["ticker"] = strName;
 
-                    /* Calculate our price based on market pairs. */
-                    double nPrice = 0.0;
-
                     /* Handle if required is our base token. */
                     std::string strType = "";
                     if(hashRequest != pairMarket.second)
                     {
+                        /* Check if we need to adjust our figures. */
+                        const uint8_t nRequestDecimals = GetDecimals(pairMarket.first);
+                        const uint8_t nOrderedDecimals = GetDecimals(pairMarket.second);
+
+                        /* Check if we need to adjust requested total. */
+                        if(nRequestDecimals < nOrderedDecimals)
+                            nRequest *= uint64_t(math::pow(10, nOrderedDecimals - nRequestDecimals));
+
+                        /* Check if we need to adjust the order total. */
+                        else if(nOrderedDecimals < nRequestDecimals)
+                            nAmount *= uint64_t(math::pow(10, nRequestDecimals - nOrderedDecimals));
+
                         /* Calculate our price. */
-                        nPrice =
-                            (FormatBalance(nAmount, hashToken) / FormatBalance(nRequest, hashRequest));
+                        const uint64_t nPrice =
+                            (nAmount * math::pow(10, nOrderedDecimals)) / nRequest;
+
+                        jRet["price"]       = FormatBalance(nPrice, nOrderedDecimals);
 
                         /* Check what type of order this is. */
                         strType = "bid";
                     }
                     else
                     {
+                        /* Check if we need to adjust our figures. */
+                        const uint8_t nRequestDecimals = GetDecimals(pairMarket.second);
+                        const uint8_t nOrderedDecimals = GetDecimals(pairMarket.first);
+
+                        /* Check if we need to adjust requested total. */
+                        if(nRequestDecimals < nOrderedDecimals)
+                            nRequest *= math::pow(10, nOrderedDecimals - nRequestDecimals);
+
+                        /* Check if we need to adjust the order total. */
+                        else if(nOrderedDecimals < nRequestDecimals)
+                            nAmount *= math::pow(10, nRequestDecimals - nOrderedDecimals);
+
                         /* Calculate our price. */
-                        nPrice =
-                            (FormatBalance(nRequest, hashRequest) / FormatBalance(nAmount, hashToken));
+                        const uint64_t nPrice =
+                            (nRequest * math::pow(10, nRequestDecimals)) / nAmount;
+
+                        /* Set our price now with correct decimals. */
+                        jRet["price"]  = FormatBalance(nPrice, nRequestDecimals);
 
                         /* Check what type of order this is. */
                         strType = "ask";
@@ -179,7 +207,6 @@ namespace TAO::API
 
 
                     /* Now populate the rest of our data. */
-                    jRet["price"]       = FormatBalance(uint64_t(nPrice * GetFigures(pairMarket.second)), pairMarket.second);
                     jRet["type"]        = strType;
                     jRet["contract"]    = jFrom;
                     jRet["order"]       = jRequired;

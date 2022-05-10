@@ -66,8 +66,6 @@ namespace TAO::API
             std::vector<std::pair<uint512_t, uint32_t>> vBids;
             if(LLD::Logical->ListAllOrders(pairMarket, vBids))
             {
-                debug::log(0, vBids.size(), " bid size");
-
                 /* Build our object list and sort on insert. */
                 std::set<encoding::json, CompareResults> setBids({}, CompareResults(strOrder, strColumn));
 
@@ -137,8 +135,6 @@ namespace TAO::API
             {
                 /* Build our object list and sort on insert. */
                 std::set<encoding::json, CompareResults> setAsks({}, CompareResults(strOrder, strColumn));
-
-                debug::log(0, vAsks.size(), " ask size");
 
                 /* Build our list of orders now. */
                 for(const auto& pairOrder : vAsks)

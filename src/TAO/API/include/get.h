@@ -48,6 +48,18 @@ namespace TAO::API
 
     /** GetDecimals
      *
+     *  Gets the decimals from an object using token address
+     *
+     *  @param[in] hashToken The token address we are getting figures for.
+     *
+     *  @return the whole 64-bit value with figures expanded
+     *
+     **/
+    uint64_t GetDecimals(const uint256_t& hashToken);
+
+
+    /** GetDecimals
+     *
      *  Retrieves the number of decimals that applies to amounts for this token or account object.
      *  If the object register passed in is a token account then we need to look at the token definition
      *

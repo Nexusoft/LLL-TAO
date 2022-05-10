@@ -63,6 +63,26 @@ namespace TAO::API
     }
 
 
+    /* Converts the decimals from an object into raw figures using power function */
+    uint64_t GetDecimals(const uint256_t& hashToken)
+    {
+        /* Check for NXS as a value. */
+        if(hashToken == 0)
+            return TAO::Ledger::NXS_COIN;
+
+        /* Otherwise let's lookup our token object. */
+        TAO::Register::Object tToken;
+        if(!LLD::Register->ReadObject(hashToken, tToken))
+            throw Exception(-13, "Object not found");
+
+        /* Let's check that a token was passed in. */
+        if(tToken.Standard() != TAO::Register::OBJECTS::TOKEN)
+            throw Exception(-15, "Object is not a token");
+
+        return tToken.get<uint8_t>("decimals");
+    }
+
+
     /* Retrieves the number of decimals that applies to amounts for this token or account object.
      * If the object register passed in is a token account then we need to look at the token definition
      */
