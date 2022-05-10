@@ -552,7 +552,7 @@ namespace TAO::API
             }
 
             /* If addressed to non-standard object, this could be a tokenized debit, so do some checks to find out. */
-            else if(nStandardBase == TAO::Register::OBJECTS::NONSTANDARD || TAO::Register::REGISTER::STATE(nStandardBase))
+            else if(addrRecipient.IsObject())
             {
                 /* Enforce address resolution for wildcard claim. */
                 if(addrCredit == TAO::API::ADDRESS_NONE)

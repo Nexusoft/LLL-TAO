@@ -230,10 +230,6 @@ namespace TAO::API
         );
 
 
-        //mapFunctions["create/asset"]             = Function(std::bind(&Assets::Create,    this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["update/asset"]             = Function(std::bind(&Assets::Update,    this, std::placeholders::_1, std::placeholders::_2));
-
-
         /* DEPRECATED */
         mapFunctions["list/asset/history"] = Function
         (
