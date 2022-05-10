@@ -55,6 +55,7 @@ namespace TAO::API
         jRet["genesis"]      = hashGenesis.ToString();
         jRet["confirmed"]    = bool(LLD::Logical->ReadFirst(hashGenesis, hashLast));
         jRet["lastactive"]   = Authentication::Accessed(jParams);
+        jRet["location"]     = jParams["request"]["type"]; //replace this with Authentication::Location(jParams);
         jRet["recovery"]     = false;
         jRet["transactions"] = 0;
 

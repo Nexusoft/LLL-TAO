@@ -51,6 +51,9 @@ namespace TAO::API
     /* Handle notification of all events for API. */
     void Notifications::Manager(const int64_t nThread, const uint64_t nThreads)
     {
+        /* Track our active token accounts. */
+        std::map<uint256_t, std::vector<uint256_t>> mapTokens;
+
         /* Loop until shutdown. */
         while(!config::fShutdown.load())
         {
