@@ -168,13 +168,17 @@ namespace TAO::API
         /* Build our return value list. */
         std::vector<uint512_t> vHashes;
 
+        /* Get our limits from commandline. */
+        const uint32_t nLimits =
+            std::min(uint32_t(config::GetArg("-maxcontracts", 99)), uint32_t(99));
+
         /* Build our transaction if there are contracts. */
         uint64_t nIndex = 0;
         while(nIndex < vContracts.size())
         {
             /* Build our transactions in batches of 99 contracts at a time. */
             std::vector<TAO::Operation::Contract> vBuild;
-            for( ; vBuild.size() < uint32_t(config::GetArg("-maxcontracts", 99)) && nIndex < vContracts.size(); ++nIndex)
+            for( ; vBuild.size() < nLimits && nIndex < vContracts.size(); ++nIndex)
                 vBuild.emplace_back(std::move(vContracts[nIndex]));
 
             /* Check for available contracts. */
@@ -191,8 +195,8 @@ namespace TAO::API
                 tx << rContract;
 
             /* Add the contract fees. */
-            if(!AddFee(tx) && nIndex < vContracts.size())
-                tx << vContracts[++nIndex]; //add additional contract and iterate our index
+            if(!AddFee(tx) && nIndex < vContracts.size() && tx.Size() == 99) //we check +1 so we know we have an available index
+                tx << vContracts[nIndex++]; //add additional contract and iterate our index
 
             /* Execute the operations layer. */
             if(!tx.Build())
@@ -509,7 +513,7 @@ namespace TAO::API
             const uint8_t nStandardBase = oRecipient.Base();
             if(nStandardBase == TAO::Register::OBJECTS::ACCOUNT)
             {
-                /* Check that the debit was made to an account that we own */
+                /* Check that the debit was made to an account that we don't own, we are checking here to reverse payments */
                 if(oRecipient.hashOwner != hashGenesis)
                 {
                     /* Retrieve the account we are debiting from */

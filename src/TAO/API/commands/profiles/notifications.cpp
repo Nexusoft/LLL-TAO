@@ -53,7 +53,7 @@ namespace TAO::API
         if(LLD::Logical->ListEvents(hashGenesis, vEvents))
         {
             //we need to list unspent contracts awaiting fulfillment from LLD::Logical->ListContracts
-            
+
             /* Flip our list if ascending order. */
             if(strOrder == "asc")
                 std::reverse(vEvents.begin(), vEvents.end());

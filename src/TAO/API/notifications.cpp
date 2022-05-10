@@ -93,17 +93,27 @@ namespace TAO::API
                 if(vEvents.empty())
                     continue;
 
+                /* Track our unique events as we progress forward. */
+                std::set<std::pair<uint512_t, uint32_t>> setUnique;
+
                 /* Build our list of contracts. */
                 std::vector<TAO::Operation::Contract> vContracts;
                 for(const auto& rEvent : vEvents)
                 {
+                    /* Check for unique events. */
+                    if(setUnique.count(rEvent))
+                        continue;
+
+                    /* Add our event to our unique set. */
+                    setUnique.insert(rEvent);
+
                     /* Grab a reference of our hash. */
                     const uint512_t& hashEvent = rEvent.first;
 
                     /* Get the transaction from disk. */
                     TAO::API::Transaction tx;
                     if(!LLD::Ledger->ReadTx(hashEvent, tx))
-                        throw Exception(-108, "Failed to read transaction");
+                        continue;
 
                     /* Check if contract has been spent. */
                     if(tx.Spent(hashEvent, rEvent.second))
@@ -196,7 +206,7 @@ namespace TAO::API
                     const std::vector<uint512_t> vHashes =
                         BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
 
-                    debug::log(0, FUNCTION, "Built ", vHashes.size(), "transactions for ", vSanitized.size(), " contracts");
+                    debug::log(0, FUNCTION, "Built ", vHashes.size(), " transactions for ", vSanitized.size(), " contracts");
                 }
                 catch(const Exception& e)
                 {
