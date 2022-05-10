@@ -104,6 +104,17 @@ namespace TAO::API
             return 0;
         }
 
+        /* Check for sigchain maturity on mainnet. */
+        if(!config::fHybrid.load())
+        {
+            /* Get the calling genesis-id. */
+            const uint256_t hashGenesis =
+                Authentication::Caller(jParams);
+
+            /* Check if sigchain is mature. */
+            CheckMature(hashGenesis);
+        }
+
         /* Let's check our contract size isn't out of bounds. */
         if(vContracts.size() >= 99)
             throw Exception(-120, "Maximum number of contracts exceeded (99), please try again or use -autotx mode.");

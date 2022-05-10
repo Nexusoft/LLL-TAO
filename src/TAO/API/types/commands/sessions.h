@@ -67,18 +67,6 @@ namespace TAO::API
         encoding::json Create(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Save
-         *
-         *  Saves the users session into the Logical DB so that it can be resumed later after restart.
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Save(const encoding::json& jParams, const bool fHelp);
-
 
         /** Load
          *
@@ -91,6 +79,19 @@ namespace TAO::API
          *
          **/
         encoding::json Load(const encoding::json& jParams, const bool fHelp);
+
+
+        /** Lock
+         *
+         *  Lock an account for any given action
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Lock(const encoding::json& jParams, const bool fHelp);
 
 
         /** Has
@@ -106,9 +107,9 @@ namespace TAO::API
         encoding::json Has(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Lock
+        /** Save
          *
-         *  Lock an account for any given action
+         *  Saves the users session into the Logical DB so that it can be resumed later after restart.
          *
          *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
@@ -116,7 +117,20 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Lock(const encoding::json& jParams, const bool fHelp);
+        encoding::json Save(const encoding::json& jParams, const bool fHelp);
+
+
+        /** Status
+         *
+         *  Gets the status of current active session
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Status(const encoding::json& jParams, const bool fHelp);
 
 
         /** Terminate

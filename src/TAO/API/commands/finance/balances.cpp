@@ -116,7 +116,8 @@ namespace TAO::API
             const TAO::Register::Address hashToken = rBalances.first;
 
             /* Grab our decimals from balances map. */
-            const uint8_t nDecimals = rBalances.second.at("decimals");
+            const uint8_t nDecimals =
+                rBalances.second.at("decimals");
 
             /* Grab unconfirmed balances as a pair. */
             const uint64_t nOutgoing =

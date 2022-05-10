@@ -32,11 +32,11 @@ namespace TAO::API
     bool CheckAddress(const std::string& strValue)
     {
         /* Decode the incoming string into a register address */
-        TAO::Register::Address address;
-        address.SetBase58(strValue);
+        TAO::Register::Address tAddress;
+        tAddress.SetBase58(strValue);
 
         /* Check to see whether it is valid */
-        return address.IsValid();
+        return tAddress.IsValid();
     }
 
 
@@ -78,46 +78,42 @@ namespace TAO::API
      *  Throws an appropriate Exception if it is not mature. */
     void CheckMature(const uint256_t& hashGenesis)
     {
-        /* No need to check this in private mode as there is no PoS/Pow */
-        if(!config::fHybrid.load())
+        /* The number of blocks to maturity to return */
+        uint32_t nBlocksToMaturity = 0;
+
+        /* Get the user configurable required maturity */
+        const uint32_t nMaturityRequired =
+            config::GetArg("-maturityrequired", config::fTestNet ? 2 : 33);
+
+        /* If set to 0 then there is no point checking the maturity so return early */
+        if(nMaturityRequired > 0)
         {
-            /* The number of blocks to maturity to return */
-            uint32_t nBlocksToMaturity = 0;
-
-            /* Get the user configurable required maturity */
-            const uint32_t nMaturityRequired =
-                config::GetArg("-maturityrequired", config::fTestNet ? 2 : 33);
-
-            /* If set to 0 then there is no point checking the maturity so return early */
-            if(nMaturityRequired > 0)
+            /* The hash of the last transaction for this sig chain from disk */
+            uint512_t hashLast = 0;
+            if(LLD::Logical->ReadLast(hashGenesis, hashLast))
             {
-                /* The hash of the last transaction for this sig chain from disk */
-                uint512_t hashLast = 0;
-                if(LLD::Logical->ReadLast(hashGenesis, hashLast))
+                /* Get the last transaction from disk for this sig chain */
+                TAO::API::Transaction tx;
+                if(!LLD::Logical->ReadTx(hashLast, tx))
+                    throw Exception(-203, "Failed to read last transaction");
+
+                /* If the previous transaction is a coinbase or coinstake then check the maturity */
+                if(tx.IsCoinBase() || tx.IsCoinStake())
                 {
-                    /* Get the last transaction from disk for this sig chain */
-                    TAO::API::Transaction tx;
-                    if(!LLD::Logical->ReadTx(hashLast, tx))
-                        throw Exception(-203, "Failed to read last transaction");
+                    /* Get number of confirmations of previous TX */
+                    uint32_t nConfirms = 0;
+                    LLD::Ledger->ReadConfirmations(hashLast, nConfirms);
 
-                    /* If the previous transaction is a coinbase or coinstake then check the maturity */
-                    if(tx.IsCoinBase() || tx.IsCoinStake())
-                    {
-                        /* Get number of confirmations of previous TX */
-                        uint32_t nConfirms = 0;
-                        LLD::Ledger->ReadConfirmations(hashLast, nConfirms);
-
-                        /* Check to see if it is mature */
-                        if(nConfirms < nMaturityRequired)
-                            nBlocksToMaturity = nMaturityRequired - nConfirms;
-                    }
+                    /* Check to see if it is mature */
+                    if(nConfirms < nMaturityRequired)
+                        nBlocksToMaturity = nMaturityRequired - nConfirms;
                 }
             }
-
-            /* Check that blocks to maturity are correct. */
-            if(nBlocksToMaturity > 0)
-                throw Exception(-202, "Signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");
         }
+
+        /* Check that blocks to maturity are correct. */
+        if(nBlocksToMaturity > 0)
+            throw Exception(-202, "Signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");
     }
 
 
