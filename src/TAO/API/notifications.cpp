@@ -15,7 +15,9 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/list.h>
 
+#include <TAO/API/types/accounts.h>
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/notifications.h>
@@ -173,6 +175,115 @@ namespace TAO::API
                         {
                             debug::warning(FUNCTION, "unknown OP: ", std::hex, uint32_t(nOP));
                             continue;
+                        }
+                    }
+                }
+
+                /* Get the list of registers owned by this sig chain */
+                std::map<uint256_t, std::pair<Accounts, uint256_t>> mapAssets;
+                if(ListPartial(hashGenesis, mapAssets))
+                {
+                    /* Add the register data to the response */
+                    for(const auto& pairAsset : mapAssets)
+                    {
+                        /* Get our current token we are working on. */
+                        const uint256_t hashToken = pairAsset.first;
+
+                        /* Read our token now. */
+                        TAO::Register::Object oToken;
+                        if(!LLD::Register->ReadObject(hashToken, oToken))
+                            continue;
+
+                        /* Cache our asset's address as reference. */
+                        const uint256_t hashAsset =
+                            pairAsset.second.second;
+
+                        /* Check for sigchain sequence for given token. */
+                        uint32_t nSequence = 1;
+                        if(!LLD::Ledger->ReadSequence(hashToken, nSequence))
+                            continue;
+
+                        /* Cache our account so we can run through events. */
+                        Accounts& rAccounts =
+                            const_cast<Accounts&>(pairAsset.second.first);
+
+                        /* Check for sigchain events for given token. */
+                        TAO::Ledger::Transaction tx;
+                        while(LLD::Ledger->ReadEvent(hashToken, nSequence++, tx))
+                        {
+                            /* Cache our txid for transaction. */
+                            const uint512_t hashTx = tx.GetHash();
+
+                            /* Iterate through our contracts. */
+                            for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                            {
+                                /* Check for unique events. */
+                                if(setUnique.count(std::make_pair(hashTx, nContract)))
+                                    continue;
+
+                                /* Get a reference of our internal contract. */
+                                const TAO::Operation::Contract& rContract = tx[nContract];
+
+                                /* Reset the contract to the position of the primitive. */
+                                rContract.SeekToPrimitive();
+
+                                /* The operation */
+                                uint8_t nOP;
+                                rContract >> nOP;
+
+                                /* Check for DEBIT. */
+                                if(nOP != TAO::Operation::OP::DEBIT)
+                                    continue;
+
+                                /* Skip source address. */
+                                rContract.Seek(32);
+
+                                /* Extract destination. */
+                                uint256_t hashRecipient;
+                                rContract >> hashRecipient;
+
+                                /* Check for correct recipient. */
+                                if(hashRecipient != hashAsset)
+                                    continue;
+
+                                /* Reset our accounts iterator. */
+                                rAccounts.Reset();
+
+                                /* Loop through all accounts and address the events. */
+                                while(rAccounts.HasNext())
+                                {
+                                    /* Get our current address. */
+                                    const TAO::Register::Address addrAccount =
+                                        rAccounts.GetAddress();
+
+                                    /* Skip over account if active proof. */
+                                    if(LLD::Ledger->HasProof(addrAccount, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                                        continue;
+
+                                    /* Build our credit now. */
+                                    try
+                                    {
+                                        /* Build some input parameters. */
+                                        encoding::json jBuild = jSession;
+                                        jBuild["proof"]   = addrAccount.ToString();
+                                        //jBuild["address"] = ; this is our deposit address
+
+                                        /* Build our credit contract now. */
+                                        if(!BuildCredit(jBuild, nContract, rContract, vContracts))
+                                            continue;
+                                    }
+                                    catch(const Exception& e)
+                                    {
+                                        debug::warning(FUNCTION, "failed to build crecit for ", hashTx.SubString(), ": ", e.what());
+                                    }
+
+                                    /* Iterate to our next account now. */
+                                    rAccounts++;
+                                }
+
+                                /* Push contract pair to executed set. */
+                                setUnique.insert(std::make_pair(hashTx, nContract));
+                            }
                         }
                     }
                 }

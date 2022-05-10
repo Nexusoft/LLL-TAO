@@ -43,7 +43,7 @@ namespace TAO::API
 
 
         /** Iterator for our vector to get current account. **/
-        uint32_t nIterator;
+        mutable uint32_t nIterator;
 
 
         /** The decimals for this specific token. **/
@@ -235,6 +235,17 @@ namespace TAO::API
                 nBalance += rAddress.second;
 
             return nBalance;
+        }
+
+
+        /** Reset
+         *
+         *  Reset the iterator starting point to 0
+         *
+         **/
+        void Reset() const
+        {
+            nIterator = 0;
         }
 
 
