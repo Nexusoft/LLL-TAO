@@ -91,10 +91,6 @@ namespace TAO::API
 
                 //we need to list our active legacy transaction events
 
-                /* Process contracts if we found from disk. */
-                if(vEvents.empty())
-                    continue;
-
                 /* Track our unique events as we progress forward. */
                 std::set<std::pair<uint512_t, uint32_t>> setUnique;
 
@@ -148,6 +144,7 @@ namespace TAO::API
                             catch(const Exception& e)
                             {
                                 debug::warning(FUNCTION, "failed to build crecit for ", hashEvent.SubString(), ": ", e.what());
+                                continue;
                             }
 
                             break;
@@ -165,6 +162,7 @@ namespace TAO::API
                             catch(const Exception& e)
                             {
                                 debug::warning(FUNCTION, "failed to build claim for ", hashEvent.SubString(), ": ", e.what());
+                                continue;
                             }
 
                             break;
@@ -210,10 +208,6 @@ namespace TAO::API
                             /* Get our current token we are working on. */
                             const uint256_t& hashToken = pairAsset.first;
 
-                            /* Make sure we have a deposit account. */
-                            if(!mapAccounts.count(hashToken))
-                                continue;
-
                             /* Read our token now. */
                             TAO::Register::Object oToken;
                             if(!LLD::Register->ReadObject(hashToken, oToken))
@@ -224,7 +218,7 @@ namespace TAO::API
                                 pairAsset.second.second;
 
                             /* Check for sigchain sequence for given token. */
-                            uint32_t nSequence = 1;
+                            uint32_t nSequence = 0;
                             //if(!LLD::Ledger->ReadSequence(hashToken, nSequence))
                             //    continue;
 
@@ -234,7 +228,7 @@ namespace TAO::API
 
                             /* Check for sigchain events for given token. */
                             TAO::Ledger::Transaction tx;
-                            while(LLD::Ledger->ReadEvent(hashToken, nSequence++, tx))
+                            while(LLD::Ledger->ReadEvent(hashToken, ++nSequence, tx))
                             {
                                 /* Cache our txid for transaction. */
                                 const uint512_t hashTx = tx.GetHash();
@@ -261,7 +255,17 @@ namespace TAO::API
                                         continue;
 
                                     /* Skip source address. */
-                                    rContract.Seek(32);
+                                    uint256_t hashSource;
+                                    rContract >> hashSource;
+
+                                    /* Check that we are using correct token. */
+                                    TAO::Register::Object oSource;
+                                    if(!LLD::Register->ReadObject(hashSource, oSource))
+                                        continue;
+
+                                    /* Make sure we have a deposit account. */
+                                    if(!mapAccounts.count(oSource.get<uint256_t>("token")))
+                                        continue;
 
                                     /* Extract destination. */
                                     uint256_t hashRecipient;
@@ -275,32 +279,47 @@ namespace TAO::API
                                     rAccounts.Reset();
 
                                     /* Loop through all accounts and address the events. */
-                                    while(rAccounts.HasNext())
+                                    while(!rAccounts.Empty())
                                     {
                                         /* Get our current address. */
                                         const TAO::Register::Address addrAccount =
                                             rAccounts.GetAddress();
 
                                         /* Skip over account if active proof. */
-                                        if(LLD::Ledger->HasProof(addrAccount, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
-                                            continue;
-
-                                        /* Build our credit now. */
-                                        try
+                                        if(!LLD::Ledger->HasProof(addrAccount, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
                                         {
-                                            /* Build some input parameters. */
-                                            encoding::json jBuild = jSession;
-                                            jBuild["proof"]   = addrAccount.ToString();
-                                            jBuild["address"] = mapAccounts[hashToken].ToString();
+                                            /* Build our credit now. */
+                                            try
+                                            {
+                                                /* Build some input parameters. */
+                                                encoding::json jBuild = jSession;
+                                                jBuild["proof"]   = addrAccount.ToString();
+                                                jBuild["address"] = mapAccounts[oSource.get<uint256_t>("token")].ToString();
 
-                                            /* Build our credit contract now. */
-                                            if(!BuildCredit(jBuild, nContract, rContract, vContracts))
-                                                continue;
+                                                /* Build our credit contract now. */
+                                                if(!BuildCredit(jBuild, nContract, rContract, vContracts))
+                                                {
+                                                    debug::warning("credit didn't build");
+
+                                                    /* Check if we have a next account. */
+                                                    if(!rAccounts.HasNext())
+                                                        break;
+
+                                                    /* Iterate to our next account now. */
+                                                    rAccounts++;
+
+                                                    continue;
+                                                }
+                                            }
+                                            catch(const Exception& e)
+                                            {
+                                                debug::warning(FUNCTION, "failed to build partial crecit for ", hashTx.SubString(), ": ", e.what());
+                                            }
                                         }
-                                        catch(const Exception& e)
-                                        {
-                                            debug::warning(FUNCTION, "failed to build crecit for ", hashTx.SubString(), ": ", e.what());
-                                        }
+
+                                        /* Check if we have a next account. */
+                                        if(!rAccounts.HasNext())
+                                            break;
 
                                         /* Iterate to our next account now. */
                                         rAccounts++;

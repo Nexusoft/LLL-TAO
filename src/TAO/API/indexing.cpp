@@ -193,16 +193,20 @@ namespace TAO::API
                     case TAO::Operation::OP::DEBIT:
                     {
                         /* Get our register address. */
-                        uint256_t hashAddress;
+                        TAO::Register::Address hashAddress;
                         rContract >> hashAddress;
 
                         /* Deserialize recipient from contract. */
-                        uint256_t hashRecipient;
+                        TAO::Register::Address hashRecipient;
                         rContract >> hashRecipient;
 
                         /* Special check when handling a DEBIT. */
                         if(nOP == TAO::Operation::OP::DEBIT)
                         {
+                            /* Skip over partials as this is handled seperate. */
+                            if(hashRecipient.IsObject())
+                                continue;
+
                             /* Read the owner of register. (check this for MEMPOOL, too) */
                             TAO::Register::State oRegister;
                             if(!LLD::Register->ReadState(hashRecipient, oRegister))
@@ -551,16 +555,20 @@ namespace TAO::API
                 case TAO::Operation::OP::DEBIT:
                 {
                     /* Get the register address. */
-                    uint256_t hashAddress;
+                    TAO::Register::Address hashAddress;
                     rContract >> hashAddress;
 
                     /* Deserialize recipient from contract. */
-                    uint256_t hashRecipient;
+                    TAO::Register::Address hashRecipient;
                     rContract >> hashRecipient;
 
                     /* Special check when handling a DEBIT. */
                     if(nOP == TAO::Operation::OP::DEBIT)
                     {
+                        /* Skip over partials as this is handled seperate. */
+                        if(hashRecipient.IsObject())
+                            continue;
+
                         /* Read the owner of register. (check this for MEMPOOL, too) */
                         TAO::Register::State oRegister;
                         if(!LLD::Register->ReadState(hashRecipient, oRegister))

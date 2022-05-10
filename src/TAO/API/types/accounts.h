@@ -194,6 +194,17 @@ namespace TAO::API
         }
 
 
+        /** Empty
+         *
+         *  Checks if we have an empty account address set.
+         *
+         **/
+        bool Empty() const
+        {
+            return vAddresses.empty();
+        }
+
+
         /** GetFigures
          *
          *  Expand the log-10 decimal value by a base-10 power to obtain the figures.
