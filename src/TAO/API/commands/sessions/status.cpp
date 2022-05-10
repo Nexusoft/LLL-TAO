@@ -32,7 +32,14 @@ namespace TAO::API
         /* We require PIN for status when in multiuser mode. */
         bool fUsername = false;
         if(config::fMultiuser.load())
-            fUsername = (CheckParameter(jParams, "pin", "string, number") && Authentication::Authenticate(jParams));
+        {
+            /* We want to drop call if we have incorrect pin attempt. */
+            if(CheckParameter(jParams, "pin", "string, number") && !Authentication::Authenticate(jParams))
+                throw Exception(-333, "Account failed to authenticate");
+
+            /* If we made it here, either pin wasn't added or we passed authentication. */
+            fUsername = true;
+        }
         else
             fUsername = true;
 
