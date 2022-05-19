@@ -422,6 +422,29 @@ namespace TAO::API
         }
     }
 
+    /* Update the password internal credentials */
+    void Authentication::Update(const encoding::json& jParams, const SecureString& strPassword)
+    {
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        {
+            RECURSIVE(MUTEX);
+
+            /* Check for active session. */
+            if(!mapSessions.count(hashSession))
+                throw Exception(-9, "Session doesn't exist");
+
+            /* Get a copy of our current active session. */
+            Session& rSession =
+                mapSessions[hashSession];
+
+            /* Update our internal session. */
+            rSession.Update(strPassword);
+        }
+    }
+
 
     /* Terminate an active session by parameters. */
     void Authentication::Terminate(const encoding::json& jParams)

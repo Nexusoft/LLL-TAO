@@ -246,6 +246,20 @@ namespace TAO::API
             }
 
 
+            /** Update
+             *
+             *  Update our password internal to our credentials.
+             *
+             *  @param[in] strPassword The passowrd we are updating to
+             *
+             **/
+            void Update(const SecureString& strPassword)
+            {
+                /* Update the internal PIN object. */
+                pCredentials->Update(strPassword);
+            }
+
+
             /** Genesis
              *
              *  Get the genesis-id of the current session.
@@ -468,6 +482,17 @@ namespace TAO::API
          *
          **/
         static void Update(const encoding::json& jParams, const uint8_t nUpdatedActions);
+
+
+        /** Update
+         *
+         *  Update the password internal credentials
+         *
+         *  @param[in] jParams the incoming parameters to parse
+         *  @param[in] strPassword The new password to update.
+         *
+         **/
+        static void Update(const encoding::json& jParams, const SecureString& strPassword);
 
 
         /** Terminate

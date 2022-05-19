@@ -36,7 +36,6 @@ namespace TAO::API
      *  Build a credential set that engages sigchain or modifies its authentication data. This is done not logged in.
      *
      *  @param[in] pCredentials The credential object for generating new tx
-     *  @param[in] strPass The new password to build credentials with
      *  @param[in] strPIN  The new PIN to build credentials with
      *  @param[in] nKeyType The new key type to build credentials with
      *  @param[out] tx The transaction object to return by reference.
@@ -45,8 +44,7 @@ namespace TAO::API
      *
      **/
     bool BuildCredentials(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
-                          const SecureString& strPass, const SecureString& strPIN, const uint8_t nKeyType,
-                          TAO::Ledger::Transaction &tx);
+                          const SecureString& strPIN, const uint8_t nKeyType, TAO::Ledger::Transaction &tx);
 
     /** BuildResponse
      *

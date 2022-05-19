@@ -53,8 +53,7 @@ namespace TAO::API
 {
     /* Build a credential set that engages sigchain or modifies its authentication data. This is done not logged in. */
     bool BuildCredentials(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
-                          const SecureString& strPass, const SecureString& strPIN, const uint8_t nKeyType,
-                          TAO::Ledger::Transaction &tx)
+                          const SecureString& strPIN,   const uint8_t nKeyType, TAO::Ledger::Transaction &tx)
     {
         /* Create the transaction. */
         if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nKeyType))
@@ -64,7 +63,7 @@ namespace TAO::API
         tx << BuildCrypto(pCredentials, strPIN, nKeyType);
 
         /* Now set the new credentials */
-        tx.NextHash(pCredentials->Generate(tx.nSequence + 1, strPass, strPIN));
+        tx.NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN));
 
         /* Execute the operations layer. */
         if(!tx.Build())
@@ -75,7 +74,7 @@ namespace TAO::API
         {
             /* Re-calculate our next hash if safemode forcing not to use cache. */
             const uint256_t hashNext =
-                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPass, strPIN), tx.nKeyType);
+                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN), nKeyType);
 
             /* Check that this next hash is what we are expecting. */
             if(tx.hashNext != hashNext)
@@ -84,6 +83,7 @@ namespace TAO::API
 
         return true;
     }
+
 
     /* Build a response object for a transaction that was built. */
     encoding::json BuildResponse(const encoding::json& jParams, const TAO::Register::Address& hashRegister,

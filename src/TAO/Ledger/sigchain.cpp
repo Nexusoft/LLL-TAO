@@ -331,14 +331,15 @@ namespace TAO
         uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
         {
             /* Generate the public key */
-            std::vector<uint8_t> vchPubKey = Key(strType, nKeyID, strSecret, nType);
+            const std::vector<uint8_t> vchPubKey =
+                Key(strType, nKeyID, strSecret, nType);
 
             /* Calculate the key hash. */
-            uint256_t hashRet = LLC::SK256(vchPubKey);
+            uint256_t hashRet =
+                LLC::SK256(vchPubKey);
 
             /* Set the leading byte. */
             hashRet.SetType(nType);
-
             return hashRet;
         }
 
@@ -417,6 +418,13 @@ namespace TAO
         const SecureString& SignatureChain::Password() const
         {
             return strPassword;
+        }
+
+
+        /* Updates the password for this sigchain. */
+        void SignatureChain::Update(const SecureString& strPasswordNew)
+        {
+            strPassword = strPasswordNew.c_str();
         }
 
 

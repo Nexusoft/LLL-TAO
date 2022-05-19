@@ -156,6 +156,10 @@ namespace TAO::API
                         continue; //go to next fieldname
                     }
 
+                    /* Check that we have this method available. */
+                    if(!mapFunctions.count(strVerb))
+                        throw Exception(-2, "Method not found: ", strVerb);
+
                     /* Check if we are mapping multiple types. */
                     if(vMethods[n].find(",") != vMethods[n].npos)
                     {
@@ -191,7 +195,7 @@ namespace TAO::API
                         : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
                     /* Check for unexpected types. */
-                    if(!mapStandards.count(strNoun))
+                    if(!mapStandards.count(strNoun) && !mapFunctions[strVerb].Supported(strNoun))
                         throw Exception(-36, "Unsupported type [", strNoun, "] for command");
 
                     /* Add our type to request object. */

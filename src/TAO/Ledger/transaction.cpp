@@ -1339,7 +1339,6 @@ namespace TAO
             /* Switch based on signature type. */
             switch(nKeyType)
             {
-
                 /* Support for the FALCON signature scheeme. */
                 case SIGNATURE::FALCON:
                 {

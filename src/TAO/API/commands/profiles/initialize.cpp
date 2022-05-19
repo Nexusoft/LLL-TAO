@@ -142,7 +142,7 @@ namespace TAO::API
         );
 
         /* Handle for all RECOVER operations. */
-        mapFunctions["recover"] = Function
+        mapFunctions["recover/credentials"] = Function
         (
             std::bind
             (

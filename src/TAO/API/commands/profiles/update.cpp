@@ -28,124 +28,95 @@ namespace TAO::API
     /* Recover a sig chain and set new credentials by supplying the recovery seed */
     encoding::json Profiles::Update(const encoding::json& jParams, const bool fHelp)
     {
-        /* Check for username parameter. */
-        if(!CheckParameter(jParams, "username", "string"))
-            throw Exception(-127, "Missing username");
-
-        /* Parse out username. */
-        const SecureString strUser =
-            SecureString(jParams["username"].get<std::string>().c_str());
-
-        /* Check username length */
-        if(strUser.length() < 2)
-            throw Exception(-191, "Username must be a minimum of 2 characters");
-
-        /* Check for password parameter. */
-        if(!CheckParameter(jParams, "password", "string"))
-            throw Exception(-128, "Missing password");
-
-        /* Parse out password. */
-        const SecureString strPass =
-            SecureString(jParams["password"].get<std::string>().c_str());
-
-        /* Check password length */
-        if(strPass.length() < 8)
-            throw Exception(-192, "Password must be a minimum of 8 characters");
-
-        /* Check for username parameter. */
-        if(!CheckParameter(jParams, "recovery", "string"))
-            throw Exception(-127, "Missing recovery");
-
-        /* Parse out username. */
-        const SecureString strRecovery =
-            SecureString(jParams["recovery"].get<std::string>().c_str());
-
-        /* Pin parameter. */
-        const SecureString strPIN =
-            ExtractPIN(jParams);
-
-        /* Create a temp sig chain for checking credentials */
-        memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials =
-            new TAO::Ledger::SignatureChain(strUser, strPass);
-
         /* Get our genesis-id for local checks. */
         const uint256_t hashGenesis =
-            pCredentials->Genesis();
+            Authentication::Caller(jParams);
+
+        /* Create a temp sig chain for checking credentials */
+        const auto& pCredentials =
+            Authentication::Credentials(jParams);
 
         /* Check for duplicates in ledger db. */
         uint512_t hashLast;
-        if(!LLD::Ledger->HasFirst(hashGenesis) || !LLD::Ledger->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-        {
-            pCredentials.free();
-            throw Exception(-130, "Account doesn't exist");
-        }
+        if(!LLD::Logical->HasFirst(hashGenesis) || !LLD::Logical->ReadLast(hashGenesis, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
+            throw Exception(-130, "Account doesn't exist or has never logged in. Try profiles/recover instead?");
+
+        /* The new key scheme */
+        const uint8_t nScheme =
+            ExtractScheme(jParams, "brainpool, falcon");
 
         /* Get previous transaction */
         TAO::Ledger::Transaction txPrev;
         if(!LLD::Ledger->ReadTx(hashLast, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
             throw Exception(-138, "No previous transaction found");
 
-        /* Check that the recovery hash has been set on this signature chain */
-        if(txPrev.hashRecovery == 0)
-            throw Exception(-223, "Recovery seed not set on this signature chain");
+        /* The PIN to be used for this API call */
+        SecureString strPIN;
 
-        /* The recovery hash to search for */
-        const uint256_t hashRecovery =
-            txPrev.hashRecovery;
-
-        /* Iterate backwards until we reach the transaction where the hashRecovery differs */
-        uint8_t nKeyType = 0;
-        while(txPrev.hashRecovery == hashRecovery)
-        {
-            /* Set our key type from iterated transaction. */
-            nKeyType = txPrev.nKeyType;
-
-            /* If we fail to read, we have reached the end of sigchain. */
-            if(!LLD::Ledger->ReadTx(txPrev.hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
-                throw Exception(-138, "No previous transaction found");
-        }
+        /* Unlock grabbing the pin, while holding a new authentication lock */
+        RECURSIVE(Authentication::Unlock(jParams, strPIN, TAO::Ledger::PinUnlock::TRANSACTIONS));
 
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;
-        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nKeyType))
-        {
-            pCredentials.free();
+        if(!BuildCredentials(pCredentials, strPIN, nScheme, tx))
             throw Exception(-17, "Failed to create transaction");
-        }
 
-        /* We need at least one contract to change our next hash. */
-        tx << update_crypto_keys(pCredentials, strPIN, nKeyType);
-
-        /* Now set the new credentials */
-        tx.NextHash(pCredentials->Generate(tx.nSequence + 1, strPass, strPIN));
-
-        /* Execute the operations layer. */
-        if(!tx.Build())
+        /* Handle generating recovery level data. */
+        if(CheckParameter(jParams, "new_recovery", "string"))
         {
-            pCredentials.free();
-            throw Exception(-44, "Transaction failed to build");
-        }
-
-        /* Sign the transaction. */
-        if(!tx.Sign(pCredentials->Generate(strRecovery)))
-        {
-            pCredentials.free();
-            throw Exception(-31, "Ledger failed to sign transaction");
-        }
-
-        /* Double check our next hash if -safemode enabled. */
-        if(config::GetBoolArg("-safemode", false))
-        {
-            /* Re-calculate our next hash if safemode forcing not to use cache. */
-            const uint256_t hashNext =
-                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPass, strPIN), tx.nKeyType);
-
-            /* Check that this next hash is what we are expecting. */
-            if(tx.hashNext != hashNext)
+            /* Handle if recovery phrase already exists. */
+            if(txPrev.hashRecovery != 0)
             {
-                pCredentials.free();
-                throw Exception(-67, "-safemode next hash mismatch, broadcast terminated");
+                /* Check for existing recovery phrase now. */
+                if(!CheckParameter(jParams, "recovery", "string"))
+                    throw Exception(-233, "Missing parameter [recovery], expecting [exists]");
+
+                /* Parse out username. */
+                const SecureString strRecovery =
+                    SecureString(jParams["recovery"].get<std::string>().c_str());
+
+                /* The recovery hash to search for */
+                const uint256_t hashRecovery =
+                    txPrev.hashRecovery;
+
+                /* Iterate backwards until we reach the transaction where the hashRecovery differs */
+                uint8_t nRecoveryType = txPrev.nKeyType;
+                while(txPrev.hashRecovery == hashRecovery)
+                {
+                    /* Set our key type from iterated transaction. */
+                    nRecoveryType = txPrev.nKeyType;
+
+                    /* If we fail to read, we have reached the end of sigchain. */
+                    if(!LLD::Ledger->ReadTx(txPrev.hashPrevTx, txPrev, TAO::Ledger::FLAGS::MEMPOOL))
+                        throw Exception(-138, "No previous transaction found");
+                }
+
+                /* Set our current key type from recovery. */
+                tx.nKeyType = nRecoveryType;
+
+                /* Sign the transaction. */
+                if(!tx.Sign(pCredentials->Generate(strRecovery)))
+                    throw Exception(-31, "Ledger failed to sign transaction");
             }
+
+            /* Parse out new recovery phrase. */
+            const SecureString strRecoveryNew =
+                SecureString(jParams["new_recovery"].get<std::string>().c_str());
+
+            /* Set our recovery phrase now with new credentials. */
+            tx.hashRecovery = pCredentials->RecoveryHash(strRecoveryNew, nScheme);
+        }
+
+        /* Handle if changing password or pin with no recovery. */
+        if(CheckParameter(jParams, "new_password", "string") || CheckParameter(jParams, "new_pin", "string"))
+        {
+            /* Update the password in our authenticated session now. */
+            Authentication::Update(jParams, strPasswordNew);
+        }
+
+        if(CheckParameter(jParams, "new_pin", "string"))
+        {
+
         }
 
         /* Execute the operations layer. */

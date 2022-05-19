@@ -108,7 +108,7 @@ namespace TAO::API
 
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;
-        if(!BuildCredentials(pCredentials, strPass, strPIN, nKeyType, tx))
+        if(!BuildCredentials(pCredentials, strPIN, nKeyType, tx))
         {
             pCredentials.free();
             throw Exception(-17, "Failed to create transaction");
