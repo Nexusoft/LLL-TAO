@@ -103,7 +103,7 @@ namespace TAO::API
         , setNouns    ( )
         {
             /* Grab our nouns to add to the set. */
-            ParseString(strNouns, ',', setNouns);
+            ParseString(strNouns, ',', setNouns, true); //true to trim spaces
         }
 
 

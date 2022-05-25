@@ -81,46 +81,6 @@ namespace TAO::API
             }
         }
 
-        /* Populate our BID standard. */
-        mapStandards["bid"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return false;
-            }
-        );
-
-        /* Populate our ASK standard. */
-        mapStandards["ask"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return false;
-            }
-        );
-
-        /* Populate our ORDER standard. */
-        mapStandards["order"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return false;
-            }
-        );
-
-        /* Populate our EXECUTED standard. */
-        mapStandards["executed"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return false;
-            }
-        );
-
 
         /* Standard contract to create new order. */
         mapFunctions["create"] = Function
@@ -132,6 +92,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "bid, ask"
         );
 
         /* Standard contract to create new order. */
@@ -144,6 +105,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "bid, ask, order, executed"
         );
 
         /* Standard contract to execute an order. */
@@ -156,6 +118,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "bid, ask, order"
         );
 
         /* Standard contract to execute an order. */
@@ -168,6 +131,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "bid, ask, order"
         );
 
         /* Standard contract to create new order. */
@@ -180,6 +144,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "bid, ask, order, executed"
         );
     }
 }

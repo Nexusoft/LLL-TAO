@@ -46,7 +46,7 @@ void ParseString(const std::string& str, char c, std::vector<std::string>& v)
 
 
 /* Parses a string and tokenizes it into substrings based on the character delimiter. */
-void ParseString(const std::string& str, char c, std::set<std::string>& v)
+void ParseString(const std::string& str, char c, std::set<std::string>& v, bool fTrim)
 {
     if(str.empty())
         return;
@@ -58,11 +58,18 @@ void ParseString(const std::string& str, char c, std::set<std::string>& v)
         i2 = str.find(c, i1);
         if(i2 == str.npos)
         {
-            v.insert(str.substr(i1));
+            if(fTrim)
+                v.insert(trim(str.substr(i1)));
+            else
+                v.insert(str.substr(i1));
 
             return;
         }
-        v.insert(str.substr(i1, i2-i1));
+
+        if(fTrim)
+            v.insert(trim(str.substr(i1, i2-i1)));
+        else
+            v.insert(str.substr(i1, i2-i1));
 
         i1 = i2 + 1;
     }

@@ -42,7 +42,7 @@ void ParseString(const std::string& str, char c, std::vector<std::string>& v);
  *  @param[out] v The set to store the tokens into.
  *
  **/
-void ParseString(const std::string& str, char c, std::set<std::string>& v);
+void ParseString(const std::string& str, char c, std::set<std::string>& v, bool fTrim = false);
 
 
 /** ReplaceAll
