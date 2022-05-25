@@ -106,17 +106,6 @@ namespace TAO::API
         );
 
 
-        /* Populate our MASTER standard. */
-        mapStandards["master"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return false;
-            }
-        );
-
-
         /* Handle for all CREATE operations. */
         mapFunctions["create"] = Function
         (
@@ -127,6 +116,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "master"
         );
 
         /* Handle for all transactions operations. */
@@ -139,10 +129,11 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "master"
         );
 
         /* Handle for all RECOVER operations. */
-        mapFunctions["recover/credentials"] = Function
+        mapFunctions["recover"] = Function
         (
             std::bind
             (
@@ -151,6 +142,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "master"
         );
 
         /* Handle for all transactions operations. */
@@ -163,6 +155,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "master"
         );
 
         /* Handle for all transactions operations. */
@@ -175,6 +168,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "master"
         );
     }
 }
