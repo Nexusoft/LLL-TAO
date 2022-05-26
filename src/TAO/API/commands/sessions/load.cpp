@@ -37,6 +37,24 @@ namespace TAO::API
         const uint256_t hashGenesis =
             ExtractGenesis(jParams);
 
+        /* Check if already logged in. */
+        uint256_t hashSession = Authentication::SESSION::DEFAULT; //we fallback to this in single user mode.
+        if(Authentication::Active(hashGenesis, hashSession))
+        {
+            /* Build return json data. */
+            encoding::json jRet =
+            {
+                { "genesis", hashGenesis.ToString() },
+                { "session", hashSession.ToString() }
+            };
+
+            /* Check for single user mode. */
+            if(!config::fMultiuser.load())
+                jRet.erase("session");
+
+            return jRet;
+        }
+
         /* Load the encrypted data from the local DB */
         std::vector<uint8_t> vchCypherText;
         if(!LLD::Local->ReadSession(hashGenesis, vchCypherText))
@@ -72,24 +90,6 @@ namespace TAO::API
             /* Build new session object. */
             Authentication::Session tSession =
                 Authentication::Session(strUsername, strPassword, Authentication::Session::LOCAL);
-
-            /* Check if already logged in. */
-            uint256_t hashSession = Authentication::SESSION::DEFAULT; //we fallback to this in single user mode.
-            if(Authentication::Active(tSession.Genesis(), hashSession))
-            {
-                /* Build return json data. */
-                encoding::json jRet =
-                {
-                    { "genesis", tSession.Genesis().ToString() },
-                    { "session", hashSession.ToString() }
-                };
-
-                /* Check for single user mode. */
-                if(!config::fMultiuser.load())
-                    jRet.erase("session");
-
-                return jRet;
-            }
 
             /* Initialize our indexing session. */
             Indexing::Initialize(tSession.Genesis());
