@@ -38,6 +38,13 @@ namespace TAO::API
     /* Login to a user account. */
     encoding::json Profiles::Create(const encoding::json& jParams, const bool fHelp)
     {
+        /* Get our type we are processing. */
+        const std::string strType = ExtractType(jParams);
+
+        /* The new key scheme */
+        const uint8_t nScheme =
+            ExtractScheme(jParams, "brainpool, falcon");
+
         /* Check for username parameter. */
         if(!CheckParameter(jParams, "username", "string"))
             throw Exception(-127, "Missing username");
@@ -76,6 +83,49 @@ namespace TAO::API
         /* Get our genesis-id for local checks. */
         const uint256_t hashGenesis = pCredentials->Genesis();
 
+        /* Only allow crypto if we already have a sigchain. */
+        if(strType == "auth")
+        {
+            /* Generate register address for crypto register deterministically */
+            const uint256_t hashCrypto =
+                TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
+            /* Read our crypto object register. */
+            TAO::Register::Object oCrypto;
+            if(!LLD::Register->ReadObject(hashCrypto, oCrypto))
+                throw Exception(-130, "Can't generate crypto object register if no sigchain");
+
+            /* Check for a disabled auth key. */
+            if(oCrypto.get<uint256_t>("auth") != 0)
+                throw Exception(-130, "Can't generate auth key if already enabled");
+
+            /* Create the transaction. */
+            TAO::Ledger::Transaction tx;
+            if(!BuildCredentials(pCredentials, strPIN, nScheme, tx))
+                throw Exception(-17, "Failed to create transaction");
+
+            /* Sign the transaction. */
+            if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
+            {
+                pCredentials.free();
+                throw Exception(-31, "Ledger failed to sign transaction");
+            }
+
+            /* Free our credentials object. */
+            pCredentials.free();
+
+            /* Execute the operations layer. */
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw Exception(-32, "Failed to accept");
+
+            /* Build a JSON response object. */
+            encoding::json jRet;
+            jRet["success"] = true; //just a little response for if using -autotx
+            jRet["txid"] = tx.GetHash().ToString();
+
+            return jRet;
+        }
+
         /* Check for duplicates in ledger db. */
         if(LLD::Ledger->HasFirst(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
         {
@@ -83,9 +133,10 @@ namespace TAO::API
             throw Exception(-130, "Account already exists");
         }
 
+
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;
-        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, TAO::Ledger::SIGNATURE::BRAINPOOL))
+        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nScheme))
         {
             pCredentials.free();
             throw Exception(-17, "Failed to create transaction");
@@ -143,7 +194,7 @@ namespace TAO::API
                       << uint8_t(TAO::Register::REGISTER::OBJECT) << oCrypto.GetState();
 
         /* Add the contract fees. */
-        AddFee(tx); //XXX: this returns true/false if fee was added, don't think we need this since it doesn't appear to be used
+        AddFee(tx);
 
         /* Execute the operations layer. */
         if(!tx.Build())

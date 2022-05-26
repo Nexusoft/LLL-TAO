@@ -65,6 +65,9 @@ namespace TAO::API
         /* Now set the new credentials */
         tx.NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN));
 
+        /* Add our network fee if applicable. */
+        AddFee(tx);
+
         /* Execute the operations layer. */
         if(!tx.Build())
             return false;
@@ -980,12 +983,9 @@ namespace TAO::API
         /* Declare operation stream to serialize all of the field updates*/
         TAO::Operation::Stream ssUpdate;
 
-        /* Update the AUTH key if enabled. */
-        if(oCrypto.get<uint256_t>("auth") != 0)
-        {
-            ssUpdate << std::string("auth") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
-            ssUpdate << pCredentials->KeyHash("auth", 0, strPIN, nKeyType);
-        }
+        /* Update the AUTH key always. */
+        ssUpdate << std::string("auth") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+        ssUpdate << pCredentials->KeyHash("auth", 0, strPIN, nKeyType);
 
         /* Update the LISP network key if enabled. */
         if(oCrypto.get<uint256_t>("lisp") != 0)

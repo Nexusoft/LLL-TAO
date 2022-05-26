@@ -34,7 +34,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , "master"
+            , "master, auth"
         );
 
         /* Handle for all transactions operations. */
