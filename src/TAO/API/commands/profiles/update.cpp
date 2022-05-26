@@ -141,53 +141,72 @@ namespace TAO::API
             /* Unlock grabbing the pin, while holding a new authentication lock */
             RECURSIVE(Authentication::Unlock(jParams, strPIN, TAO::Ledger::PinUnlock::TRANSACTIONS));
 
+            /* The new password used for this call. */
+            SecureString strNewPassword =
+                pCredentialsOld->Password();
+
             /* Handle if changing password with no recovery. */
             if(CheckParameter(jParams, "new_password", "string"))
             {
                 /* Parse out username. */
-                const SecureString strPassword =
+                strNewPassword =
                     SecureString(jParams["new_password"].get<std::string>().c_str());
-
-                /* Update the password in our authenticated session now. */
-                Authentication::Update(jParams, strPassword);
             }
 
             /* The new PIN to be used for this API call */
             SecureString strNewPIN = strPIN;
 
             /* Handle if changing password with no recovery. */
-            if(CheckParameter(jParams, "new_pin", "string"))
+            if(CheckParameter(jParams, "new_pin", "string, number"))
             {
                 /* Parse out username. */
                 strNewPIN =
-                    SecureString(jParams["new_pin"].get<std::string>().c_str());
-
-                /* Update the PIN in our authenticated session now if we are unlocked. */
-                uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::NONE;
-                if(Authentication::Unlocked(jParams, nUnlockedActions))
-                    Authentication::Update(jParams, nUnlockedActions, strNewPIN);
+                    ExtractPIN(jParams, "new");
             }
 
             /* Get our new set of credentials to build transaction with. */
-            const auto& pCredentials =
-                Authentication::Credentials(jParams);
+            memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials =
+                new TAO::Ledger::SignatureChain(pCredentialsOld->UserName(), strNewPassword);
 
             /* Check if we haven't updated our credentials. */
-            if(*pCredentialsOld != *pCredentials)
+            if(*pCredentialsOld == *pCredentials && strNewPIN == strPIN)
+            {
+                pCredentials.free();
                 throw Exception(-233, "Missing parameter [new_password or new_pin]");
+            }
 
             /* Create the transaction. */
             TAO::Ledger::Transaction tx;
             if(!BuildCredentials(pCredentials, strNewPIN, nScheme, tx))
+            {
+                pCredentials.free();
                 throw Exception(-17, "Failed to create transaction");
+            }
 
             /* Sign the transaction. */
             if(!tx.Sign(pCredentialsOld->Generate(tx.nSequence, strPIN)))
+            {
+                pCredentials.free();
                 throw Exception(-31, "Ledger failed to sign transaction");
+            }
 
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
+            {
+                pCredentials.free();
                 throw Exception(-32, "Failed to accept");
+            }
+
+            /* Free our credential object now. */
+            pCredentials.free();
+
+            /* Update our password now in authentication session. */
+            Authentication::Update(jParams, strNewPassword);
+
+            /* Update the PIN in our authenticated session now if we are unlocked. */
+            uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::NONE;
+            if(Authentication::Unlocked(jParams, nUnlockedActions))
+                Authentication::Update(jParams, nUnlockedActions, strNewPIN);
 
             /* Build a JSON response object. */
             encoding::json jRet;

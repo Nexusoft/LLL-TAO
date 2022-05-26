@@ -211,11 +211,12 @@ namespace TAO::API
      *  Extract the pin number from input parameters.
      *
      *  @param[in] jParams The incoming parameters to check.
+     *  @param[in] strPrefix The incoming prefix to prepend to pin name
      *
      *  @return secure string representation of pin.
      *
      **/
-    SecureString ExtractPIN(const encoding::json& jParams);
+    SecureString ExtractPIN(const encoding::json& jParams, const std::string& strPrefix = "");
 
 
     /** ExtractTypes
