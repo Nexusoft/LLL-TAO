@@ -481,7 +481,7 @@ namespace TAO::API
          *  @param[in] nUpdatedActions The actions allowed for PIN unlock.
          *
          **/
-        static void Update(const encoding::json& jParams, const uint8_t nUpdatedActions);
+        static void Update(const encoding::json& jParams, const uint8_t nUpdatedActions, const SecureString& strPIN = "");
 
 
         /** Update

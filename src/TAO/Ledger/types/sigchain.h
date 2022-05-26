@@ -93,6 +93,14 @@ namespace TAO
             ~SignatureChain();
 
 
+            /** Equivilence operator. **/
+            bool operator==(const SignatureChain& pCheck) const;
+
+
+            /** Equivilence operator. **/
+            bool operator!=(const SignatureChain& pCheck) const;
+
+
             /** Constructor to generate Keychain
              *
              *  @param[in] strUsernameIn The username to seed the signature chain

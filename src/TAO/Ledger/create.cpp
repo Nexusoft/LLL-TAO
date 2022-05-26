@@ -61,11 +61,12 @@ namespace TAO::Ledger
 
 
     /* Create a new transaction object from signature chain. */
-    bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+    bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials, const SecureString& pin,
                            TAO::Ledger::Transaction& tx, const uint8_t nScheme)
     {
         /* Get the genesis id of the sigchain. */
-        uint256_t hashGenesis = user->Genesis();
+        const uint256_t hashGenesis =
+            pCredentials->Genesis();
 
         /* Last sigchain transaction. */
         uint512_t hashLast = 0;
@@ -84,7 +85,7 @@ namespace TAO::Ledger
         }
 
         /* Get the last transaction. */
-        else if(LLD::Ledger->ReadLast(user->Genesis(), hashLast))
+        else if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
         {
             /* Get previous transaction */
             if(!LLD::Ledger->ReadTx(hashLast, txPrev))
@@ -102,16 +103,10 @@ namespace TAO::Ledger
         /* Set the initial and next key type for genesis transactions */
         if(tx.IsFirst())
         {
-            /* Set the initial key type for the genesis based on the config */
-            if(config::GetBoolArg("-falcon"))
-                tx.nKeyType = SIGNATURE::FALCON;
-            else if(config::GetBoolArg("-brainpool"))
-                tx.nKeyType = SIGNATURE::BRAINPOOL;
-            else
-                tx.nKeyType = SIGNATURE::BRAINPOOL;
-
             /* Set the next key type for the genesis transaction */
-            tx.nNextType = tx.nKeyType;
+            tx.nKeyType    = nScheme; //this should use a default value
+            tx.nNextType   = tx.nKeyType;
+            tx.hashGenesis = hashGenesis;
 
             /* Add our network-id if applicable.*/
             if(config::fHybrid.load())
@@ -121,41 +116,27 @@ namespace TAO::Ledger
                 tx.hashPrevTx = LLC::SK512(strHybrid.begin(), strHybrid.end());
             }
         }
+
+        /* Check if we need to adjust our key type. */
+        else if(nScheme != txPrev.nNextType)
+            tx.nNextType = nScheme;
+
+        /* Set our next type from previous transaction type. */
         else
-        {
-            /* If in single user mode use the node config to set the next key type. If a specific key type has not been configured
-            then default to using the key type from the previous transaction */
-            if(!config::fMultiuser.load())
-            {
-                if(config::GetBoolArg("-falcon"))
-                    tx.nNextType = SIGNATURE::FALCON;
-                else if(config::GetBoolArg("-brainpool"))
-                    tx.nNextType = SIGNATURE::BRAINPOOL;
-                else if(!tx.IsFirst())
-                    tx.nNextType = txPrev.nNextType;
-            }
-            /* In multiuser mode we just set the next keytype based on the previous tx */
-            else
-            {
-                tx.nNextType = txPrev.nNextType;
-            }
-        }
+            tx.nNextType = txPrev.nNextType;
 
-        /* Handle if we have set a scheme. */
-        if(nScheme != TAO::Ledger::SIGNATURE::RESERVED)
-            tx.nNextType = nScheme; //we always override the commandline parameters
+        /* Set the transaction version based on the timestamp. */
+        const uint32_t nCurrent =
+            CurrentTransactionVersion();
 
-        /* Set the transaction version based on the timestamp. The transaction version is current version
-           unless an activation is pending */
-        uint32_t nCurrent = CurrentTransactionVersion();
+        /* Check our activation timestamp. */
         if(TransactionVersionActive(tx.nTimestamp, nCurrent))
             tx.nVersion = nCurrent;
         else
             tx.nVersion = nCurrent - 1;
 
         /* Genesis Transaction. */
-        tx.NextHash(user->Generate(tx.nSequence + 1, pin));
-        tx.hashGenesis = user->Genesis();
+        tx.NextHash(pCredentials->Generate(tx.nSequence + 1, pin));
 
         return true;
     }

@@ -394,7 +394,7 @@ namespace TAO::API
     {
         /* Check for formatting parameter. */
         if(!CheckParameter(jParams, "scheme", "string"))
-            return TAO::Ledger::SIGNATURE::RESERVED;
+            return TAO::Ledger::SIGNATURE::BRAINPOOL;
 
         /* Grab our format string. */
         const std::string strScheme =

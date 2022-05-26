@@ -392,15 +392,16 @@ namespace TAO::API
 
 
     /* Update the allowed actions for given pin. */
-    void Authentication::Update(const encoding::json& jParams, const uint8_t nUpdatedActions)
+    void Authentication::Update(const encoding::json& jParams, const uint8_t nUpdatedActions, const SecureString& strPIN)
     {
         /* Get the current session-id. */
         const uint256_t hashSession =
             ExtractHash(jParams, "session", default_session());
 
         /* Extract the PIN from parameters. */
-        const SecureString strPIN =
-            ExtractPIN(jParams);
+        SecureString strNewPIN = strPIN;
+        if(strNewPIN.empty())
+            strNewPIN = ExtractPIN(jParams);
 
         {
             RECURSIVE(MUTEX);
@@ -413,12 +414,8 @@ namespace TAO::API
             Session& rSession =
                 mapSessions[hashSession];
 
-            /* Check that the new PIN value is authorized. */
-            //if(!authenticate(strPIN, rSession))
-            //    throw Exception(-11, "Invalid PIN");
-
             /* Update our internal session. */
-            rSession.Update(strPIN, nUpdatedActions);
+            rSession.Update(strNewPIN, nUpdatedActions);
         }
     }
 

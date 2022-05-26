@@ -78,6 +78,20 @@ namespace TAO
         }
 
 
+        /* Equivilence operator. */
+        bool SignatureChain::operator==(const SignatureChain& pCheck) const
+        {
+            return (strUsername == pCheck.strUsername && strPassword == pCheck.strPassword && hashGenesis == pCheck.hashGenesis);
+        }
+
+
+        /* Equivilence operator. */
+        bool SignatureChain::operator!=(const SignatureChain& pCheck) const
+        {
+            return !(*this == pCheck);
+        }
+
+
         /* This function is responsible for returning the genesis ID.*/
         uint256_t SignatureChain::Genesis() const
         {

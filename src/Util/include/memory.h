@@ -588,6 +588,32 @@ namespace memory
         }
 
 
+        /** Not equivilent operator.
+         *
+         *  @param[in] a The data type to compare to.
+         *
+         **/
+        TypeName operator*() const
+        {
+            RECURSIVE(MUTEX);
+
+            /* Throw an exception on nullptr. */
+            if(data == nullptr)
+                throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
+
+            /* Decrypt the pointer. */
+            data->Encrypt();
+
+            /* Check equivilence. */
+            const TypeName tRet = *data;
+
+            /* Encrypt the poitner. */
+            data->Encrypt();
+
+            return tRet;
+        }
+
+
         /** Not operator
          *
          *  Check if the pointer is nullptr.

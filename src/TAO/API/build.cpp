@@ -74,7 +74,7 @@ namespace TAO::API
         {
             /* Re-calculate our next hash if safemode forcing not to use cache. */
             const uint256_t hashNext =
-                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN), nKeyType);
+                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN), tx.nNextType);
 
             /* Check that this next hash is what we are expecting. */
             if(tx.hashNext != hashNext)
