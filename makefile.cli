@@ -483,6 +483,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_contracts_exchange.o \
 		build/API_contracts_expiring.o \
 		build/API_contracts_verify.o \
+		build/API_operators_initialize.o \
 		build/API_operators_array.o \
 		build/API_operators_count.o \
 		build/API_operators_floor.o \
