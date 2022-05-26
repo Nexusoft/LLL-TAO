@@ -32,6 +32,19 @@ namespace TAO::API
             , "local"
         );
 
+        /* Handle for all LOAD operations. */
+        mapFunctions["load"] = Function
+        (
+            std::bind
+            (
+                &Sessions::Load,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "local"
+        );
+
         /* Handle for all LOCK operations. */
         mapFunctions["lock"] = Function
         (
