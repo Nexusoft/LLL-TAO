@@ -57,6 +57,10 @@ namespace TAO::API
             /* Handle generating recovery level data. */
             if(CheckParameter(jParams, "new_recovery", "string"))
             {
+                /* Parse out new recovery phrase. */
+                const SecureString strRecoveryNew =
+                    SecureString(jParams["new_recovery"].get<std::string>().c_str());
+
                 /* Create a temp sig chain for checking credentials */
                 const auto& pCredentials =
                     Authentication::Credentials(jParams);
@@ -73,7 +77,6 @@ namespace TAO::API
                     throw Exception(-17, "Failed to create transaction");
 
                 /* Handle if recovery phrase already exists. */
-                uint8_t nRecoveryType = txPrev.nKeyType;
                 if(txPrev.hashRecovery != 0)
                 {
                     /* Check for existing recovery phrase now. */
@@ -89,6 +92,7 @@ namespace TAO::API
                         txPrev.hashRecovery;
 
                     /* Iterate backwards until we reach the transaction where the hashRecovery differs */
+                    uint8_t nRecoveryType = txPrev.nNextType;
                     while(txPrev.hashRecovery == hashRecovery)
                     {
                         /* Set our key type from iterated transaction. */
@@ -99,8 +103,8 @@ namespace TAO::API
                             throw Exception(-138, "No previous transaction found");
                     }
 
-                    /* Set our current key type from recovery. */
-                    tx.nKeyType = nRecoveryType;
+                    /* Set our recovery phrase now with new credentials. */
+                    tx.hashRecovery = pCredentials->RecoveryHash(strRecoveryNew, nRecoveryType);
 
                     /* Sign the transaction. */
                     if(!tx.Sign(pCredentials->Generate(strRecovery)))
@@ -108,21 +112,24 @@ namespace TAO::API
                 }
                 else
                 {
+                    /* Set our recovery phrase now with new credentials. */
+                    tx.hashRecovery = pCredentials->RecoveryHash(strRecoveryNew, tx.nKeyType);
+
                     /* Sign the transaction. */
                     if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
                         throw Exception(-31, "Ledger failed to sign transaction");
                 }
 
-                /* Parse out new recovery phrase. */
-                const SecureString strRecoveryNew =
-                    SecureString(jParams["new_recovery"].get<std::string>().c_str());
-
-                /* Set our recovery phrase now with new credentials. */
-                tx.hashRecovery = pCredentials->RecoveryHash(strRecoveryNew, nRecoveryType);
-
                 /* Execute the operations layer. */
                 if(!TAO::Ledger::mempool.Accept(tx))
                     throw Exception(-32, "Failed to accept");
+
+                /* Build a JSON response object. */
+                encoding::json jRet;
+                jRet["success"] = true; //just a little response for if using -autotx
+                jRet["txid"] = tx.GetHash().ToString();
+
+                return jRet;
             }
             else
                 throw Exception(-28, "Missing parameter [new_recovery] for command");

@@ -478,6 +478,7 @@ namespace TAO
             /* call the Sign method with the retrieved type */
             return Sign(nType, vchData, hashSecret, vchPubKey, vchSig);
         }
+        
 
         /* Generates a signature for the data, using the specified crypto key type. */
         bool SignatureChain::Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
