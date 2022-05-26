@@ -42,7 +42,7 @@ namespace TAO::API
 
         /* Extract our order addresses. */
         const uint256_t hashRegister = ExtractAddress(jParams, "from");
-        const uint256_t hashDeposit  = ExtractAddress(jParams, "deposit");
+        const uint256_t hashDeposit  = ExtractAddress(jParams, "to");
 
         /* Grab our object we are placing order for. */
         TAO::Register::Object oAccount;
