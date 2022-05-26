@@ -46,6 +46,11 @@ namespace TAO::API
         if(!CheckStandard(jParams, tObject))
             throw Exception(-49, "Unsupported type for name/address");
 
+        /* Use this asset to get our genesis-id adjusting if it is in system state. */
+        uint256_t hashGenesis = tObject.hashOwner;
+        if(hashGenesis.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+            hashGenesis.SetType(TAO::Ledger::GENESIS::UserType());
+
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
 
@@ -55,88 +60,124 @@ namespace TAO::API
         /* Get the params to apply to the response. */
         ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
+        /* Get the last transaction. */
+        uint512_t hashLast = 0;
+        if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
+            throw Exception(-144, "No transactions found");
+
         /* Build our object list and sort on insert. */
         std::set<encoding::json, CompareResults> setTransactions({}, CompareResults(strOrder, strColumn));
 
-        /* Get the list of txid's that modified given register. */
-        std::vector<uint512_t> vTransactions;
-        if(LLD::Logical->ListTransactions(hashRegister, vTransactions))
+        /* Loop until genesis. */
+        while(hashLast != 0)
         {
-            /* Loop through all entries in list. */
-            for(const auto& hashLast : vTransactions)
-            {
-                /* Get the transaction from disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                    throw Exception(-108, "Failed to read transaction");
+            /* Get the transaction from disk. */
+            TAO::Ledger::Transaction tx;
+            if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                throw Exception(-108, "Failed to read transaction");
 
-                /* Read the block state from the the ledger DB using the transaction hash index */
-                TAO::Ledger::BlockState blockState;
-                LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
+            /* Set the next last. */
+            hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
 
-                /* Get the transaction JSON. */
-                encoding::json jTransaction =
-                    TAO::API::TransactionToJSON(tx, blockState, nVerbose);
+            /* Read the block state from the the ledger DB using the transaction hash index */
+            TAO::Ledger::BlockState blockState;
+            LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
 
-                /* Check for missing contracts to adjust. */
-                if(jTransaction.find("contracts") == jTransaction.end())
-                    continue;
+            /* Get the transaction JSON. */
+            encoding::json jTransaction =
+                TAO::API::TransactionToJSON(tx, blockState, nVerbose);
 
-                /* Erase based on having available address. */
-                encoding::json& jContracts = jTransaction["contracts"];
-                jContracts.erase
+            /* Check for missing contracts to adjust. */
+            if(jTransaction.find("contracts") == jTransaction.end())
+                continue;
+
+            /* Erase based on having available address. */
+            encoding::json& jContracts = jTransaction["contracts"];
+            jContracts.erase
+            (
+                /* Use custom lambda to sort out contracts that aren't for the address we are searching. */
+                std::remove_if
                 (
-                    /* Use custom lambda to sort out contracts that aren't for the address we are searching. */
-                    std::remove_if
-                    (
-                        jContracts.begin(),
-                        jContracts.end(),
+                    jContracts.begin(),
+                    jContracts.end(),
 
-                        /* Lambda function to remove based on address match. */
-                        [&](const encoding::json& jValue)
+                    /* Lambda function to remove based on address match. */
+                    [&](const encoding::json& jValue)
+                    {
+                        /* Check for missing value key. */
+                        if(jValue.find("address") != jValue.end())
                         {
-                            /* Check for missing value key. */
-                            std::string strAddress;
-                            if(jValue.find("address") != jValue.end())
-                                strAddress = jValue["address"].get<std::string>();
+                            /* Get our address field now. */
+                            const std::string strAddress =
+                                jValue["address"].get<std::string>();
 
-                            /* Check for from value key. */
-                            if(jValue.find("from") != jValue.end())
-                                strAddress = jValue["from"].get<std::string>();
-
-                            /* Check for to value key. */
-                            if(jValue.find("to") != jValue.end())
-                                strAddress = jValue["to"].get<std::string>();
-
-                            /* Check that we found parameters. */
-                            if(strAddress.empty())
-                                return true;
-
-                            /* Check for mismatched address. */
-                            if(TAO::Register::Address(strAddress) != hashRegister)
-                                return true;
-
-                            return false;
+                            /* Check if we have valid address. */
+                            if(TAO::Register::Address(strAddress) == hashRegister)
+                                return false;
                         }
-                    ),
-                    jContracts.end()
-                );
 
-                /* Check to see whether the transaction has had all children filtered out */
-                if(jContracts.empty())
-                    continue;
+                        /* Check for from value key. */
+                        if(jValue.find("from") != jValue.end())
+                        {
+                            /* Get our address field now. */
+                            const std::string strAddress =
+                                jValue["from"].get<std::string>();
 
-                /* Apply our where filters now. */
-                if(!FilterResults(jParams, jTransaction))
-                    continue;
+                            /* Check if we have valid address. */
+                            if(TAO::Register::Address(strAddress) == hashRegister)
+                                return false;
+                        }
 
-                /* Filter out our expected fieldnames if specified. */
-                if(!FilterFieldname(jParams, jTransaction))
-                    continue;
+                        /* Check for to value key. */
+                        if(jValue.find("to") != jValue.end())
+                        {
+                            /* Get our address field now. */
+                            const std::string strAddress =
+                                jValue["to"].get<std::string>();
 
-                /* Insert into set and automatically sort. */
-                setTransactions.insert(jTransaction);
+                            /* Check if we have valid address. */
+                            if(TAO::Register::Address(strAddress) == hashRegister)
+                                return false;
+                        }
+
+                        return true;
+                    }
+                ),
+                jContracts.end()
+            );
+
+            /* Check to see whether the transaction has had all children filtered out */
+            if(jContracts.empty())
+                continue;
+
+            /* Apply our where filters now. */
+            if(!FilterResults(jParams, jTransaction))
+                continue;
+
+            /* Check for a claim that would iterate to another sigchain. */
+            for(const auto& jContract : jContracts)
+            {
+                /* Check for claim OP. */
+                if(jContract["OP"] == "CLAIM")
+                {
+                    hashLast = uint512_t(jContract["txid"].get<std::string>());
+                    break;
+                }
+
+                /* Check for create OP to break from loop. */
+                if(jContract["OP"] == "CREATE")
+                {
+                    hashLast = 0;
+                    break;
+                }
             }
+
+            /* Filter out our expected fieldnames if specified. */
+            if(!FilterFieldname(jParams, jTransaction))
+                continue;
+
+            /* Insert into set and automatically sort. */
+            setTransactions.insert(jTransaction);
         }
 
         /* Build our return value. */

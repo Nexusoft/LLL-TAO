@@ -96,27 +96,42 @@ namespace TAO::API
                         [&](const encoding::json& jValue)
                         {
                             /* Check for missing value key. */
-                            std::string strAddress;
                             if(jValue.find("address") != jValue.end())
-                                strAddress = jValue["address"].get<std::string>();
+                            {
+                                /* Get our address field now. */
+                                const std::string strAddress =
+                                    jValue["address"].get<std::string>();
+
+                                /* Check if we have valid address. */
+                                if(TAO::Register::Address(strAddress) == hashRegister)
+                                    return false;
+                            }
 
                             /* Check for from value key. */
                             if(jValue.find("from") != jValue.end())
-                                strAddress = jValue["from"].get<std::string>();
+                            {
+                                /* Get our address field now. */
+                                const std::string strAddress =
+                                    jValue["from"].get<std::string>();
+
+                                /* Check if we have valid address. */
+                                if(TAO::Register::Address(strAddress) == hashRegister)
+                                    return false;
+                            }
 
                             /* Check for to value key. */
                             if(jValue.find("to") != jValue.end())
-                                strAddress = jValue["to"].get<std::string>();
+                            {
+                                /* Get our address field now. */
+                                const std::string strAddress =
+                                    jValue["to"].get<std::string>();
 
-                            /* Check that we found parameters. */
-                            if(strAddress.empty())
-                                return true;
+                                /* Check if we have valid address. */
+                                if(TAO::Register::Address(strAddress) == hashRegister)
+                                    return false;
+                            }
 
-                            /* Check for mismatched address. */
-                            if(TAO::Register::Address(strAddress) != hashRegister)
-                                return true;
-
-                            return false;
+                            return true;
                         }
                     ),
                     jContracts.end()
