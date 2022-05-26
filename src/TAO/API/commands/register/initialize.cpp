@@ -179,7 +179,8 @@ namespace TAO::API
         (
             std::bind
             (
-                &Templates::History,
+                &Register::History,
+                this,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -190,7 +191,8 @@ namespace TAO::API
         (
             std::bind
             (
-                &Templates::Transactions,
+                &Register::Transactions,
+                this,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

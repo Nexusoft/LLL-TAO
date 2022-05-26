@@ -86,6 +86,32 @@ namespace TAO::API
         encoding::json List(const encoding::json& jParams, const bool fHelp);
 
 
+        /** History
+         *
+         *  Gets a history of register states over the course of its lifetime.
+         *
+         *  @param[in] jParams The input parameters to the command.
+         *  @param[in] fHelp Flag to determine if help was requested for command.
+         *
+         *  @return the json list of given object(s).
+         *
+         **/
+        encoding::json History(const encoding::json& jParams, const bool fHelp);
+
+
+        /** Transactions
+         *
+         *  Lists all transactions of supported type in any scope.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
+
+
         /** AccountToJSON
          *
          *  Returns the JSON representation of an account, either trust or account
