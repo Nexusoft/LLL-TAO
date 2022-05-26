@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/market.h>
 #include <TAO/API/types/commands/names.h>
+#include <TAO/API/types/operators/initialize.h>
 
 #include <TAO/API/include/extract.h>
 
@@ -27,6 +28,10 @@ namespace TAO::API
     /* Standard initialization function. */
     void Market::Initialize()
     {
+        /* Populate our operators. */
+        Operators::Initialize(mapOperators);
+
+
         /* Handle for our market fees. */
         if(config::mapMultiArgs["-marketfee"].size() > 0)
         {

@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/tokens.h>
 #include <TAO/API/types/commands/finance.h>
 #include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/operators/initialize.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
@@ -29,6 +30,10 @@ namespace TAO::API
     /* Standard initialization function. */
     void Tokens::Initialize()
     {
+        /* Populate our operators. */
+        Operators::Initialize(mapOperators);
+
+        
         /* Populate our ACCOUNT standard. */
         mapStandards["account"] = Standard
         (

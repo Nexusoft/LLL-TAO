@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/operators/initialize.h>
 
 #include <TAO/API/types/commands.h>
 
@@ -24,6 +25,10 @@ namespace TAO::API
     /* Standard initialization function. */
     void Register::Initialize()
     {
+        /* Populate our operators. */
+        Operators::Initialize(mapOperators);
+
+
         /* Populate our ACCOUNT standard. */
         mapStandards["account"] = Standard
         (

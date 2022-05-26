@@ -15,9 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/ledger.h>
 #include <TAO/API/types/commands/templates.h>
-#include <TAO/API/types/operators/array.h>
-#include <TAO/API/types/operators/mean.h>
-#include <TAO/API/types/operators/sum.h>
+#include <TAO/API/types/operators/initialize.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -25,38 +23,8 @@ namespace TAO::API
     /* Standard initialization function. */
     void Ledger::Initialize()
     {
-        /* Handle for the SUM operator. */
-        mapOperators["sum"] = Operator
-        (
-            std::bind
-            (
-                &Operators::Sum,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
-        /* Handle for the ARRAY operator. */
-        mapOperators["array"] = Operator
-        (
-            std::bind
-            (
-                &Operators::Array,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
-        /* Handle for the MEAN operator. */
-        mapOperators["mean"] = Operator
-        (
-            std::bind
-            (
-                &Operators::Mean,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
+        /* Populate our operators. */
+        Operators::Initialize(mapOperators);
 
 
         /* Handle for get/blockhash. */
