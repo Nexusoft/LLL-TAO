@@ -107,6 +107,18 @@ namespace TAO::API
             )
         );
 
+        /* Handle for list/blocks. */
+        mapFunctions["list/transactions"] = Function
+        (
+            std::bind
+            (
+                &Ledger::ListTransactions,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Handle for get/transaction. */
         mapFunctions["get/transaction"] = Function
         (

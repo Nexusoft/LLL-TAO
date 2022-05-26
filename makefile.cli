@@ -435,6 +435,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_get-transaction.o \
 		build/API_commands_ledger_initialize.o \
 		build/API_commands_ledger_list-blocks.o \
+		build/API_commands_ledger_list-transactions.o \
 		build/API_commands_ledger_submit-transaction.o \
 		build/API_commands_ledger_sync-headers.o \
 		build/API_commands_ledger_void-transaction.o \

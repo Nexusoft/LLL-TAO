@@ -94,6 +94,19 @@ namespace TAO::API
         encoding::json ListBlocks(const encoding::json& jParams, const bool fHelp);
 
 
+        /** ListTransactions
+         *
+         *  Retrieves the list of transactions provided by given genesis.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json ListTransactions(const encoding::json& jParams, const bool fHelp);
+
+
         /** Transaction
          *
          *  Retrieves the transaction data for a given hash.
