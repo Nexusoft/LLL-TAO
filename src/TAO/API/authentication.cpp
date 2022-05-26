@@ -497,7 +497,7 @@ namespace TAO::API
 
         /* Check if the auth has is deactivated. */
         if(hashAuth == 0)
-            return false;
+            throw Exception(-9, "auth key is disabled, please run profiles/create/auth to enable");
 
         /* Generate a key to check credentials against. */
         const uint256_t hashCheck =
