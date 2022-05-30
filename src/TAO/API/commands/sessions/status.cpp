@@ -54,6 +54,6 @@ namespace TAO::API
             { "unlocked", jUnlocked                         }
         };
 
-        return jUnlocked;
+        return jRet;
     }
 }
