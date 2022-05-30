@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/extract.h>
 
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/sessions.h>
@@ -24,6 +25,9 @@ namespace TAO::API
     /* Get status information for the currently logged in user. */
     encoding::json Sessions::Status(const encoding::json& jParams, const bool fHelp)
     {
+        /* Get our current object type. */
+        const std::string strType = ExtractType(jParams);
+
         /* Populate unlocked status */
         uint8_t nCurrentActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
         Authentication::Unlocked(jParams, nCurrentActions);
@@ -46,10 +50,10 @@ namespace TAO::API
         {
             { "genesis",  hashGenesis.ToString()            },
             { "accessed", Authentication::Accessed(jParams) },
-            { "location", jParams["request"]["type"]        }, //replace this with Authentication::Location(jParams);
+            { "location", strType                           }, //replace this with Authentication::Location(jParams);
             { "unlocked", jUnlocked                         }
         };
 
-        return jRet;
+        return jUnlocked;
     }
 }
