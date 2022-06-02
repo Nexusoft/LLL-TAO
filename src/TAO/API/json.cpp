@@ -11,41 +11,32 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/API/include/json.h>
-#include <TAO/API/include/get.h>
+#include <LLD/include/global.h>
 
 #include <Legacy/include/evaluate.h>
 #include <Legacy/include/money.h>
 #include <Legacy/types/address.h>
-#include <Legacy/types/trustkey.h>
 
 #include <TAO/API/include/check.h>
-#include <TAO/API/include/constants.h>
 #include <TAO/API/include/format.h>
+#include <TAO/API/include/get.h>
+#include <TAO/API/include/json.h>
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/commands.h>
 
-#include <TAO/API/users/types/users.h>
 #include <TAO/API/types/commands/names.h>
 
-#include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/difficulty.h>
-#include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/tritium.h>
-#include <TAO/Ledger/types/mempool.h>
 
 #include <TAO/Operation/include/enum.h>
-#include <TAO/Operation/include/create.h>
 #include <TAO/Operation/types/contract.h>
 
-#include <TAO/Register/include/unpack.h>
-#include <TAO/Register/include/reserved.h>
+#include <TAO/Register/include/constants.h>
 
-#include <Util/include/args.h>
-#include <Util/include/convert.h>
 #include <Util/include/debug.h>
 #include <Util/include/hex.h>
 #include <Util/include/json.h>
@@ -54,8 +45,6 @@ ________________________________________________________________________________
 #include <Util/include/math.h>
 
 #include <Util/encoding/include/utf-8.h>
-
-#include <LLD/include/global.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -670,7 +659,11 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]          = "TRANSFER";
                     jRet["address"]     = hashAddress.ToString();
-                    jRet["destination"] = hashTransfer.ToString();
+
+                    /* Add transfer address if not to wildcard. */
+                    if(hashTransfer != TAO::Register::WILDCARD_ADDRESS)
+                        jRet["recipient"] = hashTransfer.ToString();
+
                     jRet["forced"]      = (nType == TAO::Operation::TRANSFER::FORCE);
 
                     break;
@@ -809,7 +802,10 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]       = "DEBIT";
                     jRet["from"]     = hashFrom.ToString();
-                    jRet["to"]       = hashTo.ToString();
+
+                    /* Check for wildcard address before adding key. */
+                    if(hashTo != TAO::Register::WILDCARD_ADDRESS)
+                        jRet["to"]       = hashTo.ToString();
 
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
                     TAO::Register::Object object = contract.PreState();
@@ -874,7 +870,11 @@ namespace TAO::API
                     /* Populate the rest of our data. */
                     jRet["txid"]     = hashTx.ToString();
                     jRet["contract"] = nContract;
-                    jRet["proof"]    = hashProof.ToString();
+
+                    /* Only add proof if not a wildcard address. */
+                    if(hashProof != TAO::Register::WILDCARD_ADDRESS)
+                        jRet["proof"]    = hashProof.ToString();
+
                     jRet["to"]       = hashAddress.ToString();
 
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
