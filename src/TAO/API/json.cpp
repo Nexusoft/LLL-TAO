@@ -663,6 +663,8 @@ namespace TAO::API
                     /* Add transfer address if not to wildcard. */
                     if(hashTransfer != TAO::Register::WILDCARD_ADDRESS)
                         jRet["recipient"] = hashTransfer.ToString();
+                    else
+                        jRet["wildcard"] = true;
 
                     jRet["forced"]      = (nType == TAO::Operation::TRANSFER::FORCE);
 
@@ -806,6 +808,8 @@ namespace TAO::API
                     /* Check for wildcard address before adding key. */
                     if(hashTo != TAO::Register::WILDCARD_ADDRESS)
                         jRet["to"]       = hashTo.ToString();
+                    else
+                        jRet["wildcard"] = true;
 
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
                     TAO::Register::Object object = contract.PreState();
@@ -871,12 +875,6 @@ namespace TAO::API
                     jRet["txid"]     = hashTx.ToString();
                     jRet["contract"] = nContract;
 
-                    /* Only add proof if not a wildcard address. */
-                    if(hashProof != TAO::Register::WILDCARD_ADDRESS)
-                        jRet["proof"]    = hashProof.ToString();
-
-                    jRet["to"]       = hashAddress.ToString();
-
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
                     TAO::Register::Object object = contract.PreState();
                     if(!object.Parse())
@@ -885,6 +883,58 @@ namespace TAO::API
                     /* Get the current token's address.  */
                     const TAO::Register::Address hashToken =
                         object.get<uint256_t>("token");
+
+                    /* Only add proof if not a wildcard address. */
+                    if(hashProof != TAO::Register::WILDCARD_ADDRESS)
+                    {
+                        /* Attempt to read the proof so we can show from or proof fields. */
+                        TAO::Register::Object oProof;
+                        if(LLD::Register->ReadObject(hashProof, oProof))
+                        {
+                            /* Check for matching token to indicate proof or from. */
+                            const TAO::Register::Address hashProofToken = oProof.get<uint256_t>("token");
+                            if(hashProofToken != hashToken)
+                            {
+                                /* Get our token object. */
+                                TAO::Register::Object oToken;
+                                if(LLD::Register->ReadObject(hashProofToken, oToken))
+                                {
+                                    /* Get our account balance. */
+                                    const uint64_t nBalance = oProof.get<uint64_t>("balance");
+
+                                    /* Create a proof object to show account and token. */
+                                    encoding::json jProof;
+                                    jProof["account"] = hashProof.ToString();
+
+                                    /* Calculate our partial ownership now. */
+                                    const uint64_t nOwnership =
+                                        (nBalance * 10000) / oToken.get<uint64_t>("supply"); //we use 10000 as 100 * 100 for 100.00 percent displayed
+
+                                    /* Add our ownership value to register. */
+                                    //jProof["amount"]    = FormatBalance(nBalance, oToken.get<uint8_t>("decimals"));
+                                    jProof["token"]     = hashProofToken.ToString();
+
+                                    /* Add a ticker if found. */
+                                    std::string strTicker;
+                                    if(Names::ReverseLookup(hashProofToken, strTicker))
+                                        jProof["ticker"] = strTicker;
+
+                                    /* Track our ownership here. */
+                                    jProof["ownership"] = double(nOwnership / 100.0);
+
+                                    /* We want all the token related data for our proof. */
+                                    jRet["proof"] = jProof;
+                                }
+                            }
+                            else
+                                jRet["from"]  = hashProof.ToString();
+                        }
+                    }
+                    else
+                        jRet["wildcard"] = true;
+
+                    /* Track our address to. */
+                    jRet["to"]       = hashAddress.ToString();
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nCredit, hashToken);
