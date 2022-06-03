@@ -586,6 +586,11 @@ namespace TAO::API
                     /* No offset included in the limit */
                     nLimit = std::stoul(strLimit);
                 }
+                else if(EqualsNoCase(strLimit, "none"))
+                {
+                    /* No limit includes as many values as possible. */
+                    nLimit = std::numeric_limits<uint32_t>::max();
+                }
                 else if(strLimit.find(","))
                 {
                     /* Parse the limit and offset */

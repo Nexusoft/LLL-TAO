@@ -97,6 +97,7 @@ namespace TAO
                     /* global */
                     if(object.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
                         nTotalGlobalNames ++;
+
                     /* namespaced */
                     else if(object.get<std::string>("namespace") != "" )
                         nTotalNamespacedNames ++;
@@ -133,21 +134,21 @@ namespace TAO
 
 
             /* Add register metrics */
-            encoding::json jsonRegisters;
-            jsonRegisters["total"] = nTotalRegisters;
-            jsonRegisters["account"] = nTotalAccounts;
-            jsonRegisters["append"] = nTotalAppend;
-            jsonRegisters["crypto"] = nTotalCrypto;
-            jsonRegisters["name"]  = nTotalNames;
-            jsonRegisters["name_global"]  = nTotalGlobalNames;
-            jsonRegisters["name_namespaced"]  = nTotalNamespacedNames;
-            jsonRegisters["namespace"] = nTotalNamespaces;
-            jsonRegisters["object"] = nTotalObjects;
-            jsonRegisters["object_tokenized"] = nTotalTokenized;
-            jsonRegisters["raw"] = nTotalRaw;
-            jsonRegisters["readonly"] = nTotalReadOnly;
-            jsonRegisters["token"] = nTotalTokens;
-            jsonRet["registers"] = jsonRegisters;
+            encoding::json jRegisters;
+            jRegisters["total"] = nTotalRegisters;
+            jRegisters["account"] = nTotalAccounts;
+            jRegisters["append"] = nTotalAppend;
+            jRegisters["crypto"] = nTotalCrypto;
+            jRegisters["name"]  = nTotalNames;
+            jRegisters["name_global"]  = nTotalGlobalNames;
+            jRegisters["name_namespaced"]  = nTotalNamespacedNames;
+            jRegisters["namespace"] = nTotalNamespaces;
+            jRegisters["object"] = nTotalObjects;
+            jRegisters["object_tokenized"] = nTotalTokenized;
+            jRegisters["raw"] = nTotalRaw;
+            jRegisters["readonly"] = nTotalReadOnly;
+            jRegisters["token"] = nTotalTokens;
+            jsonRet["registers"] = jRegisters;
 
             /* Add sig chain metrics */
             jsonRet["sig_chains"] = nTotalSigChains;
