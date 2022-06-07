@@ -38,51 +38,7 @@ This command will return a sum of the balances for all accounts:
 }
 ```
 
------------------------------------
 
-## `Supported Filters`
-
-This command-set supports single or csv field-name filters.
-
-**Example:**
-
-```
-finance/list/accounts/balance,ticker
-```
-
-The above command will return an array of objects with only the `balance` and `ticker` JSON keys.
-
-### `Recursive Filtering`
-
-Nested JSON objects and arrays can be filtered recursively using the `.` operator.
-
-```
-finance/transactions/account/contracts.OP
-```
-
-When using recursive filtering, the nested hiearchy is retained.
-
-```
-[
-    {
-        "contracts": [
-            {
-                "OP": "CREATE"
-            }
-        ]
-    },
-    {
-        "contracts": [
-            {
-                "OP": "CREDIT"
-            }
-        ]
-    }
-]
-
-```
-
------------------------------------
 
 ## `Supported Nouns`
 
