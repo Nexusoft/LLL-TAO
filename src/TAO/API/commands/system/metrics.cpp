@@ -57,7 +57,7 @@ namespace TAO
             uint64_t nTotalTokenized = 0;
 
             /* There is one crypto register per sig chain so just counting these is a reliable count of the sig chains */
-            uint64_t nTotalSigChains = nTotalCrypto;
+            uint64_t nTotalSigChains = 0;
 
 
             /* Batch read all trust keys. */
@@ -101,6 +101,10 @@ namespace TAO
                     /* namespaced */
                     else if(object.get<std::string>("namespace") != "" )
                         nTotalNamespacedNames ++;
+
+                    /* Check for default accounts. */
+                    if(object.get<std::string>("name") == "trust" && object.get<std::string>("namespace") == "")
+                        ++nTotalSigChains;
 
                     /* Update count*/
                     nTotalNames  ++;
@@ -177,9 +181,13 @@ namespace TAO
                 int64_t nSupply = stateBest.nMoneySupply;
                 int64_t nTarget = TAO::Ledger::CompoundSubsidy(nMinutes);
 
+                double nYears   = (nMinutes / 525960.0); //525960 is 1440 * 365.25 for minutes in a year
+                double nYearly = (nSupply - nTarget) / nYears;
+                uint64_t nInflation = (nYearly * TAO::Ledger::NXS_COIN) / nSupply; //we use NXS_COIN to get 4 significant figures
+
                 jsonSupply["total"] = double(nSupply) / TAO::Ledger::NXS_COIN;
                 jsonSupply["target"] = double(nTarget) / TAO::Ledger::NXS_COIN;
-                jsonSupply["inflationrate"] = ((nSupply * 100.0) / nTarget) - 100.0;
+                jsonSupply["inflation"] = double(nInflation * 100) / TAO::Ledger::NXS_COIN; //100 counts as 2 of 6 figures in NXS_COIN
 
                 jsonSupply["minute"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 1)) / TAO::Ledger::NXS_COIN; //1
                 jsonSupply["hour"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 60)) / TAO::Ledger::NXS_COIN; //60
