@@ -16,13 +16,12 @@ profiles/verb/noun
 
 The following verbs are currently supported by this API command-set:
 
-[`create`](#create) - Generate a new object of supported type.   
-[`credit`](#credit) - Claim funds issued to account from debit.     
-[`debit`](#debit)   - Issue funds from supported type.  
-[`get`](#get)       - Get object of supported type.     
-[`list`](#list)     - List all objects owned by given user.     
-[`history`](#history) - Generate the history of all last states.          
-[`transactions`](#transactions) - List all transactions that modified specified object.     
+[`create`](#create) - Generate a new object of supported type. </br>
+[`update`](#update) - Updates the specified object registers. </br>
+[`recover`](#recover) - Recovers a profile account. </br>
+[`status`](#status) - Status information of a profile. </br>
+[`notifications`](#notifications) - List all notifications that modified specified object. </br>
+[`transactions`](#transactions) - List all transactions that modified specified object. </br>
 
 -----------------------------------
 
@@ -30,11 +29,10 @@ The following verbs are currently supported by this API command-set:
 
 The following nouns are supported for this API command-set:
 
-[`account`] - An object register containing a token-id and balance.     
-[`trust`]   - An object register containing a token-id, balance, and trust.     
-[`token`]   - An object register containing a token-id, balance, supply, and decimals.      
-[`any`]     - An object selection noun allowing mixed accounts of different tokens.     
-[`all`]     - An object selection noun to collect all accounts for given token type.    
+[`master`] - The default profile that controls all sub-profiles. </br>
+[`auth`] - A crypto object register for login auth. </br>
+[`credentials`] -  Credentials used to secure profiles. </br>
+[`recovery`] - An object which represents recovery for the profile. </br>
 
 -----------------------------------
 
