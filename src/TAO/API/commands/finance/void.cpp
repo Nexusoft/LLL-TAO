@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/extract.h>
 
 #include <TAO/API/types/commands.h>
-#include <TAO/API/types/commands/ledger.h>
+#include <TAO/API/types/commands/finance.h>
 
 #include <TAO/Operation/types/contract.h>
 
@@ -23,7 +23,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Reverses a debit or transfer transaction that the caller has made */
-    encoding::json Ledger::VoidTransaction(const encoding::json& jParams, const bool fHelp)
+    encoding::json Finance::Void(const encoding::json& jParams, const bool fHelp)
     {
         /* Get the transaction id. */
         const uint512_t hashTx =

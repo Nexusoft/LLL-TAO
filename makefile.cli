@@ -423,6 +423,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_finance_migrate.o \
 		build/API_commands_finance_set-stake.o \
 		build/API_commands_finance_stake-info.o \
+		build/API_commands_finance_void.o \
 		build/API_commands_invoices_cancel.o \
 		build/API_commands_invoices_create.o \
 		build/API_commands_invoices_get.o \
@@ -438,7 +439,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_list-transactions.o \
 		build/API_commands_ledger_submit-transaction.o \
 		build/API_commands_ledger_sync-headers.o \
-		build/API_commands_ledger_void-transaction.o \
 		build/API_commands_market_cancel.o \
 		build/API_commands_market_create.o \
 		build/API_commands_market_execute.o \
