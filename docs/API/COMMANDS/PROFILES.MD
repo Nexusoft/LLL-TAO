@@ -137,13 +137,13 @@ Make sure to backup and recheck the recovery seed and create multiple offline ba
 
 #### Return value JSON object:
 
-...
+```
 {
     "success": true,
     "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
 }
 [Completed in 18533.182336 ms]
-...
+```
 
 #### Return values:
 `success` : Boolean flag indicating that the profile was updated successfully.
@@ -197,9 +197,9 @@ This command only supports the `master` noun.
 
 Return status information for the requested signature chain.
 
-...
+```
 profiles/status/noun
-...
+```
 
 This command only supports the `master` noun.
 
@@ -281,18 +281,31 @@ This method supports the Sorting / Filtering parameters.
 #### Return values:
 
 `id` : The sequential ID of this transaction.
+
 `OP` : The contract operation. Can be COINBASE, DEBIT, FEE, TRANSFER.
+
 `txid` : The transaction that was credited / claimed.
+
 `suppressed`: If the caller included the optional suppressed flag, then the response will include this field to indicate whether this notification is currently being suppressed or not.
+
 `from` : For DEBIT transactions, the register address of the account that the debit is being made from.
+
 `from_name` : For DEBIT transactions, the name of the account that the debit is being made from. Only included if the name can be resolved.
+
 `to` : For DEBIT transactions, the register address of the account that the debit is being made to.
+
 `to_name` : For DEBIT transactions, the name of the account that the debit is being made to. Only included if the name can be resolved.
+
 `amount` : the token amount of the transaction.
+
 `token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
+
 `ticker` : The name of the token that the transaction relates to.
+
 `reference` : For DEBIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
+
 `proof` : The register address of the token account proving the the split dividend debit.
+
 `dividend_payment` : Flag indicating that this debit is a split dividend payment to a tokenized asset
 
 -----------------------------------
