@@ -49,7 +49,7 @@ namespace TAO::API
         /* Handle for the raw specifier. */
         std::vector<TAO::Operation::Contract> vContracts(1);
 
-        /* Handle for readonly raw format. */
+        /* Handle for a standard object register. */
         if(strFormat == "standard")
         {
             /* Generate our standard object from standard functions. */
