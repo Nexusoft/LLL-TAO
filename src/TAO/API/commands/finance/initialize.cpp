@@ -242,6 +242,18 @@ namespace TAO::API
             )
         );
 
+        /* Handle for BALANCES. */
+        mapFunctions["void/transaction"] = Function
+        (
+            std::bind
+            (
+                &Finance::Void,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
 
         /* DEPRECATED */
         mapFunctions["list/balances"] = Function

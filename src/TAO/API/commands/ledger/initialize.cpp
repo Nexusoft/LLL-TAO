@@ -123,18 +123,6 @@ namespace TAO::API
             )
         );
 
-        /* Handle for void/transaction. */
-        mapFunctions["void/transaction"] = Function
-        (
-            std::bind
-            (
-                &Ledger::VoidTransaction,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
 
         /* DEPRECATED */
         mapFunctions["get/mininginfo"] = Function

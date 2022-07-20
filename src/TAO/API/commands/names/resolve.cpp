@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/commands/names.h>
-#include <TAO/API/types/session-manager.h>
 
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
 
 /* Global TAO namespace. */
@@ -40,6 +40,28 @@ namespace TAO::API
             return tObject.get<uint256_t>("address");
 
         return TAO::API::ADDRESS_NONE; //otherwise return none (1)
+    }
+
+
+    /* Resolves a register address from a namespace by looking up the namespace using incoming parameters */
+    TAO::Register::Address Names::ResolveNamespace(const encoding::json& jParams)
+    {
+        /* Check that we have namespace parameter. */
+        if(!CheckParameter(jParams, "namespace", "string"))
+            throw Exception(-56, "Missing Parameter [namespace]");
+
+        /* Grab our namespace from incoming parameters. */
+        const std::string& strLookup =
+            jParams["namespace"].get<std::string>();
+
+        return ResolveNamespace(strLookup);
+    }
+
+
+    /* Resolves a register address from a namespace by looking up the namespace by hashing namespace name */
+    TAO::Register::Address Names::ResolveNamespace(const std::string& strNamespace)
+    {
+        return TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
     }
 
 

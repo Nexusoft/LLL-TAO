@@ -84,7 +84,7 @@ namespace TAO::API
          *
          *  Retrieves a Name object by name.
          *
-         *  @param[in] params The json request params
+         *  @param[in] jParams The json request parameters
          *  @param[in] strObjectName The name parameter to use in the register hash
          *  @param[out] hashRegister The register address of the Name object, if found
          *  @param[in] fThrow Flag indicating it should throw an exception if not found
@@ -117,15 +117,36 @@ namespace TAO::API
          *
          *  Resolves a register address from a name by looking up a Name object and returning the address that it points to.
          *
-         *  @param[in] params The json request params
+         *  @param[in] jParams The json request parameters
          *  @param[in] strName The name parameter to use in the register hash
          *  @param[in] fThrow Flag indicating it should throw an exception if not found
          *
          *  @return The 256 bit hash of the object name.
          **/
-        static TAO::Register::Address ResolveAddress(const encoding::json& jParams,
-                                                     const std::string& strName,
+        static TAO::Register::Address ResolveAddress(const encoding::json& jParams, const std::string& strName,
                                                      const bool fThrow = true);
+
+
+        /** ResolveNamespace
+         *
+         *  Resolves a register address from a namespace by looking up the namespace using incoming parameters
+         *
+         *  @param[in] jParams The json request parameters
+         *
+         *  @return The 256 bit hash of the object name.
+         **/
+        static TAO::Register::Address ResolveNamespace(const encoding::json& jParams);
+
+
+        /** ResolveNamespace
+         *
+         *  Resolves a register address from a namespace by looking up the namespace by hashing namespace name
+         *
+         *  @param[in] strNamespace The namespace parameter to use in the register hash
+         *
+         *  @return The 256 bit hash of the object name.
+         **/
+        static TAO::Register::Address ResolveNamespace(const std::string& strNamespace);
 
 
         /** ReverseLookup
