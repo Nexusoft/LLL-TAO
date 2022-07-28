@@ -351,6 +351,16 @@ namespace TAO::Ledger
         bool IsFirst() const;
 
 
+        /** IsConfirmed
+         *
+         *  Determines if the transaction has been confirmed in the main chain.
+         *
+         *  @return true if transaction has been confirmed by the network.
+         *
+         **/
+        bool IsConfirmed() const;
+
+
         /** GetTrustInfo
          *
          *  Gets the total trust and stake of pre-state.

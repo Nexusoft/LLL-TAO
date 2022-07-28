@@ -1158,6 +1158,13 @@ namespace TAO
         }
 
 
+        /* Determines if the transaction has been confirmed in the main chain. */
+        bool Transaction::IsConfirmed() const
+        {
+            return LLD::Ledger->HasIndex(GetHash());
+        }
+
+
         /*  Gets the total trust and stake of pre-state. */
         bool Transaction::GetTrustInfo(uint64_t &nBalance, uint64_t &nTrust, uint64_t &nStake) const
         {

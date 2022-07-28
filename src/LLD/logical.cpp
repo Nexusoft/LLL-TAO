@@ -87,6 +87,13 @@ namespace LLD
     }
 
 
+    /* Checks if a given genesis-id has been indexed. */
+    bool LogicalDB::HasFirst(const uint256_t& hashGenesis)
+    {
+        return Exists(std::make_pair(std::string("indexing.first"), hashGenesis));
+    }
+
+
     /* Reads the first transaction-id from disk. */
     bool LogicalDB::ReadFirst(const uint256_t& hashGenesis, uint512_t& hashTx)
     {

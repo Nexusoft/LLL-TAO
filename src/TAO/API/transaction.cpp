@@ -327,7 +327,7 @@ namespace TAO::API
             /* Set our forward iteration hash. */
             tx.hashNextTx = 0;
 
-            /* Erase our new transaction to disk. */
+            /* Erase our new transaction from disk. */
             if(!LLD::Logical->WriteTx(hashPrevTx, tx))
                 return debug::error(FUNCTION, "failed to update previous ", VARIABLE(hashPrevTx.SubString()));
 

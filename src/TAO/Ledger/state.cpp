@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <Legacy/wallet/wallet.h>
 
 #include <TAO/API/types/indexing.h>
+#include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -1264,6 +1265,23 @@ namespace TAO
                     /* Disconnect the transaction. */
                     if(!tx.Disconnect())
                         return debug::error(FUNCTION, "failed to disconnect transaction");
+
+                    /* Make sure this sigchain needs to be de-indexed. */
+                    if(LLD::Logical->HasFirst(tx.hashGenesis))
+                    {
+                        /* Get a reference of our transaction. */
+                        TAO::API::Transaction wtx = TAO::API::Transaction(tx);
+
+                        /* Make sure indexes are deleted. */
+                        if(!wtx.Delete(hash))
+                        {
+                            debug::warning(FUNCTION, "failed to erase our API indexes for ", hash.SubString());
+                            continue;
+                        }
+
+                        /* TODO: delete this debug info for < verbose=3 */
+                        debug::log(0, FUNCTION, "deleted API session indexes for ", hash.SubString());
+                    }
                 }
                 else if(proof->first == TRANSACTION::LEGACY)
                 {

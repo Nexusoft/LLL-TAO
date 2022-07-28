@@ -336,6 +336,10 @@ namespace TAO::API
             /* Loop through found transactions. */
             for(const auto& tx : vtx)
             {
+                /* Check that our transactions are in the main chain. */
+                if(!tx.IsConfirmed())
+                    continue;
+
                 /* Iterate the transaction contracts. */
                 for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
                 {

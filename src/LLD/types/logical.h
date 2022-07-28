@@ -132,6 +132,18 @@ namespace LLD
         bool WriteFirst(const uint256_t& hashGenesis, const uint512_t& hashTx);
 
 
+        /** HasFirst
+         *
+         *  Checks if a given genesis-id has been indexed.
+         *
+         *  @param[in] hashGenesis The genesis ID to read for.
+         *
+         *  @return True if the genesis was read, false otherwise.
+         *
+         **/
+        bool HasFirst(const uint256_t& hashGenesis);
+
+
         /** ReadFirst
          *
          *  Reads the first transaction-id from disk.
