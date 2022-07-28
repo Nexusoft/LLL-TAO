@@ -55,6 +55,10 @@ namespace TAO::Ledger
     /*  Dispatch a new block hash to relay thread.*/
     void Dispatch::PushRelay(const uint1024_t& hashBlock)
     {
+        /* Don't add relay data if servers aren't active. */
+        if(!LLP::TRITIUM_SERVER)
+            return;
+
         DISPATCH_QUEUE->push(hashBlock);
         CONDITION.notify_one();
     }
@@ -75,13 +79,16 @@ namespace TAO::Ledger
                 if(config::fShutdown.load())
                     return true;
 
-                //LOCK(DISPATCH_MUTEX); XXX: run with RACE_CHECK=1 to make sure this is thread-safe
                 return DISPATCH_QUEUE->size() != 0;
             });
 
             /* Check for shutdown. */
             if(config::fShutdown.load())
                 return;
+
+            /* Don't run relay thread when servers aren't active. */
+            if(!LLP::TRITIUM_SERVER)
+                continue;
 
             /* Start a stopwatch. */
             runtime::stopwatch swTimer;
