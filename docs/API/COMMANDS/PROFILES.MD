@@ -16,12 +16,12 @@ profiles/verb/noun
 
 The following verbs are currently supported by this API command-set:
 
-[`create`](#create) - Generate a new object of supported type. </br>
-[`update`](#update) - Updates the specified object registers. </br>
-[`recover`](#recover) - Recovers a profile account. </br>
-[`status`](#status) - Status information of a profile. </br>
-[`notifications`](#notifications) - List all notifications that modified specified object. </br>
-[`transactions`](#transactions) - List all transactions that modified specified object. </br>
+[`create`](#create) - Generate a new object of supported type.  
+[`update`](#update) - Updates the specified object registers.  
+[`recover`](#recover) - Recovers a profile account.  
+[`status`](#status) - Status information of a profile.  
+[`notifications`](#notifications) - List all notifications that modified specified object.  
+[`transactions`](#transactions) - List all transactions that modified specified object.  
 
 -----------------------------------
 
@@ -29,17 +29,17 @@ The following verbs are currently supported by this API command-set:
 
 The following nouns are supported for this API command-set:
 
-[`master`] - The default profile that controls all sub-profiles. </br>
-[`auth`] - A crypto object register for login auth. </br>
-[`credentials`] -  Credentials used to secure profiles. </br>
-[`recovery`] - An object which represents recovery for the profile. </br>
+[`master`] - The default profile that controls all sub-profiles.  
+[`auth`] - A crypto object register for login auth.  
+[`credentials`] -  Credentials used to secure profiles.  
+[`recovery`] - An object which represents recovery for the profile.  
 
 -----------------------------------
 
 
 # <a name="create"></a> `create`
 
-This will create a new signature chain or initialize the auth key for older signature chains to make them compatible with profiles, specified by the noun.
+This will create a new profile or initializes the auth key for older signature chains to make them compatible with profiles, specified by the noun.
 
 ```
 profiles/create/noun
@@ -49,12 +49,11 @@ This command only supports the `master` and `auth` nouns.
 
 #### create/master ####
 
-This will create a new master profile specified by given noun, for use on the network. The master profile is secured by a combination of username, password, and PIN.
+This will create a new profile specified by given noun. The profile is secured by a combination of `username`, `password`, and `PIN`.
 
 #### create/auth ####
 
-This method will initialize a auth crypto object register for login auth for signature chains created with the early release of Tritium, to be compatible with profiles with Tritium++. Existing users need to first convert their Tritium accounts to be compatible to login with Tritium++ profiles. 
-
+This method will initialize a `auth` crypto object register for signature chains created with the early release of Tritium. This makes these signature chain compatible with profiles on Tritium++. Existing users may have to convert their old signature chains to be compatible to login with Tritium++ profiles if they are not able to create a session. 
 
 ## Parameters:
 
@@ -65,9 +64,13 @@ This method will initialize a auth crypto object register for login auth for sig
 `pin` : Required to **set** a pin. The PIN to be associated with this profile
 
 **NOTE:**
-Username is part of the profile credentials, is case-sensitive and cannot be changed. Choose the username carefully and make a point to back it up along with the password and pin. 
-Don't use the colon ' : ' at the end of the username.
 
+- `username` must be a minimum of 2 characters. 
+- `password` must be a minimum of 8 characters. 
+- `PIN` must be a minimum of 4 characters. 
+-  username is case-sensitive and cannot be changed. Choose the username carefully and make it a point to back it up along with the password and pin.  
+- Don't use the colon ':' at the end of the username. 
+ 
 
 ## Results: ##
 
@@ -82,7 +85,7 @@ Don't use the colon ' : ' at the end of the username.
 
 #### Return values:
 
-`success` : Boolean flag indicating that the session was saved successfully.
+`success` : Boolean flag indicating that the profile was created successfully.
 
 `txid` : The ID (hash) of the transaction that includes the created object.
 
@@ -187,7 +190,7 @@ This command only supports the `master` noun.
 
 #### Return values:
 
-`success` : Boolean flag indicating that the session was saved successfully.
+`success` : Boolean flag indicating that the profile was recovered successfully.
 
 `txid` : The ID (hash) of the transaction for the recovered object.
 
@@ -195,7 +198,7 @@ This command only supports the `master` noun.
 
 # <a name="status"></a> `status`
 
-Return status information for the requested signature chain.
+Returns status information for the requested profile.
 
 ```
 profiles/status/noun
@@ -226,7 +229,7 @@ This command only supports the `master` noun.
 
 #### Return values:
 
-`genesis` : The profile hash for the currently logged in profile.
+`genesis` : The profile genesis hash. This is a hash of the profile username.
 
 `confirmed` : Boolean flag indicating whether the genesis transaction for this profile has at least one confirmation.
 
@@ -234,7 +237,7 @@ This command only supports the `master` noun.
 
 `crypto` : Flag indicating whether the crypto object register has been set for this profile.
 
-`transactions` : The total transaction count in this profile
+`transactions` : The total transaction count for this profile
 
 -----------------------------------
 
@@ -312,7 +315,7 @@ This method supports the Sorting / Filtering parameters.
 
 # <a name="transactions"></a> `transactions`
 
-This will list off all of the transactions for the requested signature chain.
+This will list off all of the transactions for the requested profile.
 
 ```
 profiles/transactions/noun
@@ -326,9 +329,9 @@ This command only supports the `master` noun.
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
 
 `verbose` : Optional, **determines** how much transaction data to include in the response. Supported values are :
-`default` : hash
-`summary` : type, version, sequence, timestamp, operation, and confirmations.
-`detail` : genesis, nexthash, prevhash, pubkey and signature.
+- `default` : hash
+- `summary` : type, version, sequence, timestamp, operation, and confirmations.
+- `detail` : genesis, nexthash, prevhash, pubkey and signature.
 
 This method supports the Sorting / Filtering parameters.
 
@@ -387,7 +390,7 @@ This method supports the Sorting / Filtering parameters.
 
 `confirmations` : The number of confirmations that this transaction obtained by the network.
 
-`genesis` : The profile username hash.
+`genesis` : The profile genesis hash. This is a hash of the profile username.  
 
 `nexthash` : The hash of the next transaction in the sequence.
 
@@ -397,8 +400,8 @@ This method supports the Sorting / Filtering parameters.
 
 `signature` : The signature hash.
 
-`contracts` : The array of contracts bound to this transaction and their details with opcodes.
-{
+`contracts` : The array of contracts bound to this transaction and their details with opcodes.  
+{  
 `id` : The sequential ID of this contract within the transaction.
 
 `OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
@@ -428,5 +431,7 @@ resolved.
 
 `reference` : For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
-`object` : Returns a list of all hashed public keys in the crypto object register for the specified profile. The object result will contain the nine default keys(app1, app2, app3, auth, cert lisp, network, sign  and verify).
-}
+`object` : Returns a list of all hashed public keys in the crypto object register for the specified profile. The object result will contain the nine default keys(app1, app2, app3, auth, cert lisp, network, sign  and verify).  
+}  
+
+-----------------------------------

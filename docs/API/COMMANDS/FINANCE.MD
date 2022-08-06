@@ -79,10 +79,11 @@ The following verbs are currently supported by this API command-set:
 
 The following commands are direct endpoints and thus do not support the above `verb` and `noun` structure available above.
 
-[`get/balances`](#create)    
-[`get/stakeinfo`](#credit)  
-[`migrate/accounts`](#debit)    
-[`set/stake`](#get)
+[`get/balances`](#get/balance)      
+[`get/stakeinfo`](#get/stakeinfo)   
+[`set/stake`](#set/stake)  
+[`void/transaction`](#void/transaction)   
+[`migrate/accounts`](#migrate/account)   
 
 Direct endpoints support filters and operators.
 

@@ -27,6 +27,7 @@ The following verbs are currently supported by this API command-set:
 [`status`](#status)       - Returns status information for the session specified by the noun.  
 
 
+
 ## `Supported Nouns`
 
 The following nouns are supported for this API command-set:
@@ -69,7 +70,7 @@ This command only supports the `local` noun.
 
 #### Return values:
 
-`genesis` : The signature chain genesis hash. This is a hash of the username used to create the profile.
+`genesis` : The profile genesis hash. This is a hash of the profile username.
 
 `session` : When using multi-user API mode, an additional session value is returned and must be supplied in subsequent API calls, to allow the managing of multiple login sessions.
 
@@ -83,9 +84,7 @@ This will unlock the session specified by given noun and cache the PIN in encryp
 sessions/unlock/noun
 ```
 
-
 These commands only supports the `local` noun.
-
 
 ## Parameters:
 
@@ -133,7 +132,7 @@ These commands only supports the `local` noun.
 
 # <a name="lock"></a> `lock`
 
-This will lock the session specified by given noun and purge the PIN stored in the encrypted memory.
+This will lock the specified session by purging the PIN stored in encrypted memory, making it unavailable for use unless it is either unlocked or the PIN is passed in to all API requests.
 
 ```
 sessions/lock/noun
@@ -150,7 +149,7 @@ These commands only supports the `local` noun.
 
 `mining` : Required for **locking** mining transactions. This boolean value locks the session for mining.
 
-`notifications` : Required for **locking** notifications. This boolean value determines locks the session from processing incoming notifications.
+`notifications` : Required for **locking** notifications. This boolean value locks the session from processing incoming notifications.
 
 `staking` : Required for **locking** staking transactions. This boolean value locks the session for staking.
 
@@ -197,6 +196,12 @@ sessions/save/noun
 
 These commands only supports the `local` noun.
 
+NOTE:
+
+- Save session, saves the specified active session to the local disk.
+- Saved sessions are saved permanent until deleted manually.
+- Saved sessions will be resumed in the same condition (locked or unlocked) as it was saved.  
+
 
 ## Parameters:
 
@@ -219,7 +224,7 @@ These commands only supports the `local` noun.
 
 #### Return values:
 
-`genesis` : The signature chain genesis hash. This is a hash of the username used to create the profile.
+`genesis` : The profile genesis hash. This is a hash of the profile username.
 
 `success` : Boolean flag indicating that the session was saved successfully .
 
@@ -227,7 +232,7 @@ These commands only supports the `local` noun.
 
 # <a name="load"></a> `load`
 
-This will load the users session from the local database, allowing a saved session to be resumed without the need to login or unlock. The users PIN is required as this is used (in conjunction with the genesis) to decrypt the session data.
+This will resume a saved session from the local database, allowing a saved session to be resumed without the need to login or unlock. The profile username or genesis and PIN is required to decrypt and resume the saved session.
 
 ```
 sessions/load/noun
@@ -235,12 +240,21 @@ sessions/load/noun
 
 These commands only supports the `local` noun.
 
+NOTE:
+
+- If there is an existing active session, it will not load a saved session. 
+- Only a previously saved session can be loaded.  
+- When a saved session is resumed, it creates a new session ID.
+- Saved sessions can be resumed even after a core or node restart. 
+
 
 ## Parameters:
 
 `pin` : Required if **authenticate**. The PIN for this profile.
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`username`: Required to **identify** the profile to load the session for. This is optional if the `genesis` is provided.   
+
+`genesis` :  Required to **identify** the profile to load the session for. This is optional if the `username` is provided.    
 
 
 ## Results:
@@ -256,7 +270,7 @@ These commands only supports the `local` noun.
 ```
 
 #### Return values:
-`genesis` : The signature chain genesis hash. This is a hash of the username used to create the profile.
+`genesis` : The profile genesis hash. This is a hash of the profile username.
 
 `session` : When using multi-user API mode, an additional session value is returned to identify the sessions.
 
@@ -272,6 +286,7 @@ sessions/create/noun
 
 This command only supports the `local` noun.
 
+**Note:** This does not delete a saved session  
 
 ## Parameters:
 
@@ -293,13 +308,13 @@ This command only supports the `local` noun.
 
 #### Return values:
 
-`success` : Boolean flag indicating that the session was terminated successfully .
+`success` : Boolean flag indicating that the active session was terminated successfully.
 
 -----------------------------------
 
 # <a name="status"></a> `status`
 
-Get the profile status specified by given noun.
+Retrieve the session status specified by given noun.
 
 ```
 sessions/status/noun
@@ -349,3 +364,5 @@ This command only supports the `local` noun.
 `staking` : Boolean flag indicating whether the profile is unlocked for staking.
 
 `transactions` : Boolean flag indicating whether the profile is unlocked for creating any transactions (except those automatically created through mining/processing notifications if those are unlocked).
+
+-----------------------------------
