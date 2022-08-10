@@ -146,6 +146,19 @@ namespace TAO::API
         encoding::json GetInfo(const encoding::json& jParams, const bool fHelp);
 
 
+        /** GetMetrics
+         *
+         *  Returns an object containing ledger-related metrics.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json GetMetrics(const encoding::json& jParams, const bool fHelp);
+
+
         /** SyncHeaders
          *
          *  Synchronizes the block header data from a peer. NOTE: the method call will return as soon as the synchronization

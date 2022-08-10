@@ -51,12 +51,24 @@ namespace TAO::API
             )
         );
 
-        /* Handle for get/block. */
+        /* Handle for get/info. */
         mapFunctions["get/info"] = Function
         (
             std::bind
             (
                 &Ledger::GetInfo,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for get/metrics. */
+        mapFunctions["get/metrics"] = Function
+        (
+            std::bind
+            (
+                &Ledger::GetMetrics,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
@@ -75,7 +87,7 @@ namespace TAO::API
             )
         );
 
-        /* Handle for list/blocks. */
+        /* Handle for list/transactions. */
         mapFunctions["list/transactions"] = Function
         (
             std::bind
