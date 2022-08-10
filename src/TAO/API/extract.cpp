@@ -780,4 +780,56 @@ namespace TAO::API
         return jParams[strKey].get<std::string>();
     }
 
+
+    /*Extracts an floating point value from given input parameters.*/
+    double ExtractDouble(const encoding::json& jParams, const std::string& strKey,
+                         const double dDefault, const double dLimit)
+    {
+        /* Check for missing parameter. */
+        if(jParams.find(strKey) != jParams.end())
+        {
+            /* Catch parsing exceptions. */
+            try
+            {
+                /* Build our return value. */
+                double dRet = 0;
+
+                /* Convert to value if in string form. */
+                if(jParams[strKey].is_string())
+                    dRet = std::stod(jParams[strKey].get<std::string>());
+
+                /* Grab value regularly if it is integer. */
+                else if(jParams[strKey].is_number_integer())
+                    dRet = static_cast<double>(jParams[strKey].get<int64_t>());
+
+                /* Grab value regularly if it is unsigned integer. */
+                else if(jParams[strKey].is_number_unsigned())
+                    dRet = static_cast<double>(jParams[strKey].get<uint64_t>());
+
+                /* Check if value is a double. */
+                else if(jParams[strKey].is_number_float())
+                    dRet = jParams[strKey].get<double>();
+
+                /* Otherwise we have an invalid parameter. */
+                else
+                    throw Exception(-57, "Invalid Parameter [", strKey, "]");
+
+                /* Check our numeric limits now. */
+                if(dRet > dLimit)
+                    throw Exception(-60, "[", strKey, "] out of range [", dLimit, "]");
+
+                return dRet;
+            }
+            catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [", strKey, "]");           }
+            catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [", strKey, "]");           }
+            catch(const std::out_of_range& e)           { throw Exception(-60, "[", strKey, "] out of range [", dLimit, "]"); }
+        }
+
+        /* Check for default parameter and throw if none supplied. */
+        if(dDefault == std::numeric_limits<double>::max())
+            throw Exception(-56, "Missing Parameter [", strKey, "]");
+
+        return dDefault;
+    }
+
 } // End TAO namespace

@@ -398,4 +398,21 @@ namespace TAO::API
 
         return nDefault;
     }
+
+
+    /** ExtractDouble
+     *
+     *  Extracts an integer value from given input parameters.
+     *
+     *  @param[in] jParams The parameters that contain requesting value.
+     *  @param[in] strKey The key that we are checking parameters for.
+     *  @param[in] dDefault Default parameter if none supplied.
+     *  @param[in] dLimit The numeric limits to bound this type to, that may be less than type's value.
+     *
+     *  @return The extracted integer value.
+     *
+     **/
+    double ExtractDouble(const encoding::json& jParams, const std::string& strKey,
+                         const double dDefault = std::numeric_limits<double>::max(),
+                         const double dLimit = std::numeric_limits<double>::max());
 }
