@@ -34,7 +34,7 @@ namespace TAO
         encoding::json System::Metrics(const encoding::json& params, const bool fHelp)
         {
             /* Build json response. */
-            encoding::json jsonRet;
+            encoding::json jRet;
 
             /* Keep track of global stats. */
             uint64_t nTotalStake = 0;
@@ -152,10 +152,10 @@ namespace TAO
             jRegisters["raw"] = nTotalRaw;
             jRegisters["readonly"] = nTotalReadOnly;
             jRegisters["token"] = nTotalTokens;
-            jsonRet["registers"] = jRegisters;
+            jRet["registers"] = jRegisters;
 
             /* Add sig chain metrics */
-            jsonRet["sig_chains"] = nTotalSigChains;
+            jRet["sig_chains"] = nTotalSigChains;
 
             /* Add trust metrics */
             encoding::json jsonTrust;
@@ -163,42 +163,50 @@ namespace TAO
             jsonTrust["stake"] = double(nTotalStake / TAO::Ledger::NXS_COIN);
             jsonTrust["trust"] = nTotalTrust;
 
-            jsonRet["trust"] = jsonTrust;
+            jRet["trust"] = jsonTrust;
 
             /* We only need supply data when on a public network or testnet, private and hybrid do not have supply. */
             if(!config::fHybrid.load())
             {
                 /* Add supply metrics */
-                encoding::json jsonSupply;
+                encoding::json jSupply;
 
-                /* Read the stateBest using hashBestChain
-                 * Cannot use ChainState::stateBest for this because certain fields (like money supply) are not populated */
+                /* Read the stateBest using hashBestChain */
                 TAO::Ledger::BlockState stateBest;
                 if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), stateBest))
                     return std::string("Block not found");
 
+                /* Get our chain age. */
                 uint32_t nMinutes = TAO::Ledger::GetChainAge(stateBest.GetBlockTime());
-                int64_t nSupply = stateBest.nMoneySupply;
-                int64_t nTarget = TAO::Ledger::CompoundSubsidy(nMinutes);
 
+                /* Get our total supply and target supply. */
+                int64_t nSupply   = stateBest.nMoneySupply;
+                int64_t nTarget   = TAO::Ledger::CompoundSubsidy(nMinutes);
+
+                /* Calculate the number of years it has been since start of chain. */
                 double nYears   = (nMinutes / 525960.0); //525960 is 1440 * 365.25 for minutes in a year
                 double nYearly = (nSupply - nTarget) / nYears;
-                uint64_t nInflation = (nYearly * TAO::Ledger::NXS_COIN) / nSupply; //we use NXS_COIN to get 4 significant figures
 
-                jsonSupply["total"] = double(nSupply) / TAO::Ledger::NXS_COIN;
-                jsonSupply["target"] = double(nTarget) / TAO::Ledger::NXS_COIN;
-                jsonSupply["inflation"] = double(nInflation * 100) / TAO::Ledger::NXS_COIN; //100 counts as 2 of 6 figures in NXS_COIN
+                /* Calculate inflation rate by comparing yearly emmission rates to total supply. */
+                const uint64_t nInflation =
+                    (nYearly * TAO::Ledger::NXS_COIN) / nSupply; //we use NXS_COIN to get 4 significant figures
 
-                jsonSupply["minute"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 1)) / TAO::Ledger::NXS_COIN; //1
-                jsonSupply["hour"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 60)) / TAO::Ledger::NXS_COIN; //60
-                jsonSupply["day"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 1440)) / TAO::Ledger::NXS_COIN; //1440
-                jsonSupply["week"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 10080)) / TAO::Ledger::NXS_COIN;//10080
-                jsonSupply["month"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 40320)) / TAO::Ledger::NXS_COIN; //40320
-                //jsonSupply["year"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 524160)) / TAO::Ledger::NXS_COIN; //524160
-                jsonRet["supply"] = jsonSupply;
+                /* Add this data to our supply json. */
+                jSupply["total"]     = double(nSupply) / TAO::Ledger::NXS_COIN;
+                jSupply["target"]    = double(nTarget) / TAO::Ledger::NXS_COIN;
+                jSupply["inflation"] = double(nInflation * 100) / TAO::Ledger::NXS_COIN; //100 counts as 2 of 6 figures in NXS_COIN
+
+                /* Apply the mining emmission rates from subsidy calculations. */
+                jSupply["minute"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 1)) / TAO::Ledger::NXS_COIN; //1
+                jSupply["hour"]   = double(TAO::Ledger::SubsidyInterval(nMinutes, 60)) / TAO::Ledger::NXS_COIN; //60
+                jSupply["day"]    = double(TAO::Ledger::SubsidyInterval(nMinutes, 1440)) / TAO::Ledger::NXS_COIN; //1440
+                jSupply["week"]   = double(TAO::Ledger::SubsidyInterval(nMinutes, 10080)) / TAO::Ledger::NXS_COIN;//10080
+                jSupply["month"]  = double(TAO::Ledger::SubsidyInterval(nMinutes, 40320)) / TAO::Ledger::NXS_COIN; //40320
+                jSupply["year"]   = double(TAO::Ledger::SubsidyInterval(nMinutes, 524160)) / TAO::Ledger::NXS_COIN; //524160
+                jRet["supply"]    = jSupply;
 
                 /* Add reserves */
-                encoding::json jsonReserves;
+                encoding::json jReserves;
 
                 TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest.load();
                 bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
@@ -214,15 +222,15 @@ namespace TAO
                 uint64_t nDeveloper = (fHasPrime ? lastPrimeBlockState.nReleasedReserve[2] : 0) + (fHasHash ? lastHashBlockState.nReleasedReserve[2] : 0);
                 uint64_t nFee = (fHasStake ? lastStakeBlockState.nFeeReserve : 0) + (fHasPrime ? lastPrimeBlockState.nFeeReserve : 0) + (fHasHash ? lastHashBlockState.nFeeReserve : 0);
 
-                jsonReserves["ambassador"] = double(nAmbassador) / TAO::Ledger::NXS_COIN;
-                jsonReserves["developer"] = double(nDeveloper) / TAO::Ledger::NXS_COIN;
-                jsonReserves["fee"] =  double(nFee) / TAO::Ledger::NXS_COIN ;
-                jsonReserves["hash"] = fHasHash ? double(lastHashBlockState.nReleasedReserve[0]) / TAO::Ledger::NXS_COIN : 0;
-                jsonReserves["prime"] = fHasPrime ? double(lastPrimeBlockState.nReleasedReserve[0]) / TAO::Ledger::NXS_COIN : 0;
-                jsonRet["reserves"] = jsonReserves;
+                jReserves["ambassador"] = double(nAmbassador) / TAO::Ledger::NXS_COIN;
+                jReserves["developer"] = double(nDeveloper) / TAO::Ledger::NXS_COIN;
+                jReserves["fee"] =  double(nFee) / TAO::Ledger::NXS_COIN ;
+                jReserves["hash"] = fHasHash ? double(lastHashBlockState.nReleasedReserve[0]) / TAO::Ledger::NXS_COIN : 0;
+                jReserves["prime"] = fHasPrime ? double(lastPrimeBlockState.nReleasedReserve[0]) / TAO::Ledger::NXS_COIN : 0;
+                jRet["reserves"] = jReserves;
             }
 
-            return jsonRet;
+            return jRet;
         }
 
 
