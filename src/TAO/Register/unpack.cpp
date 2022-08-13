@@ -157,6 +157,46 @@ namespace TAO::Register
 
 
     /* Unpack a previous transaction from operation scripts. */
+    bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx)
+    {
+        /* Reset the contract to the position of the primitive. */
+        contract.SeekToPrimitive();
+
+        /* Make sure no exceptions are thrown. */
+        try
+        {
+            /* Deserialize the operation. */
+            uint8_t OPERATION = 0;
+            contract >> OPERATION;
+
+            /* Check the current opcode. */
+            switch(OPERATION)
+            {
+                /* Create a new register. */
+                case TAO::Operation::OP::CREDIT:
+                case TAO::Operation::OP::CLAIM:
+                {
+                    /* Extract the previous tx hash from the contract. */
+                    contract >> hashPrevTx;
+
+                    return true;
+                }
+
+                default:
+                {
+                    return false;
+                }
+            }
+        }
+        catch(const std::exception& e)
+        {
+        }
+
+        return false;
+    }
+
+
+    /* Unpack a previous transaction from operation scripts. */
     bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx, uint32_t& nContract)
     {
         /* Reset the contract to the position of the primitive. */
