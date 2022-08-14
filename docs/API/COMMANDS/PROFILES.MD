@@ -49,7 +49,7 @@ This command only supports the `master` and `auth` nouns.
 
 #### create/master ####
 
-This will create a new profile specified by given noun. The profile is secured by a combination of `username`, `password`, and `PIN`.
+This will create a new profile specified by given noun. The profile is secured by a combination of `username`, `password`, and `pin`.
 
 #### create/auth ####
 
@@ -67,7 +67,7 @@ This method will initialize a `auth` crypto object register for signature chains
 
 - `username` must be a minimum of 2 characters. 
 - `password` must be a minimum of 8 characters. 
-- `PIN` must be a minimum of 4 characters. 
+- `pin` must be a minimum of 4 characters. 
 -  username is case-sensitive and cannot be changed. Choose the username carefully and make it a point to back it up along with the password and pin.  
 - Don't use the colon ':' at the end of the username. 
  
@@ -76,7 +76,7 @@ This method will initialize a `auth` crypto object register for signature chains
 
 #### Return value JSON object:
 
-```
+```json
 {
     "success": true,
     "txid": "01d872456b966a14796d80f1687fe59a107fe6c3b6edd3558dce146d08f3093837136634022734d9d9b5e877311fd68f847f226ae276a12b8bc3f246513ccd08"
@@ -120,7 +120,7 @@ This method provides the user with the ability to set or change the restore seed
 
 #### update/credentials ####
 
-`new_password` : Required by noun **credentials**. The new password to set for for this signature chain. This is optional if new_pin is provided
+`new_password` : Required by noun **credentials**. The new password to set for for this signature chain. This is optional if new_pin is provided.
 
 `new_pin` : Required by noun **credentials**. The new pin to set for this signature chain. This is optional if `new_password` is provided.
 
@@ -131,16 +131,16 @@ This method provides the user with the ability to set or change the restore seed
 `new_recovery` : Required by noun **recovery**.The new recovery seed to set or change for this sig chain. The recovery seed must be a minimum of 40 characters.
 
 **NOTE:**
-The recovery phrase is case-sensitive.
-Make sure to type in the recovery phrase correctly and not copy paste which can add spaces if not done correctly.
-Make sure to backup and recheck the recovery seed and create multiple offline backups.  
+- The recovery phrase is case-sensitive.
+- Make sure to type in the recovery phrase correctly and not copy paste which can add spaces if not done correctly.
+- Make sure to backup and recheck the recovery seed and create multiple offline backups.  
 
 
 ## Results:
 
 #### Return value JSON object:
 
-```
+```json
 {
     "success": true,
     "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
@@ -180,7 +180,7 @@ This command only supports the `master` noun.
 
 #### Return value JSON object:
 
-```
+```json
 {
     "success": true,
     "txid": "017fbb86583c0e15c0fb994a1f4c70d97f2c084533748ccfd25cd36e5aef9c2e7f89f15f2ec9f2d73769fef9d7a8a28cd018c9907ebf1bf74e4f89837c900091"
@@ -216,7 +216,7 @@ This command only supports the `master` noun.
 
 #### Return value JSON object:
 
-```
+```json
 {
     "genesis": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
     "confirmed": true,
@@ -263,7 +263,7 @@ This method supports the Sorting / Filtering parameters.
 
 #### Return value JSON object:
 
-```
+```json
 [
     {
         "id": 0,
@@ -309,7 +309,7 @@ This method supports the Sorting / Filtering parameters.
 
 `proof` : The register address of the token account proving the the split dividend debit.
 
-`dividend_payment` : Flag indicating that this debit is a split dividend payment to a tokenized asset
+`dividend_payment` : Flag indicating that this debit is a split dividend payment to a tokenized asset.
 
 -----------------------------------
 
@@ -328,7 +328,7 @@ This command only supports the `master` noun.
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
 
-`verbose` : Optional, **determines** how much transaction data to include in the response. Supported values are :
+`verbose` : Optional, **determines** how much transaction data to include in the response. Supported values are:
 - `default` : hash
 - `summary` : type, version, sequence, timestamp, operation, and confirmations.
 - `detail` : genesis, nexthash, prevhash, pubkey and signature.
@@ -340,7 +340,7 @@ This method supports the Sorting / Filtering parameters.
 
 #### Return value JSON object:
 
-```
+```json
 [
     {
         "txid": "01eb59a0c4e6c47dd2a8d3a4aa7d83514aab6f5c976207889f786e5947c0eb971065fe6e0f8fc6b7d75157f9dac0cf0c178c15e441ff360c3046c84e1fe799ca",
@@ -406,7 +406,7 @@ This method supports the Sorting / Filtering parameters.
 
 `OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
 
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
+`for` : For CREDIT transactions, the contract that this credit was created for. Can be COINBASE, DEBIT, or LEGACY.
 
 `txid` : The transaction that was credited / claimed.
 
@@ -414,10 +414,9 @@ This method supports the Sorting / Filtering parameters.
 
 `proof` : The register address proving the credit.
 
-`from` : For DEBIT, CREDIT, FEE transactions, the register address of the account that the debit is being made from.
+`from` : For DEBIT, CREDIT, and FEE transactions, the register address of the account that the debit is being made from.
 
-`from_name` : For DEBIT, CREDIT, FEE transactions, the name of the account that the debit is being made from. Only included if the name can be 
-resolved.
+`from_name` : For DEBIT, CREDIT, and FEE transactions, the name of the account that the debit is being made from. Only included if the name can be resolved.
 
 `to` : For DEBIT and CREDIT transactions, the register address of the recipient account.
 

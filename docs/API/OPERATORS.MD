@@ -15,7 +15,7 @@ In order to execute an operator, one must apply a basic filter to the data-set b
 
 Take the following contract list:
 
-```
+```json
 {
     "id": 33,
     "OP": "CREDIT",
@@ -54,7 +54,7 @@ commands/verb/noun/amount/sum
 
 This above command will return a JSON object with our filtered result:
 
-```
+```json
 {
     "amount": 414.53867,
 }
@@ -91,7 +91,7 @@ finance/list/accounts/balance/sum
 
 This command will return a sum of the balances for all accounts:
 
-```
+```json
 {
     "balance": 333.376
 }

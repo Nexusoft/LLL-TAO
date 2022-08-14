@@ -2,7 +2,7 @@
 -----------------------------------
 The Ledger API provides users with access to data held by the ledger such as blocks and transactions.
 
-**Info:** Retrieving block data by height is only possible if the core has been configured with --indexheight=1.
+**Info:** Retrieving block data by height is only possible if the core has been configured with `--indexheight=1`.
 
 ## `Direct Endpoints`
 
@@ -37,7 +37,7 @@ ledger/get/blockhash
 
 #### Return value JSON object:
 
-```
+```json
 {
     "hash": "289b76fbe40ca5e0d0df68016677a8c9be6389f3225cc9faf65cb92bbc98a3580b57cb7ba3d7f7ab36ce890d47a4be90254d407270ad4c2e69c99c998ef8547ca45f054b081959d4d59feb871360bce888f82b4cdc1476502bd1b8e95dffe811e55592d3d4768b56e0510e02b5e32171858de097cd811e7c8d09920c24960ae8"
 }
@@ -75,7 +75,7 @@ This method supports the Sorting / Filtering parameters.
 
 #### Return value JSON object:
 
-```
+```json
 {
     "hash": "69336bc69ac2b9d06d7b9f9ede253cbeadba227751125cbb220654499c59a7b5138ea06ff62670fae614e5fed26aec8d3a0f346e03f10ea6c83dcb20ba8d93d17d92fffd6604666034e7002f421e39e64cef43325dfdf2c0334e51e018a31710c8fac17214d96d309b8dddb8f9bf9b3a27d28c71016b93a0e89f588c3604420a",
     "proofhash": "0000000000036b5c62766b5781f78734cf336f6fc6bce0363b93092551390fa7bd4d942d20316758def777b770db0500c3910f43b147c006ad11246ae62ed28284a4af309aebdc31ed6df23ebc7218b5a638b4da42cb496661fb12cace6890b920233e7db70a3daa8b439e0973a0dd01be67db652eaf8e7281027228f47a89cf",
@@ -142,7 +142,7 @@ This method supports the Sorting / Filtering parameters.
 
 `time` : The unified time the block was created.
 
-`nonce` : The solution nonce
+`nonce` : The solution nonce.
 
 `bits` : The compact representation for the block difficulty.
 
@@ -184,9 +184,9 @@ This method supports the Sorting / Filtering parameters.
 {  
 `id` : The sequential ID of this contract within the transaction.
 
-`OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
+`OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, or WRITE.
 
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
+`for` : For CREDIT transactions, the contract that this credit was created for. Can be COINBASE, DEBIT, or LEGACY.
 
 `txid` : The transaction that was credited / claimed.
 
@@ -204,7 +204,7 @@ This method supports the Sorting / Filtering parameters.
 
 `amount` : the token amount of the transaction.
 
-`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
+`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions.
 
 `token_name` : The name of the token that the transaction relates to.
 
@@ -243,7 +243,7 @@ Retrieving block data by height is only allowed if the daemon has been configure
 
 #### Return value JSON object:
 
-```
+```json
 [
     {
         "hash": "5c985f5402f0bcb339ebef0e2edcad30427bf79803994772cd3a1458012748cd1d9d2ee8d6f1466f0c8ca867e1d8a2d9cfe6bc8cfdd885421fb56c55bfc11328f19c61bdc87193831851526a835e457fb46fcd0088879d564e88bb39524aa40489329ecc2cbc6a0453b8dd69a90b82232df6ee6d39ddec80e16149c99b1ddeab",
@@ -400,7 +400,7 @@ This method supports the Sorting / Filtering parameters.
 
 #### Return value JSON object:
 
-```
+```json
 {
     "txid": "017ff70158049886f8bad93cfe15285bae34d0e643991088e00769228161868a60230551724ac0ad5c7a98fabfdbebca88dffedf1a9e5ff095524b7565bccee1",
     "type": "tritium base",
@@ -431,7 +431,7 @@ This method supports the Sorting / Filtering parameters.
 
 #### Return values:
 
-`data` : If format was specified as raw then the response will contain only the data field containing the raw, hex encoded, transaction data.
+`data` : If format was specified as raw then the response will contain only the data field containing the raw, hex-encoded, transaction data.
 
 `txid` : The transaction hash.
 
@@ -512,7 +512,7 @@ This method supports the Sorting / Filtering parameters.
 
 #### Return value JSON object:
 
-```
+```json
 
 {
     "txid": "017ff70158049886f8bad93cfe15285bae34d0e643991088e00769228161868a60230551724ac0ad5c7a98fabfdbebca88dffedf1a9e5ff095524b7565bccee1",
@@ -619,9 +619,11 @@ ledger/submit/transaction
 
 #### Return value JSON object:
 
+```json
 {
     "hash": "47959e245f45aab773c0ce5320a5454f49ac15f63e15acb36855ac654d54d6314fe36b61dd64ec7a9a546bcc439a628e9badcdccb6e5f8072d04a0a3b67f8679"
 }
+```
 
 #### Return values:
 
@@ -645,7 +647,7 @@ ledger/get/info
 
 #### Return value JSON object:
 
-```
+```json
 {
     "stake": {
         "height": 1465766,
@@ -683,7 +685,7 @@ ledger/get/info
 
 #### Return values:
 
-`Stake` : This is the stake channel details.  
+`stake` : This is the stake channel details.  
 {  
 `height` : The current number of blocks for the stake channel.
 

@@ -19,7 +19,7 @@ commands/verb/noun/<filter>/operator
 
 In order to filter an object, one must know the JSON key they are filtering for.
 
-```
+```json
 {
     "id": 69,
     "OP": "CREDIT",
@@ -41,7 +41,7 @@ commands/verb/noun/OP,to,amount,ticker
 
 This would result in the following filtered object:
 
-```
+```json
 {
     "OP": "CREDIT",
     "to": "8BAv1H2YKfpaYC1RJMq9qjmMTiEV8DJiLpiKGqTY54wf2VPjznD",
@@ -56,7 +56,7 @@ One can include as many filters as desired, as long as keys exist in the returne
 
 JSON hierarchy can be maintained and traversed recursively to any depth of the data structure. Let us take the following JSON object, a verbose transaction:
 
-```
+```json
 {
     "txid": "019427d69187a02a23305a152c167c0c3fb547426afbdbee47ae674c7ea5a3d8f70e9a29c818f213edf1ce2721ae8bb81652e8cc77aac842df3c371027fa4e60",
     "type": "tritium user",
@@ -96,7 +96,7 @@ commands/verb/noun/type,confirmations,genesis,contracts.OP,contracts.to,contract
 
 When using recursive filtering, the nested hiearchy is retained.
 
-```
+```json
 {
     "type": "tritium user",
     "confirmations": 832340,

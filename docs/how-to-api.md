@@ -47,13 +47,13 @@ This will return all data in JSON format into your console.
 
 ### Results JSON
 The response JSON you will receive will contain one of two keys, results or error. When a command is successfully executed, you will receive a JSON string such as:
-```
+```json
 {"result":{"genesis":"69c2479c6780782448f419a0865542002ee85fec39228275b2db44bb6d3aa503","session":4940881975319897416}}
 ```
 
 You will need to parse out the values of the result object in your corresponding language of choice. If you happen to receive a failure, it will look like this:
 
-```
+```json
 {"error":{"code":-24,"message":"Missing Password"}}
 ```
 

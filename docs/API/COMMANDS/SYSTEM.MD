@@ -31,7 +31,7 @@ system/stop
 
 password: Optional to **authenticate** before initiating core shutdown. This password is the one provided in the configuration file which will help prevent accidental remote shutdown.
 
-**Note:** The shutdown authentication password has to be provided in the configuration file with the flag `system/stop=<password>`
+**Note:** The shutdown authentication password has to be provided in the configuration file with the flag `system/stop=<password>`.
 
 ### Results:
 
@@ -60,7 +60,7 @@ system/get/metrics
 
 ##### Return value JSON object:
 
-```
+```json
 {
     "version": "5.1.0-rc2 Tritium++ CLI [LLD][x64]",
     "protocolversion": 3010000,
@@ -139,7 +139,7 @@ system/get/metrics
 
 #### Return value JSON object:
 
-```
+```json
 {
     "registers": {
         "total": 182682,
@@ -284,7 +284,7 @@ system/list/peers
 
 #### Return value JSON object:
 
-```
+```json
 [
     {
         "address": "45.180.14.231:9888",
@@ -366,7 +366,7 @@ system/list/lisp-eids
 
 #### Return value JSON object:
 
-```
+```json
 [
     {
         "instance-id": "200",
@@ -398,13 +398,13 @@ system/list/lisp-eids
 
 `instance-id` : The LISP instance group that this EID belongs to.
 
-`eid` : The endpoint identifier. This can be either IPv4 or IPv6 format
+`eid` : The endpoint identifier. This can be either IPv4 or IPv6 format.
 
-`rlocs` : The array of RLOC's (routing locators) associtated with the EID
+`rlocs` : The array of RLOC's (routing locators) associtated with the EID.
 
-`interface` : Name of the device for the RLOC
+`interface` : Name of the device for the RLOC.
 
-`rloc-name` : Hostname associated with the device
+`rloc-name` : Hostname associated with the device.
 
 `rloc` : The IP address associated with the device.
 
@@ -426,7 +426,7 @@ system/validate/address
 
 #### Return value JSON object:
 
-```
+```json
 {
     "address": "8BuhE1y5oard3cEWqCSYK35bC6LdPRvcPR8N7GXYNatTw6De8eK",
     "is_valid": true,

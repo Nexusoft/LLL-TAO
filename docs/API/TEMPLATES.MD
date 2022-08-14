@@ -11,7 +11,7 @@ The following templates do not exceed a local scope, meaning they will return re
 The following list of verbs are templates throughout the Nexus APIs.  While the action is generic in nature (i.e. list, get, create), implementations of these actions will adhere to certain semantics or mandatory parameters regardless of the noun (resource).
 
 * `list`
-   - Retrieves a sorted list of objects or data
+   - Retrieves a sorted list of objects or data.
    - Sorting is based on transaction/object age, by default is always newest to oldest.  Some list methods support additional sort fields.
    - Common parameters:
      - `order` : The order of the results.  Values can be `desc` (default) or `asc`
@@ -21,7 +21,7 @@ The following list of verbs are templates throughout the Nexus APIs.  While the 
      - `verbose` : to indicate the verbosity of the data returned.  Values can be `default`, `summary`, or `detail`   
 
 * `get`
-   - Retrieves a single object or piece of data
+   - Retrieves a single object or piece of data.
    - Supported parameters:
      - `verbose` : to indicate the verbosity of the data returned.  Values can be `default`, `summary`, or `detail`   
 
@@ -40,7 +40,7 @@ The following list of verbs are templates throughout the Nexus APIs.  While the 
       Values can be `falcon` or `brainbpool`
 
 * `transfer`
-    - Transfers a single resource or object to another users's profile
+    - Transfers a single resource or object to another users's profile.
     - Common parameters:
       - `address`: the address of object to transfer
       - `recipient`: the profile-id of the sigchain receiving object.
@@ -48,7 +48,7 @@ The following list of verbs are templates throughout the Nexus APIs.  While the 
       Values can be `falcon` or `brainbpool`
 
 * `claim`
-    - Claims a single resource or object from a given transfer
+    - Claims a single resource or object from a given transfer.
     - Common parameters:
       - `address`: the address of object to claim
       - `txid`: the transaction-id of the transfer we are claiming.

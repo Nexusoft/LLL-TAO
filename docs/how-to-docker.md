@@ -92,9 +92,9 @@ To get IPv6 to work in the container (which Nexus uses for crypto-EID support),
 you need to configure your docker daemon on your OS platform with the
 following:
 
-```
+```json
 {
-    "ipv6": true, "fixed-cidr-v6": '2001:db8:1::/64"
+    "ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64"
 }
 ```
 

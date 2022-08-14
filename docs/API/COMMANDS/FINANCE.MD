@@ -79,11 +79,11 @@ The following verbs are currently supported by this API command-set:
 
 The following commands are direct endpoints and thus do not support the above `verb` and `noun` structure available above.
 
-[`get/balances`](#get/balance)      
+[`get/balances`](#get/balances)      
 [`get/stakeinfo`](#get/stakeinfo)   
 [`set/stake`](#set/stake)  
 [`void/transaction`](#void/transaction)   
-[`migrate/accounts`](#migrate/account)   
+[`migrate/accounts`](#migrate/accounts)   
 
 Direct endpoints support filters and operators.
 
@@ -103,7 +103,7 @@ The following parameters can be used to apply **sorting** and **filtering** to t
 
 `sort`: The column or field-name to apply the sorting logic to. This parameter supports moving up levels of JSON keys by using `.`, such as `sort=json.date` would apply a sort to a nested JSON object:
 
-```
+```json
 {
     "modified": 1621782289,
     "json": {
@@ -170,7 +170,7 @@ This command does not support the `any` or `all` nouns.
 
 `address` : The register address for this  account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.
 
-```
+```json
 {
     "success": true,
     "address": "8ESvYizqdApiuKEBjZMF1hnB8asDqECaDwAstcH3UtJ4Z6ceCn2",
@@ -203,6 +203,6 @@ This command supports the `any` wildcard noun.
 
 `txid` : The ID (hash) of the transaction that includes the account creation.
 
-`address` : The register address for this  account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.
+`address` : The register address for this account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.
 
 -----------------------------------

@@ -32,7 +32,7 @@ This above will map to the parameters of `limit=100` and `offset=10`.
 
 This parameter supports moving up levels of JSON keys by using `.`. This is a recursive function so therfore allows traversing any amount of levels in a JSON hierarchy. Let us take the following JSON object:
 
-```
+```json
 {
     "modified": 1621782289,
     "json": {
@@ -50,7 +50,7 @@ sort=json.date
 
 Using this parameter we would apply a sort to a nested JSON object that would sort it by the date field. The Nexus API supports any number of nested statements. Take the following object:
 
-```
+```json
 {
     "txid": "01c1e74718bbcbc83f46a0e03a86538350779f61df2e385a4456d3926808d3a29e3ac9d8d3ba2ea4b625b52b525d22fb675066184c4552c40824214b4f575e1c",
     "type": "tritium user",

@@ -104,7 +104,7 @@ These commands only supports the `local` noun.
 
 #### Return value JSON object:
 
-```
+```json
 {
     "unlocked": {
         "mining": false,
@@ -118,7 +118,7 @@ These commands only supports the `local` noun.
 
 #### Return values:
 
-`unlocked` : This will contain child elements describing which functions the session is currently unlocked for
+`unlocked` : This will contain child elements describing which functions the session is currently unlocked for.
 
 `mining` : Boolean flag indicating whether the users sig chain is unlocked for mining.
 
@@ -160,7 +160,7 @@ These commands only supports the `local` noun.
 
 #### Return value JSON object:
 
-```
+```json
 {
     "unlocked": {
         "mining": false,
@@ -174,7 +174,7 @@ These commands only supports the `local` noun.
 
 #### Return values:
 
-`unlocked` : This will contain child elements describing which functions the session is currently unlocked for
+`unlocked` : This will contain child elements describing which functions the session is currently unlocked for.
 
 `mining` : Boolean flag indicating whether the users sig chain is unlocked for mining.
 
@@ -214,7 +214,7 @@ NOTE:
 
 #### Return value JSON object:
 
-```
+```json
 {
     "genesis": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
     "success": true
@@ -261,7 +261,7 @@ NOTE:
 
 #### Return value JSON object:
 
-```
+```json
 {
     "genesis": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
     "session": "2ef9de11b19af82984ddf93275e7ba22c11fe9659d0667f79311c46732bbb7a4"
@@ -299,7 +299,7 @@ This command only supports the `local` noun.
 
 #### Return value JSON object:
 
-```
+```json
 {
     "success": true
 }
@@ -332,7 +332,7 @@ This command only supports the `local` noun.
 
 #### Return value JSON object:
 
-```
+```json
 {
     "genesis": "b7fa11647c02a3a65a72970d8e703d8804eb127c7e7c41d565c3514a4d3fdf13",
     "accessed": 1653680627,
