@@ -85,7 +85,7 @@ namespace TAO::API
 
         /* If name is provided then use this to deduce the register address, */
         if(CheckParameter(jParams, strName, "string"))
-            return Names::ResolveAddress(jParams, jParams[strName].get<std::string>());
+            return Names::ResolveAddress(jParams, jParams[strName].get<std::string>(), false);
 
         /* Otherwise let's check for the raw address format. */
         else if(CheckParameter(jParams, strAddr, "string"))
