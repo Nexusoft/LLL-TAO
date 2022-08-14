@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/include/evaluate.h>
+
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/commands/ledger.h>
@@ -43,16 +45,24 @@ namespace TAO::API
         const uint64_t nBestTime =
             ExtractInteger<uint64_t>(jParams, "timestamp", tBestBlock.GetBlockTime());
 
-        /* Get total amount of transactions processed. */
-        uint64_t nDaily[5]   = {0, 0, 0, 0, 0};
-        uint64_t nWeekly[5]  = {0, 0, 0, 0, 0};
-        uint64_t nMonthly[5] = {0, 0, 0, 0, 0};
+        /* Track our contracts change as unsigned. */
+        uint64_t nTotalTransactions [3] = {0, 0, 0};
+        uint64_t nTotalContracts    [3] = {0, 0, 0};
+        uint64_t nTotalDeposits     [3] = {0, 0, 0};
+        uint64_t nTotalWithdraw     [3] = {0, 0, 0};
 
         /* Track our stake change as integer. */
         int64_t nStakeChange[3] = {0, 0, 0};
 
         /* Track our mining change as unsigned. */
-        uint64_t nMiningChange[3] = {0, 0, 0};
+        uint64_t nMiningEmmission [3] = {0, 0, 0};
+        uint64_t nStakingEmmission[3] = {0, 0, 0};
+
+        /* Track unique account holders. */
+        std::set<uint256_t> setAccounts;
+
+        /* Accumulate these as unsigned values. */
+        uint64_t nUniqueAccounts[3] = {0, 0, 0};
 
         /* Iterate backwards until we have reached one whole day. */
         TAO::Ledger::BlockState tPrevBlock = tBestBlock;
@@ -62,7 +72,7 @@ namespace TAO::API
             int64_t nStake = 0;
 
             /* Track total contracts for this block. */
-            uint64_t nContracts = 0, nLegacy = 0, nTritium = 0, nInflation = 0, nMining = 0;
+            uint64_t nContracts = 0, nDeposits = 0, nWithdraws = 0, nInflation = 0, nMining = 0, nAccounts = 0;
 
             /* Check through all the transactions. */
             for(const auto& proof : tPrevBlock.vtx)
@@ -84,6 +94,15 @@ namespace TAO::API
                     /* Iterate all of our contracts. */
                     for(uint32_t n = 0; n < tx.Size(); ++n)
                     {
+                        /* Check for an available address that was modified. */
+                        uint256_t hashAddress;
+                        if(TAO::Register::Unpack(tx[n], hashAddress) && !setAccounts.count(hashAddress))
+                        {
+                            /* Insert into our set and increment totals. */
+                            setAccounts.insert(hashAddress);
+                            ++nAccounts;
+                        }
+
                         /* Get our total NXS being spent. */
                         uint64_t nTotal = 0;
 
@@ -134,17 +153,51 @@ namespace TAO::API
                                 /* Check only for credits from legagy. */
                                 uint512_t hashPrevTx;
                                 if(TAO::Register::Unpack(tx[n], hashPrevTx) && hashPrevTx.GetType() == TAO::Ledger::LEGACY)
-                                    nTritium += nTotal;
+                                    nWithdraws += nTotal;
                             }
 
                             /* Check for a legacy deposit. */
                             else if(tx[n].Primitive() == TAO::Operation::OP::LEGACY)
-                                nLegacy += nTotal;
+                                nDeposits += nTotal;
 
                             /* Check for our coinbase minting. */
                             else if(tx[n].Primitive() == TAO::Operation::OP::COINBASE)
                                 nMining += nTotal;
 
+                        }
+                    }
+                }
+
+                /* Handle for legacy transactions and accounts. */
+                if(proof.first == TAO::Ledger::TRANSACTION::LEGACY)
+                {
+                    /* Get the transaction hash. */
+                    const uint512_t& hash = proof.second;
+
+                    /* Make sure the transaction is on disk. */
+                    Legacy::Transaction tx;
+                    if(!LLD::Legacy->ReadTx(hash, tx))
+                        continue;
+
+                    /* Loop through all of our outputs to check. */
+                    for(const Legacy::TxOut& out : tx.vout)
+                    {
+                        /* See if we are sending to register. */
+                        uint256_t hashAddress;
+                        if(Legacy::ExtractRegister(out.scriptPubKey, hashAddress) && !setAccounts.count(hashAddress))
+                        {
+                            /* Insert into our set and increment totals. */
+                            setAccounts.insert(hashAddress);
+                            ++nAccounts;
+                        }
+
+                        /* Check for legacy to legacy transacitons. */
+                        Legacy::NexusAddress addrAccount;
+                        if(Legacy::ExtractAddress(out.scriptPubKey, addrAccount) && !setAccounts.count(addrAccount.GetHash256()))
+                        {
+                            /* Insert into our set and increment totals. */
+                            setAccounts.insert(addrAccount.GetHash256());
+                            ++nAccounts;
                         }
                     }
                 }
@@ -154,54 +207,57 @@ namespace TAO::API
             /* Check our time for days. */
             if(tPrevBlock.GetBlockTime() + 86400 > nBestTime)
             {
-                /* Increase our daily transaction volume. */
-                nDaily[0] += (tPrevBlock.vtx.size());
-                nDaily[1] += nContracts;
-                nDaily[2] += nLegacy;
-                nDaily[3] += nTritium;
-                nDaily[4] += nInflation;
+                /* Set our daily volume values. */
+                nTotalTransactions[0] += (tPrevBlock.vtx.size());
+                nTotalContracts   [0] += nContracts;
+                nTotalDeposits    [0] += nDeposits;
+                nTotalWithdraw    [0] += nWithdraws;
+                nUniqueAccounts   [0] += nAccounts;
 
-                /* Accumulate our stake. */
-                nStakeChange[0] += nStake;
+                /* Set our emmission values. */
+                nMiningEmmission [0]  += nMining;
+                nStakingEmmission[0]  += nInflation;
 
-                /* Accumulate our mining. */
-                nMiningChange[0] += nMining;
+                /* Set our daily accumulation values. */
+                nStakeChange[0]       += nStake;
             }
 
 
             /* Check our time for weeks. */
             if(tPrevBlock.GetBlockTime() + 86400 * 7 > nBestTime)
             {
-                /* Increase our weekly transaction volume. */
-                nWeekly[0] += (tPrevBlock.vtx.size());
-                nWeekly[1] += nContracts;
-                nWeekly[2] += nLegacy;
-                nWeekly[3] += nTritium;
-                nWeekly[4] += nInflation;
+                /* Set our daily volume values. */
+                nTotalTransactions[1] += (tPrevBlock.vtx.size());
+                nTotalContracts   [1] += nContracts;
+                nTotalDeposits    [1] += nDeposits;
+                nTotalWithdraw    [1] += nWithdraws;
+                nUniqueAccounts   [1] += nAccounts;
 
-                /* Accumulate our stake. */
-                nStakeChange[1] += nStake;
+                /* Set our emmission values. */
+                nMiningEmmission [1]  += nMining;
+                nStakingEmmission[1]  += nInflation;
 
-                /* Accumulate our mining. */
-                nMiningChange[1] += nMining;
+                /* Set our daily accumulation values. */
+                nStakeChange[1]       += nStake;
             }
 
 
             /* Check our time for months. */
             if(tPrevBlock.GetBlockTime() + 86400 * 7 * 4 > nBestTime)
             {
-                /* Increase our weekly transaction volume. */
-                nMonthly[0] += (tPrevBlock.vtx.size());
-                nMonthly[1] += nContracts;
-                nMonthly[2] += nLegacy;
-                nMonthly[3] += nTritium;
-                nMonthly[4] += nInflation;
+                /* Set our daily volume values. */
+                nTotalTransactions[2] += (tPrevBlock.vtx.size());
+                nTotalContracts   [2] += nContracts;
+                nTotalDeposits    [2] += nDeposits;
+                nTotalWithdraw    [2] += nWithdraws;
+                nUniqueAccounts   [2] += nAccounts;
 
-                /* Accumulate our stake. */
-                nStakeChange[2] += nStake;
+                /* Set our emmission values. */
+                nMiningEmmission [2]  += nMining;
+                nStakingEmmission[2]  += nInflation;
 
-                /* Accumulate our mining. */
-                nMiningChange[2] += nMining;
+                /* Set our daily accumulation values. */
+                nStakeChange[2]       += nStake;
             }
             else
                 break;
@@ -216,17 +272,25 @@ namespace TAO::API
             {
                 "transactions",
                 {
-                    { "daily",   nDaily[0]   },
-                    { "weekly",  nWeekly[0]  },
-                    { "monthly", nMonthly[0] }
+                    { "daily",   nTotalTransactions[0]   },
+                    { "weekly",  nTotalTransactions[1]  },
+                    { "monthly", nTotalTransactions[2] }
                 }
             },
             {
                 "contracts",
                 {
-                    { "daily",   nDaily[1]   },
-                    { "weekly",  nWeekly[1]  },
-                    { "monthly", nMonthly[1] }
+                    { "daily",   nTotalContracts[0]   },
+                    { "weekly",  nTotalContracts[1]  },
+                    { "monthly", nTotalContracts[2] }
+                }
+            },
+            {
+                "accounts",
+                {
+                    { "daily",   nUniqueAccounts[0]   },
+                    { "weekly",  nUniqueAccounts[1]  },
+                    { "monthly", nUniqueAccounts[2] }
                 }
             }
         };
@@ -237,17 +301,17 @@ namespace TAO::API
             {
                 "deposits",
                 {
-                    { "daily",   FormatBalance(nDaily[2])   },
-                    { "weekly",  FormatBalance(nWeekly[2])  },
-                    { "monthly", FormatBalance(nMonthly[2]) }
+                    { "daily",   FormatBalance(nTotalDeposits[0])   },
+                    { "weekly",  FormatBalance(nTotalDeposits[1])  },
+                    { "monthly", FormatBalance(nTotalDeposits[2]) }
                 }
             },
             {
                 "withdraws",
                 {
-                    { "daily",   FormatBalance(nDaily[3])   },
-                    { "weekly",  FormatBalance(nWeekly[3])  },
-                    { "monthly", FormatBalance(nMonthly[3]) }
+                    { "daily",   FormatBalance(nTotalWithdraw[0])   },
+                    { "weekly",  FormatBalance(nTotalWithdraw[1])  },
+                    { "monthly", FormatBalance(nTotalWithdraw[2]) }
                 }
             }
         };
@@ -261,17 +325,17 @@ namespace TAO::API
                     {
                         "staking",
                         {
-                            { "daily",   FormatBalance(nDaily[4])   },
-                            { "weekly",  FormatBalance(nWeekly[4])  },
-                            { "monthly", FormatBalance(nMonthly[4]) }
+                            { "daily",   FormatBalance(nStakingEmmission[0])   },
+                            { "weekly",  FormatBalance(nStakingEmmission[1])  },
+                            { "monthly", FormatBalance(nStakingEmmission[2]) }
                         }
                     },
                     {
                         "mining",
                         {
-                            { "daily",   FormatBalance(nMiningChange[0])   },
-                            { "weekly",  FormatBalance(nMiningChange[1])  },
-                            { "monthly", FormatBalance(nMiningChange[2]) }
+                            { "daily",   FormatBalance(nMiningEmmission[0])   },
+                            { "weekly",  FormatBalance(nMiningEmmission[1])  },
+                            { "monthly", FormatBalance(nMiningEmmission[2]) }
                         }
                     }
                 }
