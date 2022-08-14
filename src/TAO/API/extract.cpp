@@ -47,35 +47,39 @@ namespace TAO::API
         const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
 
         /* Check if we are resolving for a name or namespace. */
-        if(CheckRequest(jParams, "type", "string"))
+        if(CheckRequest(jParams, "type", "string, array"))
         {
             /* Get our type to compare to. */
-            const std::string& strType = ExtractType(jParams);
+            const std::set<std::string>& setTypes = ExtractTypes(jParams);
 
-            /* Check for name or namespace resolution. */
-            if(strType == "name" || strType == "namespace" || strType == "global" || strType == "local")
+            /* Iterate through our types now. */
+            for(const std::string& strType : setTypes)
             {
-                /* Check for namespace to get specific parameters. */
-                if(strType == "namespace")
-                    return Names::ResolveNamespace(jParams);
+                /* Check for name or namespace resolution. */
+                if(strType == "name" || strType == "namespace" || strType == "global" || strType == "local")
+                {
+                    /* Check for namespace to get specific parameters. */
+                    if(strType == "namespace")
+                        return Names::ResolveNamespace(jParams);
 
-                /* Grab our name from incoming parameters. */
-                const std::string& strLookup =
-                    jParams[strName].get<std::string>();
+                    /* Grab our name from incoming parameters. */
+                    const std::string& strLookup =
+                        jParams[strName].get<std::string>();
 
-                /* Declare the return register address hash */
-                TAO::Register::Address hashRegister =
-                    TAO::API::ADDRESS_NONE;;
+                    /* Declare the return register address hash */
+                    TAO::Register::Address hashRegister =
+                        TAO::API::ADDRESS_NONE;;
 
-                /* Get the Name object by name */
-                const TAO::Register::Object tObject =
-                    Names::GetName(jParams, strLookup, hashRegister, false);
+                    /* Get the Name object by name */
+                    const TAO::Register::Object tObject =
+                        Names::GetName(jParams, strLookup, hashRegister, false);
 
-                /* Check that we found a name record. */
-                if(hashRegister == TAO::API::ADDRESS_NONE)
-                    throw Exception(-101, "Unknown name: ", strLookup);
+                    /* Check that we found a name record. */
+                    if(hashRegister == TAO::API::ADDRESS_NONE)
+                        throw Exception(-101, "Unknown name: ", strLookup);
 
-                return hashRegister;
+                    return hashRegister;
+                }
             }
         }
 
@@ -102,7 +106,7 @@ namespace TAO::API
             return ExtractAddress(strDefault, jParams);
 
         /* Check for any/all request types. */
-        if(CheckRequest(jParams, "type", "string"))
+        if(CheckRequest(jParams, "type", "string, array"))
         {
             /* Grab a copy of our request type. */
             const std::string strType =

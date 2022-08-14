@@ -40,9 +40,13 @@ namespace TAO::API
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
 
         /* Read the register from DB. */
-        TAO::Register::State rObject;
-        if(!LLD::Register->ReadState(hashRegister, rObject))
+        TAO::Register::Object rObject;
+        if(!LLD::Register->ReadObject(hashRegister, rObject))
             throw Exception(-13, "Object not found");
+
+        /* Check that object matches correct standard. */
+        if(!CheckStandard(jParams, rObject))
+            throw Exception(-49, "Unsupported type for name/address");
 
         /* Use this asset to get our genesis-id adjusting if it is in system state. */
         uint256_t hashGenesis = rObject.hashOwner;
@@ -102,10 +106,6 @@ namespace TAO::API
                 /* Check if object needs to be parsed. */
                 if(tObject.nType == TAO::Register::REGISTER::OBJECT)
                     tObject.Parse();
-
-                /* Check that object matches correct standard. */
-                if(!CheckStandard(jParams, tObject))
-                    throw Exception(-49, "Unsupported type for name/address");
 
                 /* Let's start building our json object. */
                 encoding::json jRegister =
