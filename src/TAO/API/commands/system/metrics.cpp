@@ -108,7 +108,6 @@ namespace TAO
 
                     /* Update count*/
                     nTotalNames  ++;
-
                 }
             }
 
