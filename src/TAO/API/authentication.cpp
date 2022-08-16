@@ -391,6 +391,46 @@ namespace TAO::API
     }
 
 
+    /* Unlock and get the active pin from current session. */
+    std::recursive_mutex& Authentication::Unlock(const uint256_t& hashSession, SecureString &strPIN, const uint8_t nRequestedActions)
+    {
+        {
+            RECURSIVE(MUTEX);
+
+            /* Check for active session. */
+            if(!mapSessions.count(hashSession))
+                throw Exception(-11, "Session not found");
+
+            /* Get a copy of our current active session. */
+            const Session& rSession =
+                mapSessions[hashSession];
+
+            /* Get the active pin if not currently stored. */
+            if(!rSession.Unlock(strPIN, nRequestedActions))
+                throw Exception(-139, "Failed to unlock (No PIN)");
+
+            /* Check internal authenticate function. */
+            if(!authenticate(strPIN, rSession))
+            {
+                /* Increment failure and throw. */
+                increment_failures(hashSession);
+
+                throw Exception(-139, "Failed to unlock (Invalid PIN)");
+            }
+        }
+
+        /* Get bytes of our session. */
+        const std::vector<uint8_t> vSession =
+            hashSession.GetBytes();
+
+        /* Get an xxHash. */
+        const uint64_t nHash =
+            XXH64(&vSession[0], vSession.size(), 0);
+
+        return vLocks[nHash % vLocks.size()];
+    }
+
+
     /* Update the allowed actions for given pin. */
     void Authentication::Update(const encoding::json& jParams, const uint8_t nUpdatedActions, const SecureString& strPIN)
     {

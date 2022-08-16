@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/session-manager.h>
+#include <TAO/API/types/authentication.h>
 
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
@@ -154,17 +154,9 @@ namespace TAO
         /* Verify user account unlocked for minting. */
         bool StakeMinter::CheckUser()
         {
-            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
-
-            /* Check whether unlocked account available. */
-            if(session.Locked())
-            {
-                debug::log(0, FUNCTION, "No unlocked account available for staking");
-                return false;
-            }
-
             /* Check that the account is unlocked for staking */
-            if(!session.CanStake())
+            const uint8_t nUnlockedActions = PinUnlock::STAKING;
+            if(!TAO::API::Authentication::Unlocked(TAO::API::Authentication::SESSION::DEFAULT, nUnlockedActions))
             {
                 debug::log(0, FUNCTION, "Account has not been unlocked for staking");
                 return false;
@@ -700,19 +692,18 @@ namespace TAO
             }
 
             /* Lock the sigchain that is being mined. */
-            LOCK(TAO::API::GetSessionManager().Get(0).CREATE_MUTEX);
+            SecureString strUnlockedPIN;
+            {
+                RECURSIVE(TAO::API::Authentication::Unlock(uint256_t(TAO::API::Authentication::SESSION::DEFAULT), strUnlockedPIN, PinUnlock::STAKING));
 
-            /* Process the block and relay to network if it gets accepted into main chain.
-             * This method will call TritiumBlock::Check() TritiumBlock::Accept() and BlockState::Index()
-             * After all is approved, BlockState::Index() will call BlockState::SetBest()
-             * to set the new best chain. That method relays the new block to the network.
-             */
-            uint8_t nStatus = 0;
-            TAO::Ledger::Process(block, nStatus);
+                /* Process the block and relay to network if it gets accepted */
+                uint8_t nStatus = 0;
+                TAO::Ledger::Process(block, nStatus);
 
-            /* Check the statues. */
-            if(!(nStatus & PROCESS::ACCEPTED))
-                return debug::error(FUNCTION, "generated block not accepted");
+                /* Check the statues. */
+                if(!(nStatus & PROCESS::ACCEPTED))
+                    return debug::error(FUNCTION, "generated block not accepted");
+            }
 
             /* After successfully generated genesis for trust account, reset to genereate trust for continued staking */
             if(fGenesis)

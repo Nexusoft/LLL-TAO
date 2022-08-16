@@ -473,6 +473,21 @@ namespace TAO::API
                            const uint8_t nRequestedActions = TAO::Ledger::PinUnlock::TRANSACTIONS);
 
 
+       /** Unlock
+        *
+        *  Unlock and get the active pin from current session.
+        *
+        *  @param[in] hashSession The incoming session identifier
+        *  @param[out] strPIN The pin number to return by reference
+        *  @param[in] nRequestedActions The actions requested for PIN unlock.
+        *
+        *  @return True if this unlock action was successful.
+        *
+        **/
+       static std::recursive_mutex& Unlock(const uint256_t& hashSession, SecureString &strPIN,
+                          const uint8_t nRequestedActions = TAO::Ledger::PinUnlock::TRANSACTIONS);
+
+
         /** Update
          *
          *  Update the allowed actions for given pin
