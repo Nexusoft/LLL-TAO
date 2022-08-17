@@ -15,7 +15,8 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 /* Forward Declarations. */
-namespace TAO::Register { class Object; class State; }
+namespace TAO::Operation { class Contract; }
+namespace TAO::Register  { class Object; class State; }
 
 
 /* Global TAO namespace. */
@@ -125,19 +126,6 @@ namespace TAO::API
     uint64_t GetImmature(const uint256_t& hashGenesis);
 
 
-    /** GetTokenOwnership
-    *
-    *  Calculates the percentage of tokens owned from the total supply.
-    *
-    *  @param[in] hashToken The address of the token to check
-    *  @param[in] hashGenesis The genesis hash for the sig chain to check
-    *
-    *  @return The percentage of tokens owned from the total supply
-    *
-    **/
-    double GetTokenOwnership(const TAO::Register::Address& hashToken, const uint256_t& hashGenesis);
-
-
     /** GetRegisters
      *
      *  Reads a batch of states registers from the Register DB
@@ -153,18 +141,18 @@ namespace TAO::API
                       std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates);
 
 
-    /** GetAccountByToken
+    /** GetUnclaimed
      *
-     *  Searches the sig chain for the first account for the given token type
+     *  Get all the unclaimed funds by searching the ledger level events.
      *
      *  @param[in] hashGenesis The genesis hash of the sig chain to search
-     *  @param[in] hashToken The token type to search for
-     *  @param[out] hashAccount Populated with the address of the account, if found
+     *  @param[out] vContracts The tuple with contract information that are found.
      *
      *  @return Boolean indicating whether an account was found or not
      *
      **/
-    bool GetAccountByToken(const uint256_t& hashGenesis, const uint256_t& hashToken, TAO::Register::Address& hashAccount);
+    bool GetUnclaimed(const uint256_t& hashGenesis,
+        std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts);
 
 
     /** GetRegisterName

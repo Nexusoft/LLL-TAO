@@ -39,6 +39,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/syncblock.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #ifndef NO_WALLET
 #include <Legacy/wallet/wallet.h>

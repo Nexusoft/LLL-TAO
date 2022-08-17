@@ -258,7 +258,7 @@ namespace LLP
             {
                 /* Cache the last transaction ID of the sig chain so that we can detect if
                    new transactions enter the mempool for this sig chain. */
-                LLD::Ledger->ReadLast(TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
+                LLD::Ledger->ReadLast(TAO::API::Authentication::Caller(), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
                 /* Debug output. */
                 debug::log(2, FUNCTION, "New Connection from ", GetAddress().ToStringIP());

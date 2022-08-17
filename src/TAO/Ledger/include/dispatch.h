@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <Util/templates/singleton.h>
+#include <Util/types/lock_unique_ptr.h>
 
 #include <thread>
 #include <mutex>

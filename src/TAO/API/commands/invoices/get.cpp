@@ -12,11 +12,11 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/invoices.h>
-#include <TAO/API/users/types/users.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/filter.h>
+#include <TAO/API/include/get.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -50,7 +50,7 @@ namespace TAO::API
     {
         /* Get all registers that have been transferred to the recipient but not yet paid (claimed) */
         std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
-        Users::get_unclaimed(hashRecipient, vUnclaimed);
+        GetUnclaimed(hashRecipient, vUnclaimed);
 
         /* search the vector of unclaimed to see if this invoice is in there */
         const auto& itt = std::find_if(vUnclaimed.begin(), vUnclaimed.end(),

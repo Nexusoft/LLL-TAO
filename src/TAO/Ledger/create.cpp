@@ -603,9 +603,6 @@ namespace TAO::Ledger
     bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
                           TAO::Ledger::TritiumBlock& block, const bool fGenesis)
     {
-        /* Lock this user's sigchain. */
-        LOCK(TAO::API::Commands::Instance<TAO::API::Users>()->GetSession(user->Genesis()).CREATE_MUTEX);
-
         /* Proof of stake has channel-id of 0. */
         const uint32_t nChannel = 0;
 

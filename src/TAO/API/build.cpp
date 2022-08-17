@@ -24,8 +24,6 @@ ________________________________________________________________________________
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/commands.h>
-
-#include <TAO/API/users/types/users.h>
 #include <TAO/API/types/commands/names.h>
 
 #include <TAO/Operation/include/enum.h>

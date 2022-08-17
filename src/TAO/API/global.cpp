@@ -13,15 +13,13 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
-#include <TAO/API/types/commands/market.h>
-#include <TAO/API/users/types/users.h>
-
 #include <TAO/API/types/commands/assets.h>
 #include <TAO/API/types/commands/ledger.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/types/commands/crypto.h>
 #include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/market.h>
 #include <TAO/API/types/commands/profiles.h>
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/sessions.h>

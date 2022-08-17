@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/users/types/users.h>
+#include <TAO/API/types/authentication.h>
 
 #include <TAO/Operation/include/cost.h>
 #include <TAO/Operation/include/execute.h>
@@ -872,7 +872,7 @@ namespace TAO
                 /* We want to track the sigchain logged in so we can enforce certain rules for our own sigchain. */
                 uint256_t hashSigchain = 0;
                 if(config::fClient.load())
-                    hashSigchain = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
+                    hashSigchain = TAO::API::Authentication::Caller();
 
                 /* We want this to trigger for times not in -client mode. */
                 if(!config::fClient.load() || hashGenesis == hashSigchain)
