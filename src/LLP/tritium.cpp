@@ -22,7 +22,6 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/session-manager.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -3741,39 +3740,39 @@ namespace LLP
         /* Build auth message. */
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
 
-        return ssMessage;
-
         /* Only send auth messages if the auth key has been cached */
-        if(TAO::API::Commands::Instance<TAO::API::Users>()->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
+        //if(TAO::API::Commands::Instance<TAO::API::Users>()->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
+
+        /*
         {
-            /* Get the Session */
+            SecureString strPIN;
+            RECURSIVE(TAO::API::Authentication::Unlock())
+
+
             TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
 
-            /* The genesis of the currently logged in user */
+
             uint256_t hashSigchain = session.GetAccount()->Genesis();
 
             uint64_t nTimestamp = runtime::unifiedtimestamp();
 
-            /* Add the basic auth data to the message */
+
             ssMessage << hashSigchain <<  nTimestamp << SESSION_ID;
 
-            /* Get a hash of the data. */
+
             uint256_t hashCheck = LLC::SK256(ssMessage.begin(), ssMessage.end());
 
-            /* The public key for the "network" key*/
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
 
-
-            /* Generate the public key and signature for the message data */
             session.GetAccount()->Sign("network", hashCheck.GetBytes(), session.GetNetworkKey(), vchPubKey, vchSig);
 
-            /* Add the public key to the message */
             ssMessage << vchPubKey;
             ssMessage << vchSig;
 
             debug::log(0, FUNCTION, "SIGNING MESSAGE: ", hashSigchain.SubString(), " at timestamp ", nTimestamp);
         }
+        */
 
         return ssMessage;
     }

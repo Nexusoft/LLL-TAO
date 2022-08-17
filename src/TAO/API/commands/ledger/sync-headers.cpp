@@ -17,7 +17,6 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/session-manager.h>
 
 #include <TAO/API/types/commands/ledger.h>
 

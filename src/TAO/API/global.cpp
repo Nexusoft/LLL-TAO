@@ -33,8 +33,6 @@ ________________________________________________________________________________
 #include <TAO/API/types/indexing.h>
 #include <TAO/API/types/notifications.h>
 
-#include <TAO/API/types/session-manager.h>
-
 #include <Util/include/debug.h>
 
 namespace TAO::API

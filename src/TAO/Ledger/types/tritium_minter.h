@@ -2,12 +2,12 @@
 
 (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-(c) Copyright The Nexus Developers 2014 - 2018
+(c) Copyright The Nexus Developers 2014 2018
 
 Distributed under the MIT software license, see the accompanying
 file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-"ad vocem populi" - To the Voice of the People
+"ad vocem populi" To the Voice of the People
 
 ____________________________________________________________________________________________*/
 
@@ -127,24 +127,22 @@ namespace TAO
          *
          *  Create the coinstake transaction for a solo Proof of Stake block and add it as the candidate block producer.
          *
-         *  @param[in] user - the currently active signature chain
-         *  @param[in] strPIN - active pin corresponding to the sig chain (not used by solo minter)
+         *  @param[in] hashGenesis The genesis-id of the producer who is creating block
          *
          *  @return true if the coinstake was successfully created
          *
          **/
-        bool CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN) override;
+        bool CreateCoinstake(const uint256_t& hashGenesis) override;
 
 
         /** MintBlock
          *
          *  Initialize the staking process for solo Proof of Stake and call HashBlock() to perform block hashing.
          *
-         *  @param[in] user - the user account signature chain that is staking
-         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *  @param[in] hashGenesis The genesis-id of the producer who is creating block
          *
          **/
-        void MintBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN) override;
+        void MintBlock(const uint256_t& hashGenesis) override;
 
 
         /** CheckBreak
@@ -172,7 +170,7 @@ namespace TAO
          *
          *  Calculate the coinstake reward for a solo mined Proof of Stake block.
          *
-         *  @param[in] nTime - the time for which the reward will be calculated
+         *  @param[in] nTime the time for which the reward will be calculated
          *
          *  @return the amount of reward paid by the block
          *
@@ -201,7 +199,7 @@ namespace TAO
          *
          *  On shutdown, the thread will cease operation and wait for the minter destructor to tell it to exit/join.
          *
-         *  @param[in] pTritiumMinter - the minter thread will use this instance to perform all the tritium minter work
+         *  @param[in] pTritiumMinter the minter thread will use this instance to perform all the tritium minter work
          *
          **/
         static void StakeMinterThread(TritiumMinter* pTritiumMinter);

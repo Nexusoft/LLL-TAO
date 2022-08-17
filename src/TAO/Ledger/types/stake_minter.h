@@ -2,12 +2,12 @@
 
 (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-(c) Copyright The Nexus Developers 2014 - 2018
+(c) Copyright The Nexus Developers 2014 2018
 
 Distributed under the MIT software license, see the accompanying
 file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
-"ad vocem populi" - To the Voice of the People
+"ad vocem populi" To the Voice of the People
 
 ____________________________________________________________________________________________*/
 
@@ -266,12 +266,12 @@ namespace TAO
          *
          *  Each staking algorithm will implement its own approach for coinstake generation.
          *
-         *  @param[in] user - the currently active signature chain
+         *  @param[in] hashGenesis The genesis-id of coinstake we are creating.
          *
          *  @return true if the coinstake was successfully created
          *
          **/
-        virtual bool CreateCoinstake(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN) = 0;
+        virtual bool CreateCoinstake(const uint256_t& hashGenesis) = 0;
 
 
         /** MintBlock
@@ -283,11 +283,10 @@ namespace TAO
          *
          *  Each staking algorithm will implement its own setup for minting blocks.
          *
-         *  @param[in] user - the currently active signature chain
-         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *  @param[in] hashGenesis The genesis-id we are minting block for
          *
          **/
-        virtual void MintBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN) = 0;
+        virtual void MintBlock(const uint256_t& hashGenesis) = 0;
 
 
         /** CheckBreak
@@ -321,7 +320,7 @@ namespace TAO
          *
          *  Each staking algorithm will implement its own reward calculation.
          *
-         *  @param[in] nTime - the time for which the reward will be calculated
+         *  @param[in] nTime the time for which the reward will be calculated
          *
          *  @return the amount of reward paid by the block
          *
@@ -343,7 +342,7 @@ namespace TAO
          *
          *  Gets the trust account for the staking signature chain and stores it into account instance variable.
          *
-         *  @param[in] hashGenesis - genesis of user account signature chain that is staking
+         *  @param[in] hashGenesis genesis of user account signature chain that is staking
          *
          *  @return true if the trust account was successfully retrieved
          *
@@ -355,8 +354,8 @@ namespace TAO
          *
          *  Retrieves the most recent stake transaction for a user account.
          *
-         *  @param[in] hashGenesis - genesis of user account signature chain that is staking
-         *  @param[out] hashLast - the most recent stake transaction hash
+         *  @param[in] hashGenesis genesis of user account signature chain that is staking
+         *  @param[out] hashLast the most recent stake transaction hash
          *
          *  @return true if the last stake transaction was successfully retrieved
          *
@@ -381,8 +380,8 @@ namespace TAO
          *  The signature on the change request is also verified against the crypto register for the supplied hashGenesis.
          *  If it does not match, the request is removed.
          *
-         *  @param[in] hashGenesis - genesis of user account signature chain that is staking
-         *  @param[in] hashLast - hash of last stake transaction for the user's trust account
+         *  @param[in] hashGenesis genesis of user account signature chain that is staking
+         *  @param[in] hashLast hash of last stake transaction for the user's trust account
          *
          *  @return true if processed successfully
          *
@@ -394,13 +393,13 @@ namespace TAO
          *
          *  Creates a new tritium block that the stake minter will attempt to mine via the Proof of Stake process.
          *
-         *  @param[in] user - the user account signature chain that is staking
-         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *  @param[in] user the user account signature chain that is staking
+         *  @param[in] strPIN active pin corresponding to the sig chain
          *
          *  @return true if the candidate block was successfully created
          *
          **/
-        bool CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
+        bool CreateCandidateBlock();
 
 
         /** CalculateWeights
@@ -418,12 +417,10 @@ namespace TAO
          *  Verify whether or not a signature chain has met the interval requirement for minimum number of blocks
          *  between stake blocks it mines (Trust only).
          *
-         *  @param[in] user - the user account signature chain that is staking
-         *
          *  @return true if sig chain has met interval requirement
          *
          **/
-        bool CheckInterval(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
+        bool CheckInterval();
 
 
         /** CheckMempool
@@ -434,12 +431,12 @@ namespace TAO
          *  for a sig chain, they would be orphaned if the chain generated stake Genesis. This method allows minter
          *  to skip mining rounds until mempool transactions are cleared.
          *
-         *  @param[in] user - the user account signature chain that is staking
+         *  @param[in] hashGenesis The genesis-id we are checkin for
          *
          *  @return true if no transactions pending for sig chain
          *
          **/
-        bool CheckMempool(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user);
+        bool CheckMempool(const uint256_t& hashGenesis);
 
 
         /** HashBlock
@@ -455,15 +452,12 @@ namespace TAO
          *
          *  When a block solution is found, this method calls ProcessBlock() to process and relay the new block.
          *
-         *  @param[in] user - the user account signature chain that is staking
-         *  @param[in] strPIN - active pin corresponding to the sig chain
-         *  @param[in] nRequired - required theshold for stake block hashing
+         *  @param[in] nRequired required theshold for stake block hashing
          *
          *  @return true if hashing current block complete and minter should start a new block
          *
          **/
-        bool HashBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN,
-                       const cv::softdouble nRequired);
+        bool HashBlock(const cv::softdouble nRequired);
 
 
         /** ProcessBlock
@@ -471,21 +465,21 @@ namespace TAO
          *  Processes a newly mined Proof of Stake block, adds transactions from the mempool, and relays it
          *  to the network.
          *
-         *  @param[in] user - the user account signature chain that is staking
-         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *  @param[in] user the user account signature chain that is staking
+         *  @param[in] strPIN active pin corresponding to the sig chain
          *
          *  @return true if the block passed all process checks and was successfully submitted
          *
          **/
-        bool ProcessBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
+        bool ProcessBlock();
 
 
         /** SignBlock
          *
          *  Sign a candidate block after it is successfully mined.
          *
-         *  @param[in] user - the user account signature chain that is staking
-         *  @param[in] strPIN - active pin corresponding to the sig chain
+         *  @param[in] user the user account signature chain that is staking
+         *  @param[in] strPIN active pin corresponding to the sig chain
          *
          *  @return true if block successfully signed
          *

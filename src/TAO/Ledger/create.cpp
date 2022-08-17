@@ -41,9 +41,7 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/include/enum.h>
 
-#include <TAO/API/include/global.h> //for CREATE_MUTEX
-#include <TAO/API/users/types/users.h>
-#include <TAO/API/types/session-manager.h>
+#include <TAO/API/include/global.h>
 
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>

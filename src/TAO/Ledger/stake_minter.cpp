@@ -391,8 +391,7 @@ namespace TAO
 
 
         /* Creates a new legacy block that the stake minter will attempt to mine via the Proof of Stake process. */
-        bool StakeMinter::CreateCandidateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user,
-                                               const SecureString& strPIN)
+        bool StakeMinter::CreateCandidateBlock()
         {
             /* Reset any prior value of trust score, block age, and stake update amount */
             nTrust = 0;
@@ -401,13 +400,24 @@ namespace TAO
             /* Create the block to work on */
             block = TritiumBlock();
 
-            /* Create the base Tritium block. */
-            if(!TAO::Ledger::CreateStakeBlock(user, strPIN, block, fGenesis))
-                return debug::error(FUNCTION, "Unable to create candidate block");
+            /* Lock the sigchain to create block. */
+            SecureString strPIN;
+            {
+                RECURSIVE(TAO::API::Authentication::Unlock(strPIN, PinUnlock::STAKING));
 
-            /* Add a coinstake producer to the new candidate block */
-            if(!CreateCoinstake(user, strPIN))
-                return false;
+                /* Extract our credentials. */
+                const auto& pCredentials =
+                    TAO::API::Authentication::Credentials();
+
+                /* Create the base Tritium block. */
+                if(!TAO::Ledger::CreateStakeBlock(pCredentials, strPIN, block, fGenesis))
+                    return debug::error(FUNCTION, "Unable to create candidate block");
+
+                /* Add a coinstake producer to the new candidate block */
+                if(!CreateCoinstake(pCredentials->Genesis()))
+                    return false;
+            }
+
 
             return true;
         }
@@ -484,7 +494,7 @@ namespace TAO
 
 
         /* Verify whether or not a signature chain has met the interval requirement */
-        bool StakeMinter::CheckInterval(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
+        bool StakeMinter::CheckInterval()
         {
             static uint32_t nCounter = 0; //Prevents log spam during wait period
             static const uint32_t nMinInterval = MinStakeInterval(block);
@@ -521,12 +531,12 @@ namespace TAO
 
 
         /* Verify no transactions for same signature chain in the mempool */
-        bool StakeMinter::CheckMempool(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user)
+        bool StakeMinter::CheckMempool(const uint256_t& hashGenesis)
         {
             static uint32_t nCounter = 0; //Prevents log spam during wait period
 
             /* Check there are no mempool transactions for this sig chain. */
-            if(fGenesis && mempool.Has(user->Genesis()))
+            if(fGenesis && mempool.Has(hashGenesis))
             {
                 /* 5 second wait is reset below (can't sleep too long or will hang until wakes up on shutdown) */
                 nSleepTime = 5000;
@@ -552,8 +562,7 @@ namespace TAO
 
 
         /* Attempt to solve the hashing algorithm at the current staking difficulty for the candidate block */
-        bool StakeMinter::HashBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN,
-                                    const cv::softdouble nRequired)
+        bool StakeMinter::HashBlock(const cv::softdouble nRequired)
         {
             uint64_t nTimeStart = 0;
 
@@ -629,7 +638,7 @@ namespace TAO
                 {
                     debug::log(0, FUNCTION, "Found new stake hash ", hashProof.SubString());
 
-                    ProcessBlock(user, strPIN);
+                    ProcessBlock();
                     break;
                 }
 
@@ -641,7 +650,7 @@ namespace TAO
         }
 
 
-        bool StakeMinter::ProcessBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
+        bool StakeMinter::ProcessBlock()
         {
             /* Calculate coinstake reward for producer.
              * Reward is based on final block time for block. Block time is updated with each iteration so we
@@ -656,52 +665,59 @@ namespace TAO
             if(!block.producer.Build())
                 return debug::error(FUNCTION, "Coinstake transaction failed to build");
 
-            /* Coinstake producer now complete. Sign the transaction. */
-            block.producer.Sign(user->Generate(block.producer.nSequence, strPIN));
-
             /* Build the Merkle Root. */
             std::vector<uint512_t> vHashes;
             for(const auto& item : block.vtx)
                 vHashes.push_back(item.second);
 
-            /* producers are not part of vtx, add to vHashes last */
-            vHashes.push_back(block.producer.GetHash());
-            block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
-
-            /* Sign the block. */
-            if(!SignBlock(user, strPIN))
-                return false;
-
-            /* Print the newly found block. */
-            block.print();
-
-            /* Log block found */
-            if(config::nVerbose > 0)
+            /* Unlock our sigchain and lock when signging. */
             {
-                std::string strTimestamp = std::string(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
+                SecureString strPIN;
+                RECURSIVE(TAO::API::Authentication::Unlock(strPIN, PinUnlock::STAKING));
 
-                debug::log(1, FUNCTION, "Nexus Stake Minter: New nPoS channel block found at unified time ", strTimestamp);
-                debug::log(1, " blockHash: ", block.GetHash().SubString(30), " block height: ", block.nHeight);
-            }
+                /* Extract our credentials from sessions. */
+                const auto& pCredentials =
+                    TAO::API::Authentication::Credentials();
 
-            if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-            {
-                debug::log(0, FUNCTION, "Generated block is stale");
-                return false;
-            }
+                /* Coinstake producer now complete. Sign the transaction. */
+                block.producer.Sign(pCredentials->Generate(block.producer.nSequence, strPIN));
 
-            /* Lock the sigchain that is being mined. */
-            SecureString strUnlockedPIN;
-            {
-                RECURSIVE(TAO::API::Authentication::Unlock(strUnlockedPIN, PinUnlock::STAKING));
+                /* producers are not part of vtx, add to vHashes last */
+                vHashes.push_back(block.producer.GetHash());
+                block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
 
-                /* Process the block and relay to network if it gets accepted */
-                uint8_t nStatus = 0;
-                TAO::Ledger::Process(block, nStatus);
+                /* Sign the block. */
+                if(!SignBlock(pCredentials, strPIN))
+                    return false;
 
-                /* Check the statues. */
-                if(!(nStatus & PROCESS::ACCEPTED))
-                    return debug::error(FUNCTION, "generated block not accepted");
+                /* Print the newly found block. */
+                block.print();
+
+                /* Log block found */
+                if(config::nVerbose > 0)
+                {
+                    std::string strTimestamp = std::string(convert::DateTimeStrFormat(runtime::unifiedtimestamp()));
+
+                    debug::log(1, FUNCTION, "Nexus Stake Minter: New nPoS channel block found at unified time ", strTimestamp);
+                    debug::log(1, " blockHash: ", block.GetHash().SubString(30), " block height: ", block.nHeight);
+                }
+
+                if(block.hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
+                {
+                    debug::log(0, FUNCTION, "Generated block is stale");
+                    return false;
+                }
+
+                /* Lock the sigchain that is being mined. */
+                {
+                    /* Process the block and relay to network if it gets accepted */
+                    uint8_t nStatus = 0;
+                    TAO::Ledger::Process(block, nStatus);
+
+                    /* Check the statues. */
+                    if(!(nStatus & PROCESS::ACCEPTED))
+                        return debug::error(FUNCTION, "generated block not accepted");
+                }
             }
 
             /* After successfully generated genesis for trust account, reset to genereate trust for continued staking */
