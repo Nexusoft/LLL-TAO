@@ -155,8 +155,7 @@ namespace TAO
         bool StakeMinter::CheckUser()
         {
             /* Check that the account is unlocked for staking */
-            const uint8_t nUnlockedActions = PinUnlock::STAKING;
-            if(!TAO::API::Authentication::Unlocked(TAO::API::Authentication::SESSION::DEFAULT, nUnlockedActions))
+            if(!TAO::API::Authentication::Unlocked(PinUnlock::STAKING))
             {
                 debug::log(0, FUNCTION, "Account has not been unlocked for staking");
                 return false;
@@ -694,7 +693,7 @@ namespace TAO
             /* Lock the sigchain that is being mined. */
             SecureString strUnlockedPIN;
             {
-                RECURSIVE(TAO::API::Authentication::Unlock(uint256_t(TAO::API::Authentication::SESSION::DEFAULT), strUnlockedPIN, PinUnlock::STAKING));
+                RECURSIVE(TAO::API::Authentication::Unlock(strUnlockedPIN, PinUnlock::STAKING));
 
                 /* Process the block and relay to network if it gets accepted */
                 uint8_t nStatus = 0;

@@ -71,7 +71,7 @@ namespace TAO::API
                 const uint256_t& hashGenesis = rSession.second;
 
                 /* Check that account is unlocked. */
-                if(!Authentication::Unlocked(hashSession, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS))
+                if(!Authentication::Unlocked(TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS, hashSession))
                     continue;
 
                 /* Build a json object. */

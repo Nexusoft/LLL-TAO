@@ -418,7 +418,7 @@ namespace TAO::API
          *  @return true if the PIN is unlocked for given actions.
          *
          **/
-        static bool Unlocked(const uint256_t& hashSession, const uint8_t nRequestedActions);
+        static bool Unlocked(const uint8_t nRequestedActions, const uint256_t& hashSession = default_session());
 
 
         /** Caller
@@ -433,6 +433,18 @@ namespace TAO::API
         static uint256_t Caller(const encoding::json& jParams);
 
 
+        /** Caller
+         *
+         *  Get the genesis-id of the given caller using session. Throws exception if not found.
+         *
+         *  @param[in] hashSession The session-id to extract genesis from.
+         *
+         *  @return the caller if found
+         *
+         **/
+        static uint256_t Caller(const uint256_t& hashSession = default_session());
+
+
         /** Credentials
          *
          *  Get an instance of current session credentials indexed by session-id.
@@ -444,6 +456,19 @@ namespace TAO::API
          *
          **/
         static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const encoding::json& jParams);
+
+
+        /** Credentials
+         *
+         *  Get an instance of current session credentials indexed by session-id.
+         *  This will throw if session not found, do not use without checking first.
+         *
+         *  @param[in] hashSession The session parameter required.
+         *
+         *  @return The active session.
+         *
+         **/
+        static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const uint256_t& hashSession = default_session());
 
 
         /** Sessions
@@ -484,7 +509,7 @@ namespace TAO::API
         *  @return True if this unlock action was successful.
         *
         **/
-       static std::recursive_mutex& Unlock(const uint256_t& hashSession, SecureString &strPIN,
+       static std::recursive_mutex& Unlock(SecureString &strPIN, const uint256_t& hashSession = default_session(),
                           const uint8_t nRequestedActions = TAO::Ledger::PinUnlock::TRANSACTIONS);
 
 

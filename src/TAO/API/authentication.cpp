@@ -205,11 +205,18 @@ namespace TAO::API
     /* Get the genesis-id of the given caller using session from params. */
     uint256_t Authentication::Caller(const encoding::json& jParams)
     {
-        RECURSIVE(MUTEX);
-
         /* Get the current session-id. */
         const uint256_t hashSession =
             ExtractHash(jParams, "session", default_session());
+
+        return Caller(hashSession);
+    }
+
+
+    /* Get the genesis-id of the given caller using session. */
+    uint256_t Authentication::Caller(const uint256_t& hashSession)
+    {
+        RECURSIVE(MUTEX);
 
         /* Check for active session. */
         if(!mapSessions.count(hashSession))
@@ -250,7 +257,7 @@ namespace TAO::API
     }
 
     /* Determine if a sigchain is unlocked for given actions. */
-    bool Authentication::Unlocked(const uint256_t& hashSession, const uint8_t nRequestedActions)
+    bool Authentication::Unlocked(const uint8_t nRequestedActions, const uint256_t& hashSession)
     {
         RECURSIVE(MUTEX);
 
@@ -277,11 +284,18 @@ namespace TAO::API
     /* Get an instance of current session credentials indexed by session-id. */
     const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Authentication::Credentials(const encoding::json& jParams)
     {
-        RECURSIVE(MUTEX);
-
         /* Get the current session-id. */
         const uint256_t hashSession =
             ExtractHash(jParams, "session", default_session());
+
+        return Credentials(hashSession);
+    }
+
+
+    /* Get an instance of current session credentials indexed by session-id. */
+    const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Authentication::Credentials(const uint256_t& hashSession)
+    {
+        RECURSIVE(MUTEX);
 
         /* Check for active session. */
         if(!mapSessions.count(hashSession))
@@ -392,7 +406,7 @@ namespace TAO::API
 
 
     /* Unlock and get the active pin from current session. */
-    std::recursive_mutex& Authentication::Unlock(const uint256_t& hashSession, SecureString &strPIN, const uint8_t nRequestedActions)
+    std::recursive_mutex& Authentication::Unlock(SecureString &strPIN, const uint256_t& hashSession, const uint8_t nRequestedActions)
     {
         {
             RECURSIVE(MUTEX);

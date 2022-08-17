@@ -20,7 +20,7 @@ ________________________________________________________________________________
 
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/session-manager.h>
+#include <TAO/API/types/authentication.h>
 
 #include <TAO/Ledger/include/difficulty.h>
 #include <TAO/Ledger/include/create.h>
@@ -672,7 +672,7 @@ namespace LLP
     bool Miner::check_round()
     {
         /* Get the hash genesis. */
-        uint256_t hashGenesis = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
+        const uint256_t hashGenesis = TAO::API::Authentication::Caller(); //no parameter goes to default session
 
         /* Read hashLast from hashGenesis' sigchain and also check mempool. */
         uint512_t hashLast;
@@ -733,14 +733,22 @@ namespace LLP
         /* make sure the notifications processor hasn't been run already at this height */
         if(nLastNotificationsHeight.load() != nBestHeight)
         {
+            /* Store our new height now. */
             nLastNotificationsHeight.store(nBestHeight);
 
-            /* Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block. */
+            /* Get our current genesis. */
+            const uint256_t hashGenesis = TAO::API::Authentication::Caller(); //no parameter goes to default session
+
+            //TODO: we want to pipe in the notifications processor event notifications
+
+            /*
+
+            // Wake up events processor and wait for a signal to guarantee added transactions won't orphan a mined block.
             if(TAO::API::Commands::Instance<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR
                 && TAO::API::GetSessionManager().Has(0)
                 && TAO::API::GetSessionManager().Get(0, false).CanProcessNotifications())
             {
-                /* Find the thread processing notifications for this user */
+                //Find the thread processing notifications for this user
                 TAO::API::NotificationsThread* pThread = TAO::API::Commands::Instance<TAO::API::Users>()->NOTIFICATIONS_PROCESSOR->FindThread(0);
 
                 if(pThread)
@@ -750,9 +758,11 @@ namespace LLP
                 }
             }
 
+            */
+
             /* If we detected a block height change, update the cached last hash of the logged in sig chain.
              * This is done AFTER the notifications processor has finished, in case it added new transactions to the mempool  */
-            LLD::Ledger->ReadLast(TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
+            LLD::Ledger->ReadLast(hashGenesis, nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
         }
 
         return true;
@@ -799,44 +809,22 @@ namespace LLP
     TAO::Ledger::Block *Miner::new_block()
     {
         /* If the primemod flag is set, take the hash proof down to 1017-bit to maximize prime ratio as much as possible. */
-        uint32_t nBitMask = config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
+        const uint32_t nBitMask =
+            config::GetBoolArg(std::string("-primemod"), false) ? 0xFE000000 : 0x80000000;
 
-        /* Get the session */
-        TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
+        /* Unlock sigchain to create new block. */
+        SecureString strPIN;
+        RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
 
-        /* Attempt to unlock the account. */
-        if(session.Locked())
-        {
-            debug::error(FUNCTION, "No unlocked account available");
-            return nullptr;
-        }
-
-        /* Get the sigchain and the PIN. */
-        SecureString PIN = session.GetActivePIN()->PIN();
-
-        /* Attempt to get the sigchain. */
-        const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = session.GetAccount();
-        if(!pSigChain)
-        {
-            debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
-            return nullptr;
-        }
-
-        /* Check that the account is unlocked for mining */
-        if(!session.CanMine())
-        {
-            debug::error(FUNCTION, "Account has not been unlocked for mining");
-            return nullptr;
-        }
+        /* Get an instance of our credentials. */
+        const auto& pCredentials =
+            TAO::API::Authentication::Credentials();
 
         /* Allocate memory for the new block. */
         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
-        /* Lock this user's sigchain. */
-        LOCK(session.CREATE_MUTEX);
-
         /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-        while(TAO::Ledger::CreateBlock(pSigChain, PIN, nChannel.load(), *pBlock, ++nBlockIterator, &CoinbaseTx))
+        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel.load(), *pBlock, ++nBlockIterator, &CoinbaseTx))
         {
             /* Break out of loop when block is ready for prime mod. */
             if(is_prime_mod(nBitMask, pBlock))
@@ -852,7 +840,6 @@ namespace LLP
     /*  signs the block. */
     bool Miner::sign_block(uint64_t nNonce, const uint512_t& hashMerkleRoot)
     {
-
         TAO::Ledger::Block *pBaseBlock = mapBlocks[hashMerkleRoot];
 
         /* Update block with the nonce and time. */
@@ -889,23 +876,16 @@ namespace LLP
             /* Calculate prime offsets before signing. */
             TAO::Ledger::GetOffsets(pBlock->GetPrime(), pBlock->vOffsets);
 
-            /* Get the session */
-            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
+            /* Unlock sigchain to create new block. */
+            SecureString strPIN;
+            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
 
-            /* Check that the account is unlocked for minting */
-            if(!session.CanMine())
-                return debug::error(FUNCTION, "Account has not been unlocked for mining");
-
-            /* Get the sigchain and the PIN. */
-            SecureString PIN = session.GetActivePIN()->PIN();
-
-            /* Attempt to get the sigchain. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = session.GetAccount();
-            if(!pSigChain)
-                return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
+            /* Get an instance of our credentials. */
+            const auto& pCredentials =
+                TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
 
             /* Generate a new sigchain key for signing. */
-            std::vector<uint8_t> vBytes = pSigChain->Generate(pBlock->producer.nSequence, PIN).GetBytes();
+            std::vector<uint8_t> vBytes = pCredentials->Generate(pBlock->producer.nSequence, strPIN).GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Switch based on signature type. */
@@ -1001,23 +981,13 @@ namespace LLP
                     debug::log(1, FUNCTION, "new hash block found at unified time ", strTimestamp);
             }
 
-            //TODO: check if block will orphan any transactions
-
             /* Check if the block is stale. */
-            // if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-            //   return false;
+            if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
+                return false;
 
-            /* Get the session */
-            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
-
-            /* Attempt to get the sigchain. */
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pSigChain = session.GetAccount();
-            if(!pSigChain)
-                return debug::error(FUNCTION, "Couldn't get the unlocked sigchain");
-
-
-            /* Lock the sigchain that is being mined. */
-            LOCK(session.CREATE_MUTEX);
+            /* Unlock sigchain to create new block. */
+            SecureString strPIN;
+            RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::MINING));
 
             /* Process the block and relay to network if it gets accepted into main chain. */
             uint8_t nStatus = 0;
@@ -1038,8 +1008,7 @@ namespace LLP
     /*  Determines if the mining wallet is unlocked. */
     bool Miner::is_locked()
     {
-        TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
-        return session.Locked() && !session.CanMine();
+        return !TAO::API::Authentication::Unlocked(TAO::Ledger::PinUnlock::MINING);
     }
 
 
