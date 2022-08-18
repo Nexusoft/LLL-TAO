@@ -113,17 +113,41 @@ namespace TAO::API
         /* Declare the namespace hash to use for this object. */
         uint256_t hashGenesis;
 
-        /* First check the callers local namespace to see if it exists */
-        if(!Authentication::Caller(jParams, hashGenesis) && fThrow)
-            throw Exception(-11, "Session not found");
-
-        /* Check in our local namespace. */
+        /* Track our name object. */
         TAO::Register::Object oNameRet;
-        if(TAO::Register::GetNameRegister(hashGenesis, strObjectName, oNameRet))
+
+        /* Get the hashNamespace for the global namespace */
+        const uint256_t hashNamespace =
+            TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
+
+        /* Check if we have a local name override. */
+        const auto nLocalNamePos = strObjectName.find("local:");
+        if(nLocalNamePos != std::string::npos)
+        {
+            /* Extract our delimiter from string. */
+            const std::string strName      = strObjectName.substr(nLocalNamePos + 6);
+
+            /* First check the callers local namespace to see if it exists */
+            if(!Authentication::Caller(jParams, hashGenesis))
+                throw Exception(-11, "local: override requires session");
+
+            /* Check if we can find the local name record. */
+            if(TAO::Register::GetNameRegister(hashGenesis, strName, oNameRet))
+            {
+                /* Set the return name address. */
+                hashNameAddress =
+                    TAO::Register::Address(strName, hashGenesis, TAO::Register::Address::NAME);
+
+                return oNameRet;
+            }
+        }
+
+        /* Otherwise check our global name scope. */
+        else if(TAO::Register::GetNameRegister(hashNamespace, strObjectName, oNameRet))
         {
             /* Set the return name address. */
             hashNameAddress =
-                TAO::Register::Address(strObjectName, hashGenesis, TAO::Register::Address::NAME);
+                TAO::Register::Address(strObjectName, hashNamespace, TAO::Register::Address::NAME);
 
             return oNameRet;
         }
@@ -175,16 +199,16 @@ namespace TAO::API
             }
         }
 
-        /* Get the hashNamespace for the global namespace */
-        const uint256_t hashNamespace =
-            TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
+        /* First check the callers local namespace to see if it exists */
+        if(!Authentication::Caller(jParams, hashGenesis) && fThrow)
+            throw Exception(-11, "Session not found");
 
-        /* Attempt to Read the Name Object */
-        if(TAO::Register::GetNameRegister(hashNamespace, strObjectName, oNameRet))
+        /* Check in our local namespace. */
+        if(TAO::Register::GetNameRegister(hashGenesis, strObjectName, oNameRet))
         {
             /* Set the return name address. */
             hashNameAddress =
-                TAO::Register::Address(strObjectName, hashNamespace, TAO::Register::Address::NAME);
+                TAO::Register::Address(strObjectName, hashGenesis, TAO::Register::Address::NAME);
 
             return oNameRet;
         }
