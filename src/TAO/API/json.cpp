@@ -660,13 +660,26 @@ namespace TAO::API
                     jRet["OP"]          = "TRANSFER";
                     jRet["address"]     = hashAddress.ToString();
 
-                    /* Add transfer address if not to wildcard. */
-                    if(hashTransfer != TAO::Register::WILDCARD_ADDRESS)
-                        jRet["recipient"] = hashTransfer.ToString();
-                    else
-                        jRet["wildcard"] = true;
+                    /* Check for tokenized transfer. */
+                    if(nType == TAO::Operation::TRANSFER::FORCE)
+                    {
+                        /* Recipient is register address when tokenized. */
+                        jRet["recipient"] =
+                            TAO::Register::Address(hashTransfer).ToString();
 
-                    jRet["forced"]      = (nType == TAO::Operation::TRANSFER::FORCE);
+                        /* Special flag to tell it's tokenized. */
+                        jRet["tokenized"] = true;
+                    }
+
+                    /* Default logic for regular transfers. */
+                    else
+                    {
+                        /* Add transfer address if not to wildcard. */
+                        if(hashTransfer != TAO::Register::WILDCARD_ADDRESS)
+                            jRet["recipient"] = hashTransfer.ToString();
+                        else
+                            jRet["wildcard"] = true;
+                    }
 
                     break;
                 }
