@@ -123,6 +123,7 @@ namespace TAO::API
                 USER_TYPES::STANDARD,
                 "standard"
             )
+            , "account, token, trust"
         );
 
         /* Handle for all CREDIT operations. */
@@ -182,6 +183,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "account, token, trust"
         );
 
         /* Handle for generic list operations. */
@@ -193,6 +195,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "account, token, trust"
         );
 
         /* Handle for BALANCES. */
@@ -233,7 +236,7 @@ namespace TAO::API
         );
 
         /* Handle for set/stake. */
-        mapFunctions["set/stake"] = Function //XXX: we still need to clean this method up
+        mapFunctions["set/stake"] = Function
         (
             std::bind
             (
