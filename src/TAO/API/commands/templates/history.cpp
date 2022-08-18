@@ -124,6 +124,21 @@ namespace TAO::API
                         /* Handle for TRANSFER modifier type. */
                         case TAO::Operation::OP::TRANSFER:
                         {
+                            /* Seek to the beginning. */
+                            rContract.SeekToPrimitive();
+                            rContract.Seek(65); //seek to our transfer flag
+
+                            /* Get our type byte. */
+                            uint8_t nType;
+                            rContract >> nType;
+
+                            /* Check if this is for tokenized asset. */
+                            if(nType == TAO::Operation::TRANSFER::FORCE)
+                            {
+                                jRegister["action"] = "TOKENIZE";
+                                break;
+                            }
+
                             jRegister["action"] = "TRANSFER";
                             break;
                         }

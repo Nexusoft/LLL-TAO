@@ -396,6 +396,26 @@ namespace TAO::API
                 /* Transfer we need to mark this address as spent. */
                 case TAO::Operation::OP::TRANSFER:
                 {
+                    /* Get our register address. */
+                    rContract.Seek(64); //skip over address and recipient
+
+                    /* Get our type byte. */
+                    uint8_t nType;
+                    rContract >> nType;
+
+                    /* Check if this is for tokenized asset. */
+                    if(nType == TAO::Operation::TRANSFER::FORCE)
+                    {
+                        debug::log(2, FUNCTION, "TOKENIZE: for address ", hashRegister.SubString());
+
+                        /* Push transaction to the queue so we can track what modified given register. */
+                        if(!LLD::Logical->PushTransaction(hashRegister, hash))
+                        {
+                            debug::warning(FUNCTION, "failed to push transaction ", VARIABLE(hash.SubString()));
+                            continue;
+                        }
+                    }
+
                     /* Write a transfer index if transferring from our sigchain. */
                     if(!LLD::Logical->WriteTransfer(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to write transfer for ", VARIABLE(hashRegister.SubString()));
