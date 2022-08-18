@@ -194,6 +194,10 @@ namespace TAO::API
                         ? vMethods[n].substr(0, vMethods[n].size() - 1)
                         : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
+                    /* Handle our supported override. */
+                    if(!mapFunctions[strVerb].Supported(strNoun))
+                        throw Exception(-36, "Unsupported type [", strNoun, "] for command");
+
                     /* Check for unexpected types. */
                     if(!mapStandards.count(strNoun) && !mapFunctions[strVerb].Supported(strNoun))
                         throw Exception(-36, "Unsupported type [", strNoun, "] for command");

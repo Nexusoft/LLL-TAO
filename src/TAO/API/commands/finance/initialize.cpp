@@ -107,6 +107,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "token"
         );
 
         /* Handle for all CREATE operations. */
@@ -168,6 +169,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "account, token, trust"
         );
 
 

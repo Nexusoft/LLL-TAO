@@ -207,7 +207,7 @@ namespace TAO::API
          **/
         __attribute__((pure)) bool Supported(const std::string& strNoun) const
         {
-            return setNouns.count(strNoun);
+            return setNouns.empty() || setNouns.count(strNoun);
         }
     };
 }
