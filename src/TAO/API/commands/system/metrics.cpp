@@ -153,8 +153,8 @@ namespace TAO
                 { "total", nTotalRegisters },
                 { "names",
                     {
-                        { "global",    nTotalNames            },
-                        { "local",     nTotalGlobalNames      },
+                        { "global",    nTotalGlobalNames      },
+                        { "local",     nTotalNames            },
                         { "namespaced", nTotalNamespacedNames }
                     }
                 },
@@ -197,7 +197,7 @@ namespace TAO
                 jTrust["trust"]  = nTotalTrust;
 
                 jRet["trust"] = jTrust;
-                
+
                 /* Add reserves */
                 encoding::json jReserves;
 
