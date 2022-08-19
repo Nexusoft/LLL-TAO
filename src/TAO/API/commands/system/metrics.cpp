@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/API/types/commands/system.h>
+#include <TAO/API/include/format.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -45,20 +46,17 @@ namespace TAO
             uint64_t nTotalGlobalNames = 0;
             uint64_t nTotalNamespacedNames = 0;
             uint64_t nTotalNamespaces = count_registers("namespace");
-            uint64_t nTotalAccounts = count_registers("account");
-            uint64_t nTotalCrypto = count_registers("crypto");
-            uint64_t nTotalTokens = count_registers("token");
+            uint64_t nTotalAccounts   = count_registers("account");
+            uint64_t nTotalTokens     = count_registers("token");
 
-            uint64_t nTotalAppend = count_registers("append");
-            uint64_t nTotalRaw = count_registers("raw");
-            uint64_t nTotalReadOnly = count_registers("readonly");
+            uint64_t nTotalAppend     = count_registers("append");
+            uint64_t nTotalRaw        = count_registers("raw");
+            uint64_t nTotalReadOnly   = count_registers("readonly");
 
+            /* For list of items we are building. */
+            uint64_t nTotalCrypto = 0;
             uint64_t nTotalObjects = 0;
             uint64_t nTotalTokenized = 0;
-
-            /* There is one crypto register per sig chain so just counting these is a reliable count of the sig chains */
-            uint64_t nTotalSigChains = 0;
-
 
             /* Batch read all trust keys. */
             std::vector<TAO::Register::Object> vTrust;
@@ -96,18 +94,14 @@ namespace TAO
 
                     /* global */
                     if(object.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
-                        nTotalGlobalNames ++;
+                        nTotalGlobalNames++;
 
                     /* namespaced */
                     else if(object.get<std::string>("namespace") != "" )
                         nTotalNamespacedNames ++;
 
-                    /* Check for default accounts. */
-                    if(object.get<std::string>("name") == "trust" && object.get<std::string>("namespace") == "")
-                        ++nTotalSigChains;
-
                     /* Update count*/
-                    nTotalNames  ++;
+                    nTotalNames++;
                 }
             }
 
@@ -123,50 +117,87 @@ namespace TAO
                         continue;
 
                     /* Check if tokenized*/
-                    if(TAO::Register::Address(object.hashOwner).IsToken() )
-                        nTotalTokenized ++;
+                    if(TAO::Register::Address(object.hashOwner).IsToken())
+                        nTotalTokenized++;
 
                     /* Update count*/
-                    nTotalObjects  ++;
+                    nTotalObjects++;
                 }
             }
 
+            /* Check by unique owners. */
+            std::set<uint256_t> setOwners;
+
+            /* Batch read all object registers. */
+            std::vector<TAO::Register::Object> vCrypto;
+            if(LLD::Register->BatchRead("crypto", vCrypto, -1))
+            {
+                /* Check through all names. */
+                for(auto& rObject : vCrypto)
+                {
+                    /* Use a set to get unique owners. */
+                    setOwners.insert(rObject.hashOwner);
+                    ++nTotalCrypto;
+                }
+
+            }
+
             /* Calculate count of all registers */
-            uint64_t nTotalRegisters = nTotalTrustKeys + nTotalNames +nTotalNamespaces + nTotalAccounts + nTotalCrypto
+            const uint64_t nTotalRegisters = nTotalTrustKeys + nTotalNames +nTotalNamespaces + nTotalAccounts + nTotalCrypto
                     + nTotalTokens + nTotalAppend + nTotalRaw + nTotalReadOnly + nTotalObjects;
 
 
             /* Add register metrics */
-            encoding::json jRegisters;
-            jRegisters["total"] = nTotalRegisters;
-            jRegisters["account"] = nTotalAccounts;
-            jRegisters["append"] = nTotalAppend;
-            jRegisters["crypto"] = nTotalCrypto;
-            jRegisters["name"]  = nTotalNames;
-            jRegisters["name_global"]  = nTotalGlobalNames;
-            jRegisters["name_namespaced"]  = nTotalNamespacedNames;
-            jRegisters["namespace"] = nTotalNamespaces;
-            jRegisters["object"] = nTotalObjects;
-            jRegisters["object_tokenized"] = nTotalTokenized;
-            jRegisters["raw"] = nTotalRaw;
-            jRegisters["readonly"] = nTotalReadOnly;
-            jRegisters["token"] = nTotalTokens;
+            const encoding::json jRegisters =
+            {
+                { "total", nTotalRegisters },
+                { "names",
+                    {
+                        { "global",    nTotalNames            },
+                        { "local",     nTotalGlobalNames      },
+                        { "namespaced", nTotalNamespacedNames }
+                    }
+                },
+
+                { "namespaces", nTotalNamespaces },
+
+                /* Track our total objects. */
+                { "objects",
+                    {
+                        { "accounts",  nTotalAccounts  },
+                        { "assets",    nTotalObjects   },
+                        { "crypto",    nTotalCrypto    },
+                        { "tokenized", nTotalTokenized },
+                        { "tokens",    nTotalTokens    }
+                    }
+                },
+
+                /* Track our state registers. */
+                { "state",
+                    {
+                        { "raw", nTotalRaw           },
+                        { "readonly", nTotalReadOnly }
+                    }
+                }
+            };
+
+            /* Add to the array key now. */
             jRet["registers"] = jRegisters;
 
             /* Add sig chain metrics */
-            jRet["sig_chains"] = nTotalSigChains;
-
-            /* Add trust metrics */
-            encoding::json jsonTrust;
-            jsonTrust["total"]  = nTotalTrustKeys;
-            jsonTrust["stake"] = double(nTotalStake / TAO::Ledger::NXS_COIN);
-            jsonTrust["trust"] = nTotalTrust;
-
-            jRet["trust"] = jsonTrust;
+            jRet["sigchains"] = setOwners.size();
 
             /* We only need supply data when on a public network or testnet, private and hybrid do not have supply. */
             if(!config::fHybrid.load())
             {
+                /* Add trust metrics */
+                encoding::json jTrust;
+                jTrust["total"]  = nTotalTrustKeys;
+                jTrust["stake"]  = FormatBalance(nTotalStake);
+                jTrust["trust"]  = nTotalTrust;
+
+                jRet["trust"] = jTrust;
+                
                 /* Add reserves */
                 encoding::json jReserves;
 
