@@ -1,6 +1,6 @@
 # LEDGER API
 -----------------------------------
-The Ledger API provides users with access to data held by the ledger such as blocks and transactions.
+The Ledger API provides users with access to data held by the ledger such as blocks, transactions and network-wide staking and mining information.
 
 **Info:** Retrieving block data by height is only possible if the core has been configured with --indexheight=1.
 
@@ -14,8 +14,8 @@ The following commands are direct endpoints and thus do not support the above ve
 [`get/transaction`](#get/transaction)  
 [`list/transactions`](#list/transactions)  
 [`submit/transaction`](#submit/transaction)  
-[`void/transaction`](#void/transaction)  
 [`get/info`](#get/info)  
+[`get/metrics`](#get/metrics)  
 
 Direct endpoints support `filters` and `operators`.
 
@@ -29,11 +29,11 @@ Retrieves the hash of the block for the given height.
 ledger/get/blockhash
 ```
 
-### `Parameters:`
+### Parameters:
 
 `height` : The **block height** to retrieve the hash for.
 
-### `Results:`
+### Results:
 
 #### Return value JSON object:
 
@@ -222,7 +222,7 @@ Retrieves an array of block data for a sequential range of blocks from a given h
 ledger/list/blocks
 ```
 
-## `Parameters`:
+### Parameters:
 
 `hash` : Required to **identify** the block to retrieve the block data for. This is optional if the height is provided
 
@@ -398,6 +398,8 @@ ledger/get/transaction
 
 This method supports the Sorting / Filtering parameters.  
 
+### Returns:
+
 #### Return value JSON object:
 
 ```
@@ -510,10 +512,11 @@ ledger/get/transaction
 
 This method supports the Sorting / Filtering parameters.
 
+### Returns:
+
 #### Return value JSON object:
 
 ```
-
 {
     "txid": "017ff70158049886f8bad93cfe15285bae34d0e643991088e00769228161868a60230551724ac0ad5c7a98fabfdbebca88dffedf1a9e5ff095524b7565bccee1",
     "type": "tritium base",
@@ -611,11 +614,11 @@ Submits a transaction to be included in the mempool and broadcast to the network
 ledger/submit/transaction
 ```
 
-## Parameters:
+### Parameters:
 
 `data` : The serialized, hex-encoded transaction data to be submitted.
 
-## Results:
+### Results:
 
 #### Return value JSON object:
 
@@ -637,48 +640,58 @@ Retrieves mining related data for the ledger.
 ledger/get/info
 ```
 
-## Parameters:
+### Parameters:
 
 -none-
 
-## Returns:
+### Returns:
 
 #### Return value JSON object:
 
 ```
 {
     "stake": {
-        "height": 1465766,
-        "weight": "0000000000000000000136338813e58f",
-        "timespan": 162,
-        "fees": 17781.438,
-        "difficulty": 485.016406
+        "height": 1478452,
+        "weight": "0000000000000000000136d9ce5eff4a",
+        "timespan": 163,
+        "fees": 17789.398,
+        "difficulty": 528.770417
     },
     "prime": {
-        "height": 1593771,
-        "weight": "0000000000000000000ab53e370e49ee",
-        "timespan": 149,
-        "fees": 40180.29,
-        "difficulty": 7.9014281,
-        "reserve": 444.478007,
-        "reward": 1.920952,
-        "primes": 3400159600
+        "height": 1607544,
+        "weight": "0000000000000000000acf8296a5dace",
+        "timespan": 152,
+        "fees": 40208.42,
+        "difficulty": 7.5050107,
+        "reserve": 275.540352,
+        "reward": 1.89596,
+        "primes": 721104210
     },
     "hash": {
-        "height": 1495822,
-        "weight": "00000000000000000151e6c3955062c7",
-        "timespan": 160,
-        "fees": 48058.759,
-        "difficulty": 2521.068135,
-        "reserve": 312.411867,
-        "reward": 1.920952,
-        "hashes": 4360790031072
+        "height": 1508658,
+        "weight": "00000000000000000153053d8ed4b372",
+        "timespan": 162,
+        "fees": 50891.389,
+        "difficulty": 995.146668,
+        "reserve": 390.83726,
+        "reward": 1.895962,
+        "hashes": 1700092903007
     },
-    "height": 4555356,
-    "timestamp": 1658832043,
-    "checkpoint": "26e8ba97ae9545d878d00bf515da21dd7865fe3d4156d0bdd80f1e7a4abcf3181fbd394d998e511a6634ea39435d8bdc52bdae1d79b2ca371bac9a35444bbd4043a92907a0502fe01cccce5cba8ab196ec0ba6e6e88e027de82e267032fdd85d8feb05d1e207798bee4816ae6664cb091836a370ff4c508e3ecd86688d50d280"
+    "supply": {
+        "total": 74104442.485668,
+        "target": 71313176.905702,
+        "inflation": 0.4766,
+        "minute": 3.651488,
+        "hour": 219.087198,
+        "day": 5256.922284,
+        "week": 36747.303,
+        "month": 146280.58871
+    },
+    "height": 4594651,
+    "timestamp": 1660902585,
+    "checkpoint": "20b50d243a585a6c9a3d420ebfa61aee8ac0a68c1d8c71ef415247fc3d677c44b6f0a2b497c72ca4d9f2271cfbe1090042522740e7671781c7548b275f84eebce7d4340b703abfe8544a3fd0ff1cd6132f6acb1b04948da81ae965a1828e307d1ab47b731d9cca7f28be830082b81c2a3d0b1fadd3e9fcc2ec9203d22a61ab12"
 }
-[Completed in 275.128995 ms]
+[Completed in 3827.013421 ms]
 ```
 
 #### Return values:
@@ -695,6 +708,7 @@ ledger/get/info
 
 `difficulty` : The current difficulty of the stake channel.   
 }  
+
 `prime` : This is the prime channel details.  
 {  
 `height` : The current number of blocks for the prime channel.
@@ -713,7 +727,8 @@ ledger/get/info
 
 `hashes` : It is total network hash rate for prime channel.  
 }  
-`hash` : This is the prime channel details.    
+
+`hash` : This is the hash channel details.    
 {    
 `height` : The current number of blocks for the hash channel.
 
@@ -731,10 +746,189 @@ ledger/get/info
 
 `hashes` : It is total network hash rate for the hash channel.  
 }  
+
+`supply` : Metrics on NXS supply rates.
+
+{
+`total` : Total amount of NXS in existence.
+   
+`target` : The target supply rate for this point in time.
+   
+`inflationrate` : The current inflation rate percentage based on the last year of data.
+   
+`minute` : The increase in supply rate within the last minute.
+   
+`hour` : The increase in supply rate within the last hour.
+   
+`day` : The increase in supply rate within the last day.
+   
+`week` : The increase in supply rate within the last week.
+   
+`month` : The increase in supply rate within the last 30 days.  
+}  
+
 `height` : The block height when the information is retrieved.
 
 `timestamp` :  The Unix timestamp of the most recent block in the blockchain.
 
 `checkpoint` : It is the most recent checkpoint that blocks can’t be reorganized before, so everything before that hash is finalized.
+
+-----------------------------------
+
+# <a name="get/metrics"></a> `get/metrics`
+
+Retrieves mining related data for the ledger.
+
+```
+ledger/get/metrics
+```
+
+### Parameters:
+
+-none-
+
+### Returns:
+
+#### Return value JSON object:
+
+```
+{
+    "volumes": {
+        "transactions": {
+            "daily": 1858,
+            "weekly": 13729,
+            "monthly": 55761
+        },
+        "contracts": {
+            "daily": 2272,
+            "weekly": 18588,
+            "monthly": 82712
+        },
+        "accounts": {
+            "daily": 272,
+            "weekly": 1566,
+            "monthly": 4128
+        }
+    },
+    "exchanges": {
+        "deposits": {
+            "daily": 675.23,
+            "weekly": 39999.196652,
+            "monthly": 1151130.175639
+        },
+        "withdraws": {
+            "daily": 65413.954116,
+            "weekly": 839913.950865,
+            "monthly": 4010148.232528
+        }
+    },
+    "network": {
+        "mint": {
+            "staking": {
+                "daily": 2064.475289,
+                "weekly": 14508.834716,
+                "monthly": 56739.446981
+            },
+            "mining": {
+                "daily": 5235.841724,
+                "weekly": 36701.701742,
+                "monthly": 148204.639604
+            }
+        },
+        "stake": {
+            "daily": 11651.941826,
+            "weekly": 533078.575505,
+            "monthly": 1367705.4935
+        }
+    }
+}
+[Completed in 12378.496480 ms]
+```
+#### Return Values:
+
+`volumes` : This retrieves the transactions, contracts and accounts volume.    
+{    
+`transactions` : This shows the total transactions for a specified period.    
+{  
+`daily` : Total number of transactions in the last 24 hours.  
+
+`weekly` : Total number of transactions in the last 7 days.   
+    
+`monthly` : Total number of transactions in the last month.  
+}  
+
+`contracts` : This shows the total contracts for a specified period.    
+{  
+`daily` : Total number of contracts in the last 24 hours.  
+
+`weekly` : Total number of contracts in the last 7 days.   
+    
+`monthly` : Total number of contracts in the last month.  
+}  
+
+`accounts` : This retreives the total accounts (sigchains) created in a specified period.    
+{
+`daily` : Total number of accounts created in the last 24 hours.  
+
+`weekly` : Total number of accounts created in the last 7 days.   
+    
+`monthly` : Total number of accounts created in the last month.  
+}  
+}  
+
+`exchanges` : This retreives the statistics of NXS  deposits and withdrawals from excahnges.      
+{      
+`deposits` : This shows the total NXS deposited to exchanges (moved to legacy from tritium).    
+{  
+`daily` : Total number of NXS deposited in the last 24 hours.  
+
+`weekly` : Total number of NXS deposited in the last 7 days.   
+    
+`monthly` : Total number of NXS deposited in the last month.  
+}  
+
+`withdraws` : This shows the total NXS withdraws from exchanges (moved to tritium from legacy).    
+{  
+`daily` : Total number of NXS withdraws in the last 24 hours.  
+
+`weekly` : Total number of NXS withdraws in the last 7 days.   
+    
+`monthly` : Total number of NXS withdraws in the last month.  
+}  
+}  
+
+`Network` : This retreives the statistics of NXS  minted by the staking, mining channels and NXS moved to/from stake.      
+{      
+`mint` : This shows the total NXS deposited to exchanges (moved to legacy from tritium).  
+{  
+
+`staking` : The total NXS minted from staking for a specified period.  
+{  
+`daily` : Total number of NXS minted from staking in the last 24 hours.  
+
+`weekly` : Total number of NXS minted from staking in the last 7 days.   
+    
+`monthly` : Total number of NXS minted from staking in the last month.  
+}  
+
+`mining` : The total NXS minted from mining for a specified period.  
+{  
+`daily` : Total number of NXS minted from mining in the last 24 hours.  
+
+`weekly` : Total number of NXS minted from mining in the last 7 days.   
+    
+`monthly` : Total number of NXS minted from mining in the last month.  
+}  
+}  
+
+`stake` : The total NXS locked or unlocked from stake (trust accounts) for a specified period.  
+{  
+`daily` : Total number of NXS locked or unlocked from stake in the last 24 hours.  
+
+`weekly` : Total number of NXS locked or unlocked from stake in the last 7 days.   
+    
+`monthly` : Total number of NXS locked or unlocked from stake in the last month.    
+}    
+}    
 
 -----------------------------------
