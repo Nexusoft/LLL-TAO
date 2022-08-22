@@ -209,9 +209,13 @@ namespace TAO::API
             std::min(uint32_t(config::GetArg("-maxcontracts", 99)), uint32_t(99));
 
         /* Build our transaction if there are contracts. */
-        uint64_t nIndex = 0;
+        uint64_t nIndex = 0, nTotal = 0;
         while(nIndex < vContracts.size())
         {
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                break;
+
             /* Build our transactions in batches of 99 contracts at a time. */
             std::vector<TAO::Operation::Contract> vBuild;
             for( ; vBuild.size() < nLimits && nIndex < vContracts.size(); ++nIndex)
@@ -233,6 +237,9 @@ namespace TAO::API
             /* Add the contract fees. */
             if(!AddFee(tx) && nIndex < vContracts.size() && tx.Size() == 99) //we check +1 so we know we have an available index
                 tx << vContracts[nIndex++]; //add additional contract and iterate our index
+
+            /* Track our total contracts. */
+            nTotal += tx.Size();
 
             /* Execute the operations layer. */
             if(!tx.Build())
@@ -260,6 +267,10 @@ namespace TAO::API
 
             /* Add our hashes to a return vector. */
             vHashes.push_back(tx.GetHash());
+
+            /* Debug output for notifications. */
+            if(nUnlockedActions & TAO::Ledger::PinUnlock::NOTIFICATIONS)
+                debug::log(0, FUNCTION, "Built ", vHashes.back().SubString(), " completed ", nTotal, "/", vContracts.size(), " (", (nTotal * 100.0) / vContracts.size(), "%) contracts");
         }
 
         return vHashes;

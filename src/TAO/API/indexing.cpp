@@ -115,15 +115,19 @@ namespace TAO::API
         uint512_t hashLogical;
         if(!LLD::Logical->ReadLast(hashGenesis, hashLogical) || hashLedger != hashLogical)
         {
-            debug::log(0, FUNCTION, "Buiding indexes for genesis=", hashGenesis.SubString());
+            debug::log(2, FUNCTION, "Buiding indexes for genesis=", hashGenesis.SubString());
 
             /* Build list of transaction hashes. */
             std::vector<uint512_t> vHashes;
 
             /* Read all transactions from our last index. */
             uint512_t hash = hashLedger;
-            while(hash != hashLogical && !config::fShutdown.load())
+            while(hash != hashLogical)
             {
+                /* Check for shutdown. */
+                if(config::fShutdown.load())
+                    break;
+
                 /* Read the transaction from the ledger database. */
                 TAO::Ledger::Transaction tx;
                 if(!LLD::Ledger->ReadTx(hash, tx, TAO::Ledger::FLAGS::MEMPOOL))
@@ -148,7 +152,7 @@ namespace TAO::API
             {
                 /* Read the transaction from the ledger database. */
                 TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(*hash, tx))
+                if(!LLD::Ledger->ReadTx(*hash, tx, TAO::Ledger::FLAGS::MEMPOOL))
                 {
                     debug::warning(FUNCTION, "index for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash->SubString()));
                     return;
@@ -169,12 +173,19 @@ namespace TAO::API
         LLD::Logical->ReadLastEvent(hashGenesis, nSequence);
 
         /* Debug output so w4e can track our events indexes. */
-        debug::log(3, FUNCTION, "Building events indexes from ", nSequence, " for genesis=", hashGenesis.SubString());
+        debug::log(2, FUNCTION, "Building events indexes from ", nSequence, " for genesis=", hashGenesis.SubString());
 
         /* Loop through our ledger level events. */
         TAO::Ledger::Transaction tNext;
         while(LLD::Ledger->ReadEvent(hashGenesis, nSequence, tNext))
         {
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                break;
+
+            /* Cache our current event's txid. */
+            const uint512_t hashEvent = tNext.GetHash();
+
             /* Check all the tx contracts. */
             for(uint32_t n = 0; n < tNext.Size(); ++n)
             {
@@ -226,16 +237,28 @@ namespace TAO::API
                             /* Write incoming transfer as unclaimed. */
                             if(!LLD::Logical->PushUnclaimed(hashRecipient, hashAddress))
                             {
-                                debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
+                                debug::warning(FUNCTION, "PushUnclaimed (",
+                                    (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER) " : "DEBIT) "),
+                                    "failed to write: ", hashEvent.SubString(), " | ", VARIABLE(n));
 
                                 continue;
                             }
                         }
 
-                        /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, tNext.GetHash(), n))
+                        /* Check for duplicate events. */
+                        if(LLD::Logical->HasEvent(hashEvent, n))
                         {
-                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
+                            /* For duplicate events we need to increment events index. */
+                            LLD::Logical->IncrementLastEvent(hashRecipient);
+                            continue;
+                        }
+
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(hashRecipient, hashEvent, n))
+                        {
+                            debug::warning(FUNCTION, "PushEvent (",
+                                (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER) " : "DEBIT) "),
+                                "failed to write: ", hashEvent.SubString(), " | ", VARIABLE(n));
 
                             continue;
                         }
@@ -243,12 +266,15 @@ namespace TAO::API
                         /* Increment our sequence. */
                         if(!LLD::Logical->IncrementLastEvent(hashRecipient))
                         {
-                            debug::error(FUNCTION, "failed to increment last event");
+                            debug::warning(FUNCTION, "IncrementLastEvent (",
+                                (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER) " : "DEBIT) "),
+                                "failed to write: ", hashEvent.SubString(), " | ", VARIABLE(n));
 
                             continue;
                         }
 
-                        debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+
+                        debug::log(3, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
                             "for genesis ", hashRecipient.SubString());
 
                         break;
@@ -264,23 +290,29 @@ namespace TAO::API
                         if(hashRecipient != hashGenesis)
                             continue;
 
-                        /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, tNext.GetHash(), n))
+                        /* Check for duplicate events. */
+                        if(LLD::Logical->HasEvent(hashEvent, n))
                         {
-                            debug::error(FUNCTION, "Failed to write event (", VARIABLE(hashRecipient.SubString()), " | ", VARIABLE(n), ") to logical database");
+                            /* For duplicate events we need to increment events index. */
+                            LLD::Logical->IncrementLastEvent(hashRecipient);
+                            continue;
+                        }
 
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(hashRecipient, hashEvent, n))
+                        {
+                            debug::warning(FUNCTION, "PushEvent (COINBASE) failed to write: ", hashEvent.SubString(), " | ", VARIABLE(n));
                             continue;
                         }
 
                         /* Increment our sequence. */
                         if(!LLD::Logical->IncrementLastEvent(hashRecipient))
                         {
-                            debug::error(FUNCTION, "failed to increment last event");
-
+                            debug::warning(FUNCTION, "IncrementLastEvent (COINBASE) failed to write");
                             continue;
                         }
 
-                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString());
+                        debug::log(3, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString());
 
                         break;
                     }
@@ -290,7 +322,13 @@ namespace TAO::API
             ++nSequence;
         }
 
-        debug::log(3, FUNCTION, "Completed building indexes at ", nSequence, " for genesis=", hashGenesis.SubString());
+        uint32_t nLedgerSequence = 0;
+        LLD::Ledger->ReadSequence(hashGenesis, nLedgerSequence);
+
+        uint32_t nLogicalSequence = 0;
+        LLD::Logical->ReadLastEvent(hashGenesis, nLogicalSequence);
+
+        debug::log(2, FUNCTION, "Completed building indexes at ", VARIABLE(nLedgerSequence), " | ", VARIABLE(nLogicalSequence), " for genesis=", hashGenesis.SubString());
     }
 
 

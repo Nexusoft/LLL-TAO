@@ -66,6 +66,10 @@ namespace TAO::API
             /* Check if we are an active thread. */
             for(const auto& rSession : vSessions)
             {
+                /* Check for shutdown. */
+                if(config::fShutdown.load())
+                    break;
+
                 /* Cache some local variables. */
                 const uint256_t& hashSession = rSession.first;
                 const uint256_t& hashGenesis = rSession.second;
@@ -98,6 +102,10 @@ namespace TAO::API
                 std::vector<TAO::Operation::Contract> vContracts;
                 for(const auto& rEvent : vEvents)
                 {
+                    /* Check for shutdown. */
+                    if(config::fShutdown.load())
+                        break;
+
                     /* Check for unique events. */
                     if(setUnique.count(rEvent))
                         continue;
@@ -189,6 +197,10 @@ namespace TAO::API
                         std::map<uint256_t, TAO::Register::Address> mapAccounts;
                         for(const auto& rAddress : vAddresses)
                         {
+                            /* Check for shutdown. */
+                            if(config::fShutdown.load())
+                                break;
+
                             /* Read the register object. */
                             TAO::Register::Object oAccount;
                             if(!LLD::Register->ReadObject(rAddress, oAccount))
@@ -230,6 +242,10 @@ namespace TAO::API
                             TAO::Ledger::Transaction tx;
                             while(LLD::Ledger->ReadEvent(hashToken, ++nSequence, tx))
                             {
+                                /* Check for shutdown. */
+                                if(config::fShutdown.load())
+                                    break;
+
                                 /* Cache our txid for transaction. */
                                 const uint512_t hashTx = tx.GetHash();
 
@@ -344,6 +360,10 @@ namespace TAO::API
                 std::map<uint256_t, TAO::Register::State> mapStates;
                 for(auto& rContract : vContracts)
                 {
+                    /* Check for shutdown. */
+                    if(config::fShutdown.load())
+                        break;
+
                     /* Bind our contract now to a timestamp and caller. */
                     rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
 
