@@ -514,18 +514,24 @@ namespace TAO::API
     /* Shuts down the current authentication systems. */
     void Authentication::Shutdown()
     {
-        RECURSIVE(MUTEX);
+        /* Make sure all authentication locks have been released. */
+        for(auto& rLock : vLocks)
+            RECURSIVE(rLock);
 
-        /* Copy our session keys before deleting. */
-        std::set<uint256_t> setDelete;
+        {
+            RECURSIVE(MUTEX);
 
-        /* Copy our session keys to our delete set. */
-        for(const auto& rSession : mapSessions)
-            setDelete.insert(rSession.first);
+            /* Copy our session keys before deleting. */
+            std::set<uint256_t> setDelete;
 
-        /* Iterate through session keys to terminate. */
-        for(const auto& rDelete : setDelete)
-            terminate_session(rDelete);
+            /* Copy our session keys to our delete set. */
+            for(const auto& rSession : mapSessions)
+                setDelete.insert(rSession.first);
+
+            /* Iterate through session keys to terminate. */
+            for(const auto& rDelete : setDelete)
+                terminate_session(rDelete);
+        }
     }
 
 

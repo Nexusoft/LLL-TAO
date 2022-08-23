@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/names.h>
+#include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
@@ -209,9 +210,13 @@ namespace TAO::API
             std::min(uint32_t(config::GetArg("-maxcontracts", 99)), uint32_t(99));
 
         /* Build our transaction if there are contracts. */
-        uint64_t nIndex = 0;
+        uint64_t nIndex = 0, nTotal = 0;
         while(nIndex < vContracts.size())
         {
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                break;
+
             /* Build our transactions in batches of 99 contracts at a time. */
             std::vector<TAO::Operation::Contract> vBuild;
             for( ; vBuild.size() < nLimits && nIndex < vContracts.size(); ++nIndex)
@@ -233,6 +238,9 @@ namespace TAO::API
             /* Add the contract fees. */
             if(!AddFee(tx) && nIndex < vContracts.size() && tx.Size() == 99) //we check +1 so we know we have an available index
                 tx << vContracts[nIndex++]; //add additional contract and iterate our index
+
+            /* Track our total contracts. */
+            nTotal += tx.Size();
 
             /* Execute the operations layer. */
             if(!tx.Build())
@@ -258,8 +266,25 @@ namespace TAO::API
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw Exception(-32, "Failed to accept");
 
+            /* Check that we have an active session to index for. */
+            const uint512_t hashTx = tx.GetHash();
+            if(Authentication::Active(tx.hashGenesis))
+            {
+                /* Build an API transaction. */
+                TAO::API::Transaction tIndex =
+                    TAO::API::Transaction(tx);
+
+                /* Index the transaction to the database. */
+                if(!tIndex.Index(hashTx))
+                    debug::warning(FUNCTION, "failed to index ", VARIABLE(hashTx.SubString()));
+
+                /* Debug output for notifications. */
+                if(nUnlockedActions & TAO::Ledger::PinUnlock::NOTIFICATIONS)
+                    debug::log(2, FUNCTION, "Indexed ", hashTx.SubString(), " completed ", nTotal, "/", vContracts.size(), " (", (nTotal * 100.0) / vContracts.size(), "%) contracts");
+            }
+
             /* Add our hashes to a return vector. */
-            vHashes.push_back(tx.GetHash());
+            vHashes.push_back(hashTx);
         }
 
         return vHashes;
