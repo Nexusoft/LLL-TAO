@@ -31,7 +31,7 @@ namespace TAO::API
             throw Exception(-234, "Session does not exist");
 
         /* Check for authenticated sigchain. */
-        if(!Authentication::Authenticate(jParams))
+        if(config::GetBoolArg("-terminateauth", true) && !Authentication::Authenticate(jParams))
             throw Exception(-333, "Account failed to authenticate");
 
         /* Terminate our session now. */
