@@ -21,6 +21,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/unpack.h>
 
+#include <TAO/Ledger/types/mempool.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -264,21 +266,13 @@ namespace TAO::API
     /* Index a transaction into the ledger database. */
     bool Transaction::Index(const uint512_t& hash)
     {
-        /* Set our status to accepted. */
-        nStatus = ACCEPTED;
+        /* Set our status to acceoted if transaction has been connected to a block. */
+        if(LLD::Ledger->HasIndex(hash))
+            nStatus = ACCEPTED;
 
         /* Read our previous transaction. */
         if(!IsFirst())
         {
-            /* Check for valid last index. */
-            uint512_t hashLast;
-            if(!LLD::Logical->ReadLast(hashGenesis, hashLast))
-                return debug::error(FUNCTION, "failed to read last index for ", VARIABLE(hashGenesis.SubString()));
-
-            /* Check that last index matches expected values. */
-            if(hashPrevTx != hashLast)
-                return debug::error(FUNCTION, VARIABLE(hashLast.SubString()), " mismatch to expected ", VARIABLE(hash.SubString()));
-
             /* Read our previous transaction to build indexes for it. */
             TAO::API::Transaction tx;
             if(!LLD::Logical->ReadTx(hashPrevTx, tx))
@@ -307,7 +301,8 @@ namespace TAO::API
             return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
 
         /* Index our transaction level data now. */
-        index_registers(hash);
+        if(nStatus == ACCEPTED)
+            index_registers(hash);
 
         return true;
     }

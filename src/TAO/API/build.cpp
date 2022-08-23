@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/names.h>
+#include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
@@ -265,12 +266,25 @@ namespace TAO::API
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw Exception(-32, "Failed to accept");
 
-            /* Add our hashes to a return vector. */
-            vHashes.push_back(tx.GetHash());
+            /* Check that we have an active session to index for. */
+            const uint512_t hashTx = tx.GetHash();
+            if(Authentication::Active(tx.hashGenesis))
+            {
+                /* Build an API transaction. */
+                TAO::API::Transaction tIndex =
+                    TAO::API::Transaction(tx);
 
-            /* Debug output for notifications. */
-            if(nUnlockedActions & TAO::Ledger::PinUnlock::NOTIFICATIONS)
-                debug::log(0, FUNCTION, "Built ", vHashes.back().SubString(), " completed ", nTotal, "/", vContracts.size(), " (", (nTotal * 100.0) / vContracts.size(), "%) contracts");
+                /* Index the transaction to the database. */
+                if(!tIndex.Index(hashTx))
+                    debug::warning(FUNCTION, "failed to index ", VARIABLE(hashTx.SubString()));
+
+                /* Debug output for notifications. */
+                if(nUnlockedActions & TAO::Ledger::PinUnlock::NOTIFICATIONS)
+                    debug::log(2, FUNCTION, "Indexed ", hashTx.SubString(), " completed ", nTotal, "/", vContracts.size(), " (", (nTotal * 100.0) / vContracts.size(), "%) contracts");
+            }
+
+            /* Add our hashes to a return vector. */
+            vHashes.push_back(hashTx);
         }
 
         return vHashes;

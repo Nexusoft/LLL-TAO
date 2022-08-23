@@ -157,7 +157,7 @@ namespace TAO
                 if(tx.hashPrevTx != hashLast)
                 {
                     /* Add to conflicts map. */
-                    debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString());
+                    debug::error(FUNCTION, "CONFLICT: hash last mismatch ", tx.hashPrevTx.SubString(), " and ", hashLast.SubString());
                     mapConflicts[hashTx] = tx;
 
                     return false;

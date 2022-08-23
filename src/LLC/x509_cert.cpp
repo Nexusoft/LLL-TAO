@@ -542,7 +542,7 @@ namespace LLC
 
 
         /* Verify the cert */
-        fValid = X509_verify_cert(ctx) == 1;
+        fValid = (X509_verify_cert(ctx) == 1);
 
         /* Log verification failure message*/
         if(!fValid)
