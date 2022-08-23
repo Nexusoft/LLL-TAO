@@ -55,13 +55,13 @@ This will create a new profile specified by given noun. The profile is secured b
 
 This method will initialize a `auth` crypto object register for signature chains created with the early release of Tritium. This makes these signature chain compatible with profiles on Tritium++. Existing users may have to convert their old signature chains to be compatible to login with Tritium++ profiles if they are not able to create a session. 
 
-## Parameters:
+### Parameters:
 
 `username` : Required to **create** a username. The username to be associated with this profile. The  profileID (used to uniquely identify profiles) is a hash of this username, therefore the username must be unique on the blockchain.
 
 `password` : Required to **set** a password. The password to be associated with this profile.
 
-`pin` : Required to **set** a pin. The PIN to be associated with this profile
+`pin` : Required to **set** a pin. The `PIN` to be associated with this profile
 
 **NOTE:**
 
@@ -72,7 +72,7 @@ This method will initialize a `auth` crypto object register for signature chains
 - Don't use the colon ':' at the end of the username. 
  
 
-## Results: ##
+### Results:  
 
 #### Return value JSON object:
 
@@ -110,13 +110,13 @@ This method provides the user with the ability to change the password, pin for t
 This method provides the user with the ability to set or change the restore seed for this signature chain.
 
 
-## Parameters:
+### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user profile. 
 
 `password` : Required to **authenticate**. The existing password for this signature chain.
 
-`pin` : Required if **locked**. The PIN to authorize the transaction.
+`pin` : Required if **locked**. The `PIN` to authorize the transaction.
 
 #### update/credentials ####
 
@@ -136,7 +136,7 @@ Make sure to type in the recovery phrase correctly and not copy paste which can 
 Make sure to backup and recheck the recovery seed and create multiple offline backups.  
 
 
-## Results:
+### Results:
 
 #### Return value JSON object:
 
@@ -165,18 +165,18 @@ profiles/recover/noun
 This command only supports the `master` noun.
 
 
-## Parameters:
+### Parameters:
 
 `username` : Required to **identify**. The username identifying the profile for recovery.
 
 `password` : Required to **set** a new password. The new password to be associated with this profile.
 
-`pin` : Required to **set** a new pin. The new PIN to be associated with this profile.
+`pin` : Required to **set** a new pin. The new `PIN` to be associated with this profile.
 
 `recovery` : Required to **authenticate**. The existing recovery seed for this profile. 
 
 
-## Results:
+### Results:
 
 #### Return value JSON object:
 
@@ -207,12 +207,12 @@ profiles/status/noun
 This command only supports the `master` noun.
 
 
-## Parameters:
+### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user profile. 
 
 
-## Results: 
+### Results: 
 
 #### Return value JSON object:
 
@@ -252,14 +252,14 @@ profiles/notifications/noun
 This command only supports the `master` noun.
 
 
-## Parameters:
+### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user profile. 
 
 This method supports the Sorting / Filtering parameters.
 
 
-## Results:
+### Results:
 
 #### Return value JSON object:
 
@@ -324,7 +324,7 @@ profiles/transactions/noun
 This command only supports the `master` noun.
 
 
-## Parameters:
+### Parameters:
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
 
@@ -336,7 +336,7 @@ This command only supports the `master` noun.
 This method supports the Sorting / Filtering parameters.
 
 
-## Results:
+### Results:
 
 #### Return value JSON object:
 

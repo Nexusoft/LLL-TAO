@@ -31,7 +31,7 @@ system/stop
 
 password: Optional to **authenticate** before initiating core shutdown. This password is the one provided in the configuration file which will help prevent accidental remote shutdown.
 
-**Note:** The shutdown authentication password has to be provided in the configuration file with the flag `system/stop=<password>`
+**Note:** The shutdown authentication password has to be provided in the configuration file with the flag `-system/stop=<password>`
 
 ### Results:
 
@@ -142,128 +142,100 @@ system/get/metrics
 ```
 {
     "registers": {
-        "total": 182682,
-        "account": 90923,
-        "append": 0,
-        "crypto": 30128,
-        "name": 60176,
-        "name_global": 37,
-        "name_namespaced": 29,
-        "namespace": 14,
-        "object": 123,
-        "object_tokenized": 51,
-        "raw": 0,
-        "readonly": 684,
-        "token": 133
+        "total": 183908,
+        "names": {
+            "global": 38,
+            "local": 60668,
+            "namespaced": 29
+        },
+        "namespaces": 14,
+        "objects": {
+            "accounts": 91400,
+            "assets": 123,
+            "crypto": 30362,
+            "tokenized": 51,
+            "tokens": 134
+        },
+        "state": {
+            "raw": 0,
+            "readonly": 706
+        }
     },
-    "sig_chains": 29574,
+    "sigchains": 30351,
     "trust": {
         "total": 501,
-        "stake": 28787821.0,
-        "trust": 8516437127
-    },
-    "supply": {
-        "total": 73922936.520124,
-        "target": 71182005.111246,
-        "inflation": 0.4732,
-        "minute": 3.694196,
-        "hour": 221.649544,
-        "day": 5318.383926,
-        "week": 37176.017892,
-        "month": 147974.463274
+        "stake": 30155872.897004,
+        "trust": 8360292851
     },
     "reserves": {
-        "ambassador": 534.479033,
-        "developer": 109.45359,
-        "fee": 106019.147,
-        "hash": 88.774623,
-        "prime": 54.161507
+        "ambassador": 332.180905,
+        "developer": 222.343689,
+        "fee": 108889.217,
+        "hash": 91.32012,
+        "prime": 32.78941
     }
 }
-[Completed in 6372.608306 ms]
+[Completed in 1020.804545 ms]
 ```
 
 #### Return values:
 
-`registers` : Statistics on the register database.
+`registers` : Statistics on the register database.  
+{  
+`names` : Total number of name registers, including user local, global, and namespaced.  
+{  
+`global` : Number of names that have been created in the global namespace.    
 
-{
-   
-   `total` : Total number of registers in the register database.
+`local` : Number of names that have been created in the local namespace.  
+       
+`namespaced` : Number of names that have been created in a namespace.  
+}    
 
-   `account` : Number of account registers. This includes both NXS and other token accounts.
-   
-   `append` : Number of append registers.
-   
-   `crypto` : Number of crypto registers.
-   
-   `name` : Total number of name registers, including user local, global, and namespaced.
-   
-   `name_global` : Number of names that have been created in the global namespace.
-   
-   `name_namespaced` : Number of names that have been created in a namespace.
-   
-   `object` : Number of non-standard object registers. These include assets, items, and any other derived object register
-   
-   `object_tokenized` : Number of object registers that have been tokenized (where the object owner is a token rather than a profile).
-   
-   `raw` : Number of raw registers.
-   
-   `readonly` : Number of read only registers.
-   
-   `token` : Number of token registers.
+`namespaces` : Number of namespaces that have been created.
 
+`objects` : Number of non-standard object registers. These include assets, items, and any other derived object register.  
+{  
+`accounts` : Number of account registers. This includes both NXS and other token accounts.
+
+`assets` : Number of asset registers.
+   
+`crypto` : Number of crypto registers.
+
+`tokenized` : Number of object registers that have been tokenized (where the object owner is a token rather than a profile).
+   
+`tokens` : Number of token registers.  
 }
+
+`state` : Number of raw and readonly registers.  
+{  
+`raw` : Number of raw registers.  
+   
+`readonly` : Number of read only registers.  
+}  
+}     
 
 `sig_chains` : Total number of signature chains in the ledger.
 
-`trust` : Statistics on active trust accounts.
-
-{
-
-   `total` : Total number trust accounts that are active (have a non-zero stake balance).
+`trust` : Statistics on active trust accounts.  
+{  
+`total` : Total number trust accounts that are active (have a non-zero stake balance).
    
-   `stake` : Total amount of NXS currently being staked network-wide).
+`stake` : Total amount of NXS currently being staked network-wide).
    
-   `trust` : Total trust score of all trust accounts being staked. 
-
-}
-
-`supply` : Metrics on NXS supply rates.
-
-{
-
-   `total` : Total amount of NXS in existence.
-   
-   `target` : The target supply rate for this point in time.
-   
-   `inflationrate` : The current inflation rate percentage based on the last year of data.
-   
-   `minute` : The increase in supply rate within the last minute.
-   
-   `hour` : The increase in supply rate within the last hour.
-   
-   `day` : The increase in supply rate within the last day.
-   
-   `week` : The increase in supply rate within the last week.
-   
-   `month` : The increase in supply rate within the last 30 days.  
-}  
+`trust` : Total trust score of all trust accounts being staked.   
+}    
 
 `reserves` : Information on the amount of NXS currently in the various reserves.  
-
 {  
-
-   `ambassador` : Amount of NXS in the ambassador reserves, waiting to be paid to the ambassador sig chains.
+`ambassador` : Amount of NXS in the ambassador reserves, waiting to be paid to the ambassador sig chains.
    
-   `developer` : Amount of NXS in the developer reserves, waiting to be paid to the developer sig chains.
+`developer` : Amount of NXS in the developer reserves, waiting to be paid to the developer sig chains.
    
-   `fee` : Amount of NXS in the fee reserves.
+`fee` : Amount of NXS in the fee reserves.
    
-   `hash` : Amount of NXS in the hash channel reserves.
+`hash` : Amount of NXS in the hash channel reserves.
    
-   `ambassador` : Amount of NXS in the prime channel reserves.
-
+`prime` : Amount of NXS in the prime channel reserves.  
 }
 
 -----------------------------------
