@@ -845,6 +845,10 @@ namespace TAO::API
                     /* Add the reference to the response */
                     jRet["reference"] = nReference;
 
+                    /* Check if this debit has been credited. */
+                    if(hashTo.IsAccount() || hashTo.IsTrust() || hashTo.IsToken())
+                        jRet["claimed"] = LLD::Ledger->HasProof(hashFrom, contract.Hash(), nContract);
+
                     break;
                 }
 
