@@ -25,6 +25,10 @@ namespace TAO::API
     /* Get status information for the currently logged in user. */
     encoding::json Sessions::Status(const encoding::json& jParams, const bool fHelp)
     {
+        /* Add the access time */
+        const uint64_t nAccessed =
+            Authentication::Accessed(jParams);
+            
         /* Get our current object type. */
         const std::string strType = ExtractType(jParams);
 
@@ -45,11 +49,16 @@ namespace TAO::API
         const uint256_t hashGenesis =
             Authentication::Caller(jParams);
 
-        /* Add the genesis */
+        /* Add the duration time. */
+        const uint64_t nDuration =
+            (runtime::unifiedtimestamp() - nAccessed);
+
+        /* Build our set of return parameters. */
         const encoding::json jRet =
         {
             { "genesis",  hashGenesis.ToString()            },
-            { "accessed", Authentication::Accessed(jParams) },
+            { "accessed", nAccessed                         },
+            { "duration", nDuration                         },
             { "location", strType                           }, //replace this with Authentication::Location(jParams);
             { "indexing", Authentication::Indexing(jParams) },
             { "unlocked", jUnlocked                         }
