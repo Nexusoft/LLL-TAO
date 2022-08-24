@@ -52,6 +52,18 @@ namespace TAO::API
         static std::condition_variable CONDITION;
 
 
+        /** Queue to handle dispatch requests. **/
+        static util::atomic::lock_unique_ptr<std::queue<uint256_t>> INITIALIZE;
+
+
+        /** Thread for running dispatch. **/
+        static std::thread INITIALIZE_THREAD;
+
+
+        /** Condition variable to wake up the indexing thread. **/
+        static std::condition_variable INITIALIZE_CONDITION;
+
+
         /** Set to track active indexing entries. **/
         static std::set<std::string> REGISTERED;
 
@@ -124,6 +136,14 @@ namespace TAO::API
          *
          **/
         static void Manager();
+
+
+        /** Initialize Thread
+         *
+         *  Handle indexing of all events for API.
+         *
+         **/
+        static void InitializeThread();
 
 
         /** Shutdown
