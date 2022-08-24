@@ -57,6 +57,25 @@ namespace TAO::API
     }
 
 
+    /* Lets everything know that session is ready to be used.*/
+    void Authentication::Ready(const uint256_t& hashGenesis)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Loop through sessions map. */
+        for(const auto& rSession : mapSessions)
+        {
+            /* Check genesis to session. */
+            if(rSession.second.Genesis() == hashGenesis)
+            {
+                /* Set our initializing flag now by genesis. */
+                rSession.second.fInitializing.store(false);
+                return;
+            }
+        }
+    }
+
+
     /* Check if user is already authenticated by genesis-id. */
     bool Authentication::Active(const uint256_t& hashGenesis, uint256_t &hashSession)
     {
@@ -118,6 +137,27 @@ namespace TAO::API
             mapSessions[hashSession];
 
         return rSession.Accessed();
+    }
+
+
+    /* Checks if a session is ready to be used. */
+    bool Authentication::Indexing(const encoding::json& jParams)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            return true;
+
+        /* Get a copy of our current active session. */
+        const Session& rSession =
+            mapSessions[hashSession];
+
+        return rSession.fInitializing.load();
     }
 
 
@@ -249,6 +289,10 @@ namespace TAO::API
             const Session& rSession =
                 mapSessions[hashSession];
 
+            /* Check for initializing sigchain. */
+            if(rSession.fInitializing.load())
+                return false;
+
             /* Check if actions are unlocked and allowed. */
             return rSession.Authorized(nRequestedActions);
         }
@@ -268,6 +312,10 @@ namespace TAO::API
         /* Get a copy of our current active session. */
         const Session& rSession =
             mapSessions[hashSession];
+
+        /* Check for initializing sigchain. */
+        if(rSession.fInitializing.load())
+            return false;
 
         /* Check if actions are unlocked and allowed. */
         uint8_t nAllowedActions =
@@ -358,6 +406,10 @@ namespace TAO::API
             const Session& rSession =
                 mapSessions[hashSession];
 
+            /* Check for initializing sigchain. */
+            if(rSession.fInitializing.load())
+                throw Exception(-139, "Cannot unlock while initializing dynamic indexing services: Check sessions/status/local");
+
             /* Check for password requirement field. */
             if(config::GetBoolArg("-requirepassword", false))
             {
@@ -419,6 +471,10 @@ namespace TAO::API
             const Session& rSession =
                 mapSessions[hashSession];
 
+            /* Check for initializing sigchain. */
+            if(rSession.fInitializing.load())
+                throw Exception(-139, "Cannot unlock while initializing dynamic indexing services: Check sessions/status/local");
+
             /* Get the active pin if not currently stored. */
             if(!rSession.Unlock(strPIN, nRequestedActions))
                 throw Exception(-139, "Failed to unlock (No PIN)");
@@ -468,6 +524,10 @@ namespace TAO::API
             Session& rSession =
                 mapSessions[hashSession];
 
+            /* Check for initializing sigchain. */
+            if(rSession.fInitializing.load())
+                throw Exception(-139, "Cannot unlock while initializing dynamic indexing services: Check sessions/status/local");
+
             /* Update our internal session. */
             rSession.Update(strNewPIN, nUpdatedActions);
         }
@@ -490,6 +550,10 @@ namespace TAO::API
             /* Get a copy of our current active session. */
             Session& rSession =
                 mapSessions[hashSession];
+
+            /* Check for initializing sigchain. */
+            if(rSession.fInitializing.load())
+                throw Exception(-139, "Cannot unlock while initializing dynamic indexing services: Check sessions/status/local");
 
             /* Update our internal session. */
             rSession.Update(strPassword);

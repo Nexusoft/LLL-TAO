@@ -375,7 +375,7 @@ namespace TAO::API
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLedger, TAO::Ledger::FLAGS::MEMPOOL))
             {
                 debug::log(0, FUNCTION, "No indexes for genesis=", hashGenesis.SubString());
-                return;
+                continue;
             }
 
             /* Check that our last indexing entries match. */
@@ -659,7 +659,8 @@ namespace TAO::API
 
             debug::log(2, FUNCTION, "Completed building indexes at ", VARIABLE(nLedgerSequence), " | ", VARIABLE(nLogicalSequence), " for genesis=", hashGenesis.SubString());
 
-
+            /* Set our indexing status to ready now. */
+            Authentication::Ready(hashGenesis);
         }
     }
 

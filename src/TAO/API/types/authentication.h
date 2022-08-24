@@ -86,6 +86,10 @@ namespace TAO::API
             mutable std::atomic<uint64_t> nLastAccess;
 
 
+            /** Track if session is currently initializing. **/
+            mutable std::atomic<bool> fInitializing;
+
+
             /** Default Constructor. **/
             Session()
             : pCredentials  (nullptr)
@@ -94,6 +98,7 @@ namespace TAO::API
             , nType         (LOCAL)
             , nAuthFailures (0)
             , nLastAccess   (runtime::unifiedtimestamp())
+            , fInitializing (true)
             {
             }
 
@@ -110,6 +115,7 @@ namespace TAO::API
             , nType         (std::move(rSession.nType))
             , nAuthFailures (rSession.nAuthFailures.load())
             , nLastAccess   (rSession.nLastAccess.load())
+            , fInitializing (rSession.fInitializing.load())
             {
                 /* We wnat to reset our pointers here so they don't get sniped. */
                 rSession.pCredentials.SetNull();
@@ -130,6 +136,7 @@ namespace TAO::API
                 nType         = std::move(rSession.nType);
                 nAuthFailures = rSession.nAuthFailures.load();
                 nLastAccess   = rSession.nLastAccess.load();
+                fInitializing = rSession.fInitializing.load();
 
                 /* We wnat to reset our pointers here so they don't get sniped. */
                 rSession.pCredentials.SetNull();
@@ -147,6 +154,7 @@ namespace TAO::API
             , nType         (nTypeIn)
             , nAuthFailures (0)
             , nLastAccess   (runtime::unifiedtimestamp())
+            , fInitializing (true)
             {
             }
 
@@ -332,6 +340,16 @@ namespace TAO::API
         static void Insert(const uint256_t& hashSession, Session& rSession);
 
 
+        /** Ready
+         *
+         *  Lets everything know that session is ready to be used.
+         *
+         *  @param[in] hashGenesis The genesis identifier to add by index.
+         *
+         **/
+        static void Ready(const uint256_t& hashGenesis);
+
+
         /** Active
          *
          *  Check if user is already authenticated by genesis-id and return the session.
@@ -367,6 +385,16 @@ namespace TAO::API
          *
          **/
         static uint64_t Accessed(const encoding::json& jParams);
+
+
+        /** Indexing
+         *
+         *  Checks if a session is ready to be used and not indexing
+         *
+         *  @param[in] hashSession The session identifier to add by index.
+         *
+         **/
+        static bool Indexing(const encoding::json& jParams);
 
 
         /** Authenticate

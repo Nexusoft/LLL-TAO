@@ -51,6 +51,7 @@ namespace TAO::API
             { "genesis",  hashGenesis.ToString()            },
             { "accessed", Authentication::Accessed(jParams) },
             { "location", strType                           }, //replace this with Authentication::Location(jParams);
+            { "indexing", Authentication::Indexing(jParams) },
             { "unlocked", jUnlocked                         }
         };
 
