@@ -47,16 +47,16 @@ sessions/create/noun
 This command only supports the `local` noun.
 
 
-## Parameters:
+### Parameters:
 
 `username` : Required to **identify** the profile to create the session for.
 
 `password` : Required to **authenticate** the password for creating the session.
 
-`pin` : Required to **authenticate** the `pin` for creating the session.
+`pin` : Required to **authenticate** the `PIN` for creating the session.
 
 
-## Results:
+### Results:
 
 #### Return value JSON object:
 
@@ -86,11 +86,11 @@ sessions/unlock/noun
 
 These commands only supports the `local` noun.
 
-## Parameters:
+### Parameters:
 
-`pin` : Required to **authenticate**. The PIN for this profile.
+`pin` : Required to **authenticate**. The `PIN` for this profile.
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
 
 `mining` : Required for **unlocking** mining transactions. This boolean value unlocks the session for mining.
 
@@ -100,7 +100,7 @@ These commands only supports the `local` noun.
 
 `transactions` : Required for **unlocking** transactions. This boolean value unlocks the session to allow creating or claiming transactions.
 
-## Returns:
+### Returns:
 
 #### Return value JSON object:
 
@@ -141,11 +141,11 @@ sessions/lock/noun
 These commands only supports the `local` noun.
 
 
-## Parameters:
+### Parameters:
 
-`pin` : Required to **authenticate**. The PIN for this profile.
+`pin` : Required to **authenticate**. The `PIN` for this profile.
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.  
 
 `mining` : Required for **locking** mining transactions. This boolean value locks the session for mining.
 
@@ -156,7 +156,7 @@ These commands only supports the `local` noun.
 `transactions : Required for **locking** transactions. This boolean value locks the session for creating or claiming transactions.
 
 
-## Returns:
+### Returns:
 
 #### Return value JSON object:
 
@@ -196,21 +196,20 @@ sessions/save/noun
 
 These commands only supports the `local` noun.
 
-NOTE:
-
+**NOTE:**
 - Save session, saves the specified active session to the local disk.
 - Saved sessions are saved permanent until deleted manually.
 - Saved sessions will be resumed in the same condition (locked or unlocked) as it was saved.  
 
 
-## Parameters:
+### Parameters:
 
-`pin` : Required to **authenticate**. The PIN for this profile.
+`pin` : Required to **authenticate**. The `PIN` for this profile.
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
 
 
-## Results:
+### Results:
 
 #### Return value JSON object:
 
@@ -240,24 +239,23 @@ sessions/load/noun
 
 These commands only supports the `local` noun.
 
-NOTE:
-
+**NOTE:**
 - If there is an existing active session, it will not load a saved session. 
 - Only a previously saved session can be loaded.  
 - When a saved session is resumed, it creates a new session ID.
 - Saved sessions can be resumed even after a core or node restart. 
 
 
-## Parameters:
+### Parameters:
 
-`pin` : Required if **authenticate**. The PIN for this profile.
+`pin` : Required if **authenticate**. The `PIN` for this profile.
 
 `username`: Required to **identify** the profile to load the session for. This is optional if the `genesis` is provided.   
 
 `genesis` :  Required to **identify** the profile to load the session for. This is optional if the `username` is provided.    
 
 
-## Results:
+### Results:
 
 #### Return value JSON object:
 
@@ -272,7 +270,7 @@ NOTE:
 #### Return values:
 `genesis` : The profile genesis hash. This is a hash of the profile username.
 
-`session` : When using multi-user API mode, an additional session value is returned to identify the sessions.
+`session` : When using multi-user API mode, an additional session value is returned to identify the session.
 
 -----------------------------------
 
@@ -281,21 +279,21 @@ NOTE:
 This will terminate an active session specified by given noun.
 
 ```
-sessions/create/noun
+sessions/terminate/noun
 ```
 
 This command only supports the `local` noun.
 
 **Note:** This does not delete a saved session  
 
-## Parameters:
+### Parameters:
 
-`pin` : Required to **authenticate**. The PIN for this profile.
+`pin` : Required to **authenticate**. The `PIN `for this profile.
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
 
 
-## Results:
+### Results:
 
 #### Return value JSON object:
 
@@ -323,12 +321,11 @@ sessions/status/noun
 This command only supports the `local` noun.
 
 
-## Parameters:
+### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
 
-
-## Results:
+### Results:
 
 #### Return value JSON object:
 
