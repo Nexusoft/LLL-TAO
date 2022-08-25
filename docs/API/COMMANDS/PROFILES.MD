@@ -19,7 +19,7 @@ The following verbs are currently supported by this API command-set:
 [`create`](#create) - Generate a new object of supported type.  
 [`update`](#update) - Updates the specified object registers.  
 [`recover`](#recover) - Recovers a profile account.  
-[`status`](#status) - Status information of a profile.  
+[`status`](#status) - Retreives status information for a profile.  
 [`notifications`](#notifications) - List all notifications that modified specified object.  
 [`transactions`](#transactions) - List all transactions that modified specified object.  
 
@@ -30,9 +30,9 @@ The following verbs are currently supported by this API command-set:
 The following nouns are supported for this API command-set:
 
 [`master`] - The default profile that controls all sub-profiles.  
-[`auth`] - A crypto object register for login auth.  
-[`credentials`] -  Credentials used to secure profiles.  
-[`recovery`] - An object which represents recovery for the profile.  
+[`auth`] - Crypto object register for login auth.  
+[`credentials`] - Credentials used to secure profiles.  
+[`recovery`] - An object which represents the recovery seed for the profile.  
 
 -----------------------------------
 
@@ -47,11 +47,11 @@ profiles/create/noun
 
 This command only supports the `master` and `auth` nouns.
 
-#### create/master ####
+#### create/master 
 
 This will create a new profile specified by given noun. The profile is secured by a combination of `username`, `password`, and `PIN`.
 
-#### create/auth ####
+#### create/auth
 
 This method will initialize a `auth` crypto object register for signature chains created with the early release of Tritium. This makes these signature chain compatible with profiles on Tritium++. Existing users may have to convert their old signature chains to be compatible to login with Tritium++ profiles if they are not able to create a session. 
 
@@ -68,7 +68,7 @@ This method will initialize a `auth` crypto object register for signature chains
 - `username` must be a minimum of 2 characters. 
 - `password` must be a minimum of 8 characters. 
 - `PIN` must be a minimum of 4 characters. 
--  username is case-sensitive and cannot be changed. Choose the username carefully and make it a point to back it up along with the password and pin.  
+-  The `username` is case-sensitive and cannot be changed. Choose the username carefully and make it a point to back it up along with the password and pin.  
 - Don't use the colon ':' at the end of the username. 
  
 
@@ -101,11 +101,11 @@ profiles/update/noun
 
 This command only supports the `credentials` and `recovery` nouns.
 
-#### update/credentials ####
+#### update/credentials
 
 This method provides the user with the ability to change the password, pin for this signature chain. Updating the credentials will also result in each of the keys in the sig chain's Crypto object being regenerated based on the new password / pin.
 
-#### update/recovery ####
+#### update/recovery
 
 This method provides the user with the ability to set or change the restore seed for this signature chain.
 
@@ -118,11 +118,11 @@ This method provides the user with the ability to set or change the restore seed
 
 `pin` : Required if **locked**. The `PIN` to authorize the transaction.
 
-#### update/credentials ####
+#### update/credentials
 
-`new_password` : Required by noun **credentials**. The new password to set for for this signature chain. This is optional if new_pin is provided
+`new_password` : Required by noun **credentials**. The new password to set for for this signature chain. This is optional if new_pin is provided.
 
-`new_pin` : Required by noun **credentials**. The new pin to set for this signature chain. This is optional if `new_password` is provided.
+`new_pin` : Required by noun **credentials**. The new `PIN` to set for this signature chain. This is optional if `new_password` is provided.
 
 #### update/recovery
 
@@ -131,10 +131,9 @@ This method provides the user with the ability to set or change the restore seed
 `new_recovery` : Required by noun **recovery**.The new recovery seed to set or change for this sig chain. The recovery seed must be a minimum of 40 characters.
 
 **NOTE:**
-The recovery phrase is case-sensitive.
-Make sure to type in the recovery phrase correctly and not copy paste which can add spaces if not done correctly.
-Make sure to backup and recheck the recovery seed and create multiple offline backups.  
-
+- The recovery phrase is case-sensitive.
+- Make sure to type in the recovery phrase correctly and not copy paste which can add spaces if not done correctly.
+- Make sure to backup and recheck the recovery seed and create multiple offline backups.  
 
 ### Results:
 
@@ -149,7 +148,9 @@ Make sure to backup and recheck the recovery seed and create multiple offline ba
 ```
 
 #### Return values:
+
 `success` : Boolean flag indicating that the profile was updated successfully.
+
 `txid` : The ID (hash) of the transaction for the updated profile .
 
 -----------------------------------
@@ -229,7 +230,7 @@ This command only supports the `master` noun.
 
 #### Return values:
 
-`genesis` : The profile genesis hash. This is a hash of the profile username.
+`genesis` : The profile genesis or owner hash. This is a hash of the profile username.
 
 `confirmed` : Boolean flag indicating whether the genesis transaction for this profile has at least one confirmation.
 
@@ -237,7 +238,7 @@ This command only supports the `master` noun.
 
 `crypto` : Flag indicating whether the crypto object register has been set for this profile.
 
-`transactions` : The total transaction count for this profile
+`transactions` : The total transaction count for this profile.
 
 -----------------------------------
 
@@ -256,7 +257,11 @@ This command only supports the `master` noun.
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user profile. 
 
-This method supports the Sorting / Filtering parameters.
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 
 ### Results:
@@ -309,7 +314,7 @@ This method supports the Sorting / Filtering parameters.
 
 `proof` : The register address of the token account proving the the split dividend debit.
 
-`dividend_payment` : Flag indicating that this debit is a split dividend payment to a tokenized asset
+`dividend_payment` : Flag indicating that this debit is a split dividend payment to a tokenized asset.
 
 -----------------------------------
 
@@ -326,14 +331,20 @@ This command only supports the `master` noun.
 
 ### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user profile.
 
 `verbose` : Optional, **determines** how much transaction data to include in the response. Supported values are :
-- `default` : hash
+- `default` : hash.
+
 - `summary` : type, version, sequence, timestamp, operation, and confirmations.
+
 - `detail` : genesis, nexthash, prevhash, pubkey and signature.
 
-This method supports the Sorting / Filtering parameters.
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 
 ### Results:
@@ -427,7 +438,7 @@ resolved.
 
 `token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
 
-`token_name` : The name of the token that the transaction relates to.
+`ticker` : The name of the token that the transaction relates to.
 
 `reference` : For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 

@@ -153,7 +153,7 @@ This command only supports the invoice noun.
 
 #### Return values:
 
-`owner` : The genesis hash of the signature chain that owns this invoice.
+`owner` : The username hash of the owners profile.
 
 `created` : The UNIX timestamp when the invoice was created.
 
@@ -254,7 +254,7 @@ This command supports all the nouns.
 
 #### Return values:
 
-`owner` : The genesis hash of the signature chain that owns this invoice.
+`owner` : The username hash of the owners profile.
 
 `created` : The UNIX timestamp when the invoice was created.
 
@@ -453,7 +453,7 @@ The return value is a JSON array of objects for each entry in the invoice's hist
 
 `type` : The action that occurred. - CREATE | TRANSFER | CLAIM
 
-`owner` : The genesis hash of the signature chain that owned the invoice.
+`owner` : The username hash of the owners profile.
 
 `modified` : The Unix timestamp of when the invoice was updated.
 
@@ -600,7 +600,7 @@ opcodes.
 
 `token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
 
-`token_name` : The name of the token that the transaction relates to.
+`ticker` : The name of the token that the transaction relates to.
 
 `reference` : For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 

@@ -1,13 +1,13 @@
 # Supply API
 -----------------------------------
 
-The Supply API provides functionality to support the ownership transfer requirements typical of a supply chain process. Items in the supply chain can be given a value and this value can be updated over time. The supply API supports the readonly, raw, basic and JSON formats and the user is required to specify the format.
+The Supply API provides functionality to support the ownership transfer requirements typical of a supply chain process. Items in the supply chain can be given a value and this value can be updated over time. The supply API supports the `readonly`, `raw`, `basic` and `JSON` formats and the user is required to specify the format.
 
-The readonly and raw formats are useful when developers wish to store arbitrary data, without incurring the overhead of defining an object. The value will be provided with the `data` parameter. The readonly format cannot be updated and is stored in a readonly register. The raw format is stored in a raw register and allows the data to be updated.
+The `readonly` and `raw` formats are useful when developers wish to store arbitrary data, without incurring the overhead of defining an object. The value will be provided with the `data` parameter. The `readonly` format cannot be updated and is stored in a readonly register. The `raw` format is stored in a raw register and allows the data to be updated.
 
-The basic format allows callers to define an asset in terms of simple key=value pairs. It assumes all values are stored using the string data type. The key=value pairs can be updated
+The `basic` format allows callers to define an asset in terms of simple key=value pairs. It assumes all values are stored using the string data type. The key=value pairs can be updated.
 .
-The JSON format allows callers to provide a detailed definition of the supply data structure, with each field defined with a specific data type and mutability. Items defined with one of the complex formats can be updated after their initial creation.
+The `JSON` format allows callers to provide a detailed definition of the supply data structure, with each field defined with a specific data type and mutability. Items defined with one of the complex formats can be updated after their initial creation.
 
 The supply API also provides a history of changes to the values, as well as the history of ownership of the item.
 
@@ -56,7 +56,7 @@ Create a new object register specified by given noun.
 supply/create/noun
 ```
 
-This command only supports the `item`, `raw` and `readonly` nouns..
+This command only supports the `item`, `raw` `readonly` and `any` nouns.
 
 #### create/item
 
@@ -99,6 +99,10 @@ json : If format is JSON, then this field will hold the json definition of the a
 
 - `maxlength`: Only applicable to string or bytes fields where mutable=true, this is the maximum number of characters (bytes) that can be stored in the field. If no maxlength parameter is provided then we will default the field size to the length of the default value rounded up to the nearest 64 bytes.
 
+**NOTE:** 
+- There is a limit of 1KB for item data to be saved in the register, excluding the item name.
+- There is a fee of 1 NXS for creating and an item and an additional 1 NXS for the optional name object.
+
 ### Results:
 
 #### Return value JSON object:
@@ -122,65 +126,15 @@ json : If format is JSON, then this field will hold the json definition of the a
 
 -----------------------------------
 
-# <a name="update"></a> `update`
-
-Update an object register specified by given noun.
-
-```
-supply/update/noun
-```
-
-This command only supports the item and raw nouns.
-
-#### update/item
-
-This updates the values of basic and JSON formats with the item noun.
-
-#### update/raw
-
-This updates the data value of the raw item.
-
-### Parameters:
-
-`pin` : Required if authenticate. The `PIN` for this profile.
-
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
-
-`name` : Required to  identify the item to update by name.  This is optional if the address is provided.
-
-`address` : Required to identify the item to update by register address. This is optional if the name is provided.
-
-`data` : The new value of the data field in this item
-
-### Results:
-
-#### Return value JSON object:
-
-```
-{
-    "success": true,
-    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
-}
-[Completed in 18533.182336 ms]
-```
-
-#### Return values:
-
-`success` : Boolean flag indicating that the session was saved successfully.
-
-`txid` : The ID (hash) of the transaction for the updated object.
-
------------------------------------
-
 # <a name="get"></a> `get`
 
-Retrieves information for a specified item.
+Retrieves information for a single item for a type specified by the noun.
 
 ```
 supply/get/noun
 ```
 
-This command supports the `item`,  `raw`, `readonly` and `any` nouns.
+This command supports the `item`, `raw`, `readonly` and `any` nouns.
 
 ### Parameters:
 
@@ -190,6 +144,10 @@ This command supports the `item`,  `raw`, `readonly` and `any` nouns.
 `name` : Required to **identify** the name of the item. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
 `address` : Required to **identify** the register address of the item. This is optional if the `name` is provided.
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
 
 ### Results:
 
@@ -212,13 +170,31 @@ This command supports the `item`,  `raw`, `readonly` and `any` nouns.
 ]
 [Completed in 34.175112 ms]
 ```
+#### Return Values:
 
+`owner` : The username hash of the owners profile.
+
+`version` : The serialization version of the transaction.
+
+`created` : The UNIX timestamp when the item was created.
+
+`modified` : The UNIX timestamp when the item was last modified.
+
+`type` : The type of register. Can be OBJECT, RAW or READONLY.
+
+`<fieldname>=<value>` : The key-value pair for each piece of data stored in the item.
+
+`data` : The data stored in a raw or readonly item object.
+
+`address` : The register address of the item.
+
+`name` : The name identifying the item.
 
 -----------------------------------
 
 # <a name="list"></a> `list`
 
-Retrieves information for a single object for a type specified by the noun
+Retrieves a list of all the item objects owned by the profile specified by the noun.
 
 ```
 supply/list/noun
@@ -226,9 +202,33 @@ supply/list/noun
 
 This command supports the `item`, `raw`, `readonly` and `any` nouns.
 
+#### list/items
+
+Lists all the items for object register type.
+
+#### list/readonly
+
+Lists all items for readonly register type. 
+
+#### list/raw
+
+Lists all items for raw register type.
+
+#### list/any
+
+Lists all items for supported register types.
+
 ### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+
+`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found at [`Queries`](/docs/API/QUERIES.md).
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 ### Results:
 
@@ -266,21 +266,77 @@ This command supports the `item`, `raw`, `readonly` and `any` nouns.
 
 #### Return Values:
 
-owner : The username hash of the profile that owns this asset.
+`owner` : The username hash of the owners profile.
 
-created : The UNIX timestamp when the asset was created.
+`version` : The serialization version of the transaction.
 
-`modified` : The UNIX timestamp when the asset was last modified.
+`created` : The UNIX timestamp when the item was created.
 
-`type` : Asset register type. Can be OBJECT, RAW or READONLY.
+`modified` : The UNIX timestamp when the item was last modified.
 
-`<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.name : The name identifying the item. For privacy purposes, this is only included in the response if the caller is the owner of the item
+`type` : The type of register. Can be OBJECT, RAW or READONLY.
 
-`data` : The data stored in the item.
+`<fieldname>=<value>` : The key-value pair for each piece of data stored in the item.
+
+`data` : The data stored in a raw or readonly item object.
 
 `address` : The register address of the item.
 
-`name` : The name identifying the asset. For privacy purposes, this is only included in the response if the caller is the owner of the asset
+`name` : The name identifying the item.
+
+-----------------------------------
+
+# <a name="update"></a> `update`
+
+This method provides the user with the ability to update the object data specified by the noun.
+
+```
+supply/update/noun
+```
+
+This command only supports the `item` and `raw` nouns.
+
+#### update/item
+
+This updates the data values for item with the format basic and JSON.
+
+#### update/raw
+
+This updates the data value for the raw item register.
+
+### Parameters:
+
+`pin` : Required if authenticate. The `PIN` for this profile.
+
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+
+`name` : Required to  **identify** the item to update by name. This is optional if the `address` is provided.
+
+`address` : Required to **identify** the item to update by register address. This is optional if the `name` is provided.
+
+`format` : Required to **specify** the format of the asset to update. Values can be `readonly`, `raw`, `basic` and `JSON`. 
+
+`data` : Required if **format** is `raw`, allows caller to update the data object. 
+
+`<fieldname>=<value>` : Required for **format** `basic`, The caller can provide 'key=value' pairs to update each piece of data for the item.
+
+### Results:
+
+#### Return value JSON object:
+
+```
+{
+    "success": true,
+    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
+}
+[Completed in 18533.182336 ms]
+```
+
+#### Return values:
+
+`success` : Boolean flag indicating that the session was saved successfully.
+
+`txid` : The ID (hash) of the transaction for the updated object.
 
 -----------------------------------
 
@@ -292,15 +348,18 @@ This will initiate ownership transfer of the specified noun.
 supply/transfer/noun
 ```
 
-This command supports the `item`, `raw` and `readonly` nouns.
+This command supports the `item`,  `raw` and `readonly` nouns.
 
 #### transfer/item
+
 This initiates transfer for an item to a recipient.
 
 #### transfer/raw
+
 This initiates transfer for a raw item to a recipient.
 
 #### transfer/readonly
+
 This initiates transfer for a readonly item to a recipient.
 
 ### Parameters:
@@ -338,7 +397,7 @@ This initiates transfer for a readonly item to a recipient.
 
 # <a name="claim"></a> `claim`
 
-This method will claim ownership of the specified noun by the recipient to complete the transaction.
+This method will claim ownership of the item to complete the corresponding transfer transaction.
 
 ```
 supply/claim/noun
@@ -347,13 +406,16 @@ supply/claim/noun
 This command supports the `item`,  `raw` and `readonly` nouns.
 
 #### claim/item
-This claims ownership of an item which has been transferred.
+
+Items that have been transferred need to be claimed by the recipient. This method creates the claim transaction.
 
 #### claim/raw
-This claims ownership of a raw item which has been transferred.
+
+Raw items that have been transferred need to be claimed by the recipient. This method creates the claim transaction.
 
 #### claim/readonly
-This claims ownership of a readonly item which has been transferred.
+
+Readonly items that have been transferred need to be claimed by the recipient. This method creates the claim transaction.
 
 ### Parameters:
 
@@ -401,14 +463,17 @@ This command supports the `item`,  `raw`, `readonly` and `any` nouns.
 
 ### Parameters:
 
-`pin` : Required if **locked**. The PIN for this profile.
-
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
 
 `name` : Required to **identify** the name of the item. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
 `address` : Required to **identify** the register address of the item. This is optional if the `name` is provided.
 
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 ### Results:
 
@@ -417,36 +482,52 @@ This command supports the `item`,  `raw`, `readonly` and `any` nouns.
 ```
 [
     {
-        "type": "CREATE",
-        "owner": "2be51edcd41a8152bfedb24e3c22ee5a65d6d7d524146b399145bced269aeff0",
-        "modified": 1560492280,
-        "checksum": 5612332250743384100,
-        "address": "8FJxzexVDUN5YiQYK4QjvfRNrAUym8FNu4B8yvYGXgKFJL8nBse",
-        "name": "paul",
-        "namespace": "test",
-        "register_address": "8CvLySLAWEKDB9SJSUDdRgzAG6ALVcXLzPQREN9Nbf7AzuJkg5P"
+        "owner": "00392196b83aca438567558462cd0c5d982569c7cefa668500c4bf3e61a03b7a",
+        "version": 1,
+        "created": 1656662631,
+        "modified": 1656663027,
+        "type": "OBJECT",
+        "Item": "Amvette Mobile Holder",
+        "Model": "SP-1010",
+        "Location": "Aisle: 6, Rack: 7",
+        "address": "87nyrW2TiKX9gZwRi61q3JNoVQK3GGTpZxBJBwR634au1A8Arc3",
+        "action": "TRANSFER"
+    },
+    {
+        "owner": "b7392196b83aca438567558462cd0c5d982569c7cefa668500c4bf3e61a03b7a",
+        "version": 1,
+        "created": 1656662631,
+        "modified": 1656662631,
+        "type": "OBJECT",
+        "Item": "Amvette Mobile Holder",
+        "Model": "SP-1010",
+        "Location": "Aisle: 6, Rack: 7",
+        "address": "87nyrW2TiKX9gZwRi61q3JNoVQK3GGTpZxBJBwR634au1A8Arc3",
+        "action": "CREATE"
     }
-
 ]
+[Completed in 2.431636 ms]
 ```
 
-#### Return values:
+#### Return Values:
 
-`owner` : The username hash of the profile that owns this asset.
+`owner` : The username hash of the owners profile.
 
-`created` : The UNIX timestamp when the asset was created.
+`version` : The serialization version of the transaction.
 
-`modified` : The UNIX timestamp when the asset was last modified.
+`created` : The UNIX timestamp when the item was created.
+
+`modified` : The UNIX timestamp when the item was last modified.
 
 `type` : The type of register. Can be OBJECT, RAW or READONLY.
 
-`<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.name : The name identifying the item. For privacy purposes, this is only included in the response if the caller is the owner of the item
+`<fieldname>=<value>` : The key-value pair for each piece of data stored in the item.
 
-`data` : The data stored in the item.
+`data` : The data stored in a raw or readonly item object.
 
 `address` : The register address of the item.
 
-`name` : The name identifying the asset. For privacy purposes, this is only included in the response if the caller is the owner of the asset
+`action` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM.
 
 -----------------------------------
 
@@ -462,17 +543,24 @@ This command supports the `item`, `raw`, `readonly` and `any` nouns.
 
 ### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+
+`name` : Required to **identify** the name of the item. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
+
+`address` : Required to **identify** the register address of the item. This is optional if the `name` is provided.
 
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :  
-
 - `default` : hash  
 
 - `summary` : type, version, sequence, timestamp, operation, and confirmations.  
 
 - `detail` : genesis, nexthash, prevhash, pubkey and signature.  
 
-This method supports the Sorting / Filtering parameters.
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 ### Results:
 
@@ -481,49 +569,47 @@ This method supports the Sorting / Filtering parameters.
 ```
 [
     {
-        "txid": "0123517ca0f1ca110c7b07de9e3c9b33ccbe717f96911e1449b7c73bb9695fbc9c14a58f01f5fb7e9b64756f658af91daec9f0f579df2fad8df61843defae833",
+        "txid": "0127324285cf5c57751dd20b5d8c7d17f204101dc1625230a8199d53d0059c3e3ad1a36330d56b2442b80bed1bb65aef9b049d671d800308d807a29174db4663",
         "type": "tritium user",
         "version": 4,
-        "sequence": 23,
-        "timestamp": 1655061950,
-        "blockhash": "8b206ab2ee4b46a835f74af0ff5d4e0b395acdb94d66468a24083f2a5fd01a07a93956774001bab1a801d53d7bf6ed60ee84a573650eef1a9feaf6fa9beb308bd20b567663cc7ec4f85796b261164ef3452ebfaa13a60141b42fc49d6d2eb2792440925b1b19248ad9fe65e01d3742f2d3dec2817c56c8e4f6e03a10f4147308",
-        "confirmations": 4,
+        "sequence": 3,
+        "timestamp": 1656663027,
+        "blockhash": "9650d3eb7465976d8059b8027a1489f4ec5d9492b6786a6dfabf530d607845f74ebbd2b24685ee30c0f996d54bfe55e00cbc11781a3d661106581c41ff40882776601107ee1b19116c3829eff79ad6f4a478d64f7b57aa507c47b1f1a2041ce415fd730128121ad350459a3d5616ec5eaeef9ce5988e66a0780b2ced8a46f496",
+        "confirmations": 93,
         "contracts": [
             {
                 "id": 0,
-                "OP": "DEBIT",
-                "from": "8DXmAmkTtysSZUxM3ePA8wRmbSUofuHKSoCyDpN28aLuSrm1nDG",
-                "to": "8Bk5PxsecfXWpbHsDXeZ47MCgDF7qDLsU4Y4MJw2VB29LsTR98z",
-                "amount": 1.0,
-                "token": "8DXmAmkTtysSZUxM3ePA8wRmbSUofuHKSoCyDpN28aLuSrm1nDG",
-                "ticker": "XYZ",
-                "reference": 57891358795
+                "OP": "TRANSFER",
+                "address": "87nyrW2TiKX9gZwRi61q3JNoVQK3GGTpZxBJBwR634au1A8Arc3",
+                "recipient": "b7a57ddfb001d5d83ab5b25c0eaa0521e6b367784a30025114d07c444aa455c0"
             }
         ]
     },
     {
-        "txid": "01f1a3f9227a69382f9811a5b1497a865ace17ad83b03118b24f875f6ade83117887c35d08375c259aa1076b91f42206110314756a11a943760bb5c0dd0523d7",
+        "txid": "01f5ab29bd8df00da8354d67ca337beb5091406c5d9356787ee9a1197662587ce46622fb3b3173b8d9071de4240073d87a5e2fcb4f5637abd6bad9deb2fb0072",
         "type": "tritium user",
         "version": 4,
-        "sequence": 21,
-        "timestamp": 1655060214,
-        "blockhash": "048f3b308e8bd8c1aa31ec1ec2e136a9ccc91ec4498283d07fc5d0a00c8576e2c199567a44058222961f474626c6f2c5d7e774eee34c34f98acafaeb50b7abaaade7e9c641fe9727fe62533b1ec6bf2f75ffbf19d17d74671e2458bd73b6407b4bba1951fc84e1af11c2c4fbce1d05d7739e910fdb8a37197c1c422521e2e9f3",
-        "confirmations": 6,
+        "sequence": 2,
+        "timestamp": 1656662631,
+        "blockhash": "fa0b6c7b3d58b38a5fd3d3ad5d1fd3e03d225e69cf8a3b1ef72c6a30caf9f46056b5094482c4e8b1966b313954a367e60a804451f72895dd6fd169efe4d6e6db981941e4f3203890d3e07cc1d111cf5c77136095959ee15ca552109949f88026f38f838ac30841d8491cd071493761de19248b7ff7001f4b43cd2585f5b08570",
+        "confirmations": 94,
         "contracts": [
             {
                 "id": 0,
-                "OP": "DEBIT",
-                "from": "8DXmAmkTtysSZUxM3ePA8wRmbSUofuHKSoCyDpN28aLuSrm1nDG",
-                "to": "8Bk5PxsecfXWpbHsDXeZ47MCgDF7qDLsU4Y4MJw2VB29LsTR98z",
-                "amount": 1.0,
-                "token": "8DXmAmkTtysSZUxM3ePA8wRmbSUofuHKSoCyDpN28aLuSrm1nDG",
-                "ticker": "XYZ",
-                "reference": 0
+                "OP": "CREATE",
+                "address": "87nyrW2TiKX9gZwRi61q3JNoVQK3GGTpZxBJBwR634au1A8Arc3",
+                "type": "OBJECT",
+                "standard": "NONSTANDARD",
+                "object": {
+                    "Item": "Amvette Mobile Holder",
+                    "Model": "SP-1010",
+                    "Location": "Aisle: 6, Rack: 7",
+                }
             }
         ]
     }
 ]
-[Completed in 2.187165 ms]
+[Completed in 1.944840 ms]
 ```
 
 #### Return values:
@@ -556,29 +642,25 @@ This method supports the Sorting / Filtering parameters.
 `contracts` : The array of contracts bound to this transaction and their details with opcodes.
 
 {
-
 `id` : The sequential ID of this contract within the transaction.
 
-`OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
+`OP` : The contract operation. Can be CREATE | MODIFY | TRANSFER | CLAIM.
 
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
+`address` : The register address of the item object.
 
-`txid` : The transaction that was credited / claimed.
+`txid` : The transaction ID hash of the transaction for the credit / claim.
 
-`contract` : The ID of the contract within the transaction that was credited / claimed.
+`contract` : The ID of the contract within the transaction for the credit / claim.
 
-`proof` : The register address proving the credit.
+`type`: The type of register. Can be OBJECT, RAW or READONLY.
 
-`from` : For DEBIT, CREDIT, FEE transactions, the register address of the account that the debit is being made from.
+`standard` : The type of object. Can be NONSTANDARD or JSON.
 
-`from_name` : For DEBIT, CREDIT, FEE transactions, the name of the account that the debit is being made from. Only included if the name can be resolved.
+`recipient` : The transfer recipients profile username hash.
 
-`to` : For DEBIT and CREDIT transactions, the register address of the recipient account.
+`<fieldname>=<value>` : The key-value pair for each piece of data stored in the item.
 
-`to_name` : For DEBIT and CREDIT transactions, the name of the recipient account. Only included if the name can be resolved.
-
-`amount` : the token amount of the transaction.
-
+`object` : The data stored in the item.
 }  
 
 -----------------------------------

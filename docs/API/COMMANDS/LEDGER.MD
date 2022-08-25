@@ -60,16 +60,20 @@ ledger/get/block
 
 ### Parameters:
 
-`hash` : Required to **identify** the block to retrieve the block data for. This is optional if the height is provided
+`hash` : Required to **identify** the block to retrieve the block data for. This is optional if the height is provided.
 
-`height` : Required to **identify** the block to retrieve the block data for. This is optional if the hash is provided
+`height` : Required to **identify** the block to retrieve the block data for. This is optional if the hash is provided.
 
 `verbose` : Optional, determines how much **transaction data** to include in the response. Supported values are :
--  `default` : hash.  
-- `summary` : type, version, sequence, timestamp, and contracts.  
+-  `default` : hash.
+
+- `summary` : type, version, sequence, timestamp, and contracts.
+
 - `detail` : genesis, nexthash, prevhash, pubkey and signature.
 
-This method supports the Sorting / Filtering parameters.
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD). 
 
 ### Results:
 
@@ -136,13 +140,13 @@ This method supports the Sorting / Filtering parameters.
 
 `channel` : The block channel (0=Stake, 1=Prime, 2=Hash).
 
-`version` : Serialization version of this block
+`version` : Serialization version of this block.
 
 `merkleroot` : The hash merkle root of block transactions.
 
 `time` : The unified time the block was created.
 
-`nonce` : The solution nonce
+`nonce` : The solution nonce.
 
 `bits` : The compact representation for the block difficulty.
 
@@ -186,7 +190,7 @@ This method supports the Sorting / Filtering parameters.
 
 `OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
 
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
+`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT or LEGACY.
 
 `txid` : The transaction that was credited / claimed.
 
@@ -202,11 +206,11 @@ This method supports the Sorting / Filtering parameters.
 
 `to_name` : For DEBIT and CREDIT transactions, the name of the recipient account. Only included if the name can be resolved.
 
-`amount` : the token amount of the transaction.
+`amount` : The token amount of the transaction.
 
-`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
+`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions.
 
-`token_name` : The name of the token that the transaction relates to.
+`ticker` : The name of the token that the transaction relates to.
 
 `reference` : For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
@@ -224,20 +228,26 @@ ledger/list/blocks
 
 ### Parameters:
 
-`hash` : Required to **identify** the block to retrieve the block data for. This is optional if the height is provided
+`hash` : Required to **identify** the block to retrieve the block data for. This is optional if the `height` is provided
 
-`height` : Required to **identify** the block to retrieve the block data for. This is optional if the hash is provided
+`height` : Required to **identify** the block to retrieve the block data for. This is optional if the `hash` is provided
 
 `verbose` : This is optional, determines how much **transaction data** to include in the response. Supported values are:
-- `summary` : type, version, sequence, timestamp, and operation.(default)  
-- `detail` : genesis, nexthash, prevhash, pubkey and signature.    
+- `summary` : type, version, sequence, timestamp, and operation.
 
-`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found here: [`Queries`](https://github.com/Nexusoft/LLL-TAO/blob/merging-sessions/docs/API/QUERIES.md) 
+- `detail` : genesis, nexthash, prevhash, pubkey and signature.
 
-This method supports the Sorting / Filtering parameters.
+`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found at [`Queries`](/docs/API/QUERIES.md).
 
-**NOTE :** Either the hash or the height needs to be supplied, but not both.
-Retrieving block data by height is only allowed if the daemon has been configured with indexheight=1.
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
+
+**NOTE :** 
+- Either the hash or the height needs to be supplied, but not both.
+- Retrieving block data by height is only allowed if the daemon has been configured with indexheight=1.
 
 ### Returns:
 
@@ -350,7 +360,7 @@ Retrieving block data by height is only allowed if the daemon has been configure
 
 `OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
 
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
+`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT or LEGACY.
 
 `txid` : The transaction that was credited / claimed.
 
@@ -368,9 +378,9 @@ Retrieving block data by height is only allowed if the daemon has been configure
 
 `amount` : the token amount of the transaction.
 
-`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
+`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions.
 
-`token_name` : The name of the token that the transaction relates to.
+`ticker` : The name of the token that the transaction relates to.
 
 `reference` : For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
@@ -392,11 +402,14 @@ ledger/get/transaction
 
 `txid` : Required to **identify** the txid to retrieve the transaction data for. 
 
-`verbose` : Optional, determines how much **transaction data** to include in the response. This is ignored if raw format is requested. Supported values are:  
-- summary : hash, type, version, sequence, timestamp, and contracts.  
+`verbose` : Optional, determines how much **transaction data** to include in the response. This is ignored if raw format is requested. Supported values are:
+- summary : hash, type, version, sequence, timestamp, and contracts. 
+
 - detail : genesis, nexthash, prevhash, pubkey and signature.  
 
-This method supports the Sorting / Filtering parameters.  
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).  
 
 ### Returns:
 
@@ -433,8 +446,6 @@ This method supports the Sorting / Filtering parameters.
 
 #### Return values:
 
-`data` : If format was specified as raw then the response will contain only the data field containing the raw, hex encoded, transaction data.
-
 `txid` : The transaction hash.
 
 `type` : The description of the transaction (legacy | tritium base | trust | genesis | user).
@@ -465,7 +476,7 @@ This method supports the Sorting / Filtering parameters.
 
 `OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
 
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
+`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT or LEGACY.
 
 `txid` : The transaction that was credited / claimed.
 
@@ -483,9 +494,9 @@ This method supports the Sorting / Filtering parameters.
 
 `amount` : the token amount of the transaction.
 
-`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
+`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions.
 
-`token_name` : The name of the token that the transaction relates to.
+`ticker` : The name of the token that the transaction relates to.
 
 `reference` : For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.  
 }
@@ -502,15 +513,22 @@ ledger/get/transaction
 
 ### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session that is creating the transaction.
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
-`verbose` : Optional, **determines** how much transaction data to include in the response. Supported values are:  
-- summary : hash, type, version, sequence, timestamp, and contracts.  
+`verbose` : Optional, determines how much **transaction data** to include in the response. Supported values are:
+
+- summary : hash, type, version, sequence, timestamp, and contracts.
+
 - detail : genesis, nexthash, prevhash, pubkey and signature.
 
-`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found here: [`Queries`](https://github.com/Nexusoft/LLL-TAO/blob/merging-sessions/docs/API/QUERIES.md) 
+`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found at [`Queries`](/docs/API/QUERIES.md).
 
-This method supports the Sorting / Filtering parameters.
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
+
 
 ### Returns:
 
@@ -547,8 +565,6 @@ This method supports the Sorting / Filtering parameters.
 
 #### Return values:
 
-`data` : If format was specified as raw then the response will contain only the data field containing the raw, hex encoded, transaction data.
-
 `txid` : The transaction hash.
 
 `type` : The description of the transaction (legacy | tritium base | trust | genesis | user).
@@ -579,7 +595,7 @@ This method supports the Sorting / Filtering parameters.
 
 `OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
 
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
+`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT or LEGACY.
 
 `txid` : The transaction that was credited / claimed.
 
@@ -597,9 +613,9 @@ This method supports the Sorting / Filtering parameters.
 
 `amount` : the token amount of the transaction.
 
-`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
+`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions.
 
-`token_name` : The name of the token that the transaction relates to.
+`ticker` : The name of the token that the transaction relates to.
 
 `reference` : For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.  
 }
@@ -634,7 +650,7 @@ ledger/submit/transaction
 
 # <a name="get/info"></a> `get/info`
 
-Retrieves mining related data for the ledger.
+Retrieves mining and NXS supply related data for the ledger.
 
 ```
 ledger/get/info
@@ -642,7 +658,7 @@ ledger/get/info
 
 ### Parameters:
 
--none-
+[`Filtering`](/docs/API/FILTERING.MD). 
 
 ### Returns:
 
@@ -696,7 +712,7 @@ ledger/get/info
 
 #### Return values:
 
-`Stake` : This is the stake channel details.  
+`Stake` :  Retreives information for the stake channel.  
 {  
 `height` : The current number of blocks for the stake channel.
 
@@ -709,7 +725,7 @@ ledger/get/info
 `difficulty` : The current difficulty of the stake channel.   
 }  
 
-`prime` : This is the prime channel details.  
+`prime` :  Retreives information for the prime channel.  
 {  
 `height` : The current number of blocks for the prime channel.
 
@@ -728,7 +744,7 @@ ledger/get/info
 `hashes` : It is total network hash rate for prime channel.  
 }  
 
-`hash` : This is the hash channel details.    
+`hash` :  Retreives information for the hash channel.    
 {    
 `height` : The current number of blocks for the hash channel.
 
@@ -749,7 +765,7 @@ ledger/get/info
 
 `supply` : Metrics on NXS supply rates.
 
-{
+{  
 `total` : Total amount of NXS in existence.
    
 `target` : The target supply rate for this point in time.
@@ -785,7 +801,7 @@ ledger/get/metrics
 
 ### Parameters:
 
--none-
+[`Filtering`](/docs/API/FILTERING.MD). 
 
 ### Returns:
 
@@ -848,7 +864,7 @@ ledger/get/metrics
 
 `volumes` : This retrieves the transactions, contracts and accounts volume.    
 {    
-`transactions` : This shows the total transactions for a specified period.    
+`transactions` :  Statistics for transactions for a specified period.    
 {  
 `daily` : Total number of transactions in the last 24 hours.  
 
@@ -857,7 +873,7 @@ ledger/get/metrics
 `monthly` : Total number of transactions in the last month.  
 }  
 
-`contracts` : This shows the total contracts for a specified period.    
+`contracts` :  Statistics for contracts for a specified period.    
 {  
 `daily` : Total number of contracts in the last 24 hours.  
 
@@ -866,7 +882,7 @@ ledger/get/metrics
 `monthly` : Total number of contracts in the last month.  
 }  
 
-`accounts` : This retreives the total accounts (sigchains) created in a specified period.    
+`accounts` :  Statistics for accounts (profiles) created in a specified period.    
 {
 `daily` : Total number of accounts created in the last 24 hours.  
 
@@ -876,9 +892,9 @@ ledger/get/metrics
 }  
 }  
 
-`exchanges` : This retreives the statistics of NXS  deposits and withdrawals from excahnges.      
+`exchanges` : Statistics of NXS deposits and withdrawals from exchanges.      
 {      
-`deposits` : This shows the total NXS deposited to exchanges (moved to legacy from tritium).    
+`deposits` :  Statistics for NXS deposited to exchanges (moved to legacy from tritium).    
 {  
 `daily` : Total number of NXS deposited in the last 24 hours.  
 
@@ -887,7 +903,7 @@ ledger/get/metrics
 `monthly` : Total number of NXS deposited in the last month.  
 }  
 
-`withdraws` : This shows the total NXS withdraws from exchanges (moved to tritium from legacy).    
+`withdraws` :  Statistics for NXS withdraws from exchanges (moved to tritium from legacy).    
 {  
 `daily` : Total number of NXS withdraws in the last 24 hours.  
 
@@ -897,12 +913,12 @@ ledger/get/metrics
 }  
 }  
 
-`Network` : This retreives the statistics of NXS  minted by the staking, mining channels and NXS moved to/from stake.      
+`Network` : Statistics of NXS minted by the staking, mining channels and NXS moved to /f rom stake.      
 {      
-`mint` : This shows the total NXS deposited to exchanges (moved to legacy from tritium).  
+`mint` : This retreives the statistics for the NXS minted on staking and mining channels.  
 {  
 
-`staking` : The total NXS minted from staking for a specified period.  
+`staking` : Statistics for NXS minted from staking for a specified period.  
 {  
 `daily` : Total number of NXS minted from staking in the last 24 hours.  
 
@@ -911,7 +927,7 @@ ledger/get/metrics
 `monthly` : Total number of NXS minted from staking in the last month.  
 }  
 
-`mining` : The total NXS minted from mining for a specified period.  
+`mining` :  Statistics for NXS minted from mining for a specified period.  
 {  
 `daily` : Total number of NXS minted from mining in the last 24 hours.  
 
@@ -921,7 +937,7 @@ ledger/get/metrics
 }  
 }  
 
-`stake` : The total NXS locked or unlocked from stake (trust accounts) for a specified period.  
+`stake` :  Statistics for NXS locked or unlocked from stake (trust accounts) for a specified period.  
 {  
 `daily` : Total number of NXS locked or unlocked from stake in the last 24 hours.  
 

@@ -1,6 +1,6 @@
 # Assets API
 ----------------------------------
-An asset is a user-defined data structure that is stored in an object register, owned by a particular signature chain. Assets can hold one or more pieces of data and users can define the fields (name, data, type, mutability) that data is stored in. The Assets API supports the `readonly`, `raw`, `basic` and `JSON` formats and the user is required to specify the format.
+An asset is a user-defined data structure that is stored in an object register, owned by a profile. Assets can hold one or more pieces of data and users can define the fields (name, data, type, mutability) that data is stored in. The Assets API supports the `readonly`, `raw`, `basic` and `JSON` formats and the user is required to specify the format.
 
 The `readonly` and `raw` formats are useful when developers wish to store arbitrary data, without incurring the overhead of defining an object. The value will be provided with the `data` parameter. The `readonly` format cannot be updated and is stored in a readonly register. The `raw` format is stored in a raw register and allows the data to be updated.
 
@@ -65,15 +65,19 @@ assets/create/noun
 This command supports the `asset`, `readonly`, `raw`,  and `any` nouns.
 
 #### create/asset
+
 Creates a new asset in an object register.  
 
 #### create/readonly
+
 Creates a new asset in an readonly register.  
 
 #### create/raw
+
 Creates a new asset in a raw register.  
 
 #### create/any
+
 Creates a new asset specified by the format parameter.  
 
 ### Parameters:
@@ -103,7 +107,9 @@ read-only (false).
 
 - `maxlength`: Only applicable to string or bytes fields where mutable=true, this is the maximum number of characters (bytes) that can be stored in the field. If no maxlength parameter is provided then we will default the field size to the length of the default value rounded up to the nearest 64 bytes.
 
-**NOTE:** There is a limit of 1KB for asset data to be saved in the register, excluding the Asset Name
+**NOTE:** 
+- There is a limit of 1KB for asset data to be saved in the register, excluding the asset name.
+- There is a fee of 1 NXS for creating and an asset and an additional 1 NXS for the optional name object.
 
 ### Results:
 
@@ -130,7 +136,7 @@ read-only (false).
 
 # <a name="get"></a> `get`
 
-Retrieves information for a single object for a type specified by the noun
+Retrieves information for an asset specified by the noun.
 
 ```
 assets/get/noun
@@ -154,6 +160,10 @@ Get asset for register type raw.
 `name` : Required to **identify** the name of the asset. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
 `address` : Required to **identify** the register address of the asset. This is optional if the `name` is provided.
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD). 
 
 ### Results:
 
@@ -179,7 +189,7 @@ Get asset for register type raw.
 
 #### Return Values:
 
-`owner` : The username hash of the profile that owns this asset.
+`owner` : The username hash of the owners profile.
 
 `version` : The serialization version of the transaction.
 
@@ -189,18 +199,19 @@ Get asset for register type raw.
 
 `type` : Asset register type. Can be OBJECT, RAW or READONLY.
 
+`data` : The data stored in a raw or readonly asset object.
+
 `<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
 
 `address` : The register address of the asset.
 
-`name` : The name identifying the asset. For privacy purposes, this is only included in the response if the caller is the owner of the asset
-
+`name` : The name identifying the asset.
 
 -----------------------------------
 
 # <a name="list"></a> `list`
 
-Retrieves information for a single object for a type specified by the noun
+Retrieves a list of all the asset objects owned by the profile specified by the noun.
 
 ```
 assets/list/noun
@@ -208,21 +219,33 @@ assets/list/noun
 
 This command supports the `asset`, `readonly`, `raw`, and `any` nouns.
 
-#### list/asset
-Lists all the assets for register type object.
+#### list/assets
+
+Lists all the assets for object register type.
 
 #### list/readonly
-Lists all assets for register type readonly. 
+
+Lists all assets for readonly register type. 
 
 #### list/raw
-Lists all assets for register type raw.
+
+Lists all assets for raw register type.
 
 #### list/any
-Lists all assets for register type raw.
+
+Lists all assets for all supported register types.
 
 ### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+
+`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found at [`Queries`](/docs/API/QUERIES.md).
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 ### Results:
 
@@ -248,7 +271,7 @@ Lists all assets for register type raw.
 
 #### Return Values:
 
-`owner` : The username hash of the profile that owns this asset.
+`owner` : The username hash of the owners profile.
 
 `version` : The serialization version of the transaction.
 
@@ -258,23 +281,32 @@ Lists all assets for register type raw.
 
 `type` : Asset register type. Can be OBJECT, RAW or READONLY.
 
+`data` : The data stored in a raw or readonly asset object.
+
 `<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
 
 `address` : The register address of the asset.
 
-`name` : The name identifying the asset. For privacy purposes, this is only included in the response if the caller is the owner of the asset
-
+`name` : The name identifying the asset.
 -----------------------------------
 
 # <a name="update"></a> `update`
 
-This method provides the user with the ability to update fields specified by the noun
+This method provides the user with the ability to update the object data specified by the noun.
 
 ```
 assets/update/noun
 ```
 
-This command does not support the `readonly` noun.
+This command only supports the `asset` and `raw` nouns.
+
+#### update/asset
+
+This updates the data values for asset with the format basic and JSON.
+
+#### update/raw
+
+This updates the data values for the raw item register.
 
 ### Parameters:
 
@@ -282,15 +314,15 @@ This command does not support the `readonly` noun.
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
 
-`name` : Required to **identify** the name of the asset. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
+`name` : Required to **identify** the name of the asset. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided.
 
 `address` : Required to **identify** the register address of the asset. This is optional if the `name` is provided.
 
 `format` : Required to **specify** the format of the asset to update. Values can be `readonly`, `raw`, `basic` and `JSON`. 
 
-`data` : Required if **format** is `readonly` or `raw`, allows caller to update the data object. `readonly` assets cannot be updated  
+`data` : Required if **format** is `readonly` or `raw`, allows caller to update the data object.  
 
-`<fieldname>=<value>` : Optional for **format** `basic`, The caller can provide 'key=value' pairs to update each piece of data in the asset.
+`<fieldname>=<value>` : Optional for **format** `basic`, The caller can provide 'key=value' pairs to update each piece of data for the asset.
 
 ### Results:
 
@@ -320,7 +352,20 @@ This will initiate ownership transfer of the specified noun.
 assets/transfer/noun
 ```
 
-This command supports the readonly, raw, and asset  nouns.
+This command supports the `asset`,  `raw` and `readonly` nouns.
+
+#### transfer/asset
+
+This initiates transfer for an asset to a recipient.
+
+#### transfer/raw
+
+This initiates transfer for a raw asset to a recipient.
+
+#### transfer/readonly
+
+This initiates transfer for a readonly asset to a recipient.
+
 
 ### Parameters:
 
@@ -361,13 +406,25 @@ This command supports the readonly, raw, and asset  nouns.
 
 # <a name="claim"></a> `claim`
 
-This method will claim ownership of the specified noun by the recipient to complete the transaction.
+This method will claim ownership of the asset to complete the corresponding transfer transaction.
 
 ```
 assets/claim/noun
 ```
 
-This command supports the `readonly`, `raw`, and `asset`  nouns.
+This command supports the `asset`,  `raw` and `readonly` nouns.
+
+#### claim/asset
+
+Assets that have been transferred need to be claimed by the recipient. This method creates the claim transaction.
+
+#### claim/raw
+
+Raw assets that have been transferred need to be claimed by the recipient. This method creates the claim transaction.
+
+#### claim/readonly
+
+Readonly assets that have been transferred need to be claimed by the recipient. This method creates the claim transaction.
 
 ### Parameters:
 
@@ -411,18 +468,17 @@ This command only supports the `asset` noun.
 
 ### Parameters:
 
-`pin` : Required if **locked**. The PIN for this profile.
+`pin` : Required if **locked**. The `PIN `for this profile.
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
 
-`name` : The name identifying the asset to be tokenized. This is optional if the address is provided. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). However, if the asset was created in 
-the callers namespace (their username), then the username can be omitted from the name if the session parameter is provided (as we can deduce the username from the session)
+`name` : Required to **identify** the name of the asset to be tokenised. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
-`address` : The register address of the asset to be tokenized. This is optional if the name is provided.
+`address` : Required to **identify** the register address of the asset to be tokenised. This is optional if the `name` is provided.
 
 `token` : Required to **identify** the token to tokenize the asset. It can be the name (for global names) username:tokenname ( for local names) or the register address of the token.
 
-**NOTE:** Create the token before for use with this call.
+**NOTE:** Create the token before using tokenize API.
 
 
 ### Results:
@@ -447,23 +503,27 @@ the callers namespace (their username), then the username can be omitted from th
 
 # <a name="history"></a> `history`
 
-This will get the history of changes to an item, including both the data and it's ownership.
+This will get the history of changes to an asset, including both the data and it's ownership.
 
 ```
-supply/history/noun
+assets/history/noun
 ```
 
-This command only supports the `asset` noun.
+This command supports the `asset`,  `raw`, `readonly` and `any` nouns.
 
 ### Parameters:
 
-`pin` : Required if **locked**. The `PIN` for this profile.
-
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
 
-name : The name identifying the asset.  This is optional if the address is provided.
+`name` : Required to **identify** the name of the asset. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
-address : The register address of the item. This is optional if the name is provided.
+`address` : Required to **identify** the register address of the asset. This is optional if the `name` is provided.
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 ### Results:
 
@@ -477,11 +537,11 @@ address : The register address of the item. This is optional if the name is prov
         "created": 1656614448,
         "modified": 1656614448,
         "type": "OBJECT",
-        "Assetname": " Buggati Veryon",
+        "Assetname": "Bugatti Veyron",
         "Chassis_No": "BV45648784634546",
-        "DOP": "22/06/2022",
+        "Purchased Date": "22/06/2022",
         "Engine_No": "BVE54864660",
-        "Owner": "Alice",
+        "Owner": "John Doe",
         "Registration_No": "DL01EK0001",
         "address": "88NcYcKtMTRwtwDgfXFkZ4TbrHvkRGzsQkqVZco77Hqx1WRgCyi",
         "name": "local:Asset0001",
@@ -495,27 +555,29 @@ address : The register address of the item. This is optional if the name is prov
 
 The return value is a JSON array of objects for each entry in the names history:
 
-`owner` : The username hash of the profile that owned the name.
+`owner` : The username hash of the owners profile.
+
+`version` : The serialization version of the transaction.
 
 `created` : The UNIX timestamp when the account was created.
 
-`modified` : The Unix timestamp of when the name was updated.
+`modified` : The UNIX timestamp of when the name was updated.
 
-`type` : Asset register type. Can be OBJECT, RAW or READONLY.
+`type` : The type of register. Can be OBJECT, RAW or READONLY.
 
 `<fieldname>=<value>` : If format is basic, then the caller can provide additional = pairs for each piece of data to store in the asset.
 
-`data` : If noun is raw or readonly then this represents the data values.
+`data` : The data stored in a raw or readonly asset object.
 
 `address` : The register address of the name object.
 
 `name` : The name of the object.
 
-`action` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM
+`action` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM.
 
 -----------------------------------
 
-# <a name="transactions"></a> `transactions``
+# <a name="transactions"></a> `transactions`
 
 This will list off all of the transactions for the specified noun.
 
@@ -523,22 +585,29 @@ This will list off all of the transactions for the specified noun.
 assets/transactions/noun
 ```
 
-This command supports the asset, raw, readonly and any nouns.
+This command supports all nouns.
 
 ### Parameters:
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
 
-`name` : Required to identify the asset to get the transactions. This is optional if the address is provided.
+`name` : Required to **identify** the asset. This is optional if the `address` is provided.
 
-`address` : Required to identify the register address of the asset to get the transactions. This is optional if the name is provided.
+`address` : Required to **identify** the register address of the asset. This is optional if the `name` is provided.
 
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
-- `default` : summary
+- `default` : summary.
+
 - `summary` : type, version, sequence, timestamp, blockhash, confirmations and contracts.
+
 - `detail` : All in summary + genesis, nexthash, prevhash, pubkey and signature.
 
-This method supports the Sorting / Filtering parameters.
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
+
 
 ### Results:
 
@@ -547,30 +616,51 @@ This method supports the Sorting / Filtering parameters.
 ```
 [
     {
-        "txid": "01c85ab5327ecdda7b0f9175434d2c72f4584bbabca1f047a651502927bdabdf4d8dd090e5a4b9bc5e8968f4934b27bde4f32a3e8c4e8092030986f9d44402c2",
+        "txid": "0167d11ebea68f68e2c6591a9d94c236a60c312cf70d596492002a3e4d9a95a4f4e859c498fa6ac17c56cb4db1043abacdfd44f669112641fc4add15bb3efefa",
         "type": "tritium user",
         "version": 4,
-        "sequence": 13,
-        "timestamp": 1655370792,
-        "blockhash": "6e8de5c3ad3dd93f86ca19373956ecef28c1f909ea87943a019227bcb5dc1df2ba66ca87ff36d4f9f0b51a06fa246829d0b6373fb5ecb2e75081a207a199e4e179cda6cf0ef8b85119266c9a158db8789be37175fbef80bf796b98dd4dc0408283191378ae01bea06acc239ac36d1cdbab3bb72e00762c2395c11dcdbe0c9966",
-        "confirmations": 27,
-        "genesis": "b7392196b83aca438567558462cd0c5d982569c7cefa668500c4bf3e61a03b7a",
-        "nexthash": "db41981709d77bef5ae3fcff1df314ef42d0765d877347e594b47bafe81c6871",
-        "prevhash": "014aca566b7ef248af6d795433ad225d651c07f09361055b6d23e810873326d3a98a3b72b7557752a6eb8b26ebc0c146dc1787e690aadf400c258bb89023af94",
-        "pubkey": "020318bad0e53936b80ee1a0f63ff0e0e206e38f76e1356a5e7db20ec40ca63267653db2907bb8d41ed3cd27905ccbc4ff89f45ebf596f7067237292bb5573ad94",
-        "signature": "30818402400b91313bf9878553753f8d4a50717d9cd6669c0a75fce174cfd8fede887b9b0a34f9359ed2153fd5d5949f73d2d0680886aaaafcfc6979772e0be8a01692cf840240243556b3c5fc4af7ac80411bf15fdc3430b96e429bf50be455f92301144e57513633f696f7365829d1731f225789e5ea7901f80e0a5440783cecd31d05f9402f",
+        "sequence": 4,
+        "timestamp": 1656614805,
+        "blockhash": "9b2c063b2e8766ce9b55c5b75524b13c12c7006e0c67423dbfe1539ed4f62cd0c764f63fbbc6cb41ab9fc785ce6f88ae92e6a82e3151c4c956fa65eac524db3e1922bdced7bdd4cd97a4563dd21f011a310d062440300b2a7532fe21f6df55c7e3ba9046a982b99af97acddd768569d3cf5368cb91dcb0138cf5af7f1a6f391b",
+        "confirmations": 95,
+        "contracts": [
+            {
+                "id": 0,
+                "OP": "TRANSFER",
+                "address": "88NcYcKtMTRwtwDgfXFkZ4TbrHvkRGzsQkqVZco77Hqx1WRgCyi",
+                "recipient": "8Dnn5LUeffcRCqZLpboCHnzw5AkfwzkM5hjVScjSDHVKhFpVzCB",
+                "tokenized": true
+            }
+        ]
+    },
+    {
+        "txid": "01e4eff49cadbd887511c6302d5fe8e89ead4caa87bcec2dfd55e18cb201a8fc8db9726571d3bebe554a81f579b22e2794a0e86756be326f362964e95ab28f23",
+        "type": "tritium user",
+        "version": 4,
+        "sequence": 2,
+        "timestamp": 1656614448,
+        "blockhash": "e9b46f5dcf3c321f8a2dc672a6c47a5c6b763bc9d1f001722bc446b186afda3566f04cc739253696a3f232e036bc273ca68c18d84213186a1317d246ec86a165ba152838a2eca4425c19472dc8fb1b762f4413c5a633c4fef5494378b9858da34129dcd5bc556110c1e79aa42f01f8bae6f4938a6e87a63b6d30e2ee6025d507",
+        "confirmations": 97,
         "contracts": [
             {
                 "id": 0,
                 "OP": "CREATE",
-                "address": "86bZsES4snbyB43VKviUchvYHxKcguFVM9zbAjX9vaRfvSmrpGi",
-                "type": "RAW",
-                "data": "{Name:Daffodil, Owner Name:John, Registration Details:BNGL/09/987564, Location:Bangalore}"
+                "address": "88NcYcKtMTRwtwDgfXFkZ4TbrHvkRGzsQkqVZco77Hqx1WRgCyi",
+                "type": "OBJECT",
+                "standard": "NONSTANDARD",
+                "object": {
+                    "Assetname": " Bugatti Veyron",
+                    "Chassis_No": "BV45648784634546",
+                    "Purchased Date": "22/06/2022",
+                    "Engine_No": "BVE54864660",
+                    "Owner": "John Doe",
+                    "Registration_No": "DL01EK0001"
+                }
             }
         ]
     }
 ]
-[Completed in 0.740542 ms]
+[Completed in 3.128134 ms]
 ```
 
 #### Return values:
@@ -603,13 +693,25 @@ This method supports the Sorting / Filtering parameters.
 {
 `id` : The sequential ID of this contract within the transaction.
 
-`OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
+`OP` : The contract operation. Can be CREATE | MODIFY | TRANSFER | CLAIM.
 
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
+`address` : The register address of the asset object.
 
-`address` : The register address for this asset.
+`txid` : The transaction ID hash of the transaction for the credit / claim.
 
-`type` : The type of register - OBJECT | READONLY | RAW.
+`contract` : The ID of the contract within the transaction for the credit / claim.
+
+`type`: The type of register. Can be OBJECT, RAW or READONLY.
+
+`standard` : The type of object. Can be NONSTANDARD or JSON.
+
+`recipient` : The transfer recipients profile username hash.
+
+`tokenized` : Boolean flag indicating if the asset is tokenized or not.
+
+`<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
+
+`object` : The data stored in the asset.
 }
 
 -----------------------------------
@@ -663,9 +765,11 @@ assets/list/partial
 
 `<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
 
+`data` : The data stored in a raw or readonly asset object.
+
 `address` : The register address of the asset.
 
-`name` : The name identifying the asset. For privacy purposes, this is only included in the response if the caller is the owner of the asset
+`name` : The name identifying the asset.
 
 `ownership` : This is the percentage of the asset owned by the caller, based on the number of tokens owned.
 

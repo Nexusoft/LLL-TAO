@@ -34,12 +34,13 @@ The following verbs are currently supported by this API command-set:
 
 [`create`](#create) - Generate a new object of supported type.  
 [`get`](#get) - Get object of supported type.  
-[`list`](#list) - List all objects owned by given user.  
+[`list`](#list) - List all objects owned by given user.
+[`update`](#update) - Update an object register.   
 [`transfer`](#transfer) - Transfer ownership of an object register.  
 [`claim`](#claim) - Claim ownership of an object register.  
 [`history`](#history) - Generate the history of all last states.  
 [`transactions`](#transactions) - List all transactions that modified specified object.  
-[`update`](#update) - Update an object register.  
+ 
 
 ## `Supported Nouns`
 
@@ -121,7 +122,7 @@ Retrieves the object information specified by given noun.
 ```
 names/get/noun
 ```
-This command supports the `name` and `namespace` nouns.
+This command supports the `name` `namespace` `global` and `local` nouns.
 
 
 #### get/name
@@ -132,11 +133,23 @@ This will retreive a specified name object.
 
 This will retreive a specified namespace object.
 
+#### get/global
+
+This will retreive a specified global name object.
+
+#### get/local
+
+This will retreive a specified local name object.
+
 ### Parameters:
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
-#### get/name
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD). 
+
+#### get/name, get/global, get/local
 
 `name` : Required to **identify** the Name of the name object. The name should be in the format name (for local and global names) username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
@@ -186,7 +199,7 @@ This will retreive a specified namespace object.
 
 #### Return values:
 
-`owner` : The genesis hash of the signature chain that owns this Name.
+`owner` : The username hash of the owners profile.
 
 `version` : The serialization version of the Name.
 
@@ -208,7 +221,7 @@ This will retreive a specified namespace object.
 
 # <a name="list"></a> `list`
 
-This will list off all of the object register details specified by the noun.
+Retrieves a list of all the object details specified by the noun.
 
 ```
 names/list/noun
@@ -216,9 +229,38 @@ names/list/noun
 
 This command supports all the nouns.
 
+#### list/name
+
+This will retreive all the name objects.
+
+#### list/namespace
+
+This will retreive all the namespace objects.
+
+#### list/global
+
+This will retreive all the global name objects.
+
+#### list/local
+
+This will retreive all the local name objects.
+
+#### list/any
+
+This will retreive all the supported objects.
+
+
 ### Parameters:
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+
+`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found at [`Queries`](/docs/API/QUERIES.md).
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 ### Results:
 
@@ -256,21 +298,63 @@ This command supports all the nouns.
 
 The return value is a JSON array of objects for each entry in the namespaces history:
 
-`owner` : The genesis hash of the signature chain that owned the namespace.
+`owner` : The username hash of the owners profile.
 
 `version` :  The serialization version of the namespace.
 
 `created` : The UNIX timestamp when the object was created.
 
-`modified` : The Unix timestamp when the object was updated.
+`modified` : The UNIX timestamp when the object was updated.
 
-`type` : The type of register - OBJECT | READONLY | RAW
+`type` : The type of register - OBJECT | READONLY | RAW.
 
-`name` : The name of the Name object.
+`name` : The name identifying the object register.
 
 `namespace` :  The name of the namespace or the namespace that the name was created in. For global names, this will be set to ~GLOBAL~.
 
 `address` : The register address of the object.
+
+-----------------------------------
+
+# <a name="update"></a> `update`
+
+This method allows the register address within a name object to be changed.
+
+```
+names/update/noun
+```
+
+This command does not support the `name` `namespace`or `any` nouns.
+
+### Parameters:
+
+`pin` : Required if **locked**. The PIN to authorize the transaction.
+
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
+
+`name` : Required to **identify** the Name of the name object. The name should be in the format name (for global names) username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
+
+`address` : Required to **identify** the register address of the name. This is optional if the `name` is provided.
+
+`register_address` : The new register address that this Name should point to.
+
+### Results:
+
+#### Return value JSON object:
+
+```
+{
+    "success": true,
+    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
+}
+[Completed in 18533.182336 ms]
+```
+
+#### Return values:
+
+`success` : Boolean flag indicating that the object was updated successfully.
+
+`txid` : The ID (hash) of the transaction for the updated object.
 
 -----------------------------------
 
@@ -310,7 +394,7 @@ This will transfer ownership of an namespace object to a specified recipient.
 
 #### transfer/namespace
 
-`namespace` : Required to **identify** the Name of the name object. This is optional if the namespace `address` is provided.
+`namespace` : Required to **identify** the Name of the namespace object. This is optional if the namespace `address` is provided.
 
 `address` : Required to **identify** the register address of the namespace. This is optional if the `namespace` is provided.
 
@@ -337,7 +421,7 @@ This will transfer ownership of an namespace object to a specified recipient.
 
 # <a name="claim"></a> `claim`
 
-This method will claim ownership of the specified noun by the recipient to complete the transaction.
+This method will claim ownership of the specified noun by the recipient to complete the corresponding transfer transaction.
 
 ```
 names/claim/noun
@@ -391,15 +475,29 @@ This will get the history and ownership of the specified noun.
 names/history/noun
 ```
 
-This command supports the name, namespace, global and local nouns.
+This command supports all the nouns.
 
 ### Parameters:
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
-`name` : Optional to identify the name. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the address is provided.
+[`Sorting`](//docs/API/SORTING.MD).
 
-`address` : Optional to identify the name using the register address. This is optional if the name is provided.
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
+
+#### history/name
+
+`name` : Required to **identify** the name. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided.
+
+`address` : Required to **identify** the name using the register address. This is optional if the `name` is provided.
+
+#### history/namesapce
+
+`namespace` : Required to **identify** the Name of the namespace object. This is optional if the namespace `address` is provided.
+
+`address` : Required to **identify** the register address of the namespace. This is optional if the `namespace` is provided.
 
 ### Results:
 
@@ -427,23 +525,23 @@ This command supports the name, namespace, global and local nouns.
 
 The return value is a JSON array of objects for each entry in the names history:
 
-`owner` : The genesis hash of the signature chain that owned the namespace.
+`owner` : The username hash of the owners profile.
 
-`version` :  The serialization version of the namespace.
+`version` : The serialization version of the transaction.
 
 `created` : The UNIX timestamp when the object was created.
 
-`modified` : The Unix timestamp when the object was updated.
+`modified` : The UNIX timestamp when the object was updated.
 
-`type` : Asset register type. Can be OBJECT, RAW or READONLY.
+`type` : The type of register. Can be OBJECT, RAW or READONLY.
 
-`name` : The name of the Name object.
+`name` : The name identifying the object register.
 
 `namespace` :  The name of the namespace or the namespace that the name was created in. For global names, this will be set to ~GLOBAL~.
 
 `address` : The register address of the object.
 
-`action` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM
+`action` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM.
 
 -----------------------------------
 
@@ -455,20 +553,36 @@ This will list off all of the transactions for the specified noun.
 names/transactions/noun
 ```
 
-This command supports the account, trust and token nouns.
+This command supports all the nouns.
 
 ### Parameters:
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
-`name` : Optional to identify the name. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the address is provided.
-
-`address` : Optional to identify the name using the register address. This is optional if the name is provided.
-
 `verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
 - `default` : hash
+
 - `summary` : type, version, sequence, timestamp, operation, and confirmations.
+
 - `detail` : genesis, nexthash, prevhash, pubkey and signature.
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
+
+#### transactions/name
+
+`name` : Required to **identify** the name. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided.
+
+`address` : Required to **identify** the name using the register address. This is optional if the `name` is provided.
+
+#### transactions/namesapce
+
+`namespace` : Required to **identify** the Name of the namespace object. This is optional if the namespace `address` is provided.
+
+`address` : Required to **identify** the register address of the namespace. This is optional if the `namespace` is provided.
 
 This method supports the Sorting / Filtering parameters.
 
@@ -479,49 +593,47 @@ This method supports the Sorting / Filtering parameters.
 ```
 [
     {
-        "txid": "0123517ca0f1ca110c7b07de9e3c9b33ccbe717f96911e1449b7c73bb9695fbc9c14a58f01f5fb7e9b64756f658af91daec9f0f579df2fad8df61843defae833",
+        "txid": "01366060ddd6d5f0f02d50c0dc2eb77099f6becbe490fa6aca384e2974a8f4ceb12b0030b77e8a0d74a0fec24b3a18bb11b18c6a163930d1c66213c4b5890907",
         "type": "tritium user",
         "version": 4,
-        "sequence": 23,
-        "timestamp": 1655061950,
-        "blockhash": "8b206ab2ee4b46a835f74af0ff5d4e0b395acdb94d66468a24083f2a5fd01a07a93956774001bab1a801d53d7bf6ed60ee84a573650eef1a9feaf6fa9beb308bd20b567663cc7ec4f85796b261164ef3452ebfaa13a60141b42fc49d6d2eb2792440925b1b19248ad9fe65e01d3742f2d3dec2817c56c8e4f6e03a10f4147308",
-        "confirmations": 4,
+        "sequence": 46,
+        "timestamp": 1661083099,
+        "blockhash": "993b86059245ea9926e869182c1614a58f6dc76ce47000f0fa99a52c4c36852c8bf27915eb92f00fef04e01e50f66eaa562999188c4a1ee9b97a035be3d50a44ad6c5970e83d6b017795f8cf4e12a8eda4e087890e1595f73ad7b4d2c328eda8ede89b13847606b23c112c55ff3c97f85f88646c7517206bbe43fafb2c1e2d3f",
+        "confirmations": 21,
         "contracts": [
             {
                 "id": 0,
-                "OP": "DEBIT",
-                "from": "8DXmAmkTtysSZUxM3ePA8wRmbSUofuHKSoCyDpN28aLuSrm1nDG",
-                "to": "8Bk5PxsecfXWpbHsDXeZ47MCgDF7qDLsU4Y4MJw2VB29LsTR98z",
-                "amount": 1.0,
-                "token": "8DXmAmkTtysSZUxM3ePA8wRmbSUofuHKSoCyDpN28aLuSrm1nDG",
-                "ticker": "XYZ",
-                "reference": 57891358795
+                "OP": "TRANSFER",
+                "address": "8JePLsRrZLUPawYiMmGDDfgk9YnfoJZkMpVWW4jn57HKLvPTb3X",
+                "recipient": "b7a57ddfb001d5d83ab5b25c0eaa0521e6b367784a30025114d07c444aa455c0"
             }
         ]
     },
     {
-        "txid": "01f1a3f9227a69382f9811a5b1497a865ace17ad83b03118b24f875f6ade83117887c35d08375c259aa1076b91f42206110314756a11a943760bb5c0dd0523d7",
+        "txid": "01a43a82845a36de1248867344670283585274ad98a7dd4b09da501760caaa54f983e2d92a56d6e03960aa58c1b05d7c1d2d05628c08e3fa4b1d73ee854a3737",
         "type": "tritium user",
         "version": 4,
-        "sequence": 21,
-        "timestamp": 1655060214,
-        "blockhash": "048f3b308e8bd8c1aa31ec1ec2e136a9ccc91ec4498283d07fc5d0a00c8576e2c199567a44058222961f474626c6f2c5d7e774eee34c34f98acafaeb50b7abaaade7e9c641fe9727fe62533b1ec6bf2f75ffbf19d17d74671e2458bd73b6407b4bba1951fc84e1af11c2c4fbce1d05d7739e910fdb8a37197c1c422521e2e9f3",
-        "confirmations": 6,
+        "sequence": 45,
+        "timestamp": 1661082253,
+        "blockhash": "1f0c22e81916f0868099a7cedc217373682b6f5df7318a282de4a8c870b98c32f7b4e5d251bb2a31d22185ac188de2a574922db8a904b9bfb97a6264387ba5adfee84c3e1acdb1513ea963fbbe7068dea50d42da98f1476f2abc489dcd9c636ed41462a0dd00c2cb2376896e0abf9cc4286aec5244b5dbf2e3887ee9b4fc9ffd",
+        "confirmations": 22,
         "contracts": [
             {
                 "id": 0,
-                "OP": "DEBIT",
-                "from": "8DXmAmkTtysSZUxM3ePA8wRmbSUofuHKSoCyDpN28aLuSrm1nDG",
-                "to": "8Bk5PxsecfXWpbHsDXeZ47MCgDF7qDLsU4Y4MJw2VB29LsTR98z",
-                "amount": 1.0,
-                "token": "8DXmAmkTtysSZUxM3ePA8wRmbSUofuHKSoCyDpN28aLuSrm1nDG",
-                "ticker": "XYZ",
-                "reference": 0
+                "OP": "CREATE",
+                "address": "8JePLsRrZLUPawYiMmGDDfgk9YnfoJZkMpVWW4jn57HKLvPTb3X",
+                "type": "OBJECT",
+                "standard": "NAME",
+                "object": {
+                    "register": "8EormPWuqG1XcCTVDuDY9BBFhnqm2vFywmv6NtCJftxk1WQp83K",
+                    "name": "Nexen",
+                    "namespace": "~GLOBAL~"
+                }
             }
         ]
     }
 ]
-[Completed in 2.187165 ms]
+[Completed in 4.451844 ms]
 ```
 
 #### Return values:
@@ -554,75 +666,21 @@ This method supports the Sorting / Filtering parameters.
 {
 `id` : The sequential ID of this contract within the transaction.
 
-`OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
+`OP` : The contract operation. Can be CREATE | MODIFY | TRANSFER | CLAIM.
 
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
+`address` : The register address of the name or namespace object.
 
-`txid` : The transaction that was credited / claimed.
+`txid` : The transaction ID hash of the transaction for the credit / claim.
 
-`contract` : The ID of the contract within the transaction that was credited / claimed.
+`contract` : The ID of the contract within the transaction for the credit / claim.
 
-`proof` : The register address proving the credit.
+`type`: The type of register. Can be OBJECT, RAW or READONLY.
 
-`from` : For DEBIT, CREDIT, FEE transactions, the register address of the account that the debit is being made from.
+`standard` : The type of object. Can be NAME or NAMESPACE.
 
-`from_name` : For DEBIT, CREDIT, FEE transactions, the name of the account that the debit is being made from. Only included if the name can be resolved.
+`recipient` : The transfer recipients profile username hash. 
 
-`to` : For DEBIT and CREDIT transactions, the register address of the recipient account.
-
-`to_name` : For DEBIT and CREDIT transactions, the name of the recipient account. Only included if the name can be resolved.
-
-`amount` : the token amount of the transaction.
-
-`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
-
-`token_name` : The name of the token that the transaction relates to.
-
-`reference` : For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
-
-`object` : Returns a list of all hashed public keys in the crypto object register for the specified profile. The object result will contain the nine default keys(app1, app2, app3, auth, cert lisp, network, sign  and verify).
+`object` : Returns a list of all the object details (register, name or namespace).
 )
-
------------------------------------
-
-# <a name="update"></a> `update`
-
-This method provides the user with the ability to update fields specified by the noun
-
-```
-names/update/noun
-```
-
-This command does not support the name or namespace nouns.
-
-### Parameters:
-
-`pin` : Required if **locked**. The PIN to authorize the transaction.
-
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
-
-`name` : The name identifying the Name object to update. This is optional if the address is provided. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). However, if the asset was created in the callers namespace (their username), then the username can be omitted from the name if the session parameter is provided (as we can deduce the username from the session)
-
-`address` : The register address of the name to update. This is optional if the `name` is provided.
-
-`register_address` : The new register address that this Name should point to.
-
-### Results:
-
-#### Return value JSON object:
-
-```
-{
-    "success": true,
-    "txid": "01947f824e9b117d618ed49a7dd84f0e7c4bb0896e40d0a95e04e27917e6ecb6b9a5ccfba7d0d5c308b684b95e98ada4f39bbac84db75e7300a09befd1ac0999"
-}
-[Completed in 18533.182336 ms]
-```
-
-#### Return values:
-
-`success` : Boolean flag indicating that the object was updated successfully.
-
-`txid` : The ID (hash) of the transaction for the updated object.
 
 -----------------------------------
