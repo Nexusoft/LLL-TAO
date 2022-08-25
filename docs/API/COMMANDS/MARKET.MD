@@ -1,4 +1,4 @@
-# Marker API
+# Market API
 -----------------------------------
 The Market API is an on-chain, order book based P2P marketplace for trading tokens and assets. Assets can include both digital and physical goods. Users start by creating a new market with a token pair (NXS/XYZ) and other users can participate in that particular market, execute a particular order or cancel a placed order.
 
@@ -30,7 +30,7 @@ market/verb/noun
 ```
 
 
-## Supported Verbs
+## `Supported Verbs`
 
 The following verbs are currently supported by this API command-set:
 
@@ -40,7 +40,7 @@ The following verbs are currently supported by this API command-set:
 [`cancel`](#cancel) - To cancel a specified market order.  
 [`user`](#user) -  Retrieves all market orders for a user or profile.  
 
-## Supported Nouns
+## `Supported Nouns`
 
 The following nouns are supported for this API command-set:
 
@@ -56,7 +56,7 @@ The following nouns are supported for this API command-set:
 This creates a new market pair or becomes part of an existing market represented by the token or asset pair token1/token2. Market pair token2/token1 is also part of the same market.
 
 ```
-finance/create/noun
+market/create/noun
 ```
 
 This command supports the `bid` and `ask` nouns.
@@ -84,9 +84,9 @@ This creates a ask market order for market=token1/token2, bid for market=token2/
 
 `price` : The **price** of the token2 in relation to token1.
 
-`to` : This is the **receiving account** name or register address to credit.
+`to` : This is the NXS or token **receiving account** name or register address to credit.
 
-`from` : This is the **sending account** name or register address to debit. 
+`from` : This is the NXS or token **sending account** name or register address to debit. 
 
 ### Results:
 
@@ -109,11 +109,9 @@ This creates a ask market order for market=token1/token2, bid for market=token2/
 
 `txid` : The hash of the transaction that was generated for the market order. If using -autotx this field will be ommitted.
 
-
-
 -----------------------------------
 
-# <a  name="list"></a> `list`
+# <a name="list"></a> `list`
 
 This retrives a list of all the active orders for a particular market, specified by given noun.
 
@@ -130,6 +128,14 @@ This command supports all the nouns.
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
 `market` : Required to **identify** the market token pair.
+
+`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found at [`Queries`](/docs/API/QUERIES.md).
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 ### Results:
 
@@ -214,7 +220,7 @@ This command supports all the nouns.
 
 `amount` : the token amount of the transaction.
 
-`token` :  the register address of the token that the transaction relates to. Set to 0 for NXS transactions
+`token` :  the register address of the token that the transaction relates to. Set to 0 for NXS transactions.
 
 `ticker` :  The global name assigned to the token.    
 }    
@@ -241,9 +247,9 @@ This command supports the `bid`, `ask` and `order` nouns.
 
 `txid`: The **transaction hash** of the bid /ask which is being executed.
 
-`to` : This is the **receiving account** name or register address to credit.
+`to` : This is the NXS or token **receiving account** name or register address to credit.
 
-`from` : This is the **sending account** name or register address to debit.
+`from` : This is the NXS or token **sending account** name or register address to debit.
 
 ### Results:
 
@@ -325,6 +331,12 @@ This command supports all the nouns.
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
 `market` : Required to **identify** the market token pair.
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 
 ### Results:

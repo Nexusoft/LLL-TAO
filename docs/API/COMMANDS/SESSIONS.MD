@@ -118,7 +118,7 @@ These commands only supports the `local` noun.
 
 #### Return values:
 
-`unlocked` : This will contain child elements describing which functions the session is currently unlocked for
+`unlocked` : This will contain child elements describing which functions the session is currently unlocked for.
 
 `mining` : Boolean flag indicating whether the users sig chain is unlocked for mining.
 
@@ -174,7 +174,7 @@ These commands only supports the `local` noun.
 
 #### Return values:
 
-`unlocked` : This will contain child elements describing which functions the session is currently unlocked for
+`unlocked` : This will contain child elements describing which functions the session is currently unlocked for.
 
 `mining` : Boolean flag indicating whether the users sig chain is unlocked for mining.
 
@@ -225,7 +225,7 @@ These commands only supports the `local` noun.
 
 `genesis` : The profile genesis hash. This is a hash of the profile username.
 
-`success` : Boolean flag indicating that the session was saved successfully .
+`success` : Boolean flag indicating that the session was saved successfully.
 
 -----------------------------------
 
@@ -348,7 +348,7 @@ This command only supports the `local` noun.
 
 `genesis` : The profile genesis hash for the currently logged in user.
 
-`accessed` : The unix timestamp at which the profile was last accessed.
+`accessed` : The UNIX timestamp at which the profile was last accessed.
 
 `location` : The location of session, local or remote.
 

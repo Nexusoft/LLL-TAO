@@ -1,10 +1,10 @@
 # System API
 -----------------------------------
 
-The System API provides public access to information about this node. This includes data such as the version of software the node is running, ledger and mempool state, node IP address, and connected peers.
+The System API provides public access to information about this node. This includes data such as the version of software the node is running, ledger and mempool state, node IP address, and number of connected peers.
 
 -----------------------------------
-## Direct Endpoints
+## `Direct Endpoints`
 
 The following commands are direct endpoints and thus do not support the above verb and noun structure available above.
 
@@ -29,9 +29,9 @@ system/stop
 
 ### Parameters:
 
-password: Optional to **authenticate** before initiating core shutdown. This password is the one provided in the configuration file which will help prevent accidental remote shutdown.
+`password` : Optional to **authenticate** before initiating core shutdown. This password is the one provided in the configuration file which will help prevent accidental remote shutdown.
 
-**Note:** The shutdown authentication password has to be provided in the configuration file with the flag `-system/stop=<password>`
+**Note:** The shutdown authentication password has to be provided with the flag `-system/stop=<password>`
 
 ### Results:
 
@@ -49,16 +49,16 @@ password: Optional to **authenticate** before initiating core shutdown. This pas
 Returns a summary of information about this node
 
 ```
-system/get/metrics
+system/get/info
 ```
 
 ### Parameters:
 
--none-
+[`Filtering`](/docs/API/FILTERING.MD).
 
 ### Results:
 
-##### Return value JSON object:
+#### Return value JSON object:
 
 ```
 {
@@ -87,7 +87,7 @@ system/get/metrics
 
 `version` : The daemon software version.
 
-`protocolversion` : The LLP version.
+`protocolversion` : The Lower Level Protocol (LLP) version.
 
 `walletversion` : Legacy wallet version.
 
@@ -111,9 +111,9 @@ system/get/metrics
 
 `blocks` : The current block height of this node.
 
-`synchronizing` : Flag indicating whether this node is currently syncrhonizing. Not included if private=true
+`synchronizing` : Flag indicating whether this node is currently syncrhonizing. Not included if private=true.
 
-`synccomplete` : The percentage of the total blocks downloaded
+`synccomplete` : The percentage of the total blocks downloaded.
 
 `syncprogress` : The percentage of the current sync completed relative to when the node was started.
 
@@ -127,7 +127,7 @@ system/get/metrics
 
 # <a name="get/metrics"></a> `get/metrics`
 
-Returns metrics and statistics for the ledger, registers, etc
+Returns metrics and statistics for the ledger, registers, sigchains, trust and reserves.
 
 ```
 system/get/metrics
@@ -135,7 +135,7 @@ system/get/metrics
 
 ### Parameters:
 
--none-
+[`Filtering`](/docs/API/FILTERING.MD).
 
 #### Return value JSON object:
 
@@ -193,7 +193,7 @@ system/get/metrics
 
 `namespaces` : Number of namespaces that have been created.
 
-`objects` : Number of non-standard object registers. These include assets, items, and any other derived object register.  
+`objects` : Statistics of non-standard object registers. These include accounts, tokens, crypto, assets, items and any other derived object register.  
 {  
 `accounts` : Number of account registers. This includes both NXS and other token accounts.
 
@@ -206,7 +206,7 @@ system/get/metrics
 `tokens` : Number of token registers.  
 }
 
-`state` : Number of raw and readonly registers.  
+`state` : Statistics of raw and readonly registers.  
 {  
 `raw` : Number of raw registers.  
    
@@ -225,7 +225,7 @@ system/get/metrics
 `trust` : Total trust score of all trust accounts being staked.   
 }    
 
-`reserves` : Information on the amount of NXS currently in the various reserves.  
+`reserves` : Statistics on the amount of NXS currently in the various reserves.  
 {  
 `ambassador` : Amount of NXS in the ambassador reserves, waiting to be paid to the ambassador sig chains.
    
@@ -250,7 +250,11 @@ system/list/peers
 
 ### Parameters:
 
--none-
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 ### Results:
 
@@ -296,7 +300,7 @@ system/list/peers
 
 `address` : The IP address and port of the peer. This could be a LISP EID using the LISP overlay or an IP address using the native underlay.
 
-`type` : The version string of the connected peer.
+`type` : The daemon software version string of the connected peer.
 
 `version` : The protocol version being used to communicate.
 
@@ -310,7 +314,7 @@ system/list/peers
 
 `latency` : The calculated network latency between this node and the peer.
 
-`lastseen` : Unix timestamp of the last time this node had any communications with the peer.
+`lastseen` : UNIX timestamp of the last time this node had any communications with the peer.
 
 `connects` : The number of connections successfully established with this peer since this node started.
 
@@ -370,13 +374,13 @@ system/list/lisp-eids
 
 `instance-id` : The LISP instance group that this EID belongs to.
 
-`eid` : The endpoint identifier. This can be either IPv4 or IPv6 format
+`eid` : The endpoint identifier. This can be either IPv4 or IPv6 format.
 
-`rlocs` : The array of RLOC's (routing locators) associtated with the EID
+`rlocs` : The array of RLOC's (routing locators) associtated with the EID.
 
-`interface` : Name of the device for the RLOC
+`interface` : Name of the device for the RLOC.
 
-`rloc-name` : Hostname associated with the device
+`rloc-name` : Hostname associated with the device.
 
 `rloc` : The IP address associated with the device.
 
@@ -408,6 +412,7 @@ system/validate/address
 ```
    
 #### Return values:
+
 `address` : The address that was validated.
 
 `is_valid` : Boolean flag indicating if the address is valid or not. For legacy addresses this indicates that the address if simply formatted correctly. For register addresses this flag checks that a register exists in the blockchain at the specified address.

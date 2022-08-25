@@ -12,55 +12,6 @@ The minimum required components of the URI are:
 ```
 finance/verb/noun
 ```
-
-
-## `Supported Operators`
-
-The following operators are supported for this API command-set:
-
-[`array`](#array) - Generate a list of values given from a set of filtered results.     
-[`mean`](#mean)   - Calculate the mean or average value across a set of filtered results.  
-[`sum`](#sum)   - Compute a sum of a set of values derived from filtered results.
-
-**Example:**
-
-```
-finance/list/accounts/balance/sum
-```
-
-**Result:**
-
-This command will return a sum of the balances for all accounts:
-
-```
-{
-    "balance": 333.376
-}
-```
-
-
-
-## `Supported Nouns`
-
-The following nouns are supported for this API command-set:
-
-[`account`] - An object register containing a token-id and balance.     
-[`trust`]   - An object register containing a token-id, balance, and trust.     
-[`token`]   - An object register containing a token-id, balance, supply, and decimals.      
-[`any`]     - An object selection noun allowing mixed accounts of different tokens.     
-[`all`]     - An object selection noun to collect all accounts for given token type.    
-
-**Example:**
-
-```
-finance/debit/any
-```
-
-The above command will create a debit contract withdrawing from a random sample of your accounts, for all tokens you own.
-
------------------------------------
-
-
 ## `Supported Verbs`
 
 The following verbs are currently supported by this API command-set:
@@ -74,6 +25,19 @@ The following verbs are currently supported by this API command-set:
 [`history`](#history) - Generate the history of all last states.          
 [`transactions`](#transactions) - List all transactions that modified specified object.     
 
+-----------------------------------
+
+## `Supported Nouns`
+
+The following nouns are supported for this API command-set:
+
+[`account`] - An object register containing a token-id and balance.     
+[`trust`]   - An object register containing a token-id, balance, and trust.     
+[`token`]   - An object register containing a token-id, balance, supply, and decimals.      
+[`any`]     - An object selection noun allowing mixed accounts of different tokens.     
+[`all`]     - An object selection noun to collect all accounts for given token type.    
+
+-----------------------------------
 
 ## `Direct Endpoints`
 
@@ -86,49 +50,6 @@ The following commands are direct endpoints and thus do not support the above `v
 [`migrate/accounts`](#migrate/account)   
 
 Direct endpoints support filters and operators.
-
------------------------------------
-
-## <a name="Sorting / Filtering"></a> `Sorting / Filtering`
-
-The following parameters can be used to apply **sorting** and **filtering** to the returned data-set.
-
-`limit`: The number of records to return. *Default: 100*.
-
-`page`: Zero-indexed page number that depends on `limit` for page boundaries.
-
-`offset`: Alternative to `page`, offset can be used to page the results by index.
-
-`order`: Descending **desc** or ascending **asc** as only permitted values.
-
-`sort`: The column or field-name to apply the sorting logic to. This parameter supports moving up levels of JSON keys by using `.`, such as `sort=json.date` would apply a sort to a nested JSON object:
-
-```
-{
-    "modified": 1621782289,
-    "json": {
-        "account": "8Cdr874GBd8t6MaQ4BVK8fXVVpzVHrGwZpQquUVzUXZroruYdeR",
-        "date": "12-21-2020"
-    }
-}
-```
-
-`where`: Apply a boolean statement to the results of command, following the SQL-DSL syntax.
-
-### Alternative input
-
-The `limit` and `offset` parameters can be given with the following format:
-
-```
-limit=100.10
-```
-
-This above will map to the parameters of `limit=100` and `offset=10`.
-
-
-```
-finance/get/balances/balance/sum
-```
 
 -----------------------------------
 
@@ -186,7 +107,7 @@ This command does not support the `any` or `all` nouns.
 
 # <a name="debit"></a> `debit`
 
-Deduct an amount of NXS or token specific by the noun and send it to another account or legacy UTXO address. Only NXS can be sent to the legacy address.
+Deduct an amount of NXS or token specified by the noun and send it to another account or legacy UTXO address. Only NXS can be sent to the legacy address.
 
 ```
 finance/debit/noun
@@ -338,7 +259,7 @@ Retrieves information for a single object for a type specified by the noun
 finance/get/noun
 ```
 
-This command supports the account, trust and token nouns.
+This command supports the `account`, `trust` and `token` nouns.
 
 #### get/account
 
@@ -354,11 +275,15 @@ Retrieves information for a specified token address.
 
 ### Parameters:
 
-`session` : Required by argument -multiuser=1 to be supplied to identify the session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.  
 
-`name` : The name identifying the account/trust/token. This is optional if the address is provided.
+`name` : Required to **identify** the name of the account / trust / token. This is optional if the `address` is provided.
 
-`address` : The register address of the account/trust//token to be transferred. This is optional if the name is provided.
+`address` : Required to **identify** the register address of the account / trust / token. This is optional if the `name` is provided.
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD). 
 
 ### Results:
 
@@ -427,11 +352,11 @@ This will list off all of the object register details specified by the noun.
 finance/list/noun
 ```
 
-This command supports the account, trust and token nouns.
+This command supports the `account`, `trust` and `token` nouns.
 
 #### list/account
 
-This lists all the NXS and token accounts, except the `trust` account for the logged in user.
+This lists all the NXS and token accounts, except the trust account for the logged in user.
 
 #### list/trust
 
@@ -443,9 +368,15 @@ This lists all the token addresses for the logged in user.
 
 ### Parameters:
 
-`session` : Required by argument -multiuser=1 to be supplied to identify the session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
-The parameters used are Query DSL, along with the sorting / filtering
+`where` : An array of clauses to **filter** the JSON results. More information on filtering the results from /list/xxx API methods can be found at [`Queries`](/docs/API/QUERIES.md).
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD).  
 
 ### Results:
 
@@ -516,7 +447,7 @@ This will get the history of the specified noun.
 finance/history/noun
 ```
 
-This command supports the account, trust and token nouns.
+This command supports the `account`, `trust` and `token `nouns.
 
 #### history/account
 
@@ -524,7 +455,7 @@ This lists all the NXS except 'trust and token accounts for the logged in user.
 
 #### history/trust
 
-This lists the 'trust account for the logged in user.
+This lists the trust account for the logged in user.
 
 #### history/token
 
@@ -532,11 +463,17 @@ This lists all the token addresses for the logged in user.
 
 ### Parameters:
 
-`session` : Required by argument -multiuser=1 to be supplied to identify the session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.  
 
-`name` : The name identifying the account/trust/token. This is optional if the address is provided.
+`name` : Required to **identify** the name of the account / trust / token. This is optional if the `address` is provided.
 
-`address` : The register address of the account/trust//token to be transferred. This is optional if the name is provided.
+`address` : Required to **identify** the register address of the account / trust / token. This is optional if the `name` is provided.
+
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 ### Results:
 
@@ -577,7 +514,7 @@ This lists all the token addresses for the logged in user.
 
 #### Return value :
 
-`owner` : The genesis hash of the profile that owns this account.
+`owner` : The username hash of the profile that owns this object.
 
 `version` : The serialization version of the transaction.
 
@@ -609,10 +546,9 @@ This lists all the token addresses for the logged in user.
 
 `address` : The register address of the account, trust or token.
 
-
 `name` : The name identifying the account, trust or token.
 
-`action` : The action that occurred - Can be COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
+`action` : The action that occurred - CREATE | MODIFY | TRANSFER | CLAIM.
 
 -----------------------------------
 
@@ -634,23 +570,26 @@ List out all the transactions for the NXS account or token account.
 
 List out all the transactions for the trust account
 
-#### tranactions/token
+#### transactions/token
 
 List out all the transactions for the token address.
 
 ### Parameters:
 
-`session` : Required by argument -multiuser=1 to be supplied to identify the session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
 
-`verbose` : Optional, determines how much transaction data to include in the response. Supported values are :
-
-- default : hash
+`verbose` : Optional, determines how much **transaction data** to include in the response. Supported values are :
+- default : hash.
 
 - summary : type, version, sequence, timestamp, operation, and confirmations.
 
 - detail : genesis, nexthash, prevhash, pubkey and signature.
 
-This method supports the Sorting / Filtering parameters.
+[`Sorting`](//docs/API/SORTING.MD).
+
+[`Filtering`](/docs/API/FILTERING.MD).
+
+[`Operators`](//docs/API/OPERATORS.MD). 
 
 ### Results:
 
@@ -736,7 +675,7 @@ This method supports the Sorting / Filtering parameters.
 
 `OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
 
-`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT, orLEGACY.
+`for` : For CREDIT transactions, the contract that this credit was created for . Can be COINBASE, DEBIT or LEGACY.
 
 `txid` : The transaction that was credited / claimed.
 
@@ -754,20 +693,20 @@ This method supports the Sorting / Filtering parameters.
 
 `amount` : the token amount of the transaction.
 
-`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions
+`token` : the register address of the token that the transaction relates to. Set to 0 for NXS transactions.
 
 `ticker` : The name of the token that the transaction relates to.
 
 `reference` : For DEBIT and CREDIT transactions this is the user supplied reference used by the recipient to relate the transaction to an order or invoice number.
 
-`object` : Returns a list of all hashed public keys in the crypto object register for the specified profile. The object result will contain the nine default keys**(**app1, app2, app3, auth, cert lisp, network, sign and verify).
+`object` : Returns a list of all hashed public keys in the crypto object register for the specified profile. The object result will contain the nine default keys(app1, app2, app3, auth, cert lisp, network, sign and verify).  
 }
 
 -----------------------------------
 
 # <a name="get/balances"></a> `get/balances`
 
-This will retrieve a summary of balance information across all accounts belonging to the currently logged in signature chain for a particular token type.
+This will retrieve a summary of balance information across all accounts belonging to the currently logged in profile.
 
 Endpoint:
 
@@ -779,9 +718,9 @@ finance/get/balances
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
-`token_name` : Optional name of a **token** to return the balances for. Optional id`token` is supplied. Defaults to NXS.
+[`Filtering`](/docs/API/FILTERING.MD).
 
-`token` : Optional **token address** to return balances for. Optional if `token_name` is supplied. Defaults to 0 (NXS)
+
 
 ### Results:
 
@@ -815,7 +754,7 @@ finance/get/balances
 
 `available` : The current balance across all accounts that is available to be spent.
 
-`unclaimed`: The sum of all debit transactions made to other accounts that are not confirmed
+`unclaimed`: The sum of all debit transactions made to other accounts that are not confirmed.
 
 `unconfirmed` : The sum of all debit transactions made to your accounts that are not confirmed, or credits you have made to your accounts that are not yet confirmed (not yet included in a block).
 
@@ -847,6 +786,7 @@ finance/get/stakeinfo
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
+[`Filtering`](/docs/API/FILTERING.MD).
 
 ### Results:
 
@@ -897,9 +837,9 @@ finance/get/stakeinfo
 
 # <a name="set/stake"></a> `set/stake`
 
-Creates a stake change request for a signature chain's trust account. This request will add or remove stake to set the stake value to the requested amount. If the new value is more than the current stake amount, it adds stake from the account balance. If the new value is less, it removes stake to the account balance (with appropriate trust penalty, if applicable).
-Requests are saved locally and take effect with the next stake block found by staking the signature chain's trust account. Because they are saved locally, you must continue to stake on the machine where it was created until the next stake block is found, or the request will not be processed.
-Until implemented, you can update the request by calling set/stake again.
+Creates a stake change request for a profile's trust account. This request will add or remove stake to set the stake value to the requested amount. If the new value is more than the current stake amount, it adds stake from the account balance. If the new value is less, it removes stake to the account balance (with appropriate trust penalty, if applicable).
+
+Requests are saved locally and take effect with the next stake block found by staking the profiles's trust account. Because they are saved locally, you must continue to stake on the machine where it was created until the next stake block is found, or the request will not be processed. Until implemented, you can update the request by calling set/stake again.
 
 To remove a stake change request, you can either set an expiration time, or set the amount equal to the current trust account stake.
 
@@ -917,7 +857,7 @@ finance/set/stake
 
 `amount` : Required the **new amount** of NXS to stake. (This is the total amount of NXS to be staked. If staking 15,000 NXS and want to increase the stake to 20,000 NXS then the amount is 20,000. When withdrawing 2,000 NXS from a 20,000 NXS stake then the amount is 18,000)
 
-`expires` : Optional field to assign the number of seconds until the stake change request expires. A value of zero indicates it does not expire. Default is zero if not passed.
+`expires` : Optional field to assign the number of seconds until the stake change request **expires**. A value of zero indicates it does not expire. Default is zero if not passed.
 
 ### Results:
 
@@ -937,11 +877,12 @@ finance/set/stake
 
 # <a name="void/transaction"></a> `void/transaction`
 
-Voids (reverses) a debit or transfer transaction that you have previously made, that has not yet been credited or claimed by the recipient. The method creates a corresponding credit or claim transaction but back to the originating account/signature chain. This means that any applicable fees will apply, as will conditions on the debit/transfer transaction (such as expiration conditions).
+Voids (reverses) a debit or transfer transaction, only if it has not been credited or claimed by the recipient. The method creates a corresponding credit or claim transaction but back to the originating account / profile. This means that any applicable fees will apply, as will conditions on the debit / transfer transaction (such as expiration conditions).
+
 For debits that were made to a tokenized asset as part of a split payment transaction, the reversing credit will be made for the debit amount minus any partial amounts that have already been credited by the token holders.
 
 ```
-ledger/void/transaction
+finance/void/transaction
 ```
 
 ### Parameters:
@@ -970,8 +911,6 @@ ledger/void/transaction
 
 # <a name="migrate/accounts"></a> `migrate/accounts`
 
-**--Depreciated--**
-
 This method will migrate your legacy accounts to signature chain accounts, sending the balance across in the process. A new account will be created in your signature chain for each legacy account, with a corresponding matching name (unless flagged not to create names). The balance of each legacy account is sent to the newly created signature chain account in individual transactions. As such, each transaction incurs the default legacy fee of 0.01 NXS, which is deducted from the amount being migrated.
 
 The method uses the arbitrary data field in the account object register to track which legacy account it was created from. As a result, it is possible to invoke this method multiple times, and each time it will sweep any NXS from legacy accounts to existing signature chain accounts (as well as creating any necessary new accounts).
@@ -988,9 +927,9 @@ finance/migrate/accounts
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
-`walletpassphrase` : Optional field to provide the wallet passphrase. This value is required if the wallet is not currently unlocked.
+`walletpassphrase` : Optional field to provide the **wallet passphrase**. This value is required if the wallet is not currently unlocked.
 
-`createname` : Optional boolean field indicating whether to create a Name record for the newly created signature chain accounts. If omitted, the default behaviour is to create a Name record, which incurs a fee of 1 NXS per account.
+`createname` : Optional boolean field indicating whether to **create a Name record** for the newly created signature chain accounts. If omitted, the default behaviour is to create a Name record, which incurs a fee of 1 NXS per account.
 
 ### Results:
 
