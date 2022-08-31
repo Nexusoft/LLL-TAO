@@ -76,6 +76,26 @@ namespace TAO
         , nNextType    (0)
         , vchPubKey    ( )
         , vchSig       ( )
+        , hashCache    (0)
+        {
+        }
+
+
+        /* Constructor to set txid cache. */
+        Transaction::Transaction(const uint512_t& hashCacheIn)
+        : vContracts   ( )
+        , nVersion     (TAO::Ledger::CurrentTransactionVersion())
+        , nSequence    (0)
+        , nTimestamp   (runtime::unifiedtimestamp())
+        , hashNext     (0)
+        , hashRecovery (0)
+        , hashGenesis  (0)
+        , hashPrevTx   (0)
+        , nKeyType     (0)
+        , nNextType    (0)
+        , vchPubKey    ( )
+        , vchSig       ( )
+        , hashCache    (hashCacheIn)
         {
         }
 
@@ -94,6 +114,7 @@ namespace TAO
         , nNextType    (tx.nNextType)
         , vchPubKey    (tx.vchPubKey)
         , vchSig       (tx.vchSig)
+        , hashCache    (tx.hashCache)
         {
         }
 
@@ -112,6 +133,7 @@ namespace TAO
         , nNextType    (std::move(tx.nNextType))
         , vchPubKey    (std::move(tx.vchPubKey))
         , vchSig       (std::move(tx.vchSig))
+        , hashCache    (std::move(tx.hashCache))
         {
         }
 
@@ -130,6 +152,7 @@ namespace TAO
         , nNextType    (tx.nNextType)
         , vchPubKey    (tx.vchPubKey)
         , vchSig       (tx.vchSig)
+        , hashCache    (tx.hashCache)
         {
         }
 
@@ -148,6 +171,7 @@ namespace TAO
         , nNextType    (std::move(tx.nNextType))
         , vchPubKey    (std::move(tx.vchPubKey))
         , vchSig       (std::move(tx.vchSig))
+        , hashCache    (std::move(tx.hashCache))
         {
         }
 
@@ -167,6 +191,7 @@ namespace TAO
             nNextType    = tx.nNextType;
             vchPubKey    = tx.vchPubKey;
             vchSig       = tx.vchSig;
+            hashCache    = tx.hashCache;
 
             return *this;
         }
@@ -187,6 +212,7 @@ namespace TAO
             nNextType    = std::move(tx.nNextType);
             vchPubKey    = std::move(tx.vchPubKey);
             vchSig       = std::move(tx.vchSig);
+            hashCache    = std::move(tx.hashCache);
 
             return *this;
         }
@@ -207,6 +233,7 @@ namespace TAO
             nNextType    = tx.nNextType;
             vchPubKey    = tx.vchPubKey;
             vchSig       = tx.vchSig;
+            hashCache    = tx.hashCache;
 
             return *this;
         }
@@ -227,6 +254,7 @@ namespace TAO
             nNextType    = std::move(tx.nNextType);
             vchPubKey    = std::move(tx.vchPubKey);
             vchSig       = std::move(tx.vchSig);
+            hashCache    = std::move(tx.hashCache);
 
             return *this;
         }
@@ -968,7 +996,7 @@ namespace TAO
                 }
 
                 /* Bind the contract to this transaction. */
-                contract.Bind(this);
+                contract.Bind(this, hash);
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags, nCost))
@@ -1202,16 +1230,19 @@ namespace TAO
         /* Gets the hash of the transaction object. */
         uint512_t Transaction::GetHash() const
         {
+            /* Check if we have an active cache. */
+            if(hashCache != 0)
+                return hashCache;
+
+            /* Serialize the transaction data for hashing. */
             DataStream ss(SER_GETHASH, nVersion);
             ss << *this;
 
-            /* Get the hash. */
-            uint512_t hash = LLC::SK512(ss.begin(), ss.end());
-
             /* Type of 0xff designates tritium tx. */
-            hash.SetType(TAO::Ledger::TRITIUM);
+            hashCache = LLC::SK512(ss.begin(), ss.end());
+            hashCache.SetType(TAO::Ledger::TRITIUM);
 
-            return hash;
+            return hashCache;
         }
 
 

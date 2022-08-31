@@ -174,12 +174,18 @@ namespace LLD
             if(!Client->ReadTx(hashTx, mTX, nFlags))
                 throw debug::exception(FUNCTION, "failed to read -client tx");
 
+            /* Set the internal transaction hash. */
+            mTX.hashCache = hashTx;
+
             return mTX;
         }
 
         /* Check for failed read. */
         if(!Read(hashTx, tx))
             throw debug::exception(FUNCTION, "failed to read tx");
+
+        /* Set the internal transaction hash. */
+        tx.hashCache = hashTx;
 
         return tx;
     }
@@ -212,11 +218,22 @@ namespace LLD
                 return false;
 
             /* Set the return value. */
-            tx = mTX;
+            tx           = mTX;
+            tx.hashCache = hashTx;
+
             return true;
         }
 
-        return Read(hashTx, tx);
+        /* See if we can read it from the disk now. */
+        if(Read(hashTx, tx))
+        {
+            /* Set the internal transaction hash. */
+            tx.hashCache = hashTx;
+
+            return true;
+        }
+
+        return false;
     }
 
 

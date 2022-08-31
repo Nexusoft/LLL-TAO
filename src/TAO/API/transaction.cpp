@@ -92,6 +92,7 @@ namespace TAO::API
         nNextType     = tx.nNextType;
         vchPubKey     = tx.vchPubKey;
         vchSig        = tx.vchSig;
+        hashCache     = tx.hashCache;
 
         nModified     = tx.nModified;
         nStatus       = tx.nStatus;
@@ -116,6 +117,7 @@ namespace TAO::API
         nNextType     = std::move(tx.nNextType);
         vchPubKey     = std::move(tx.vchPubKey);
         vchSig        = std::move(tx.vchSig);
+        hashCache     = std::move(tx.hashCache);
 
         nModified     = std::move(tx.nModified);
         nStatus       = std::move(tx.nStatus);
@@ -140,10 +142,12 @@ namespace TAO::API
         nNextType     = tx.nNextType;
         vchPubKey     = tx.vchPubKey;
         vchSig        = tx.vchSig;
+        hashCache     = tx.hashCache;
 
         //private values
         nModified     = nTimestamp;
         nStatus       = PENDING;
+        hashNextTx    = 0;
 
         return *this;
     }
@@ -164,10 +168,12 @@ namespace TAO::API
         nNextType     = std::move(tx.nNextType);
         vchPubKey     = std::move(tx.vchPubKey);
         vchSig        = std::move(tx.vchSig);
+        hashCache     = std::move(tx.hashCache);
 
         //private values
         nModified     = nTimestamp;
         nStatus       = PENDING;
+        hashNextTx    = 0;
 
         return *this;
     }

@@ -89,6 +89,11 @@ namespace TAO::Ledger
         std::vector<uint8_t> vchPubKey;
         std::vector<uint8_t> vchSig;
 
+
+        /** MEMORY ONLY: cache of the txid. **/
+        mutable uint512_t hashCache;
+
+
         /* serialization macros */
         IMPLEMENT_SERIALIZE
         (
@@ -118,6 +123,10 @@ namespace TAO::Ledger
 
         /** Default Constructor. **/
         Transaction();
+
+
+        /** Constructor to set txid cache. **/
+        Transaction(const uint512_t& hashCacheIn);
 
 
         /** Copy constructor. **/

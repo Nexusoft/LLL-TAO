@@ -125,9 +125,10 @@ namespace TAO::Operation
          *  Bind the contract to a transaction.
          *
          *  @param[in] tx The transaction to bind the contract to.
+         *  @param[in] fGetHash Flag to tell whether to bind to txid too
          *
          **/
-        void Bind(const TAO::Ledger::Transaction* tx) const;
+        void Bind(const TAO::Ledger::Transaction* tx, const bool fGetHash = false) const;
 
 
         /** Bind

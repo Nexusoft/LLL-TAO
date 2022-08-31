@@ -137,7 +137,7 @@ namespace TAO::Operation
 
 
     /* Bind the contract to a transaction. */
-    void Contract::Bind(const TAO::Ledger::Transaction* tx) const
+    void Contract::Bind(const TAO::Ledger::Transaction* tx, const bool fGetHash) const
     {
         /* Check for nullptr bind. */
         if(tx == nullptr)
@@ -146,8 +146,11 @@ namespace TAO::Operation
         /* Don't bind a again if already bound as calling GetHash is expensive */
         hashCaller = tx->hashGenesis;
         nTimestamp = tx->nTimestamp;
-        hashTx     = tx->GetHash();
         nVersion   = tx->nVersion;
+
+        /* Don't calculate the txid if it's not specified. */
+        if(fGetHash)
+            hashTx     = tx->GetHash();
     }
 
 

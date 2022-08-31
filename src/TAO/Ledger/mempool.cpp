@@ -64,7 +64,7 @@ namespace TAO
         bool Mempool::AddUnchecked(const TAO::Ledger::Transaction& tx)
         {
             /* Get the transaction hash. */
-            uint512_t hashTx = tx.GetHash();
+            const uint512_t hashTx = tx.GetHash();
 
             RECURSIVE(MUTEX);
 
@@ -233,7 +233,10 @@ namespace TAO
             while(mapOrphans.count(hashTx))
             {
                 /* Get the transaction from map. */
-                TAO::Ledger::Transaction& tx = mapOrphans[hashTx];
+                const TAO::Ledger::Transaction& tx = mapOrphans[hashTx];
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
 
                 /* Get the previous hash. */
                 const uint512_t hashThis = tx.GetHash();
@@ -271,6 +274,9 @@ namespace TAO
                 tx = mapConflicts.at(hashTx);
                 fConflicted = true;
 
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
+
                 debug::log(0, FUNCTION, "CONFLICTED TRANSACTION: ", hashTx.SubString());
 
                 return true;
@@ -280,6 +286,9 @@ namespace TAO
             if(mapLedger.count(hashTx))
             {
                 tx = mapLedger.at(hashTx);
+
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
 
                 return true;
             }
@@ -298,6 +307,9 @@ namespace TAO
             {
                 tx = mapLedger.at(hashTx);
 
+                /* Set our internal cached hash. */
+                tx.hashCache = hashTx;
+
                 return true;
             }
 
@@ -315,7 +327,11 @@ namespace TAO
             {
                 /* Check for non-conflicted genesis-id's. */
                 if(tx.second.hashGenesis == hashGenesis)
+                {
+                    /* Cache our txid in here. */
+                    tx.second.hashCache = tx.first;
                     vtx.push_back(tx.second);
+                }
             }
 
             /* Check that a transaction was found. */
