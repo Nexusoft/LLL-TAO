@@ -193,42 +193,6 @@ bool Build(const std::vector<uint8_t> vByteCode, TAO::Operation::Contract &rCont
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
-    encoding::json jRecipient =
-    {
-        { "address_to", "2R674V4QJo4u4c5NK1wMMNDyiqKkeyrfZQLF9DzGbAaGYMHAVNs"}
-    };
-
-    //debug::log(0, VARIABLE(hashExtract.ToString()));
-
-    //Legacy::NexusAddress addr = Legacy::NexusAddress("2R674V4QJo4u4c5NK1wMMNDyiqKkeyrfZQLF9DzGbAaGYMHAVNs");
-
-    /* Declare our return value. */
-    Legacy::NexusAddress hashRet;
-
-    if(!TAO::API::ExtractLegacy(jRecipient, hashRet, "to"))
-        return debug::error("failed to extract legacy address");
-
-    TAO::Register::Address hashCheck;
-    hashCheck.SetBase58("2R674V4QJo4u4c5NK1wMMNDyiqKkeyrfZQLF9DzGbAaGYMHAVNs");
-
-    if(hashCheck.IsValid())
-        return debug::error("invalid register address ", hashCheck.ToString());
-
-        //TAO::Register::Address(addr.ToString());
-
-    debug::log(0, VARIABLE(hashRet.ToString()));
-    debug::log(0, VARIABLE(hashCheck.ToString()));
-
-    /* Check that it is valid */
-    if(!hashRet.IsValid())
-        debug::warning("Address is invalid");
-
-    Legacy::NexusAddress addr = Legacy::NexusAddress("2R674V4QJo4u4c5NK1wMMNDyiqKkeyrfZQLF9DzGbAaGYMHAVNs");
-    debug::log(0, addr.ToString());
-    debug::log(0, hashRet.ToString());
-
-    return 0;
-
     TAO::Operation::Contract tContract;
 
     //debug::log(0, "First param is ", ssParams.find(0, uint8_t(TAO::Operation::OP::TYPES::UINT256_T)).ToString());

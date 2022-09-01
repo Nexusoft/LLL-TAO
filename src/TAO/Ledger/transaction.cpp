@@ -1007,9 +1007,7 @@ namespace TAO
                     TAO::Operation::TxCost(contract, nCost);
             }
 
-            /* Once we have executed the contracts we need to check the fees.
-               NOTE there are fixed fees on the genesis transaction to allow for the default registers to be created.
-               NOTE: There are no fees required in private mode.  */
+            /* Once we have executed the contracts we need to check the fees. */
             if(!config::fHybrid.load())
             {
                 /* The fee applied to this transaction */
