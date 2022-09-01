@@ -403,7 +403,7 @@ namespace TAO
             /* Lock the sigchain to create block. */
             SecureString strPIN;
             {
-                RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::API::Authentication::SESSION::DEFAULT, PinUnlock::STAKING));
+                RECURSIVE(TAO::API::Authentication::Unlock(strPIN, PinUnlock::STAKING));
 
                 /* Extract our credentials. */
                 const auto& pCredentials =

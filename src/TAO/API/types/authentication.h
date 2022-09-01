@@ -537,8 +537,8 @@ namespace TAO::API
         *  @return True if this unlock action was successful.
         *
         **/
-       static std::recursive_mutex& Unlock(SecureString &strPIN, const uint256_t& hashSession = default_session(),
-                          const uint8_t nRequestedActions = TAO::Ledger::PinUnlock::TRANSACTIONS);
+       static std::recursive_mutex& Unlock(SecureString &strPIN, const uint8_t nRequestedActions,
+                                                                 const uint256_t& hashSession = default_session());
 
 
         /** Update

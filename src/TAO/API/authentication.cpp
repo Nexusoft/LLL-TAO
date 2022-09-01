@@ -458,7 +458,7 @@ namespace TAO::API
 
 
     /* Unlock and get the active pin from current session. */
-    std::recursive_mutex& Authentication::Unlock(SecureString &strPIN, const uint256_t& hashSession, const uint8_t nRequestedActions)
+    std::recursive_mutex& Authentication::Unlock(SecureString &strPIN, const uint8_t nRequestedActions, const uint256_t& hashSession)
     {
         {
             RECURSIVE(MUTEX);
