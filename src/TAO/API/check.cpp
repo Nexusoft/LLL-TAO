@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/include/check.h>
+#include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/execute.h>
 
@@ -31,11 +32,11 @@ namespace TAO::API
     bool CheckAddress(const std::string& strValue)
     {
         /* Decode the incoming string into a register address */
-        TAO::Register::Address address;
-        address.SetBase58(strValue);
+        TAO::Register::Address tAddress;
+        tAddress.SetBase58(strValue);
 
         /* Check to see whether it is valid */
-        return address.IsValid();
+        return tAddress.IsValid();
     }
 
 
@@ -75,16 +76,39 @@ namespace TAO::API
 
     /*  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
      *  Throws an appropriate Exception if it is not mature. */
-    void CheckMature(const uint256_t& hashGenesis)
+    bool CheckMature(const uint256_t& hashGenesis)
     {
-        /* No need to check this in private mode as there is no PoS/Pow */
-        if(!config::fHybrid.load())
+        /* Get the user configurable required maturity */
+        const uint32_t nMaturityRequired =
+            config::GetArg("-maturityrequired", config::fTestNet ? 2 : 33);
+
+        /* If set to 0 then there is no point checking the maturity so return early */
+        if(nMaturityRequired > 0)
         {
-            /* Get the number of blocks to maturity for this sig chain */
-            const uint32_t nBlocksToMaturity = Commands::Instance<Users>()->BlocksToMaturity(hashGenesis);
-            if(nBlocksToMaturity > 0)
-                throw Exception(-202, "Signature chain not mature. ", nBlocksToMaturity, " more confirmation(s) required.");
+            /* The hash of the last transaction for this sig chain from disk */
+            uint512_t hashLast = 0;
+            if(LLD::Logical->ReadLast(hashGenesis, hashLast))
+            {
+                /* Get the last transaction from disk for this sig chain */
+                TAO::API::Transaction tx;
+                if(!LLD::Logical->ReadTx(hashLast, tx))
+                    return false;
+
+                /* If the previous transaction is a coinbase or coinstake then check the maturity */
+                if(tx.IsCoinBase() || tx.IsCoinStake())
+                {
+                    /* Get number of confirmations of previous TX */
+                    uint32_t nConfirms = 0;
+                    LLD::Ledger->ReadConfirmations(hashLast, nConfirms);
+
+                    /* Check to see if it is mature */
+                    if(nConfirms < nMaturityRequired)
+                        return false;
+                }
+            }
         }
+
+        return true;
     }
 
 

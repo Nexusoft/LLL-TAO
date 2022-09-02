@@ -94,6 +94,19 @@ namespace TAO::API
         encoding::json ListBlocks(const encoding::json& jParams, const bool fHelp);
 
 
+        /** ListTransactions
+         *
+         *  Retrieves the list of transactions provided by given genesis.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json ListTransactions(const encoding::json& jParams, const bool fHelp);
+
+
         /** Transaction
          *
          *  Retrieves the transaction data for a given hash.
@@ -133,22 +146,9 @@ namespace TAO::API
         encoding::json GetInfo(const encoding::json& jParams, const bool fHelp);
 
 
-        /** VoidTransaction
+        /** GetMetrics
          *
-         *  Reverses a debit or transfer transaction that the caller has made
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json VoidTransaction(const encoding::json& jParams, const bool fHelp);
-
-
-        /** SyncSigChain
-         *
-         *  Synchronizes the signature chain for the currently logged in user.  Only applicable in lite / client mode
+         *  Returns an object containing ledger-related metrics.
          *
          *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
@@ -156,7 +156,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json SyncSigChain(const encoding::json& jParams, const bool fHelp);
+        encoding::json GetMetrics(const encoding::json& jParams, const bool fHelp);
 
 
         /** SyncHeaders

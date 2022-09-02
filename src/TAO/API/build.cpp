@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <Legacy/include/evaluate.h>
 
 #include <TAO/API/include/build.h>
@@ -22,9 +24,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/commands.h>
-
-#include <TAO/API/users/types/users.h>
 #include <TAO/API/types/commands/names.h>
+#include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
@@ -41,8 +42,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/transaction.h>
-
-#include <LLD/include/global.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #include <Util/include/convert.h>
 #include <Util/include/math.h>
@@ -50,6 +50,43 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
+    /* Build a credential set that engages sigchain or modifies its authentication data. This is done not logged in. */
+    bool BuildCredentials(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+                          const SecureString& strPIN,   const uint8_t nKeyType, TAO::Ledger::Transaction &tx)
+    {
+        /* Create the transaction. */
+        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nKeyType))
+            return false;
+
+        /* We need at least one contract to change our next hash. */
+        tx << BuildCrypto(pCredentials, strPIN, nKeyType);
+
+        /* Now set the new credentials */
+        tx.NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN));
+
+        /* Add our network fee if applicable. */
+        AddFee(tx);
+
+        /* Execute the operations layer. */
+        if(!tx.Build())
+            return false;
+
+        /* Double check our next hash if -safemode enabled. */
+        if(config::GetBoolArg("-safemode", false))
+        {
+            /* Re-calculate our next hash if safemode forcing not to use cache. */
+            const uint256_t hashNext =
+                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN), tx.nNextType);
+
+            /* Check that this next hash is what we are expecting. */
+            if(tx.hashNext != hashNext)
+                return false;
+        }
+
+        return true;
+    }
+
+
     /* Build a response object for a transaction that was built. */
     encoding::json BuildResponse(const encoding::json& jParams, const TAO::Register::Address& hashRegister,
                              const std::vector<TAO::Operation::Contract>& vContracts)
@@ -60,9 +97,26 @@ namespace TAO::API
         jRet["address"] = hashRegister.ToString();
 
         /* Handle passing txid if not in -autotx mode. */
-        const uint512_t hashTx = BuildAndAccept(jParams, vContracts);
-        if(hashTx != 0)
-            jRet["txid"] = hashTx.ToString();
+        const std::vector<uint512_t> vHashes = BuildAndAccept(jParams, vContracts, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        if(!vHashes.empty())
+        {
+            /* Check for single item. */
+            if(vHashes.size() == 1)
+                jRet["txid"] = vHashes[0].ToString();
+            else
+            {
+                /* Build an array of hashes in response. */
+                encoding::json jHashes =
+                    encoding::json::array();
+
+                /* Iterate our hashes and add to json array. */
+                for(const auto& rHash : vHashes)
+                    jHashes.push_back(rHash.ToString());
+
+                /* Add to return value as array now. */
+                jRet["txid"] = jHashes;
+            }
+        }
 
         return jRet;
     }
@@ -76,89 +130,164 @@ namespace TAO::API
         jRet["success"] = true; //just a little response for if using -autotx
 
         /* Handle passing txid if not in -autotx mode. */
-        const uint512_t hashTx = BuildAndAccept(jParams, vContracts);
-        if(hashTx != 0)
-            jRet["txid"] = hashTx.ToString();
+        const std::vector<uint512_t> vHashes = BuildAndAccept(jParams, vContracts, TAO::Ledger::PinUnlock::TRANSACTIONS);
+        if(!vHashes.empty())
+        {
+            /* Check for single item. */
+            if(vHashes.size() == 1)
+                jRet["txid"] = vHashes[0].ToString();
+            else
+            {
+                /* Build an array of hashes in response. */
+                encoding::json jHashes =
+                    encoding::json::array();
+
+                /* Iterate our hashes and add to json array. */
+                for(const auto& rHash : vHashes)
+                    jHashes.push_back(rHash.ToString());
+
+                /* Add to return value as array now. */
+                jRet["txid"] = jHashes;
+            }
+        }
+
+        return jRet;
+    }
+
+
+    /* Build a response object that indicates a command succeeded. */
+    encoding::json BuildResponse(const encoding::json& jResponse)
+    {
+        /* Build our response from given parameters. */
+        encoding::json jRet = jResponse;
+        jRet["success"] = true; //little response to indicate success
 
         return jRet;
     }
 
 
     /* Builds a transaction based on a list of contracts, to be deployed as a single tx or batched. */
-    uint512_t BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts)
+    std::vector<uint512_t> BuildAndAccept(const encoding::json& jParams, const std::vector<TAO::Operation::Contract>& vContracts,
+                                          const uint8_t nUnlockedActions)
     {
-        /* Get the PIN to be used for this API call */
-        SecureString strPIN;
-        if(!Authentication::Unlock(jParams, strPIN, TAO::Ledger::PinUnlock::TRANSACTIONS))
-            throw Exception(-139, "Failed to unlock");
-
-        /* Get the session to be used for this API call */
-        const Authentication::Session& rSession =
-            Authentication::Instance(jParams);
-
         /* Handle auto-tx feature. */
         if(config::GetBoolArg("-autotx", false)) //TODO: pipe in -autotx
         {
-            /* Add our contracts to the notifications queue. */
-            //for(const auto& tContract : vContracts)
-            //    session.vProcessQueue->push(tContract);
-
-            return 0;
+            return std::vector<uint512_t>();
         }
 
-        /* Let's check our contract size isn't out of bounds. */
-        if(vContracts.size() >= 99)
-            throw Exception(-120, "Maximum number of contracts exceeded (99), please try again or use -autotx mode.");
+        /* Check for sigchain maturity on mainnet. */
+        if(!config::fHybrid.load())
+        {
+            /* Get the calling genesis-id. */
+            const uint256_t hashGenesis =
+                Authentication::Caller(jParams);
 
-        /* Otherwise let's lock the session to generate the tx. */
-        LOCK(rSession.CREATE_MUTEX);
+            /* Check if sigchain is mature. */
+            if(!CheckMature(hashGenesis))
+                throw Exception(-202, "Signature chain not mature. Please wait for coinbase/coinstake maturity");
+        }
 
         /* The new key scheme */
         const uint8_t nScheme =
             ExtractScheme(jParams, "brainpool, falcon");
 
+        /* The PIN to be used for this API call */
+        SecureString strPIN;
+
+        /* Unlock grabbing the pin, while holding a new authentication lock */
+        RECURSIVE(Authentication::Unlock(jParams, strPIN, nUnlockedActions));
+
         /* Get an instance of our credentials. */
         const auto& pCredentials =
-            rSession.Credentials();
+            Authentication::Credentials(jParams);
 
-        /* Create the transaction. */
-        TAO::Ledger::Transaction tx;
-        if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nScheme))
-            throw Exception(-17, "Failed to create transaction");
+        /* Build our return value list. */
+        std::vector<uint512_t> vHashes;
 
-        /* Add the contracts. */
-        for(const auto& rContract : vContracts)
-            tx << rContract;
+        /* Get our limits from commandline. */
+        const uint32_t nLimits =
+            std::min(uint32_t(config::GetArg("-maxcontracts", 99)), uint32_t(99));
 
-        /* Add the contract fees. */
-        AddFee(tx); //XXX: this returns true/false if fee was added, don't think we need this since it doesn't appear to be used
-
-        /* Execute the operations layer. */
-        if(!tx.Build())
-            throw Exception(-44, "Transaction failed to build");
-
-        /* Sign the transaction. */
-        if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
-            throw Exception(-31, "Ledger failed to sign transaction");
-
-        /* Double check our next hash if -safemode enabled. */
-        if(config::GetBoolArg("-safemode", false))
+        /* Build our transaction if there are contracts. */
+        uint64_t nIndex = 0, nTotal = 0;
+        while(nIndex < vContracts.size())
         {
-            /* Re-calculate our next hash if safemode forcing not to use cache. */
-            const uint256_t hashNext =
-                TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN, false), tx.nNextType);
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                break;
 
-            /* Check that this next hash is what we are expecting. */
-            if(tx.hashNext != hashNext)
-                throw Exception(-67, "-safemode next hash mismatch, broadcast terminated");
+            /* Build our transactions in batches of 99 contracts at a time. */
+            std::vector<TAO::Operation::Contract> vBuild;
+            for( ; vBuild.size() < nLimits && nIndex < vContracts.size(); ++nIndex)
+                vBuild.emplace_back(std::move(vContracts[nIndex]));
+
+            /* Check for available contracts. */
+            if(vBuild.empty())
+                break;
+
+            /* Create the transaction. */
+            TAO::Ledger::Transaction tx;
+            if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nScheme))
+                throw Exception(-17, "Failed to create transaction");
+
+            /* Add the contracts. */
+            for(const auto& rContract : vBuild)
+                tx << rContract;
+
+            /* Add the contract fees. */
+            if(!AddFee(tx) && nIndex < vContracts.size() && tx.Size() == 99) //we check +1 so we know we have an available index
+                tx << vContracts[nIndex++]; //add additional contract and iterate our index
+
+            /* Track our total contracts. */
+            nTotal += tx.Size();
+
+            /* Execute the operations layer. */
+            if(!tx.Build())
+                throw Exception(-44, "Transaction failed to build");
+
+            /* Sign the transaction. */
+            if(!tx.Sign(pCredentials->Generate(tx.nSequence, strPIN)))
+                throw Exception(-31, "Ledger failed to sign transaction");
+
+            /* Double check our next hash if -safemode enabled. */
+            if(config::GetBoolArg("-safemode", false))
+            {
+                /* Re-calculate our next hash if safemode forcing not to use cache. */
+                const uint256_t hashNext =
+                    TAO::Ledger::Transaction::NextHash(pCredentials->Generate(tx.nSequence + 1, strPIN, false), tx.nNextType);
+
+                /* Check that this next hash is what we are expecting. */
+                if(tx.hashNext != hashNext)
+                    throw Exception(-67, "-safemode next hash mismatch, broadcast terminated");
+            }
+
+            /* Execute the operations layer. */
+            if(!TAO::Ledger::mempool.Accept(tx))
+                throw Exception(-32, "Failed to accept");
+
+            /* Check that we have an active session to index for. */
+            const uint512_t hashTx = tx.GetHash();
+            if(Authentication::Active(tx.hashGenesis))
+            {
+                /* Build an API transaction. */
+                TAO::API::Transaction tIndex =
+                    TAO::API::Transaction(tx);
+
+                /* Index the transaction to the database. */
+                if(!tIndex.Index(hashTx))
+                    debug::warning(FUNCTION, "failed to index ", VARIABLE(hashTx.SubString()));
+
+                /* Debug output for notifications. */
+                if(nUnlockedActions & TAO::Ledger::PinUnlock::NOTIFICATIONS)
+                    debug::log(2, FUNCTION, "Indexed ", hashTx.SubString(), " completed ", nTotal, "/", vContracts.size(), " (", (nTotal * 100.0) / vContracts.size(), "%) contracts");
+            }
+
+            /* Add our hashes to a return vector. */
+            vHashes.push_back(hashTx);
         }
 
-        /* Execute the operations layer. */
-        if(!TAO::Ledger::mempool.Accept(tx))
-            throw Exception(-32, "Failed to accept");
-
-        //TODO: we want to add a localdb index here, so it can be re-broadcast on restart
-        return tx.GetHash();
+        return vHashes;
     }
 
 
@@ -289,12 +418,12 @@ namespace TAO::API
         std::vector<TAO::Operation::Contract> &vContracts)
     {
         /* Extract some parameters from input data. */
-        const TAO::Register::Address hashCredit =
+        const TAO::Register::Address addrCredit =
             ExtractAddress(jParams, "", "default");
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Copy our txid out of the contract. */
         const uint512_t hashTx = rDebit.Hash();
@@ -307,7 +436,7 @@ namespace TAO::API
         if(nPrimitive == TAO::Operation::OP::COINBASE)
         {
             /* Enforce address resolution for coinbase. */
-            if(hashCredit == TAO::API::ADDRESS_NONE)
+            if(addrCredit == TAO::API::ADDRESS_NONE)
                 throw Exception(-35, "Invalid parameter [name], expecting [exists]");
 
             /* Get the genesisHash of the user who mined the coinbase*/
@@ -323,13 +452,13 @@ namespace TAO::API
             rDebit >> nAmount;
 
             /* Now lets check our expected types match. */
-            if(!CheckStandard(jParams, hashCredit))
+            if(!CheckStandard(jParams, addrCredit))
                 return false;
 
             /* if we passed all of these checks then insert the credit contract into the tx */
             TAO::Operation::Contract tContract;
             tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-            tContract << hashCredit << hashGenesis << nAmount;
+            tContract << addrCredit << hashGenesis << nAmount;
 
             /* Push to our contract queue. */
             vContracts.push_back(tContract);
@@ -340,42 +469,42 @@ namespace TAO::API
         /* Next check for debit credits. */
         else if(nPrimitive == TAO::Operation::OP::DEBIT)
         {
-            /* Get the hashFrom from the debit transaction. */
-            TAO::Register::Address hashFrom;
-            rDebit >> hashFrom;
+            /* Get the source account the debit transaction. */
+            TAO::Register::Address addrSource;
+            rDebit >> addrSource;
 
-            /* Get the hashCredit from the debit transaction. */
-            TAO::Register::Address hashTo;
-            rDebit >> hashTo;
+            /* Get the recipient from the debit transaction. */
+            TAO::Register::Address addrRecipient;
+            rDebit >> addrRecipient;
 
             /* Get the amount to respond to. */
             uint64_t nAmount = 0;
             rDebit >> nAmount;
 
             /* Check for a legacy output debit. */
-            if(hashFrom == TAO::Register::WILDCARD_ADDRESS)
+            if(addrSource == TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Enforce address resolution for wildcard claim. */
-                if(hashCredit == TAO::API::ADDRESS_NONE)
+                if(addrCredit == TAO::API::ADDRESS_NONE)
                     throw Exception(-35, "Invalid parameter [name], expecting [exists]");
 
                 /* Read our crediting account. */
-                TAO::Register::Object objCredit;
-                if(!LLD::Register->ReadObject(hashCredit, objCredit, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oCredit;
+                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
 
                 /* Let's check our credit account is correct token. */
-                if(objCredit.get<uint256_t>("token") != 0)
+                if(oCredit.get<uint256_t>("token") != 0)
                     throw Exception(-59, "Account to credit is not a NXS account");
 
                 /* Now lets check our expected types match. */
-                if(!CheckStandard(jParams, objCredit))
+                if(!CheckStandard(jParams, oCredit))
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract tContract;
                 tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                tContract << hashCredit << hashFrom << nAmount;
+                tContract << addrCredit << addrSource << nAmount;
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);
@@ -384,10 +513,10 @@ namespace TAO::API
             }
 
             /* Check for wildcard for conditional contract (OP::VALIDATE). */
-            if(hashTo == TAO::Register::WILDCARD_ADDRESS)
+            if(addrRecipient == TAO::Register::WILDCARD_ADDRESS)
             {
                 /* Enforce address resolution for wildcard claim. */
-                if(hashCredit == TAO::API::ADDRESS_NONE)
+                if(addrCredit == TAO::API::ADDRESS_NONE)
                     throw Exception(-35, "Invalid parameter [name], expecting [exists]");
 
                 /* Check for conditions. */
@@ -408,27 +537,27 @@ namespace TAO::API
                 }
 
                 /* Retrieve the account we are debiting from */
-                TAO::Register::Object objFrom;
-                if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oSource;
+                if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
 
                 /* Read our crediting account. */
-                TAO::Register::Object objCredit;
-                if(!LLD::Register->ReadObject(hashCredit, objCredit, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oCredit;
+                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::MEMPOOL))
                     throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Let's check our credit account is correct token. */
-                if(objFrom.get<uint256_t>("token") != objCredit.get<uint256_t>("token"))
+                if(oSource.get<uint256_t>("token") != oCredit.get<uint256_t>("token"))
                     throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Now lets check our expected types match. */
-                if(!CheckStandard(jParams, objCredit))
+                if(!CheckStandard(jParams, oCredit))
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract tContract;
                 tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                tContract << hashCredit << hashFrom << nAmount;
+                tContract << addrCredit << addrSource << nAmount;
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);
@@ -437,88 +566,111 @@ namespace TAO::API
             }
 
             /* Get the token / account object that the debit was made to. */
-            TAO::Register::Object objTo;
-            if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::MEMPOOL))
+            TAO::Register::Object oRecipient;
+            if(!LLD::Register->ReadObject(addrRecipient, oRecipient, TAO::Ledger::FLAGS::MEMPOOL))
                 return false;
 
             /* Check for standard credit to account. */
-            const uint8_t nStandardBase = objTo.Base();
+            const uint8_t nStandardBase = oRecipient.Base();
             if(nStandardBase == TAO::Register::OBJECTS::ACCOUNT)
             {
-                /* Check that the debit was made to an account that we own */
-                if(objTo.hashOwner != hashGenesis)
-                    return false;
+                /* Check that the debit was made to an account that we don't own, we are checking here to reverse payments */
+                if(oRecipient.hashOwner != hashGenesis)
+                {
+                    /* Retrieve the account we are debiting from */
+                    TAO::Register::Object oSource;
+                    if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::MEMPOOL))
+                        return false;
+
+                    /* Check if we are the sender. */
+                    if(oSource.hashOwner != hashGenesis)
+                        return false;
+
+                    /* Otherwise build a credit back to self. */
+                    TAO::Operation::Contract tContract;
+                    tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
+                    tContract << addrSource << addrSource << nAmount; //we use addrRecipient from our debit contract instead of addrCredit
+
+                    /* Push to our contract queue. */
+                    vContracts.push_back(tContract);
+
+                    return true;
+                }
 
                 /* Now lets check our expected types match. */
-                if(!CheckStandard(jParams, objTo))
+                if(!CheckStandard(jParams, oRecipient))
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* Create our new contract now. */
                 TAO::Operation::Contract tContract;
                 tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                tContract << hashTo << hashFrom << nAmount; //we use hashTo from our debit contract instead of hashCredit
+                tContract << addrRecipient << addrSource << nAmount; //we use addrRecipient from our debit contract instead of addrCredit
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);
+
+                return true;
             }
 
             /* If addressed to non-standard object, this could be a tokenized debit, so do some checks to find out. */
-            else if(nStandardBase == TAO::Register::OBJECTS::NONSTANDARD)
+            else if(addrRecipient.IsObject())
             {
                 /* Enforce address resolution for wildcard claim. */
-                if(hashCredit == TAO::API::ADDRESS_NONE)
+                if(addrCredit == TAO::API::ADDRESS_NONE)
                     throw Exception(-35, "Invalid parameter [name], expecting [exists]");
 
                 /* Attempt to get the proof from the parameters. */
-                const TAO::Register::Address hashProof = ExtractAddress(jParams, "proof");
+                const TAO::Register::Address addrProof =
+                    ExtractAddress(jParams, "proof");
 
                 /* Check that the owner is a token. */
-                if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
+                if(oRecipient.hashOwner.GetType() != TAO::Register::Address::TOKEN)
                     return false;
 
                 /* Read our token contract now since we now know it's correct. */
-                TAO::Register::Object objOwner;
-                if(!LLD::Register->ReadObject(objTo.hashOwner, objOwner, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oToken;
+                if(!LLD::Register->ReadObject(oRecipient.hashOwner, oToken, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
 
                 /* We shouldn't ever evaluate to true here, but if we do let's not make things worse for ourselves. */
-                if(objOwner.Standard() != TAO::Register::OBJECTS::TOKEN)
+                if(oToken.Standard() != TAO::Register::OBJECTS::TOKEN)
                     return false;
 
                 /* Retrieve the hash proof account and check that it is the same token type as the asset owner */
-                TAO::Register::Object objProof;
-                if(!LLD::Register->ReadObject(hashProof, objProof, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oProof;
+                if(!LLD::Register->ReadObject(addrProof, oProof, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
 
                 /* Check that the proof is an account for the same token as the asset owner */
-                if(objProof.get<uint256_t>("token") != objOwner.get<uint256_t>("token"))
+                if(oProof.get<uint256_t>("token") != oToken.get<uint256_t>("token"))
                     throw Exception(-61, "Proof account is for a different token than the asset token.");
 
                 /* Retrieve the account to debit from. */
-                TAO::Register::Object objFrom;
-                if(!LLD::Register->ReadObject(hashFrom, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oSource;
+                if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::MEMPOOL))
                     return false;
 
                 /* Read our crediting account. */
-                TAO::Register::Object objCredit;
-                if(!LLD::Register->ReadObject(hashCredit, objCredit, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::Register::Object oCredit;
+                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::MEMPOOL))
                     throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Check that the account being debited from is the same token type as credit. */
-                if(objFrom.get<uint256_t>("token") != objCredit.get<uint256_t>("token"))
-                    throw Exception(-33, "Incorrect or missing name / address");
+                if(oSource.get<uint256_t>("token") != oCredit.get<uint256_t>("token"))
+                    throw Exception(-33, "Source token account mismatch with recipient token");
 
                 /* Now lets check our expected types match. */
-                if(!CheckStandard(jParams, objCredit))
+                if(!CheckStandard(jParams, oCredit))
                     throw Exception(-49, "Unsupported type for name/address");
 
                 /* Calculate the partial amount we want to claim based on our share of the proof tokens */
-                const uint64_t nPartial = (objProof.get<uint64_t>("balance") * nAmount) / objOwner.get<uint64_t>("supply");
+                const uint64_t nPartial =
+                    (oProof.get<uint64_t>("balance") * nAmount) / oToken.get<uint64_t>("supply");
 
                 /* Create our new contract now. */
                 TAO::Operation::Contract tContract;
                 tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                tContract << hashCredit << hashProof << nPartial;
+                tContract << addrCredit << addrProof << nPartial;
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);
@@ -556,7 +708,7 @@ namespace TAO::API
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Check that recipient is current session. */
         if(hashRecipient != hashGenesis)
@@ -588,7 +740,7 @@ namespace TAO::API
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Check that we aren't voiding a transaction not owned by us. */
         if(rDependent.Caller() != hashGenesis)
@@ -625,7 +777,7 @@ namespace TAO::API
             /* Add an optional name if supplied. */
             vContracts.push_back
             (
-                Names::CreateName(Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis(),
+                Names::CreateName(Authentication::Caller(jParams),
                 strName, strNamespace, hashRegister)
             );
         }
@@ -696,7 +848,7 @@ namespace TAO::API
         {
             /* Get our genesis-id for this call. */
             const uint256_t hashGenesis =
-                Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+                Authentication::Caller(jParams);
 
             /* Check for required parameters. */
             if(!CheckParameter(jParams, "name", "string"))
@@ -835,5 +987,61 @@ namespace TAO::API
             TAO::Register::Address(TAO::Register::Address::OBJECT);
 
         return tObject;
+    }
+
+
+    /* Update the public keys in crypto object register. */
+    TAO::Operation::Contract BuildCrypto(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+                                         const SecureString& strPIN, const uint8_t nKeyType)
+    {
+        /* Generate register address for crypto register deterministically */
+        const TAO::Register::Address addrCrypto =
+            TAO::Register::Address(std::string("crypto"), pCredentials->Genesis(), TAO::Register::Address::CRYPTO);
+
+        /* Read the existing crypto object register. */
+        TAO::Register::Object oCrypto;
+        if(!LLD::Register->ReadObject(addrCrypto, oCrypto))
+            throw Exception(-33, "Failed to read crypto object register");
+
+        /* Declare operation stream to serialize all of the field updates*/
+        TAO::Operation::Stream ssUpdate;
+
+        /* Update the AUTH key always. */
+        ssUpdate << std::string("auth") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+        ssUpdate << pCredentials->KeyHash("auth", 0, strPIN, nKeyType);
+
+        /* Update the LISP network key if enabled. */
+        if(oCrypto.get<uint256_t>("lisp") != 0)
+        {
+            ssUpdate << std::string("lisp") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+            ssUpdate << pCredentials->KeyHash("lisp", 0, strPIN, nKeyType);
+        }
+
+        /* Update the NETWORK key if enabled. */
+        if(oCrypto.get<uint256_t>("network") != 0)
+        {
+            ssUpdate << std::string("network") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+            ssUpdate << pCredentials->KeyHash("network", 0, strPIN, nKeyType);
+        }
+
+        /* Update the SIGN key if enabled. */
+        if(oCrypto.get<uint256_t>("sign") != 0)
+        {
+            ssUpdate << std::string("sign") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+            ssUpdate << pCredentials->KeyHash("sign", 0, strPIN, nKeyType);
+        }
+
+        /* Update the VERIFY key if enabled. */
+        if(oCrypto.get<uint256_t>("verify") != 0)
+        {
+            ssUpdate << std::string("verify") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
+            ssUpdate << pCredentials->KeyHash("verify", 0, strPIN, nKeyType);
+        }
+
+        /* Add the crypto update contract. */
+        TAO::Operation::Contract tContract;
+        tContract << uint8_t(TAO::Operation::OP::WRITE) << addrCrypto << ssUpdate.Bytes();
+
+        return tContract;
     }
 } // End TAO namespace

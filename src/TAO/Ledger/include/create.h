@@ -48,7 +48,7 @@ namespace TAO
          *
          **/
         bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
-                               TAO::Ledger::Transaction& tx, const uint8_t nScheme = TAO::Ledger::SIGNATURE::RESERVED);
+                               TAO::Ledger::Transaction& tx, const uint8_t nScheme = TAO::Ledger::SIGNATURE::BRAINPOOL);
 
 
         /** CreateProducer

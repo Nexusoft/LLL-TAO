@@ -54,7 +54,7 @@ bool GenerateBlock()
 
     /* Check for duplicates in ledger db. */
     TAO::Ledger::Transaction txPrev;
-    if(LLD::Ledger->HasGenesis(hashGenesis))
+    if(LLD::Ledger->HasFirst(hashGenesis))
     {
         /* Get the last transaction. */
         uint512_t hashLast;
@@ -236,7 +236,7 @@ void InitializeUser(const std::string& strUsername, const std::string& strPasswo
     txid.SetHex(result["hash"].get<std::string>());
 
     /* Write the genesis to disk so that we have it for later use */
-    LLD::Ledger->WriteGenesis(hashGenesis, txid);
+    LLD::Ledger->WriteFirst(hashGenesis, txid);
 
     /* Invoke the API to create the user */
     ret = APICall("users/login/user", params);

@@ -20,7 +20,7 @@ namespace TAO::API
     void Sessions::Initialize()
     {
         /* Handle for all CREATE operations. */
-        mapFunctions["create/local"] = Function
+        mapFunctions["create"] = Function
         (
             std::bind
             (
@@ -29,6 +29,85 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "local"
+        );
+
+        /* Handle for all LOAD operations. */
+        mapFunctions["load"] = Function
+        (
+            std::bind
+            (
+                &Sessions::Load,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "local"
+        );
+
+        /* Handle for all LOCK operations. */
+        mapFunctions["lock"] = Function
+        (
+            std::bind
+            (
+                &Sessions::Lock,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "local"
+        );
+
+        /* Handle for all SAVE operations. */
+        mapFunctions["save"] = Function
+        (
+            std::bind
+            (
+                &Sessions::Save,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "local"
+        );
+
+        /* Handle for all STATUS operations. */
+        mapFunctions["status"] = Function
+        (
+            std::bind
+            (
+                &Sessions::Status,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "local"
+        );
+
+        /* Handle for all TERMINATE operations. */
+        mapFunctions["terminate"] = Function
+        (
+            std::bind
+            (
+                &Sessions::Terminate,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "local"
+        );
+
+        /* Handle for all UNLOCK operations. */
+        mapFunctions["unlock"] = Function
+        (
+            std::bind
+            (
+                &Sessions::Unlock,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "local"
         );
     }
 }

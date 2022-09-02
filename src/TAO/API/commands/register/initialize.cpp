@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/operators/initialize.h>
 
 #include <TAO/API/types/commands.h>
 
@@ -24,6 +25,10 @@ namespace TAO::API
     /* Standard initialization function. */
     void Register::Initialize()
     {
+        /* Populate our operators. */
+        Operators::Initialize(mapOperators);
+
+
         /* Populate our ACCOUNT standard. */
         mapStandards["account"] = Standard
         (
@@ -140,6 +145,16 @@ namespace TAO::API
             }
         );
 
+        /* Populate our ANY standard. */
+        mapStandards["any"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                return true;
+            }
+        );
+
 
         /* Handle for generic get operations. */
         mapFunctions["get"] = Function
@@ -169,7 +184,8 @@ namespace TAO::API
         (
             std::bind
             (
-                &Templates::History,
+                &Register::History,
+                this,
                 std::placeholders::_1,
                 std::placeholders::_2
             )
@@ -180,7 +196,8 @@ namespace TAO::API
         (
             std::bind
             (
-                &Templates::Transactions,
+                &Register::Transactions,
+                this,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

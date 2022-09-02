@@ -20,7 +20,7 @@ ________________________________________________________________________________
 #include <Util/include/filesystem.h>
 #include <Util/templates/datastream.h>
 
-#include <openssl/ec.h> 
+#include <openssl/ec.h>
 #include <openssl/pem.h>
 #include <openssl/x509v3.h>
 #include <openssl/bn.h>
@@ -119,7 +119,7 @@ namespace LLC
         if(!pFile)
             return debug::error(FUNCTION, "X509Cert : Unable to open cert file.");
         ret = PEM_write_X509(pFile, px509);
-        
+
         fclose(pFile);
         if(!ret)
             return debug::error(FUNCTION, "X509Cert : Unable to write cert file.");
@@ -191,7 +191,7 @@ namespace LLC
 
 
     /* Generate a certificate using EC signature scheme, signed with the specified prigate key.  This method is useful when
-       creating and regenerating self-signed certificates where the private key is persistant. 
+       creating and regenerating self-signed certificates where the private key is persistant.
        The certificate validity is set to 1 year. */
     bool X509Cert::GenerateEC(const uint512_t& hashSecret, const std::string& strCN, const uint64_t nValidFrom)
     {
@@ -282,11 +282,11 @@ namespace LLC
             if(!SSL_CTX_load_verify_locations(ssl_ctx, strCertBundle.c_str(), NULL)) // cafile: CA PEM certs file
                 return debug::error(FUNCTION, "SSL_CTX_load_verify_locations failed to load CA bundle file: ", strCertBundle);
         }
-        
+
         /* Assign the certificate to the SSL object. */
         if(SSL_CTX_use_certificate(ssl_ctx, px509) != 1)
             return debug::error(FUNCTION, "Failed to initialize SSL Context with certificate.");
-        
+
 
         /* Assign the private key to the SSL object. */
         if(SSL_CTX_use_PrivateKey(ssl_ctx, pkey) != 1)
@@ -448,15 +448,15 @@ namespace LLC
     {
         /* The io memory stream to help us access the certificate data */
         BIO *bio;
-        
+
         /* instantiate the BIO memory steam */
         bio = BIO_new(BIO_s_mem());
 
-        if(bio == NULL) 
+        if(bio == NULL)
             return debug::error("BIO_new failed..");
-        
+
         /* Write the x509 certificate data to the BIO stream in PEM format */
-        if(PEM_write_bio_X509(bio, px509) == 0) 
+        if(PEM_write_bio_X509(bio, px509) == 0)
         {
             BIO_free(bio);
             return debug::error("PEM_write_bio_x509() failed..");
@@ -489,29 +489,29 @@ namespace LLC
 
         /* IO memory stream to load with the certificate data */
         BIO *bio;
-        
+
         /* instantiate the BIO memory steam */
         bio = BIO_new(BIO_s_mem());
 
-        if(bio == NULL) 
+        if(bio == NULL)
             fSuccess = debug::error("BIO_new failed..");
 
         /* Write the certificate bytes into the BIO */
         BIO_write(bio, &vchCertificate[0], vchCertificate.size());
-        
+
         /* Write the x509 certificate data to the BIO stream in PEM format */
-        if(PEM_read_bio_X509(bio, &px509, nullptr, nullptr) == 0) 
+        if(PEM_read_bio_X509(bio, &px509, nullptr, nullptr) == 0)
             fSuccess = debug::error("PEM_read_bio_X509() failed..");
 
         /* Get the EVP_PKEY from the certificate */
         pkey = X509_get_pubkey(px509);
-        
+
         /* PEM successfully read */
         fSuccess = true;
 
         /* Clean up and return */
         BIO_free(bio);
-        
+
         return fSuccess;
 
     }
@@ -528,23 +528,21 @@ namespace LLC
         ctx = X509_STORE_CTX_new();
         X509_STORE *store = X509_STORE_new();
 
-
         /* If a CA bundle has been provided then load it before verification */
-        if(!strCertBundle.empty())
-        {
-            debug::log(0, "Loading external SSL CA certificate bundle: ", strCertBundle);
+        if(strCertBundle.empty())
+            return true;
 
-            if(!X509_STORE_load_locations(store, strCertBundle.c_str(), NULL))
-                debug::log(3, "Certificate verification failed: ", X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx)));
-        }
+        debug::log(0, "Loading external SSL CA certificate bundle: ", strCertBundle);
+        if(!X509_STORE_load_locations(store, strCertBundle.c_str(), NULL))
+            debug::log(3, "Certificate verification failed: ", X509_verify_cert_error_string(X509_STORE_CTX_get_error(ctx)));
 
         X509_STORE_add_cert(store, px509);
-        
+
         X509_STORE_CTX_init(ctx, store, px509, NULL);
 
 
         /* Verify the cert */
-        fValid = X509_verify_cert(ctx) == 1; 
+        fValid = (X509_verify_cert(ctx) == 1);
 
         /* Log verification failure message*/
         if(!fValid)
@@ -553,7 +551,7 @@ namespace LLC
         /* Clean up and return */
         X509_STORE_free(store);
         X509_STORE_CTX_free(ctx);
-        
+
         return fValid;
     }
 
@@ -571,7 +569,7 @@ namespace LLC
         /* Check the EC key was obtained */
         if(ecKey == nullptr)
             return debug::error(FUNCTION, "Unable to obtain EC key.");
-        
+
         /* The EC key wrapper class */
         ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64, ecKey);
 
@@ -587,7 +585,7 @@ namespace LLC
     /* Returns a 256-bit hash of the certificate data, with the exception of the signature. */
     uint256_t X509Cert::Hash()
     {
-        
+
         /* Cert version */
         uint8_t nVersion = X509_get_version(px509);
 
@@ -598,7 +596,7 @@ namespace LLC
         char *str = X509_NAME_oneline(X509_get_subject_name(px509), 0, 0);
         std::string strSubject(str);
         OPENSSL_free(str);
-        
+
         /* Get the issuer */
         str = X509_NAME_oneline(X509_get_issuer_name(px509), 0, 0);
         std::string strIssuer(str);
@@ -606,7 +604,7 @@ namespace LLC
 
         /* Signature scheme */
         uint8_t nSigScheme = X509_get_signature_nid(px509);
-       
+
         /* Not before time */
         std::string strNotBefore((char*)X509_get_notBefore(px509)->data);
 

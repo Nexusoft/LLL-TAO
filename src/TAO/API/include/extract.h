@@ -20,6 +20,10 @@ ________________________________________________________________________________
 
 #include <set>
 
+//forward declarations
+namespace Legacy        { class NexusAddress; }
+namespace TAO::Register { class Address; }
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -34,7 +38,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractAddress(const encoding::json& jParams, const std::string& strSuffix = "", const std::string& strDefault = "");
+    TAO::Register::Address ExtractAddress(const encoding::json& jParams, const std::string& strSuffix = "", const std::string& strDefault = "");
 
 
     /** ExtractToken
@@ -46,7 +50,7 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractToken(const encoding::json& jParams);
+    TAO::Register::Address ExtractToken(const encoding::json& jParams);
 
 
     /** ExtractAddress
@@ -59,7 +63,34 @@ namespace TAO::API
      *  @return The register address if valid.
      *
      **/
-    uint256_t ExtractAddress(const std::string& strAddress, const encoding::json& jParams);
+    TAO::Register::Address ExtractAddress(const std::string& strAddress, const encoding::json& jParams);
+
+
+    /** ExtractLegacy
+     *
+     *  Extract a legacy address from incoming parameters to derive from name or address field.
+     *
+     *  @param[in] jParams The parameters to find address in.
+     *  @param[out] addrLegacy The address to return from legacy extract.
+     *  @param[in] strSuffix The suffix to append to end of parameter we are extracting.
+     *
+     *  @return The legacy address if valid.
+     *
+     **/
+    bool ExtractLegacy(const encoding::json& jParams, Legacy::NexusAddress &addrLegacy, const std::string& strSuffix = "");
+
+
+    /** ExtractLegacy
+     *
+     *  Extract a legacy address from a single string.
+     *
+     *  @param[in] strAddress The parameters to find address in.
+     *  @param[out] addrLegacy The outgoing address hash.
+     *
+     *  @return The register address if valid.
+     *
+     **/
+    bool ExtractLegacy(const std::string& strAddress, Legacy::NexusAddress &addrLegacy);
 
 
     /** ExtractMarket
@@ -180,11 +211,12 @@ namespace TAO::API
      *  Extract the pin number from input parameters.
      *
      *  @param[in] jParams The incoming parameters to check.
+     *  @param[in] strPrefix The incoming prefix to prepend to pin name
      *
      *  @return secure string representation of pin.
      *
      **/
-    SecureString ExtractPIN(const encoding::json& jParams);
+    SecureString ExtractPIN(const encoding::json& jParams, const std::string& strPrefix = "");
 
 
     /** ExtractTypes
@@ -366,4 +398,21 @@ namespace TAO::API
 
         return nDefault;
     }
+
+
+    /** ExtractDouble
+     *
+     *  Extracts an integer value from given input parameters.
+     *
+     *  @param[in] jParams The parameters that contain requesting value.
+     *  @param[in] strKey The key that we are checking parameters for.
+     *  @param[in] dDefault Default parameter if none supplied.
+     *  @param[in] dLimit The numeric limits to bound this type to, that may be less than type's value.
+     *
+     *  @return The extracted integer value.
+     *
+     **/
+    double ExtractDouble(const encoding::json& jParams, const std::string& strKey,
+                         const double dDefault = std::numeric_limits<double>::max(),
+                         const double dLimit = std::numeric_limits<double>::max());
 }

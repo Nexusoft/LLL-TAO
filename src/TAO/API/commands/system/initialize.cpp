@@ -23,7 +23,6 @@ ________________________________________________________________________________
 #include <LLP/include/trust_address.h>
 
 #include <TAO/API/types/commands/system.h>
-#include <TAO/API/types/session-manager.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
 
@@ -131,8 +130,8 @@ namespace TAO
             jRet["multiuser"] = config::fMultiuser.load();
 
             /* Number of logged in sessions */
-            if(config::fMultiuser.load())
-                jRet["sessions"] = TAO::API::GetSessionManager().Size();
+            //if(config::fMultiuser.load())
+            //    jRet["sessions"] = TAO::API::GetSessionManager().Size();
 
             /* Whether this node is running in client mode */
             jRet["litemode"] = config::fClient.load();

@@ -12,8 +12,8 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/names.h>
-#include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/operators/initialize.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
@@ -24,16 +24,8 @@ namespace TAO::API
     /* Standard initialization function. */
     void Names::Initialize()
     {
-        /* Handle for the ARRAY operator. */
-        mapOperators["array"] = Operator
-        (
-            std::bind
-            (
-                &Operators::Array,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
+        /* Populate our operators. */
+        Operators::Initialize(mapOperators);
 
 
         /* Populate our asset standard. */

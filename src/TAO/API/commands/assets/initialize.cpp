@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/assets.h>
 #include <TAO/API/types/commands/templates.h>
+#include <TAO/API/types/operators/initialize.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
@@ -26,6 +27,10 @@ namespace TAO::API
     /* Standard initialization function. */
     void Assets::Initialize()
     {
+        /* Populate our operators. */
+        Operators::Initialize(mapOperators);
+
+
         /* Populate our asset standard. */
         mapStandards["asset"] = Standard
         (
@@ -179,6 +184,30 @@ namespace TAO::API
             )
         );
 
+        /* Handle for all LIST operations with noun PARTIAL. */
+        mapFunctions["list/partial"] = Function
+        (
+            std::bind
+            (
+                &Assets::Partial,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for all TOKENIZE operations. */
+        mapFunctions["tokenize"] = Function
+        (
+            std::bind
+            (
+                &Assets::Tokenize,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Handle for all TRANSACTIONS operations. */
         mapFunctions["transactions"] = Function
         (
@@ -216,13 +245,6 @@ namespace TAO::API
                 "required"         //the default format
             )
         );
-
-
-
-
-        //mapFunctions["create/asset"]             = Function(std::bind(&Assets::Create,    this, std::placeholders::_1, std::placeholders::_2));
-        //mapFunctions["update/asset"]             = Function(std::bind(&Assets::Update,    this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["tokenize/asset"]           = Function(std::bind(&Assets::Tokenize,  this, std::placeholders::_1, std::placeholders::_2));
 
 
         /* DEPRECATED */

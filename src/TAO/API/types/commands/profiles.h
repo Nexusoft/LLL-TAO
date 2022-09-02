@@ -15,6 +15,11 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
+#include <Util/include/memory.h>
+
+namespace TAO::Operation { class Contract;       }
+namespace TAO::Ledger    { class SignatureChain; }
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -65,6 +70,71 @@ namespace TAO::API
          *
          **/
         encoding::json Create(const encoding::json& jParams, const bool fHelp);
+
+
+        /** Notifications
+         *
+         *  Lists the current notifications for given user's sigchain.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Notifications(const encoding::json& jParams, const bool fHelp);
+
+
+        /** Recover
+         *
+         *  Recovers a profile using recovery phrase.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Recover(const encoding::json& jParams, const bool fHelp);
+
+
+        /** Status
+         *
+         *  Gets the status of given profile
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Status(const encoding::json& jParams, const bool fHelp);
+
+
+        /** Transactions
+         *
+         *  Lists the current transactions for given user's sigchain.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
+
+
+        /** Update
+         *
+         *  Updates a given sigchain's credentials or recovery phrase
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Update(const encoding::json& jParams, const bool fHelp);
 
     };
 }

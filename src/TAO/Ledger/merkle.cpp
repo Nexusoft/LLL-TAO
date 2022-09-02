@@ -89,6 +89,7 @@ namespace TAO
             nNextType     = tx.nNextType;
             vchPubKey     = tx.vchPubKey;
             vchSig        = tx.vchSig;
+            hashCache     = tx.hashCache;
 
             hashBlock     = tx.hashBlock;
             vMerkleBranch = tx.vMerkleBranch;
@@ -113,6 +114,7 @@ namespace TAO
             nNextType     = std::move(tx.nNextType);
             vchPubKey     = std::move(tx.vchPubKey);
             vchSig        = std::move(tx.vchSig);
+            hashCache     = std::move(tx.hashCache);
 
             hashBlock     = std::move(tx.hashBlock);
             vMerkleBranch = std::move(tx.vMerkleBranch);
@@ -137,6 +139,7 @@ namespace TAO
             nNextType     = tx.nNextType;
             vchPubKey     = tx.vchPubKey;
             vchSig        = tx.vchSig;
+            hashCache     = tx.hashCache;
 
             return *this;
         }
@@ -157,6 +160,7 @@ namespace TAO
             nNextType     = std::move(tx.nNextType);
             vchPubKey     = std::move(tx.vchPubKey);
             vchSig        = std::move(tx.vchSig);
+            hashCache     = std::move(tx.hashCache);
 
             return *this;
         }
@@ -216,7 +220,7 @@ namespace TAO
             /* Set his block's hash. */
             hashBlock     = hashConfirmed;
 
-            return BuildMerkleBranch(state);;
+            return BuildMerkleBranch(state);
         }
 
 

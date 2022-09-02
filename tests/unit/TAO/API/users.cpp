@@ -127,7 +127,7 @@ TEST_CASE( "Test Users API", "[API/users]")
         uint256_t hashGenesis( result["genesis"].get<std::string>());
         uint512_t txid( result["hash"].get<std::string>());
 
-        REQUIRE(LLD::Ledger->WriteGenesis(hashGenesis, txid));
+        REQUIRE(LLD::Ledger->WriteFirst(hashGenesis, txid));
 
         TAO::Ledger::Transaction tx;
         REQUIRE(TAO::Ledger::mempool.Get(txid, tx));

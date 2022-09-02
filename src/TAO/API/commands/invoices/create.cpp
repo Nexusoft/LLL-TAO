@@ -53,7 +53,7 @@ namespace TAO::API
         const uint256_t hashRecipient = ExtractRecipient(jParams);
 
         /* Check that the recipient genesis hash exists */
-        if(!LLD::Ledger->HasGenesis(hashRecipient))
+        if(!LLD::Ledger->HasFirst(hashRecipient))
             throw Exception(-230, "Recipient user does not exist");
 
         /* Add the mandatory invoice fields to the invoice JSON */
@@ -107,23 +107,30 @@ namespace TAO::API
         uint64_t nTotal = 0;
         for(auto it = jItems.begin(); it != jItems.end(); ++it)
         {
+            /* Get a copy of our parameters. */
+            const encoding::json jItem = (*it);
+
             /* The item Unit Amount */
             const uint64_t nUnitAmount =
-                ExtractAmount((*it), nDigits);
+                ExtractAmount(jItem, nDigits);
 
             /* The item number of units */
             const uint64_t nUnits =
-                ExtractInteger<uint64_t>((*it), "units");
+                ExtractInteger<uint64_t>(jItem, "units");
 
             /* Rebuild our JSON to use correct formatting. */
-            const encoding::json jItem =
+            encoding::json jNew =
             {
                 { "amount",      FormatBalance(nUnitAmount, nDigits) },
                 { "units",       nUnits }
             };
 
+            /* Check for description key. */
+            if(CheckParameter(jItem, "description", "string"))
+                jNew["description"] = jItem["description"].get<std::string>();
+
             /* Now add to our new items list. */
-            jInvoice["items"].push_back(jItem);
+            jInvoice["items"].push_back(jNew);
 
             /* Aggregate our total balance now. */
             nTotal += (nUnitAmount * nUnits);

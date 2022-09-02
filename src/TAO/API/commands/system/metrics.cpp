@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/API/types/commands/system.h>
+#include <TAO/API/include/format.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -34,7 +35,7 @@ namespace TAO
         encoding::json System::Metrics(const encoding::json& params, const bool fHelp)
         {
             /* Build json response. */
-            encoding::json jsonRet;
+            encoding::json jRet;
 
             /* Keep track of global stats. */
             uint64_t nTotalStake = 0;
@@ -45,20 +46,17 @@ namespace TAO
             uint64_t nTotalGlobalNames = 0;
             uint64_t nTotalNamespacedNames = 0;
             uint64_t nTotalNamespaces = count_registers("namespace");
-            uint64_t nTotalAccounts = count_registers("account");
-            uint64_t nTotalCrypto = count_registers("crypto");
-            uint64_t nTotalTokens = count_registers("token");
+            uint64_t nTotalAccounts   = count_registers("account");
+            uint64_t nTotalTokens     = count_registers("token");
 
-            uint64_t nTotalAppend = count_registers("append");
-            uint64_t nTotalRaw = count_registers("raw");
-            uint64_t nTotalReadOnly = count_registers("readonly");
+            uint64_t nTotalAppend     = count_registers("append");
+            uint64_t nTotalRaw        = count_registers("raw");
+            uint64_t nTotalReadOnly   = count_registers("readonly");
 
+            /* For list of items we are building. */
+            uint64_t nTotalCrypto = 0;
             uint64_t nTotalObjects = 0;
             uint64_t nTotalTokenized = 0;
-
-            /* There is one crypto register per sig chain so just counting these is a reliable count of the sig chains */
-            uint64_t nTotalSigChains = nTotalCrypto;
-
 
             /* Batch read all trust keys. */
             std::vector<TAO::Register::Object> vTrust;
@@ -96,14 +94,14 @@ namespace TAO
 
                     /* global */
                     if(object.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
-                        nTotalGlobalNames ++;
+                        nTotalGlobalNames++;
+
                     /* namespaced */
                     else if(object.get<std::string>("namespace") != "" )
                         nTotalNamespacedNames ++;
 
                     /* Update count*/
-                    nTotalNames  ++;
-
+                    nTotalNames++;
                 }
             }
 
@@ -119,77 +117,89 @@ namespace TAO
                         continue;
 
                     /* Check if tokenized*/
-                    if(TAO::Register::Address(object.hashOwner).IsToken() )
-                        nTotalTokenized ++;
+                    if(TAO::Register::Address(object.hashOwner).IsToken())
+                        nTotalTokenized++;
 
                     /* Update count*/
-                    nTotalObjects  ++;
+                    nTotalObjects++;
                 }
             }
 
+            /* Check by unique owners. */
+            std::set<uint256_t> setOwners;
+
+            /* Batch read all object registers. */
+            std::vector<TAO::Register::Object> vCrypto;
+            if(LLD::Register->BatchRead("crypto", vCrypto, -1))
+            {
+                /* Check through all names. */
+                for(auto& rObject : vCrypto)
+                {
+                    /* Use a set to get unique owners. */
+                    setOwners.insert(rObject.hashOwner);
+                    ++nTotalCrypto;
+                }
+
+            }
+
             /* Calculate count of all registers */
-            uint64_t nTotalRegisters = nTotalTrustKeys + nTotalNames +nTotalNamespaces + nTotalAccounts + nTotalCrypto
+            const uint64_t nTotalRegisters = nTotalTrustKeys + nTotalNames +nTotalNamespaces + nTotalAccounts + nTotalCrypto
                     + nTotalTokens + nTotalAppend + nTotalRaw + nTotalReadOnly + nTotalObjects;
 
 
             /* Add register metrics */
-            encoding::json jsonRegisters;
-            jsonRegisters["total"] = nTotalRegisters;
-            jsonRegisters["account"] = nTotalAccounts;
-            jsonRegisters["append"] = nTotalAppend;
-            jsonRegisters["crypto"] = nTotalCrypto;
-            jsonRegisters["name"]  = nTotalNames;
-            jsonRegisters["name_global"]  = nTotalGlobalNames;
-            jsonRegisters["name_namespaced"]  = nTotalNamespacedNames;
-            jsonRegisters["namespace"] = nTotalNamespaces;
-            jsonRegisters["object"] = nTotalObjects;
-            jsonRegisters["object_tokenized"] = nTotalTokenized;
-            jsonRegisters["raw"] = nTotalRaw;
-            jsonRegisters["readonly"] = nTotalReadOnly;
-            jsonRegisters["token"] = nTotalTokens;
-            jsonRet["registers"] = jsonRegisters;
+            const encoding::json jRegisters =
+            {
+                { "total", nTotalRegisters },
+                { "names",
+                    {
+                        { "global",    nTotalGlobalNames      },
+                        { "local",     nTotalNames            },
+                        { "namespaced", nTotalNamespacedNames }
+                    }
+                },
+
+                { "namespaces", nTotalNamespaces },
+
+                /* Track our total objects. */
+                { "objects",
+                    {
+                        { "accounts",  nTotalAccounts  },
+                        { "assets",    nTotalObjects   },
+                        { "crypto",    nTotalCrypto    },
+                        { "tokenized", nTotalTokenized },
+                        { "tokens",    nTotalTokens    }
+                    }
+                },
+
+                /* Track our state registers. */
+                { "state",
+                    {
+                        { "raw", nTotalRaw           },
+                        { "readonly", nTotalReadOnly }
+                    }
+                }
+            };
+
+            /* Add to the array key now. */
+            jRet["registers"] = jRegisters;
 
             /* Add sig chain metrics */
-            jsonRet["sig_chains"] = nTotalSigChains;
-
-            /* Add trust metrics */
-            encoding::json jsonTrust;
-            jsonTrust["total"]  = nTotalTrustKeys;
-            jsonTrust["stake"] = double(nTotalStake / TAO::Ledger::NXS_COIN);
-            jsonTrust["trust"] = nTotalTrust;
-
-            jsonRet["trust"] = jsonTrust;
+            jRet["sigchains"] = setOwners.size();
 
             /* We only need supply data when on a public network or testnet, private and hybrid do not have supply. */
             if(!config::fHybrid.load())
             {
-                /* Add supply metrics */
-                encoding::json jsonSupply;
+                /* Add trust metrics */
+                encoding::json jTrust;
+                jTrust["total"]  = nTotalTrustKeys;
+                jTrust["stake"]  = FormatBalance(nTotalStake);
+                jTrust["trust"]  = nTotalTrust;
 
-                /* Read the stateBest using hashBestChain
-                 * Cannot use ChainState::stateBest for this because certain fields (like money supply) are not populated */
-                TAO::Ledger::BlockState stateBest;
-                if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), stateBest))
-                    return std::string("Block not found");
-
-                uint32_t nMinutes = TAO::Ledger::GetChainAge(stateBest.GetBlockTime());
-                int64_t nSupply = stateBest.nMoneySupply;
-                int64_t nTarget = TAO::Ledger::CompoundSubsidy(nMinutes);
-
-                jsonSupply["total"] = double(nSupply) / TAO::Ledger::NXS_COIN;
-                jsonSupply["target"] = double(nTarget) / TAO::Ledger::NXS_COIN;
-                jsonSupply["inflationrate"] = ((nSupply * 100.0) / nTarget) - 100.0;
-
-                jsonSupply["minute"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 1)) / TAO::Ledger::NXS_COIN; //1
-                jsonSupply["hour"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 60)) / TAO::Ledger::NXS_COIN; //60
-                jsonSupply["day"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 1440)) / TAO::Ledger::NXS_COIN; //1440
-                jsonSupply["week"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 10080)) / TAO::Ledger::NXS_COIN;//10080
-                jsonSupply["month"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 40320)) / TAO::Ledger::NXS_COIN; //40320
-                //jsonSupply["year"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 524160)) / TAO::Ledger::NXS_COIN; //524160
-                jsonRet["supply"] = jsonSupply;
+                jRet["trust"] = jTrust;
 
                 /* Add reserves */
-                encoding::json jsonReserves;
+                encoding::json jReserves;
 
                 TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest.load();
                 bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
@@ -205,15 +215,15 @@ namespace TAO
                 uint64_t nDeveloper = (fHasPrime ? lastPrimeBlockState.nReleasedReserve[2] : 0) + (fHasHash ? lastHashBlockState.nReleasedReserve[2] : 0);
                 uint64_t nFee = (fHasStake ? lastStakeBlockState.nFeeReserve : 0) + (fHasPrime ? lastPrimeBlockState.nFeeReserve : 0) + (fHasHash ? lastHashBlockState.nFeeReserve : 0);
 
-                jsonReserves["ambassador"] = double(nAmbassador) / TAO::Ledger::NXS_COIN;
-                jsonReserves["developer"] = double(nDeveloper) / TAO::Ledger::NXS_COIN;
-                jsonReserves["fee"] =  double(nFee) / TAO::Ledger::NXS_COIN ;
-                jsonReserves["hash"] = fHasHash ? double(lastHashBlockState.nReleasedReserve[0]) / TAO::Ledger::NXS_COIN : 0;
-                jsonReserves["prime"] = fHasPrime ? double(lastPrimeBlockState.nReleasedReserve[0]) / TAO::Ledger::NXS_COIN : 0;
-                jsonRet["reserves"] = jsonReserves;
+                jReserves["ambassador"] = double(nAmbassador) / TAO::Ledger::NXS_COIN;
+                jReserves["developer"] = double(nDeveloper) / TAO::Ledger::NXS_COIN;
+                jReserves["fee"] =  double(nFee) / TAO::Ledger::NXS_COIN ;
+                jReserves["hash"] = fHasHash ? double(lastHashBlockState.nReleasedReserve[0]) / TAO::Ledger::NXS_COIN : 0;
+                jReserves["prime"] = fHasPrime ? double(lastPrimeBlockState.nReleasedReserve[0]) / TAO::Ledger::NXS_COIN : 0;
+                jRet["reserves"] = jReserves;
             }
 
-            return jsonRet;
+            return jRet;
         }
 
 

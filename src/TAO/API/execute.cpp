@@ -40,7 +40,7 @@ ________________________________________________________________________________
 
 namespace TAO::API
 {
-    /* Checks a given string against value to find wildcard pattern matches. */
+    /* Extracts a register pre-state from contract and executes to get the final post-state. */
     TAO::Register::Object ExecuteContract(const TAO::Operation::Contract& rContract)
     {
         /* Reset the contract streams. */

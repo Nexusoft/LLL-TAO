@@ -16,7 +16,9 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/extract.h>
 #include <TAO/API/include/global.h>
+#include <TAO/API/types/authentication.h>
 
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake_change.h>
@@ -33,73 +35,49 @@ namespace TAO::API
     /* Set the stake amount for trust account (add/remove stake). */
     encoding::json Finance::SetStake(const encoding::json& jParams, const bool fHelp)
     {
-        encoding::json ret;
-
-        /* Get the PIN to be used for this API call */
-        SecureString strPin = Commands::Instance<Users>()->GetPin(jParams, TAO::Ledger::PinUnlock::TRANSACTIONS);
-
-        /* Check for pin size. */
-        if(strPin.size() == 0)
-            throw Exception(-135, "Zero-length PIN");
-
-        /* Get the session to be used for this API call */
-        Session& session = Commands::Instance<Users>()->GetSession(jParams);
-
-        /* Get the user account. */
-        const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user = session.GetAccount();
-        if(!user)
-            throw Exception(-10, "Invalid session ID");
-
-        /* Authenticate the users credentials */
-        if(!Commands::Instance<Users>()->Authenticate(jParams))
-            throw Exception(-139, "Invalid credentials");
-
-        /* Get the genesis ID. */
-        uint256_t hashGenesis = user->Genesis();
+        /* Get the calling genesis-id. */
+        const uint256_t hashGenesis =
+            Authentication::Caller(jParams);
 
         /* Verify the user login. */
-        if(!LLD::Ledger->HasGenesis(hashGenesis))
+        if(!LLD::Ledger->HasFirst(hashGenesis))
         {
             /* Check the memory pool for hashGenesis transaction. */
             if(!TAO::Ledger::mempool.Has(hashGenesis))
                 throw Exception(-136, "Account doesn't exist");
 
-            /* If present in mempool when HasGenesis() false, it is user create and not yet confirmed. Cannot set stake */
+            /* If present in mempool when HasFirst() false, it is user create and not yet confirmed. Cannot set stake */
             throw Exception(-222, "User create pending confirmation");
         }
 
-        /* Check for amount parameter. */
-        if(jParams.find("amount") == jParams.end())
-            throw Exception(-46, "Missing amount");
+        /* Pin parameter. */
+        const SecureString strPIN =
+            ExtractPIN(jParams);
 
-        else if(std::stod(jParams["amount"].get<std::string>()) < 0)
-            throw Exception(-204, "Cannot set stake to a negative amount");
+        /* Get a copy of our linked credentials. */
+        const auto& pCredentials =
+            Authentication::Credentials(jParams);
 
-        /* Lock the signature chain. */
-        LOCK(session.CREATE_MUTEX);
-
-        /* Check that the sig chain is mature after the last coinbase/coinstake transaction in the chain. */
-        CheckMature(hashGenesis);
+        /* Check pin length */
+        if(strPIN.length() < 4)
+            throw Exception(-193, "Pin must be a minimum of 4 characters");
 
         /* Get trust account. Any trust account that has completed Genesis will be indexed. */
-        TAO::Register::Object trustAccount;
-
-        if(LLD::Register->HasTrust(hashGenesis))
-        {
-            /* Trust account is indexed */
-            if(!LLD::Register->ReadTrust(hashGenesis, trustAccount))
-               throw Exception(-75, "Unable to retrieve trust account");
-
-            if(!trustAccount.Parse())
-                throw Exception(-71, "Unable to parse trust account");
-        }
-        else
-        {
+        TAO::Register::Object oTrust;
+        if(!LLD::Register->HasTrust(hashGenesis))
             throw Exception(-76, "Cannot set stake for trust account until after Genesis transaction");
-        }
 
-        uint64_t nBalancePrev = trustAccount.get<uint64_t>("balance");
-        uint64_t nStakePrev = trustAccount.get<uint64_t>("stake");
+        /* Trust account is indexed */
+        if(!LLD::Register->ReadTrust(hashGenesis, oTrust))
+           throw Exception(-75, "Unable to retrieve trust account");
+
+          /* Parse our trust account. */
+        if(!oTrust.Parse())
+            throw Exception(-71, "Unable to parse trust account");
+
+        /* Get our current balances and stake. */
+        const uint64_t nBalancePrev = oTrust.get<uint64_t>("balance");
+        const uint64_t nStakePrev   = oTrust.get<uint64_t>("stake");
 
         /* Retrieve last stake tx hash for the user trust account to include in stake change request */
         uint512_t hashLast;
@@ -107,119 +85,105 @@ namespace TAO::API
             throw Exception(-205, "Unable to retrieve last stake");
 
         /* Get the requested amount to stake. */
-        uint64_t nAmount = std::stod(jParams["amount"].get<std::string>()) * TAO::Ledger::NXS_COIN;
+        const uint64_t nAmount =
+            ExtractAmount(jParams, TAO::Ledger::NXS_COIN, "amount");
 
-        /* Get the time to expiration (optional). */
-        uint64_t nExpires = 0;
-        if(jParams.find("expires") != jParams.end())
-            nExpires = std::stoull(jParams["expires"].get<std::string>());
+        /* Get the current timestamp. */
+        const uint64_t nTimestamp =
+            runtime::unifiedtimestamp();
 
-        uint64_t nTime = runtime::unifiedtimestamp();
+        /* Get our expiration if parameter supplied. */
+        const uint64_t nExpires =
+            ExtractInteger<uint64_t>(jParams, "expires", nTimestamp);
 
-        /* Convert time to expiration to an expiration timestamp (0 = does not expire) */
-        if(nExpires > 0)
-        {
-
-            if((std::numeric_limits<uint64_t>::max() - nExpires) < nTime) //check for overflow
-                nExpires = std::numeric_limits<uint64_t>::max();
-
-            else
-                nExpires = nExpires + nTime;
-        }
-
-        /* Only need to validate amount for add to stake. An amount between zero and current stake balance
-         * is an unstake (remove from stake), and cannot set less than zero so cannot attempt to remove
-         * more than current stake amount.
-         */
-        if(nAmount > nStakePrev)
-        {
-            /* Validate add to stake */
-            if((nAmount - nStakePrev) > nBalancePrev)
-                throw Exception(-77, "Insufficient trust account balance to add to stake");
-        }
-
-        TAO::Ledger::StakeChange request;
-        bool hasPrev = false;
+        /* Check our ranges compared to stake. */
+        if(nAmount > nStakePrev && (nAmount - nStakePrev) > nBalancePrev)
+            throw Exception(-77, "Insufficient trust account balance to add to stake");
 
         /* Retrieve any existing stake change request */
-        if(LLD::Local->ReadStakeChange(hashGenesis, request))
-            hasPrev = true;
+        TAO::Ledger::StakeChange tChangeRequest;
+        bool fExists =
+            LLD::Local->ReadStakeChange(hashGenesis, tChangeRequest);
 
-        if(hasPrev && request.nExpires != 0 && (request.nExpires < runtime::unifiedtimestamp()))
+        /* Check if existing stake request needs to be erased. */
+        if(fExists && tChangeRequest.nExpires != 0 && (tChangeRequest.nExpires < runtime::unifiedtimestamp()))
         {
-            request.SetNull();
-            hasPrev = false;
-
+            /* Erase our current stake change request. */
             if(!LLD::Local->EraseStakeChange(hashGenesis))
                 throw Exception(-206, "Failed to erase expired stake change request");
+
+            fExists = false;
         }
 
         /* Set up the stake change request and store for inclusion in next stake block found */
         if(nAmount == nStakePrev)
         {
-            if(hasPrev)
+            /* Erase if setting it back to zero. */
+            if(fExists)
             {
                 /* Setting amount to the current stake value (no change) removes the prior stake change request */
                 if(!LLD::Local->EraseStakeChange(hashGenesis))
                     throw Exception(-207, "Failed to erase previous stake change request");
             }
-            else
-                throw Exception(-78, "Stake not changed"); //Request to set stake to current value when no prior request
+
+            throw Exception(-78, "Stake not changed"); //Request to set stake to current value when no prior request
         }
 
-        else
-        {
-            request.SetNull();
+        /* Populate our stake change data. */
+        tChangeRequest.hashGenesis = hashGenesis;
+        tChangeRequest.hashLast    = hashLast;
+        tChangeRequest.nTime       = nTimestamp;
+        tChangeRequest.nExpires    = nExpires;
 
-            request.hashGenesis = hashGenesis;
-            request.hashLast = hashLast;
-            request.nTime = nTime;
-            request.nExpires = nExpires;
+        /* Set amount is new stake value, request stores the amount of change */
+        tChangeRequest.nAmount = (nAmount - nStakePrev);
 
-            /* set/stake amount is new stake value, request stores the amount of change */
-            request.nAmount = nAmount - nStakePrev;
+        /* Get our crypto object register address. */
+        const uint256_t hashCrypto =
+            TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
 
-            /* Retrieve the private "auth" key for use in signing */
-            uint512_t hashSecret = user->Generate("auth", 0, strPin);
+        /* Get the crypto register so we can determine the key type used to generate the public key */
+        TAO::Register::Object oCrypto;
+        if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::MEMPOOL))
+            throw debug::exception(FUNCTION, "Could not sign - missing crypto register");
 
-            /* The public key for the "auth" key*/
-            std::vector<uint8_t> vchPubKey;
+        /* Read the key type from crypto object register. */
+        const uint256_t hashAuth =
+            oCrypto.get<uint256_t>("auth");
 
-            /* The stake change request signature */
-            std::vector<uint8_t> vchSig;
+        /* Check if the auth has is deactivated. */
+        if(hashAuth == 0)
+            throw Exception(-130, "Auth hash deactivated, please call crypto/create/auth");
 
-            /* The crypto register object */
-            TAO::Register::Object crypto;
+        /* Get the encryption key type from the hash of the public key */
+        const uint8_t nKeyType =
+            hashAuth.GetType();
 
-            /* Get the crypto register. This is needed so that we can determine the key type used to generate the public key */
-            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                throw debug::exception(FUNCTION, "Could not sign - missing crypto register");
+        /* Generate a key to check credentials against. */
+        const uint256_t hashCheck =
+            pCredentials->KeyHash("auth", 0, strPIN, nKeyType);
 
-            /* Parse the object. */
-            if(!crypto.Parse())
-                throw debug::exception(FUNCTION, "failed to parse crypto register");
+        /* Check for invalid authorization hash. */
+        if(hashAuth != hashCheck)
+            throw Exception(-139, "Invalid credentials");
 
-            /* Check that the requested key is in the crypto register */
-            if(!crypto.Check("auth"))
-                throw debug::exception(FUNCTION, "Key type not found in crypto register: ", "auth");
+        /* Retrieve the private "auth" key for use in signing */
+        const uint512_t hashSecret =
+            pCredentials->Generate("auth", 0, strPIN);
 
-            /* Get the encryption key type from the hash of the public key */
-            uint8_t nType = crypto.get<uint256_t>("auth").GetType();
+        /* Generate the public key and signature */
+        pCredentials->Sign(nKeyType, tChangeRequest.GetHash().GetBytes(), hashSecret, tChangeRequest.vchPubKey, tChangeRequest.vchSig);
 
-            /* Generate the public key and signature */
-            user->Sign(nType, request.GetHash().GetBytes(), hashSecret, vchPubKey, vchSig);
-
-            request.vchPubKey = vchPubKey;
-            request.vchSig = vchSig;
-
-            if(!LLD::Local->WriteStakeChange(hashGenesis, request))
-                throw Exception(-208, "Failed to save stake change request");
-        }
+        /* Finally write our stake change to our local database. */
+        if(!LLD::Local->WriteStakeChange(hashGenesis, tChangeRequest))
+            throw Exception(-208, "Failed to save stake change request");
 
         /* Build a JSON response object. */
-        ret["success"] = true;
+        const encoding::json jRet =
+        {
+            { "success", true }
+        };
 
-        return ret;
+        return jRet;
     }
 }

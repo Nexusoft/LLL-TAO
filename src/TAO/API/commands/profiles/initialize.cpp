@@ -13,14 +13,20 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/profiles.h>
 
+#include <TAO/API/types/operators/initialize.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
     /* Standard initialization function. */
     void Profiles::Initialize()
     {
+        /* Populate our operators. */
+        Operators::Initialize(mapOperators);
+
+
         /* Handle for all CREATE operations. */
-        mapFunctions["create/master"] = Function
+        mapFunctions["create"] = Function
         (
             std::bind
             (
@@ -29,6 +35,72 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "master, auth"
+        );
+
+        /* Handle for all transactions operations. */
+        mapFunctions["notifications"] = Function
+        (
+            std::bind
+            (
+                &Profiles::Notifications,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "master"
+        );
+
+        /* Handle for all RECOVER operations. */
+        mapFunctions["recover"] = Function
+        (
+            std::bind
+            (
+                &Profiles::Recover,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "master"
+        );
+
+        /* Handle for all transactions operations. */
+        mapFunctions["status"] = Function
+        (
+            std::bind
+            (
+                &Profiles::Status,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "master"
+        );
+
+        /* Handle for all transactions operations. */
+        mapFunctions["transactions"] = Function
+        (
+            std::bind
+            (
+                &Profiles::Transactions,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "master"
+        );
+
+        /* Handle for all update operations. */
+        mapFunctions["update"] = Function
+        (
+            std::bind
+            (
+                &Profiles::Update,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "credentials, recovery"
         );
     }
 }

@@ -116,12 +116,12 @@ int main(int argc, char** argv)
         LLD::Initialize();
 
 
-        /* Initialize ChainState. */
-        TAO::Ledger::ChainState::Initialize();
-
-
         /* Initialize dispatch relays. */
         TAO::Ledger::Dispatch::Initialize();
+
+
+        /* Initialize ChainState. */
+        TAO::Ledger::ChainState::Initialize();
 
 
         /* Initialize the Lower Level Protocol. */
@@ -188,12 +188,12 @@ int main(int argc, char** argv)
     timer.Reset();
 
 
-    /* Shutdown network subsystem. */
-    LLP::Shutdown();
-
-
     /* Shutdown the API subsystems. */
     TAO::API::Shutdown();
+
+
+    /* Shutdown network subsystem. */
+    LLP::Shutdown();
 
 
     /* Shutdown LLL sub-systems. */

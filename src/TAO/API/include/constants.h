@@ -71,7 +71,7 @@ namespace TAO::API
          **/
         static bool Valid(const uint16_t nType)
         {
-            return (nType > RESERVED1 && nType < RESERVED2);
+            return (nType > uint16_t(RESERVED1) && nType < uint16_t(RESERVED2));
         }
     };
 }

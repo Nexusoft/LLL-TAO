@@ -67,6 +67,7 @@ namespace TAO::API
 
         public:
 
+
             /* Enum to track session type. */
             enum : uint8_t
             {
@@ -82,11 +83,11 @@ namespace TAO::API
 
 
             /** Track the last time session was active. **/
-            mutable std::atomic<uint64_t> nLastActive;
+            mutable std::atomic<uint64_t> nLastAccess;
 
 
-            /** Internal mutex for creating new transactions. **/
-            mutable std::mutex CREATE_MUTEX;
+            /** Track if session is currently initializing. **/
+            mutable std::atomic<bool> fInitializing;
 
 
             /** Default Constructor. **/
@@ -96,8 +97,8 @@ namespace TAO::API
             , hashGenesis   (0)
             , nType         (LOCAL)
             , nAuthFailures (0)
-            , nLastActive   (runtime::unifiedtimestamp())
-            , CREATE_MUTEX  ( )
+            , nLastAccess   (runtime::unifiedtimestamp())
+            , fInitializing (true)
             {
             }
 
@@ -113,8 +114,8 @@ namespace TAO::API
             , hashGenesis   (std::move(rSession.hashGenesis))
             , nType         (std::move(rSession.nType))
             , nAuthFailures (rSession.nAuthFailures.load())
-            , nLastActive   (rSession.nLastActive.load())
-            , CREATE_MUTEX  ( )
+            , nLastAccess   (rSession.nLastAccess.load())
+            , fInitializing (rSession.fInitializing.load())
             {
                 /* We wnat to reset our pointers here so they don't get sniped. */
                 rSession.pCredentials.SetNull();
@@ -134,7 +135,8 @@ namespace TAO::API
                 hashGenesis   = std::move(rSession.hashGenesis);
                 nType         = std::move(rSession.nType);
                 nAuthFailures = rSession.nAuthFailures.load();
-                nLastActive   = rSession.nLastActive.load();
+                nLastAccess   = rSession.nLastAccess.load();
+                fInitializing = rSession.fInitializing.load();
 
                 /* We wnat to reset our pointers here so they don't get sniped. */
                 rSession.pCredentials.SetNull();
@@ -147,12 +149,12 @@ namespace TAO::API
             /** Constructor based on geneis. **/
             Session(const SecureString& strUsername, const SecureString& strPassword, const uint8_t nTypeIn = LOCAL)
             : pCredentials  (new TAO::Ledger::SignatureChain(strUsername, strPassword))
-            , pUnlock       (nullptr)
+            , pUnlock       (new TAO::Ledger::PinUnlock())
             , hashGenesis   (pCredentials->Genesis())
             , nType         (nTypeIn)
             , nAuthFailures (0)
-            , nLastActive   (runtime::unifiedtimestamp())
-            , CREATE_MUTEX  ( )
+            , nLastAccess   (runtime::unifiedtimestamp())
+            , fInitializing (true)
             {
             }
 
@@ -160,8 +162,6 @@ namespace TAO::API
             /** Default Destructor. **/
             ~Session()
             {
-                LOCK(CREATE_MUTEX); //TODO: this lock should wait if session is being used to build a tx.
-
                 /* Cleanup the credentials object. */
                 if(!pCredentials.IsNull())
                     pCredentials.free();
@@ -182,6 +182,29 @@ namespace TAO::API
             const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials() const
             {
                 return pCredentials;
+            }
+
+
+            /** Authorized
+             *
+             *  Check if given sigchain was authorized for given actions.
+             *
+             *  @param[out] nRequestedActions The actions to check.
+             *
+             *  @return true if the actions were authroized.
+             *
+             **/
+            bool Authorized(uint8_t &nRequestedActions) const
+            {
+                /* Check that we have initialized our PIN. */
+                if(pUnlock.IsNull())
+                    return false;
+
+                /* Set our return by reference. */
+                nRequestedActions =
+                    pUnlock->UnlockedActions();
+
+                return true;
             }
 
 
@@ -216,6 +239,35 @@ namespace TAO::API
             }
 
 
+            /** Update
+             *
+             *  Update our PIN object with new unlocked actions.
+             *
+             *  @param[in] strPIN The pin number to update.
+             *  @param[in] nUpdatedActions The actions to update.
+             *
+             **/
+            void Update(const SecureString& strPIN, const uint8_t nUpdatedActions)
+            {
+                /* Update the internal PIN object. */
+                pUnlock->Update(strPIN, nUpdatedActions);
+            }
+
+
+            /** Update
+             *
+             *  Update our password internal to our credentials.
+             *
+             *  @param[in] strPassword The passowrd we are updating to
+             *
+             **/
+            void Update(const SecureString& strPassword)
+            {
+                /* Update the internal PIN object. */
+                pCredentials->Update(strPassword);
+            }
+
+
             /** Genesis
              *
              *  Get the genesis-id of the current session.
@@ -242,6 +294,19 @@ namespace TAO::API
             }
 
 
+            /** Accessed
+             *
+             *  Get the last timestamp session was accessed.
+             *
+             *  @return The unix timestamp of last session access.
+             *
+             **/
+            uint64_t Accessed() const
+            {
+                return nLastAccess.load();
+            }
+
+
             /** Active
              *
              *  Get the number of seconds a session has been active.
@@ -251,7 +316,7 @@ namespace TAO::API
              **/
             uint64_t Active() const
             {
-                return (runtime::unifiedtimestamp() - nLastActive.load());
+                return (runtime::unifiedtimestamp() - nLastAccess.load());
             }
         };
 
@@ -275,6 +340,16 @@ namespace TAO::API
         static void Insert(const uint256_t& hashSession, Session& rSession);
 
 
+        /** Ready
+         *
+         *  Lets everything know that session is ready to be used.
+         *
+         *  @param[in] hashGenesis The genesis identifier to add by index.
+         *
+         **/
+        static void Ready(const uint256_t& hashGenesis);
+
+
         /** Active
          *
          *  Check if user is already authenticated by genesis-id and return the session.
@@ -286,6 +361,53 @@ namespace TAO::API
          *
          **/
         static bool Active(const uint256_t& hashGenesis, uint256_t &hashSession);
+
+
+        /** Active
+         *
+         *  Check if user is already authenticated by genesis-id.
+         *
+         *  @param[in] hashGenesis The current genesis-id to lookup for.
+         *
+         *  @return true if session is authenticated.
+         *
+         **/
+        static bool Active(const uint256_t& hashGenesis);
+
+
+        /** Accessed
+         *
+         *  Get the last time that session was accessed
+         *
+         *  @param[in] jParams The parameters to check against.
+         *
+         *  @return the timestamp of last session access
+         *
+         **/
+        static uint64_t Accessed(const encoding::json& jParams);
+
+
+        /** Indexing
+         *
+         *  Checks if a session is ready to be used and not indexing
+         *
+         *  @param[in] hashSession The session identifier to add by index.
+         *
+         **/
+        static bool Indexing(const encoding::json& jParams);
+
+
+        /** Authenticate
+         *
+         *  Authenticate a user's credentials against their sigchain.
+         *  This function requires the PIN to be inputed.
+         *
+         *  @param[in] jParams The parameters to check against.
+         *
+         *  @return true if sigchain was authenticated.
+         *
+         **/
+        static bool Authenticate(const encoding::json& jParams);
 
 
         /** Caller
@@ -301,9 +423,59 @@ namespace TAO::API
         static bool Caller(const encoding::json& jParams, uint256_t &hashCaller);
 
 
-        /** Instance
+        /** Unloacked
          *
-         *  Get an instance of current session indexed by session-id.
+         *  Determine if a sigchain is unlocked for given actions.
+         *
+         *  @param[in] jParams The incoming paramters to parse
+         *  @param[in] nRequestedActions The actions requested for PIN unlock.
+         *
+         *  @return true if the PIN is unlocked for given actions.
+         *
+         **/
+        static bool Unlocked(const encoding::json& jParams, uint8_t &nRequestedActions);
+
+
+        /** Unloacked
+         *
+         *  Determine if a sigchain is unlocked for given actions.
+         *
+         *  @param[in] hashSession The given session-id to check our status for.
+         *  @param[in] nRequestedActions The actions requested for PIN unlock.
+         *
+         *  @return true if the PIN is unlocked for given actions.
+         *
+         **/
+        static bool Unlocked(const uint8_t nRequestedActions, const uint256_t& hashSession = default_session());
+
+
+        /** Caller
+         *
+         *  Get the genesis-id of the given caller using session from params. Throws exception if not found.
+         *
+         *  @param[in] jParams The incoming parameters to parse session from.
+         *
+         *  @return the caller if found
+         *
+         **/
+        static uint256_t Caller(const encoding::json& jParams);
+
+
+        /** Caller
+         *
+         *  Get the genesis-id of the given caller using session. Throws exception if not found.
+         *
+         *  @param[in] hashSession The session-id to extract genesis from.
+         *
+         *  @return the caller if found
+         *
+         **/
+        static uint256_t Caller(const uint256_t& hashSession = default_session());
+
+
+        /** Credentials
+         *
+         *  Get an instance of current session credentials indexed by session-id.
          *  This will throw if session not found, do not use without checking first.
          *
          *  @param[in] jParams The incoming parameters.
@@ -311,7 +483,32 @@ namespace TAO::API
          *  @return The active session.
          *
          **/
-        static Session& Instance(const encoding::json& jParams);
+        static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const encoding::json& jParams);
+
+
+        /** Credentials
+         *
+         *  Get an instance of current session credentials indexed by session-id.
+         *  This will throw if session not found, do not use without checking first.
+         *
+         *  @param[in] hashSession The session parameter required.
+         *
+         *  @return The active session.
+         *
+         **/
+        static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const uint256_t& hashSession = default_session());
+
+
+        /** Sessions
+         *
+         *  List the currently active sessions in manager.
+         *
+         *  @param[in] nThread The thread-id to filter by if applicable.
+         *
+         *  @return the list of sessions if any found.
+         *
+         **/
+        static const std::vector<std::pair<uint256_t, uint256_t>> Sessions(const int64_t nThread = -1, const uint64_t nSize = 0);
 
 
         /** Unlock
@@ -325,19 +522,45 @@ namespace TAO::API
          *  @return True if this unlock action was successful.
          *
          **/
-        static bool Unlock(const encoding::json& jParams, SecureString &strPIN,
+        static std::recursive_mutex& Unlock(const encoding::json& jParams, SecureString &strPIN,
                            const uint8_t nRequestedActions = TAO::Ledger::PinUnlock::TRANSACTIONS);
 
 
-        /** Unlock
+       /** Unlock
+        *
+        *  Unlock and get the active pin from current session.
+        *
+        *  @param[in] hashSession The incoming session identifier
+        *  @param[out] strPIN The pin number to return by reference
+        *  @param[in] nRequestedActions The actions requested for PIN unlock.
+        *
+        *  @return True if this unlock action was successful.
+        *
+        **/
+       static std::recursive_mutex& Unlock(SecureString &strPIN, const uint8_t nRequestedActions,
+                                                                 const uint256_t& hashSession = default_session());
+
+
+        /** Update
          *
-         *  Unlock this session by inputing a valid pin and requested actions.
+         *  Update the allowed actions for given pin
          *
-         *  @param[in] jParams The incoming parameters including session to parse.
-         *  @param[in] nActions The actions that will be allowed on unlocked pin.
+         *  @param[in] jParams the incoming parameters to parse
+         *  @param[in] nUpdatedActions The actions allowed for PIN unlock.
          *
          **/
-        static void Unlock(const encoding::json& jParams, const uint8_t nActions);
+        static void Update(const encoding::json& jParams, const uint8_t nUpdatedActions, const SecureString& strPIN = "");
+
+
+        /** Update
+         *
+         *  Update the password internal credentials
+         *
+         *  @param[in] jParams the incoming parameters to parse
+         *  @param[in] strPassword The new password to update.
+         *
+         **/
+        static void Update(const encoding::json& jParams, const SecureString& strPassword);
 
 
         /** Terminate
@@ -369,6 +592,23 @@ namespace TAO::API
         static std::map<uint256_t, Session> mapSessions;
 
 
+        /** Vector of our lock objects for session level locks. **/
+        static std::vector<std::recursive_mutex> vLocks;
+
+
+        /** authenticate
+         *
+         *  Authenticate and get the active pin from current session.
+         *
+         *  @param[in] strPIN The pin number to return by reference.
+         *  @param[in rSession The session object ot authenticate]
+         *
+         *  @return True if given crecentials were correct.
+         *
+         **/
+        static bool authenticate(const SecureString& strPIN, const Session& rSession);
+
+
         /** terminate_session
          *
          *  Terminate an active session by parameters.
@@ -386,7 +626,7 @@ namespace TAO::API
          *  @param[in] hashSession The incoming session to terminate.
          *
          **/
-        static bool increment_failures(const uint256_t& hashSession);
+        static void increment_failures(const uint256_t& hashSession);
 
 
         /** default_session
@@ -394,6 +634,6 @@ namespace TAO::API
          *  Checks for the correct session-id for single user mode.
          *
          **/
-        static uint256_t default_session();
+        __attribute__((const)) static uint256_t default_session();
     };
 }

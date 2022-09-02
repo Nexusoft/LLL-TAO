@@ -145,5 +145,19 @@ namespace TAO::API
          **/
         encoding::json SetStake(const encoding::json& jParams, const bool fHelp);
 
+
+        /** Void
+         *
+         *  Voids a transaction, if transaction is returned or sent to individual but wishes to cancel this method can be used as
+         *  long as the conditional contract allows it.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Void(const encoding::json& jParams, const bool fHelp);
+
     };
 }

@@ -15,6 +15,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/system.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/global.h>
@@ -31,21 +32,17 @@ namespace TAO::API
         const std::string strAddress =
             ExtractString(jParams, "address");
 
-        /* The decoded register address */
-        const TAO::Register::Address hashAddress =
-            TAO::Register::Address(strAddress);
-
         /* Populate address into response */
         encoding::json jRet;
         jRet["address"] = strAddress;
         jRet["valid"]   = false;
 
-        /* handle recipient being a register address */
-        if(!hashAddress.IsValid())
-            return jRet;
+        /* Build a legacy address for this check. */
+        Legacy::NexusAddress addr =
+            Legacy::NexusAddress(strAddress);
 
-        /* Check to see if this is a legacy address */
-        if(hashAddress.IsLegacy())
+        /* Check that this is a valid legacy address being validated. */
+        if(addr.IsValid())
         {
             /* Set our response values. */
             jRet["valid"] = true;
@@ -56,18 +53,23 @@ namespace TAO::API
             /* Only populate mine field when wallet enabled. */
             jRet["mine"]  = false;
 
-            /* Legacy address */
-            const Legacy::NexusAddress hashAddress = Legacy::NexusAddress(strAddress);
-
             /* Check that we have the key in this wallet. */
-            if(Legacy::Wallet::Instance().HaveKey(hashAddress)
-            || Legacy::Wallet::Instance().HaveScript(hashAddress.GetHash256()))
+            if(Legacy::Wallet::Instance().HaveKey(addr)
+            || Legacy::Wallet::Instance().HaveScript(addr.GetHash256()))
                 jRet["mine"] = true;
 
             #endif
 
             return jRet;
         }
+
+        /* The decoded register address */
+        const TAO::Register::Address hashAddress =
+            TAO::Register::Address(strAddress);
+
+        /* handle recipient being a register address */
+        if(!hashAddress.IsValid())
+            return jRet;
 
         /* Get the tObject. We only consider an address valid if the tObject exists in the register database*/
         TAO::Register::Object tObject;
@@ -80,7 +82,7 @@ namespace TAO::API
 
         /* Check for caller's genesis. */
         const uint256_t hashCaller =
-            Commands::Instance<Users>()->GetCallersGenesis(jParams);
+            Authentication::Caller(jParams);
 
         /* Make sure we were able to get the caller. */
         if(hashCaller != 0)

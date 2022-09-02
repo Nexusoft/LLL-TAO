@@ -36,88 +36,10 @@ http://127.0.0.1:8080/ledger/get/block
 
 **NOTE**:  URI's are always in lowercase.
 
------------------------------------
-***
-
-# `Verbs (actions)`
-The following list of verbs are used throughout the Nexus APIs.  While the action is generic in nature (i.e. list, get, create), implementations of these actions will adhere to certain semantics or mandatory parameters regardless of the noun (resource).
-
-* `list`
-   - Retrieves a sorted list of objects or data
-   - Sorting is based on transaction/object age, by default is always newest to oldest.  Some list methods support additional sort fields.
-   - Supported parameters:
-     - `order` : The order of the results.  Values can be `desc` (default) or `asc`
-     - `limit` : The number of records to return, default 100.  
-     - `page`: Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
-     - `offset` : An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
-     - `verbose` : to indicate the verbosity of the data returned.  Values can be `default`, `summary`, or `detail`   
-
-* `get`
-   - Retrieves a single object or piece of data
-   - Supported parameters:
-     - (No common parameters)
-
-* `create`
-   - Creates a single resource / object
-   - Supported parameters:
-     - `format` indicates the format of the data being provided to create the item / object (where applicable). Values can be `basic`, `raw`, `JSON`, `XML`, and `ANSI C`
-* `debit`
-* `create`
-* `transfer`
-* `claim`
-* `reverse`
-* `buy`
-* `sell`
-* `login`
-* `logout`
-* `unlock`
-* `lock`
-* `subscribe`
 
 -----------------------------------
 ***
 
-# `Nouns (resources)`
-
-Within each API endpoint, a noun is used to describe the resource or object upon which the action is taking place.  
-
-The commonly used resources are described below:
-
-1. `transaction` :
-
-    A transaction is a cryptographic object that contains the contracts that operated on the registers.   
-    It is indexed by an uint512_t, so any index used must be sanitized to this format.
-
-2. `block` :
-
-    A block is a cryptographic object that contains the transactions in a specific sequence of time.  
-    It is indexed by an uint1024_t, so any index used must be sanitized to this format.  
-    A block index is prepended with 0x to imply hexadecimal encoding.
-    Base-16 encoding is all that is supported at present.
-    Other forms of encoding may be supported at a later time (possibly base-58).
-
-3. `account` :
-
-    An account is an object register of the following types: trust or base.   
-    It is responsible for holding the state of a user's account balance.
-
-4. `object` :
-
-    An object is a register with nType being REGISTER::OBJECT.
-    An object is always parsed, and access to it's data members given.
-
-5. `token` :
-
-    A token is an object register of standard OBJECT::TOKEN.   
-    It contains the domain parameters of a token such as supply or total number of significant digits.
-
-6. `asset` :
-
-    An asset is an object register of a specialized type.
-
-
------------------------------------
-***
 
 # `Error Handling`
 

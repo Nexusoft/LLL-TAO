@@ -18,6 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/extract.h>
 
 #include <TAO/API/types/authentication.h>
+#include <TAO/API/types/indexing.h>
 #include <TAO/API/types/commands/sessions.h>
 
 /* Global TAO namespace. */
@@ -106,6 +107,9 @@ namespace TAO::API
             { "genesis", tSession.Genesis().ToString() },
             { "session", hashSession.ToString() }
         };
+
+        /* Initialize our indexing session. */
+        Indexing::Initialize(tSession.Genesis());
 
         /* Check for single user mode. */
         if(!config::fMultiuser.load())

@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/json.h>
 #include <TAO/API/types/commands.h>
 
-#include <TAO/API/users/types/users.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/finance.h>
 
 #include <TAO/Ledger/include/constants.h>
@@ -43,7 +43,7 @@ namespace TAO::API
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Retrieve the trust register address, which is based on the users genesis */
         const TAO::Register::Address hashRegister =

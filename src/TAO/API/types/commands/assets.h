@@ -67,9 +67,9 @@ namespace TAO::API
         encoding::json Create(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Update
+        /** Partial
          *
-         *  Update the data in an asset
+         *  List assets with fungible tokens that represent ownership.
          *
          *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
@@ -77,7 +77,7 @@ namespace TAO::API
          *  @return The return object in JSON.
          *
          **/
-        encoding::json Update(const encoding::json& jParams, const bool fHelp);
+        encoding::json Partial(const encoding::json& jParams, const bool fHelp);
 
 
         /** Tokenize
@@ -91,6 +91,19 @@ namespace TAO::API
          *
          **/
         encoding::json Tokenize(const encoding::json& jParams, const bool fHelp);
+
+
+        /** Update
+         *
+         *  Update the data in an asset
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Update(const encoding::json& jParams, const bool fHelp);
 
 
         /** SchemaToJSON

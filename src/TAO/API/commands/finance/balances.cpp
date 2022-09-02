@@ -16,7 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands.h>
 
-#include <TAO/API/users/types/users.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/finance.h>
 
@@ -48,7 +48,7 @@ namespace TAO::API
     {
         /* The user genesis hash */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0, nTotal = 0;
@@ -59,7 +59,7 @@ namespace TAO::API
 
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
         std::vector<TAO::Register::Address> vRegisters;
-        if(!ListRegisters(hashGenesis, vRegisters))
+        if(!LLD::Logical->ListRegisters(hashGenesis, vRegisters))
             throw Exception(-74, "No registers found");
 
         /* Keep a map to track our aggregated balance, we use a second map for better readability. */
@@ -86,7 +86,8 @@ namespace TAO::API
                 continue;
 
             /* Get the token */
-            const uint256_t hashToken = object.get<uint256_t>("token");
+            const uint256_t hashToken =
+                object.get<uint256_t>("token");
 
             /* Cache the decimals for this token to use for display */
             if(!mapBalances.count(hashToken))
@@ -115,7 +116,8 @@ namespace TAO::API
             const TAO::Register::Address hashToken = rBalances.first;
 
             /* Grab our decimals from balances map. */
-            const uint8_t nDecimals = rBalances.second.at("decimals");
+            const uint8_t nDecimals =
+                rBalances.second.at("decimals");
 
             /* Grab unconfirmed balances as a pair. */
             const uint64_t nOutgoing =

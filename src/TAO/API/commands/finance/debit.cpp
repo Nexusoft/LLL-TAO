@@ -23,10 +23,10 @@ ________________________________________________________________________________
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
+#include <TAO/API/types/accounts.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/finance.h>
-
-#include <TAO/API/users/types/users.h>
 
 #include <TAO/API/include/conditions.h>
 
@@ -47,8 +47,6 @@ ________________________________________________________________________________
 #include <Util/include/string.h>
 #include <Util/include/math.h>
 
-#include "accounts.h" //same directory
-
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -57,7 +55,7 @@ namespace TAO::API
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Let's keep our working accounts in a nice tidy multimap, mapped by token-id. */
         std::map<uint256_t, Accounts> mapAccounts;
@@ -225,10 +223,6 @@ namespace TAO::API
             mapAccounts[hashToken].Insert(hashFrom, objFrom.get<uint64_t>("balance"));
         }
 
-        /* Check that there are not too many recipients to fit into one transaction */
-        if(vRecipients.size() > 99)
-            throw Exception(-215, "Max number of recipients (99) exceeded");
-
         /* Build our list of contracts. */
         std::vector<TAO::Operation::Contract> vContracts;
         for(const auto& jRecipient : vRecipients)
@@ -237,12 +231,9 @@ namespace TAO::API
             if(jRecipient.find("amount") == jRecipient.end())
                 throw Exception(-46, "Missing amount");
 
-            /* The register address of the recipient acccount. */
-            const TAO::Register::Address hashTo =
-                ExtractAddress(jRecipient, "to"); //we use suffix 'to' here
-
             /* Check for a legacy output here. */
-            if(hashTo.IsLegacy())
+            Legacy::NexusAddress addrLegacy;
+            if(ExtractLegacy(jRecipient, addrLegacy, "to"))
             {
                 /* Check that we have an available account to debit. */
                 if(!mapAccounts.count(0))
@@ -269,9 +260,6 @@ namespace TAO::API
                         nDebit = tAccounts.GetBalance();
                     }
 
-                    /* Build our legacy address. */
-                    Legacy::NexusAddress addrLegacy = Legacy::NexusAddress(hashTo);
-
                     /* Build our script payload */
                     Legacy::Script script;
                     script.SetNexusAddress(addrLegacy);
@@ -292,106 +280,109 @@ namespace TAO::API
                         tAccounts++; //iterate to next account
                 }
             }
-            else
+
+            /* Extract as a register address if legacy checks failed. */
+            const TAO::Register::Address hashTo =
+                ExtractAddress(jRecipient, "to"); //we use suffix 'to' here
+
+            /* Get the recipent token / account object. */
+            TAO::Register::Object objTo;
+            if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::LOOKUP))
+                throw Exception(-209, "Recipient account doesn't exist");
+
+            /* Check that we are not debiting to tokenized asset. */
+            uint256_t hashToken = ~uint256_t(0); //default value should fail
+            if(objTo.Base() == TAO::Register::OBJECTS::NONSTANDARD)
             {
-                /* Get the recipent token / account object. */
-                TAO::Register::Object objTo;
-                if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::LOOKUP))
-                    throw Exception(-209, "Recipient is not a valid account");
+                /* Check that we don't have multiple accounts that would come from any/all. */
+                if(mapAccounts.size() != 1)
+                    throw Exception(-65, "Cannot debit/any to tokenized asset");
 
-                /* Check that we are not debiting to tokenized asset. */
-                uint256_t hashToken = ~uint256_t(0); //default value should fail
-                if(objTo.Base() == TAO::Register::OBJECTS::NONSTANDARD)
+                /* Get the token-id we will work with. */
+                hashToken = mapAccounts.begin()->first;
+            }
+            else //otherwise check by account token
+                hashToken = objTo.get<uint256_t>("token");
+
+            /* Check that we have an available account to debit. */
+            if(!mapAccounts.count(hashToken))
+                throw Exception(-51, "No available token accounts for recipient");
+
+            /* Grab a reference of our token struct. */
+            Accounts& tAccounts = mapAccounts[hashToken];
+
+            /* Loop until we have depleted the amount for this recipient. */
+            uint64_t nAmount = ExtractAmount(jRecipient, tAccounts.GetFigures());
+            while(nAmount > 0)
+            {
+                /* Grab the balance of our current account. */
+                uint64_t nDebit = nAmount;
+
+                /* Check they have the required funds */
+                if(nDebit > tAccounts.GetBalance())
                 {
-                    /* Check that we don't have multiple accounts that would come from any/all. */
-                    if(mapAccounts.size() != 1)
-                        throw Exception(-65, "Cannot debit/any to tokenized asset");
+                    /* Check if we have another account on hand. */
+                    if(!tAccounts.HasNext())
+                        throw Exception(-69, "Insufficient funds");
 
-                    /* Get the token-id we will work with. */
-                    hashToken = mapAccounts.begin()->first;
+                    /* Adjust our debit amount. */
+                    nDebit = tAccounts.GetBalance();
                 }
-                else //otherwise check by account token
-                    hashToken = objTo.get<uint256_t>("token");
 
-                /* Check that we have an available account to debit. */
-                if(!mapAccounts.count(hashToken))
-                    throw Exception(-51, "No available token accounts for recipient");
+                /* Flags to track for final adjustments in our expiration contract.  */
+                bool fTokenizedDebit = false, fSendToSelf = false;
 
-                /* Grab a reference of our token struct. */
-                Accounts& tAccounts = mapAccounts[hashToken];
-
-                /* Loop until we have depleted the amount for this recipient. */
-                uint64_t nAmount = ExtractAmount(jRecipient, tAccounts.GetFigures());
-                while(nAmount > 0)
+                /* Check recipient account type */
+                switch(objTo.Base())
                 {
-                    /* Grab the balance of our current account. */
-                    uint64_t nDebit = nAmount;
-
-                    /* Check they have the required funds */
-                    if(nDebit > tAccounts.GetBalance())
+                    /* Case if sending to an account. */
+                    case TAO::Register::OBJECTS::ACCOUNT:
                     {
-                        /* Check if we have another account on hand. */
-                        if(!tAccounts.HasNext())
-                            throw Exception(-69, "Insufficient funds");
+                        /* Check if this is a send to self. */
+                        fSendToSelf = (objTo.hashOwner == hashGenesis);
 
-                        /* Adjust our debit amount. */
-                        nDebit = tAccounts.GetBalance();
+                        break;
                     }
 
-                    /* Flags to track for final adjustments in our expiration contract.  */
-                    bool fTokenizedDebit = false, fSendToSelf = false;
-
-                    /* Check recipient account type */
-                    switch(objTo.Base())
+                    /* Case if sending to an asset (this is a tokenized debit) */
+                    case TAO::Register::OBJECTS::NONSTANDARD:
                     {
-                        /* Case if sending to an account. */
-                        case TAO::Register::OBJECTS::ACCOUNT:
-                        {
-                            /* Check if this is a send to self. */
-                            fSendToSelf = (objTo.hashOwner == hashGenesis);
+                        /* For payments to objects, they must be owned by a token */
+                        if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
+                            throw Exception(-211, "Recipient object has not been tokenized.");
 
-                            break;
-                        }
+                        /* Set the flag for this debit. */
+                        fTokenizedDebit = true;
 
-                        /* Case if sending to an asset (this is a tokenized debit) */
-                        case TAO::Register::OBJECTS::NONSTANDARD:
-                        {
-                            /* For payments to objects, they must be owned by a token */
-                            if(objTo.hashOwner.GetType() != TAO::Register::Address::TOKEN)
-                                throw Exception(-211, "Recipient object has not been tokenized.");
-
-                            /* Set the flag for this debit. */
-                            fTokenizedDebit = true;
-
-                            break;
-                        }
-
-                        default:
-                            throw Exception(-209, "Recipient is not a valid account.");
+                        break;
                     }
 
-                    /* The optional payment reference */
-                    const uint64_t nReference = ExtractInteger<uint64_t>(jRecipient, "reference", 0); //0: default reference of 0
-
-                    /* Submit the payload object. */
-                    TAO::Operation::Contract tContract;
-                    tContract << uint8_t(TAO::Operation::OP::DEBIT) << tAccounts.GetAddress() << hashTo << nDebit << nReference;
-
-                    /* Add expiration condition unless sending to self */
-                    if(!fSendToSelf)
-                        AddExpires(jParams, hashGenesis, tContract, fTokenizedDebit);
-
-                    /* Add this contract to our processing queue. */
-                    vContracts.push_back(tContract);
-
-                    /* Reduce the current balances. */
-                    tAccounts -= nDebit;
-                    nAmount   -= nDebit;
-
-                    /* Iterate to next if needed. */
-                    if(nAmount > 0)
-                        tAccounts++; //iterate to next account
+                    default:
+                        throw Exception(-209, "Recipient is not a valid account.");
                 }
+
+                /* The optional payment reference */
+                const uint64_t nReference =
+                    ExtractInteger<uint64_t>(jRecipient, "reference", 0); //0: default reference of 0
+
+                /* Submit the payload object. */
+                TAO::Operation::Contract tContract;
+                tContract << uint8_t(TAO::Operation::OP::DEBIT) << tAccounts.GetAddress() << hashTo << nDebit << nReference;
+
+                /* Add expiration condition unless sending to self */
+                if(!fSendToSelf)
+                    AddExpires(jParams, hashGenesis, tContract, fTokenizedDebit);
+
+                /* Add this contract to our processing queue. */
+                vContracts.push_back(tContract);
+
+                /* Reduce the current balances. */
+                tAccounts -= nDebit;
+                nAmount   -= nDebit;
+
+                /* Iterate to next if needed. */
+                if(nAmount > 0)
+                    tAccounts++; //iterate to next account
             }
         }
 

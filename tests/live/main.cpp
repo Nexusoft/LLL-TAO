@@ -186,7 +186,9 @@ bool Build(const std::vector<uint8_t> vByteCode, TAO::Operation::Contract &rCont
     return true;
 }
 
+#include <TAO/API/include/extract.h>
 
+#include <Legacy/types/address.h>
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)

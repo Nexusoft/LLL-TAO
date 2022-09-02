@@ -51,6 +51,19 @@ namespace TAO::Register
 
     /** Unpack
      *
+     *  Unpack a previous transaction hash from given contract.
+     *
+     *  @param[in] contract The contract to unpack from.
+     *  @param[out] hashPrevTx finds a previous transaction
+     *
+     *  @return true if the previous tx hash and contract ID was unpacked successfully
+     *
+     **/
+    bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx);
+
+
+    /** Unpack
+     *
      *  Unpack a previous transaction hash and contract ID from a contract
      *
      *  @param[in] contract The contract to unpack from.

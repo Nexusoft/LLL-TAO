@@ -18,6 +18,9 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/enum.h>
 
+#include <set>
+#include <string>
+
 /* Global TAO namespace. */
 namespace TAO::Register
 {
@@ -48,7 +51,7 @@ namespace TAO::Register
         /* Used for internal object register system memory. */
         "system",
 
-        /* Used for object register names. Reserved to never be changed. */
+        /* Used for internal object register names. */
         "name"
     };
 
@@ -83,7 +86,7 @@ namespace TAO::Register
         if(!hashAddress.IsValid())
             return true;
 
-        return hashAddress >= uint8_t(SYSTEM::RESERVED) && hashAddress <= uint8_t(SYSTEM::LIMIT);
+        return hashAddress >= uint256_t(SYSTEM::RESERVED) && hashAddress <= uint256_t(SYSTEM::LIMIT);
     }
 
 

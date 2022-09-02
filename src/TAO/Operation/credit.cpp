@@ -39,13 +39,7 @@ namespace TAO
         {
             /* Check if this transfer is already claimed. */
             if(LLD::Ledger->HasProof(hashProof, hashTx, nContract, nFlags))
-            {
-                TAO::Ledger::BlockState state;
-                if(!LLD::Ledger->ReadBlock(hashTx, state))
-                    return debug::error(FUNCTION, "failed to read block");
-
                 return debug::error(FUNCTION, "credit is already claimed ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
-            }
 
             /* Write the claimed proof. */
             if(!LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))

@@ -18,8 +18,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/conditions.h>
 #include <TAO/API/include/extract.h>
 
-#include <TAO/API/users/types/users.h>
-
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/templates.h>
 #include <TAO/API/types/commands.h>
 
@@ -30,19 +29,19 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Claim an incoming transfer from recipient. */
+    /* Transfer a register to another recipient. */
     encoding::json Templates::Transfer(const encoding::json& jParams, const bool fHelp)
     {
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
-            Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+            Authentication::Caller(jParams);
 
         /* Extract some parameters from input data. */
         const uint256_t hashRegister  = ExtractAddress(jParams);
         const uint256_t hashRecipient = ExtractRecipient(jParams);
 
         /* Check that the destination exists. */
-        if(!LLD::Ledger->HasGenesis(hashRecipient))
+        if(!LLD::Ledger->HasFirst(hashRecipient))
             throw Exception(-113, "Destination user doesn't exist");
 
         /* Check out our object now. */

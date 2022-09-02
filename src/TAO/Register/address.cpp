@@ -11,9 +11,12 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/types/address.h>
+
 #include <LLC/include/random.h>
 #include <LLC/hash/SK.h>
 
+#include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/address.h>
 
 #include <Util/include/encoding.h>
@@ -49,6 +52,7 @@ namespace TAO
         /* Assignment operator. */
         Address& Address::operator=(const uint256_t& value)
         {
+            /* Set the internal 32 bit values. */
             for(uint8_t i = 0; i < WIDTH; ++i)
                 pn[i] = value.pn[i];
 
@@ -59,6 +63,7 @@ namespace TAO
         /* Move assignment operator. */
         Address& Address::operator=(uint256_t&& value) noexcept
         {
+            /* Set the internal 32 bit values. */
             for(uint8_t i = 0; i < WIDTH; ++i)
                 pn[i] = std::move(value.pn[i]);
 
@@ -74,25 +79,21 @@ namespace TAO
             SetType(nType);
 
             /* Check for valid. */
-            if(!IsValid())
-                throw debug::exception(FUNCTION, "invalid type for random ", GetHex());
+            //if(!IsValid())
+            //    throw debug::exception(FUNCTION, "invalid type for random ", ToBase58());
         }
 
 
         /* Build an address from a base58 encoded string.*/
         Address::Address(const std::string& strAddress)
-        : uint256_t()
+        : uint256_t( )
         {
             /* Set the internal value from the incoming base58 encoded address */
             SetBase58(strAddress);
-
-            /* Check for valid address types. */
-            //if(!IsValid()) XXX: disabled for now, we can don't always want an exception thrown here
-            //    throw debug::exception(FUNCTION, "invalid type for address");
         }
 
 
-        /* Build an address deterministically from a namespace name*/
+        /* Build an address deterministically from a namespace name */
         Address::Address(const std::string& strName, const uint8_t nType)
         : uint256_t(LLC::SK256(strName))
         {
@@ -106,6 +107,7 @@ namespace TAO
 
         /* Build an address deterministically from a key and namespace hash. */
         Address::Address(const std::string& strKey, const uint256_t& hashNamespace, const uint8_t nType)
+        : uint256_t(0)
         {
             /* The data to hash into this address */
             std::vector<uint8_t> vData;
@@ -130,11 +132,13 @@ namespace TAO
         /* Check if address has a valid type assoicated. */
         bool Address::IsValid() const
         {
+            /* Check for invalid address ranges. */
+            if(*this <= uint256_t(SYSTEM::LIMIT)) //we don't use Rserved as this would result in recursive call loop
+                return false;
+
             /* Return on valid types. */
             switch(GetType())
             {
-                case LEGACY:
-                case LEGACY_TESTNET:
                 case READONLY:
                 case APPEND:
                 case RAW:
@@ -229,27 +233,20 @@ namespace TAO
         }
 
 
-        /* Check if type is set to LEGACY or LEGACY_TESTNET. */
-        bool Address::IsLegacy() const
-        {
-            return GetType() == LEGACY || GetType() == LEGACY_TESTNET;
-        }
-
-
         /* Sets the uint256_t value of this address from a base58 encoded string. */
         void Address::SetBase58(const std::string& str)
         {
             /* The decoded bytes  */
-            std::vector<uint8_t> bytes;
+            std::vector<uint8_t> vBytes;
 
             /* Decode the incoming string */
-            if(encoding::DecodeBase58Check(str, bytes))
+            if(encoding::DecodeBase58Check(str, vBytes))
             {
                 /* Set the internal value based on the remainder of the decoded bytes after the leading type byte */
-                SetBytes(std::vector<uint8_t>(bytes.begin() +1, bytes.end()));
+                SetBytes(std::vector<uint8_t>(vBytes.begin() + 1, vBytes.end()));
 
                 /* Set the type */
-                SetType(bytes[0]);
+                SetType(vBytes[0]);
             }
         }
 
@@ -267,13 +264,12 @@ namespace TAO
             return encoding::EncodeBase58Check(vch);
         }
 
+
         /* Returns a base58 encoded string representation of the address. */
         std::string Address::ToString() const
         {
             if(*this == 0)
                 return "0";
-            else if(GetType() == SYSTEM || (GetType() >= RESERVED1 && GetType() <= RESERVED2))
-                return GetHex();
             else
                 return ToBase58();
         }

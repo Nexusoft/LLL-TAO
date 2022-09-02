@@ -22,7 +22,6 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/types/session-manager.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -40,6 +39,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/syncblock.h>
+#include <TAO/Ledger/types/sigchain.h>
 
 #ifndef NO_WALLET
 #include <Legacy/wallet/wallet.h>
@@ -1629,7 +1629,7 @@ namespace LLP
 
                             /* Check for empty hash start. */
                             bool fGenesis = (hashStart == 0);
-                            if(hashStart == 0 && !LLD::Ledger->ReadGenesis(hashSigchain, hashStart))
+                            if(hashStart == 0 && !LLD::Ledger->ReadFirst(hashSigchain, hashStart))
                                 break;
 
                             /* Check for empty hash stop. */
@@ -2000,7 +2000,7 @@ namespace LLP
 
                             /* Get the genesis txid. */
                             uint512_t hashTx;
-                            if(LLD::Ledger->ReadGenesis(hashGenesis, hashTx))
+                            if(LLD::Ledger->ReadFirst(hashGenesis, hashTx))
                             {
                                 TAO::Ledger::Transaction tx;
                                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
@@ -2346,10 +2346,11 @@ namespace LLP
                                 ssPacket >> hashSigchain;
 
                                 /* Check for expected genesis. */
-                                uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
-                                if(hashSigchain != hashLogin)
-                                    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashLogin.SubString());
+                                //uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
+                                //if(hashSigchain != hashLogin)
+                                //    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashLogin.SubString());
                             }
+
                             /* Notification validation */
                             else if(nType == TYPES::NOTIFICATION)
                             {
@@ -2366,14 +2367,14 @@ namespace LLP
                                 ssPacket >> hashAddress;
 
                                 /* Get the genesis hash of the logged in user */
-                                uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
+                                //uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
 
                                 /* If the address is a genesis hash, then make sure that it is for the currently logged in user */
                                 if(hashAddress.GetType() == TAO::Ledger::GENESIS::UserType())
                                 {
                                     /* Check for expected genesis. */
-                                    if(hashAddress != hashLogin)
-                                        return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected genesis-id ", hashAddress.SubString());
+                                    //if(hashAddress != hashLogin)
+                                    //    return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected genesis-id ", hashAddress.SubString());
                                 }
                             }
 
@@ -3191,7 +3192,6 @@ namespace LLP
                                 TAO::Ledger::ClientBlock block;
                                 if(LLD::Client->ReadBlock(tx.hashBlock, block))
                                 {
-
                                     /* Check the merkle branch. */
                                     if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                         return debug::error(FUNCTION, "merkle transaction has invalid path");
@@ -3349,7 +3349,7 @@ namespace LLP
                             TAO::Operation::Contract& contract = tx[nContract];
 
                             /* Lock the mempool at this point so that we can see if the transaction would be accepted into the mempool */
-                            RLOCK(TAO::Ledger::mempool.MUTEX);
+                            RECURSIVE(TAO::Ledger::mempool.MUTEX);
 
                             try
                             {
@@ -3742,36 +3742,38 @@ namespace LLP
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
 
         /* Only send auth messages if the auth key has been cached */
-        if(TAO::API::Commands::Instance<TAO::API::Users>()->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
+        //if(TAO::API::Commands::Instance<TAO::API::Users>()->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
+
+        /*
         {
-            /* Get the Session */
+            SecureString strPIN;
+            RECURSIVE(TAO::API::Authentication::Unlock())
+
+
             TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
 
-            /* The genesis of the currently logged in user */
+
             uint256_t hashSigchain = session.GetAccount()->Genesis();
 
             uint64_t nTimestamp = runtime::unifiedtimestamp();
 
-            /* Add the basic auth data to the message */
+
             ssMessage << hashSigchain <<  nTimestamp << SESSION_ID;
 
-            /* Get a hash of the data. */
+
             uint256_t hashCheck = LLC::SK256(ssMessage.begin(), ssMessage.end());
 
-            /* The public key for the "network" key*/
             std::vector<uint8_t> vchPubKey;
             std::vector<uint8_t> vchSig;
 
-
-            /* Generate the public key and signature for the message data */
             session.GetAccount()->Sign("network", hashCheck.GetBytes(), session.GetNetworkKey(), vchPubKey, vchSig);
 
-            /* Add the public key to the message */
             ssMessage << vchPubKey;
             ssMessage << vchSig;
 
             debug::log(0, FUNCTION, "SIGNING MESSAGE: ", hashSigchain.SubString(), " at timestamp ", nTimestamp);
         }
+        */
 
         return ssMessage;
     }
@@ -4127,74 +4129,6 @@ namespace LLP
 
             /* Logging to verify (for debugging). */
             debug::log(0, FUNCTION, "No Sync Nodes Available");
-        }
-    }
-
-
-    /* Requests missing sig chain / event transactions for the given signature chain. */
-    void TritiumNode::SyncSigChain(LLP::TritiumNode* pNode, const uint256_t& hashGenesis, bool fWait, bool fSyncEvents)
-    {
-        if(config::fClient.load())
-        {
-            /* Get the last txid in sigchain. */
-            uint512_t hashLast;
-            LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
-
-            /* It is possible to have received a register TX for this sig chain without ever having logged in, or at least much
-               later than the previous log in.  This can leave the sig chain framented for this genesis.  In order to detect and
-               resolve this, we traverse the sig chain from hashLast backwards to check if we find any missing transactions before
-               we get to hashGenesis. If so, we need to download the entire sig chain again. */
-
-            /* The previous hash in the chain */
-            uint512_t hashPrev = hashLast;
-
-            /* Loop until genesis. */
-            while(hashPrev != 0)
-            {
-                /* Get the transaction from disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashPrev, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                {
-                    /* The transaction is missing so set hashLast to 0, forcing a sync of the whole sig chain */
-                    hashLast = 0;
-                    break;
-                }
-
-                /* Set the next last. */
-                hashPrev = !tx.IsFirst() ? tx.hashPrevTx : 0;
-
-            }
-
-            /* Request the sig chain from all. */
-            if(fWait)
-                TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast);
-            else
-                pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast);
-
-            /* Get the last event txid */
-            uint512_t hashLastEvent;
-            LLD::Ledger->ReadLastEvent(hashGenesis, hashLastEvent);
-
-            /* Sync events if requested */
-            if(fSyncEvents)
-            {
-                /* Request notifications/events. */
-                if(fWait)
-                    TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
-
-                else
-                    pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastEvent);
-
-                /* Get the last legacy event txid*/
-                uint512_t hashLastLegacyEvent;
-                LLD::Legacy->ReadLastEvent(hashGenesis, hashLastLegacyEvent);
-
-                /* Request legacy notifications/events. */
-                if(fWait)
-                    TritiumNode::BlockingMessage(10000, pNode, LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
-                else
-                    pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastLegacyEvent);
-            }
         }
     }
 

@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <string>
 #include <cstdint>
 
+#include <set>
 
 /** ParseString
  *
@@ -29,6 +30,19 @@ ________________________________________________________________________________
  *
  **/
 void ParseString(const std::string& str, char c, std::vector<std::string>& v);
+
+
+/** ParseString
+ *
+ *  Parses a string and tokenizes it into substrings based on the character delimiter.
+ *
+ *  @param[in] str The string to parse.
+ *  @param[in] c The character delimiter.
+ *
+ *  @param[out] v The set to store the tokens into.
+ *
+ **/
+void ParseString(const std::string& str, char c, std::set<std::string>& v, bool fTrim = false);
 
 
 /** ReplaceAll

@@ -35,11 +35,6 @@ namespace TAO::API
         /* The sending account or token. */
         const TAO::Register::Address hashRegister = ExtractAddress(jParams);
 
-        /* Now let's do some checks here to prevent burning something you don't want */
-        const std::string strType = ExtractType(jParams);
-        if(strType != "account") //we only want to allow burning from account levels
-            throw Exception(-36, "Unsupported type [", strType, "] for command");
-
         /* Get the token / account object. */
         TAO::Register::Object object;
         if(!LLD::Register->ReadObject(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))

@@ -26,6 +26,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 
+#include <Util/include/math.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -35,16 +37,12 @@ namespace TAO::API
         /* Get our current object type. */
         const std::string strType = ExtractType(jParams);
 
-        /* Check for valid types. */
-        if(strType == "order")
-            throw Exception(-36, "Unsupported type [order] for command");
-
         /* Grab our market pair. */
         const std::pair<uint256_t, uint256_t> pairMarket = ExtractMarket(jParams);
 
         /* Extract our order addresses. */
         const uint256_t hashRegister = ExtractAddress(jParams, "from");
-        const uint256_t hashDeposit  = ExtractAddress(jParams, "deposit");
+        const uint256_t hashDeposit  = ExtractAddress(jParams, "to");
 
         /* Grab our object we are placing order for. */
         TAO::Register::Object oAccount;
@@ -88,12 +86,22 @@ namespace TAO::API
             if(strType != "bid")
                 throw Exception(-7, "Unsupported type [", strType, "] for parameters");
 
-            /* A bid is calculated with dividing amount and price. */
-            const double dTotal =
-                (FormatBalance(nAmount, hashToken) / FormatBalance(nPrice, pairMarket.second));
+            /* Check if we need to adjust our figures. */
+            const uint8_t nRequestDecimals = GetDecimals(pairMarket.first);
+            const uint8_t nOrderedDecimals = GetDecimals(pairMarket.second);
 
-            /* Now re-format using our figures. */
-            nTotal = (dTotal * GetFigures(hashToken));
+            /* Check if we need to adjust requested total. */
+            uint64_t nPriceAdjusted = nPrice, nAmountAdjusted = nAmount;
+            if(nRequestDecimals < nOrderedDecimals)
+                nPriceAdjusted *= uint64_t(math::pow(10, nOrderedDecimals - nRequestDecimals));
+
+            /* Check if we need to adjust the order total. */
+            else if(nOrderedDecimals < nRequestDecimals)
+                nAmountAdjusted *= uint64_t(math::pow(10, nRequestDecimals - nOrderedDecimals));
+
+            /* Calculate our price. */
+            nTotal =
+                (nAmountAdjusted * math::pow(10, nOrderedDecimals)) / nPriceAdjusted;
         }
 
         /* Handle for asks. */
@@ -111,12 +119,22 @@ namespace TAO::API
             if(strType != "ask")
                 throw Exception(-7, "Unsupported type [", strType, "] for parameters");
 
-            /* A bid is calculated with dividing amount and price. */
-            const double dTotal =
-                (FormatBalance(nAmount, hashRequest) * FormatBalance(nPrice, pairMarket.second));
+            /* Check if we need to adjust our figures. */
+            const uint8_t nRequestDecimals = GetDecimals(pairMarket.second);
+            const uint8_t nOrderedDecimals = GetDecimals(pairMarket.first);
 
-            /* Now re-format using our figures. */
-            nTotal = (dTotal * GetFigures(hashRequest));
+            /* Check if we need to adjust requested total. */
+            uint64_t nPriceAdjusted = nPrice, nAmountAdjusted = nAmount;
+            if(nRequestDecimals < nOrderedDecimals)
+                nPriceAdjusted *= uint64_t(math::pow(10, nOrderedDecimals - nRequestDecimals));
+
+            /* Check if we need to adjust the order total. */
+            else if(nOrderedDecimals < nRequestDecimals)
+                nAmountAdjusted *= uint64_t(math::pow(10, nRequestDecimals - nOrderedDecimals));
+
+            /* Calculate our price. */
+            nTotal =
+                (nAmountAdjusted * math::pow(10, nRequestDecimals)) / nPriceAdjusted;
         }
 
         /* Transation payload. */

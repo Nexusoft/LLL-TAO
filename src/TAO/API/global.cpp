@@ -13,15 +13,13 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
-#include <TAO/API/types/commands/market.h>
-#include <TAO/API/users/types/users.h>
-
 #include <TAO/API/types/commands/assets.h>
 #include <TAO/API/types/commands/ledger.h>
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/invoices.h>
 #include <TAO/API/types/commands/crypto.h>
 #include <TAO/API/types/commands/finance.h>
+#include <TAO/API/types/commands/market.h>
 #include <TAO/API/types/commands/profiles.h>
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/sessions.h>
@@ -31,8 +29,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/indexing.h>
-
-#include <TAO/API/types/session-manager.h>
+#include <TAO/API/types/notifications.h>
 
 #include <Util/include/debug.h>
 
@@ -47,9 +44,6 @@ namespace TAO::API
 
         /* Initialize our authentication system. */
         Authentication::Initialize();
-
-        /* Others depend on users. */
-        Commands::Register<Users>(); //TODO: this will be replace with above static class
 
         /* Create the API instances. */
         Commands::Register<Assets>();
@@ -72,6 +66,9 @@ namespace TAO::API
 
         /* Kick off our indexing sub-system now. */
         Indexing::Initialize();
+
+        /* Fire up notifications processors. */
+        Notifications::Initialize();
     }
 
 
@@ -80,11 +77,14 @@ namespace TAO::API
     {
         debug::log(0, FUNCTION, "Shutting down API");
 
-        /* Shut down our subsequent API's */
-        Commands::Shutdown();
-        Indexing::Shutdown();
-
         /* Shut down our authentication system. */
         Authentication::Shutdown();
+
+        /* Shut down our subsequent API's */
+        Indexing::Shutdown();
+        Commands::Shutdown();
+
+        /* Shut down our notifications. */
+        Notifications::Shutdown();
     }
 }

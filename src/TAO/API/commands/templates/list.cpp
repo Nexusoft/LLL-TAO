@@ -13,10 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/templates.h>
-
-//XXX: these static methods should be moved GetOutstanding, GetExpired, get_tokenized_debits, get_coinbases, etc
-#include <TAO/API/users/types/users.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/compare.h>
@@ -32,7 +30,8 @@ namespace TAO::API
     encoding::json Templates::List(const encoding::json& jParams, const bool fHelp)
     {
         /* Get the Genesis ID. */
-        const uint256_t hashGenesis = ExtractGenesis(jParams);
+        const uint256_t hashGenesis =
+            Authentication::Caller(jParams);
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
@@ -43,15 +42,8 @@ namespace TAO::API
 
         /* Get the list of registers owned by this sig chain */
         std::vector<TAO::Register::Address> vAddresses;
-        ListRegisters(hashGenesis, vAddresses);
-
-        /* Get any registers that have been transferred to this user but not yet paid (claimed) */
-        std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> vUnclaimed;
-        Users::get_unclaimed(hashGenesis, vUnclaimed);
-
-        /* Add the unclaimed register addresses to the list */
-        for(const auto& tUnclaimed : vUnclaimed)
-            vAddresses.push_back(std::get<2>(tUnclaimed));
+        LLD::Logical->ListRegisters(hashGenesis, vAddresses);
+        LLD::Logical->ListUnclaimed(hashGenesis, vAddresses);
 
         /* Check for empty return. */
         if(vAddresses.size() == 0)

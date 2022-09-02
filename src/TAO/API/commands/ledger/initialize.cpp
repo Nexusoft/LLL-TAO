@@ -15,9 +15,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/ledger.h>
 #include <TAO/API/types/commands/templates.h>
-#include <TAO/API/types/operators/array.h>
-#include <TAO/API/types/operators/mean.h>
-#include <TAO/API/types/operators/sum.h>
+#include <TAO/API/types/operators/initialize.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -25,38 +23,8 @@ namespace TAO::API
     /* Standard initialization function. */
     void Ledger::Initialize()
     {
-        /* Handle for the SUM operator. */
-        mapOperators["sum"] = Operator
-        (
-            std::bind
-            (
-                &Operators::Sum,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
-        /* Handle for the ARRAY operator. */
-        mapOperators["array"] = Operator
-        (
-            std::bind
-            (
-                &Operators::Array,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
-        /* Handle for the MEAN operator. */
-        mapOperators["mean"] = Operator
-        (
-            std::bind
-            (
-                &Operators::Mean,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
+        /* Populate our operators. */
+        Operators::Initialize(mapOperators);
 
 
         /* Handle for get/blockhash. */
@@ -83,12 +51,24 @@ namespace TAO::API
             )
         );
 
-        /* Handle for get/block. */
+        /* Handle for get/info. */
         mapFunctions["get/info"] = Function
         (
             std::bind
             (
                 &Ledger::GetInfo,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for get/metrics. */
+        mapFunctions["get/metrics"] = Function
+        (
+            std::bind
+            (
+                &Ledger::GetMetrics,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
@@ -101,6 +81,18 @@ namespace TAO::API
             std::bind
             (
                 &Ledger::ListBlocks,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
+        /* Handle for list/transactions. */
+        mapFunctions["list/transactions"] = Function
+        (
+            std::bind
+            (
+                &Ledger::ListTransactions,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2
@@ -137,30 +129,6 @@ namespace TAO::API
             std::bind
             (
                 &Ledger::SyncHeaders,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
-        /* Handle for sync/sigchain. */
-        mapFunctions["sync/sigchain"] = Function
-        (
-            std::bind
-            (
-                &Ledger::SyncSigChain,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
-        /* Handle for void/transaction. */
-        mapFunctions["void/transaction"] = Function
-        (
-            std::bind
-            (
-                &Ledger::VoidTransaction,
                 this,
                 std::placeholders::_1,
                 std::placeholders::_2

@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 
 #include <Util/include/json.h>
+#include <Util/include/string.h>
 #include <Util/include/version.h>
 
 #include <functional>
@@ -48,6 +49,10 @@ namespace TAO::API
         std::string strMessage;
 
 
+        /** The allowed nouns for this function. **/
+        std::set<std::string> setNouns;
+
+
     public:
 
 
@@ -57,6 +62,7 @@ namespace TAO::API
         , nActivation (0)
         , nMaxVersion (0)
         , strMessage  ( )
+        , setNouns    ( )
         {
         }
 
@@ -75,7 +81,29 @@ namespace TAO::API
         , nActivation (nActivationIn) //default: zero denotes there is no activation switch
         , nMaxVersion (0)
         , strMessage  ( )
+        , setNouns    ( )
         {
+        }
+
+
+        /** Constructor
+         *
+         *  Base constructor with no deprecation data, only activation timestamp with default value to disabled.
+         *  An activation timestamp of zero means that command activates with release of update, not at hard fork time.
+         *
+         *  @param[in] tFunctionIn The function to be executed by this class.
+         *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork. default value of 0.
+         *
+         **/
+        Function(const std::function<encoding::json(const encoding::json&, bool)> tFunctionIn, const std::string& strNouns)
+        : tFunction   (tFunctionIn)
+        , nActivation (0) //default: zero denotes there is no activation switch
+        , nMaxVersion (0)
+        , strMessage  ( )
+        , setNouns    ( )
+        {
+            /* Grab our nouns to add to the set. */
+            ParseString(strNouns, ',', setNouns, true); //true to trim spaces
         }
 
 
@@ -95,6 +123,7 @@ namespace TAO::API
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         , strMessage  (strMessageIn)
+        , setNouns    ( )
         {
         }
 
@@ -116,6 +145,7 @@ namespace TAO::API
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         , strMessage  (strMessageIn)
+        , setNouns    ( )
         {
         }
 
@@ -167,6 +197,17 @@ namespace TAO::API
             }
 
             return "active";
+        }
+
+
+        /** Supported
+         *
+         *  Checks if a specific noun is supported by the API.
+         *
+         **/
+        __attribute__((pure)) bool Supported(const std::string& strNoun) const
+        {
+            return setNouns.empty() || setNouns.count(strNoun);
         }
     };
 }

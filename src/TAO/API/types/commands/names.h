@@ -80,26 +80,11 @@ namespace TAO::API
                                                    const std::string& strNamespace,
                                                    const TAO::Register::Address& hashRegister);
 
-
-        /** CreateName
-         *
-         *  Creates a new Name Object register for an object being transferred and adds it to a contract
-         *
-         *  @param[in] uint256_t hashGenesis The genesis hash of the signature chain to create the Name for
-         *  @param[in] hashTransfer The transaction ID of the transfer transaction being claimed
-         *
-         *  @return The contract to containing the Name object creation .
-         *
-         **/
-        static TAO::Operation::Contract CreateName(const uint256_t& hashGenesis,
-                                                   const uint512_t& hashTransfer);
-
-
         /** GetName
          *
          *  Retrieves a Name object by name.
          *
-         *  @param[in] params The json request params
+         *  @param[in] jParams The json request parameters
          *  @param[in] strObjectName The name parameter to use in the register hash
          *  @param[out] hashRegister The register address of the Name object, if found
          *  @param[in] fThrow Flag indicating it should throw an exception if not found
@@ -132,15 +117,36 @@ namespace TAO::API
          *
          *  Resolves a register address from a name by looking up a Name object and returning the address that it points to.
          *
-         *  @param[in] params The json request params
+         *  @param[in] jParams The json request parameters
          *  @param[in] strName The name parameter to use in the register hash
          *  @param[in] fThrow Flag indicating it should throw an exception if not found
          *
          *  @return The 256 bit hash of the object name.
          **/
-        static TAO::Register::Address ResolveAddress(const encoding::json& jParams,
-                                                     const std::string& strName,
+        static TAO::Register::Address ResolveAddress(const encoding::json& jParams, const std::string& strName,
                                                      const bool fThrow = true);
+
+
+        /** ResolveNamespace
+         *
+         *  Resolves a register address from a namespace by looking up the namespace using incoming parameters
+         *
+         *  @param[in] jParams The json request parameters
+         *
+         *  @return The 256 bit hash of the object name.
+         **/
+        static TAO::Register::Address ResolveNamespace(const encoding::json& jParams);
+
+
+        /** ResolveNamespace
+         *
+         *  Resolves a register address from a namespace by looking up the namespace by hashing namespace name
+         *
+         *  @param[in] strNamespace The namespace parameter to use in the register hash
+         *
+         *  @return The 256 bit hash of the object name.
+         **/
+        static TAO::Register::Address ResolveNamespace(const std::string& strNamespace);
 
 
         /** ReverseLookup
@@ -154,21 +160,6 @@ namespace TAO::API
          *
          **/
         static bool ReverseLookup(const uint256_t& hashAddress, std::string &strName);
-
-
-
-        /** ResolveName
-         *
-         *  Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashObject address
-         *
-         *  @param[in] hashGenesis The sig chain genesis hash
-         *  @param[in] hashRegister register address of the object to look up
-         *
-         *  @return the name of the object, if one is found
-         *
-         **/
-        static std::string ResolveName(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister);
-
 
     };
 }

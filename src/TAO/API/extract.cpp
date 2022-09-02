@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/types/address.h>
+
 #include <LLD/include/global.h>
 
 #include <TAO/Register/types/address.h>
@@ -18,11 +20,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/constants.h>
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/exception.h>
-#include <TAO/API/types/session.h>
 #include <TAO/API/types/commands.h>
-
-#include <TAO/API/users/types/users.h>
 #include <TAO/API/types/commands/names.h>
 
 #include <TAO/Register/include/names.h>
@@ -33,7 +33,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractAddress(const encoding::json& jParams, const std::string& strSuffix, const std::string& strDefault)
+    TAO::Register::Address ExtractAddress(const encoding::json& jParams, const std::string& strSuffix, const std::string& strDefault)
     {
         /* Check for our raw suffix formats here i.e. to, from, proof. */
         if(CheckParameter(jParams, strSuffix, "string"))
@@ -43,18 +43,22 @@ namespace TAO::API
         const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
         const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
 
-        /* If name is provided then use this to deduce the register address, */
-        if(CheckParameter(jParams, strName, "string"))
+        /* Check if we are resolving for a name or namespace. */
+        if(CheckRequest(jParams, "type", "string, array"))
         {
-            /* Check if we are resolving for a name or namespace. */
-            if(CheckRequest(jParams, "type", "string"))
-            {
-                /* Get our type to compare to. */
-                const std::string& strType = ExtractType(jParams);
+            /* Get our type to compare to. */
+            const std::set<std::string>& setTypes = ExtractTypes(jParams);
 
+            /* Iterate through our types now. */
+            for(const std::string& strType : setTypes)
+            {
                 /* Check for name or namespace resolution. */
-                if(strType == "name" || strType == "namespace")
+                if(strType == "name" || strType == "namespace" || strType == "global" || strType == "local")
                 {
+                    /* Check for namespace to get specific parameters. */
+                    if(strType == "namespace")
+                        return Names::ResolveNamespace(jParams);
+
                     /* Grab our name from incoming parameters. */
                     const std::string& strLookup =
                         jParams[strName].get<std::string>();
@@ -71,12 +75,14 @@ namespace TAO::API
                     if(hashRegister == TAO::API::ADDRESS_NONE)
                         throw Exception(-101, "Unknown name: ", strLookup);
 
-                    return std::move(hashRegister);
+                    return hashRegister;
                 }
             }
-
-            return Names::ResolveAddress(jParams, jParams[strName].get<std::string>());
         }
+
+        /* If name is provided then use this to deduce the register address, */
+        if(CheckParameter(jParams, strName, "string"))
+            return Names::ResolveAddress(jParams, jParams[strName].get<std::string>(), false);
 
         /* Otherwise let's check for the raw address format. */
         else if(CheckParameter(jParams, strAddr, "string"))
@@ -89,7 +95,7 @@ namespace TAO::API
             if(hashRet.IsValid())
                 return hashRet;
 
-            throw Exception(-35, "Invalid parameter [", strAddr, "], expecting [Base58]");
+            throw Exception(-35, "Invalid address [", hashRet.ToString(), "]");
         }
 
         /* Check for our default values. */
@@ -97,7 +103,7 @@ namespace TAO::API
             return ExtractAddress(strDefault, jParams);
 
         /* Check for any/all request types. */
-        if(CheckRequest(jParams, "type", "string"))
+        if(CheckRequest(jParams, "type", "string, array"))
         {
             /* Grab a copy of our request type. */
             const std::string strType =
@@ -121,7 +127,7 @@ namespace TAO::API
 
 
     /* Extract an address from incoming parameters to derive from name or address field. */
-    uint256_t ExtractToken(const encoding::json& jParams)
+    TAO::Register::Address ExtractToken(const encoding::json& jParams)
     {
         /* If name is provided then use this to deduce the register address, */
         if(CheckParameter(jParams, "token", "string"))
@@ -132,7 +138,7 @@ namespace TAO::API
 
 
     /* Extract an address from a single string. */
-    uint256_t ExtractAddress(const std::string& strAddress, const encoding::json& jParams)
+    TAO::Register::Address ExtractAddress(const std::string& strAddress, const encoding::json& jParams)
     {
         /* Declare our return value. */
         const TAO::Register::Address hashRet =
@@ -144,6 +150,43 @@ namespace TAO::API
 
         /* Allow address to be a name record as well. */
         return Names::ResolveAddress(jParams, strAddress, false);
+    }
+
+
+    /* Extract a legacy address from incoming parameters to derive from name or address field. */
+    bool ExtractLegacy(const encoding::json& jParams, Legacy::NexusAddress &addrLegacy, const std::string& strSuffix)
+    {
+        /* Check for our raw suffix formats here i.e. to, from, proof. */
+        if(CheckParameter(jParams, strSuffix, "string"))
+            return ExtractLegacy(jParams[strSuffix].get<std::string>(), addrLegacy);
+
+        /* Cache a couple keys we will be using. */
+        const std::string strAddr =
+            "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
+
+        /* Let's check for the raw address format. */
+        if(CheckParameter(jParams, strAddr, "string"))
+            return ExtractLegacy(jParams[strAddr].get<std::string>(), addrLegacy);
+
+        return false;
+    }
+
+
+    /* Extract a legacy address from a single string. */
+    bool ExtractLegacy(const std::string& strAddress, Legacy::NexusAddress &addrLegacy)
+    {
+        /* Build a legacy address for this check. */
+        Legacy::NexusAddress addr =
+            Legacy::NexusAddress(strAddress);
+
+        /* Check for invalid address. */
+        if(!addr.IsValid())
+            return false;
+
+        /* Set our internal legacy address hash. */
+        addrLegacy = std::move(addr);
+
+        return true;
     }
 
 
@@ -189,7 +232,7 @@ namespace TAO::API
         if(CheckParameter(jParams, "username", "string"))
             return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());
 
-        return Commands::Instance<Users>()->GetSession(jParams).GetAccount()->Genesis();
+        return Authentication::Caller(jParams);
     }
 
 
@@ -354,7 +397,7 @@ namespace TAO::API
     {
         /* Check for formatting parameter. */
         if(!CheckParameter(jParams, "scheme", "string"))
-            return TAO::Ledger::SIGNATURE::RESERVED;
+            return TAO::Ledger::SIGNATURE::BRAINPOOL;
 
         /* Grab our format string. */
         const std::string strScheme =
@@ -412,41 +455,45 @@ namespace TAO::API
 
 
     /* Extract the pin number from input parameters. */
-    SecureString ExtractPIN(const encoding::json& jParams)
+    SecureString ExtractPIN(const encoding::json& jParams, const std::string& strPrefix)
     {
+        /* Get the parameter name we are searching. */
+        const std::string strName =
+            (strPrefix.empty() ? "pin" : strPrefix + "_pin");
+
         /* Check for correct parameter types. */
-        if(!CheckParameter(jParams, "pin", "string, number"))
-            throw Exception(-28, "Missing parameter [pin] for command");
+        if(!CheckParameter(jParams, strName, "string, number"))
+            throw Exception(-28, "Missing parameter [", strName, "] for command");
 
         /* Handle for unsigned integer. */
-        if(jParams["pin"].is_number_unsigned())
+        if(jParams[strName].is_number_unsigned())
         {
             /* Grab our secure string pin. */
             const SecureString strPIN =
-                SecureString(debug::safe_printstr(jParams["pin"].get<uint64_t>()).c_str());
+                SecureString(debug::safe_printstr(jParams[strName].get<uint64_t>()).c_str());
 
             /* Check for empty values. */
             if(strPIN.empty())
-                throw Exception(-57, "Invalid Parameter [pin.empty()]");
+                throw Exception(-57, "Invalid Parameter [", strName, ".empty()]");
 
             return strPIN;
         }
 
         /* Handle for string representation. */
-        if(jParams["pin"].is_string())
+        if(jParams[strName].is_string())
         {
             /* Grab our secure string pin. */
             const SecureString strPIN =
-                SecureString(jParams["pin"].get<std::string>().c_str());
+                SecureString(jParams[strName].get<std::string>().c_str());
 
             /* Check for empty values. */
             if(strPIN.empty())
-                throw Exception(-57, "Invalid Parameter [pin.empty()]");
+                throw Exception(-57, "Invalid Parameter [", strName, ".empty()]");
 
             return strPIN;
         }
 
-        throw Exception(-35, "Invalid parameter [pin=", jParams["pin"].type_name(), "], expecting [pin=string, number]");
+        throw Exception(-35, "Invalid parameter [", strName, "=", jParams[strName].type_name(), "], expecting [", strName, "=string, number]");
     }
 
 
@@ -541,6 +588,11 @@ namespace TAO::API
                 {
                     /* No offset included in the limit */
                     nLimit = std::stoul(strLimit);
+                }
+                else if(EqualsNoCase(strLimit, "none"))
+                {
+                    /* No limit includes as many values as possible. */
+                    nLimit = std::numeric_limits<uint32_t>::max();
                 }
                 else if(strLimit.find(","))
                 {
@@ -727,6 +779,58 @@ namespace TAO::API
             throw Exception(-56, "Missing Parameter [", strKey, "]");
 
         return jParams[strKey].get<std::string>();
+    }
+
+
+    /*Extracts an floating point value from given input parameters.*/
+    double ExtractDouble(const encoding::json& jParams, const std::string& strKey,
+                         const double dDefault, const double dLimit)
+    {
+        /* Check for missing parameter. */
+        if(jParams.find(strKey) != jParams.end())
+        {
+            /* Catch parsing exceptions. */
+            try
+            {
+                /* Build our return value. */
+                double dRet = 0;
+
+                /* Convert to value if in string form. */
+                if(jParams[strKey].is_string())
+                    dRet = std::stod(jParams[strKey].get<std::string>());
+
+                /* Grab value regularly if it is integer. */
+                else if(jParams[strKey].is_number_integer())
+                    dRet = static_cast<double>(jParams[strKey].get<int64_t>());
+
+                /* Grab value regularly if it is unsigned integer. */
+                else if(jParams[strKey].is_number_unsigned())
+                    dRet = static_cast<double>(jParams[strKey].get<uint64_t>());
+
+                /* Check if value is a double. */
+                else if(jParams[strKey].is_number_float())
+                    dRet = jParams[strKey].get<double>();
+
+                /* Otherwise we have an invalid parameter. */
+                else
+                    throw Exception(-57, "Invalid Parameter [", strKey, "]");
+
+                /* Check our numeric limits now. */
+                if(dRet > dLimit)
+                    throw Exception(-60, "[", strKey, "] out of range [", dLimit, "]");
+
+                return dRet;
+            }
+            catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [", strKey, "]");           }
+            catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [", strKey, "]");           }
+            catch(const std::out_of_range& e)           { throw Exception(-60, "[", strKey, "] out of range [", dLimit, "]"); }
+        }
+
+        /* Check for default parameter and throw if none supplied. */
+        if(dDefault == std::numeric_limits<double>::max())
+            throw Exception(-56, "Missing Parameter [", strKey, "]");
+
+        return dDefault;
     }
 
 } // End TAO namespace

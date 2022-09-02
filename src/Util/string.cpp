@@ -45,6 +45,37 @@ void ParseString(const std::string& str, char c, std::vector<std::string>& v)
 }
 
 
+/* Parses a string and tokenizes it into substrings based on the character delimiter. */
+void ParseString(const std::string& str, char c, std::set<std::string>& v, bool fTrim)
+{
+    if(str.empty())
+        return;
+
+    std::string::size_type i1 = 0;
+    std::string::size_type i2;
+    while(true)
+    {
+        i2 = str.find(c, i1);
+        if(i2 == str.npos)
+        {
+            if(fTrim)
+                v.insert(trim(str.substr(i1)));
+            else
+                v.insert(str.substr(i1));
+
+            return;
+        }
+
+        if(fTrim)
+            v.insert(trim(str.substr(i1, i2-i1)));
+        else
+            v.insert(str.substr(i1, i2-i1));
+
+        i1 = i2 + 1;
+    }
+}
+
+
 /*  Replace all instances in a string. */
 void ReplaceAll(std::string& str, const std::string& strFind, const std::string& strReplace)
 {

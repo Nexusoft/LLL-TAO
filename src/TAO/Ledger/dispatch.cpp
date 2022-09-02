@@ -55,6 +55,10 @@ namespace TAO::Ledger
     /*  Dispatch a new block hash to relay thread.*/
     void Dispatch::PushRelay(const uint1024_t& hashBlock)
     {
+        /* Don't add relay data if servers aren't active. */
+        if(!LLP::TRITIUM_SERVER)
+            return;
+
         DISPATCH_QUEUE->push(hashBlock);
         CONDITION.notify_one();
     }
@@ -75,13 +79,16 @@ namespace TAO::Ledger
                 if(config::fShutdown.load())
                     return true;
 
-                //LOCK(DISPATCH_MUTEX); XXX: run with RACE_CHECK=1 to make sure this is thread-safe
                 return DISPATCH_QUEUE->size() != 0;
             });
 
             /* Check for shutdown. */
             if(config::fShutdown.load())
                 return;
+
+            /* Don't run relay thread when servers aren't active. */
+            if(!LLP::TRITIUM_SERVER)
+                continue;
 
             /* Start a stopwatch. */
             runtime::stopwatch swTimer;
@@ -170,20 +177,29 @@ namespace TAO::Ledger
                             case TAO::Operation::OP::DEBIT:
                             {
                                 /* Seek to recipient. */
-                                uint256_t hashTo;
                                 rContract.Seek(32,  TAO::Operation::Contract::OPERATIONS);
-                                rContract >> hashTo;
 
-                                /* Read the owner of register. (check this for MEMPOOL, too) */
-                                TAO::Register::State state;
-                                if(!LLD::Register->ReadState(hashTo, state))
-                                    continue;
+                                /* Deserialize recipient from contract. */
+                                uint256_t hashRecipient;
+                                rContract >> hashRecipient;
+
+                                /* Check for specific debits since transfer is to genesis. */
+                                if(nOP == TAO::Operation::OP::DEBIT)
+                                {
+                                    /* Read the owner of register. (check this for MEMPOOL, too) */
+                                    TAO::Register::State oRegister;
+                                    if(!LLD::Register->ReadState(hashRecipient, oRegister))
+                                        continue;
+
+                                    /* Set our hash to based on owner. */
+                                    hashRecipient = oRegister.hashOwner;
+                                }
 
                                 /* Fire off our event. */
-                                ssRelay << uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN) << state.hashOwner << hash;
+                                ssRelay << uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN) << hashRecipient << hash;
 
                                 debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
-                                    hash.SubString(), " for genesis ", state.hashOwner.SubString());
+                                    hash.SubString(), " for genesis ", hashRecipient.SubString());
 
                                 break;
                             }

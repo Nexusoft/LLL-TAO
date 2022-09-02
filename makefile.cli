@@ -288,7 +288,6 @@ ifdef UNIT_TESTS
 		   build/Tests_TAO_API_names.o \
 		   build/Tests_TAO_API_supply.o \
 		   build/Tests_TAO_API_tokens.o \
-		   build/Tests_TAO_API_users.o \
 		   build/Tests_TAO_API_util.o \
 		   build/Tests_TAO_Ledger_block.o \
 		   build/Tests_TAO_Ledger_mempool.o \
@@ -413,6 +412,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_trust_address.o \
 		build/API_commands_assets_initialize.o \
 		build/API_commands_assets_json.o \
+		build/API_commands_assets_partial.o \
 		build/API_commands_assets_tokenize.o \
 		build/API_commands_finance_balances.o \
 		build/API_commands_finance_burn.o \
@@ -422,6 +422,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_finance_migrate.o \
 		build/API_commands_finance_set-stake.o \
 		build/API_commands_finance_stake-info.o \
+		build/API_commands_finance_void.o \
 		build/API_commands_invoices_cancel.o \
 		build/API_commands_invoices_create.o \
 		build/API_commands_invoices_get.o \
@@ -434,10 +435,10 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_get-transaction.o \
 		build/API_commands_ledger_initialize.o \
 		build/API_commands_ledger_list-blocks.o \
+		build/API_commands_ledger_list-transactions.o \
+		build/API_commands_ledger_metrics.o \
 		build/API_commands_ledger_submit-transaction.o \
 		build/API_commands_ledger_sync-headers.o \
-		build/API_commands_ledger_sync-sigchain.o \
-		build/API_commands_ledger_void-transaction.o \
 		build/API_commands_market_cancel.o \
 		build/API_commands_market_create.o \
 		build/API_commands_market_execute.o \
@@ -452,11 +453,24 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_names_resolve.o \
 		build/API_commands_profiles_create.o \
 		build/API_commands_profiles_initialize.o \
+		build/API_commands_profiles_notifications.o \
+		build/API_commands_profiles_status.o \
+		build/API_commands_profiles_recover.o \
+		build/API_commands_profiles_transactions.o \
+		build/API_commands_profiles_update.o \
 		build/API_commands_register_initialize.o \
+		build/API_commands_register_history.o \
 		build/API_commands_register_list.o \
 		build/API_commands_register_json.o \
+		build/API_commands_register_transactions.o \
 		build/API_commands_sessions_create.o \
+		build/API_commands_sessions_load.o \
+		build/API_commands_sessions_lock.o \
+		build/API_commands_sessions_unlock.o \
 		build/API_commands_sessions_initialize.o \
+		build/API_commands_sessions_save.o \
+		build/API_commands_sessions_status.o \
+		build/API_commands_sessions_terminate.o \
 		build/API_commands_supply_initialize.o \
 		build/API_commands_system_lisp.o \
 		build/API_commands_system_initialize.o \
@@ -475,6 +489,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_contracts_exchange.o \
 		build/API_contracts_expiring.o \
 		build/API_contracts_verify.o \
+		build/API_operators_initialize.o \
 		build/API_operators_array.o \
 		build/API_operators_count.o \
 		build/API_operators_floor.o \
@@ -483,25 +498,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_operators_min.o \
 		build/API_operators_mode.o \
 		build/API_operators_sum.o \
-		build/API_types_users_clear.o \
-		build/API_types_users_create.o \
-		build/API_types_users_has.o \
-        build/API_types_users_initialize.o \
-		build/API_types_users_load.o \
-		build/API_types_users_lock.o \
-		build/API_types_users_login.o \
-		build/API_types_users_logout.o \
-		build/API_types_users_notifications.o \
-		build/API_types_users_notifications_processor.o \
-		build/API_types_users_notifications_thread.o \
-		build/API_types_users_processed.o \
-		build/API_types_users_recover.o \
-		build/API_types_users_save.o \
-		build/API_types_users_status.o \
-		build/API_types_users_transactions.o \
-		build/API_types_users_unlock.o \
-		build/API_types_users_update.o \
-		build/API_types_users_users.o \
 		build/API_authentication.o \
 		build/API_base.o \
 		build/API_build.o \
@@ -518,9 +514,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_indexing.o \
 		build/API_json.o \
 		build/API_list.o \
+		build/API_notifications.o \
 		build/API_results.o \
-		build/API_session.o \
-		build/API_session-manager.o \
+		build/API_transaction.o \
 		build/Operation_append.o \
 		build/Operation_claim.o \
 		build/Operation_coinbase.o \

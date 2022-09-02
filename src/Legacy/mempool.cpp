@@ -42,7 +42,7 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t nTxHash = tx.GetHash();
 
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Check the mempool. */
             if(mapLegacy.count(nTxHash))
@@ -60,7 +60,7 @@ namespace TAO
             /* Get the transaction hash. */
             uint512_t hashTx = tx.GetHash();
 
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Check if we already have this tx. */
             if(LLD::Legacy->HasTx(hashTx, FLAGS::MEMPOOL))
@@ -260,7 +260,7 @@ namespace TAO
         /* Gets a legacy transaction from mempool */
         bool Mempool::Get(const uint512_t& hashTx, Legacy::Transaction &tx, bool &fConflicted) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Check in conflict memory. */
             if(mapLegacyConflicts.count(hashTx))
@@ -289,7 +289,7 @@ namespace TAO
         /* Gets a legacy transaction from mempool */
         bool Mempool::Get(const uint512_t& hashTx, Legacy::Transaction &tx) const
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             /* Check the memory map. */
             if(!mapLegacy.count(hashTx))
@@ -305,7 +305,7 @@ namespace TAO
         /* Gets the size of the memory pool. */
         uint32_t Mempool::SizeLegacy()
         {
-            RLOCK(MUTEX);
+            RECURSIVE(MUTEX);
 
             return mapLegacy.size();
         }

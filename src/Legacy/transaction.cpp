@@ -555,9 +555,6 @@ namespace Legacy
                 }
                 else
                     statePrev = block;
-
-                if(!LLD::Ledger->RepairIndex(vin[nIndex].prevout.hash, statePrev))
-                    return debug::error(FUNCTION, "failed to read previous tx block");
             }
 
             /* Read the previous transaction. */

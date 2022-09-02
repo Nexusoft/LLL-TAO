@@ -375,21 +375,6 @@ namespace LLD
         bool EraseIndex(const uint32_t& nBlockHeight);
 
 
-        /** RepairIndex
-         *
-         *  Recover if an index is not found.
-         *  Fixes a corrupted database with a linear search for the hash tx up
-         *  to the chain height.
-         *
-         *  @param[in] hashTx The txid of transaction to write.
-         *  @param[in] state The block state of the block the transaction belongs to.
-         *
-         *  @return True if the transaction was successfully written, false otherwise.
-         *
-         **/
-        bool RepairIndex(const uint512_t& hashTx, const TAO::Ledger::BlockState &state);
-
-
         /** ReadBlock
          *
          *  Reads a block state from disk from a tx index.
@@ -697,7 +682,7 @@ namespace LLD
         bool EraseBlock(const uint1024_t& hashBlock);
 
 
-        /** HasGenesis
+        /** HasFirst
          *
          *  Checks if a genesis transaction exists.
          *
@@ -707,10 +692,10 @@ namespace LLD
          *  @return True if the genesis exists, false otherwise.
          *
          **/
-        bool HasGenesis(const uint256_t& hashGenesis, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+        bool HasFirst(const uint256_t& hashGenesis, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
-        /** WriteGenesis
+        /** WriteFirst
          *
          *  Writes a genesis transaction-id to disk.
          *
@@ -720,10 +705,10 @@ namespace LLD
          *  @return True if the genesis is written, false otherwise.
          *
          **/
-        bool WriteGenesis(const uint256_t& hashGenesis, const uint512_t& hashTx);
+        bool WriteFirst(const uint256_t& hashGenesis, const uint512_t& hashTx);
 
 
-        /** ReadGenesis
+        /** ReadFirst
          *
          *  Reads a genesis transaction-id from disk.
          *
@@ -733,10 +718,10 @@ namespace LLD
          *  @return True if the genesis was read, false otherwise.
          *
          **/
-        bool ReadGenesis(const uint256_t& hashGenesis, uint512_t& hashTx);
+        bool ReadFirst(const uint256_t& hashGenesis, uint512_t& hashTx);
 
 
-        /** EraseGenesis
+        /** EraseFirst
          *
          *  Erases a genesis-id from disk.
          *
@@ -745,7 +730,7 @@ namespace LLD
          *  @return True if the genesis exists, false otherwise.
          *
          **/
-        bool EraseGenesis(const uint256_t& hashGenesis);
+        bool EraseFirst(const uint256_t& hashGenesis);
 
 
         /** MemoryBegin

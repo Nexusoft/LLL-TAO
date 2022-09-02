@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <LLP/include/version.h>
 
 #include <TAO/API/include/global.h>
-#include <TAO/API/users/types/users.h>
+#include <TAO/API/types/authentication.h>
 
 #include <TAO/Operation/include/cost.h>
 #include <TAO/Operation/include/execute.h>
@@ -76,6 +76,26 @@ namespace TAO
         , nNextType    (0)
         , vchPubKey    ( )
         , vchSig       ( )
+        , hashCache    (0)
+        {
+        }
+
+
+        /* Constructor to set txid cache. */
+        Transaction::Transaction(const uint512_t& hashCacheIn)
+        : vContracts   ( )
+        , nVersion     (TAO::Ledger::CurrentTransactionVersion())
+        , nSequence    (0)
+        , nTimestamp   (runtime::unifiedtimestamp())
+        , hashNext     (0)
+        , hashRecovery (0)
+        , hashGenesis  (0)
+        , hashPrevTx   (0)
+        , nKeyType     (0)
+        , nNextType    (0)
+        , vchPubKey    ( )
+        , vchSig       ( )
+        , hashCache    (hashCacheIn)
         {
         }
 
@@ -94,6 +114,7 @@ namespace TAO
         , nNextType    (tx.nNextType)
         , vchPubKey    (tx.vchPubKey)
         , vchSig       (tx.vchSig)
+        , hashCache    (tx.hashCache)
         {
         }
 
@@ -112,6 +133,7 @@ namespace TAO
         , nNextType    (std::move(tx.nNextType))
         , vchPubKey    (std::move(tx.vchPubKey))
         , vchSig       (std::move(tx.vchSig))
+        , hashCache    (std::move(tx.hashCache))
         {
         }
 
@@ -130,6 +152,7 @@ namespace TAO
         , nNextType    (tx.nNextType)
         , vchPubKey    (tx.vchPubKey)
         , vchSig       (tx.vchSig)
+        , hashCache    (tx.hashCache)
         {
         }
 
@@ -148,6 +171,7 @@ namespace TAO
         , nNextType    (std::move(tx.nNextType))
         , vchPubKey    (std::move(tx.vchPubKey))
         , vchSig       (std::move(tx.vchSig))
+        , hashCache    (std::move(tx.hashCache))
         {
         }
 
@@ -167,6 +191,7 @@ namespace TAO
             nNextType    = tx.nNextType;
             vchPubKey    = tx.vchPubKey;
             vchSig       = tx.vchSig;
+            hashCache    = tx.hashCache;
 
             return *this;
         }
@@ -187,6 +212,7 @@ namespace TAO
             nNextType    = std::move(tx.nNextType);
             vchPubKey    = std::move(tx.vchPubKey);
             vchSig       = std::move(tx.vchSig);
+            hashCache    = std::move(tx.hashCache);
 
             return *this;
         }
@@ -207,6 +233,7 @@ namespace TAO
             nNextType    = tx.nNextType;
             vchPubKey    = tx.vchPubKey;
             vchSig       = tx.vchSig;
+            hashCache    = tx.hashCache;
 
             return *this;
         }
@@ -227,6 +254,7 @@ namespace TAO
             nNextType    = std::move(tx.nNextType);
             vchPubKey    = std::move(tx.vchPubKey);
             vchSig       = std::move(tx.vchSig);
+            hashCache    = std::move(tx.hashCache);
 
             return *this;
         }
@@ -386,7 +414,7 @@ namespace TAO
                 if(IsFirst())
                 {
                     /* Check for transaction version 3. */
-                    if(nVersion >= 3 && LLD::Ledger->HasGenesis(hashGenesis))
+                    if(nVersion >= 3 && LLD::Ledger->HasFirst(hashGenesis))
                         return debug::error(FUNCTION, "invalid genesis-id ", hashGenesis.SubString());
 
                     /* Reset the contract operation stream */
@@ -826,7 +854,7 @@ namespace TAO
             if(IsFirst())
             {
                 /* Check for transaction version 3. */
-                if(nVersion >= 3 && LLD::Ledger->HasGenesis(hashGenesis))
+                if(nVersion >= 3 && LLD::Ledger->HasFirst(hashGenesis))
                     return debug::error(FUNCTION, "invalid genesis-id ", hashGenesis.SubString());
 
                 /* Check ambassador sigchains based on all versions, not the smaller subset of versions. */
@@ -863,7 +891,7 @@ namespace TAO
                 if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                 {
                     /* Write the genesis identifier. */
-                    if(!LLD::Ledger->WriteGenesis(hashGenesis, hash))
+                    if(!LLD::Ledger->WriteFirst(hashGenesis, hash))
                         return debug::error(FUNCTION, "failed to write genesis");
                 }
             }
@@ -872,7 +900,7 @@ namespace TAO
                 /* We want to track the sigchain logged in so we can enforce certain rules for our own sigchain. */
                 uint256_t hashSigchain = 0;
                 if(config::fClient.load())
-                    hashSigchain = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
+                    hashSigchain = TAO::API::Authentication::Caller();
 
                 /* We want this to trigger for times not in -client mode. */
                 if(!config::fClient.load() || hashGenesis == hashSigchain)
@@ -968,7 +996,7 @@ namespace TAO
                 }
 
                 /* Bind the contract to this transaction. */
-                contract.Bind(this);
+                contract.Bind(this, hash);
 
                 /* Execute the contracts to final state. */
                 if(!TAO::Operation::Execute(contract, nFlags, nCost))
@@ -979,9 +1007,7 @@ namespace TAO
                     TAO::Operation::TxCost(contract, nCost);
             }
 
-            /* Once we have executed the contracts we need to check the fees.
-               NOTE there are fixed fees on the genesis transaction to allow for the default registers to be created.
-               NOTE: There are no fees required in private mode.  */
+            /* Once we have executed the contracts we need to check the fees. */
             if(!config::fHybrid.load())
             {
                 /* The fee applied to this transaction */
@@ -1024,7 +1050,7 @@ namespace TAO
                         return debug::error(FUNCTION, "failed to erase last hash");
 
                     /* Erase our genesis-id now. */
-                    if(!LLD::Ledger->EraseGenesis(hashGenesis))
+                    if(!LLD::Ledger->EraseFirst(hashGenesis))
                         return debug::error(FUNCTION, "failed to erase genesis");
                 }
 
@@ -1158,6 +1184,13 @@ namespace TAO
         }
 
 
+        /* Determines if the transaction has been confirmed in the main chain. */
+        bool Transaction::IsConfirmed() const
+        {
+            return LLD::Ledger->HasIndex(GetHash());
+        }
+
+
         /*  Gets the total trust and stake of pre-state. */
         bool Transaction::GetTrustInfo(uint64_t &nBalance, uint64_t &nTrust, uint64_t &nStake) const
         {
@@ -1195,16 +1228,19 @@ namespace TAO
         /* Gets the hash of the transaction object. */
         uint512_t Transaction::GetHash() const
         {
+            /* Check if we have an active cache. */
+            if(hashCache != 0)
+                return hashCache;
+
+            /* Serialize the transaction data for hashing. */
             DataStream ss(SER_GETHASH, nVersion);
             ss << *this;
 
-            /* Get the hash. */
-            uint512_t hash = LLC::SK512(ss.begin(), ss.end());
-
             /* Type of 0xff designates tritium tx. */
-            hash.SetType(TAO::Ledger::TRITIUM);
+            hashCache = LLC::SK512(ss.begin(), ss.end());
+            hashCache.SetType(TAO::Ledger::TRITIUM);
 
-            return hash;
+            return hashCache;
         }
 
 
@@ -1339,7 +1375,6 @@ namespace TAO
             /* Switch based on signature type. */
             switch(nKeyType)
             {
-
                 /* Support for the FALCON signature scheeme. */
                 case SIGNATURE::FALCON:
                 {

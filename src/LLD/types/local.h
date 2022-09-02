@@ -186,7 +186,7 @@ namespace LLD
         bool EraseSuppressNotification(const uint512_t& hashTx, const uint32_t nContract);
 
 
-        /** WriteGenesis
+        /** WriteFirst
          *
          *  Writes a username - genesis hash pair to the local database.
          *
@@ -196,10 +196,10 @@ namespace LLD
          *  @return True if the last was successfully written, false otherwise.
          *
          **/
-        bool WriteGenesis(const SecureString& strUsername, const uint256_t& hashGenesis);
+        bool WriteFirst(const SecureString& strUsername, const uint256_t& hashGenesis);
 
 
-        /** ReadGenesis
+        /** ReadFirst
          *
          *  Reads a genesis hash from the local database for a given username.
          *
@@ -209,7 +209,7 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool ReadGenesis(const SecureString& strUsername, uint256_t &hashGenesis);
+        bool ReadFirst(const SecureString& strUsername, uint256_t &hashGenesis);
 
 
         /** WriteSession

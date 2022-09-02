@@ -51,7 +51,7 @@ namespace TAO
 
 
             /** Secure allocater to represent the password of this signature chain. **/
-            const SecureString strPassword;
+            SecureString strPassword;
 
 
             /* Internal mutex for caches. */
@@ -64,7 +64,6 @@ namespace TAO
 
             /** Internal genesis hash. **/
             const uint256_t hashGenesis;
-
 
 
         public:
@@ -92,6 +91,14 @@ namespace TAO
 
             /** Destructor. **/
             ~SignatureChain();
+
+
+            /** Equivilence operator. **/
+            bool operator==(const SignatureChain& pCheck) const;
+
+
+            /** Equivilence operator. **/
+            bool operator!=(const SignatureChain& pCheck) const;
 
 
             /** Constructor to generate Keychain
@@ -244,6 +251,16 @@ namespace TAO
              *  @return The SecureString containing the password for this sig chain
              **/
             const SecureString& Password() const;
+
+
+            /** Update
+             *
+             *  Updates the password for this sigchain.
+             *
+             *  @param[in] strPasswordNew The password to update in sigchain.
+             *
+             **/
+            void Update(const SecureString& strPasswordNew);
 
 
             /** Encrypt

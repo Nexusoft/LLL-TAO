@@ -32,8 +32,8 @@ namespace TAO::API
     encoding::json Assets::Tokenize(const encoding::json& jParams, const bool fHelp)
     {
         /* Get the register addresses. */
-        const uint256_t hashToken    = ExtractToken(jParams);
-        const uint256_t hashRegister = ExtractAddress(jParams);
+        const TAO::Register::Address hashToken    = ExtractToken(jParams);
+        const TAO::Register::Address hashRegister = ExtractAddress(jParams);
 
         /* Check for token. */
         TAO::Register::Object tToken;

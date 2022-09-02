@@ -1,28 +1,22 @@
-# Filtering API Results
+# Query DSL
 -----------------------------------
 
-All `list` methods in the Nexus API provide callers with the ability to limit and filter the returned results.
+The Query DSL allows you to sort and filter recursively to any logical depth. This DSL can be used in conjunction with operators to sort, filter, and compute data in real-time.
 
 
-## `limit`
+## `Selector Keys`
 
-The number of records to return, default 100.
+The following operators are supported for this API command-set:
 
-
-## `offset`
-
-An alternative to `page`, offset can be used to return a set of (limit) results from a particular index.
+[`object`] - This selector key will evaluate the comparison on the raw binary object.   
+[`results`]   - This selector key will evaluate the comparison on the results json.
 
 
-## `page`
-
-Allows the results to be returned by page (zero based). E.g. passing in page=1 will return the second set of (limit) transactions. The default value is 0 if not supplied.
+## `Selector Keys`
 
 
-## `where`
 
-Takes the returned JSON data and filters it based on a certain set of criteria. This follows a similar syntax to SQL WHERE statements.
-
+s
 
 ## Supported Objects
 
@@ -34,7 +28,7 @@ The following object classes are supported:
 
 ## Using wildcards
 
-If you are searching by a string parameter, you can include '*' as an any character wildcard match, so that you can search values
+If you are searching by a string parameter, you can includeM' as an any character wildcard match, so that you can search values
 based on a partial match.
 
 ```

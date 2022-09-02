@@ -14,8 +14,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/types/commands/names.h>
-#include <TAO/API/types/session-manager.h>
 
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/constants.h>
 
 /* Global TAO namespace. */
@@ -40,6 +40,28 @@ namespace TAO::API
             return tObject.get<uint256_t>("address");
 
         return TAO::API::ADDRESS_NONE; //otherwise return none (1)
+    }
+
+
+    /* Resolves a register address from a namespace by looking up the namespace using incoming parameters */
+    TAO::Register::Address Names::ResolveNamespace(const encoding::json& jParams)
+    {
+        /* Check that we have namespace parameter. */
+        if(!CheckParameter(jParams, "namespace", "string"))
+            throw Exception(-56, "Missing Parameter [namespace]");
+
+        /* Grab our namespace from incoming parameters. */
+        const std::string& strLookup =
+            jParams["namespace"].get<std::string>();
+
+        return ResolveNamespace(strLookup);
+    }
+
+
+    /* Resolves a register address from a namespace by looking up the namespace by hashing namespace name */
+    TAO::Register::Address Names::ResolveNamespace(const std::string& strNamespace)
+    {
+        return TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
     }
 
 
@@ -87,71 +109,5 @@ namespace TAO::API
         strName = "local:" + tName.get<std::string>("name"); //local name
 
         return true;
-    }
-
-
-
-
-    /* Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashRegister address */
-    std::string Names::ResolveName(const uint256_t& hashGenesis, const TAO::Register::Address& hashRegister)
-    {
-        /* Declare the return val */
-        std::string strName = "";
-
-        /* Register address of nameObject.  Not used by this method */
-        TAO::Register::Address hashNameObject;
-
-        /* The resolved name record  */
-        TAO::Register::Object name;
-
-        /* Look up the Name object for the register address in the specified sig chain, if one has been provided */
-        if(hashGenesis != 0)
-        {
-            /* If we are in client mode then if the hashGenesis is not for the logged in user we need to make sure we
-               have downloaded their sig chain so that we have access to it */
-            if(config::fClient.load() && hashGenesis != GetSessionManager().Get(0).GetAccount()->Genesis() )
-            {
-                /* Download the users signature chain transactions, but we do not need events */
-                //TAO::API::DownloadSigChain(hashGenesis, false);
-            }
-
-            /* Now lookup the name in this sig chain */
-            name = Names::GetName(hashGenesis, hashRegister, hashNameObject);
-        }
-
-        /* Check to see if we resolved the name using the specified sig chain */
-        if(!name.IsNull())
-        {
-            /* Get the name from the Name register */
-            strName = name.get<std::string>("name");
-        }
-        else if(!config::fClient.load())
-        {
-            /* If we couldn't resolve the register name from the callers local names, we next check to see if it is a global name */
-
-            /* Batch read all names. */
-            std::vector<TAO::Register::Object> vNames;
-            if(LLD::Register->BatchRead("name", vNames, -1))
-            {
-                /* Check through all names. */
-                for(auto& object : vNames)
-                {
-                    /* Skip over invalid objects (THIS SHOULD NEVER HAPPEN). */
-                    if(!object.Parse())
-                        continue;
-
-                    /* Check that it is a global */
-                    if(object.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL
-                        && object.get<uint256_t>("address") == hashRegister)
-                    {
-                        /* Get the name from the Name register */
-                        strName = object.get<std::string>("name");
-                        break;
-                    }
-                }
-            }
-        }
-
-        return strName;
     }
 } /* End TAO namespace */

@@ -78,6 +78,20 @@ namespace TAO
         }
 
 
+        /* Equivilence operator. */
+        bool SignatureChain::operator==(const SignatureChain& pCheck) const
+        {
+            return (strUsername == pCheck.strUsername && strPassword == pCheck.strPassword && hashGenesis == pCheck.hashGenesis);
+        }
+
+
+        /* Equivilence operator. */
+        bool SignatureChain::operator!=(const SignatureChain& pCheck) const
+        {
+            return !(*this == pCheck);
+        }
+
+
         /* This function is responsible for returning the genesis ID.*/
         uint256_t SignatureChain::Genesis() const
         {
@@ -92,7 +106,7 @@ namespace TAO
             uint256_t hashGenesis;
 
             /* Check the local DB first */
-            if(LLD::Local && LLD::Local->ReadGenesis(strUsername, hashGenesis))
+            if(LLD::Local && LLD::Local->ReadFirst(strUsername, hashGenesis))
                 return hashGenesis;
 
             /* Generate the Secret Phrase */
@@ -104,7 +118,7 @@ namespace TAO
 
             /* Cache this username-genesis pair in the local db*/
             if(LLD::Local)
-                LLD::Local->WriteGenesis(strUsername, hashGenesis);
+                LLD::Local->WriteFirst(strUsername, hashGenesis);
 
             return hashGenesis;
         }
@@ -331,14 +345,15 @@ namespace TAO
         uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
         {
             /* Generate the public key */
-            std::vector<uint8_t> vchPubKey = Key(strType, nKeyID, strSecret, nType);
+            const std::vector<uint8_t> vchPubKey =
+                Key(strType, nKeyID, strSecret, nType);
 
             /* Calculate the key hash. */
-            uint256_t hashRet = LLC::SK256(vchPubKey);
+            uint256_t hashRet =
+                LLC::SK256(vchPubKey);
 
             /* Set the leading byte. */
             hashRet.SetType(nType);
-
             return hashRet;
         }
 
@@ -420,6 +435,13 @@ namespace TAO
         }
 
 
+        /* Updates the password for this sigchain. */
+        void SignatureChain::Update(const SecureString& strPasswordNew)
+        {
+            strPassword = strPasswordNew.c_str();
+        }
+
+
         /* Special method for encrypting specific data types inside class. */
         void SignatureChain::Encrypt()
         {
@@ -456,6 +478,7 @@ namespace TAO
             /* call the Sign method with the retrieved type */
             return Sign(nType, vchData, hashSecret, vchPubKey, vchSig);
         }
+        
 
         /* Generates a signature for the data, using the specified crypto key type. */
         bool SignatureChain::Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
