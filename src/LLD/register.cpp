@@ -126,7 +126,7 @@ namespace LLD
         {
             /* We include address if we are indexing by address. */
             return Write(
-                std::make_pair(std::string("address"), hashRegister),
+                std::make_pair(std::string("state"), hashRegister),
                 std::make_pair(hashRegister, state), get_address_type(hashRegister) + "_address"
             );
         }
@@ -233,7 +233,7 @@ namespace LLD
             std::pair<uint256_t, TAO::Register::State&> pairResult =
                 std::make_pair(hashRegister, std::ref(state));
 
-            return Read(std::make_pair(std::string("address"), hashRegister), pairResult);
+            return Read(std::make_pair(std::string("state"), hashRegister), pairResult);
         }
 
         return Read(std::make_pair(std::string("state"), hashRegister), state);
@@ -286,7 +286,7 @@ namespace LLD
 
         /* Special case for indexed addresses. */
         if(config::GetBoolArg("-indexaddress"))
-            return Erase(std::make_pair(std::string("address"), hashRegister));
+            return Erase(std::make_pair(std::string("state"), hashRegister));
 
         return Erase(std::make_pair(std::string("state"), hashRegister));
     }
@@ -312,7 +312,7 @@ namespace LLD
     {
         /* We have our own logic here for indexing keys. */
         if(config::GetBoolArg("-indexaddress"))
-            return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("address"), hashRegister));
+            return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("state"), hashRegister));
 
         return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("state"), hashRegister));
     }
@@ -431,7 +431,7 @@ namespace LLD
 
         /* Special case for indexed addresses. */
         if(config::GetBoolArg("-indexaddress"))
-            return Exists(std::make_pair(std::string("address"), hashRegister));
+            return Exists(std::make_pair(std::string("state"), hashRegister));
 
         return Exists(std::make_pair(std::string("state"), hashRegister));
     }
@@ -524,7 +524,7 @@ namespace LLD
                         continue;
 
                     /* Create our new register record. */
-                    if(!Write(std::make_pair(std::string("address"), hashAddress),
+                    if(!Write(std::make_pair(std::string("state"), hashAddress),
                         std::make_pair(hashAddress, rState), get_address_type(hashAddress) + "_address"))
                         continue;
 
