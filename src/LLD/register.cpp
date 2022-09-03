@@ -466,14 +466,17 @@ namespace LLD
         timer.Start();
 
         /* Get our starting hash. */
-        const uint1024_t hashBegin =
-            (config::fHybrid.load() ? TAO::Ledger::hashGenesis : TAO::Ledger::hashTritium);
+        uint1024_t hashBegin = TAO::Ledger::hashTritium;
+
+        /* Check for hybrid mode. */
+        if(config::fHybrid.load())
+            LLD::Ledger->ReadHybridGenesis(hashBegin);
 
         /* Read the first tritium block. */
         TAO::Ledger::BlockState state;
         if(!LLD::Ledger->ReadBlock(hashBegin, state))
         {
-            debug::warning(FUNCTION, "No tritium blocks available");
+            debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
             return;
         }
 

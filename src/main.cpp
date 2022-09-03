@@ -128,6 +128,10 @@ int main(int argc, char** argv)
         LLP::Initialize();
 
 
+        /* Check for reindexing entries. */
+        LLD::Register->Reindex();
+
+
         /* Initialize Legacy Environment. */
         if(!Legacy::Initialize())
         {
