@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/unpack.h>
 
+#include <TAO/Ledger/include/constants.h>
+
 namespace LLD
 {
 
@@ -124,8 +126,8 @@ namespace LLD
         {
             /* We include address if we are indexing by address. */
             return Write(
-                std::make_pair(std::string("state"), hashRegister),
-                std::make_pair(hashRegister, state), get_address_type(hashRegister)
+                std::make_pair(std::string("address"), hashRegister),
+                std::make_pair(hashRegister, state), get_address_type(hashRegister) + "_address"
             );
         }
 
@@ -231,7 +233,7 @@ namespace LLD
             std::pair<uint256_t, TAO::Register::State&> pairResult =
                 std::make_pair(hashRegister, std::ref(state));
 
-            return Read(std::make_pair(std::string("state"), hashRegister), pairResult);
+            return Read(std::make_pair(std::string("address"), hashRegister), pairResult);
         }
 
         return Read(std::make_pair(std::string("state"), hashRegister), state);
@@ -282,6 +284,10 @@ namespace LLD
                 return true;
         }
 
+        /* Special case for indexed addresses. */
+        if(config::GetBoolArg("-indexaddress"))
+            return Erase(std::make_pair(std::string("address"), hashRegister));
+
         return Erase(std::make_pair(std::string("state"), hashRegister));
     }
 
@@ -319,7 +325,7 @@ namespace LLD
     bool RegisterDB::WriteTrust(const uint256_t& hashGenesis, const TAO::Register::State& state)
     {
         /* Get trust account address for contract caller */
-        uint256_t hashRegister =
+        const uint256_t hashRegister =
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
         {
@@ -339,7 +345,7 @@ namespace LLD
     bool RegisterDB::ReadTrust(const uint256_t& hashGenesis, TAO::Register::State& state)
     {
         /* Get trust account address for contract caller */
-        uint256_t hashRegister =
+        const uint256_t hashRegister =
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
         /* Memory mode for pre-database commits. */
@@ -379,7 +385,7 @@ namespace LLD
             }
         }
 
-        return Read(std::make_pair(std::string("genesis"), hashGenesis), state);
+        return ReadState(hashRegister, state);
     }
 
 
@@ -419,6 +425,10 @@ namespace LLD
                 return true;
         }
 
+        /* Special case for indexed addresses. */
+        if(config::GetBoolArg("-indexaddress"))
+            return Exists(std::make_pair(std::string("address"), hashRegister));
+
         return Exists(std::make_pair(std::string("state"), hashRegister));
     }
 
@@ -433,7 +443,7 @@ namespace LLD
             if(!config::HasArg("-indexaddress"))
             {
                 /* Warn that -indexheight is persistent. */
-                debug::log(0, FUNCTION, "-indexaddress enabled from valid indexes");
+                debug::notice(FUNCTION, "-indexaddress enabled from valid indexes");
 
                 /* Set indexing argument now. */
                 LOCK(config::ARGS_MUTEX);
@@ -454,12 +464,13 @@ namespace LLD
         runtime::timer timer;
         timer.Start();
 
-        /* Grab our starting txid by quick read. */
-        if(!LLD::Ledger->BatchRead("tx", vtx, 1))
+        /* Read the first tritium block. */
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(TAO::Ledger::hashTritium, state))
+        {
+            debug::warning(FUNCTION, "No tritium blocks available");
             return;
-
-        /* Check if we have a last entry. */
-        uint512_t hashLast = vtx[0].GetHash();
+        }
 
         /* Keep track of our total count. */
         uint32_t nScannedCount = 0;
@@ -468,20 +479,21 @@ namespace LLD
         std::set<uint256_t> setScanned;
 
         /* Start our scan. */
-        debug::log(0, FUNCTION, "Reindexing from tx ", hashLast.SubString());
-        while(true)
+        debug::log(0, FUNCTION, "Reindexing from block ", state.GetHash().SubString());
+        while(!config::fShutdown.load())
         {
-            /* Read the next batch of inventory. */
-            std::vector<TAO::Ledger::Transaction> vtx;
-            if(!LLD::Ledger->BatchRead(hashLast, "tx", vtx, 1000, true))
-                break;
-
             /* Loop through found transactions. */
-            for(uint32_t nIndex = 0; nIndex < vtx.size() - 1; ++nIndex)
+            for(uint32_t nIndex = 0; nIndex < state.vtx.size(); ++nIndex)
             {
-                /* Grab a reference of our transaction. */
-                const TAO::Ledger::Transaction& tx = vtx[nIndex];
-                
+                /* We only care about tritium transactions. */
+                if(state.vtx[nIndex].first != TAO::Ledger::TRANSACTION::TRITIUM)
+                    continue;
+
+                /* Read the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(state.vtx[nIndex].second, tx))
+                    continue;
+
                 /* Iterate the transaction contracts. */
                 for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
                 {
@@ -507,8 +519,8 @@ namespace LLD
                         continue;
 
                     /* Create our new register record. */
-                    if(!Write(std::make_pair(std::string("state"), hashAddress),
-                        std::make_pair(hashAddress, rState), get_address_type(hashAddress)))
+                    if(!Write(std::make_pair(std::string("address"), hashAddress),
+                        std::make_pair(hashAddress, rState), get_address_type(hashAddress) + "_address"))
                         continue;
 
                     /* Add to completed set. */
@@ -528,18 +540,16 @@ namespace LLD
                 }
             }
 
-            /* Set hash Last. */
-            hashLast = vtx.back().GetHash();
-
-            /* Check for end. */
-            if(vtx.size() != 1000)
+            /* Iterate to the next block in the queue. */
+            state = state.Next();
+            if(!state)
                 break;
         }
 
         /* Write our last index now. */
         Write(std::string("reindexed"));
 
-        debug::log(0, FUNCTION, "Complated scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
+        debug::log(0, FUNCTION, "Complated scanning ", nScannedCount, " tx with ", setScanned.size(), " registers in ", timer.Elapsed(), " seconds");
     }
 
 

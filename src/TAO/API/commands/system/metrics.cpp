@@ -53,6 +53,9 @@ namespace TAO
             uint64_t nTotalRaw        = count_registers("raw");
             uint64_t nTotalReadOnly   = count_registers("readonly");
 
+            /* Calculate count of all registers */
+            uint64_t nTotalRegisters = nTotalNamespaces + nTotalAccounts + nTotalTokens + nTotalAppend + nTotalRaw + nTotalReadOnly;
+
             /* For list of items we are building. */
             uint64_t nTotalCrypto = 0;
             uint64_t nTotalObjects = 0;
@@ -69,6 +72,9 @@ namespace TAO
                     if(!object.Parse())
                         continue;
 
+                    /* Increment total register. */
+                    ++nTotalRegisters;
+
                     /* Check stake value over 0. */
                     if(object.get<uint64_t>("stake") == 0)
                         continue;
@@ -76,8 +82,7 @@ namespace TAO
                     /* Update stake amount. */
                     nTotalStake += object.get<uint64_t>("stake");
                     nTotalTrust += object.get<uint64_t>("trust");
-                    nTotalTrustKeys  ++;
-
+                    nTotalTrustKeys++;
                 }
             }
 
@@ -92,12 +97,15 @@ namespace TAO
                     if(!object.Parse())
                         continue;
 
+                    /* Increment total register. */
+                    ++nTotalRegisters;
+
                     /* global */
                     if(object.get<std::string>("namespace") == TAO::Register::NAMESPACE::GLOBAL)
                         nTotalGlobalNames++;
 
                     /* namespaced */
-                    else if(object.get<std::string>("namespace") != "" )
+                    else if(object.get<std::string>("namespace") != "")
                         nTotalNamespacedNames ++;
 
                     /* Update count*/
@@ -112,9 +120,8 @@ namespace TAO
                 /* Check through all names. */
                 for(auto& object : vObjects)
                 {
-                    /* Skip over invalid objects (THIS SHOULD NEVER HAPPEN). */
-                    if(!object.Parse())
-                        continue;
+                    /* Increment total register. */
+                    ++nTotalRegisters;
 
                     /* Check if tokenized*/
                     if(TAO::Register::Address(object.hashOwner).IsToken())
@@ -135,16 +142,15 @@ namespace TAO
                 /* Check through all names. */
                 for(auto& rObject : vCrypto)
                 {
+                    /* Increment total register. */
+                    ++nTotalRegisters;
+
                     /* Use a set to get unique owners. */
                     setOwners.insert(rObject.hashOwner);
                     ++nTotalCrypto;
                 }
 
             }
-
-            /* Calculate count of all registers */
-            const uint64_t nTotalRegisters = nTotalTrustKeys + nTotalNames +nTotalNamespaces + nTotalAccounts + nTotalCrypto
-                    + nTotalTokens + nTotalAppend + nTotalRaw + nTotalReadOnly + nTotalObjects;
 
 
             /* Add register metrics */
@@ -230,6 +236,16 @@ namespace TAO
         /* Returns the count of registers of the given type in the register DB */
         uint64_t System::count_registers(const std::string& strType)
         {
+            /* Special handle if address indexed. */
+            if(config::GetBoolArg("-indexaddress"))
+            {
+                /* Batch read up to 1000 at a time */
+                std::vector<std::pair<uint256_t, TAO::Register::Object>> vRegisters;
+                LLD::Register->BatchRead(strType + "_address", vRegisters, -1);
+
+                return vRegisters.size();
+            }
+
             /* Batch read all registers . */
             std::vector<TAO::Register::Object> vRegisters;
             LLD::Register->BatchRead(strType, vRegisters, -1);

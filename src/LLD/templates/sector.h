@@ -26,6 +26,7 @@ ________________________________________________________________________________
 #include <Util/templates/datastream.h>
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
+#include <Util/include/filesystem.h>
 
 #include <string>
 #include <cstdint>
@@ -36,8 +37,7 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-
-
+    
     /* Maximum size a file can be in the keychain. */
     const uint32_t MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 512; //512 MB per File
 
@@ -345,16 +345,22 @@ namespace LLD
             /* Scan until limit is reached. */
             while(nLimit == -1 || nLimit > 0)
             {
-                /* Get filestream object. */
-                std::ifstream stream = std::ifstream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nFile), std::ios::in | std::ios::binary);
-                if(!stream)
-                    break;
+                /* Get our path to use. */
+                const std::string strPath =
+                    debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nFile);
 
                 /* Check filesize. */
-                stream.seekg(0, std::ios::end);
-                uint64_t nFileSize = stream.tellg();
-                uint64_t nBufferSize = (nLimit == -1) ? nFileSize : (1024 * 1024); //1 MB read buffer
-                stream.seekg(0, std::ios::beg); //reset seek position
+                const int64_t nFileSize =
+                    filesystem::size(strPath);
+
+                /* Get filestream object. */
+                std::ifstream stream = std::ifstream(strPath, std::ios::in | std::ios::binary);
+                if(!stream || nFileSize == -1)
+                    break;
+
+                /* Calculate our buffer sizes. */
+                uint64_t nBufferSize =
+                    (nLimit == -1) ? nFileSize : (1024 * 1024); //1 MB read buffer
 
                 /* Loop until stream encounters exceptions. */
                 while(stream)
@@ -374,12 +380,11 @@ namespace LLD
                         stream.seekg(nStart, std::ios::beg);
 
                         /* Read the data into the buffer. */
-                        stream.read((char*)ssData.data(), nBufferSize);
-                        if(!stream)
+                        if(!stream.read((char*)ssData.data(), nBufferSize))
                             ssData.resize(stream.gcount());
 
                         /* Iterate if meters are enabled. */
-                        nBytesRead += static_cast<uint32_t>(nBufferSize);
+                        nBytesRead += static_cast<uint32_t>(stream.gcount());
                     }
 
                     /* Read records. */
