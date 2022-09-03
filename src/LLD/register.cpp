@@ -310,6 +310,10 @@ namespace LLD
     /* Index a genesis to a register address. */
     bool RegisterDB::IndexTrust(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
+        /* We have our own logic here for indexing keys. */
+        if(config::GetBoolArg("-indexaddress"))
+            return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("address"), hashRegister));
+
         return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("state"), hashRegister));
     }
 
