@@ -441,7 +441,7 @@ namespace LLD
     void RegisterDB::Reindex()
     {
         /* Check for address indexing flag. */
-        if(Exists(std::string("reindexed")))
+        if(Exists(std::string("reindexed")) && !config::GetBoolArg("-forcereindex"))
         {
             /* Check there is no argument supplied. */
             if(!config::HasArg("-indexaddress"))
@@ -519,8 +519,20 @@ namespace LLD
 
                     /* Check fo register in database. */
                     TAO::Register::State rState;
-                    if(!Read(std::make_pair(std::string("state"), hashAddress), rState))
-                        continue;
+                    if(!config::GetBoolArg("-forcereindex"))
+                    {
+                        if(!Read(std::make_pair(std::string("state"), hashAddress), rState))
+                            continue;
+                    }
+
+                    /* Handle a forced reindex if needed. */
+                    else
+                    {
+                        std::pair<uint256_t, TAO::Register::State&> pairRead = std::make_pair(0, std::ref(rState));
+                        if(!Read(std::make_pair(std::string("state"), hashAddress), pairRead))
+                            continue;
+                    }
+
 
                     /* Erase our record from the database. */
                     if(!Erase(std::make_pair(std::string("state"), hashAddress)))
