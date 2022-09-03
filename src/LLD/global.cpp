@@ -91,6 +91,7 @@ namespace LLD
 
         /* Handle database recovery mode. */
         TxnRecovery();
+
     }
 
 

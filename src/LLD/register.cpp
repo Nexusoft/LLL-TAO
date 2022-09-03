@@ -487,7 +487,7 @@ namespace LLD
         std::set<uint256_t> setScanned;
 
         /* Start our scan. */
-        debug::log(0, FUNCTION, "Reindexing from block ", state.GetHash().SubString());
+        debug::notice(FUNCTION, "Reindexing from block ", state.GetHash().SubString());
         while(!config::fShutdown.load())
         {
             /* Loop through found transactions. */
@@ -557,7 +557,7 @@ namespace LLD
         /* Write our last index now. */
         Write(std::string("reindexed"));
 
-        debug::log(0, FUNCTION, "Complated scanning ", nScannedCount, " tx with ", setScanned.size(), " registers in ", timer.Elapsed(), " seconds");
+        debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " tx with ", setScanned.size(), " registers in ", timer.Elapsed(), " seconds");
     }
 
 
