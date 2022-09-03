@@ -457,16 +457,17 @@ namespace LLD
         if(!config::GetBoolArg("-indexaddress"))
             return;
 
-        /* Our list of transactions to read. */
-        std::vector<TAO::Ledger::Transaction> vtx;
-
         /* Start a timer to track. */
         runtime::timer timer;
         timer.Start();
 
+        /* Get our starting hash. */
+        const uint1024_t hashBegin =
+            (config::fHybrid.load() ? TAO::Ledger::hashGenesis : TAO::Ledger::hashTritium);
+
         /* Read the first tritium block. */
         TAO::Ledger::BlockState state;
-        if(!LLD::Ledger->ReadBlock(TAO::Ledger::hashTritium, state))
+        if(!LLD::Ledger->ReadBlock(hashBegin, state))
         {
             debug::warning(FUNCTION, "No tritium blocks available");
             return;
