@@ -151,7 +151,7 @@ namespace LLD
             return TAO::Operation::Contract(tx, nContract);
         }
         else
-            throw debug::exception(FUNCTION, "invalid txid type");
+            throw debug::exception(FUNCTION, "invalid txid type ", hashTx.SubString());
     }
 
 

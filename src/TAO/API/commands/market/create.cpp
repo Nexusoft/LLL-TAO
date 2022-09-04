@@ -76,7 +76,7 @@ namespace TAO::API
         {
             /* Check our account token types. */
             if(oDeposit.get<uint256_t>("token") != pairMarket.first)
-                throw Exception(-26, "Invalid parameter [deposit], [", strType, "] requires correct token");
+                throw Exception(-26, "Invalid parameter [to], [", strType, "] requires correct token");
 
             /* Check our account token types. */
             if(oAccount.get<uint256_t>("token") != pairMarket.second)
@@ -84,7 +84,7 @@ namespace TAO::API
 
             /* Check our type is bid. */
             if(strType != "bid")
-                throw Exception(-7, "Unsupported type [", strType, "] for parameters");
+                throw Exception(-7, "Order is not a bid, did you use the correct 'from' and 'to' accounts for your market pair?");
 
             /* Check if we need to adjust our figures. */
             const uint8_t nRequestDecimals = GetDecimals(pairMarket.first);
@@ -113,11 +113,11 @@ namespace TAO::API
 
             /* Check our account token types. */
             if(oDeposit.get<uint256_t>("token") != pairMarket.second)
-                throw Exception(-26, "Invalid parameter [deposit], [", strType, "] requires correct token");
+                throw Exception(-26, "Invalid parameter [to], [", strType, "] requires correct token");
 
             /* Check our type is an ask. */
             if(strType != "ask")
-                throw Exception(-7, "Unsupported type [", strType, "] for parameters");
+                throw Exception(-7, "Order is not a ask, did you use the correct 'from' and 'to' accounts for your market pair?");
 
             /* Check if we need to adjust our figures. */
             const uint8_t nRequestDecimals = GetDecimals(pairMarket.second);

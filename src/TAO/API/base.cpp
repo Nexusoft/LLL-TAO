@@ -178,8 +178,12 @@ namespace TAO::API
                                 ? strCheck.substr(0, strCheck.size() - 1)
                                 : strCheck);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
+                            /* Handle our supported override. */
+                            if(!mapFunctions[strVerb].Supported(strNoun))
+                                throw Exception(-36, "Unsupported type [", strNoun, "] for command");
+
                             /* Check for unexpected types. */
-                            if(!mapStandards.count(strNoun))
+                            if(!mapStandards.count(strNoun) && !mapFunctions[strVerb].Supported(strNoun))
                                 throw Exception(-36, "Unsupported type [", strNoun, "] for command");
 
                             /* Add our type to request object. */
@@ -190,7 +194,7 @@ namespace TAO::API
                     }
 
                     /* Grab our current noun. */
-                    const std::string strNoun = ((vMethods[n].back() == 's' && strVerb == "list")
+                    const std::string strNoun = ((vMethods[n].back() == 's' && (strVerb == "list" || strVerb == "user"))
                         ? vMethods[n].substr(0, vMethods[n].size() - 1)
                         : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
