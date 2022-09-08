@@ -392,18 +392,14 @@ namespace TAO::API
 
                     /* Read all transactions from our last index. */
                     uint512_t hash = hashLedger;
-                    while(hash != hashLogical)
+                    while(hash != hashLogical && !config::fShutdown.load())
                     {
-                        /* Check for shutdown. */
-                        if(config::fShutdown.load())
-                            break;
-
                         /* Read the transaction from the ledger database. */
                         TAO::Ledger::Transaction tx;
                         if(!LLD::Ledger->ReadTx(hash, tx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
                             debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash.SubString()));
-                            return;
+                            break;
                         }
 
                         /* Push transaction to list. */
@@ -425,7 +421,7 @@ namespace TAO::API
                         if(!LLD::Ledger->ReadTx(*hash, tx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
                             debug::warning(FUNCTION, "index for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash->SubString()));
-                            return;
+                            break;
                         }
 
                         /* Build an API transaction. */
@@ -448,12 +444,8 @@ namespace TAO::API
 
                     /* Read all transactions from our last index. */
                     uint512_t hash = hashLogical;
-                    while(true)
+                    while(!config::fShutdown.load())
                     {
-                        /* Check for shutdown. */
-                        if(config::fShutdown.load())
-                            break;
-
                         /* Read the transaction from the ledger database. */
                         TAO::API::Transaction tx;
                         if(!LLD::Logical->ReadTx(hash, tx))
