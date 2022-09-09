@@ -43,6 +43,19 @@ namespace TAO::API
     }
 
 
+    /* Copy all the internal objects into an external map. */
+    void Base::Export(std::map<std::string, Standard> &mapStandardsOut)
+    {
+        /* Loop through all of our standards. */
+        for(const auto& rStandard : mapStandards)
+        {
+            /* Copy all standards but the wildcard standard. */
+            if(rStandard.first != "any" && rStandard.first != "all")
+                mapStandardsOut[rStandard.first] = rStandard.second;
+        }
+    }
+
+
     /* Checks an object's type if it has been standardized for this command-set. */
     bool Base::CheckObject(const std::string& strType, const TAO::Register::Object& tObject) const
     {
@@ -183,7 +196,7 @@ namespace TAO::API
                                 throw Exception(-36, "Unsupported type [", strNoun, "] for command");
 
                             /* Check for unexpected types. */
-                            if(!mapStandards.count(strNoun) && !mapFunctions[strVerb].Supported(strNoun))
+                            if(!mapStandards.count(strNoun))
                                 throw Exception(-36, "Unsupported type [", strNoun, "] for command");
 
                             /* Add our type to request object. */
@@ -203,7 +216,7 @@ namespace TAO::API
                         throw Exception(-36, "Unsupported type [", strNoun, "] for command");
 
                     /* Check for unexpected types. */
-                    if(!mapStandards.count(strNoun) && !mapFunctions[strVerb].Supported(strNoun))
+                    if(!mapStandards.count(strNoun))
                         throw Exception(-36, "Unsupported type [", strNoun, "] for command");
 
                     /* Add our type to request object. */

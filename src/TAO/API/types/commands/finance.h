@@ -159,5 +159,18 @@ namespace TAO::API
          **/
         encoding::json Void(const encoding::json& jParams, const bool fHelp);
 
+
+        /** AccountToJSON
+         *
+         *  Returns the JSON representation of an account, either trust or account
+         *
+         *  @param[in] rObject The state register containing the invoice data
+         *  @param[in] hashRegister The register address of the invoice state register
+         *
+         *  @return the invoice JSON
+         *
+         **/
+        static encoding::json AccountToJSON(const TAO::Register::Object& rObject, const uint256_t& hashRegister);
+
     };
 }

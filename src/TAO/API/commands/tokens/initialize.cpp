@@ -33,7 +33,7 @@ namespace TAO::API
         /* Populate our operators. */
         Operators::Initialize(mapOperators);
 
-        
+
         /* Populate our ACCOUNT standard. */
         mapStandards["account"] = Standard
         (

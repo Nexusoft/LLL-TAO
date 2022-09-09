@@ -39,6 +39,14 @@ namespace TAO::API
             {
                 return rObject.Standard() == TAO::Register::OBJECTS::ACCOUNT;
             }
+
+            /* Our custom encoding function for this type. */
+            , std::bind
+            (
+                &Finance::AccountToJSON,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
         );
 
         /* Populate our TOKEN standard. */
@@ -49,6 +57,14 @@ namespace TAO::API
             {
                 return rObject.Standard() == TAO::Register::OBJECTS::TOKEN;
             }
+
+            /* Our custom encoding function for this type. */
+            , std::bind
+            (
+                &Finance::AccountToJSON,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
         );
 
         /* Populate our TRUST standard. */
@@ -59,6 +75,14 @@ namespace TAO::API
             {
                 return rObject.Standard() == TAO::Register::OBJECTS::TRUST;
             }
+
+            /* Our custom encoding function for this type. */
+            , std::bind
+            (
+                &Finance::AccountToJSON,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
         );
 
         /* Populate our ANY standard. */
