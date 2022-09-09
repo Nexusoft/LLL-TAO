@@ -139,15 +139,15 @@ namespace TAO::API
                     ssCompare >> hashTo;
 
                     /* Get the amount requested. */
-                    uint64_t nRequest = 0;
-                    ssCompare >> nRequest;
+                    uint64_t nTotal = 0;
+                    ssCompare >> nTotal;
 
                     /* Build our from object. */
                     encoding::json jRequired =
                     {
                         { "OP",     "DEBIT"                              },
                         { "to",     hashTo.ToString()                    },
-                        { "amount", FormatBalance(nRequest, hashRequest) },
+                        { "amount", FormatBalance(nTotal, hashRequest) },
                         { "token",  hashRequest.ToString()               }
                     };
 
@@ -159,47 +159,24 @@ namespace TAO::API
                     std::string strType = "";
                     if(hashRequest != pairMarket.second)
                     {
-                        /* Check if we need to adjust our figures. */
-                        const uint8_t nRequestDecimals = GetDecimals(pairMarket.first);
-                        const uint8_t nOrderedDecimals = GetDecimals(pairMarket.second);
-
-                        /* Check if we need to adjust requested total. */
-                        if(nRequestDecimals < nOrderedDecimals)
-                            nRequest *= uint64_t(math::pow(10, nOrderedDecimals - nRequestDecimals));
-
-                        /* Check if we need to adjust the order total. */
-                        else if(nOrderedDecimals < nRequestDecimals)
-                            nAmount *= uint64_t(math::pow(10, nRequestDecimals - nOrderedDecimals));
-
-                        /* Calculate our price. */
+                        /* Calulate our price (TODO: this shouldn't use double's). */
                         const uint64_t nPrice =
-                            (nAmount * math::pow(10, nOrderedDecimals)) / nRequest;
+                            (FormatBalance(nTotal, pairMarket.first) / FormatBalance(nAmount, pairMarket.second)) * GetFigures(pairMarket.second);
 
-                        jRet["price"]       = FormatBalance(nPrice, nOrderedDecimals);
+                        /* Set our price now with correct decimals. */
+                        jRet["price"] = FormatBalance(nPrice, pairMarket.second);
 
                         /* Check what type of order this is. */
                         strType = "bid";
                     }
                     else
                     {
-                        /* Check if we need to adjust our figures. */
-                        const uint8_t nRequestDecimals = GetDecimals(pairMarket.second);
-                        const uint8_t nOrderedDecimals = GetDecimals(pairMarket.first);
-
-                        /* Check if we need to adjust requested total. */
-                        if(nRequestDecimals < nOrderedDecimals)
-                            nRequest *= math::pow(10, nOrderedDecimals - nRequestDecimals);
-
-                        /* Check if we need to adjust the order total. */
-                        else if(nOrderedDecimals < nRequestDecimals)
-                            nAmount *= math::pow(10, nRequestDecimals - nOrderedDecimals);
-
-                        /* Calculate our price. */
+                        /* Calulate our price (TODO: this shouldn't use double's). */
                         const uint64_t nPrice =
-                            (nRequest * math::pow(10, nRequestDecimals)) / nAmount;
+                            (FormatBalance(nAmount, pairMarket.first) / FormatBalance(nTotal, pairMarket.second)) * GetFigures(pairMarket.first);
 
                         /* Set our price now with correct decimals. */
-                        jRet["price"]  = FormatBalance(nPrice, nRequestDecimals);
+                        jRet["price"] = FormatBalance(nPrice, pairMarket.first);
 
                         /* Check what type of order this is. */
                         strType = "ask";

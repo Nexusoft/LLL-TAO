@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/get.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/market.h>
+#include <TAO/API/types/commands/names.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -62,16 +63,12 @@ namespace TAO::API
         const uint256_t hashRequest =
             oDeposit.get<uint256_t>("token");
 
-        /* Check they have the required funds */
-        const uint64_t nAmount =
-            ExtractAmount(jParams, GetFigures(pairMarket.second));
-
         /* Extract the price field. */
         const uint64_t nPrice =
             ExtractAmount(jParams, GetFigures(pairMarket.second), "price");
 
         /* Calculate our required amount in order. */
-        uint64_t nTotal = 0;
+        uint64_t nTotal = 0, nAmount = 0;
         if(hashRequest != pairMarket.second)
         {
             /* Check our account token types. */
@@ -87,21 +84,27 @@ namespace TAO::API
                 throw Exception(-7, "Order is not a bid, did you use the correct 'from' and 'to' accounts for your market pair?");
 
             /* Check if we need to adjust our figures. */
-            const uint8_t nRequestDecimals = GetDecimals(pairMarket.first);
-            const uint8_t nOrderedDecimals = GetDecimals(pairMarket.second);
+            const uint8_t nPrimaryDecimals   = GetDecimals(pairMarket.first);
+            const uint8_t nSecondaryDecimals = GetDecimals(pairMarket.second);
 
-            /* Check if we need to adjust requested total. */
-            uint64_t nPriceAdjusted = nPrice, nAmountAdjusted = nAmount;
-            if(nRequestDecimals < nOrderedDecimals)
-                nPriceAdjusted *= uint64_t(math::pow(10, nOrderedDecimals - nRequestDecimals));
+            /* Check they have the required funds */
+            nAmount =
+                ExtractAmount(jParams, GetFigures(pairMarket.second));
 
-            /* Check if we need to adjust the order total. */
-            else if(nOrderedDecimals < nRequestDecimals)
-                nAmountAdjusted *= uint64_t(math::pow(10, nRequestDecimals - nOrderedDecimals));
+            /* Temporary value to track our amounts and change based on decimals */
+            uint64_t nAmountAdjusted = nAmount;
 
-            /* Calculate our price. */
+            /* If our price has less decimals, increase our product up by the difference. */
+            if(nPrimaryDecimals > nSecondaryDecimals)
+                nAmountAdjusted *= math::pow(10, nPrimaryDecimals - nSecondaryDecimals);
+
+            /* Calculate our total values now. */
             nTotal =
-                (nAmountAdjusted * math::pow(10, nOrderedDecimals)) / nPriceAdjusted;
+                ((nAmountAdjusted * math::pow(10, nSecondaryDecimals)) / nPrice);
+
+            /* If our price has more decimals, reduce our product down by the difference. */
+            if(nSecondaryDecimals > nPrimaryDecimals)
+                nTotal /= math::pow(10, nSecondaryDecimals - nPrimaryDecimals);
         }
 
         /* Handle for asks. */
@@ -120,21 +123,27 @@ namespace TAO::API
                 throw Exception(-7, "Order is not a ask, did you use the correct 'from' and 'to' accounts for your market pair?");
 
             /* Check if we need to adjust our figures. */
-            const uint8_t nRequestDecimals = GetDecimals(pairMarket.second);
-            const uint8_t nOrderedDecimals = GetDecimals(pairMarket.first);
+            const uint8_t nPrimaryDecimals   = GetDecimals(pairMarket.first);
+            const uint8_t nSecondaryDecimals = GetDecimals(pairMarket.second);
 
-            /* Check if we need to adjust requested total. */
-            uint64_t nPriceAdjusted = nPrice, nAmountAdjusted = nAmount;
-            if(nRequestDecimals < nOrderedDecimals)
-                nPriceAdjusted *= uint64_t(math::pow(10, nOrderedDecimals - nRequestDecimals));
+            /* Check they have the required funds */
+            nAmount =
+                ExtractAmount(jParams, GetFigures(pairMarket.first));
 
-            /* Check if we need to adjust the order total. */
-            else if(nOrderedDecimals < nRequestDecimals)
-                nAmountAdjusted *= uint64_t(math::pow(10, nRequestDecimals - nOrderedDecimals));
+            /* Temporary value to track our amounts and change based on decimals */
+            uint64_t nAmountAdjusted = nAmount;
 
-            /* Calculate our price. */
+            /* If our price has more decimals, increase our product by the difference. */
+            if(nSecondaryDecimals > nPrimaryDecimals)
+                nAmountAdjusted *= math::pow(10, nSecondaryDecimals - nPrimaryDecimals);
+
+            /* Calculate our total values now. */
             nTotal =
-                (nAmountAdjusted * math::pow(10, nRequestDecimals)) / nPriceAdjusted;
+                (nPrice * nAmountAdjusted) / math::pow(10, nSecondaryDecimals);
+
+            /* If our price has less decimals, decrease our product down by the difference. */
+            if(nPrimaryDecimals > nSecondaryDecimals)
+                nTotal /= math::pow(10, nPrimaryDecimals - nSecondaryDecimals);
         }
 
         /* Transation payload. */
