@@ -54,6 +54,10 @@ namespace TAO::API
         const std::string& strLookup =
             jParams["namespace"].get<std::string>();
 
+        /* Check that it is valid */
+        if(TAO::Register::Address(strLookup).IsValid())
+            throw Exception(-56, "Parameter [namespace] cannot be register address. Must use [address] for raw");
+
         return ResolveNamespace(strLookup);
     }
 

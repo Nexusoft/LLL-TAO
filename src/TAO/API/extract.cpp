@@ -43,6 +43,20 @@ namespace TAO::API
         const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
         const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
 
+        /* Otherwise let's check for the raw address format. */
+        if(CheckParameter(jParams, strAddr, "string"))
+        {
+            /* Declare our return value. */
+            const TAO::Register::Address hashRet =
+                TAO::Register::Address(jParams[strAddr].get<std::string>());
+
+            /* Check that it is valid */
+            if(hashRet.IsValid())
+                return hashRet;
+
+            throw Exception(-35, "Invalid address [", hashRet.ToString(), "]");
+        }
+
         /* Check if we are resolving for a name or namespace. */
         if(CheckRequest(jParams, "type", "string, array"))
         {
@@ -52,13 +66,13 @@ namespace TAO::API
             /* Iterate through our types now. */
             for(const std::string& strType : setTypes)
             {
-                /* Check for name or namespace resolution. */
-                if(strType == "name" || strType == "namespace" || strType == "global" || strType == "local")
-                {
-                    /* Check for namespace to get specific parameters. */
-                    if(strType == "namespace")
-                        return Names::ResolveNamespace(jParams);
+                /* Check for namespace to get specific parameters. */
+                if(strType == "namespace")
+                    return Names::ResolveNamespace(jParams);
 
+                /* Check for name or namespace resolution. */
+                if(strType == "global" || strType == "local" || strType == "name")
+                {
                     /* Grab our name from incoming parameters. */
                     const std::string& strLookup =
                         jParams[strName].get<std::string>();
@@ -83,20 +97,6 @@ namespace TAO::API
         /* If name is provided then use this to deduce the register address, */
         if(CheckParameter(jParams, strName, "string"))
             return Names::ResolveAddress(jParams, jParams[strName].get<std::string>(), false);
-
-        /* Otherwise let's check for the raw address format. */
-        else if(CheckParameter(jParams, strAddr, "string"))
-        {
-            /* Declare our return value. */
-            const TAO::Register::Address hashRet =
-                TAO::Register::Address(jParams[strAddr].get<std::string>());
-
-            /* Check that it is valid */
-            if(hashRet.IsValid())
-                return hashRet;
-
-            throw Exception(-35, "Invalid address [", hashRet.ToString(), "]");
-        }
 
         /* Check for our default values. */
         else if(!strDefault.empty())
