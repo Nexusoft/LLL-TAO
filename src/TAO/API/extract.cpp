@@ -307,34 +307,34 @@ namespace TAO::API
             try
             {
                 /* Initialize our return value. */
-                double dValue = 0;
+                uint64_t nValue = 0;
 
                 /* Convert to value if in string form. */
                 if(jParams[strAmount].is_string())
-                    dValue = std::stod(jParams[strAmount].get<std::string>());
+                    nValue = (std::stod(jParams[strAmount].get<std::string>()) * nFigures);
 
                 /* Grab value regularly if it is integer. */
                 else if(jParams[strAmount].is_number_unsigned())
-                    dValue = double(jParams[strAmount].get<uint64_t>());
+                    nValue = (jParams[strAmount].get<uint64_t>() * nFigures);
 
                 /* Check for a floating point value. */
                 else if(jParams[strAmount].is_number_float())
-                    dValue = jParams[strAmount].get<double>();
+                    nValue = (jParams[strAmount].get<double>() * nFigures);
 
                 /* Otherwise we have an invalid parameter. */
                 else
                     throw Exception(-57, "Invalid Parameter [", strAmount, "]");
 
                 /* Check our minimum range. */
-                if(dValue <= 0)
-                    throw Exception(-68, "[", strAmount, "] too small [", dValue, "]");
+                if(nValue <= 0)
+                    throw Exception(-68, "[", strAmount, "] too small [", nValue, "]");
 
                 /* Check our limits and ranges now. */
-                if(uint64_t(dValue) > (nLimit / nFigures))
+                if(nValue > (nLimit / nFigures))
                     throw Exception(-60, "[", strAmount, "] out of range [", nLimit, "]");
 
                 /* Final compute of our figures. */
-                return uint64_t(dValue * nFigures);
+                return nValue;
             }
             catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [", strAmount, "]");           }
             catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [", strAmount, "]");           }
