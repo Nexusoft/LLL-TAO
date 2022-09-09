@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/API/types/commands/finance.h>
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/templates.h>
 #include <TAO/API/types/operators/initialize.h>
@@ -29,24 +30,6 @@ namespace TAO::API
         Operators::Initialize(mapOperators);
 
 
-        /* Populate our ACCOUNT standard. */
-        mapStandards["account"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return rObject.Standard() == TAO::Register::OBJECTS::ACCOUNT;
-            }
-
-            /* Our custom encoding function for this type. */
-            , std::bind
-            (
-                &Register::AccountToJSON,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
         /* Populate our CRYPTO standard. */
         mapStandards["crypto"] = Standard
         (
@@ -55,26 +38,7 @@ namespace TAO::API
             {
                 return rObject.Standard() == TAO::Register::OBJECTS::CRYPTO;
             }
-        );
-
-        /* Populate our NAME standard. */
-        mapStandards["name"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return rObject.Standard() == TAO::Register::OBJECTS::NAME;
-            }
-        );
-
-        /* Populate our NAMESPACE standard. */
-        mapStandards["namespace"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return rObject.Standard() == TAO::Register::OBJECTS::NAMESPACE;
-            }
+            , "crypto"
         );
 
         /* Populate our OBJECT standard. */
@@ -83,45 +47,7 @@ namespace TAO::API
             /* Lambda expression to determine object standard. */
             [](const TAO::Register::Object& rObject)
             {
-                return rObject.Standard() == TAO::Register::OBJECTS::NONSTANDARD;
-            }
-        );
-
-        /* Populate our TOKEN standard. */
-        mapStandards["token"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return rObject.Standard() == TAO::Register::OBJECTS::TOKEN;
-            }
-        );
-
-        /* Populate our TRUST standard. */
-        mapStandards["trust"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return rObject.Standard() == TAO::Register::OBJECTS::TRUST;
-            }
-
-            /* Our custom encoding function for this type. */
-            , std::bind
-            (
-                &Register::AccountToJSON,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-        );
-
-        /* Populate our APPEND standard. */
-        mapStandards["append"] = Standard
-        (
-            /* Lambda expression to determine object standard. */
-            [](const TAO::Register::Object& rObject)
-            {
-                return rObject.nType == TAO::Register::REGISTER::APPEND;
+                return rObject.nType == TAO::Register::REGISTER::OBJECT;
             }
         );
 
@@ -133,6 +59,7 @@ namespace TAO::API
             {
                 return rObject.nType == TAO::Register::REGISTER::RAW;
             }
+            , "raw"
         );
 
         /* Populate our READONLY standard. */
@@ -143,6 +70,7 @@ namespace TAO::API
             {
                 return rObject.nType == TAO::Register::REGISTER::READONLY;
             }
+            , "readonly"
         );
 
         /* Populate our ANY standard. */

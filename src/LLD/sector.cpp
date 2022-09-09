@@ -113,20 +113,21 @@ namespace LLD
         /* Find the most recent append file. */
         while(true)
         {
+            /* Get our current file's path. */
+            const std::string& strPath =
+                debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile);
 
-            /* TODO: Make a worker or thread to check sizes of files and automatically create new file.
-                Keep independent of reads and writes for efficiency. */
-            std::fstream stream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::binary);
-            if(!stream)
+            /* Build a stream object now. */
+            const int64_t nSize = filesystem::size(strPath);
+            if(nSize == -1)
             {
-
                 /* Assign the Current Size and File. */
                 if(nCurrentFile > 0)
                     --nCurrentFile;
                 else
                 {
                     /* Create a new file if it doesn't exist. */
-                    std::ofstream cStream(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::binary | std::ios::out | std::ios::trunc);
+                    std::ofstream cStream(strPath, std::ios::binary | std::ios::out | std::ios::trunc);
                     cStream.close();
                 }
 
@@ -134,9 +135,7 @@ namespace LLD
             }
 
             /* Get the Binary Size. */
-            stream.seekg(0, std::ios::end);
-            nCurrentFileSize = static_cast<uint32_t>(stream.tellg());
-            stream.close();
+            nCurrentFileSize = nSize;
 
             /* Increment the Current File */
             ++nCurrentFile;
@@ -481,19 +480,13 @@ namespace LLD
                 fileCache->Put(key.nSectorFile, pstream);
             }
 
-            /* If it is a New Sector, Assign a Binary Position. */
-            pstream->seekg(key.nSectorStart, std::ios::beg);
-
-            /* Write the size of record. */
-            const uint64_t nSize = ReadCompactSize(*pstream);
-
             /* Seek to write at specific location. */
-            pstream->seekp(key.nSectorStart + GetSizeOfCompactSize(nSize), std::ios::beg);
+            pstream->seekp(key.nSectorStart + GetSizeOfCompactSize(key.nSectorSize), std::ios::beg);
 
             /* Update the record with blank data. */
             DataStream ssData(SER_LLD, DATABASE_VERSION);
             ssData << std::string("NONE");
-            ssData.resize(nSize);
+            ssData.resize(key.nSectorSize - GetSizeOfCompactSize(key.nSectorSize));
 
             /* Write the data record. */
             if(!pstream->write((char*)ssData.data(), ssData.size()))
@@ -501,6 +494,11 @@ namespace LLD
 
             /* Flush the rest of the write buffer in stream. */
             pstream->flush();
+
+            /* Verboe output. */
+            if(config::nVerbose >= 4)
+                debug::log(4, FUNCTION, "DELETE: Current File: ", key.nSectorFile,
+                    " | Current File Size: ", key.nSectorStart, "\n");
         }
 
         return true;

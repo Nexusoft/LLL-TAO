@@ -14,13 +14,13 @@ ________________________________________________________________________________
 #include <TAO/API/include/format.h>
 #include <TAO/API/include/get.h>
 
-#include <TAO/API/types/commands/register.h>
+#include <TAO/API/types/commands/finance.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
 {
     /* Returns the JSON representation of this invoice */
-    encoding::json Register::AccountToJSON(const TAO::Register::Object& rObject, const uint256_t& hashRegister)
+    encoding::json Finance::AccountToJSON(const TAO::Register::Object& rObject, const uint256_t& hashRegister)
     {
         /* The JSON to return */
         encoding::json jRet =

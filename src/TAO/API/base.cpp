@@ -43,6 +43,26 @@ namespace TAO::API
     }
 
 
+    /* Copy all the internal objects into an external map. */
+    void Base::Export(std::map<std::string, Standard> &mapStandardsOut, const std::string& strAPI)
+    {
+        /* Loop through all of our standards. */
+        for(const auto& rStandard : mapStandards)
+        {
+            /* Copy all standards but the wildcard standard. */
+            if(rStandard.first != "any" && rStandard.first != "all")
+            {
+                /* Build our standard string. */
+                const std::string strStandard =
+                    ((strAPI == "") ? "" : (strAPI + ":")) + rStandard.first;
+
+                /* Create the standard object now. */
+                mapStandardsOut[strStandard] = rStandard.second;
+            }
+        }
+    }
+
+
     /* Checks an object's type if it has been standardized for this command-set. */
     bool Base::CheckObject(const std::string& strType, const TAO::Register::Object& tObject) const
     {
@@ -178,9 +198,13 @@ namespace TAO::API
                                 ? strCheck.substr(0, strCheck.size() - 1)
                                 : strCheck);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
+                            /* Handle our supported override. */
+                            if(!mapFunctions[strVerb].Supported(strNoun) && !mapFunctions[strVerb].Standards())
+                                throw Exception(-36, "Type [", strNoun, "] not supported for command");
+
                             /* Check for unexpected types. */
-                            if(!mapStandards.count(strNoun))
-                                throw Exception(-36, "Unsupported type [", strNoun, "] for command");
+                            if(!mapStandards.count(strNoun) && mapFunctions[strVerb].Standards())
+                                throw Exception(-36, "Standard [", strNoun, "] not found for command");
 
                             /* Add our type to request object. */
                             jParams["request"]["type"].push_back(strNoun);
@@ -190,17 +214,17 @@ namespace TAO::API
                     }
 
                     /* Grab our current noun. */
-                    const std::string strNoun = ((vMethods[n].back() == 's' && strVerb == "list")
+                    const std::string strNoun = ((vMethods[n].back() == 's' && (strVerb == "list" || strVerb == "user"))
                         ? vMethods[n].substr(0, vMethods[n].size() - 1)
                         : vMethods[n]);  //we are taking out the last char if it happens to be an 's' as special for 'list' command
 
                     /* Handle our supported override. */
-                    if(!mapFunctions[strVerb].Supported(strNoun))
-                        throw Exception(-36, "Unsupported type [", strNoun, "] for command");
+                    if(!mapFunctions[strVerb].Supported(strNoun) && !mapFunctions[strVerb].Standards())
+                        throw Exception(-36, "Type [", strNoun, "] not supported for command");
 
                     /* Check for unexpected types. */
-                    if(!mapStandards.count(strNoun) && !mapFunctions[strVerb].Supported(strNoun))
-                        throw Exception(-36, "Unsupported type [", strNoun, "] for command");
+                    if(!mapStandards.count(strNoun) && mapFunctions[strVerb].Standards())
+                        throw Exception(-36, "Object [", strNoun, "] not supported for command");
 
                     /* Add our type to request object. */
                     jParams["request"]["type"] = strNoun;

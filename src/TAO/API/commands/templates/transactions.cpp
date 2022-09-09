@@ -72,7 +72,7 @@ namespace TAO::API
 
                 /* Read the block state from the the ledger DB using the transaction hash index */
                 TAO::Ledger::BlockState blockState;
-                LLD::Ledger->ReadBlock(tx.GetHash(), blockState);
+                LLD::Ledger->ReadBlock(hashLast, blockState);
 
                 /* Get the transaction JSON. */
                 encoding::json jTransaction =

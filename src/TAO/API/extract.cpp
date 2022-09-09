@@ -43,6 +43,20 @@ namespace TAO::API
         const std::string strName = "name"    + (strSuffix.empty() ? ("") : ("_" + strSuffix));
         const std::string strAddr = "address" + (strSuffix.empty() ? ("") : ("_" + strSuffix));
 
+        /* Otherwise let's check for the raw address format. */
+        if(CheckParameter(jParams, strAddr, "string"))
+        {
+            /* Declare our return value. */
+            const TAO::Register::Address hashRet =
+                TAO::Register::Address(jParams[strAddr].get<std::string>());
+
+            /* Check that it is valid */
+            if(hashRet.IsValid())
+                return hashRet;
+
+            throw Exception(-35, "Invalid address [", hashRet.ToString(), "]");
+        }
+
         /* Check if we are resolving for a name or namespace. */
         if(CheckRequest(jParams, "type", "string, array"))
         {
@@ -52,13 +66,13 @@ namespace TAO::API
             /* Iterate through our types now. */
             for(const std::string& strType : setTypes)
             {
-                /* Check for name or namespace resolution. */
-                if(strType == "name" || strType == "namespace" || strType == "global" || strType == "local")
-                {
-                    /* Check for namespace to get specific parameters. */
-                    if(strType == "namespace")
-                        return Names::ResolveNamespace(jParams);
+                /* Check for namespace to get specific parameters. */
+                if(strType == "namespace")
+                    return Names::ResolveNamespace(jParams);
 
+                /* Check for name or namespace resolution. */
+                if(strType == "global" || strType == "local" || strType == "name")
+                {
                     /* Grab our name from incoming parameters. */
                     const std::string& strLookup =
                         jParams[strName].get<std::string>();
@@ -83,20 +97,6 @@ namespace TAO::API
         /* If name is provided then use this to deduce the register address, */
         if(CheckParameter(jParams, strName, "string"))
             return Names::ResolveAddress(jParams, jParams[strName].get<std::string>(), false);
-
-        /* Otherwise let's check for the raw address format. */
-        else if(CheckParameter(jParams, strAddr, "string"))
-        {
-            /* Declare our return value. */
-            const TAO::Register::Address hashRet =
-                TAO::Register::Address(jParams[strAddr].get<std::string>());
-
-            /* Check that it is valid */
-            if(hashRet.IsValid())
-                return hashRet;
-
-            throw Exception(-35, "Invalid address [", hashRet.ToString(), "]");
-        }
 
         /* Check for our default values. */
         else if(!strDefault.empty())
@@ -133,7 +133,7 @@ namespace TAO::API
         if(CheckParameter(jParams, "token", "string"))
             return ExtractAddress(jParams["token"].get<std::string>(), jParams);
 
-        return 0;
+        return uint256_t(0);
     }
 
 
@@ -307,34 +307,34 @@ namespace TAO::API
             try
             {
                 /* Initialize our return value. */
-                double dValue = 0;
+                uint64_t nValue = 0;
 
                 /* Convert to value if in string form. */
                 if(jParams[strAmount].is_string())
-                    dValue = std::stod(jParams[strAmount].get<std::string>());
+                    nValue = (std::stod(jParams[strAmount].get<std::string>()) * nFigures);
 
                 /* Grab value regularly if it is integer. */
                 else if(jParams[strAmount].is_number_unsigned())
-                    dValue = double(jParams[strAmount].get<uint64_t>());
+                    nValue = (jParams[strAmount].get<uint64_t>() * nFigures);
 
                 /* Check for a floating point value. */
                 else if(jParams[strAmount].is_number_float())
-                    dValue = jParams[strAmount].get<double>();
+                    nValue = (jParams[strAmount].get<double>() * nFigures);
 
                 /* Otherwise we have an invalid parameter. */
                 else
                     throw Exception(-57, "Invalid Parameter [", strAmount, "]");
 
                 /* Check our minimum range. */
-                if(dValue <= 0)
-                    throw Exception(-68, "[", strAmount, "] too small [", dValue, "]");
+                if(nValue <= 0)
+                    throw Exception(-68, "[", strAmount, "] too small [", nValue, "]");
 
                 /* Check our limits and ranges now. */
-                if(uint64_t(dValue) > (nLimit / nFigures))
+                if(nValue > (nLimit / nFigures))
                     throw Exception(-60, "[", strAmount, "] out of range [", nLimit, "]");
 
                 /* Final compute of our figures. */
-                return uint64_t(dValue * nFigures);
+                return nValue;
             }
             catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [", strAmount, "]");           }
             catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [", strAmount, "]");           }

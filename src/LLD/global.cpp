@@ -92,8 +92,6 @@ namespace LLD
         /* Handle database recovery mode. */
         TxnRecovery();
 
-        /* Check for reindexing entries. */
-        Register->Reindex();
     }
 
 

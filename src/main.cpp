@@ -124,6 +124,10 @@ int main(int argc, char** argv)
         TAO::Ledger::ChainState::Initialize();
 
 
+        /* Check for reindexing entries. */
+        LLD::Register->Reindex();
+
+
         /* Initialize the Lower Level Protocol. */
         LLP::Initialize();
 

@@ -60,6 +60,13 @@ namespace TAO::API
         Commands::Register<System>();
         Commands::Register<Tokens>();
 
+        /* Import our standard objects to global API. */
+        Commands::Instance<Register>()->Import<Assets>();
+        Commands::Instance<Register>()->Import<Finance>();
+        Commands::Instance<Register>()->Import<Invoices>();
+        Commands::Instance<Register>()->Import<Names>();
+        Commands::Instance<Register>()->Import<Supply>();
+
         /* Initialize our indexing services. */
         Indexing::Register<Market>();
         Indexing::Register<Names> ();

@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #pragma once
 
 #include <TAO/API/types/base.h>
+#include <TAO/API/types/commands.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -58,6 +59,32 @@ namespace TAO::API
         {
             return "register";
         }
+
+
+        /** Import
+         *
+         *  Import objects of an API instance, indexed by our name.
+         *
+         **/
+        template<typename Type>
+        void Import()
+        {
+            /* Get our typename from static type instance. */
+            const std::string& strAPI = Type::Name();
+
+            /* Grab objects by this class's instance converted by typename. */
+            Import(strAPI);
+        }
+
+
+        /** Import
+         *
+         *  Import objects of an API instance, indexed by our name.
+         *
+         *  @param[in] strAPI The api instance string to use.
+         *
+         **/
+        void Import(const std::string& strAPI);
 
 
         /** Get
@@ -110,18 +137,5 @@ namespace TAO::API
          *
          **/
         encoding::json Transactions(const encoding::json& jParams, const bool fHelp);
-
-
-        /** AccountToJSON
-         *
-         *  Returns the JSON representation of an account, either trust or account
-         *
-         *  @param[in] rObject The state register containing the invoice data
-         *  @param[in] hashRegister The register address of the invoice state register
-         *
-         *  @return the invoice JSON
-         *
-         **/
-        static encoding::json AccountToJSON(const TAO::Register::Object& rObject, const uint256_t& hashRegister);
     };
 }

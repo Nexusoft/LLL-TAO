@@ -53,6 +53,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "readonly"
         );
 
         /* Subset of invoice standard, to find outstanding invoices. */
@@ -75,6 +76,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "readonly"
         );
 
         /* Subset of invoice standard, to find outstanding invoices. */
@@ -106,6 +108,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "readonly"
         );
 
         /* Subset of invoice standard, to find outstanding invoices. */
@@ -137,6 +140,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "readonly"
         );
 
 

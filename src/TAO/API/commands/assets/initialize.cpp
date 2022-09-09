@@ -66,6 +66,7 @@ namespace TAO::API
                 /* Check that this matches our user type. */
                 return GetStandardType(rObject) == USER_TYPES::ASSET;
             }
+            , "raw"
         );
 
         /* Populate our readonly standard. */
@@ -81,6 +82,7 @@ namespace TAO::API
                 /* Check that this matches our user type. */
                 return GetStandardType(rObject) == USER_TYPES::ASSET;
             }
+            , "readonly"
         );
 
         /* Populate our any standard. */

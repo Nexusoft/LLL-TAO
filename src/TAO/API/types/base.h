@@ -110,6 +110,17 @@ namespace TAO::API
         std::string Status(const std::string& strMethod) const;
 
 
+        /** Export
+         *
+         *  Copy all the internal objects into an external map.
+         *
+         *  @param[out] mapStandardsOut The new standards object we are copying into.
+         *  @param[in] strAPI The API endpoint to prepend to export key.
+         *
+         **/
+        void Export(std::map<std::string, Standard> &mapStandardsOut, const std::string& strAPI = "");
+
+
         /** CheckObject
          *
          *  Checks an object's type if it has been standardized for this command-set.

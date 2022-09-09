@@ -298,7 +298,7 @@ namespace TAO
                 throw debug::exception(FUNCTION, "contract read out of bounds");
 
             /* Bind this transaction. */
-            vContracts[n].Bind(this);
+            vContracts[n].Bind(this, true);
 
             return vContracts[n];
         }
@@ -316,7 +316,7 @@ namespace TAO
                 vContracts.resize(n + 1);
 
             /* Bind this transaction. */
-            vContracts[n].Bind(this);
+            vContracts[n].Bind(this, true);
 
             return vContracts[n];
         }

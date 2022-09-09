@@ -314,6 +314,9 @@ namespace TAO::API
     /* Default destructor. */
     void Indexing::InitializeThread()
     {
+        /* Track our current genesis that we are initializing. */
+        uint256_t hashGenesis = 0;
+
         /* Main loop controlled by condition variable. */
         std::mutex CONDITION_MUTEX;
         while(!config::fShutdown.load())
@@ -321,10 +324,14 @@ namespace TAO::API
             /* Wait for entries in the queue. */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
             INITIALIZE_CONDITION.wait(CONDITION_LOCK,
-            []
+            [&]
             {
                 /* Check for shutdown. */
                 if(config::fShutdown.load())
+                    return true;
+
+                /* Check that we need to set status. */
+                if(hashGenesis != 0)
                     return true;
 
                 return Indexing::INITIALIZE->size() != 0;
@@ -334,8 +341,35 @@ namespace TAO::API
             if(config::fShutdown.load())
                 return;
 
+            /* Cleanup our previous indexing session by setting our status. */
+            if(hashGenesis != 0)
+            {
+                /* Track our ledger database sequence. */
+                uint32_t nLedgerSequence = 0;
+                LLD::Ledger->ReadSequence(hashGenesis, nLedgerSequence);
+
+                /* Track our logical database sequence. */
+                uint32_t nLogicalSequence = 0;
+                LLD::Logical->ReadLastEvent(hashGenesis, nLogicalSequence);
+
+                /* Set our indexing status to ready now. */
+                Authentication::Ready(hashGenesis);
+
+                /* Debug output to track our sequences. */
+                debug::log(2, FUNCTION, "Completed building indexes at ", VARIABLE(nLedgerSequence), " | ", VARIABLE(nLogicalSequence), " for genesis=", hashGenesis.SubString());
+
+                /* Reset the genesis-id now. */
+                hashGenesis = 0;
+
+                continue;
+            }
+
+            /* Check that we have items in the queue. */
+            if(Indexing::INITIALIZE->empty())
+                continue;
+
             /* Get the current genesis-id to initialize for. */
-            const uint256_t hashGenesis = INITIALIZE->front();
+            hashGenesis = INITIALIZE->front();
             INITIALIZE->pop();
 
             /* Sync the sigchain if an active client before building our indexes. */
@@ -392,18 +426,14 @@ namespace TAO::API
 
                     /* Read all transactions from our last index. */
                     uint512_t hash = hashLedger;
-                    while(hash != hashLogical)
+                    while(hash != hashLogical && !config::fShutdown.load())
                     {
-                        /* Check for shutdown. */
-                        if(config::fShutdown.load())
-                            break;
-
                         /* Read the transaction from the ledger database. */
                         TAO::Ledger::Transaction tx;
                         if(!LLD::Ledger->ReadTx(hash, tx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
                             debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash.SubString()));
-                            return;
+                            break;
                         }
 
                         /* Push transaction to list. */
@@ -425,7 +455,7 @@ namespace TAO::API
                         if(!LLD::Ledger->ReadTx(*hash, tx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
                             debug::warning(FUNCTION, "index for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash->SubString()));
-                            return;
+                            break;
                         }
 
                         /* Build an API transaction. */
@@ -448,12 +478,8 @@ namespace TAO::API
 
                     /* Read all transactions from our last index. */
                     uint512_t hash = hashLogical;
-                    while(true)
+                    while(!config::fShutdown.load())
                     {
-                        /* Check for shutdown. */
-                        if(config::fShutdown.load())
-                            break;
-
                         /* Read the transaction from the ledger database. */
                         TAO::API::Transaction tx;
                         if(!LLD::Logical->ReadTx(hash, tx))
@@ -650,17 +676,6 @@ namespace TAO::API
 
                 ++nSequence;
             }
-
-            uint32_t nLedgerSequence = 0;
-            LLD::Ledger->ReadSequence(hashGenesis, nLedgerSequence);
-
-            uint32_t nLogicalSequence = 0;
-            LLD::Logical->ReadLastEvent(hashGenesis, nLogicalSequence);
-
-            debug::log(2, FUNCTION, "Completed building indexes at ", VARIABLE(nLedgerSequence), " | ", VARIABLE(nLogicalSequence), " for genesis=", hashGenesis.SubString());
-
-            /* Set our indexing status to ready now. */
-            Authentication::Ready(hashGenesis);
         }
     }
 

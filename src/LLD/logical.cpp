@@ -640,7 +640,7 @@ namespace LLD
 
         /* Read our sequences from disk. */
         Read(std::make_pair(std::string("market.sequence"), pairMarket), nMarketSequence);
-        Read(std::make_pair(std::string("market.sequence"), hashOwner),   nOwnerSequence);
+        Read(std::make_pair(std::string("owner.sequence"),  hashOwner),   nOwnerSequence);
 
         /* Start an ACID transaction for this set of records. */
         TxnBegin();
@@ -658,7 +658,7 @@ namespace LLD
             return false;
 
         /* Write our new owner sequence to disk. */
-        if(!Write(std::make_pair(std::string("market.sequence"), hashOwner), ++nOwnerSequence))
+        if(!Write(std::make_pair(std::string("owner.sequence"), hashOwner), ++nOwnerSequence))
             return false;
 
         /* Write our order proof. */

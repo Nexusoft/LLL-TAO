@@ -42,6 +42,10 @@ namespace TAO::API
         std::function<encoding::json(const TAO::Register::Object&, const TAO::Register::Address&)> xEncoding;
 
 
+        /** Register standard name for sequential reads. **/
+        std::string strStandard;
+
+
         /** The activation timestamp. **/
         uint64_t nActivation;
 
@@ -57,6 +61,7 @@ namespace TAO::API
         Standard      ( )
         : xFunction   ( )
         , xEncoding   (std::bind(&RegisterToJSON, std::placeholders::_1, std::placeholders::_2))
+        , strStandard ("")
         , nActivation (0)
         , nMaxVersion (0)
         {
@@ -68,14 +73,16 @@ namespace TAO::API
          *  Base constructor that requires function but has activation and version as default disabled.
          *
          *  @param[in] tFunctionIn The function to be executed by this class.
+         *  @param[in] strStandardIn The object standard to use for sequential reads
          *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork.
          *  @param[in] nMaxVersionIn The maximum version this function can be called on.
          *
          **/
-        Standard(const std::function<bool(const TAO::Register::Object&)> xFunctionIn,
+        Standard(const std::function<bool(const TAO::Register::Object&)> xFunctionIn, const std::string& strStandardIn = "object",
                  const uint64_t nActivationIn = 0, const uint32_t nMaxVersionIn = 0)
         : xFunction   (xFunctionIn)
         , xEncoding   (std::bind(&RegisterToJSON, std::placeholders::_1, std::placeholders::_2))
+        , strStandard (strStandardIn)
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         {
@@ -87,18 +94,34 @@ namespace TAO::API
          *  Alternative constructor that requires function and encoding but has activation and version as default disabled.
          *
          *  @param[in] tFunctionIn The function to be executed by this class.
+         *  @param[in] xEncodingIn The encoding function to use for given object.
+         *  @param[in] strStandardIn The object standard to use for sequential reads
          *  @param[in] nActivationIn The activating timestamp if this method activates with hard fork.
          *  @param[in] nMaxVersionIn The maximum version this function can be called on.
          *
          **/
         Standard(const std::function<bool(const TAO::Register::Object&)> xFunctionIn,
                  const std::function<encoding::json(const TAO::Register::Object&, const TAO::Register::Address&)> xEncodingIn,
-                 const uint64_t nActivationIn = 0, const uint32_t nMaxVersionIn = 0)
+                 const std::string& strStandardIn = "object", const uint64_t nActivationIn = 0, const uint32_t nMaxVersionIn = 0)
         : xFunction   (xFunctionIn)
         , xEncoding   (xEncodingIn)
+        , strStandard (strStandardIn)
         , nActivation (nActivationIn)
         , nMaxVersion (nMaxVersionIn)
         {
+        }
+
+
+        /** Type
+         *
+         *  Checks the type of given standard for sequential disk reads.
+         *
+         *  @return The string to use.
+         *
+         **/
+        __attribute__((pure)) std::string Type() const
+        {
+            return strStandard;
         }
 
 
