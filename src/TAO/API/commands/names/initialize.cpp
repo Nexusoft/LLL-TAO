@@ -36,6 +36,7 @@ namespace TAO::API
             {
                 return rObject.Standard() == TAO::Register::OBJECTS::NAME;
             }
+            , "name"
         );
 
         /* Populate our global names standard. */
@@ -54,6 +55,7 @@ namespace TAO::API
 
                 return (strNamespace == TAO::Register::NAMESPACE::GLOBAL);
             }
+            , "name"
         );
 
         /* Populate our local names standard. */
@@ -72,6 +74,7 @@ namespace TAO::API
 
                 return (strNamespace == "");
             }
+            , "name"
         );
 
         /* Populate our raw standard. */
@@ -82,6 +85,7 @@ namespace TAO::API
             {
                 return rObject.Standard() == TAO::Register::OBJECTS::NAMESPACE;
             }
+            , "namespace"
         );
 
         /* Populate our any standard. */

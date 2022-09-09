@@ -51,12 +51,16 @@ namespace TAO::API
         /* Loop through our types. */
         for(const auto& strType : setTypes)
         {
+            /* Get our standard type. */
+            const std::string strStandard =
+                mapStandards[strType].Type();
+
             /* Special handle if address indexed. */
             if(config::GetBoolArg("-indexaddress"))
             {
                 /* Batch read up to 1000 at a time */
                 std::vector<std::pair<uint256_t, TAO::Register::Object>> vObjects;
-                if(LLD::Register->BatchRead(strType + "_address", vObjects, -1))
+                if(LLD::Register->BatchRead(strStandard + "_address", vObjects, -1))
                 {
                     /* Add the register data to the response */
                     for(auto& rObject : vObjects)
@@ -90,7 +94,7 @@ namespace TAO::API
             {
                 /* Batch read up to 1000 at a time */
                 std::vector<TAO::Register::Object> vObjects;
-                if(LLD::Register->BatchRead(strType, vObjects, -1))
+                if(LLD::Register->BatchRead(strStandard, vObjects, -1))
                 {
                     /* Add the register data to the response */
                     for(auto& rObject : vObjects)

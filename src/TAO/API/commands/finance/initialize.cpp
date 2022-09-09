@@ -47,6 +47,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "account"
         );
 
         /* Populate our TOKEN standard. */
@@ -65,6 +66,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "token"
         );
 
         /* Populate our TRUST standard. */
@@ -83,6 +85,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+            , "trust"
         );
 
         /* Populate our ANY standard. */

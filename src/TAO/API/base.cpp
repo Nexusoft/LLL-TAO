@@ -44,14 +44,21 @@ namespace TAO::API
 
 
     /* Copy all the internal objects into an external map. */
-    void Base::Export(std::map<std::string, Standard> &mapStandardsOut)
+    void Base::Export(std::map<std::string, Standard> &mapStandardsOut, const std::string& strAPI)
     {
         /* Loop through all of our standards. */
         for(const auto& rStandard : mapStandards)
         {
             /* Copy all standards but the wildcard standard. */
             if(rStandard.first != "any" && rStandard.first != "all")
-                mapStandardsOut[rStandard.first] = rStandard.second;
+            {
+                /* Build our standard string. */
+                const std::string strStandard =
+                    ((strAPI == "") ? "" : (strAPI + ":")) + rStandard.first;
+
+                /* Create the standard object now. */
+                mapStandardsOut[strStandard] = rStandard.second;
+            }
         }
     }
 

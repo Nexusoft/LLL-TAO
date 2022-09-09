@@ -115,9 +115,10 @@ namespace TAO::API
          *  Copy all the internal objects into an external map.
          *
          *  @param[out] mapStandardsOut The new standards object we are copying into.
+         *  @param[in] strAPI The API endpoint to prepend to export key.
          *
          **/
-        void Export(std::map<std::string, Standard> &mapStandardsOut);
+        void Export(std::map<std::string, Standard> &mapStandardsOut, const std::string& strAPI = "");
 
 
         /** CheckObject

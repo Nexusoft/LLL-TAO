@@ -23,8 +23,8 @@ namespace TAO::API
         /* Catch if API doesn't exist. */
         if(!Commands::Has(strAPI))
             return;
-            
+
         /* Copy our standards from given API objects. */
-        Commands::Instance(strAPI)->Export(mapStandards);
+        Commands::Instance(strAPI)->Export(mapStandards, strAPI);
     }
 }

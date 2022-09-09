@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/API/types/commands/finance.h>
 #include <TAO/API/types/commands/register.h>
 #include <TAO/API/types/commands/templates.h>
 #include <TAO/API/types/operators/initialize.h>
@@ -29,6 +30,27 @@ namespace TAO::API
         Operators::Initialize(mapOperators);
 
 
+        /* Populate our CRYPTO standard. */
+        mapStandards["crypto"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                return rObject.Standard() == TAO::Register::OBJECTS::CRYPTO;
+            }
+            , "crypto"
+        );
+
+        /* Populate our OBJECT standard. */
+        mapStandards["object"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                return rObject.nType == TAO::Register::REGISTER::OBJECT;
+            }
+        );
+
         /* Populate our RAW standard. */
         mapStandards["raw"] = Standard
         (
@@ -37,6 +59,7 @@ namespace TAO::API
             {
                 return rObject.nType == TAO::Register::REGISTER::RAW;
             }
+            , "raw"
         );
 
         /* Populate our READONLY standard. */
@@ -47,6 +70,7 @@ namespace TAO::API
             {
                 return rObject.nType == TAO::Register::REGISTER::READONLY;
             }
+            , "readonly"
         );
 
         /* Populate our ANY standard. */
