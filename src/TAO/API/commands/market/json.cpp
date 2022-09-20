@@ -159,25 +159,9 @@ namespace TAO::API
                     std::string strType = "";
                     if(hashRequest != pairMarket.second)
                     {
-                        /* Check if we need to adjust our figures. */
-                        const uint8_t nPrimaryDecimals   = GetDecimals(pairMarket.second);
-                        const uint8_t nSecondaryDecimals = GetDecimals(pairMarket.first);
-
-                        /* Temporary value to track our amounts and change based on decimals */
-                        uint64_t nAmountAdjusted = nAmount;
-                        uint64_t nTotalAdjusted  = nTotal;
-
-                        /* If our price has more decimals, increase our product by the difference. */
-                        if(nSecondaryDecimals > nPrimaryDecimals)
-                            nAmountAdjusted *= math::pow(10, nSecondaryDecimals - nPrimaryDecimals);
-
-                        /* Calculate our total values now. */
-                        uint64_t nPrice =
-                            (nTotalAdjusted * math::pow(10, nSecondaryDecimals)) / nAmountAdjusted;
-
-                        /* If our price has less decimals, decrease our product down by the difference. */
-                        if(nPrimaryDecimals > nSecondaryDecimals)
-                            nPrice /= math::pow(10, nPrimaryDecimals - nSecondaryDecimals);
+                        /* Calulate our price (TODO: this shouldn't use double's). */
+                        const uint64_t nPrice =
+                            (FormatBalance(nTotal, pairMarket.first) / FormatBalance(nAmount, pairMarket.second)) * GetFigures(pairMarket.second);
 
                         /* Set our price now with correct decimals. */
                         jRet["price"] = FormatBalance(nPrice, pairMarket.second);
@@ -187,25 +171,9 @@ namespace TAO::API
                     }
                     else
                     {
-                        /* Check if we need to adjust our figures. */
-                        const uint8_t nPrimaryDecimals   = GetDecimals(pairMarket.second);
-                        const uint8_t nSecondaryDecimals = GetDecimals(pairMarket.first);
-
-                        /* Temporary value to track our amounts and change based on decimals */
-                        uint64_t nAmountAdjusted = nAmount;
-                        uint64_t nTotalAdjusted  = nTotal;
-
-                        /* If our price has less decimals, increase our product up by the difference. */
-                        if(nPrimaryDecimals > nSecondaryDecimals)
-                            nAmountAdjusted *= math::pow(10, nPrimaryDecimals - nSecondaryDecimals);
-
-                        /* Calculate our total values now. */
-                        uint64_t nPrice =
-                            ((nAmountAdjusted * math::pow(10, nSecondaryDecimals)) / nTotalAdjusted);
-
-                        /* If our price has more decimals, reduce our product down by the difference. */
-                        if(nSecondaryDecimals > nPrimaryDecimals)
-                            nPrice /= math::pow(10, nSecondaryDecimals - nPrimaryDecimals);
+                        /* Calulate our price (TODO: this shouldn't use double's). */
+                        const uint64_t nPrice =
+                            (FormatBalance(nAmount, pairMarket.first) / FormatBalance(nTotal, pairMarket.second)) * GetFigures(pairMarket.first);
 
                         /* Set our price now with correct decimals. */
                         jRet["price"] = FormatBalance(nPrice, pairMarket.first);
