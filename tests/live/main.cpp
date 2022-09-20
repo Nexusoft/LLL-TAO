@@ -193,6 +193,17 @@ bool Build(const std::vector<uint8_t> vByteCode, TAO::Operation::Contract &rCont
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
 int main(int argc, char** argv)
 {
+    encoding::json jParams;
+    jParams["test1"] = "12.58";
+    jParams["test2"] = 1.589;
+
+    uint64_t nAmount1 = TAO::API::ExtractAmount(jParams, 100, "test1");
+    uint64_t nAmount2 = TAO::API::ExtractAmount(jParams, 1000, "test2");
+
+    debug::log(0, VARIABLE(nAmount1), " | ", VARIABLE(nAmount2));
+
+    return 0;
+
     TAO::Operation::Contract tContract;
 
     //debug::log(0, "First param is ", ssParams.find(0, uint8_t(TAO::Operation::OP::TYPES::UINT256_T)).ToString());

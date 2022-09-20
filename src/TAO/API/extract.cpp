@@ -27,6 +27,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/names.h>
 
+#include <Util/include/math.h>
 #include <Util/include/string.h>
 
 /* Global TAO namespace. */
@@ -303,42 +304,96 @@ namespace TAO::API
             /* Watch our numeric limits. */
             const uint64_t nLimit = std::numeric_limits<uint64_t>::max();
 
-            /* Catch parsing exceptions. */
-            try
+            /* Initialize our return value. */
+            uint64_t nValue = 0;
+
+            /* Convert to value if in string form. */
+            if(jParams[strAmount].is_string())
             {
-                /* Initialize our return value. */
-                uint64_t nValue = 0;
+                /* Get string representation of decimals. */
+                const std::string strDigits =
+                    jParams[strAmount].get<std::string>();
 
-                /* Convert to value if in string form. */
-                if(jParams[strAmount].is_string())
-                    nValue = (std::stod(jParams[strAmount].get<std::string>()) * nFigures);
+                /* Count our total digits before setting return value. */
+                const uint32_t nDigits =
+                    math::log(10, nFigures);
 
-                /* Grab value regularly if it is integer. */
-                else if(jParams[strAmount].is_number_unsigned())
-                    nValue = (jParams[strAmount].get<uint64_t>() * nFigures);
+                /* Get the character count. */
+                const uint64_t nPos =
+                    strDigits.find('.');
 
-                /* Check for a floating point value. */
-                else if(jParams[strAmount].is_number_float())
-                    nValue = (jParams[strAmount].get<double>() * nFigures);
+                /* Check that we found decimal. */
+                if(nPos != strDigits.npos)
+                {
+                    /* Calculate our input decimals. */
+                    const uint64_t nDecimals =
+                        (strDigits.length() - nPos - 1);
 
-                /* Otherwise we have an invalid parameter. */
-                else
-                    throw Exception(-57, "Invalid Parameter [", strAmount, "]");
+                    /* Check if we have correct number of digits. */
+                    if(nDecimals > nDigits)
+                        throw Exception(-57, "Parameter [", strAmount, "] can only have ", nDigits, " decimal places");
+                }
 
-                /* Check our minimum range. */
-                if(nValue <= 0)
-                    throw Exception(-68, "[", strAmount, "] too small [", nValue, "]");
 
-                /* Check our limits and ranges now. */
-                if(nValue > (nLimit / nFigures))
-                    throw Exception(-60, "[", strAmount, "] out of range [", nLimit, "]");
-
-                /* Final compute of our figures. */
-                return nValue;
+                /* Set our return value. */
+                nValue = (std::stod(strDigits) * nFigures);
             }
-            catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [", strAmount, "]");           }
-            catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [", strAmount, "]");           }
-            catch(const std::out_of_range& e)           { throw Exception(-60, "[", strAmount, "] out of range [", nLimit, "]"); }
+
+
+            /* Grab value regularly if it is integer. */
+            else if(jParams[strAmount].is_number_unsigned())
+                nValue = (jParams[strAmount].get<uint64_t>() * nFigures);
+
+            /* Check for a floating point value. */
+            else if(jParams[strAmount].is_number_float())
+            {
+                /* Get a copy of our value to test. */
+                const double dValue =
+                    jParams[strAmount].get<double>();
+
+                /* Get string representation of decimals. */
+                const std::string strDigits =
+                    debug::safe_printstr(dValue);
+
+                /* Count our total digits before setting return value. */
+                const uint32_t nDigits =
+                    math::log(10, nFigures);
+
+                /* Get the character count. */
+                const uint64_t nPos =
+                    strDigits.find('.');
+
+                /* Check that we found decimal. */
+                if(nPos != strDigits.npos)
+                {
+                    /* Calculate our input decimals. */
+                    const uint64_t nDecimals =
+                        (strDigits.length() - nPos - 1);
+
+                    /* Check if we have correct number of digits. */
+                    if(nDecimals > nDigits)
+                        throw Exception(-57, "Parameter [", strAmount, "] can only have ", nDigits, " decimal places");
+                }
+
+                /* Set our return value. */
+                nValue = (dValue * nFigures);
+            }
+
+
+            /* Otherwise we have an invalid parameter. */
+            else
+                throw Exception(-57, "Invalid Parameter [", strAmount, "]");
+
+            /* Check our minimum range. */
+            if(nValue <= 0)
+                throw Exception(-68, "[", strAmount, "] too small [", nValue, "]");
+
+            /* Check our limits and ranges now. */
+            if(nValue > (nLimit / nFigures))
+                throw Exception(-60, "[", strAmount, "] out of range [", nLimit, "]");
+
+            /* Final compute of our figures. */
+            return nValue;
         }
 
         throw Exception(-56, "Missing Parameter [", strAmount, "]");
