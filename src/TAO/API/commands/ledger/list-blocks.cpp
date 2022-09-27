@@ -107,8 +107,6 @@ namespace TAO::API
                 if(nHeight > bHeight)
                     throw Exception(-60, "[height] out of range [", bHeight, "]");
 
-                debug::log(0,"######### HIEHGt : ", nHeight , "  ,   " , bHeight);
-
                 /* Read the block state from the the ledger DB using the height index */
                 if(!LLD::Ledger->ReadBlock(nHeight, tLastBlock))
                     throw Exception(-83, "Block not found");
