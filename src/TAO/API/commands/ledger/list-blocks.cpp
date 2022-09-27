@@ -89,23 +89,33 @@ namespace TAO::API
         /* If no parameters are supplied, do a short regular random-read list. */
         else
         {
+            /* Get ChainState's best height */
+            const uint32_t bHeight = TAO::Ledger::ChainState::nBestHeight.load();
+
+            /* Do not search if Chain is at 0 blocks */
+            if (bHeight <= 0)
+                throw Exception(-999,"Chain has no height"); //TODO: Set error number
+
             /* Check for indexing by height. */
             if(config::GetBoolArg("-indexheight"))
             {
                 /* Convert the incoming height string to an int */
                 const uint32_t nHeight =
-                    TAO::Ledger::ChainState::nBestHeight.load() + (strOrder == "desc" ? -nOffset : nOffset) - nLimit;
+                    std::max<int32_t>(bHeight + (strOrder == "desc" ? -nOffset : nOffset) - nLimit, 1);
 
                 /* Check that the requested height is within our chain range*/
-                if(nHeight > TAO::Ledger::ChainState::nBestHeight.load())
-                    throw Exception(-60, "[height] out of range [", TAO::Ledger::ChainState::nBestHeight.load(), "]");
+                if(nHeight > bHeight)
+                    throw Exception(-60, "[height] out of range [", bHeight, "]");
+
+                debug::log(0,"######### HIEHGt : ", nHeight , "  ,   " , bHeight);
 
                 /* Read the block state from the the ledger DB using the height index */
                 if(!LLD::Ledger->ReadBlock(nHeight, tLastBlock))
                     throw Exception(-83, "Block not found");
 
                 /* Get our starting hash now. */
-                hashStart = tLastBlock.GetHash();
+                tLastBlock = tLastBlock.Prev();
+                hashStart  = tLastBlock.GetHash();
             }
 
             /* Otherwise do a quick manual iteration of requested range. */
@@ -115,21 +125,11 @@ namespace TAO::API
                 tLastBlock = TAO::Ledger::ChainState::stateBest.load();
 
                 /* Set starting based on second to last checkpoint block. */
-                while(tLastBlock.nHeight + nLimit > TAO::Ledger::ChainState::nBestHeight.load())
+                while(tLastBlock.nHeight + nLimit > bHeight)
                 {
-                    /* Build JSON object. */
-                    encoding::json jBlock =
-                        BlockToJSON(tLastBlock, nVerbose);
-
-                    /* Filter our results now if desired. */
-                    if(!FilterResults(jParams, jBlock))
-                        continue;
-
-                    /* Filter out our expected fieldnames if specified. */
-                    FilterFieldname(jParams, jBlock);
-
-                    /* Add to our sorted list. */
-                    setBlocks.insert(jBlock);
+                    /* Stop at 0 */
+                    if (tLastBlock.nHeight == 0)
+                        break;
 
                     /* Iterate backwards recording our hashes. */
                     tLastBlock = tLastBlock.Prev();
