@@ -321,26 +321,6 @@ namespace TAO::API
         std::mutex CONDITION_MUTEX;
         while(!config::fShutdown.load())
         {
-            /* Wait for entries in the queue. */
-            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
-            INITIALIZE_CONDITION.wait(CONDITION_LOCK,
-            [&]
-            {
-                /* Check for shutdown. */
-                if(config::fShutdown.load())
-                    return true;
-
-                /* Check that we need to set status. */
-                if(hashGenesis != 0)
-                    return true;
-
-                return Indexing::INITIALIZE->size() != 0;
-            });
-
-            /* Check for shutdown. */
-            if(config::fShutdown.load())
-                return;
-
             /* Cleanup our previous indexing session by setting our status. */
             if(hashGenesis != 0)
             {
@@ -363,6 +343,22 @@ namespace TAO::API
 
                 continue;
             }
+
+            /* Wait for entries in the queue. */
+            std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
+            INITIALIZE_CONDITION.wait(CONDITION_LOCK,
+            [&]
+            {
+                /* Check for shutdown. */
+                if(config::fShutdown.load())
+                    return true;
+
+                return Indexing::INITIALIZE->size() != 0;
+            });
+
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                return;
 
             /* Check that we have items in the queue. */
             if(Indexing::INITIALIZE->empty())
