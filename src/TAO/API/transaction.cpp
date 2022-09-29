@@ -198,7 +198,7 @@ namespace TAO::API
         /* Check our expected contract ranges. */
         if(nContract >= vContracts.size())
         {
-            debug::warning(FUNCTION, "out of range ", VARIABLE(nContract), " | ", VARIABLE(vContracts.size()));
+            debug::warning(FUNCTION, "out of range ", VARIABLE(hash.SubString()), " | ", VARIABLE(nContract), " | ", VARIABLE(vContracts.size()));
             return true; //we use this method to skip contracts so if out of range we need to know.
         }
 

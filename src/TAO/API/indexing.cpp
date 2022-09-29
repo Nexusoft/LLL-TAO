@@ -626,7 +626,7 @@ namespace TAO::API
 
 
                             debug::log(3, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
-                                "for genesis ", hashRecipient.SubString());
+                                "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashEvent.SubString()), ", ", VARIABLE(nContract));
 
                             break;
                         }
@@ -663,7 +663,7 @@ namespace TAO::API
                                 continue;
                             }
 
-                            debug::log(3, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString());
+                            debug::log(3, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashEvent.SubString()), ", ", VARIABLE(nContract));
 
                             break;
                         }
@@ -782,7 +782,7 @@ namespace TAO::API
                     }
 
                     debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
-                        "for genesis ", hashRecipient.SubString());
+                        "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
 
                     break;
                 }
@@ -812,7 +812,7 @@ namespace TAO::API
                         if(!LLD::Logical->IncrementLastEvent(hashRecipient))
                             continue;
 
-                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString());
+                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hash.SubString()), ", ", VARIABLE(nContract));
                     }
 
                     break;
