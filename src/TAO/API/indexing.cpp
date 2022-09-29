@@ -252,7 +252,7 @@ namespace TAO::API
                     index_transaction(hashTx, tx);
 
                     /* Iterate the transaction contracts. */
-                    for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                    for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
                     {
                         /* Grab contract reference. */
                         const TAO::Operation::Contract& rContract = tx[nContract];
@@ -538,10 +538,10 @@ namespace TAO::API
                 const uint512_t hashEvent = tNext.GetHash();
 
                 /* Check all the tx contracts. */
-                for(uint32_t n = 0; n < tNext.Size(); ++n)
+                for(uint32_t nContract = 0; nContract < tNext.Size(); nContract++)
                 {
                     /* Grab reference of our contract. */
-                    const TAO::Operation::Contract& rContract = tNext[n];
+                    const TAO::Operation::Contract& rContract = tNext[nContract];
 
                     /* Skip to our primitive. */
                     rContract.SeekToPrimitive();
@@ -590,14 +590,14 @@ namespace TAO::API
                                 {
                                     debug::warning(FUNCTION, "PushUnclaimed (",
                                         (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER) " : "DEBIT) "),
-                                        "failed to write: ", hashEvent.SubString(), " | ", VARIABLE(n));
+                                        "failed to write: ", hashEvent.SubString(), " | ", VARIABLE(nContract));
 
                                     continue;
                                 }
                             }
 
                             /* Check for duplicate events. */
-                            if(LLD::Logical->HasEvent(hashEvent, n))
+                            if(LLD::Logical->HasEvent(hashEvent, nContract))
                             {
                                 /* For duplicate events we need to increment events index. */
                                 LLD::Logical->IncrementLastEvent(hashRecipient);
@@ -605,11 +605,11 @@ namespace TAO::API
                             }
 
                             /* Write our events to database. */
-                            if(!LLD::Logical->PushEvent(hashRecipient, hashEvent, n))
+                            if(!LLD::Logical->PushEvent(hashRecipient, hashEvent, nContract))
                             {
                                 debug::warning(FUNCTION, "PushEvent (",
                                     (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER) " : "DEBIT) "),
-                                    "failed to write: ", hashEvent.SubString(), " | ", VARIABLE(n));
+                                    "failed to write: ", hashEvent.SubString(), " | ", VARIABLE(nContract));
 
                                 continue;
                             }
@@ -619,7 +619,7 @@ namespace TAO::API
                             {
                                 debug::warning(FUNCTION, "IncrementLastEvent (",
                                     (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER) " : "DEBIT) "),
-                                    "failed to write: ", hashEvent.SubString(), " | ", VARIABLE(n));
+                                    "failed to write: ", hashEvent.SubString(), " | ", VARIABLE(nContract));
 
                                 continue;
                             }
@@ -642,7 +642,7 @@ namespace TAO::API
                                 continue;
 
                             /* Check for duplicate events. */
-                            if(LLD::Logical->HasEvent(hashEvent, n))
+                            if(LLD::Logical->HasEvent(hashEvent, nContract))
                             {
                                 /* For duplicate events we need to increment events index. */
                                 LLD::Logical->IncrementLastEvent(hashRecipient);
@@ -650,9 +650,9 @@ namespace TAO::API
                             }
 
                             /* Write our events to database. */
-                            if(!LLD::Logical->PushEvent(hashRecipient, hashEvent, n))
+                            if(!LLD::Logical->PushEvent(hashRecipient, hashEvent, nContract))
                             {
-                                debug::warning(FUNCTION, "PushEvent (COINBASE) failed to write: ", hashEvent.SubString(), " | ", VARIABLE(n));
+                                debug::warning(FUNCTION, "PushEvent (COINBASE) failed to write: ", hashEvent.SubString(), " | ", VARIABLE(nContract));
                                 continue;
                             }
 
@@ -713,10 +713,10 @@ namespace TAO::API
         }
 
         /* Check all the tx contracts. */
-        for(uint32_t n = 0; n < tx.Size(); ++n)
+        for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
         {
             /* Grab reference of our contract. */
-            const TAO::Operation::Contract& rContract = tx[n];
+            const TAO::Operation::Contract& rContract = tx[nContract];
 
             /* Skip to our primitive. */
             rContract.SeekToPrimitive();
@@ -756,7 +756,7 @@ namespace TAO::API
                         if(Authentication::Active(tx.hashGenesis))
                         {
                             /* Write our events to database. */
-                            if(!LLD::Logical->PushContract(tx.hashGenesis, hash, n))
+                            if(!LLD::Logical->PushContract(tx.hashGenesis, hash, nContract))
                                 continue;
                         }
                     }
@@ -773,7 +773,7 @@ namespace TAO::API
                             continue;
 
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, hash, n))
+                        if(!LLD::Logical->PushEvent(hashRecipient, hash, nContract))
                             continue;
 
                         /* Increment our sequence. */
@@ -801,7 +801,7 @@ namespace TAO::API
                         //    continue;
 
                         /* Write our events to database. */
-                        if(!LLD::Logical->PushEvent(hashRecipient, hash, n))
+                        if(!LLD::Logical->PushEvent(hashRecipient, hash, nContract))
                             continue;
 
                         /* We don't increment our events index for miner coinbase contract. */

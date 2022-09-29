@@ -379,16 +379,16 @@ namespace TAO::API
         std::set<uint256_t> setRegisters;
 
         /* Check all the tx contracts. */
-        for(uint32_t n = 0; n < Size(); ++n)
+        for(uint32_t nContract = 0; nContract < vContracts.size(); nContract++)
         {
             /* Grab reference of our contract. */
-            const TAO::Operation::Contract& rContract = vContracts[n];
+            const TAO::Operation::Contract& rContract = vContracts[nContract];
 
             /* Track our register address. */
             TAO::Register::Address hashRegister;
             if(!TAO::Register::Unpack(rContract, hashRegister))
             {
-                debug::warning(FUNCTION, "failed to unpack register ", VARIABLE(GetHash().SubString()), " | ", VARIABLE(n));
+                debug::warning(FUNCTION, "failed to unpack register ", VARIABLE(GetHash().SubString()), " | ", VARIABLE(nContract));
                 continue;
             }
 
@@ -444,7 +444,7 @@ namespace TAO::API
                             if(LLD::Ledger->ReadEvent(hashToken, 0, tx))
                             {
                                 /* Loop through contracts to find the source event. */
-                                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                                for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
                                 {
                                     /* Get a reference of the transaction contract. */
                                     const TAO::Operation::Contract& rEvent = tx[nContract];
@@ -512,16 +512,16 @@ namespace TAO::API
         std::set<uint256_t> setRegisters;
 
         /* Check all the tx contracts. */
-        for(int32_t n = Size() - 1; n >= 0; --n)
+        for(int32_t nContract = vContracts.size() - 1; nContract >= 0; nContract--)
         {
             /* Grab reference of our contract. */
-            const TAO::Operation::Contract& rContract = vContracts[n];
+            const TAO::Operation::Contract& rContract = vContracts[nContract];
 
             /* Track our register address. */
             uint256_t hashRegister;
             if(!TAO::Register::Unpack(rContract, hashRegister))
             {
-                debug::warning(FUNCTION, "failed to unpack register ", VARIABLE(GetHash().SubString()), " | ", VARIABLE(n));
+                debug::warning(FUNCTION, "failed to unpack register ", VARIABLE(GetHash().SubString()), " | ", VARIABLE(nContract));
                 continue;
             }
 
