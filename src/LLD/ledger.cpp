@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 #include <LLP/include/global.h>
 
+#include <TAO/API/types/transaction.h>
+
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/enum.h>
@@ -234,6 +236,22 @@ namespace LLD
         }
 
         return false;
+    }
+
+
+    /* Reads a transaction from the ledger DB. */
+    bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::API::Transaction &tx, const uint8_t nFlags)
+    {
+        /* Get a copy of our ledger transaction. */
+        TAO::Ledger::Transaction tLedger;
+        if(!ReadTx(hashTx, tLedger, nFlags))
+            return false;
+
+        /* Cast our ledger transaction to API transaction. */
+        tx =
+            static_cast<TAO::API::Transaction>(tLedger);
+
+        return true;
     }
 
 

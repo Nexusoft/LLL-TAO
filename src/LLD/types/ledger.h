@@ -40,6 +40,8 @@ namespace TAO
         class BlockState;
         class Transaction;
     }
+
+    namespace API { class Transaction; }
 }
 
 
@@ -216,6 +218,20 @@ namespace LLD
          *
          **/
         bool ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** ReadTx
+         *
+         *  Reads a transaction from the ledger DB and casts it to an API::Transaction type.
+         *
+         *  @param[in] hashTx The txid of transaction to read.
+         *  @param[out] tx The transaction object to read.
+         *  @param[in] nFlags The flags to determine memory pool or disk
+         *
+         *  @return True if the transaction was successfully read, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint512_t& hashTx, TAO::API::Transaction &tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** ReadTx

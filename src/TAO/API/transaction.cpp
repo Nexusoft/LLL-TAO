@@ -195,6 +195,13 @@ namespace TAO::API
     /* Check if a specific contract has been spent already. */
     bool Transaction::Spent(const uint512_t& hash, const uint32_t nContract) const
     {
+        /* Check our expected contract ranges. */
+        if(nContract >= vContracts.size())
+        {
+            debug::warning(FUNCTION, "out of range ", VARIABLE(nContract), " | ", VARIABLE(vContracts.size()));
+            return true; //we use this method to skip contracts so if out of range we need to know.
+        }
+
         /* Get a reference of our internal contract. */
         const TAO::Operation::Contract& rContract = vContracts[nContract];
 
