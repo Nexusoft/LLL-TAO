@@ -1267,8 +1267,11 @@ namespace LLP
                                         return debug::drop(NODE, "locator size ", nSize, " is too large");
 
                                     /* Find common ancestor block. */
-                                    for(const auto& tHave : locator.vHave)
+                                    for(uint32_t n = 0; n < locator.vHave.size(); ++n)
                                     {
+                                        /* Get a reference of our current locator. */
+                                        const uint1024_t& tHave = locator.vHave[n];
+
                                         /* Check the database for the ancestor block. */
                                         if(LLD::Ledger->HasBlock(tHave))
                                         {
@@ -1291,6 +1294,14 @@ namespace LLP
 
                                             break;
                                         }
+
+                                        /* Check if we are at genesis for better debug data. */
+                                        else if(n == locator.vHave.size() - 1)
+                                            return debug::drop
+                                            (
+                                                NODE, "ACTION::LIST: Locator: ", tHave.SubString(),
+                                                " has different Genesis: ", TAO::Ledger::ChainState::Genesis().SubString()
+                                            );
                                     }
 
                                     /* Debug output. */
@@ -1303,6 +1314,7 @@ namespace LLP
                                 default:
                                     return debug::drop(NODE, "malformed starting index");
                             }
+
 
                             /* Get the ending hash. */
                             uint1024_t hashStop;
@@ -4165,6 +4177,6 @@ namespace LLP
             uint1024_t(0)
         );
 
-        debug::log(0, NODE, "New sync address set");
+        debug::log(0, NODE, "New sync address set, syncing from ", TAO::Ledger::ChainState::hashBestChain.load().SubString());
     }
 }
