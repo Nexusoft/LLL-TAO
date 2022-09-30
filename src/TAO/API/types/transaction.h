@@ -119,7 +119,8 @@ namespace TAO::API
                 READWRITE(hashNextTx);
 
                 /* Reset our cache if deserializing. */
-                hashCache = 0;
+                if(fRead)
+                    hashCache = 0;
             }
         )
 

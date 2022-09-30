@@ -120,7 +120,7 @@ namespace TAO::Ledger
                 READWRITE(vchSig);
 
             /* Reset our cache if deserializing. */
-            if(!(nSerType & SER_GETHASH))
+            if(!(nSerType & SER_GETHASH) && fRead)
                 hashCache = 0;
         )
 

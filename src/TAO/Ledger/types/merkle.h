@@ -124,7 +124,8 @@ namespace TAO
                     READWRITE(nIndex);
 
                     /* Reset our cache if deserializing. */
-                    hashCache = 0;
+                    if(fRead)
+                        hashCache = 0;
                 }
             )
 
