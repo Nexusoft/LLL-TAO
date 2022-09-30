@@ -535,7 +535,8 @@ namespace TAO::API
                     break;
 
                 /* Cache our current event's txid. */
-                const uint512_t hashEvent = tNext.GetHash();
+                const uint512_t hashEvent =
+                    tNext.GetHash(true); //true to override cache
 
                 /* Check all the tx contracts. */
                 for(uint32_t nContract = 0; nContract < tNext.Size(); nContract++)

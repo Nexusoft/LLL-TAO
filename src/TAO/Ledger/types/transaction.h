@@ -118,6 +118,10 @@ namespace TAO::Ledger
             /* Handle for when not getting hash or skipsig. */
             if(!(nSerType & SER_GETHASH) && !(nSerType & SER_SKIPSIG))
                 READWRITE(vchSig);
+
+            /* Reset our cache if deserializing. */
+            if(!(nSerType & SER_GETHASH))
+                hashCache = 0;
         )
 
 
@@ -388,10 +392,12 @@ namespace TAO::Ledger
          *
          *  Gets the hash of the transaction object.
          *
+         *  @param[in] fCacheOverride Flag to tell if we want to override our cache
+         *
          *  @return 512-bit unsigned integer of hash.
          *
          **/
-        uint512_t GetHash() const;
+        uint512_t GetHash(const bool fCacheOverride = false) const;
 
 
         /** ProofHash

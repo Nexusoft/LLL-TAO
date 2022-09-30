@@ -1226,10 +1226,10 @@ namespace TAO
 
 
         /* Gets the hash of the transaction object. */
-        uint512_t Transaction::GetHash() const
+        uint512_t Transaction::GetHash(const bool fCacheOverride) const
         {
             /* Check if we have an active cache. */
-            if(hashCache != 0)
+            if(hashCache != 0 && !fCacheOverride)
                 return hashCache;
 
             /* Serialize the transaction data for hashing. */

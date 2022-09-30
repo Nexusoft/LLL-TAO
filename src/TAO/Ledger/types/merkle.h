@@ -122,6 +122,9 @@ namespace TAO
                     READWRITE(hashBlock);
                     READWRITE(vMerkleBranch);
                     READWRITE(nIndex);
+
+                    /* Reset our cache if deserializing. */
+                    hashCache = 0;
                 }
             )
 

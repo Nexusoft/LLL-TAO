@@ -275,11 +275,22 @@ namespace LLD
                 return false;
 
             /* Set the return value. */
-            tx = mTX;
+            tx           = mTX;
+            tx.hashCache = hashTx;
+
             return true;
         }
 
-        return Read(hashTx, tx);
+        /* See if we can read it from the disk now. */
+        if(Read(hashTx, tx))
+        {
+            /* Set the internal transaction hash. */
+            tx.hashCache = hashTx;
+
+            return true;
+        }
+
+        return false;
     }
 
 
