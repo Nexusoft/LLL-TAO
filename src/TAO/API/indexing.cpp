@@ -624,7 +624,6 @@ namespace TAO::API
                                 continue;
                             }
 
-
                             debug::log(3, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
                                 "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashEvent.SubString()), ", ", VARIABLE(nContract));
 

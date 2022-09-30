@@ -656,10 +656,15 @@ namespace LLP
                 if(!fSynchronized.load())
                 {
                     /* See if this is a local testnet, in which case we will allow a sync on incoming or outgoing */
-                    bool fLocalTestnet = config::fTestNet.load() && !config::GetBoolArg("-dns", true);
+                    const bool fLocalTestnet =
+                        (config::fTestNet.load() && !config::GetBoolArg("-dns", true));
+
+                    /* Check if we need to override sync process. */
+                    if(!config::GetBoolArg("-sync", true) || fLocalTestnet) //hard value to rely on if needed
+                        fSynchronized.store(true);
 
                     /* Start sync on startup, or override any legacy syncing currently in process. */
-                    if(TAO::Ledger::nSyncSession.load() == 0 && (!Incoming() || fLocalTestnet))
+                    else if(TAO::Ledger::nSyncSession.load() == 0 && !Incoming())
                     {
                         /* Initiate the sync process */
                         Sync();
