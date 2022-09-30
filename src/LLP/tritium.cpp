@@ -1267,17 +1267,17 @@ namespace LLP
                                         return debug::drop(NODE, "locator size ", nSize, " is too large");
 
                                     /* Find common ancestor block. */
-                                    for(const auto& have : locator.vHave)
+                                    for(const auto& tHave : locator.vHave)
                                     {
                                         /* Check the database for the ancestor block. */
-                                        if(LLD::Ledger->HasBlock(have))
+                                        if(LLD::Ledger->HasBlock(tHave))
                                         {
                                             /* Check if locator found genesis. */
-                                            if(have != TAO::Ledger::ChainState::Genesis())
+                                            if(tHave != TAO::Ledger::ChainState::Genesis())
                                             {
                                                 /* Grab the block that's found. */
                                                 TAO::Ledger::BlockState state;
-                                                if(!LLD::Ledger->ReadBlock(have, state))
+                                                if(!LLD::Ledger->ReadBlock(tHave, state))
                                                     return debug::drop(NODE, "failed to read locator block");
 
                                                 /* Check for being in main chain. */
@@ -1286,8 +1286,8 @@ namespace LLP
 
                                                 hashStart = state.hashPrevBlock;
                                             }
-                                            else //on genesis, don't rever to previous block
-                                                hashStart = have;
+                                            else //on genesis, don't revert to previous block
+                                                hashStart = tHave;
 
                                             break;
                                         }
@@ -1311,7 +1311,7 @@ namespace LLP
                             /* Keep track of the last state. */
                             TAO::Ledger::BlockState stateLast;
                             if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
-                                return debug::drop(NODE, "failed to read starting block");
+                                return debug::drop(NODE, "failed to read starting block ", VARIABLE(hashStart.SubString()));
 
                             /* Do a sequential read to obtain the list.
                                3000 seems to be the optimal amount to overcome higher-latency connections during sync. */
