@@ -30,6 +30,8 @@ ________________________________________________________________________________
 #include <Util/include/math.h>
 #include <Util/include/string.h>
 
+#include <Util/types/precision.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -294,6 +296,10 @@ namespace TAO::API
     /* Extract an amount value from either string or integer and convert to its final value. */
     uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strKey)
     {
+        /* Count our total digits before setting return value. */
+        const uint32_t nDigits =
+            math::log(10, nFigures);
+
         /* Cache our name with prefix calculated. */
         const std::string strAmount =
             (strKey.empty() ? ("amount") : strKey);
@@ -301,99 +307,66 @@ namespace TAO::API
         /* Check for missing parameter. */
         if(CheckParameter(jParams, strAmount, "string, number"))
         {
-            /* Watch our numeric limits. */
-            const uint64_t nLimit = std::numeric_limits<uint64_t>::max();
-
-            /* Initialize our return value. */
-            uint64_t nValue = 0;
+            /* Track our value at given precision. */
+            precision_t dValue = precision_t(nDigits);
 
             /* Convert to value if in string form. */
             if(jParams[strAmount].is_string())
             {
-                /* Get string representation of decimals. */
-                const std::string strDigits =
-                    jParams[strAmount].get<std::string>();
-
-                /* Count our total digits before setting return value. */
-                const uint32_t nDigits =
-                    math::log(10, nFigures);
-
-                /* Get the character count. */
-                const uint64_t nPos =
-                    strDigits.find('.');
-
-                /* Check that we found decimal. */
-                if(nPos != strDigits.npos)
-                {
-                    /* Calculate our input decimals. */
-                    const uint64_t nDecimals =
-                        (strDigits.length() - nPos - 1);
-
-                    /* Check if we have correct number of digits. */
-                    if(nDecimals > nDigits)
-                        throw Exception(-57, "Parameter [", strAmount, "] can only have ", nDigits, " decimal places");
-                }
-
-
-                /* Set our return value. */
-                nValue = (std::stod(strDigits) * nFigures);
+                /* Generate our precision value. */
+                dValue =
+                    precision_t(jParams[strAmount].get<std::string>(), nDigits, true); //true to check our ranges
             }
-
 
             /* Grab value regularly if it is integer. */
             else if(jParams[strAmount].is_number_unsigned())
-                nValue = (jParams[strAmount].get<uint64_t>() * nFigures);
+                return (jParams[strAmount].get<uint64_t>() * nFigures);
 
             /* Check for a floating point value. */
             else if(jParams[strAmount].is_number_float())
             {
-                /* Get a copy of our value to test. */
-                const double dValue =
-                    jParams[strAmount].get<double>();
-
-                /* Get string representation of decimals. */
-                const std::string strDigits =
-                    debug::safe_printstr(dValue);
-
-                /* Count our total digits before setting return value. */
-                const uint32_t nDigits =
-                    math::log(10, nFigures);
-
-                /* Get the character count. */
-                const uint64_t nPos =
-                    strDigits.find('.');
-
-                /* Check that we found decimal. */
-                if(nPos != strDigits.npos)
-                {
-                    /* Calculate our input decimals. */
-                    const uint64_t nDecimals =
-                        (strDigits.length() - nPos - 1);
-
-                    /* Check if we have correct number of digits. */
-                    if(nDecimals > nDigits)
-                        throw Exception(-57, "Parameter [", strAmount, "] can only have ", nDigits, " decimal places");
-                }
-
-                /* Set our return value. */
-                nValue = (dValue * nFigures);
+                /* Generate our precision value. */
+                dValue =
+                    precision_t(jParams[strAmount].get<double>(), nDigits, true); //true to check our ranges
             }
-
 
             /* Otherwise we have an invalid parameter. */
             else
                 throw Exception(-57, "Invalid Parameter [", strAmount, "]");
 
-            /* Check our minimum range. */
-            if(nValue <= 0)
-                throw Exception(-68, "[", strAmount, "] too small [", nValue, "]");
+            /* Return our internal precision value. */
+            return dValue.nValue;
+        }
 
-            /* Check our limits and ranges now. */
-            if(nValue > (nLimit / nFigures))
-                throw Exception(-60, "[", strAmount, "] out of range [", nLimit, "]");
+        throw Exception(-56, "Missing Parameter [", strAmount, "]");
+    }
 
-            /* Final compute of our figures. */
-            return nValue;
+
+    /* Extract an amount value from either string or integer and convert to its final value. */
+    precision_t ExtractPrecision(const encoding::json& jParams, const uint8_t nDigits, const std::string& strKey)
+    {
+        /* Cache our name with prefix calculated. */
+        const std::string strAmount =
+            (strKey.empty() ? ("amount") : strKey);
+
+        /* Check for missing parameter. */
+        if(CheckParameter(jParams, strAmount, "string, number"))
+        {
+            /* Convert to value if in string form. */
+            if(jParams[strAmount].is_string())
+                return precision_t(jParams[strAmount].get<std::string>(), nDigits, true); //true to check our ranges
+
+            /* Grab value regularly if it is integer. */
+            else if(jParams[strAmount].is_number_unsigned())
+                return precision_t(jParams[strAmount].get<uint64_t>(), nDigits);
+
+            /* Check for a floating point value. */
+            else if(jParams[strAmount].is_number_float())
+                return precision_t(jParams[strAmount].get<double>(), nDigits, true); //true to check our ranges
+
+            /* Otherwise we have an invalid parameter. */
+            else
+                throw Exception(-57, "Invalid Parameter type [", strAmount, "]");
         }
 
         throw Exception(-56, "Missing Parameter [", strAmount, "]");

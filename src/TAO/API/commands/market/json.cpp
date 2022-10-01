@@ -82,8 +82,8 @@ namespace TAO::API
                     rContract.Seek(32, TAO::Operation::Contract::OPERATIONS);
 
                     /* Deserialize our amount. */
-                    uint64_t nAmount = 0;
-                    rContract >> nAmount;
+                    uint64_t nDebit = 0;
+                    rContract >> nDebit;
 
                     /* Grab our other token from pre-state. */
                     TAO::Register::Object tPreState = rContract.PreState();
@@ -101,7 +101,7 @@ namespace TAO::API
                     {
                         { "OP",   "DEBIT"                              },
                         { "from" , hashFrom.ToString()                 },
-                        { "amount", FormatBalance(nAmount, hashToken)  },
+                        { "amount", FormatBalance(nDebit, hashToken)  },
                         { "token", hashToken.ToString()                }
                     };
 
@@ -139,15 +139,15 @@ namespace TAO::API
                     ssCompare >> hashTo;
 
                     /* Get the amount requested. */
-                    uint64_t nTotal = 0;
-                    ssCompare >> nTotal;
+                    uint64_t nCredit = 0;
+                    ssCompare >> nCredit;
 
                     /* Build our from object. */
                     encoding::json jRequired =
                     {
                         { "OP",     "DEBIT"                              },
                         { "to",     hashTo.ToString()                    },
-                        { "amount", FormatBalance(nTotal, hashRequest) },
+                        { "amount", FormatBalance(nCredit, hashRequest) },
                         { "token",  hashRequest.ToString()               }
                     };
 
@@ -161,7 +161,7 @@ namespace TAO::API
                     {
                         /* Calulate our price (TODO: this shouldn't use double's). */
                         const uint64_t nPrice =
-                            (FormatBalance(nTotal, pairMarket.first) / FormatBalance(nAmount, pairMarket.second)) * GetFigures(pairMarket.second);
+                            (FormatBalance(nDebit, pairMarket.second) / FormatBalance(nCredit, pairMarket.first)) * GetFigures(pairMarket.second);
 
                         /* Set our price now with correct decimals. */
                         jRet["price"] = FormatBalance(nPrice, pairMarket.second);
@@ -173,7 +173,7 @@ namespace TAO::API
                     {
                         /* Calulate our price (TODO: this shouldn't use double's). */
                         const uint64_t nPrice =
-                            (FormatBalance(nAmount, pairMarket.first) / FormatBalance(nTotal, pairMarket.second)) * GetFigures(pairMarket.first);
+                            (FormatBalance(nCredit, pairMarket.second) / FormatBalance(nDebit, pairMarket.first)) * GetFigures(pairMarket.first);
 
                         /* Set our price now with correct decimals. */
                         jRet["price"] = FormatBalance(nPrice, pairMarket.first);
@@ -239,8 +239,8 @@ namespace TAO::API
                     rContract.Seek(32, TAO::Operation::Contract::OPERATIONS);
 
                     /* Deserialize our amount. */
-                    uint64_t nAmount = 0;
-                    rContract >> nAmount;
+                    uint64_t nDebit = 0;
+                    rContract >> nDebit;
 
                     /* Grab our other token from pre-state. */
                     TAO::Register::Object tPreState = rContract.PreState();
