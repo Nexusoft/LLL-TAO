@@ -204,11 +204,11 @@ namespace TAO::API
 
         /* Switch for coinbase. */
         if(IsCoinBase())
-            return nConfirmations >= TAO::Ledger::MaturityCoinBase(TAO::Ledger::ChainState::stateBest.load());
+            return (nConfirmations >= TAO::Ledger::MaturityCoinBase(TAO::Ledger::ChainState::stateBest.load()));
 
         /* Switch for coinstake. */
-        else if(IsCoinStake())
-            return nConfirmations >= TAO::Ledger::MaturityCoinStake(TAO::Ledger::ChainState::stateBest.load());
+        if(IsCoinStake())
+            return (nConfirmations >= TAO::Ledger::MaturityCoinStake(TAO::Ledger::ChainState::stateBest.load()));
 
         return true; //non-producer transactions have no maturity requirement
     }
