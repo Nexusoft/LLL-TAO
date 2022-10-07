@@ -409,10 +409,7 @@ namespace TAO::API
             /* Track our register address. */
             TAO::Register::Address hashRegister;
             if(!TAO::Register::Unpack(rContract, hashRegister))
-            {
-                debug::warning(FUNCTION, "failed to unpack register ", VARIABLE(GetHash().SubString()), " | ", VARIABLE(nContract));
                 continue;
-            }
 
             /* Skip to our primitive. */
             rContract.SeekToPrimitive();
@@ -542,10 +539,7 @@ namespace TAO::API
             /* Track our register address. */
             uint256_t hashRegister;
             if(!TAO::Register::Unpack(rContract, hashRegister))
-            {
-                debug::warning(FUNCTION, "failed to unpack register ", VARIABLE(GetHash().SubString()), " | ", VARIABLE(nContract));
                 continue;
-            }
 
             /* Skip to our primitive. */
             rContract.SeekToPrimitive();

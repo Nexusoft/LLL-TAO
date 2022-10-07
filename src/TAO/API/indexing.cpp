@@ -332,11 +332,27 @@ namespace TAO::API
                 uint32_t nLogicalSequence = 0;
                 LLD::Logical->ReadLastEvent(hashGenesis, nLogicalSequence);
 
+                //TODO: check why we are getting an extra transaction on FLAGS::MEMPOOL
+                uint512_t hashLedgerLast = 0;
+                LLD::Ledger->ReadLast(hashGenesis, hashLedgerLast, TAO::Ledger::FLAGS::MEMPOOL);
+
+                TAO::Ledger::Transaction txLedgerLast;
+                LLD::Ledger->ReadTx(hashLedgerLast, txLedgerLast, TAO::Ledger::FLAGS::MEMPOOL);
+
+                uint512_t hashLogicalLast = 0;
+                LLD::Logical->ReadLast(hashGenesis, hashLogicalLast);
+
+                TAO::API::Transaction txLogicalLast;
+                LLD::Logical->ReadTx(hashLogicalLast, txLogicalLast);
+
+                uint32_t nLogicalHeight = txLogicalLast.nSequence;
+                uint32_t nLedgerHeight  = txLedgerLast.nSequence;
+
                 /* Set our indexing status to ready now. */
                 Authentication::Ready(hashGenesis);
 
                 /* Debug output to track our sequences. */
-                debug::log(2, FUNCTION, "Completed building indexes at ", VARIABLE(nLedgerSequence), " | ", VARIABLE(nLogicalSequence), " for genesis=", hashGenesis.SubString());
+                debug::log(2, FUNCTION, "Completed building indexes at ", VARIABLE(nLedgerSequence), " | ", VARIABLE(nLogicalSequence), " | ", VARIABLE(nLedgerHeight), " | ", VARIABLE(nLogicalHeight), " for genesis=", hashGenesis.SubString());
 
                 /* Reset the genesis-id now. */
                 hashGenesis = 0;

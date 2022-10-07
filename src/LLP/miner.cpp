@@ -267,7 +267,7 @@ namespace LLP
                 }
                 catch(const TAO::API::Exception& e)
                 {
-                    debug::warning(FUNCTION, "Connection Failed: ", e.what());
+                    debug::warning(FUNCTION, "Miner Connection Failed: ", e.what());
 
                     this->Disconnect();
                 }
