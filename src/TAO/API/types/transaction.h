@@ -133,6 +133,18 @@ namespace TAO::API
         bool Confirmed() const;
 
 
+        /** Mature
+         *
+         *  Get if transaction is in a matured status.
+         *
+         *  @param[in] hash The txid to check maturity by.
+         *
+         *  @return true if the given transaction is mature.
+         *
+         **/
+        bool Mature(const uint512_t& hash) const;
+
+
         /** Spent
          *
          *  Check if a specific contract has been spent already.

@@ -130,6 +130,10 @@ namespace TAO::API
                     if(tx.Spent(hashEvent, rEvent.second))
                         continue;
 
+                    /* Check if the transaction is mature. */
+                    if(!tx.Mature(hashEvent))
+                        continue;
+
                     /* Get a referecne of our contract. */
                     const TAO::Operation::Contract& rContract = tx[rEvent.second];
 

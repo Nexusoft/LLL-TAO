@@ -21,6 +21,8 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/unpack.h>
 
+#include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/types/mempool.h>
 
 /* Global TAO namespace. */
@@ -189,6 +191,26 @@ namespace TAO::API
     bool Transaction::Confirmed() const
     {
         return (nStatus == ACCEPTED);
+    }
+
+
+    /* Get if transaction is in a matured status.*/
+    bool Transaction::Mature(const uint512_t& hash) const
+    {
+        /* Read our confirmations from our ledger database. */
+        uint32_t nConfirmations = 0;
+        if(!LLD::Ledger->ReadConfirmations(hash, nConfirmations))
+            return false;
+
+        /* Switch for coinbase. */
+        if(IsCoinBase())
+            return nConfirmations >= TAO::Ledger::MaturityCoinBase(TAO::Ledger::ChainState::stateBest.load());
+
+        /* Switch for coinstake. */
+        else if(IsCoinStake())
+            return nConfirmations >= TAO::Ledger::MaturityCoinStake(TAO::Ledger::ChainState::stateBest.load());
+
+        return true; //non-producer transactions have no maturity requirement
     }
 
 
