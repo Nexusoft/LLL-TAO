@@ -1098,7 +1098,7 @@ namespace TAO
 
                         /* Check that the last transaction is correct. */
                         if(tx.hashPrevTx != hashLast)
-                            return debug::error(FUNCTION, "last hash hash mismatch");
+                            return debug::error(FUNCTION, "last hash mismatch ", VARIABLE(hashLast.SubString()));
                     }
 
                     /* Verify the Ledger Pre-States. */
