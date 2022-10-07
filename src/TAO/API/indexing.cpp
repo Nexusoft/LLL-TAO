@@ -431,7 +431,7 @@ namespace TAO::API
                 /* Check if our logical hash is indexed so we know logical database is behind. */
                 if(LLD::Ledger->HasIndex(hashLogical) || hashLogical == 0)
                 {
-                    debug::log(2, FUNCTION, "Buiding indexes for genesis=", hashGenesis.SubString());
+                    debug::log(2, FUNCTION, "Building indexes for genesis=", hashGenesis.SubString());
 
                     /* Build list of transaction hashes. */
                     std::vector<uint512_t> vHashes;
