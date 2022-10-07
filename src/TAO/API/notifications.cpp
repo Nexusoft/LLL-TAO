@@ -15,6 +15,7 @@ ________________________________________________________________________________
 #include <LLP/include/global.h>
 
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/check.h>
 #include <TAO/API/include/list.h>
 
 #include <TAO/API/types/accounts.h>
@@ -76,6 +77,10 @@ namespace TAO::API
 
                 /* Check that account is unlocked. */
                 if(!Authentication::Unlocked(TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS, hashSession))
+                    continue;
+
+                /* Check if sigchain is mature. */
+                if(!CheckMature(hashGenesis))
                     continue;
 
                 /* Build a json object. */

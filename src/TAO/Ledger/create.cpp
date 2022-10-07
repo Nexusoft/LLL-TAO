@@ -326,7 +326,7 @@ namespace TAO::Ledger
                 vHashes.push_back(tx.second);
 
             /* Producer transaction is last hash in list. */
-            vHashes.push_back(block.producer.GetHash());
+            vHashes.push_back(block.producer.GetHash(true));
 
             /* Build the block's merkle root. */
             block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
@@ -413,7 +413,7 @@ namespace TAO::Ledger
                 vHashes.push_back(tx.second);
 
             /* Producer transaction is last. */
-            vHashes.push_back(rBlockRet.producer.GetHash());
+            vHashes.push_back(rBlockRet.producer.GetHash(true));
 
             /* Build the block's merkle root. */
             rBlockRet.hashMerkleRoot = rBlockRet.BuildMerkleTree(vHashes);
