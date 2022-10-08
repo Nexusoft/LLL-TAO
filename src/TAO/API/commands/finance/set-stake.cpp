@@ -94,7 +94,7 @@ namespace TAO::API
 
         /* Get our expiration if parameter supplied. */
         const uint64_t nExpires =
-            ExtractInteger<uint64_t>(jParams, "expires", nTimestamp);
+            ExtractInteger<uint64_t>(jParams, "expires", nTimestamp + (3 * 86400));
 
         /* Check our ranges compared to stake. */
         if(nAmount > nStakePrev && (nAmount - nStakePrev) > nBalancePrev)

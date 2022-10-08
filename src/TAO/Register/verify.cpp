@@ -797,7 +797,7 @@ namespace TAO
 
                 /* Check for end of stream. */
                 if(!contract.End())
-                    return debug::error(FUNCTION, "can only have one PRIMITIVE per contract");
+                    return debug::error(FUNCTION, "can only have one PRIMITIVE per contract ");
             }
             catch(const std::exception& e)
             {
