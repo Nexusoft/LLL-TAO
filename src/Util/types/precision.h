@@ -229,7 +229,7 @@ public:
     precision_t(const uint64_t nValueIn, const uint8_t nDigitsIn)
     : nDigits  (nDigitsIn)
     , nFigures (math::pow(10, nDigits))
-    , nValue   (nValueIn * nFigures)
+    , nValue   (nValueIn)
     {
     }
 
@@ -757,14 +757,25 @@ public:
     }
 
 
-    /** value
+    /** double_t
      *
      *  Get the value expressed as a double.
      *
      **/
-    double value() const
+    double double_t() const
     {
         return static_cast<double>(nValue) / nFigures;
+    }
+
+
+    /** float_t
+     *
+     *  Get the value expressed as a float.
+     *
+     **/
+    float float_t() const
+    {
+        return static_cast<float>(nValue) / nFigures;
     }
 
 
@@ -780,6 +791,6 @@ public:
             debug::safe_printstr(nValue / nFigures);
 
         /* Now return with our correct precision. */
-        return debug::safe_printstr(std::setprecision(nDigits + strInt.length()), this->value());
+        return debug::safe_printstr(std::setprecision(nDigits + strInt.length()), this->double_t());
     }
 };

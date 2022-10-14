@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Util/include/math.h>
+#include <Util/types/precision.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -62,12 +63,32 @@ namespace TAO::API
     }
 
 
+    /* Get a precision value based on given balance value and token type.*/
+    precision_t GetPrecision(const uint64_t nBalance, const uint256_t& hashToken)
+    {
+        /* Check for NXS as a value. */
+        if(hashToken == 0)
+            return precision_t(nBalance, TAO::Ledger::NXS_DIGITS);
+
+        /* Otherwise let's lookup our token object. */
+        TAO::Register::Object oToken;
+        if(!LLD::Register->ReadObject(hashToken, oToken))
+            throw Exception(-13, "Object not found");
+
+        /* Let's check that a token was passed in. */
+        if(oToken.Standard() != TAO::Register::OBJECTS::TOKEN)
+            throw Exception(-15, "Object is not a token");
+
+        return precision_t(nBalance, oToken.get<uint8_t>("decimals"));
+    }
+
+
     /* Converts the decimals from an object into raw figures using power function */
     uint64_t GetDecimals(const uint256_t& hashToken)
     {
         /* Check for NXS as a value. */
         if(hashToken == 0)
-            return TAO::Ledger::NXS_COIN;
+            return TAO::Ledger::NXS_DIGITS;
 
         /* Otherwise let's lookup our token object. */
         TAO::Register::Object tToken;

@@ -14,10 +14,14 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/API/include/constants.h>
+
 /* Forward Declarations. */
 namespace TAO::Operation { class Contract; }
 namespace TAO::Register  { class Object; class State; }
 
+/* Precision floating points. */
+class precision_t;
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -57,6 +61,19 @@ namespace TAO::API
      *
      **/
     uint64_t GetDecimals(const uint256_t& hashToken);
+
+
+    /** GetPrecision
+     *
+     *  Get a precision value based on given balance value and token type.
+     *
+     *  @param[in] nBalance The balance to encode for output.
+     *  @param[in] hashToken The token identifier we are formatting for
+     *
+     *  @return a double representation of the whole formatting.
+     *
+     **/
+    precision_t GetPrecision(const uint64_t nBalance, const uint256_t& hashToken = TOKEN::NXS);
 
 
     /** GetDecimals

@@ -375,7 +375,6 @@ namespace TAO::API
 
                 /* Add expiration condition unless sending to self */
                 if(!fSendToSelf)
-                    //Contracts::Build(Contracts::Expiring::Receiver[1], tContract, hashGenesis, nExpires);
                     AddExpires(jParams, hashGenesis, tContract, fTokenizedDebit);
 
                 /* Add this contract to our processing queue. */

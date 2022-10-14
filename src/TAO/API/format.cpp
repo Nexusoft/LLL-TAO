@@ -38,15 +38,15 @@ namespace TAO::API
             return double(nBalance) / TAO::Ledger::NXS_COIN;
 
         /* Otherwise let's lookup our token object. */
-        TAO::Register::Object objToken;
-        if(!LLD::Register->ReadObject(hashToken, objToken))
+        TAO::Register::Object oToken;
+        if(!LLD::Register->ReadObject(hashToken, oToken))
             throw Exception(-13, "Object not found");
 
         /* Let's check that a token was passed in. */
-        if(objToken.Standard() != TAO::Register::OBJECTS::TOKEN)
+        if(oToken.Standard() != TAO::Register::OBJECTS::TOKEN)
             throw Exception(-15, "Object is not a token");
 
-        return double(nBalance) / math::pow(10, objToken.get<uint8_t>("decimals"));
+        return double(nBalance) / math::pow(10, oToken.get<uint8_t>("decimals"));
     }
 
     /* Outputs the correct balance in terms of a double that can be formatted for output. */
