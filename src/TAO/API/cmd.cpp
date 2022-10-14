@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLP/types/apinode.h>
 #include <LLP/include/base_address.h>
+#include <LLP/include/network.h>
 #include <LLP/include/port.h>
 #include <LLP/types/rpcnode.h>
 
@@ -90,6 +91,10 @@ namespace TAO
         /* Executes an API call from the commandline */
         int CommandLineAPI(int argc, char** argv, int nArgBegin)
         {
+            /* Initialize the underlying network resources such as sockets, etc */
+            if(!LLP::NetworkInitialize())
+                return debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
+
             /* Check the parameters. */
             if(argc < nArgBegin + 1)
                 return debug::error("Missing endpoint parameter");
@@ -185,6 +190,10 @@ namespace TAO
         /* Executes an API call from the commandline */
         int CommandLineRPC(int argc, char** argv, int nArgBegin)
         {
+            /* Initialize the underlying network resources such as sockets, etc */
+            if(!LLP::NetworkInitialize())
+                return debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
+
             /* Check the parameters. */
             if(argc < nArgBegin + 1)
             {
