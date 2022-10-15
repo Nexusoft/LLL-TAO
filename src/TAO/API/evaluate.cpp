@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <Util/include/convert.h>
 #include <Util/include/string.h>
 
+#include <Util/types/precision.h>
+
 namespace TAO::API
 {
 
@@ -169,8 +171,8 @@ namespace TAO::API
         if(jCheck.is_number_float())
         {
             /* Grab a copy of our doubles here casting to ints at given figures for efficiency. */
-            const uint64_t dValue  = convert::dtoi(jCheck.get<double>());
-            const uint64_t dCheck  = convert::dtoi(std::stod(jClause["value"].get<std::string>()));
+            const precision_t dValue = precision_t(jCheck.dump());
+            const precision_t dCheck = precision_t(jClause["value"].get<std::string>());
 
             /* Check our not operator. */
             if(strOP == "!=" && dValue != dCheck)

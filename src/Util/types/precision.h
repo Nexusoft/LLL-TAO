@@ -324,7 +324,7 @@ public:
      **/
     precision_t(const std::string strValueIn)
     : nDigits  (0)
-    , nFigures (0)
+    , nFigures (1)
     , nValue   (0)
     {
         /* Get the character count. */

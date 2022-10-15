@@ -161,7 +161,7 @@ int main(int argc, char** argv)
 
     debug::log(0, VARIABLE(nDigits3.dump()));
 
-    precision_t nDigits4 = precision_t("3.142238743879");
+    precision_t nDigits4 = precision_t("3.142238743879234");
 
     encoding::json jValue;
     jValue["test"] = nDigits4.double_t();
