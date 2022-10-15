@@ -123,6 +123,7 @@ const uint256_t hashSeed = 55;
 
 #include <Util/encoding/include/utf-8.h>
 
+#include <TAO/API/include/contracts/build.h>
 #include <TAO/API/include/contracts/verify.h>
 
 #include <TAO/API/types/contracts/expiring.h>
@@ -154,11 +155,27 @@ int main(int argc, char** argv)
 
     precision_t nDiv = nDigits1 / nDigits2;
 
-    debug::log(0, VARIABLE(nDigits1.value()), " | ", VARIABLE(nDigits2.value()), " | ",
-                  VARIABLE(nSum.value()), " | ", VARIABLE(nProduct.value()), " | ", VARIABLE(nDiv.value()));
+    debug::log(0, VARIABLE(nDigits1.double_t()), " | ", VARIABLE(nDigits2.double_t()), " | ",
+                  VARIABLE(nSum.double_t()), " | ", VARIABLE(nProduct.double_t()), " | ", VARIABLE(nDiv.double_t()));
 
 
     debug::log(0, VARIABLE(nDigits3.dump()));
+
+    precision_t nDigits4 = precision_t("3.142238743879");
+
+    encoding::json jValue;
+    jValue["test"] = nDigits4.double_t();
+
+    debug::log(0, VARIABLE(jValue["test"].dump()), " | ", jValue.dump());
+
+    precision_t nDigits5 =
+        precision_t(jValue["test"].dump());
+
+    debug::log(0, VARIABLE(nDigits5.dump()));
+
+    debug::log(0, jValue.dump());
+
+    debug::log(0, VARIABLE(nDigits4.dump()));
 
     if(nDigits2 < nDigits1)
         debug::log(0, "We have lessthan");
@@ -185,7 +202,7 @@ int main(int argc, char** argv)
     TAO::Operation::Contract tContract;
 
     //debug::log(0, "First param is ", ssParams.find(0, uint8_t(TAO::Operation::OP::TYPES::UINT256_T)).ToString());
-    Build(TAO::API::Contracts::Expiring::Receiver[1], tContract, uint64_t(3333));
+    TAO::API::Contracts::Build(TAO::API::Contracts::Expiring::Receiver[1], tContract, uint64_t(3333));
 
     if(!TAO::API::Contracts::Verify(TAO::API::Contracts::Expiring::Receiver[1], tContract))
         return debug::error("Contract binary template mismatch");

@@ -59,11 +59,12 @@ namespace TAO::API
             if(jArray[n].is_number_float())
             {
                 /* Grab our values. */
-                const double dValue = jArray[n].get<double>();
+                const precision_t dValue =
+                    precision_t(jArray[n].dump());
 
-                /* Check if below minimum value. */
-                if(dValue < jRet["min"].get<double>())
-                    jRet["min"] = dValue;
+                /* Check if above maximum value. */
+                if(dValue > precision_t(jRet["min"].dump()))
+                    jRet["min"] = dValue.double_t();
             }
         }
 

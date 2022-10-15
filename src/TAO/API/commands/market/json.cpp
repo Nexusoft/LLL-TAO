@@ -195,7 +195,6 @@ namespace TAO::API
                         strType = "ask";
                     }
 
-
                     /* Now populate the rest of our data. */
                     jRet["type"]        = strType;
                     jRet["contract"]    = jFrom;

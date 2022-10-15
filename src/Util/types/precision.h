@@ -112,7 +112,7 @@ public:
     }
 
     /** This value tracks the number of internal decimals. **/
-    const uint8_t nDigits;
+    uint8_t nDigits;
 
 
     /** This value stores our internal figures for handling our precision. **/
@@ -304,6 +304,43 @@ public:
             /* Check that we are within correct digits. */
             if(nDigitsCheck > nDigits && fThrow)
                 throw debug::exception(FUNCTION, "Parameter can only have ", nDigits, " decimal places");
+        }
+
+        /* Get our double from the string. */
+        const double dValueIn =
+            std::stod(strValueIn);
+
+        /* Set our internal values now. */
+        nValue = (dValueIn * nFigures);
+    }
+
+
+    /** Constructor
+     *
+     *  Constructor to handle construction based on a c++ string.
+     *
+     *  @param[in] strValueIn The value we are setting this from.
+     *
+     **/
+    precision_t(const std::string strValueIn)
+    : nDigits  (0)
+    , nFigures (0)
+    , nValue   (0)
+    {
+        /* Get the character count. */
+        const uint64_t nPos =
+            strValueIn.find('.');
+
+        /* Check that we found decimal. */
+        if(nPos != strValueIn.npos)
+        {
+            /* Calculate our input decimals. */
+            const uint64_t nDigitsCheck =
+                (strValueIn.length() - nPos - 1);
+
+            /* Set our digits now. */
+            nDigits  = nDigitsCheck;
+            nFigures = math::pow(10, nDigits);
         }
 
         /* Get our double from the string. */
