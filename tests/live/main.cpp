@@ -171,6 +171,12 @@ int main(int argc, char** argv)
     precision_t nDigits5 =
         precision_t(jValue["test"].dump());
 
+    nDigits5 = nDigits5 / 2;
+
+    debug::log(0, VARIABLE(nDigits5.dump()));
+
+    nDigits5 = nDigits5 * 2;
+
     debug::log(0, VARIABLE(nDigits5.dump()));
 
     debug::log(0, jValue.dump());
@@ -179,6 +185,7 @@ int main(int argc, char** argv)
 
     if(nDigits2 < nDigits1)
         debug::log(0, "We have lessthan");
+
 
     if(nDigits1 > nDigits2)
         debug::log(0, "We have greaterthan");

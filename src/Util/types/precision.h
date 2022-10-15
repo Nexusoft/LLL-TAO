@@ -569,6 +569,28 @@ public:
     }
 
 
+    /** operator *
+     *
+     *  Operator to support multiplication with mixed precisions.
+     *
+     *  @param[in] dValueIn The value we are dividing from this.
+     *
+     *  @return A copy of this class with new value.
+     *
+     **/
+    precision_t operator*(const uint64_t& nProduct) const
+    {
+        /* Set our initial return value. */
+        precision_t dRet = precision_t(nDigits);
+
+        /* Set our return value now. */
+        dRet.nValue =
+            (nValue * nProduct);
+
+        return dRet;
+    }
+
+
     /** operator /
      *
      *  Operator to support division with mixed precisions.
@@ -611,6 +633,28 @@ public:
         /* Set our return value now. */
         dRet.nValue =
             reduction_cast(nAdjustedValue);
+
+        return dRet;
+    }
+
+
+    /** operator /
+     *
+     *  Operator to support division with mixed precisions.
+     *
+     *  @param[in] dValueIn The value we are dividing from this.
+     *
+     *  @return A copy of this class with new value.
+     *
+     **/
+    precision_t operator/(const uint64_t& nQuotient) const
+    {
+        /* Set our initial return value. */
+        precision_t dRet = precision_t(nDigits);
+
+        /* Set our return value now. */
+        dRet.nValue =
+            (nValue / nQuotient);
 
         return dRet;
     }

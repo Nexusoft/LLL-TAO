@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/operators/max.h>
 
+#include <Util/types/precision.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
