@@ -36,6 +36,15 @@ namespace LLP
         "seed2.cryptowiseuniversity.net",
         "seed3.cryptowiseuniversity.net",
         "seed4.cryptowiseuniversity.net",
+        "seed5.cryptowiseuniversity.net",
+
+        //PV DNS seeds
+        "node1.nxs.efficienthash.com",
+        "node2.nxs.efficienthash.com",
+        "node3.nxs.efficienthash.com",
+        "node4.nxs.efficienthash.com",
+        "node5.nxs.efficienthash.com",
+        "node6.nxs.efficienthash.com",
     };
 
 
