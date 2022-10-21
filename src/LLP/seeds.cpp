@@ -19,6 +19,19 @@ namespace LLP
     *  They are established and maintained by the owners of each domain. */
     const std::vector<std::string> DNS_SeedNodes =
     {
+        //viz DNS seeds
+        "node1.nexus.io",
+        "node2.nexus.io",
+        "node3.nexus.io",
+        "node4.nexus.io",
+
+        //interactions DNS seeds
+        "lite1.nexenture.xyz",
+        "lite2.nexenture.xyz",
+        "lite3.nexenture.xyz",
+        "lite4.nexenture.xyz",
+
+        //old seed nodes, need to verify what ones are still online
         "node1.nexusearth.com",
         "node1.nexusoft.io",
         "node1.mercuryminer.com",
@@ -103,23 +116,10 @@ namespace LLP
     /*  Testnet seed nodes. */
     const std::vector<std::string> DNS_SeedNodes_Testnet =
     {
-        "node1.nexusoft.io",
-        "node2.nexusoft.io",
-        "node4.nexusoft.io",
-        "lisptest1.mercuryminer.com",
-        "lisptest2.mercuryminer.com",
-        "lisptest3.mercuryminer.com",
-        "lisptest4.mercuryminer.com",
-        "lisptest5.mercuryminer.com",
-        "testlisp.nexusminingpool.com",
-        "nexus-lisp-seed.lispers.net",
-        "fe00::255:255"
-        "test1.mercuryminer.com",
-        "test2.mercuryminer.com",
-        "test3.mercuryminer.com",
-        "test4.mercuryminer.com",
-        "test5.mercuryminer.com",
-        "test1.nexusminingpool.com",
-        "test2.nexusminingpool.com",
+        "node1.nexus.io",
+        "node2.nexus.io",
+        "testnet1.nexus-interactions.io",
+        "testnet2.nexus-interactions.io",
+        "testnet3.nexus-interactions.io"
     };
 }
