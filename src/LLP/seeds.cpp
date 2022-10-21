@@ -32,11 +32,11 @@ namespace LLP
         "lite4.nexenture.xyz",
 
         //cryptowise university
-        "seed1.cryptowiseuniversity.net",
-        "seed2.cryptowiseuniversity.net",
-        "seed3.cryptowiseuniversity.net",
-        "seed4.cryptowiseuniversity.net",
-        "seed5.cryptowiseuniversity.net",
+        "seed1.nexusnode.cryptowiseuniversity.net",
+        "seed2.nexusnode.cryptowiseuniversity.net",
+        "seed3.nexusnode.cryptowiseuniversity.net",
+        "seed4.nexusnode.cryptowiseuniversity.net",
+        "seed5.nexusnode.cryptowiseuniversity.net",
 
         //PV DNS seeds
         "node1.nxs.efficienthash.com",
