@@ -91,9 +91,6 @@ namespace TAO::API
             Authentication::Session tSession =
                 Authentication::Session(strUsername, strPassword, Authentication::Session::LOCAL);
 
-            /* Initialize our indexing session. */
-            Indexing::Initialize(tSession.Genesis());
-
             /* Build a new session key. */
             if(config::fMultiuser.load())
                 hashSession = LLC::GetRand256();
@@ -107,6 +104,9 @@ namespace TAO::API
                 { "genesis", tSession.Genesis().ToString() },
                 { "session", hashSession.ToString() }
             };
+
+            /* Initialize our indexing session. */
+            Indexing::Initialize(tSession.Genesis());
 
             /* Check for single user mode. */
             if(!config::fMultiuser.load())

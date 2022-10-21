@@ -106,8 +106,8 @@ namespace TAO::API
                     {
                         { "OP",   "DEBIT"                              },
                         { "from" , hashFrom.ToString()                 },
-                        { "amount", dSelling.double_t()                  },
-                        { "token", hashSelling.ToString()                }
+                        { "amount", dSelling.double_t()                },
+                        { "token", hashSelling.ToString()              }
                     };
 
                     /* Add a ticker if found. */
