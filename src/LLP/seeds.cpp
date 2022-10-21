@@ -31,6 +31,12 @@ namespace LLP
         "lite3.nexenture.xyz",
         "lite4.nexenture.xyz",
 
+        //cryptowise university
+        "seed1.cryptowiseuniversity.net",
+        "seed2.cryptowiseuniversity.net",
+        "seed3.cryptowiseuniversity.net",
+        "seed4.cryptowiseuniversity.net",
+
         //old seed nodes, need to verify what ones are still online
         "node1.nexusearth.com",
         "node1.nexusoft.io",
