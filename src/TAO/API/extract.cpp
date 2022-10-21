@@ -362,8 +362,8 @@ namespace TAO::API
 
             /* Check for a floating point value. */
             else if(jParams[strAmount].is_number_float())
-                return precision_t(jParams[strAmount].get<double>(), nDigits, true); //true to check our ranges
-
+                return precision_t(jParams[strAmount].dump(), nDigits, true); //true to check our ranges
+                
             /* Otherwise we have an invalid parameter. */
             else
                 throw Exception(-57, "Invalid Parameter type [", strAmount, "]");

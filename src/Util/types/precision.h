@@ -74,6 +74,45 @@ class precision_t
             nValue /= math::pow(10, nDigitsIn - nDigits);
     }
 
+    /** set_value
+     *
+     *  Set our internal value from a string argument.
+     *
+     *  @param[in] strValueIn The string argument that is supplied.
+     *  @param[in] fThrow Flag to tell if we should throw if too many decimals supplied.
+     *
+     **/
+    void set_value(const std::string strValueIn, const bool fThrow = false)
+    {
+        /* Get the character count. */
+        const uint64_t nPos =
+            strValueIn.find('.');
+
+        /* Check that we found decimal. */
+        uint64_t nDigitsCheck = 0;
+        if(nPos != strValueIn.npos)
+        {
+            /* Calculate our input decimals. */
+            nDigitsCheck =
+                (strValueIn.length() - nPos - 1);
+
+            /* Check that we are within correct digits. */
+            if(fThrow && nDigitsCheck > nDigits)
+                throw debug::exception(FUNCTION, "Parameter can only have ", nDigits, " decimal places");
+        }
+
+        /* Build a copy string to test. */
+        std::string strInteger = strValueIn;
+        ReplaceAll(strInteger, ".", "");
+
+        /* Find how many figures we need to add. */
+        const uint64_t nMissingFigures =
+            math::pow(10, nDigits - nDigitsCheck);
+
+        /* Convert our string to integer now. */
+        nValue = (std::stoull(strInteger) * nMissingFigures);
+    }
+
 public:
 
     /** adjusted_value
@@ -229,7 +268,7 @@ public:
     precision_t(const uint64_t nValueIn, const uint8_t nDigitsIn)
     : nDigits  (nDigitsIn)
     , nFigures (math::pow(10, nDigits))
-    , nValue   (nValueIn)
+    , nValue   (nValueIn * nFigures)
     {
     }
 
@@ -290,28 +329,8 @@ public:
     , nFigures (math::pow(10, nDigits))
     , nValue   (0)
     {
-        /* Get the character count. */
-        const uint64_t nPos =
-            strValueIn.find('.');
-
-        /* Check that we found decimal. */
-        if(nPos != strValueIn.npos)
-        {
-            /* Calculate our input decimals. */
-            const uint64_t nDigitsCheck =
-                (strValueIn.length() - nPos - 1);
-
-            /* Check that we are within correct digits. */
-            if(nDigitsCheck > nDigits && fThrow)
-                throw debug::exception(FUNCTION, "Parameter can only have ", nDigits, " decimal places");
-        }
-
-        /* Get our double from the string. */
-        const double dValueIn =
-            std::stod(strValueIn);
-
-        /* Set our internal values now. */
-        nValue = (dValueIn * nFigures);
+        /* Set our value with internal method. */
+        set_value(strValueIn, fThrow);
     }
 
 
@@ -343,12 +362,8 @@ public:
             nFigures = math::pow(10, nDigits);
         }
 
-        /* Get our double from the string. */
-        const double dValueIn =
-            std::stod(strValueIn);
-
-        /* Set our internal values now. */
-        nValue = (dValueIn * nFigures);
+        /* Set our value with internal method. */
+        set_value(strValueIn);
     }
 
 
@@ -613,6 +628,10 @@ public:
             const uint64_t nOffset =
                 math::pow(10, uint8_t(nDigits - dValueIn.nDigits));
 
+            /* Check for floating point exceptions. */
+            if(dValueIn.nValue * nOffset == 0)
+                throw debug::exception(FUNCTION, "floating point exception");
+
             /* Set our adjusted value now. */
             nAdjustedValue /= (dValueIn.nValue * nOffset);
         }
@@ -621,6 +640,10 @@ public:
             /* Calculate the figures we need to offset by. */
             const uint64_t nOffset =
                 math::pow(10, uint8_t(dValueIn.nDigits - nDigits));
+
+            /* Check for floating point exceptions. */
+            if(dValueIn.nValue / nOffset == 0)
+                throw debug::exception(FUNCTION, "floating point exception");
 
             /* Set our adjusted value now. */
             nAdjustedValue /= (dValueIn.nValue / nOffset);
@@ -649,6 +672,10 @@ public:
      **/
     precision_t operator/(const uint64_t& nQuotient) const
     {
+        /* Check for floating point exceptions. */
+        if(nQuotient == 0)
+            throw debug::exception(FUNCTION, "floating point exception");
+
         /* Set our initial return value. */
         precision_t dRet = precision_t(nDigits);
 
@@ -726,6 +753,10 @@ public:
             const uint64_t nOffset =
                 math::pow(10, uint8_t(nDigits - dValueIn.nDigits));
 
+            /* Check for floating point exceptions. */
+            if(dValueIn.nValue * nOffset == 0)
+                throw debug::exception(FUNCTION, "floating point exception");
+
             /* Now complete our division operation. */
             nAdjustedValue /= (dValueIn.nValue * nOffset);
         }
@@ -734,6 +765,10 @@ public:
             /* Calculate the figures we need to offset by. */
             const uint64_t nOffset =
                 math::pow(10, uint8_t(dValueIn.nDigits - nDigits));
+
+            /* Check for floating point exceptions. */
+            if(dValueIn.nValue / nOffset == 0)
+                throw debug::exception(FUNCTION, "floating point exception");
 
             /* Now complete our division operation. */
             nAdjustedValue /= (dValueIn.nValue / nOffset);

@@ -79,7 +79,14 @@ namespace TAO::API
         if(oToken.Standard() != TAO::Register::OBJECTS::TOKEN)
             throw Exception(-15, "Object is not a token");
 
-        return precision_t(nBalance, oToken.get<uint8_t>("decimals"));
+        /* Build our return value. */
+        precision_t dRet =
+            precision_t(oToken.get<uint8_t>("decimals"));
+
+        /* Set our value internally. */
+        dRet.nValue = nBalance;
+
+        return dRet;
     }
 
 
