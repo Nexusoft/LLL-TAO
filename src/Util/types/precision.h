@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <Util/include/debug.h>
 #include <Util/include/math.h>
+#include <Util/include/string.h>
 
 /** @class precision_t
  *
