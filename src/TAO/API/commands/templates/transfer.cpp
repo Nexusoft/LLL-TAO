@@ -46,7 +46,7 @@ namespace TAO::API
 
         /* Check out our object now. */
         TAO::Register::Object tObject;
-        if(!LLD::Register->ReadObject(hashRegister, tObject))
+        if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::MEMPOOL))
             throw Exception(-13, "Object not found");
 
         /* Now lets check our expected types match. */

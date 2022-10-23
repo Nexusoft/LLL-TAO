@@ -57,7 +57,7 @@ namespace TAO::API
         {
             /* Grab our object from disk. */
             TAO::Register::Object tObject;
-            if(!LLD::Register->ReadObject(hashRegister, tObject))
+            if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::MEMPOOL))
                 continue;
 
             /* Check our object standards. */
