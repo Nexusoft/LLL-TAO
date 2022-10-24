@@ -106,7 +106,7 @@ namespace TAO::API
             };
 
             /* Initialize our indexing session. */
-            Indexing::Initialize(tSession.Genesis());
+            Indexing::Initialize(hashSession);
 
             /* Check for single user mode. */
             if(!config::fMultiuser.load())

@@ -37,8 +37,8 @@ namespace TAO::API
         /* Enum to track default session indexes. */
         enum SESSION : uint8_t
         {
-            DEFAULT  = 0,
-            MINER    = 1,
+            DEFAULT  = 1,
+            MINER    = 2,
             INVALID  = 255,
         };
 
@@ -345,10 +345,10 @@ namespace TAO::API
          *
          *  Lets everything know that session is ready to be used.
          *
-         *  @param[in] hashGenesis The genesis identifier to add by index.
+         *  @param[in] hashSession The session identifier to add by index.
          *
          **/
-        static void Ready(const uint256_t& hashGenesis);
+        static void SetReady(const uint256_t& hashSession);
 
 
         /** Active

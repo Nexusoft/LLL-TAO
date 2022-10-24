@@ -58,21 +58,20 @@ namespace TAO::API
 
 
     /* Lets everything know that session is ready to be used.*/
-    void Authentication::Ready(const uint256_t& hashGenesis)
+    void Authentication::SetReady(const uint256_t& hashSession)
     {
         RECURSIVE(MUTEX);
 
-        /* Loop through sessions map. */
-        for(const auto& rSession : mapSessions)
-        {
-            /* Check genesis to session. */
-            if(rSession.second.Genesis() == hashGenesis)
-            {
-                /* Set our initializing flag now by genesis. */
-                rSession.second.fInitializing.store(false);
-                return;
-            }
-        }
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            throw Exception(-11, "Session not found");
+
+        /* Get a copy of our current active session. */
+        const Session& rSession =
+            mapSessions[hashSession];
+
+        /* Set our initializing flag as ready now. */
+        rSession.fInitializing.store(false);
     }
 
 
