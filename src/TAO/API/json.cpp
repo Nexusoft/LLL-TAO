@@ -1103,7 +1103,455 @@ namespace TAO::API
             debug::error(FUNCTION, e.what());
         }
 
+        /* Add our conditions now. */
+        const std::string strConditions =
+            ConditionToJSON(contract, nVerbose);
+
+        /* Check that string isn't empty. */
+        if(!strConditions.empty())
+            jRet["contract"] = strConditions;
+
         return jRet;
+    }
+
+
+    /* Converts a serialized contract condition stream to formattted JSON */
+    std::string ConditionToJSON(const TAO::Operation::Contract& rContract, const uint32_t nVerbose)
+    {
+        /* Encode a string to output our bytecode. */
+        std::string strCode;
+
+        /* Loop through the operation validation code. */
+        rContract.Reset(TAO::Operation::Contract::CONDITIONS);
+        while(!rContract.End(TAO::Operation::Contract::CONDITIONS))
+        {
+            /* Grab the next operation. */
+            uint8_t nOP = 0;
+            rContract >= nOP;
+
+            /* Switch based on our operation code now. */
+            switch(nOP)
+            {
+                /* Handle for the ( operator. */
+                case TAO::Operation::OP::GROUP:
+                {
+                    strCode += "(";
+                    break;
+                }
+
+                /* Handle for the ) operator. */
+                case TAO::Operation::OP::UNGROUP:
+                {
+                    strCode += ")";
+                    break;
+                }
+
+                /* Handle for the && operator. */
+                case TAO::Operation::OP::AND:
+                {
+                    strCode += " AND ";
+                    break;
+                }
+
+                /* Handle for the || operator. */
+                case TAO::Operation::OP::OR:
+                {
+                    strCode += " OR ";
+                    break;
+                }
+
+                /* Handle for the == operator. */
+                case TAO::Operation::OP::EQUALS:
+                {
+                    strCode += " == ";
+                    break;
+                }
+
+                /* Handle for < operator. */
+                case TAO::Operation::OP::LESSTHAN:
+                {
+                    strCode += " < ";
+                    break;
+                }
+
+                /* Handle for the > operator. */
+                case TAO::Operation::OP::GREATERTHAN:
+                {
+                    strCode += " > ";
+                    break;
+                }
+
+                /* Handle for <= operator. */
+                case TAO::Operation::OP::LESSEQUALS:
+                {
+                    strCode += " <= ";
+                    break;
+                }
+
+                /* Handle for the >= operator. */
+                case TAO::Operation::OP::GREATEREQUALS:
+                {
+                    strCode += " >= ";
+                    break;
+                }
+
+                /* Handle for the != operator. */
+                case TAO::Operation::OP::NOTEQUALS:
+                {
+                    strCode += " != ";
+                    break;
+                }
+
+                /* Handle to check if a sequence of bytes is inside another. */
+                case TAO::Operation::OP::CONTAINS:
+                {
+                    strCode += " ~ ";
+                    break;
+                }
+
+                /* Add two 64-bit numbers. */
+                case TAO::Operation::OP::ADD:
+                {
+                    strCode += " + ";
+                    break;
+                }
+
+                /* Subtract one number from another. */
+                case TAO::Operation::OP::SUB:
+                {
+                    strCode += " - ";
+                    break;
+                }
+
+                /* Increment a number by an order of 1. */
+                case TAO::Operation::OP::INC:
+                {
+                    strCode += "++ ";
+                    break;
+                }
+
+                /* De-increment a number by an order of 1. */
+                case TAO::Operation::OP::DEC:
+                {
+                    strCode += "-- ";
+                    break;
+                }
+
+                /* Divide a number by another. */
+                case TAO::Operation::OP::DIV:
+                {
+                    strCode += " / ";
+                    break;
+                }
+
+                /* Multiply a number by another. */
+                case TAO::Operation::OP::MUL:
+                {
+                    strCode += " * ";
+                    break;
+                }
+
+                /* Raise a number by the power of another. */
+                case TAO::Operation::OP::EXP:
+                {
+                    strCode += "^";
+                    break;
+                }
+
+                /* Get the remainder after a division. */
+                case TAO::Operation::OP::MOD:
+                {
+                    strCode += " % ";
+                    break;
+                }
+
+                /* Parse out subdata from bytes. */
+                case TAO::Operation::OP::SUBDATA:
+                {
+                    /* Get the beginning iterator. */
+                    uint16_t nBegin = 0;
+                    rContract >= nBegin;
+
+                    /* Get the size to extract. */
+                    uint16_t nSize = 0;
+                    rContract >= nSize;
+
+                    strCode += debug::safe_printstr(".subdata(", nBegin, ", ", nSize, ")");
+                    break;
+                }
+
+                /* Parse out subdata from bytes. */
+                case TAO::Operation::OP::CAT:
+                {
+                    strCode += " | ";
+                    break;
+                }
+
+                /* Extract an uint8_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT8_T:
+                {
+                    /* Extract the byte. */
+                    uint8_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint8_t(", uint32_t(n), ")");
+                    strCode += debug::safe_printstr(uint64_t(n));
+                    break;
+                }
+
+                /* Extract an uint16_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT16_T:
+                {
+                    /* Extract the byte. */
+                    uint16_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint16_t(", n, ")");
+                    strCode += debug::safe_printstr(uint64_t(n));
+                    break;
+                }
+
+                /* Extract an uint32_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT32_T:
+                {
+                    /* Extract the byte. */
+                    uint32_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint32_t(", n, ")");
+                    strCode += debug::safe_printstr(uint64_t(n));
+                    break;
+                }
+
+                /* Extract an uint64_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT64_T:
+                {
+                    /* Extract the byte. */
+                    uint64_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint64_t(", n, ")");
+                    strCode += debug::safe_printstr(uint64_t(n));
+                    break;
+                }
+
+                /* Extract an uint256_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT256_T:
+                {
+                    /* Extract the integer. */
+                    uint256_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint256_t(", n.ToString(), ")");
+                    strCode += debug::safe_printstr("0x", n.ToString());
+                    break;
+                }
+
+                /* Extract an uint512_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT512_T:
+                {
+                    /* Extract the integer. */
+                    uint512_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint512_t(", n.ToString(), ")");
+                    strCode += debug::safe_printstr("0x", n.ToString());
+                    break;
+                }
+
+                /* Extract an uint1024_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT1024_T:
+                {
+                    /* Extract the integer. */
+                    uint1024_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint1024_t(", n.ToString(), ")");
+                    strCode += debug::safe_printstr("0x", n.ToString());
+                    break;
+                }
+
+                /* Extract a string from the stream. */
+                case TAO::Operation::OP::TYPES::STRING:
+                {
+                    /* Extract the string. */
+                    std::string str;
+                    rContract >= str;
+
+                    //strCode += debug::safe_printstr("string(", str, ")");
+                    strCode += debug::safe_printstr("'", str, "'");
+                    break;
+                }
+
+                /* Extract bytes from the stream. */
+                case TAO::Operation::OP::TYPES::BYTES:
+                {
+                    /* Extract the string. */
+                    std::vector<uint8_t> vData;
+                    rContract >= vData;
+
+                    strCode += debug::safe_printstr("data(", HexStr(vData.begin(), vData.end()), ")");
+                    break;
+                }
+
+                /* Get a register's timestamp and push to the return value. */
+                case TAO::Operation::OP::CALLER::PRESTATE::MODIFIED:
+                {
+                    strCode += "caller.prestate.modified ";
+                    break;
+                }
+
+                /* Get a register's timestamp and push to the return value. */
+                case TAO::Operation::OP::REGISTER::MODIFIED:
+                {
+                    strCode += ".register.modified ";
+                    break;
+                }
+
+                /* Get a register's timestamp and push to the return value. */
+                case TAO::Operation::OP::CALLER::PRESTATE::CREATED:
+                {
+                    strCode += "caller.prestate.created ";
+                    break;
+                }
+
+                /* Get the time register was created. */
+                case TAO::Operation::OP::REGISTER::CREATED:
+                {
+                    strCode += ".register.created ";
+                    break;
+                }
+
+                /* The owner of given register pre-state. */
+                case TAO::Operation::OP::CALLER::PRESTATE::OWNER:
+                {
+                    strCode += "caller.prestate.owner ";
+                    break;
+                }
+
+                /* The owner of given register. */
+                case TAO::Operation::OP::REGISTER::OWNER:
+                {
+                    strCode += ".register.owner ";
+                    break;
+                }
+
+                /* The owner of given register pre-state. */
+                case TAO::Operation::OP::CALLER::PRESTATE::STATE:
+                {
+                    strCode += "caller.prestate.state ";
+                    break;
+                }
+
+                /* The owner of given register. */
+                case TAO::Operation::OP::REGISTER::STATE:
+                {
+                    strCode += ".register.state ";
+                    break;
+                }
+
+                /* The owner of given register pre-state. */
+                case TAO::Operation::OP::CALLER::PRESTATE::VALUE:
+                {
+                    /* Get the value string. */
+                    std::string strValue;
+                    rContract >= strValue;
+
+                    strCode += debug::safe_printstr("caller.prestate.value(", strValue, ")");
+                    break;
+                }
+
+                /* The owner of given register. */
+                case TAO::Operation::OP::REGISTER::VALUE:
+                {
+                    /* Get the value string. */
+                    std::string strValue;
+                    rContract >= strValue;
+
+                    strCode += debug::safe_printstr("caller.register.value(", strValue, ")");
+                    break;
+                }
+
+                /* Get the genesis-id of the calling sigchain. */
+                case TAO::Operation::OP::CALLER::GENESIS:
+                {
+                    strCode += "caller.genesis";
+                    break;
+                }
+
+                /* Get the timestamp of the transaction caller. */
+                case TAO::Operation::OP::CALLER::TIMESTAMP:
+                {
+                    strCode += "caller.timestamp";
+                    break;
+                }
+
+                /* Get the genesis-id of the calling sigchain. */
+                case TAO::Operation::OP::CONTRACT::GENESIS:
+                {
+                    strCode += "contract.genesis";
+                    break;
+                }
+
+                /* Get the timestamp of the transaction caller. */
+                case TAO::Operation::OP::CONTRACT::TIMESTAMP:
+                {
+                    strCode += "contract.timestamp";
+                    break;
+                }
+
+                /* Get the operations of the transaction caller. */
+                case TAO::Operation::OP::CONTRACT::OPERATIONS:
+                {
+                    strCode += "contract.operations";
+                    break;
+                }
+
+                /* Get the operations of the transaction caller. */
+                case TAO::Operation::OP::CALLER::OPERATIONS:
+                {
+                    strCode += "caller.operations";
+                    break;
+                }
+
+                /* Get the current height of the chain. */
+                case TAO::Operation::OP::LEDGER::HEIGHT:
+                {
+                    strCode += "ledger.height";
+                    break;
+                }
+
+                /* Get the current supply of the chain. */
+                case TAO::Operation::OP::LEDGER::SUPPLY:
+                {
+                    strCode += "ledger.supply";
+                    break;
+                }
+
+                /* Get the best block timestamp. */
+                case TAO::Operation::OP::LEDGER::TIMESTAMP:
+                {
+                    strCode += "ledger.timestamp";
+                    break;
+                }
+
+                /* Compute an SK256 hash of current return value. */
+                case TAO::Operation::OP::CRYPTO::SK256:
+                {
+                    strCode += ".crypto.sk256";
+                    break;
+                }
+
+                /* Compute an SK512 hash of current return value. */
+                case TAO::Operation::OP::CRYPTO::SK512:
+                {
+                    strCode += ".crypto.sk512";
+                    break;
+                }
+            }
+        }
+
+        return strCode;
     }
 
 

@@ -91,6 +91,20 @@ namespace TAO::API
                                                         const uint32_t nContract, const uint32_t nVerbose = 0);
 
 
+    /** ConditionToJSON
+     *
+     *  Converts a serialized contract condition stream to formattted JSON
+     *
+     *  @param[in] rContract The contract to de-serialize
+     *  @param[in] nContract the id of the contract within the transaction
+     *  @param[in] nVerbose The verbose output level.
+     *
+     *  @return the formatted JSON object
+     *
+     **/
+    __attribute__((pure)) std::string ConditionToJSON(const TAO::Operation::Contract& rContract, const uint32_t nVerbose = 0);
+
+
     /** RegisterToJSON
      *
      *  Converts an Object Register to formattted JSON with no external lookups
