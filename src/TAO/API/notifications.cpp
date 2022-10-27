@@ -98,8 +98,6 @@ namespace TAO::API
                 /* Get our list of active events we need to respond to. */
                 LLD::Logical->ListEvents(hashGenesis, vEvents);
 
-                //we need to list our active legacy transaction events
-
                 /* Track our unique events as we progress forward. */
                 std::set<std::pair<uint512_t, uint32_t>> setUnique;
 
@@ -324,8 +322,6 @@ namespace TAO::API
                                                 /* Build our credit contract now. */
                                                 if(!BuildCredit(jBuild, nContract, rContract, vContracts))
                                                 {
-                                                    debug::warning("credit didn't build");
-
                                                     /* Check if we have a next account. */
                                                     if(!rAccounts.HasNext())
                                                         break;

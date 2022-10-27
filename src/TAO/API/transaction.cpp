@@ -197,6 +197,10 @@ namespace TAO::API
     /* Get if transaction is in a matured status.*/
     bool Transaction::Mature(const uint512_t& hash) const
     {
+        /* Check for coinbase/coinstake for maturity. */
+        if(!IsCoinBase() && !IsCoinStake())
+            return true;
+
         /* Read our confirmations from our ledger database. */
         uint32_t nConfirmations = 0;
         if(!LLD::Ledger->ReadConfirmations(hash, nConfirmations))

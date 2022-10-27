@@ -559,7 +559,6 @@ namespace TAO
             if(fLeft)
                 deallocate(vLeft);
 
-
             /* Return final response. */
             return fRet;
         }
