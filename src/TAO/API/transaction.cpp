@@ -199,7 +199,7 @@ namespace TAO::API
     {
         /* Check for coinbase/coinstake for maturity. */
         if(!IsCoinBase() && !IsCoinStake())
-            return true;
+            return true; //non-producer transactions have no maturity requirement
 
         /* Read our confirmations from our ledger database. */
         uint32_t nConfirmations = 0;
@@ -214,7 +214,42 @@ namespace TAO::API
         if(IsCoinStake())
             return (nConfirmations >= TAO::Ledger::MaturityCoinStake(TAO::Ledger::ChainState::stateBest.load()));
 
-        return true; //non-producer transactions have no maturity requirement
+        return true; //we shouldn't get here, but if we do return true
+    }
+
+    /* Check if a specific contract can be spent. */
+    bool Transaction::Spendable(const uint512_t& hash, const uint32_t nContract) const
+    {
+        /* Build a static contract to check with. */
+        static TAO::Operation::Stream ssCheck;
+        if(ssCheck.size() == 0)
+        {
+            ssCheck << uint8_t(TAO::Operation::OP::TYPES::UINT16_T) << uint16_t(4);
+            ssCheck << uint8_t(TAO::Operation::OP::EQUALS);
+            ssCheck << uint8_t(TAO::Operation::OP::TYPES::UINT16_T) << uint16_t(2);
+        }
+
+        /* Check our expected contract ranges. */
+        if(nContract >= vContracts.size())
+            return true; //we use this method to skip contracts so if out of range we need to know.
+
+        /* Check for conditions. */
+        const TAO::Operation::Stream& ssContract =
+            vContracts[nContract].Conditions();
+
+        /* Check our values byte for byte. */
+        for(uint32_t nIndex = 0; nIndex < std::min(ssContract.size(), ssCheck.size()); nIndex++)
+        {
+            /* Check for out of range and return as spendable if so. */
+            if(nIndex >= ssContract.size() || nIndex >= ssCheck.size())
+                return true;
+
+            /* Check for matching bytes. */
+            if(ssContract.get(nIndex) != ssCheck.get(nIndex))
+                return true;
+        }
+
+        return false;
     }
 
 
@@ -223,10 +258,7 @@ namespace TAO::API
     {
         /* Check our expected contract ranges. */
         if(nContract >= vContracts.size())
-        {
-            debug::warning(FUNCTION, "out of range ", VARIABLE(hash.SubString()), " | ", VARIABLE(nContract), " | ", VARIABLE(vContracts.size()));
             return true; //we use this method to skip contracts so if out of range we need to know.
-        }
 
         /* Get a reference of our internal contract. */
         const TAO::Operation::Contract& rContract = vContracts[nContract];

@@ -78,6 +78,10 @@ namespace TAO::API
                 if(tx.Spent(hashEvent, rEvent.second))
                     continue;
 
+                /* Check if contract has been spent. */
+                if(!tx.Spendable(hashEvent, rEvent.second))
+                    continue;
+
                 /* Get the transaction JSON. */
                 encoding::json jContract =
                     TAO::API::ContractToJSON(tx[rEvent.second], rEvent.second, nVerbose);

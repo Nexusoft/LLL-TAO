@@ -145,6 +145,19 @@ namespace TAO::API
         bool Mature(const uint512_t& hash) const;
 
 
+        /** Spendable
+         *
+         *  Check if a specific contract can be spent. This checks mainly for the burn contract 4 == 2.
+         *
+         *  @param[in] hash The txid to check spends by.
+         *  @param[in] nContract The contract-id to check proofs for.
+         *
+         *  @return true if the contract has been spent.
+         *
+         **/
+        bool Spendable(const uint512_t& hash, const uint32_t nContract) const;
+
+
         /** Spent
          *
          *  Check if a specific contract has been spent already.

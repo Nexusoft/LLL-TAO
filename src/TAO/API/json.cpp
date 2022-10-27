@@ -862,6 +862,7 @@ namespace TAO::API
                     else if(LLD::Ledger->HasProof(hashFrom, contract.Hash(), nContract))
                         jRet["claimed"] = FormatBalance(nAmount, hashToken);
 
+
                     /* Add the reference to the response */
                     jRet["reference"] = nReference;
 
@@ -1109,7 +1110,7 @@ namespace TAO::API
 
         /* Check that string isn't empty. */
         if(!strConditions.empty())
-            jRet["contract"] = strConditions;
+            jRet["conditions"] = strConditions;
 
         return jRet;
     }
@@ -1205,7 +1206,7 @@ namespace TAO::API
                 /* Handle to check if a sequence of bytes is inside another. */
                 case TAO::Operation::OP::CONTAINS:
                 {
-                    strCode += " ~ ";
+                    strCode += " ~= ";
                     break;
                 }
 
@@ -1397,56 +1398,56 @@ namespace TAO::API
                 /* Get a register's timestamp and push to the return value. */
                 case TAO::Operation::OP::CALLER::PRESTATE::MODIFIED:
                 {
-                    strCode += "caller.prestate.modified ";
+                    strCode += "caller.prestate.modified";
                     break;
                 }
 
                 /* Get a register's timestamp and push to the return value. */
                 case TAO::Operation::OP::REGISTER::MODIFIED:
                 {
-                    strCode += ".register.modified ";
+                    strCode += ".register.modified";
                     break;
                 }
 
                 /* Get a register's timestamp and push to the return value. */
                 case TAO::Operation::OP::CALLER::PRESTATE::CREATED:
                 {
-                    strCode += "caller.prestate.created ";
+                    strCode += "caller.prestate.created";
                     break;
                 }
 
                 /* Get the time register was created. */
                 case TAO::Operation::OP::REGISTER::CREATED:
                 {
-                    strCode += ".register.created ";
+                    strCode += ".register.created";
                     break;
                 }
 
                 /* The owner of given register pre-state. */
                 case TAO::Operation::OP::CALLER::PRESTATE::OWNER:
                 {
-                    strCode += "caller.prestate.owner ";
+                    strCode += "caller.prestate.owner";
                     break;
                 }
 
                 /* The owner of given register. */
                 case TAO::Operation::OP::REGISTER::OWNER:
                 {
-                    strCode += ".register.owner ";
+                    strCode += ".register.owner";
                     break;
                 }
 
                 /* The owner of given register pre-state. */
                 case TAO::Operation::OP::CALLER::PRESTATE::STATE:
                 {
-                    strCode += "caller.prestate.state ";
+                    strCode += "caller.prestate.state";
                     break;
                 }
 
                 /* The owner of given register. */
                 case TAO::Operation::OP::REGISTER::STATE:
                 {
-                    strCode += ".register.state ";
+                    strCode += ".register.state";
                     break;
                 }
 
@@ -1457,7 +1458,7 @@ namespace TAO::API
                     std::string strValue;
                     rContract >= strValue;
 
-                    strCode += debug::safe_printstr("caller.prestate.value(", strValue, ")");
+                    strCode += debug::safe_printstr("caller.prestate.value('", strValue, "')");
                     break;
                 }
 
@@ -1468,7 +1469,7 @@ namespace TAO::API
                     std::string strValue;
                     rContract >= strValue;
 
-                    strCode += debug::safe_printstr("caller.register.value(", strValue, ")");
+                    strCode += debug::safe_printstr("caller.register.value('", strValue, "')");
                     break;
                 }
 
