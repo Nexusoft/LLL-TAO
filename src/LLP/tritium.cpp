@@ -1140,7 +1140,7 @@ namespace LLP
                                     return debug::drop(NODE, "ACTION::SUBSCRIBE::NOTIFICATION disabled in -client mode");
 
                                 /* Set the best chain flag. */
-                                nNotifications |= SUBSCRIPTION::NOTIFICATION;
+                                nNotifications |= SUBSCRIPTION::REGISTER;
 
                                 /* Check that peer hasn't already subscribed to too many addresses, for overflow protection */
                                 if(vNotifications.size() == 10000)
@@ -1159,7 +1159,7 @@ namespace LLP
                                     return debug::drop(NODE, "ACTION::UNSUBSCRIBE::NOTIFICATION disabled in -client mode");
 
                                 /* Unset the bestchain flag. */
-                                nNotifications &= ~SUBSCRIPTION::NOTIFICATION;
+                                nNotifications &= ~SUBSCRIPTION::REGISTER;
 
                                 /* Remove the address from the notifications vector for this peer */
                                 vNotifications.erase(std::find(vNotifications.begin(), vNotifications.end(), hashAddress));
@@ -1170,7 +1170,7 @@ namespace LLP
                             else
                             {
                                 /* Unset the bestchain flag. */
-                                nSubscriptions &= ~SUBSCRIPTION::NOTIFICATION;
+                                nSubscriptions &= ~SUBSCRIPTION::REGISTER;
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::NOTIFICATION: ", hashAddress.ToString());
@@ -2376,7 +2376,7 @@ namespace LLP
                                     return true;
 
                                 /* Check for subscription. */
-                                if(!(nSubscriptions & SUBSCRIPTION::NOTIFICATION))
+                                if(!(nSubscriptions & SUBSCRIPTION::REGISTER))
                                     return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unsolicited notification");
 
                                 /* Get the  address . */
@@ -3730,7 +3730,7 @@ namespace LLP
         if(fSubscribe)
         {
             /* Set the flag. */
-            nSubscriptions |=  SUBSCRIPTION::NOTIFICATION;
+            nSubscriptions |=  SUBSCRIPTION::REGISTER;
 
             /* Store the address subscribed to so that we can validate when the peer sends us notifications */
             vNotifications.push_back(hashAddress);
@@ -4031,7 +4031,7 @@ namespace LLP
                             ssData >> hashTx;
 
                             /* Check subscription. */
-                            if(nNotifications & SUBSCRIPTION::NOTIFICATION)
+                            if(nNotifications & SUBSCRIPTION::REGISTER)
                             {
                                 /* Check that the address is one that has been subscribed to */
                                 if(std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())

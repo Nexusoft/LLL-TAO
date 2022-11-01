@@ -95,7 +95,6 @@ namespace LLP
                 NOTIFICATION  = 0x3b,
                 TRIGGER       = 0x3c,
                 REGISTER      = 0x3d,
-                P2PCONNECTION = 0x3e,
             };
         };
 
@@ -145,7 +144,7 @@ namespace LLP
                 LASTINDEX       = (1 << 7),
                 BESTCHAIN       = (1 << 8),
                 SIGCHAIN        = (1 << 9),
-                NOTIFICATION    = (1 << 10),
+                REGISTER        = (1 << 10),
             };
         };
 
