@@ -81,10 +81,6 @@ namespace TAO::API
             if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
                 continue;
 
-            /* Check the accounts match the where filter. */
-            if(!FilterObject(jParams, object))
-                continue;
-
             /* Get the token */
             const uint256_t hashToken =
                 object.get<uint256_t>("token");

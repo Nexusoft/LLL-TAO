@@ -260,17 +260,6 @@ namespace TAO::API
     }
 
 
-    /* Determines if an object or it's results should be included in list. */
-    bool FilterObject(const encoding::json& jParams, encoding::json &jCheck, TAO::Register::Object &rCheck)
-    {
-        /* Check for a where clause. */
-        if(jParams.find("where") == jParams.end())
-            return true; //no filters
-
-        return FilterStatement<TAO::Register::Object>(jParams["where"], jCheck, rCheck, EvaluateObject);
-    }
-
-
     /* Determines if an object should be included in a list based on input parameters. */
     bool FilterObject(const encoding::json& jParams, TAO::Register::Object &rObject)
     {
