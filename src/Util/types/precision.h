@@ -107,8 +107,9 @@ class precision_t
         ReplaceAll(strInteger, ".", "");
 
         /* Find how many figures we need to add. */
-        const uint64_t nMissingFigures =
-            math::pow(10, nDigits - nDigitsCheck);
+        uint64_t nMissingFigures = 1;
+        if(nDigits > nDigitsCheck)
+            nMissingFigures = math::pow(10, nDigits - nDigitsCheck);
 
         /* Convert our string to integer now. */
         nValue = (std::stoull(strInteger) * nMissingFigures);

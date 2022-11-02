@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/finance.h>
 
+#include <Util/types/precision.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -26,24 +28,27 @@ namespace TAO::API
         encoding::json jRet =
             RegisterToJSON(rObject, hashRegister);
 
-        /* Check for balance field. */
+        /* Get our figures to multiply by. */
+        const uint8_t nDecimals = GetDecimals(rObject);
+
+        /* Build our total precision_t object. */
+        precision_t dTotal =
+            precision_t(0.0, nDecimals).double_t();
+
+        /* Check for the stake field. */
+        if(jRet.find("stake") != jRet.end())
+            dTotal += precision_t(jRet["stake"].dump(), nDecimals);
+
+        /* Check for the balance field. */
         if(jRet.find("balance") != jRet.end())
-        {
-            /* Get our figures to multiply by. */
-            const uint64_t nFigures = GetFigures(rObject);
+            dTotal += precision_t(jRet["balance"].dump(), nDecimals);
 
-            /* Build an aggregate balance for accounts. */
-            uint64_t nAggregate = (jRet["balance"].get<double>() * nFigures);
-            if(jRet.find("stake") != jRet.end())
-                nAggregate += uint64_t(jRet["stake"].get<double>() * nFigures);
+        /* Check for the balance field. */
+        if(jRet.find("unconfirmed") != jRet.end())
+            dTotal += precision_t(jRet["unconfirmed"].dump(), nDecimals);
 
-            /* Check for unconfirmed aggregate balance. */
-            if(jRet.find("unconfirmed") != jRet.end())
-                nAggregate += uint64_t(jRet["unconfirmed"].get<double>() * nFigures);
-
-            /* Add our aggregate value key now. */
-            jRet["total"] = FormatBalance(nAggregate, rObject.get<uint256_t>("token"));
-        }
+        /* Add our aggregate value key now. */
+        jRet["total"] = dTotal.double_t();
 
         return jRet;
     }
