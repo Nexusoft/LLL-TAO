@@ -57,7 +57,7 @@ namespace config
     extern uint256_t hashNetworkOwner;
 
     /* Declare our arguments mutex. */
-    extern std::mutex ARGS_MUTEX;
+    extern std::recursive_mutex ARGS_MUTEX;
 
 
     /** InterpretNegativeSetting

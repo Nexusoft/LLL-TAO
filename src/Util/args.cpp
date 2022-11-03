@@ -56,7 +56,7 @@ namespace config
     uint256_t hashNetworkOwner;
 
     /* Declare our arguments mutex. */
-    std::mutex ARGS_MUTEX;
+    std::recursive_mutex ARGS_MUTEX;
 
     /* Give Opposite Argument Settings */
     void InterpretNegativeSetting(const std::string &name, std::map<std::string, std::string>& mapSettingsRet)
@@ -80,7 +80,7 @@ namespace config
     /* Parse the Argument Parameters */
     void ParseParameters(int argc, const char*const argv[])
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         for(int i = 1; i < argc; ++i)
         {
@@ -117,7 +117,7 @@ namespace config
     /* Return string argument or default value */
     std::string GetArg(const std::string& strArg, const std::string& strDefault)
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return mapArgs[strArg];
@@ -128,7 +128,7 @@ namespace config
     /* Return boolean if given argument is in map. */
     bool HasArg(const std::string& strArg)
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         return mapMultiArgs.count(strArg) || mapArgs.count(strArg);
     }
@@ -137,7 +137,7 @@ namespace config
     /* Return integer argument or default value. */
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return convert::atoi64(mapArgs[strArg]);
@@ -149,7 +149,7 @@ namespace config
     /* Return boolean argument or default value */
     bool GetBoolArg(const std::string& strArg, bool fDefault)
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
         {
@@ -166,7 +166,7 @@ namespace config
     /* Set an argument if it doesn't already have a value */
     bool SoftSetArg(const std::string& strArg, const std::string& strValue)
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return false;
@@ -210,7 +210,7 @@ namespace config
         if(GetBoolArg("-private", false))
         {
             {
-                LOCK(ARGS_MUTEX);
+                RECURSIVE(ARGS_MUTEX);
 
                 /* Set our hybrid value as PRIVATE in private mode. */
                 mapArgs["-hybrid"]  = ""; //delete hybrid parameters if supplied for testnet
@@ -228,7 +228,7 @@ namespace config
         /* Hybrid Mode: Sub-Network MainNet. USE FOR PRODUCTION. */
         else if(fHybrid.load())
         {
-            LOCK(ARGS_MUTEX);
+            RECURSIVE(ARGS_MUTEX);
 
             /* Grab our network owner. */
             const SecureString strOwner = mapArgs["-hybrid"].c_str();
@@ -240,7 +240,7 @@ namespace config
 
 
         {
-            LOCK(ARGS_MUTEX);
+            RECURSIVE(ARGS_MUTEX);
 
             /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
             const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];
@@ -275,7 +275,7 @@ namespace config
         /* Handle reading our activation data for transactions. */
         if(fHybrid.load() || fTestNet.load()) //this rule is only to activate private, hybrid, or testnets
         {
-            LOCK(ARGS_MUTEX);
+            RECURSIVE(ARGS_MUTEX);
 
             /* Handle for our market fees. */
             if(config::mapMultiArgs["-activatetx"].size() > 0)

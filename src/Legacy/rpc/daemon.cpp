@@ -56,7 +56,7 @@ namespace Legacy
 
         /* Update our config file now. */
         {
-            LOCK(config::ARGS_MUTEX);
+            RECURSIVE(config::ARGS_MUTEX);
             config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
         }
 
@@ -65,7 +65,7 @@ namespace Legacy
         {
             LLP::TRITIUM_SERVER->DisconnectAll();
 
-            LOCK(config::ARGS_MUTEX);
+            RECURSIVE(config::ARGS_MUTEX);
 
             /* Add connections and resolve potential DNS lookups. */
             for(const auto& address : config::mapMultiArgs["-connect"])

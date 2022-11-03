@@ -450,7 +450,7 @@ namespace LLD
                 debug::notice(FUNCTION, "-indexaddress enabled from valid indexes");
 
                 /* Set indexing argument now. */
-                LOCK(config::ARGS_MUTEX);
+                RECURSIVE(config::ARGS_MUTEX);
                 config::mapArgs["-indexaddress"] = "1";
             }
 

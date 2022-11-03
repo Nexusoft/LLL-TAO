@@ -35,7 +35,7 @@ namespace TAO::API
         /* Handle for our market fees. */
         if(config::HasArg("-marketfee"))
         {
-            LOCK(config::ARGS_MUTEX);
+            RECURSIVE(config::ARGS_MUTEX);
 
             /* Add connections and resolve potential DNS lookups. */
             for(const std::string& strFee : config::mapMultiArgs["-marketfee"])
