@@ -24,64 +24,69 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace Legacy
 {
+    /* stop"
+    *  Stop Nexus server */
+    encoding::json RPC::Stop(const encoding::json& params, const bool fHelp)
+    {
+        if(fHelp || params.size() != 0)
+            return std::string("stop - Stop Nexus server.");
+        // Shutdown will take long enough that the response should get back
+        Shutdown();
+        return "Nexus server stopping";
+    }
 
-        /* stop"
-        *  Stop Nexus server */
-        encoding::json RPC::Stop(const encoding::json& params, const bool fHelp)
+    /* getconnectioncount
+       Returns the number of connections to other nodes */
+    encoding::json RPC::GetConnectionCount(const encoding::json& params, const bool fHelp)
+    {
+        if(fHelp || params.size() != 0)
+            return std::string(
+                "getconnectioncount"
+                " - Returns the number of connections to other nodes.");
+
+        return GetTotalConnectionCount();
+    }
+
+    /* Restart all node connections */
+    encoding::json RPC::Reset(const encoding::json& params, const bool fHelp)
+    {
+        if(fHelp || params.size() != 0)
+            return std::string(
+                "reset - Restart all node connections");
+
+        /* Update our config file now. */
         {
-            if(fHelp || params.size() != 0)
-                return std::string("stop - Stop Nexus server.");
-            // Shutdown will take long enough that the response should get back
-            Shutdown();
-            return "Nexus server stopping";
-        }
-
-        /* getconnectioncount
-           Returns the number of connections to other nodes */
-        encoding::json RPC::GetConnectionCount(const encoding::json& params, const bool fHelp)
-        {
-            if(fHelp || params.size() != 0)
-                return std::string(
-                    "getconnectioncount"
-                    " - Returns the number of connections to other nodes.");
-
-            return GetTotalConnectionCount();
-        }
-
-        /* Restart all node connections */
-        encoding::json RPC::Reset(const encoding::json& params, const bool fHelp)
-        {
-            if(fHelp || params.size() != 0)
-                return std::string(
-                    "reset - Restart all node connections");
-
-            // read in any config file changes
+            LOCK(config::ARGS_MUTEX);
             config::ReadConfigFile(config::mapArgs, config::mapMultiArgs);
+        }
 
-            if(LLP::TRITIUM_SERVER)
+        /* Reset all of our peer connections. */
+        if(LLP::TRITIUM_SERVER)
+        {
+            LLP::TRITIUM_SERVER->DisconnectAll();
+
+            LOCK(config::ARGS_MUTEX);
+
+            /* Add connections and resolve potential DNS lookups. */
+            for(const auto& address : config::mapMultiArgs["-connect"])
             {
-                LLP::TRITIUM_SERVER->DisconnectAll();
+                /* Flag indicating connection was successful */
+                bool fConnected = false;
 
-                /* Add connections and resolve potential DNS lookups. */
-                for(const auto& address : config::mapMultiArgs["-connect"])
-                {
-                    /* Flag indicating connection was successful */
-                    bool fConnected = false;
+                /* First attempt SSL if configured */
+                if(LLP::TRITIUM_SERVER->SSLEnabled())
+                fConnected = LLP::TRITIUM_SERVER->AddConnection(address, LLP::TRITIUM_SERVER->GetPort(true), true, true);
 
-                    /* First attempt SSL if configured */
-                    if(LLP::TRITIUM_SERVER->SSLEnabled())
-                    fConnected = LLP::TRITIUM_SERVER->AddConnection(address, LLP::TRITIUM_SERVER->GetPort(true), true, true);
-
-                    /* If SSL connection failed or was not attempted and SSL is not required, attempt on the non-SSL port */
-                    if(!fConnected && !LLP::TRITIUM_SERVER->SSLRequired())
-                        fConnected = LLP::TRITIUM_SERVER->AddConnection(address, LLP::TRITIUM_SERVER->GetPort(false), false, true);
-                }
-
-                for(const auto& node : config::mapMultiArgs["-addnode"])
-                    LLP::TRITIUM_SERVER->AddNode(node);
-
+                /* If SSL connection failed or was not attempted and SSL is not required, attempt on the non-SSL port */
+                if(!fConnected && !LLP::TRITIUM_SERVER->SSLRequired())
+                    fConnected = LLP::TRITIUM_SERVER->AddConnection(address, LLP::TRITIUM_SERVER->GetPort(false), false, true);
             }
 
-            return "success";
+            for(const auto& node : config::mapMultiArgs["-addnode"])
+                LLP::TRITIUM_SERVER->AddNode(node);
+
         }
+
+        return "success";
+    }
 }

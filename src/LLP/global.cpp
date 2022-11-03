@@ -108,7 +108,7 @@ namespace LLP
 
 
         /* API_SERVER instance */
-        if((config::mapArgs.count("-apiuser") && config::mapArgs.count("-apipassword")) || !config::GetBoolArg("-apiauth", true))
+        if((config::HasArg("-apiuser") && config::HasArg("-apipassword")) || !config::GetBoolArg("-apiauth", true))
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetAPIPort());
@@ -135,7 +135,7 @@ namespace LLP
         else
         {
             /* Output our new warning message if the API was disabled. */
-            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!! WARNING !!! API DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!! WARNING !!! API SERVER DISABLED", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
         }
@@ -143,6 +143,7 @@ namespace LLP
 
         /* RPC_SERVER instance */
         #ifndef NO_WALLET
+        if(config::HasArg("-rpcuser") && config::HasArg("-rpcpassword"))
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetRPCPort());
@@ -165,6 +166,12 @@ namespace LLP
 
             /* Create the server instance. */
             RPC_SERVER = new Server<RPCNode>(CONFIG);
+        }
+        else
+        {
+            /* Output our new warning message if the API was disabled. */
+            debug::warning(ANSI_COLOR_BRIGHT_RED, "RPC SERVER DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set rpcuser=<user> and rpcpassword=<password> configuration.", ANSI_COLOR_RESET);
         }
         #endif
 

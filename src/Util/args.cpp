@@ -130,7 +130,7 @@ namespace config
     {
         LOCK(ARGS_MUTEX);
 
-        return mapArgs.count(strArg);
+        return mapMultiArgs.count(strArg) || mapArgs.count(strArg);
     }
 
 
@@ -155,7 +155,8 @@ namespace config
         {
             if(mapArgs[strArg].empty())
                 return true;
-            return (convert::atoi32(mapArgs[strArg]) != 0);
+
+            return (std::stoll(mapArgs[strArg]) != 0);
         }
 
         return fDefault;

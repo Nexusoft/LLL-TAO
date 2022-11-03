@@ -724,7 +724,7 @@ namespace TAO::Ledger
     /* Handles the creation of a private block chain. */
     void ThreadGenerator()
     {
-        if(!config::fHybrid.load() || !config::mapArgs.count("-generate"))
+        if(!config::fHybrid.load() || !config::HasArg("-generate"))
             return;
 
         /* Get the account. */

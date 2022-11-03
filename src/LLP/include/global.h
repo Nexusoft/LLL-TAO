@@ -69,30 +69,34 @@ namespace LLP
     void MakeConnections(Server<ProtocolType> *pServer)
     {
         /* -connect means try to establish a connection first. */
-        if(config::mapMultiArgs["-connect"].size() > 0)
+        if(config::HasArg("-connect"))
         {
+            LOCK(config::ARGS_MUTEX);
+
             /* Add connections and resolve potential DNS lookups. */
-            for(const auto& address : config::mapMultiArgs["-connect"])
+            for(const auto& rAddress : config::mapMultiArgs["-connect"])
             {
                 /* Flag indicating connection was successful */
                 bool fConnected = false;
 
                 /* First attempt SSL if configured */
                 if(pServer->SSLEnabled())
-                   fConnected = pServer->AddConnection(address, pServer->GetPort(true), true, true);
+                   fConnected = pServer->AddConnection(rAddress, pServer->GetPort(true), true, true);
 
                 /* If SSL connection failed or was not attempted and SSL is not required, attempt on the non-SSL port */
                 if(!fConnected && !pServer->SSLRequired())
-                    fConnected = pServer->AddConnection(address, pServer->GetPort(false), false, true);
+                    fConnected = pServer->AddConnection(rAddress, pServer->GetPort(false), false, true);
             }
         }
 
         /* -addnode means add to address manager and let it make connections. */
-        if(config::mapMultiArgs["-addnode"].size() > 0)
+        if(config::HasArg("-addnode"))
         {
+            LOCK(config::ARGS_MUTEX);
+
             /* Add nodes and resolve potential DNS lookups. */
-            for(const auto& node : config::mapMultiArgs["-addnode"])
-                pServer->AddNode(node, true);
+            for(const auto& rNode : config::mapMultiArgs["-addnode"])
+                pServer->AddNode(rNode, true);
         }
     }
 
