@@ -28,7 +28,7 @@ namespace convert
 {
     /** The maximum number of figures to use for decimal conversion and comparison. **/
     const uint8_t MAX_DIGITS = 8;
-    
+
 
     /* Break the Chain Age in Minutes into Days, Hours, and Minutes. */
     inline void i64todays(const uint64_t nAge, uint32_t &nDays, uint32_t &nHours, uint32_t &nMinutes)

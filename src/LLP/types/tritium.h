@@ -190,14 +190,6 @@ namespace LLP
         static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
 
 
-        /** Mutex for controlling access to the p2p requests map. **/
-        static std::mutex P2P_REQUESTS_MUTEX;
-
-
-        /** map of P2P request timestamps by source genesis hash. **/
-        static std::map<uint256_t, uint64_t> mapP2PRequests;
-
-
         /** Name
          *
          *  Returns a string for the name of this type of Node.

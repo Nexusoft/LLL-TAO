@@ -79,14 +79,6 @@ namespace LLP
     std::map<uint64_t, std::pair<uint32_t, uint32_t>> TritiumNode::mapSessions;
 
 
-    /** Mutex for controlling access to the p2p requests map. **/
-    std::mutex TritiumNode::P2P_REQUESTS_MUTEX;
-
-
-    /** map of P2P request timestamps by source genesis hash. **/
-    std::map<uint256_t, uint64_t> TritiumNode::mapP2PRequests;
-
-
     /* Declaration of block height at the start of last sync. */
     std::atomic<uint32_t> TritiumNode::nSyncStart(0);
 
