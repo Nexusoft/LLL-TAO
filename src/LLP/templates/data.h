@@ -186,7 +186,7 @@ namespace LLP
             try
             {
                 /* Create a new pointer on the heap. */
-                ProtocolType* pnode = new ProtocolType(nullptr, fDDOS, std::forward<Args>(args)...); //turn off DDOS for outgoing connections
+                ProtocolType* pnode = new ProtocolType(nullptr, false, std::forward<Args>(args)...); //turn off DDOS for outgoing connections
 
                 /* Set the SSL flag */
                 pnode->SetSSL(fSSL);
