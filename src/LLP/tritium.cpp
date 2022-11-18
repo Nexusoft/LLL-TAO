@@ -617,16 +617,20 @@ namespace LLP
                     }
                 }
 
-                /* Relay to subscribed nodes a new connection was seen. */
-                TRITIUM_SERVER->Relay
-                (
-                    ACTION::NOTIFY,
-                    uint8_t(TYPES::ADDRESS),
-                    BaseAddress(GetAddress())
-                );
-
                 /* Subscribe to address notifications only. */
                 Subscribe(SUBSCRIPTION::ADDRESS);
+
+                /* Relay our address if its an inbound connection. */
+                if(Incoming())
+                {
+                    /* Relay to subscribed nodes a new connection was seen. */
+                    TRITIUM_SERVER->Relay
+                    (
+                        ACTION::NOTIFY,
+                        uint8_t(TYPES::ADDRESS),
+                        BaseAddress(GetAddress())
+                    );
+                }
 
                 break;
             }
