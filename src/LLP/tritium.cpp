@@ -3102,7 +3102,7 @@ namespace LLP
                         else
                         {
                             /* Adjust our DDOS rscore here. */
-                            if(DDOS && (nConsecutiveFails > 2 || nConsecutiveOrphans > 2)) //third time is a charm
+                            if(fDDOS.load()) //third time is a charm
                                 DDOS->rSCORE += 250; //this is exhaustive attack, DDOS ban if being attempted
 
                             /* Check for obsolete transaction version and ban accordingly. */
@@ -3123,8 +3123,11 @@ namespace LLP
                 /* Check for failure limit on node. */
                 if(nConsecutiveFails >= 100)
                 {
-                    if(fDDOS)
-                        DDOS->Ban();
+                    if(fDDOS.load())
+                    {
+                        DDOS->Ban("TX::node reached failure limit");
+                        return true;
+                    }
 
                     return debug::drop(NODE, "TX::node reached failure limit");
                 }
@@ -3132,7 +3135,15 @@ namespace LLP
 
                 /* Check for orphan limit on node. */
                 if(nConsecutiveOrphans >= 100)
+                {
+                    if(fDDOS.load())
+                    {
+                        DDOS->Ban("TX::node reached ORPHAN limit");
+                        return true;
+                    }
+
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
+                }
 
                 break;
             }
