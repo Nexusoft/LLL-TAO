@@ -3101,6 +3101,10 @@ namespace LLP
                         }
                         else
                         {
+                            /* Adjust our DDOS rscore here. */
+                            if(DDOS && (nConsecutiveFails > 2 || nConsecutiveOrphans > 2)) //third time is a charm
+                                DDOS->rSCORE += 250; //this is exhaustive attack, DDOS ban if being attempted
+
                             /* Check for obsolete transaction version and ban accordingly. */
                             if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
                                 return debug::drop(NODE, "invalid transaction version, dropping node");
@@ -3121,7 +3125,7 @@ namespace LLP
                     return debug::drop(NODE, "TX::node reached failure limit");
 
                 /* Check for orphan limit on node. */
-                if(nConsecutiveOrphans >= 1000)
+                if(nConsecutiveOrphans >= 100)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;
