@@ -105,7 +105,7 @@ namespace LLP
 
 
         /** Default Constructor. **/
-        DataThread<ProtocolType>(uint32_t nID, bool ffDDOSIn, uint32_t rScore, uint32_t cScore,
+        DataThread<ProtocolType>(uint32_t nID, bool fDDOSIn, uint32_t rScore, uint32_t cScore,
                                  uint32_t nTimeout, bool fMeter = false);
 
 
@@ -186,7 +186,7 @@ namespace LLP
             try
             {
                 /* Create a new pointer on the heap. */
-                ProtocolType* pnode = new ProtocolType(nullptr, false, std::forward<Args>(args)...); //turn off DDOS for outgoing connections
+                ProtocolType* pnode = new ProtocolType(nullptr, fDDOS, std::forward<Args>(args)...); //turn off DDOS for outgoing connections
 
                 /* Set the SSL flag */
                 pnode->SetSSL(fSSL);

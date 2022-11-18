@@ -31,10 +31,10 @@ namespace LLP
 
     /** Default Constructor **/
     template <class ProtocolType>
-    DataThread<ProtocolType>::DataThread(uint32_t nID, bool ffDDOSIn,
+    DataThread<ProtocolType>::DataThread(uint32_t nID, bool fDDOSIn,
                                          uint32_t rScore, uint32_t cScore,
                                          uint32_t nTimeout, bool fMeter)
-    : fDDOS           (ffDDOSIn)
+    : fDDOS           (fDDOSIn)
     , fMETER          (fMeter)
     , fDestruct       (false)
     , nIncoming       (0)
