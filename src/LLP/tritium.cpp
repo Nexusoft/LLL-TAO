@@ -620,10 +620,10 @@ namespace LLP
                 /* Subscribe to address notifications only. */
                 Subscribe(SUBSCRIPTION::ADDRESS);
 
-                /* Relay our address if its an inbound connection. */
-                if(Incoming())
+                /* Relay this address if its an outbound connection. */
+                if(!Incoming())
                 {
-                    /* Relay to subscribed nodes a new connection was seen. */
+                    /* Relay to subscribed nodes a new connection was made. */
                     TRITIUM_SERVER->Relay
                     (
                         ACTION::NOTIFY,
@@ -3127,10 +3127,22 @@ namespace LLP
                 /* Check for failure limit on node. */
                 if(nConsecutiveFails >= 100)
                 {
-                    if(fDDOS.load())
+                    /* Disable this check if syncing. */
+                    if(fSynchronized.load())
                     {
-                        DDOS->Ban("TX::node reached failure limit");
-                        return true;
+                        /* Remove address on oubound connection. */
+                        if(!Incoming())
+                        {
+                            TRITIUM_SERVER->GetAddressManager()->RemoveAddress(addr);
+                            debug::log(0, NODE, ANSI_COLOR_BRIGHT_YELLOW, "BANNED: ", ANSI_COLOR_RESET, "address has reached failure limit");
+                        }
+
+                        /* Handle DDOS ban on consecutive fails. */
+                        if(fDDOS.load())
+                        {
+                            DDOS->Ban("TX::node reached failure limit");
+                            return true;
+                        }
                     }
 
                     return debug::drop(NODE, "TX::node reached failure limit");
@@ -3140,10 +3152,22 @@ namespace LLP
                 /* Check for orphan limit on node. */
                 if(nConsecutiveOrphans >= 100)
                 {
-                    if(fDDOS.load())
+                    /* Disable this check if syncing. */
+                    if(fSynchronized.load())
                     {
-                        DDOS->Ban("TX::node reached ORPHAN limit");
-                        return true;
+                        /* Remove address on oubound connection. */
+                        if(!Incoming())
+                        {
+                            TRITIUM_SERVER->GetAddressManager()->RemoveAddress(addr);
+                            debug::log(0, NODE, ANSI_COLOR_BRIGHT_YELLOW, "BANNED: ", ANSI_COLOR_RESET, "address has reached failure limit");
+                        }
+
+                        /* Handle DDOS ban on consecutive fails. */
+                        if(fDDOS.load())
+                        {
+                            DDOS->Ban("TX::node reached ORPHAN limit");
+                            return true;
+                        }
                     }
 
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
