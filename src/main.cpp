@@ -125,7 +125,7 @@ int main(int argc, char** argv)
 
 
     /* Hnalde manual connections for tritium server. */
-    LLP::MakeConnections<LLP::TritiumNode>(LLP::TIME_SERVER);
+    LLP::MakeConnections<LLP::TimeNode>(LLP::TIME_SERVER);
 
 
     #ifndef NO_WALLET
