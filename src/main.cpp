@@ -120,10 +120,14 @@ int main(int argc, char** argv)
         debug::log(0, FUNCTION, "Generated Path ", config::GetDataDir());
     }
 
-    /* Startup the time server. */    
+    /* Startup the time server. */
     LLP::TIME_SERVER = LLP::CreateTimeServer();
 
-    
+
+    /* Hnalde manual connections for tritium server. */
+    LLP::MakeConnections<LLP::TritiumNode>(LLP::TIME_SERVER);
+
+
     #ifndef NO_WALLET
     /* Set up RPC server */
     if(!config::fClient.load())
@@ -151,7 +155,7 @@ int main(int argc, char** argv)
 
         /* Register the user-configurable blocknotify function with the Ledger Dispatcher so that it is notififed whenever there is a new block*/
         TAO::Ledger::Dispatch::GetInstance().SubscribeBlock(BlockNotify);
-        
+
 
         /* We don't need the wallet in client mode. */
         if(!config::fClient.load())
@@ -200,13 +204,13 @@ int main(int argc, char** argv)
 
             /* Initialize the scripts for legacy mode. */
             Legacy::InitializeScripts();
-            
+
             #endif
         }
 
 
         /* Get the port for Tritium Server. Allow serverport or port params to be used (serverport takes preference)*/
-        uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT)); 
+        uint16_t nPort = static_cast<uint16_t>(config::GetArg(std::string("-port"), config::fTestNet.load() ? (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
         nPort = static_cast<uint16_t>(config::GetArg(std::string("-serverport"), nPort));
 
         uint16_t nSSLPort = static_cast<uint16_t>(config::GetArg(std::string("-sslport"), config::fTestNet.load() ? (TRITIUM_TESTNET_SSL_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_SSL_PORT));
