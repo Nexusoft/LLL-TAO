@@ -144,10 +144,10 @@ namespace LLP
         /* Calculate penalty. */
         uint32_t nPenalty = std::max(nTotalBans.load() * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), nTotalBans.load() * 1200u);
 
-        debug::drop("XXXXX DDOS Filter cScore = ", cSCORE.Score(),
+        debug::drop(ANSI_COLOR_BRIGHT_RED, "XXXXX DDOS Filter XXXXX: ", ANSI_COLOR_RESET, " cScore = ", cSCORE.Score(),
             " rScore = ", rSCORE.Score(),
             " Banned for ", nPenalty,
-            " Seconds. [VIOLATION: ", strViolation, "]");
+            " Seconds. ", ANSI_COLOR_BRIGHT_RED, "[VIOLATION: ", strViolation, "]", ANSI_COLOR_RESET);
 
         /* Set new timestamp. */
         nBanTimestamp.store(runtime::unifiedtimestamp() + nPenalty);
