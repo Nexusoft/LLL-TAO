@@ -256,7 +256,7 @@ namespace LLP
                         /* Remove a connection if it was banned by DDOS Protection. */
                         if(CONNECTION->DDOS->Banned())
                         {
-                            debug::log(0, ProtocolType::Name(), " BANNED: ", CONNECTION->GetAddress().ToString());
+                            debug::drop(ProtocolType::Name(), " BANNED: ", CONNECTION->GetAddress().ToString());
                             remove_connection_with_event(nIndex, DISCONNECT::DDOS);
                             continue;
                         }
