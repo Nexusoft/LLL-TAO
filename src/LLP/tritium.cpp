@@ -1326,6 +1326,10 @@ namespace LLP
                                 /* Loop through all available states. */
                                 for(auto& state : vStates)
                                 {
+                                    /* Check for shutdown. */
+                                    if(config::fShutdown.load())
+                                        return debug::drop(NODE, "shutdown requested, ACTION::LIST::BLOCK terminated");
+
                                     /* Update start every iteration. */
                                     hashStart = state.GetHash();
 
@@ -1481,6 +1485,10 @@ namespace LLP
                                     /* Loop through all available states. */
                                     for(const auto& tx : vtx)
                                     {
+                                        /* Check for shutdown. */
+                                        if(config::fShutdown.load())
+                                            return debug::drop(NODE, "shutdown requested, ACTION::LIST::TRANSACTION terminated");
+
                                         /* Get a copy of the hash. */
                                         uint512_t hash = tx.GetHash();
 
