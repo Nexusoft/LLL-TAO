@@ -505,7 +505,11 @@ namespace LLP
 
             WritePacket(NewMessage(nMsg, ssData));
 
-            debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+            /* Add to DDOS rSCORE. */
+            if(DDOS)
+                DDOS->rSCORE += 1;
+
+            //debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
         }
 
 
