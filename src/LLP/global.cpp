@@ -180,7 +180,7 @@ namespace LLP
         config.nDDOSRScore = 5;
 
         /* Calculate the rscore and cscore over a 10s moving average */
-        config.nDDOSTimespan = 2;
+        config.nDDOSTimespan = 5;
 
         /* Listen for incoming connections if unified is specified in config */
         config.fListen = config::fClient.load() ? false : config::GetBoolArg(std::string("-unified"), false);
