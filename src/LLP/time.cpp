@@ -177,7 +177,7 @@ namespace LLP
             RESPONSE.LENGTH = 4;
             RESPONSE.DATA   = convert::int2bytes(nOffset);
 
-            debug::log(4, NODE, "Sent offset ", nOffset);
+            debug::log(3, NODE, "Sent offset ", nOffset);
 
             if(++nRequests >= 10)
                 return debug::drop(NODE, "GET_OFFSET reached max request count ", nRequests.load());
@@ -188,7 +188,7 @@ namespace LLP
 
         /* Disable GET_ADDRESS for now. */
         if(PACKET.HEADER == GET_ADDRESS)
-            return true;
+            return debug::drop(NODE, "GET_ADDRESS is disabled for time server");
 
         /* Add a New Sample each Time Packet Arrives. */
         if(PACKET.HEADER == TIME_OFFSET)
@@ -242,7 +242,7 @@ namespace LLP
             return true;
         }
 
-        return true;
+        return debug::drop(NODE, "unknown packet header ", uint32_t(PACKET.HEADER));
     }
 
 
