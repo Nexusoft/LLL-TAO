@@ -165,6 +165,10 @@ namespace LLP
         /* Rspond with an offset. */
         if(PACKET.HEADER == GET_OFFSET)
         {
+            /* Check for inbound logic. */
+            if(!Incoming())
+                return debug::drop(NODE, "GET_OFFSET only for incoming");
+
             uint32_t nTimestamp  = convert::bytes2uint(PACKET.DATA);
             int32_t   nOffset    = (int32_t)(runtime::unifiedtimestamp() - nTimestamp);
 
@@ -174,6 +178,9 @@ namespace LLP
             RESPONSE.DATA   = convert::int2bytes(nOffset);
 
             debug::log(4, NODE, "Sent offset ", nOffset);
+
+            if(++nRequests >= 10)
+                return debug::drop(NODE, "GET_OFFSET reached max request count ", nRequests.load());
 
             WritePacket(RESPONSE);
             return true;
@@ -186,6 +193,10 @@ namespace LLP
         /* Add a New Sample each Time Packet Arrives. */
         if(PACKET.HEADER == TIME_OFFSET)
         {
+            /* Check for inbound logic. */
+            if(Incoming())
+                return debug::drop(NODE, "TIME_OFFSET disabled for incoming");
+
             /* Make sure request counter hasn't exceeded requested offsets. */
             if(--nRequests < 0)
             {
