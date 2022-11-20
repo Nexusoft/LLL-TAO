@@ -179,7 +179,7 @@ namespace LLP
 
             debug::log(3, NODE, "Sent offset ", nOffset);
 
-            if(++nRequests >= 10)
+            if(++nRequests >= 20)
                 return debug::drop(NODE, "GET_OFFSET reached max request count ", nRequests.load());
 
             WritePacket(RESPONSE);
