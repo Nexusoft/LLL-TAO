@@ -2661,7 +2661,8 @@ namespace LLP
                             }
 
                             /* Debug output. */
-                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
+                            if(addr.ToStringIP() != std::string("159.69.241.106"))
+                                debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
 
                             break;
                         }
