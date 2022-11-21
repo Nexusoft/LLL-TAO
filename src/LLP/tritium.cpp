@@ -1459,6 +1459,9 @@ namespace LLP
                         /* Standard type for a block. */
                         case TYPES::TRANSACTION:
                         {
+                            /* Disable this for now. */
+                            return debug::drop(NODE, "TYPES::TRANSACTION is unsupported for ACTION::LIST");
+
                             /* Get the index of block. */
                             uint512_t hashStart;
                             ssPacket >> hashStart;
@@ -1522,6 +1525,10 @@ namespace LLP
                                     /* Loop through all available states. */
                                     for(const auto& tx : vtx)
                                     {
+                                        /* Check for shutdown. */
+                                        if(config::fShutdown.load())
+                                            return debug::drop(NODE, "shutdown requested, ACTION::LIST::TRANSACTION terminated");
+
                                         /* Get a copy of the hash. */
                                         uint512_t hash = tx.GetHash();
 
