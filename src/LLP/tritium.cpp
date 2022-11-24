@@ -569,7 +569,7 @@ namespace LLP
                 {
                     LOCK(SESSIONS_MUTEX);
                     if(mapSessions.count(nSessionCheck))
-                        return debug::drop(NODE, "duplicate connection");
+                        return false;
 
                     /* Set this to the current session. */
                     mapSessions[nSessionCheck] = std::make_pair(nDataThread, nDataIndex);
@@ -726,6 +726,9 @@ namespace LLP
             /* Positive AUTH response. */
             case RESPONSE::AUTHORIZED:
             {
+                if(Incoming())
+                    return debug::drop(NODE, "RESPONSE::AUTHORIZED can only be on outgoing connections");
+
                 /* Grab the genesis. */
                 uint256_t hashGenesis;
                 ssPacket >> hashGenesis;
@@ -793,6 +796,8 @@ namespace LLP
                         }
                     }
                 }
+                else
+                    return debug::drop(NODE, "RESPONSE::AUTHORIZED unsolicited message for non -client");
 
                 break;
             }
@@ -1653,12 +1658,12 @@ namespace LLP
                             /* Check for empty hash start. */
                             bool fGenesis = (hashStart == 0);
                             if(hashStart == 0 && !LLD::Ledger->ReadGenesis(hashSigchain, hashStart))
-                                break;
+                                return debug::drop(NODE, "missing hash start for genesis ", hashSigchain.SubString());
 
                             /* Check for empty hash stop. */
                             uint512_t hashThis;
                             if(hashThis == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashThis, TAO::Ledger::FLAGS::MEMPOOL))
-                                break;
+                                return debug::drop(NODE, "missing hash end for genesis ", hashSigchain.SubString());
 
                             /* Read sigchain entries. */
                             std::vector<TAO::Ledger::MerkleTx> vtx;
@@ -1956,6 +1961,8 @@ namespace LLP
                                             TAO::Ledger::TritiumBlock block(state);
                                             PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
                                         }
+                                        else
+                                            debug::drop(NODE, "asked for producer with no valid block");
                                     }
                                     else
                                         PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
@@ -3512,6 +3519,8 @@ namespace LLP
 
             case ACTION::REQUEST:
             {
+                return debug::drop(NODE, "ACTION::REQUEST command is unavailable");
+
                 /* deserialize the type */
                 uint8_t nType;
                 ssPacket >> nType;
