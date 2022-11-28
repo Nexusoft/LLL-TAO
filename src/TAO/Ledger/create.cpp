@@ -136,17 +136,11 @@ namespace TAO
                 }
             }
 
-
-
             /* Set the transaction version based on the timestamp. The transaction version is current version
                unless an activation is pending */
-            uint32_t nCurrent = CurrentTransactionVersion();
-            if(TransactionVersionActive(tx.nTimestamp, nCurrent))
-                tx.nVersion = nCurrent;
-            else
-                tx.nVersion = nCurrent - 1;
 
             /* Genesis Transaction. */
+            tx.nVersion = 4;
             tx.NextHash(user->Generate(tx.nSequence + 1, pin), tx.nNextType);
             tx.hashGenesis = user->Genesis();
 
