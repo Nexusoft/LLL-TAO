@@ -1328,8 +1328,13 @@ namespace LLP
                                 /* Loop through all available states. */
                                 //for(auto& state : vStates)
                                 {
+                                    /* Break if we fail to read our block. */
                                     if(!LLD::Ledger->ReadBlock(hashStart, state))
-                                        return debug::drop(NODE, "failed to read starting block");
+                                        return debug::drop(NODE, "failed to read ", hashStart.SubString());
+
+                                    /* Break if we are the best chain. */
+                                    if(state.hashNextBlock == 0)
+                                        break;
 
                                     /* Update start every iteration. */
                                     hashStart = state.hashNextBlock;
