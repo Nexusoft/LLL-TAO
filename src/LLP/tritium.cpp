@@ -237,8 +237,8 @@ namespace LLP
                 nLastPing    = runtime::unifiedtimestamp();
 
                 /* We need to set flag based on ChainState::Synchronizing() as this will vary based on testnet settings */
-                if(!fSynchronized.load())
-                    fSynchronized.store(!TAO::Ledger::ChainState::Synchronizing());
+                //if(!fSynchronized.load())
+                //    fSynchronized.store(!TAO::Ledger::ChainState::Synchronizing());
 
                 /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
@@ -1211,7 +1211,7 @@ namespace LLP
                 int32_t nLimits = 3001;
 
                 /* Loop through the binary stream. */
-                //while(!ssPacket.End() && nLimits != 0)
+                while(!ssPacket.End() && nLimits != 0)
                 {
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
@@ -1312,7 +1312,9 @@ namespace LLP
                             ssPacket >> hashStop;
 
                             /* Keep track of the last state. */
-                            TAO::Ledger::BlockState state;
+                            TAO::Ledger::BlockState stateLast;
+                            if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
+                                return debug::drop(NODE, "failed to read starting block");
 
                             /* Do a sequential read to obtain the list.
                                3000 seems to be the optimal amount to overcome higher-latency connections during sync. */
@@ -1328,16 +1330,19 @@ namespace LLP
                                 /* Loop through all available states. */
                                 //for(auto& state : vStates)
                                 {
-                                    /* Break if we are the best chain. */
-                                    if(state.hashNextBlock == 0)
-                                        break;
-                                        
                                     /* Break if we fail to read our block. */
-                                    if(!LLD::Ledger->ReadBlock(hashStart, state))
-                                        return debug::drop(NODE, "failed to read ", hashStart.SubString());
+                                    TAO::Ledger::BlockState state;
+                                    if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                                    {
+                                        nLimits = 0;
+                                        break;
+                                    }
 
                                     /* Update start every iteration. */
-                                    hashStart = state.hashNextBlock;
+                                    hashStart = state.GetHash();
+
+                                    /* Cache the block hash. */
+                                    stateLast = state;
 
                                     /* Handle for special sync block type specifier. */
                                     if(fSyncBlock)
@@ -1432,7 +1437,7 @@ namespace LLP
 
                             /* Check for last subscription. */
                             if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), fBufferFull.load() ? state.hashPrevBlock : hashStart);
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), fBufferFull.load() ? stateLast.hashPrevBlock : hashStart);
 
                             break;
                         }
