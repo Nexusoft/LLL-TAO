@@ -1211,7 +1211,7 @@ namespace LLP
                 int32_t nLimits = 3001;
 
                 /* Loop through the binary stream. */
-                while(!ssPacket.End() && nLimits != 0)
+                //while(!ssPacket.End() && nLimits != 0)
                 {
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
@@ -1318,42 +1318,24 @@ namespace LLP
 
                             /* Do a sequential read to obtain the list.
                                3000 seems to be the optimal amount to overcome higher-latency connections during sync. */
-                            int32_t nBatchSize = config::GetArg("-syncbatchsize", 3000);
+                            //int32_t nBatchSize = config::GetArg("-syncbatchsize", 3000);
 
-                            std::vector<TAO::Ledger::BlockState> vStates;
-                            while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop && LLD::Ledger->BatchRead(hashStart, "block", vStates, nBatchSize, true))
+                            //std::vector<TAO::Ledger::BlockState> vStates;
+                            while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop)
                             {
+                                /* Check for shutdown. */
+                                if(config::fShutdown.load())
+                                    return debug::drop(NODE, "shutdown requested, ACTION::LIST::BLOCK terminated");
+
                                 /* Loop through all available states. */
-                                for(auto& state : vStates)
+                                //for(auto& state : vStates)
                                 {
-                                    /* Check for shutdown. */
-                                    if(config::fShutdown.load())
-                                        return debug::drop(NODE, "shutdown requested, ACTION::LIST::BLOCK terminated");
+                                    TAO::Ledger::BlockState state;
+                                    if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                                        return debug::drop(NODE, "failed to read starting block");
 
                                     /* Update start every iteration. */
                                     hashStart = state.GetHash();
-
-                                    /* Skip if not in main chain. */
-                                    if(!state.IsInMainChain())
-                                        continue;
-
-                                    /* Check for matching hashes. */
-                                    if(state.hashPrevBlock != stateLast.GetHash())
-                                    {
-                                        if(config::nVerbose >= 3)
-                                            debug::log(3, FUNCTION, "Reading block ", stateLast.hashNextBlock.SubString());
-
-                                        /* Read the correct block from next index. */
-                                        if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
-                                        {
-                                            debug::log(3, FUNCTION, "Failed to read block ", stateLast.hashNextBlock.SubString());
-                                            nLimits = 0;
-                                            break;
-                                        }
-
-                                        /* Update hashStart. */
-                                        hashStart = state.GetHash();
-                                    }
 
                                     /* Cache the block hash. */
                                     stateLast = state;
