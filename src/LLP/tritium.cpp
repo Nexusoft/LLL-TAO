@@ -1312,9 +1312,7 @@ namespace LLP
                             ssPacket >> hashStop;
 
                             /* Keep track of the last state. */
-                            TAO::Ledger::BlockState stateLast;
-                            if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
-                                return debug::drop(NODE, "failed to read starting block");
+                            TAO::Ledger::BlockState state;
 
                             /* Do a sequential read to obtain the list.
                                3000 seems to be the optimal amount to overcome higher-latency connections during sync. */
@@ -1330,15 +1328,11 @@ namespace LLP
                                 /* Loop through all available states. */
                                 //for(auto& state : vStates)
                                 {
-                                    TAO::Ledger::BlockState state;
-                                    if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                                    if(!LLD::Ledger->ReadBlock(hashStart, state))
                                         return debug::drop(NODE, "failed to read starting block");
 
                                     /* Update start every iteration. */
-                                    hashStart = state.GetHash();
-
-                                    /* Cache the block hash. */
-                                    stateLast = state;
+                                    hashStart = state.hashNextBlock;
 
                                     /* Handle for special sync block type specifier. */
                                     if(fSyncBlock)
@@ -1433,7 +1427,7 @@ namespace LLP
 
                             /* Check for last subscription. */
                             if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), fBufferFull.load() ? stateLast.hashPrevBlock : hashStart);
+                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), fBufferFull.load() ? state.hashPrevBlock : hashStart);
 
                             break;
                         }
