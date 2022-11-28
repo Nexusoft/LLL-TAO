@@ -1211,7 +1211,7 @@ namespace LLP
                 int32_t nLimits = 3001;
 
                 /* Loop through the binary stream. */
-                //if(!ssPacket.End() && nLimits != 0)
+                while(!ssPacket.End() && nLimits != 0)
                 {
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
