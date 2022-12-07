@@ -111,8 +111,13 @@ class precision_t
         if(nDigits > nDigitsCheck)
             nMissingFigures = math::pow(10, nDigits - nDigitsCheck);
 
+        /* Find how many figures we need to subtract. */
+        uint64_t nExtraFigures = 1;
+        if(nDigitsCheck > nDigits)
+            nExtraFigures = math::pow(10, nDigitsCheck - nDigits);
+
         /* Convert our string to integer now. */
-        nValue = (std::stoull(strInteger) * nMissingFigures);
+        nValue = (std::stoull(strInteger) * nMissingFigures) / nExtraFigures;
     }
 
 public:
