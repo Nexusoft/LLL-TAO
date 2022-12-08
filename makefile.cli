@@ -138,6 +138,10 @@ ifndef MINIUPNPC_LIB_PATH
 	endif
 endif
 
+ifdef DEBUG_MISSING
+	DEFS += -DDEBUG_MISSING
+endif
+
 #Oracle DB Support Config
 ifndef ORACLE
 	override ORACLE= 0

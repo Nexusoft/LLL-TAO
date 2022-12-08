@@ -31,6 +31,7 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+
     /** TritiumNode
      *
      *  A Node that processes packets and messages for the Tritium Server
@@ -43,6 +44,16 @@ namespace LLP
         /** Actions invoke behavior in remote node. **/
         struct ACTION
         {
+            /** Limit for maximum items that can be requested per packet. **/
+            static const uint32_t GET_MAX_ITEMS = 100;
+
+            /** Limit for maximum notifications that can be broadcast per packet. **/
+            static const uint32_t NOTIFY_MAX_ITEMS = 100;
+
+            /** Limit for maximum subscriptions that can be requested per packet. **/
+            static const uint32_t SUBSCRIBE_MAX_ITEMS = 16;
+
+            /* Message enumeration values. */
             enum : MessagePacket::message_t
             {
                 RESERVED     = 0,

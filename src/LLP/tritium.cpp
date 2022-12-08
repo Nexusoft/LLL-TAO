@@ -60,11 +60,6 @@ ________________________________________________________________________________
 #include <iomanip>
 #include <bitset>
 
-/* We use this to setup the node to start syncing from orphans with no transactions sent with blocks.
- * This helps with stress testing and debugging the missing transaction algorithms
- */
-//#define DEBUG_MISSING
-
 namespace LLP
 {
     /* Declaration of client mutex for synchronizing client mode transactions. */
@@ -803,11 +798,9 @@ namespace LLP
                     nUnsubscribed = 0;
                 }
 
-                /* Set the limits. */
-                int32_t nLimits = 16;
-
-                /* Loop through the binary stream. */
-                while(!ssPacket.End() && nLimits-- > 0)
+                /* Set our max items we can get to 100 per packet. */
+                uint32_t nLimits = 0;
+                while(!ssPacket.End() && ++nLimits <= ACTION::SUBSCRIBE_MAX_ITEMS)
                 {
                     /* Read the type. */
                     uint8_t nType = 0;
@@ -1764,9 +1757,9 @@ namespace LLP
             /* Handle for get command. */
             case ACTION::GET:
             {
-                /* Loop through the binary stream. 3000 seems to be the optimal amount to overcome higher-latency connections during sync */
-                int32_t nLimits = 3000;
-                while(!ssPacket.End() && --nLimits > 0)
+                /* Set our max items we can get to 100 per packet. */
+                uint32_t nLimits = 0;
+                while(!ssPacket.End() && ++nLimits <= ACTION::GET_MAX_ITEMS)
                 {
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
@@ -2251,10 +2244,9 @@ namespace LLP
                 /* Create response data stream. */
                 DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
-                /* Loop through the binary stream.
-                   3000 seems to be the optimal amount to overcome higher-latency connections during sync */
-                int32_t nLimits = 3000;
-                while(!ssPacket.End() && --nLimits > 0)
+                /* Set our max limits to 100 notifications per packet. */
+                uint32_t nLimits = 0;
+                while(!ssPacket.End() && ++nLimits <= ACTION::NOTIFY_MAX_ITEMS)
                 {
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
@@ -2778,10 +2770,21 @@ namespace LLP
                         /* Check for missing transactions. */
                         if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         {
+                            /* Check for repeated missing loops. */
+                            if(fDDOS.load())
+                            {
+                                /* Iterate a failure for missing transactions. */
+                                nConsecutiveFails += block.vMissing.size();
+
+                                /* Bump DDOS score. */
+                                DDOS->rSCORE += (block.vMissing.size() * 10);
+                            }
+
                             /* Create response data stream. */
                             DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
                             /* Create a list of requested transactions. */
+                            uint32_t nTotalItems = 0;
                             for(const auto& tx : block.vMissing)
                             {
                                 /* Check for legacy. */
@@ -2793,25 +2796,25 @@ namespace LLP
 
                                 /* Log the missing data. */
                                 debug::log(0, FUNCTION, "requesting missing tx ", tx.second.SubString());
+
+                                /* Check if we need to create new protocol message. */
+                                if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
+                                {
+                                    debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items");
+
+                                    /* Write our packet with our total items. */
+                                    WritePacket(NewMessage(ACTION::GET, ssResponse));
+
+                                    /* Clear our response data. */
+                                    ssResponse.clear();
+
+                                    /* Reset our counters. */
+                                    nTotalItems = 0;
+                                }
                             }
 
-                            /* Check for repeated missing loops. */
-                            if(fDDOS.load())
-                            {
-                                /* Iterate a failure for missing transactions. */
-                                nConsecutiveFails += block.vMissing.size();
-
-                                /* Bump DDOS score. */
-                                DDOS->rSCORE += (block.vMissing.size() * 10);
-                            }
-
-
-                            /* Ask for the block again last TODO: this can be cached for further optimization. */
-                            ssResponse << uint8_t(TYPES::BLOCK) << block.hashMissing;
-
-                            /* Push the packet response. */
-                            if(ssResponse.size() != 0)
-                                WritePacket(NewMessage(ACTION::GET, ssResponse));
+                            /* Request our missing block last. */
+                            PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
                         }
 
                         /* Check for duplicate and ask for previous block. */

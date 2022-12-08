@@ -24,12 +24,10 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-
     /* Register Layer namespace. */
     namespace Register
     {
-
-        /* Verify the pre-states of a register to current network state. */
+        /* Rollback to the pre-states of a register to reset current network state. */
         bool Rollback(const TAO::Operation::Contract& contract, const uint8_t nFlags)
         {
             /* Reset the contract streams. */
