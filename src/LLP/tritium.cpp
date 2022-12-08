@@ -1199,574 +1199,556 @@ namespace LLP
                 /* Set the limits. 3000 seems to be the optimal amount to overcome higher-latency connections during sync */
                 int32_t nLimits = 3001;
 
-                /* Loop through the binary stream. */
-                while(!ssPacket.End() && nLimits != 0)
+                /* Get the next type in stream. */
+                uint8_t nType = 0;
+                ssPacket >> nType;
+
+                /* Check for legacy or transactions specifiers. */
+                bool fLegacy = false, fTransactions = false, fSyncBlock = false, fClientBlock = false;
+                if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS
+                || nType == SPECIFIER::SYNC   || nType == SPECIFIER::CLIENT)
                 {
-                    /* Get the next type in stream. */
-                    uint8_t nType = 0;
+                    /* Set specifiers. */
+                    fLegacy       = (nType == SPECIFIER::LEGACY);
+                    fTransactions = (nType == SPECIFIER::TRANSACTIONS);
+                    fSyncBlock    = (nType == SPECIFIER::SYNC);
+                    fClientBlock  = (nType == SPECIFIER::CLIENT);
+
+                    /* Go to next type in stream. */
                     ssPacket >> nType;
+                }
 
-                    /* Check for legacy or transactions specifiers. */
-                    bool fLegacy = false, fTransactions = false, fSyncBlock = false, fClientBlock = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS
-                    || nType == SPECIFIER::SYNC   || nType == SPECIFIER::CLIENT)
+                /* Switch based on codes. */
+                switch(nType)
+                {
+                    /* Standard type for a block. */
+                    case TYPES::BLOCK:
                     {
-                        /* Set specifiers. */
-                        fLegacy       = (nType == SPECIFIER::LEGACY);
-                        fTransactions = (nType == SPECIFIER::TRANSACTIONS);
-                        fSyncBlock    = (nType == SPECIFIER::SYNC);
-                        fClientBlock  = (nType == SPECIFIER::CLIENT);
+                        /* Get the index of block. */
+                        uint1024_t hashStart;
 
-                        /* Go to next type in stream. */
-                        ssPacket >> nType;
-                    }
+                        /* Get the object type. */
+                        uint8_t nObject = 0;
+                        ssPacket >> nObject;
 
-                    /* Switch based on codes. */
-                    switch(nType)
-                    {
-                        /* Standard type for a block. */
-                        case TYPES::BLOCK:
+                        /* Switch based on object. */
+                        switch(nObject)
                         {
-                            /* Get the index of block. */
-                            uint1024_t hashStart;
-
-                            /* Get the object type. */
-                            uint8_t nObject = 0;
-                            ssPacket >> nObject;
-
-                            /* Switch based on object. */
-                            switch(nObject)
+                            /* Check for start from uint1024 type. */
+                            case TYPES::UINT1024_T:
                             {
-                                /* Check for start from uint1024 type. */
-                                case TYPES::UINT1024_T:
-                                {
-                                    /* Deserialize start. */
-                                    ssPacket >> hashStart;
+                                /* Deserialize start. */
+                                ssPacket >> hashStart;
 
-                                    break;
-                                }
-
-                                /* Check for start from a locator. */
-                                case TYPES::LOCATOR:
-                                {
-                                    /* Deserialize locator. */
-                                    TAO::Ledger::Locator locator;
-                                    ssPacket >> locator;
-
-                                    /* Check locator size. */
-                                    uint32_t nSize = locator.vHave.size();
-                                    if(nSize > 30)
-                                        return debug::drop(NODE, "locator size ", nSize, " is too large");
-
-                                    /* Find common ancestor block. */
-                                    for(uint32_t n = 0; n < locator.vHave.size(); ++n)
-                                    {
-                                        /* Get a reference of our current locator. */
-                                        const uint1024_t& tHave = locator.vHave[n];
-
-                                        /* Check the database for the ancestor block. */
-                                        if(LLD::Ledger->HasBlock(tHave))
-                                        {
-                                            /* Check if locator found genesis. */
-                                            if(tHave != TAO::Ledger::ChainState::Genesis())
-                                            {
-                                                /* Grab the block that's found. */
-                                                TAO::Ledger::BlockState state;
-                                                if(!LLD::Ledger->ReadBlock(tHave, state))
-                                                    return debug::drop(NODE, "failed to read locator block");
-
-                                                /* Check for being in main chain. */
-                                                if(!state.IsInMainChain())
-                                                    continue;
-
-                                                hashStart = state.hashPrevBlock;
-                                            }
-                                            else //on genesis, don't revert to previous block
-                                                hashStart = tHave;
-
-                                            break;
-                                        }
-
-                                        /* Check if we are at genesis for better debug data. */
-                                        else if(n == locator.vHave.size() - 1)
-                                            return debug::drop
-                                            (
-                                                NODE, "ACTION::LIST: Locator: ", tHave.SubString(),
-                                                " has different Genesis: ", TAO::Ledger::ChainState::Genesis().SubString()
-                                            );
-                                    }
-
-                                    /* Debug output. */
-                                    if(config::nVerbose >= 3)
-                                        debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
-
-                                    break;
-                                }
-
-                                default:
-                                    return debug::drop(NODE, "malformed starting index");
+                                break;
                             }
 
-
-                            /* Get the ending hash. */
-                            uint1024_t hashStop;
-                            ssPacket >> hashStop;
-
-                            /* Keep track of the last state. */
-                            TAO::Ledger::BlockState stateLast;
-                            if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
-                                return debug::drop(NODE, "failed to read starting block ", VARIABLE(hashStart.SubString()));
-
-                            /* Do a sequential read to obtain the list.
-                               3000 seems to be the optimal amount to overcome higher-latency connections during sync. */
-                            int32_t nBatchSize = config::GetArg("-syncbatchsize", 3000);
-
-                            std::vector<TAO::Ledger::BlockState> vStates;
-                            while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop && LLD::Ledger->BatchRead(hashStart, "block", vStates, nBatchSize, true))
+                            /* Check for start from a locator. */
+                            case TYPES::LOCATOR:
                             {
-                                /* Loop through all available states. */
-                                for(auto& state : vStates)
+                                /* Deserialize locator. */
+                                TAO::Ledger::Locator locator;
+                                ssPacket >> locator;
+
+                                /* Check locator size. */
+                                uint32_t nSize = locator.vHave.size();
+                                if(nSize > 30)
+                                    return debug::drop(NODE, "locator size ", nSize, " is too large");
+
+                                /* Find common ancestor block. */
+                                for(uint32_t n = 0; n < locator.vHave.size(); ++n)
                                 {
-                                    /* Update start every iteration. */
-                                    hashStart = state.GetHash();
+                                    /* Get a reference of our current locator. */
+                                    const uint1024_t& tHave = locator.vHave[n];
 
-                                    /* Skip if not in main chain. */
-                                    if(!state.IsInMainChain())
-                                        continue;
-
-                                    /* Check for matching hashes. */
-                                    if(state.hashPrevBlock != stateLast.GetHash())
+                                    /* Check the database for the ancestor block. */
+                                    if(LLD::Ledger->HasBlock(tHave))
                                     {
-                                        if(config::nVerbose >= 3)
-                                            debug::log(3, FUNCTION, "Reading block ", stateLast.hashNextBlock.SubString());
-
-                                        /* Read the correct block from next index. */
-                                        if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                                        /* Check if locator found genesis. */
+                                        if(tHave != TAO::Ledger::ChainState::Genesis())
                                         {
-                                            debug::log(3, FUNCTION, "Failed to read block ", stateLast.hashNextBlock.SubString());
-                                            nLimits = 0;
-                                            break;
+                                            /* Grab the block that's found. */
+                                            TAO::Ledger::BlockState state;
+                                            if(!LLD::Ledger->ReadBlock(tHave, state))
+                                                return debug::drop(NODE, "failed to read locator block");
+
+                                            /* Check for being in main chain. */
+                                            if(!state.IsInMainChain())
+                                                continue;
+
+                                            hashStart = state.hashPrevBlock;
                                         }
-
-                                        /* Update hashStart. */
-                                        hashStart = state.GetHash();
-                                    }
-
-                                    /* Cache the block hash. */
-                                    stateLast = state;
-
-                                    /* Handle for special sync block type specifier. */
-                                    if(fSyncBlock)
-                                    {
-                                        /* Build the sync block from state. */
-                                        TAO::Ledger::SyncBlock block(state);
-
-                                        /* Push message in response. */
-                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
-                                    }
-
-                                    /* Handle for a client block header. */
-                                    else if(fClientBlock)
-                                    {
-                                        /* Build the client block from state. */
-                                        TAO::Ledger::ClientBlock block(state);
-
-                                        /* Push message in response. */
-                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
-                                    }
-                                    else
-                                    {
-                                        /* Check for version to send correct type */
-                                        if(state.nVersion < 7)
-                                        {
-                                            /* Build the legacy block from state. */
-                                            Legacy::LegacyBlock block(state);
-
-                                            /* Push message in response. */
-                                            PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::LEGACY), block);
-                                        }
-                                        else
-                                        {
-                                            /* Build the legacy block from state. */
-                                            TAO::Ledger::TritiumBlock block(state);
-
-                                            /* Check for transactions. */
-                                            if(fTransactions)
-                                            {
-                                                /* Loop through transactions. */
-                                                for(const auto& proof : block.vtx)
-                                                {
-                                                    /* Basic checks for legacy transactions. */
-                                                    if(proof.first == TAO::Ledger::TRANSACTION::LEGACY)
-                                                    {
-                                                        /* Check the memory pool. */
-                                                        Legacy::Transaction tx;
-                                                        if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                                            continue;
-
-                                                        /* Push message of transaction. */
-                                                        PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
-                                                    }
-
-                                                    /* Basic checks for tritium transactions. */
-                                                    else if(proof.first == TAO::Ledger::TRANSACTION::TRITIUM)
-                                                    {
-                                                        /* Check the memory pool. */
-                                                        TAO::Ledger::Transaction tx;
-                                                        if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                                            continue;
-
-
-                                                        /* Push message of transaction. */
-                                                        PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
-                                                    }
-                                                }
-                                            }
-
-                                            /* Push message in response. */
-                                            PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
-                                        }
-                                    }
-
-                                    /* Check for stop hash. */
-                                    if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
-                                    {
-                                        /* Regular debug for normal limits */
-                                        if(config::nVerbose >= 3)
-                                        {
-                                            /* Special message for full write buffers. */
-                                            if(fBufferFull.load())
-                                                debug::log(3, FUNCTION, "Buffer is FULL ", Buffered(), " bytes");
-
-                                            debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
-                                        }
+                                        else //on genesis, don't revert to previous block
+                                            hashStart = tHave;
 
                                         break;
                                     }
+
+                                    /* Check if we are at genesis for better debug data. */
+                                    else if(n == locator.vHave.size() - 1)
+                                        return debug::drop
+                                        (
+                                            NODE, "ACTION::LIST: Locator: ", tHave.SubString(),
+                                            " has different Genesis: ", TAO::Ledger::ChainState::Genesis().SubString()
+                                        );
                                 }
+
+                                /* Debug output. */
+                                if(config::nVerbose >= 3)
+                                    debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
+
+                                break;
                             }
 
-                            /* Check for last subscription. */
-                            if(nNotifications & SUBSCRIPTION::LASTINDEX)
-                                PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), fBufferFull.load() ? stateLast.hashPrevBlock : hashStart);
-
-                            break;
+                            default:
+                                return debug::drop(NODE, "malformed starting index");
                         }
 
-                        /* Standard type for a block. */
-                        case TYPES::TRANSACTION:
+
+                        /* Get the ending hash. */
+                        uint1024_t hashStop;
+                        ssPacket >> hashStop;
+
+                        /* Keep track of the last state. */
+                        TAO::Ledger::BlockState stateLast;
+                        if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
+                            return debug::drop(NODE, "failed to read starting block");
+
+                        /* Loop until we have read all the blocks up to limits. */
+                        while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop)
                         {
-                            /* Get the index of block. */
-                            uint512_t hashStart;
-                            ssPacket >> hashStart;
+                            /* Check for shutdown. */
+                            if(config::fShutdown.load())
+                                return debug::drop(NODE, "shutdown requested, ACTION::LIST::BLOCK terminated");
 
-                            /* Get the ending hash. */
-                            uint512_t hashStop;
-                            ssPacket >> hashStop;
-
-                            /* Check for invalid specifiers. */
-                            if(fTransactions)
-                                return debug::drop(NODE, "cannot use SPECIFIER::TRANSACTIONS for transaction lists");
-
-                            /* Check for invalid specifiers. */
-                            if(fSyncBlock)
-                                return debug::drop(NODE, "cannot use SPECIFIER::SYNC for transaction lists");
-
-                            /* Check for legacy. */
-                            if(fLegacy)
+                            /* Break if we fail to read our block. */
+                            TAO::Ledger::BlockState state;
+                            if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
                             {
-                                /* Do a sequential read to obtain the list. */
-                                std::vector<Legacy::Transaction> vtx;
-                                while(LLD::Legacy->BatchRead(hashStart, "tx", vtx, 100))
-                                {
-                                    /* Loop through all available states. */
-                                    for(const auto& tx : vtx)
-                                    {
-                                        /* Get a copy of the hash. */
-                                        uint512_t hash = tx.GetHash();
+                                nLimits = 0;
+                                break;
+                            }
 
-                                        /* Check if indexed. */
-                                        if(!LLD::Ledger->HasIndex(hash))
-                                            continue;
+                            /* Update start every iteration. */
+                            hashStart = state.GetHash();
 
-                                        /* Cache the block hash. */
-                                        hashStart = hash;
+                            /* Cache the block hash. */
+                            stateLast = state;
 
-                                        /* Push the transaction. */
-                                        PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+                            /* Handle for special sync block type specifier. */
+                            if(fSyncBlock)
+                            {
+                                /* Build the sync block from state. */
+                                TAO::Ledger::SyncBlock block(state);
 
-                                        /* Check for stop hash. */
-                                        if(--nLimits == 0 || hashStart == hashStop || fBufferFull.load())
-                                            break;
-                                    }
+                                /* Push message in response. */
+                                PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
+                            }
 
-                                    /* Check for stop or limits. */
-                                    if(nLimits == 0 || hashStart == hashStop || fBufferFull.load())
-                                        break;
-                                }
+                            /* Handle for a client block header. */
+                            else if(fClientBlock)
+                            {
+                                /* Build the client block from state. */
+                                TAO::Ledger::ClientBlock block(state);
+
+                                /* Push message in response. */
+                                PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
                             }
                             else
                             {
-
-                                /* Do a sequential read to obtain the list. */
-                                std::vector<TAO::Ledger::Transaction> vtx;
-                                while(LLD::Ledger->BatchRead(hashStart, "tx", vtx, 100))
+                                /* Check for version to send correct type */
+                                if(state.nVersion < 7)
                                 {
-                                    /* Loop through all available states. */
-                                    for(const auto& tx : vtx)
+                                    /* Build the legacy block from state. */
+                                    Legacy::LegacyBlock block(state);
+
+                                    /* Push message in response. */
+                                    PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::LEGACY), block);
+                                }
+                                else
+                                {
+                                    /* Build the legacy block from state. */
+                                    TAO::Ledger::TritiumBlock block(state);
+
+                                    /* Check for transactions. */
+                                    if(fTransactions)
                                     {
-                                        /* Get a copy of the hash. */
-                                        uint512_t hash = tx.GetHash();
+                                        /* Loop through transactions. */
+                                        for(const auto& proof : block.vtx)
+                                        {
+                                            /* Basic checks for legacy transactions. */
+                                            if(proof.first == TAO::Ledger::TRANSACTION::LEGACY)
+                                            {
+                                                /* Check the memory pool. */
+                                                Legacy::Transaction tx;
+                                                if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                                    continue;
 
-                                        /* Check if indexed. */
-                                        if(!LLD::Ledger->HasIndex(hash))
-                                            continue;
+                                                /* Push message of transaction. */
+                                                PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+                                            }
 
-                                        /* Cache the block hash. */
-                                        hashStart = hash;
+                                            /* Basic checks for tritium transactions. */
+                                            else if(proof.first == TAO::Ledger::TRANSACTION::TRITIUM)
+                                            {
+                                                /* Check the memory pool. */
+                                                TAO::Ledger::Transaction tx;
+                                                if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                                    continue;
 
-                                        /* Push the transaction. */
-                                        PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
 
-                                        /* Check for stop hash. */
-                                        if(--nLimits == 0 || hashStart == hashStop || fBufferFull.load())
-                                            break;
+                                                /* Push message of transaction. */
+                                                PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+                                            }
+                                        }
                                     }
 
-                                    /* Check for stop or limits. */
-                                    if(nLimits == 0 || hashStart == hashStop || fBufferFull.load())
+                                    /* Push message in response. */
+                                    PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
+                                }
+                            }
+
+                            /* Check for stop hash. */
+                            if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
+                            {
+                                /* Regular debug for normal limits */
+                                if(config::nVerbose >= 3)
+                                {
+                                    /* Special message for full write buffers. */
+                                    if(fBufferFull.load())
+                                        debug::log(3, FUNCTION, "Buffer is FULL ", Buffered(), " bytes");
+
+                                    debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
+                                }
+
+                                break;
+                            }
+                        }
+
+                        /* Check for last subscription. */
+                        if(nNotifications & SUBSCRIPTION::LASTINDEX)
+                            PushMessage(ACTION::NOTIFY, uint8_t(TYPES::LASTINDEX), uint8_t(TYPES::BLOCK), fBufferFull.load() ? stateLast.hashPrevBlock : hashStart);
+
+                        break;
+                    }
+
+                    /* Standard type for a block. */
+                    case TYPES::TRANSACTION:
+                    {
+                        /* Get the index of block. */
+                        uint512_t hashStart;
+                        ssPacket >> hashStart;
+
+                        /* Get the ending hash. */
+                        uint512_t hashStop;
+                        ssPacket >> hashStop;
+
+                        /* Check for invalid specifiers. */
+                        if(fTransactions)
+                            return debug::drop(NODE, "cannot use SPECIFIER::TRANSACTIONS for transaction lists");
+
+                        /* Check for invalid specifiers. */
+                        if(fSyncBlock)
+                            return debug::drop(NODE, "cannot use SPECIFIER::SYNC for transaction lists");
+
+                        /* Check for legacy. */
+                        if(fLegacy)
+                        {
+                            /* Do a sequential read to obtain the list. */
+                            std::vector<Legacy::Transaction> vtx;
+                            while(LLD::Legacy->BatchRead(hashStart, "tx", vtx, 100))
+                            {
+                                /* Loop through all available states. */
+                                for(const auto& tx : vtx)
+                                {
+                                    /* Get a copy of the hash. */
+                                    uint512_t hash = tx.GetHash();
+
+                                    /* Check if indexed. */
+                                    if(!LLD::Ledger->HasIndex(hash))
+                                        continue;
+
+                                    /* Cache the block hash. */
+                                    hashStart = hash;
+
+                                    /* Push the transaction. */
+                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+
+                                    /* Check for stop hash. */
+                                    if(--nLimits == 0 || hashStart == hashStop || fBufferFull.load())
                                         break;
                                 }
+
+                                /* Check for stop or limits. */
+                                if(nLimits == 0 || hashStart == hashStop || fBufferFull.load())
+                                    break;
                             }
-
-                            break;
                         }
-
-
-                        /* Standard type for a block. */
-                        case TYPES::ADDRESS:
+                        else
                         {
-                            /* Get the total list amount. */
-                            uint32_t nTotal;
-                            ssPacket >> nTotal;
 
-                            /* Check for size constraints. */
-                            if(nTotal > 10000)
+                            /* Do a sequential read to obtain the list. */
+                            std::vector<TAO::Ledger::Transaction> vtx;
+                            while(LLD::Ledger->BatchRead(hashStart, "tx", vtx, 100))
                             {
-                                /* Give penalties for size violation. */
-                                if(fDDOS.load())
-                                    DDOS->rSCORE += 20;
-
-                                /* Set value to max range. */
-                                nTotal = 10000;
-                            }
-
-                            /* Get addresses from manager. */
-                            std::vector<BaseAddress> vAddr;
-                            if(TRITIUM_SERVER->GetAddressManager())
-                                TRITIUM_SERVER->GetAddressManager()->GetAddresses(vAddr);
-
-                            /* Add the best 1000 (or less) addresses. */
-                            const uint32_t nCount = std::min((uint32_t)vAddr.size(), nTotal);
-                            for(uint32_t n = 0; n < nCount; ++n)
-                                PushMessage(TYPES::ADDRESS, vAddr[n]);
-
-                            break;
-                        }
-
-
-                        /* Standard type for a block. */
-                        case TYPES::MEMPOOL:
-                        {
-                            /* Get a list of transactions from mempool. */
-                            std::vector<uint512_t> vHashes;
-
-                            /* List tritium transactions if legacy isn't specified. */
-                            if(!fLegacy)
-                            {
-                                if(TAO::Ledger::mempool.List(vHashes, std::numeric_limits<uint32_t>::max(), false))
+                                /* Loop through all available states. */
+                                for(const auto& tx : vtx)
                                 {
-                                    /* Loop through the available hashes. */
-                                    for(const auto& hash : vHashes)
-                                    {
-                                        /* Get the transaction from memory pool. */
-                                        TAO::Ledger::Transaction tx;
-                                        if(!TAO::Ledger::mempool.Get(hash, tx))
-                                            break; //we don't want to add more dependants if this fails
+                                    /* Get a copy of the hash. */
+                                    uint512_t hash = tx.GetHash();
 
-                                        /* Push the transaction. */
-                                        PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
-                                    }
+                                    /* Check if indexed. */
+                                    if(!LLD::Ledger->HasIndex(hash))
+                                        continue;
+
+                                    /* Cache the block hash. */
+                                    hashStart = hash;
+
+                                    /* Push the transaction. */
+                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+
+                                    /* Check for stop hash. */
+                                    if(--nLimits == 0 || hashStart == hashStop || fBufferFull.load())
+                                        break;
                                 }
-                            }
 
-                            /* Get a list of legacy transactions from pool. */
-                            vHashes.clear();
-                            if(TAO::Ledger::mempool.List(vHashes, std::numeric_limits<uint32_t>::max(), true))
+                                /* Check for stop or limits. */
+                                if(nLimits == 0 || hashStart == hashStop || fBufferFull.load())
+                                    break;
+                            }
+                        }
+
+                        break;
+                    }
+
+
+                    /* Standard type for a block. */
+                    case TYPES::ADDRESS:
+                    {
+                        /* Get the total list amount. */
+                        uint32_t nTotal;
+                        ssPacket >> nTotal;
+
+                        /* Check for size constraints. */
+                        if(nTotal > 10000)
+                        {
+                            /* Give penalties for size violation. */
+                            if(fDDOS.load())
+                                DDOS->rSCORE += 20;
+
+                            /* Set value to max range. */
+                            nTotal = 10000;
+                        }
+
+                        /* Get addresses from manager. */
+                        std::vector<BaseAddress> vAddr;
+                        if(TRITIUM_SERVER->GetAddressManager())
+                            TRITIUM_SERVER->GetAddressManager()->GetAddresses(vAddr);
+
+                        /* Add the best 1000 (or less) addresses. */
+                        const uint32_t nCount = std::min((uint32_t)vAddr.size(), nTotal);
+                        for(uint32_t n = 0; n < nCount; ++n)
+                            PushMessage(TYPES::ADDRESS, vAddr[n]);
+
+                        break;
+                    }
+
+
+                    /* Standard type for a block. */
+                    case TYPES::MEMPOOL:
+                    {
+                        /* Get a list of transactions from mempool. */
+                        std::vector<uint512_t> vHashes;
+
+                        /* List tritium transactions if legacy isn't specified. */
+                        if(!fLegacy)
+                        {
+                            if(TAO::Ledger::mempool.List(vHashes, std::numeric_limits<uint32_t>::max(), false))
                             {
                                 /* Loop through the available hashes. */
                                 for(const auto& hash : vHashes)
                                 {
                                     /* Get the transaction from memory pool. */
-                                    Legacy::Transaction tx;
+                                    TAO::Ledger::Transaction tx;
                                     if(!TAO::Ledger::mempool.Get(hash, tx))
                                         break; //we don't want to add more dependants if this fails
 
                                     /* Push the transaction. */
-                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
                                 }
                             }
-
-                            break;
                         }
 
-
-                        /* Standard type for a sigchain listing. */
-                        case TYPES::SIGCHAIN:
+                        /* Get a list of legacy transactions from pool. */
+                        vHashes.clear();
+                        if(TAO::Ledger::mempool.List(vHashes, std::numeric_limits<uint32_t>::max(), true))
                         {
-                            /* Check for available protocol version. */
-                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
-                                return true;
-
-                            /* Get the sigchain-id. */
-                            uint256_t hashSigchain;
-                            ssPacket >> hashSigchain;
-
-                            /* Get the txid to list from */
-                            uint512_t hashStart;
-                            ssPacket >> hashStart;
-
-                            /* Check for empty hash start. */
-                            bool fGenesis = (hashStart == 0);
-                            if(hashStart == 0 && !LLD::Ledger->ReadFirst(hashSigchain, hashStart))
-                                break;
-
-                            /* Check for empty hash stop. */
-                            uint512_t hashThis;
-                            if(hashThis == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashThis, TAO::Ledger::FLAGS::MEMPOOL))
-                                break;
-
-                            /* Read sigchain entries. */
-                            std::vector<TAO::Ledger::MerkleTx> vtx;
-                            while(!config::fShutdown.load())
+                            /* Loop through the available hashes. */
+                            for(const auto& hash : vHashes)
                             {
-                                /* Check for genesis. */
-                                if(!fGenesis && hashStart == hashThis)
+                                /* Get the transaction from memory pool. */
+                                Legacy::Transaction tx;
+                                if(!TAO::Ledger::mempool.Get(hash, tx))
+                                    break; //we don't want to add more dependants if this fails
+
+                                /* Push the transaction. */
+                                PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+                            }
+                        }
+
+                        break;
+                    }
+
+
+                    /* Standard type for a sigchain listing. */
+                    case TYPES::SIGCHAIN:
+                    {
+                        /* Check for available protocol version. */
+                        if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                            return true;
+
+                        /* Get the sigchain-id. */
+                        uint256_t hashSigchain;
+                        ssPacket >> hashSigchain;
+
+                        /* Get the txid to list from */
+                        uint512_t hashStart;
+                        ssPacket >> hashStart;
+
+                        /* Check for empty hash start. */
+                        bool fGenesis = (hashStart == 0);
+                        if(hashStart == 0 && !LLD::Ledger->ReadFirst(hashSigchain, hashStart))
+                            break;
+
+                        /* Check for empty hash stop. */
+                        uint512_t hashThis;
+                        if(hashThis == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashThis, TAO::Ledger::FLAGS::MEMPOOL))
+                            break;
+
+                        /* Read sigchain entries. */
+                        std::vector<TAO::Ledger::MerkleTx> vtx;
+                        while(!config::fShutdown.load())
+                        {
+                            /* Check for genesis. */
+                            if(!fGenesis && hashStart == hashThis)
+                                break;
+
+                            /* Read from disk. */
+                            TAO::Ledger::Transaction tx;
+                            if(!LLD::Ledger->ReadTx(hashThis, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Build a markle transaction. */
+                            TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                            /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                            if(!TAO::Ledger::mempool.Has(hashThis))
+                                merkle.BuildMerkleBranch();
+
+                            /* Insert into container. */
+                            vtx.push_back(merkle);
+
+                            /* Check for genesis. */
+                            if(fGenesis && hashStart == hashThis)
+                                break;
+
+                            hashThis = tx.hashPrevTx;
+                        }
+
+                        /* Reverse container to message forward. */
+                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                            PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
+
+                        break;
+                    }
+
+
+                    /* Standard type for a sigchain listing. */
+                    case TYPES::NOTIFICATION:
+                    {
+                        /* Check for available protocol version. */
+                        if(nProtocolVersion < MIN_TRITIUM_VERSION)
+                            return true;
+
+                        /* Get the sigchain-id. */
+                        uint256_t hashSigchain;
+                        ssPacket >> hashSigchain;
+
+                        /* Get the txid to list from */
+                        uint512_t hashStart;
+                        ssPacket >> hashStart;
+
+                        /* Get the last event */
+                        debug::log(1, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
+
+                        /* Check for legacy. */
+                        uint32_t nSequence = 0;
+                        if(fLegacy)
+                        {
+                            std::vector<Legacy::MerkleTx> vtx;
+                            LLD::Legacy->ReadSequence(hashSigchain, nSequence);
+
+                            /* Look back through all events to find those that are not yet processed. */
+                            Legacy::Transaction tx;
+                            while(LLD::Legacy->ReadEvent(hashSigchain, --nSequence, tx))
+                            {
+                                /* Check to see if we have reached the requested start point */
+                                if(hashStart == tx.GetHash())
                                     break;
 
-                                /* Read from disk. */
-                                TAO::Ledger::Transaction tx;
-                                if(!LLD::Ledger->ReadTx(hashThis, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                /* Build a markle transaction. */
+                                Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
+                                merkle.BuildMerkleBranch();
+
+                                /* Insert into container. */
+                                vtx.push_back(merkle);
+                            }
+
+                            /* Reverse container to message forward. */
+                            for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::LEGACY), (*tx));
+                        }
+                        else
+                        {
+                            std::vector<TAO::Ledger::MerkleTx> vtx;
+                            if(!LLD::Ledger->ReadSequence(hashSigchain, nSequence))
+                                nSequence = 0;
+
+                            /* Look back through all events to find those that are not yet processed. */
+                            TAO::Ledger::Transaction tx;
+                            while(LLD::Ledger->ReadEvent(hashSigchain, --nSequence, tx))
+                            {
+                                /* Check to see if we have reached the requested start point */
+                                if(hashStart == tx.GetHash())
                                     break;
 
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-
-                                /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
-                                if(!TAO::Ledger::mempool.Has(hashThis))
-                                    merkle.BuildMerkleBranch();
+                                merkle.BuildMerkleBranch();
 
                                 /* Insert into container. */
                                 vtx.push_back(merkle);
-
-                                /* Check for genesis. */
-                                if(fGenesis && hashStart == hashThis)
-                                    break;
-
-                                hashThis = tx.hashPrevTx;
                             }
 
                             /* Reverse container to message forward. */
                             for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                                 PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
-
-                            break;
                         }
 
 
-                        /* Standard type for a sigchain listing. */
-                        case TYPES::NOTIFICATION:
-                        {
-                            /* Check for available protocol version. */
-                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
-                                return true;
 
-                            /* Get the sigchain-id. */
-                            uint256_t hashSigchain;
-                            ssPacket >> hashSigchain;
-
-                            /* Get the txid to list from */
-                            uint512_t hashStart;
-                            ssPacket >> hashStart;
-
-                            /* Get the last event */
-                            debug::log(1, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
-
-                            /* Check for legacy. */
-                            uint32_t nSequence = 0;
-                            if(fLegacy)
-                            {
-                                std::vector<Legacy::MerkleTx> vtx;
-                                LLD::Legacy->ReadSequence(hashSigchain, nSequence);
-
-                                /* Look back through all events to find those that are not yet processed. */
-                                Legacy::Transaction tx;
-                                while(LLD::Legacy->ReadEvent(hashSigchain, --nSequence, tx))
-                                {
-                                    /* Check to see if we have reached the requested start point */
-                                    if(hashStart == tx.GetHash())
-                                        break;
-
-                                    /* Build a markle transaction. */
-                                    Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
-                                    merkle.BuildMerkleBranch();
-
-                                    /* Insert into container. */
-                                    vtx.push_back(merkle);
-                                }
-
-                                /* Reverse container to message forward. */
-                                for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
-                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::LEGACY), (*tx));
-                            }
-                            else
-                            {
-                                std::vector<TAO::Ledger::MerkleTx> vtx;
-                                if(!LLD::Ledger->ReadSequence(hashSigchain, nSequence))
-                                    nSequence = 0;
-
-                                /* Look back through all events to find those that are not yet processed. */
-                                TAO::Ledger::Transaction tx;
-                                while(LLD::Ledger->ReadEvent(hashSigchain, --nSequence, tx))
-                                {
-                                    /* Check to see if we have reached the requested start point */
-                                    if(hashStart == tx.GetHash())
-                                        break;
-
-                                    /* Build a markle transaction. */
-                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-                                    merkle.BuildMerkleBranch();
-
-                                    /* Insert into container. */
-                                    vtx.push_back(merkle);
-                                }
-
-                                /* Reverse container to message forward. */
-                                for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
-                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
-                            }
-
-
-
-                            break;
-                        }
-
-
-                        /* Catch malformed notify binary streams. */
-                        default:
-                            return debug::drop(NODE, "ACTION::LIST malformed binary stream");
+                        break;
                     }
+
+
+                    /* Catch malformed notify binary streams. */
+                    default:
+                        return debug::drop(NODE, "ACTION::LIST malformed binary stream");
                 }
+
+                /* Check that packet was read completely. */
+                if(!ssPacket.End())
+                    return debug::drop(NODE, "ACTION::LIST extra binary data than expected");
 
                 /* Check for trigger nonce. */
                 if(nTriggerNonce != 0)
