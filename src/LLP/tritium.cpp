@@ -800,8 +800,12 @@ namespace LLP
 
                 /* Set our max items we can get to 100 per packet. */
                 uint32_t nLimits = 0;
-                while(!ssPacket.End() && ++nLimits <= ACTION::SUBSCRIBE_MAX_ITEMS)
+                while(!ssPacket.End())
                 {
+                    /* Check our internal limits now. */
+                    if(++nLimits > ACTION::SUBSCRIBE_MAX_ITEMS)
+                        return debug::drop(NODE, "ACTION::SUBSCRIBE_MAX_ITEMS reached ", VARIABLE(nLimits));
+
                     /* Read the type. */
                     uint8_t nType = 0;
                     ssPacket >> nType;
@@ -1739,10 +1743,6 @@ namespace LLP
                         return debug::drop(NODE, "ACTION::LIST malformed binary stream");
                 }
 
-                /* Check that packet was read completely. */
-                if(!ssPacket.End())
-                    return debug::drop(NODE, "ACTION::LIST extra binary data than expected");
-
                 /* Check for trigger nonce. */
                 if(nTriggerNonce != 0)
                 {
@@ -1759,8 +1759,12 @@ namespace LLP
             {
                 /* Set our max items we can get to 100 per packet. */
                 uint32_t nLimits = 0;
-                while(!ssPacket.End() && ++nLimits <= ACTION::GET_MAX_ITEMS)
+                while(!ssPacket.End())
                 {
+                    /* We want to drop this connection if exceeding our limits for now. */
+                    if(++nLimits > ACTION::GET_MAX_ITEMS)
+                        return debug::drop(NODE, "ACTION::GET_MAX_ITEMS reached ", VARIABLE(nLimits));
+
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
                     ssPacket >> nType;
@@ -2246,8 +2250,12 @@ namespace LLP
 
                 /* Set our max limits to 100 notifications per packet. */
                 uint32_t nLimits = 0;
-                while(!ssPacket.End() && ++nLimits <= ACTION::NOTIFY_MAX_ITEMS)
+                while(!ssPacket.End())
                 {
+                    /* We want to drop this connection if exceeding our limits for now. */
+                    if(++nLimits > ACTION::NOTIFY_MAX_ITEMS)
+                        return debug::drop(NODE, "ACTION::NOTIFY_MAX_ITEMS reached ", VARIABLE(nLimits));
+
                     /* Get the next type in stream. */
                     uint8_t nType = 0;
                     ssPacket >> nType;
