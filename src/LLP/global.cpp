@@ -135,7 +135,7 @@ namespace LLP
         else
         {
             /* Output our new warning message if the API was disabled. */
-            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!! WARNING !!! API SERVER DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "API SERVER DISABLED", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
         }
@@ -170,7 +170,7 @@ namespace LLP
         else
         {
             /* Output our new warning message if the API was disabled. */
-            debug::warning(ANSI_COLOR_BRIGHT_RED, "RPC SERVER DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "RPC SERVER DISABLED", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set rpcuser=<user> and rpcpassword=<password> configuration.", ANSI_COLOR_RESET);
         }
         #endif
