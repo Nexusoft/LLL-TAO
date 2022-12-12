@@ -253,13 +253,20 @@ namespace TAO::API
 
 
     /* Get the genesis-id of the given caller using session. */
-    uint256_t Authentication::Caller(const uint256_t& hashSession)
+    uint256_t Authentication::Caller(const uint256_t& hashSession, const bool fThrow)
     {
         RECURSIVE(MUTEX);
 
         /* Check for active session. */
         if(!mapSessions.count(hashSession))
-            throw Exception(-11, "Session not found");
+        {
+            /* Handle if we want to throw. */
+            if(fThrow)
+                throw Exception(-11, "Session not found");
+
+            return uint256_t(0);
+        }
+
 
         /* Get a copy of our current active session. */
         const Session& rSession =
@@ -267,26 +274,6 @@ namespace TAO::API
 
         /* Set the caller from our session data. */
         return rSession.Genesis();
-    }
-
-
-    /* Get the genesis-id of the given caller using session. */
-    bool Authentication::Caller(uint256_t &hashGenesis, const uint256_t& hashSession)
-    {
-        RECURSIVE(MUTEX);
-
-        /* Check for active session. */
-        if(!mapSessions.count(hashSession))
-            return false;
-
-        /* Get a copy of our current active session. */
-        const Session& rSession =
-            mapSessions[hashSession];
-
-        /* Set the caller from our session data. */
-        hashGenesis = rSession.Genesis();
-
-        return true;
     }
 
 

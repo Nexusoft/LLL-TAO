@@ -898,8 +898,7 @@ namespace TAO
             else
             {
                 /* We want this to trigger for times not in -client mode. */
-                uint256_t hashSigchain = 0;
-                if(!config::fClient.load() || (TAO::API::Authentication::Caller(hashSigchain) && hashGenesis == hashSigchain))
+                if(!config::fClient.load() || TAO::API::Authentication::Active(hashGenesis))
                 {
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;
