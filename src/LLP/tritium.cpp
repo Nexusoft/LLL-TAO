@@ -1194,7 +1194,7 @@ namespace LLP
                     return true; //gracefully ignore these for now since there is no current way for remote nodes to know we are in client mode
 
                 /* Set the limits. 3000 seems to be the optimal amount to overcome higher-latency connections during sync */
-                int32_t nLimits = 3001;
+                int32_t nLimits = 3000;
 
                 /* Get the next type in stream. */
                 uint8_t nType = 0;

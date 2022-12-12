@@ -86,7 +86,7 @@ namespace LLD
             /* Create new client database if enabled. */
             Client    = new ClientDB(
                             FLAGS::CREATE | FLAGS::FORCE,
-                            77773);
+                            1000000);
         }
 
         /* Handle database recovery mode. */
