@@ -474,6 +474,18 @@ namespace TAO::API
         static uint256_t Caller(const uint256_t& hashSession = default_session());
 
 
+        /** Caller
+         *
+         *  Get the genesis-id of the given caller using session. Return false if not found.
+         *
+         *  @param[in] hashSession The session-id to extract genesis from.
+         *
+         *  @return the caller if found
+         *
+         **/
+        static bool Caller(uint256_t &hashGenesis, const uint256_t& hashSession = default_session());
+
+
         /** Credentials
          *
          *  Get an instance of current session credentials indexed by session-id.

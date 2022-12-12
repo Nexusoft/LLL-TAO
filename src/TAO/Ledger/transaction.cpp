@@ -897,13 +897,9 @@ namespace TAO
             }
             else
             {
-                /* We want to track the sigchain logged in so we can enforce certain rules for our own sigchain. */
-                uint256_t hashSigchain = 0;
-                if(config::fClient.load())
-                    hashSigchain = TAO::API::Authentication::Caller();
-
                 /* We want this to trigger for times not in -client mode. */
-                if(!config::fClient.load() || hashGenesis == hashSigchain)
+                uint256_t hashSigchain = 0;
+                if(!config::fClient.load() || (TAO::API::Authentication::Caller(hashSigchain) && hashGenesis == hashSigchain))
                 {
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;

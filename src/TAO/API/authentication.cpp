@@ -270,6 +270,26 @@ namespace TAO::API
     }
 
 
+    /* Get the genesis-id of the given caller using session. */
+    bool Authentication::Caller(uint256_t &hashGenesis, const uint256_t& hashSession)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Check for active session. */
+        if(!mapSessions.count(hashSession))
+            return false;
+
+        /* Get a copy of our current active session. */
+        const Session& rSession =
+            mapSessions[hashSession];
+
+        /* Set the caller from our session data. */
+        hashGenesis = rSession.Genesis();
+
+        return true;
+    }
+
+
     /* Determine if a sigchain is unlocked for given actions. */
     bool Authentication::Unlocked(const encoding::json& jParams, uint8_t &nRequestedActions)
     {
