@@ -241,18 +241,18 @@ namespace LLD
                         debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
                         LLP::TritiumNode::BlockingMessage(10000, pNode.get(), LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::REGISTER), hashRegister);
                         debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
-
-                        /* Check for state in lookup map. */
-                        if(pLookup && pLookup->count(hashRegister))
-                        {
-                            /* Get the state from lookup memory. */
-                            state = pLookup->at(hashRegister).first;
-
-                            return true;
-                        }
                     }
                     else
                         return debug::error(FUNCTION, "no connections available...");
+                }
+
+                /* Check for state in lookup map. */
+                if(pLookup && pLookup->count(hashRegister))
+                {
+                    /* Get the state from lookup memory. */
+                    state = pLookup->at(hashRegister).first;
+
+                    return true;
                 }
             }
         }
