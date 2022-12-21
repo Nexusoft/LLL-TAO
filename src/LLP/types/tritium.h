@@ -121,6 +121,7 @@ namespace LLP
                 SYNC         = 0x42, //specify a sync block type
                 TRANSACTIONS = 0x43, //specify to send memory transactions first
                 CLIENT       = 0x44, //specify for blocks to be sent and received for clients
+                REGISTER     = 0x45, //specify that a register is being received and should only keep memory of it.
             };
         };
 

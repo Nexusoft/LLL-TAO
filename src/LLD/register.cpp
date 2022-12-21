@@ -32,11 +32,15 @@ namespace LLD
     , nBucketsIn
     , nCacheIn)
 
-    , MEMORY_MUTEX()
-    , pMemory(nullptr)
-    , pMiner(nullptr)
-    , pCommit(new RegisterTransaction())
+    , MEMORY  ( )
+    , pMemory (nullptr)
+    , pMiner  (nullptr)
+    , pCommit (new RegisterTransaction())
+    , pLookup (nullptr)
     {
+        /* Add a register cache if in client mode. */
+        if(config::fClient.load())
+            pLookup = new RegisterCache();
     }
 
 
@@ -54,6 +58,10 @@ namespace LLD
         /* Cleanup commited states. */
         if(pCommit)
             delete pCommit;
+
+        /* Cleanup lookup states. */
+        if(pLookup)
+            delete pLookup;
     }
 
 
@@ -65,7 +73,7 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Check for memory mode. */
             if(pMemory)
@@ -82,9 +90,22 @@ namespace LLD
 
             return true;
         }
+        else if(nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        {
+            LOCK(MEMORY);
+
+            /* Check for lookup mode. */
+            if(pLookup)
+            {
+                /* Insert into lookup map. */
+                pLookup->insert(std::make_pair(hashRegister, std::make_pair(state, runtime::unifiedtimestamp())));
+
+                return true;
+            }
+        }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Check for memory mode. */
             if(pMiner)
@@ -94,7 +115,7 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Remove the memory state if writing the disk state. */
             if(pCommit->mapStates.count(hashRegister))
@@ -113,6 +134,10 @@ namespace LLD
                         pCommit->mapStates.erase(hashRegister);
                 }
             }
+
+            /* Check for lookup state that will be overwritten. */
+            if(pLookup && pLookup->count(hashRegister))
+                pLookup->erase(hashRegister);
 
             /* Quit when erasing. */
             if(nFlags == TAO::Ledger::FLAGS::ERASE)
@@ -145,13 +170,22 @@ namespace LLD
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL ||
            nFlags == TAO::Ledger::FLAGS::LOOKUP)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Check for a memory transaction first */
             if(pMemory && pMemory->mapStates.count(hashRegister))
             {
                 /* Get the state from temporary transaction. */
                 state = pMemory->mapStates[hashRegister];
+
+                return true;
+            }
+
+            /* Check for state in lookup map. */
+            if(pLookup && pLookup->count(hashRegister))
+            {
+                /* Get the state from lookup memory. */
+                state = pLookup->at(hashRegister).first;
 
                 return true;
             }
@@ -167,7 +201,7 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Check for a memory transaction first */
             if(pMiner && pMiner->mapStates.count(hashRegister))
@@ -182,25 +216,16 @@ namespace LLD
         /* Handle lookup if requested. */
         if(nFlags == TAO::Ledger::FLAGS::LOOKUP && config::fClient.load())
         {
-            uint64_t nExpires = 0;
+            /* Get current timestamp. */
+            const uint64_t nTimestamp =
+                runtime::unifiedtimestamp();
 
-            /* Check for missing register. */
-            bool fExpired = false, fHas = HasState(hashRegister, TAO::Ledger::FLAGS::MEMPOOL);
-            if(fHas)
-            {
-                /* Check for a localdb index. */
-                if(LLD::Local->ReadExpiration(hashRegister, nExpires))
-                {
-                    /* Check expiration timestamp. */
-                    if(runtime::unifiedtimestamp() > nExpires)
-                        fExpired = true;
-                }
-                else
-                    fExpired = true;
-            }
+            /* Check if our cache has expired. */
+            const bool fCached  = (pLookup && pLookup->count(hashRegister));
+            const bool fExpired = (fCached && (pLookup->at(hashRegister).second + 600 < nTimestamp));
 
             /* Check for expired or missing. */
-            if(!fHas || fExpired)
+            if(fExpired || !fCached)
             {
                 /* Check for genesis. */
                 if(LLP::TRITIUM_SERVER)
@@ -210,15 +235,21 @@ namespace LLD
                     {
                         /* Handle expired. */
                         if(fExpired)
-                            debug::log(0, FUNCTION, "EXPIRED: Cache is out of date by ", (runtime::unifiedtimestamp() - nExpires), " seconds");
-
-                        /* Write new expiration. */
-                        LLD::Local->WriteExpiration(hashRegister, runtime::unifiedtimestamp() + 600); //10 minute expiration
+                            debug::warning(0, FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
 
                         /* Request the sig chain. */
                         debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
-                        LLP::TritiumNode::BlockingMessage(5000, pNode.get(), LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::REGISTER), hashRegister);
+                        LLP::TritiumNode::BlockingMessage(10000, pNode.get(), LLP::TritiumNode::ACTION::GET, uint8_t(LLP::TritiumNode::TYPES::REGISTER), hashRegister);
                         debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
+
+                        /* Check for state in lookup map. */
+                        if(pLookup && pLookup->count(hashRegister))
+                        {
+                            /* Get the state from lookup memory. */
+                            state = pLookup->at(hashRegister).first;
+
+                            return true;
+                        }
                     }
                     else
                         return debug::error(FUNCTION, "no connections available...");
@@ -246,7 +277,7 @@ namespace LLD
         /* Check for memory transaction. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Check for available states. */
             if(pMemory)
@@ -264,7 +295,7 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Erase from memory if on block. */
             if(pCommit->mapStates.count(hashRegister))
@@ -333,7 +364,7 @@ namespace LLD
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Remove the memory state if writing the disk state. */
             if(pCommit->mapStates.count(hashRegister))
@@ -355,7 +386,7 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Check for a memory transaction first */
             if(pMemory && pMemory->mapStates.count(hashRegister))
@@ -377,7 +408,7 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Check for a memory transaction first */
             if(pMiner && pMiner->mapStates.count(hashRegister))
@@ -408,9 +439,9 @@ namespace LLD
     bool RegisterDB::HasState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Check internal memory state. */
             if(pMemory && pMemory->mapStates.count(hashRegister))
@@ -422,7 +453,7 @@ namespace LLD
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
         {
-            LOCK(MEMORY_MUTEX);
+            LOCK(MEMORY);
 
             /* Check internal memory state. */
             if(pMiner && pMiner->mapStates.count(hashRegister))
@@ -576,7 +607,7 @@ namespace LLD
     /* Begin a memory transaction following ACID properties. */
     void RegisterDB::MemoryBegin(const uint8_t nFlags)
     {
-        LOCK(MEMORY_MUTEX);
+        LOCK(MEMORY);
 
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
@@ -601,7 +632,7 @@ namespace LLD
     /* Abort a memory transaction following ACID properties. */
     void RegisterDB::MemoryRelease(const uint8_t nFlags)
     {
-        LOCK(MEMORY_MUTEX);
+        LOCK(MEMORY);
 
         /* Check for miner. */
         if(nFlags == TAO::Ledger::FLAGS::MINER)
@@ -626,7 +657,7 @@ namespace LLD
     /* Commit a memory transaction following ACID properties. */
     void RegisterDB::MemoryCommit()
     {
-        LOCK(MEMORY_MUTEX);
+        LOCK(MEMORY);
 
         /* Abort the current memory mode. */
         if(pMemory)

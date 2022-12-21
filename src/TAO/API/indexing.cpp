@@ -404,22 +404,18 @@ namespace TAO::API
                         std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
                         if(pNode != nullptr)
                         {
-                            debug::log(1, FUNCTION, "CLIENT MODE: Synchronizing client");
+                            debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing client");
 
                             /* Get the last txid in sigchain. */
                             uint512_t hashLast;
-                            LLD::Ledger->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
+                            LLD::Logical->ReadLast(hashGenesis, hashLast); //NOTE: we don't care if it fails here, because zero means begin
 
                             /* Request the sig chain. */
-                            debug::log(1, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+                            debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
 
-                            LLP::TritiumNode::BlockingMessage(30000, pNode.get(), LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast);
+                            //LLP::TritiumNode::BlockingMessage(30000, pNode.get(), LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast);
 
-                            debug::log(1, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
-
-                            /* Grab list of notifications. */
-                            pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis);
-                            pNode->PushMessage(LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis);
+                            debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
                         }
                         else
                             debug::error(FUNCTION, "no connections available...");

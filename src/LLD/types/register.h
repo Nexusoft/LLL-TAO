@@ -27,6 +27,9 @@ ________________________________________________________________________________
 
 namespace LLD
 {
+    /** Type to handle internal FLAGS::LOOKUP cache entries. **/
+    typedef std::map<uint256_t, std::pair<TAO::Register::State, uint64_t>> RegisterCache;
+
 
     /** RegisterTransaction
      *
@@ -56,7 +59,7 @@ namespace LLD
     {
 
         /** Memory mutex to lock when accessing internal memory states. **/
-        std::mutex MEMORY_MUTEX;
+        std::mutex MEMORY;
 
 
         /** Register transaction to track current open transaction. **/
@@ -69,6 +72,10 @@ namespace LLD
 
         /** Register transaction to keep open all commited data. **/
         RegisterTransaction* pCommit;
+
+
+        /** Register cache to keep lookup data in memory. **/
+        RegisterCache* pLookup;
 
 
     public:

@@ -2086,7 +2086,7 @@ namespace LLP
                                         merkle.BuildMerkleBranch();
 
                                     /* Send off the transaction to remote node. */
-                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::REGISTER), merkle);
 
                                     debug::log(0, NODE, "ACTION::GET: Using INDEX CACHE for ", hashRegister.SubString());
 
@@ -2199,7 +2199,7 @@ namespace LLP
                                                 merkle.BuildMerkleBranch();
 
                                             /* Send off the transaction to remote node. */
-                                            PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                                            PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::REGISTER), merkle);
 
                                             /* Build indexes for optimized processing. */
                                             debug::log(0, NODE, "ACTION::GET: Update INDEX for register ", hashAddress.SubString());
@@ -3243,9 +3243,56 @@ namespace LLP
                         break;
                     }
 
+                    /* Handle for a tritium transaction. */
+                    case SPECIFIER::REGISTER:
+                    {
+                        /* Get the transction from the stream. */
+                        TAO::Ledger::MerkleTx tx;
+                        ssPacket >> tx;
+
+                        /* Cache the txid. */
+                        uint512_t hashTx = tx.GetHash();
+
+                        LOCK(CLIENT_MUTEX);
+
+                        /* Check for empty merkle tx. */
+                        if(tx.hashBlock != 0)
+                        {
+                            /* Grab the block to check merkle path. */
+                            TAO::Ledger::ClientBlock block;
+                            if(LLD::Client->ReadBlock(tx.hashBlock, block))
+                            {
+                                /* Check the merkle branch. */
+                                if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
+                                    return debug::error(FUNCTION, "merkle transaction has invalid path");
+
+                                if(config::nVerbose >= 3)
+                                    tx.print();
+
+                                /* Commit transaction to disk. */
+                                //LLD::TxnBegin(TAO::Ledger::FLAGS::LOOKUP);
+
+                                /* Connect transaction in memory. */
+                                if(!tx.Connect(TAO::Ledger::FLAGS::LOOKUP))
+                                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+
+                                /* Flush to disk and clear mempool. */
+                                //LLD::TxnCommit(TAO::Ledger::FLAGS::LOOKUP);
+
+                                debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+                            }
+                            else
+                                debug::error(0, "FLAGS::LOOKUP: ", hashTx.SubString(), "REJECTED: invalid block ", tx.hashBlock.SubString());
+                        }
+                        else
+                            return debug::drop(NODE, "FLAGS::LOOKUP: No merkle branch for tx ", hashTx.SubString());
+
+                        break;
+                    }
+
                     /* Default catch all. */
                     default:
-                        return debug::drop(NODE, "invalid type specifier for TYPES::MERKLE");
+                        return debug::drop(NODE, "FLAGS::LOOKUP: invalid type specifier for TYPES::MERKLE");
                 }
 
                 break;
