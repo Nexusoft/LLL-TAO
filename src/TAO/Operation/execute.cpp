@@ -106,7 +106,7 @@ namespace TAO::Operation
                     contract >> nContract;
 
                     /* DISABLED for -client mode. */
-                    //if(!config::fClient.load()) XXX: this shouldn't be disabled for client mode
+                    if(!config::fClient.load())
                     {
                         /* Verify the operation rules. */
                         const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
@@ -408,7 +408,7 @@ namespace TAO::Operation
                     contract >> hashAddress;
 
                     /* DISABLED for -client mode. */
-                    //if(!config::fClient.load()) XXX: this shouldn't be disabled for client mode
+                    if(!config::fClient.load())
                     {
                         /* Verify the operation rules. */
                         const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
@@ -735,7 +735,7 @@ namespace TAO::Operation
 
                     /* DISABLED for -client mode. */
                     Contract debit = Contract();
-                    //if(!config::fClient.load()) XXX: this shouldn't need to be disabled
+                    if(!config::fClient.load())
                     {
                         /* Verify the operation rules. */
                         debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
@@ -827,7 +827,7 @@ namespace TAO::Operation
                     contract >> hashTx;
 
                     /* DISABLED for -client mode. */
-                    //if(!config::fClient.load()) XXX: this shouldn't bi disabled for -client mode
+                    if(!config::fClient.load())
                     {
                         /* Retrieve a debit for the Legacy tx output. Migrate tx will only have one output (index 0) */
                         Contract debit = LLD::Ledger->ReadContract(hashTx, 0);

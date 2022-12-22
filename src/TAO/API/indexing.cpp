@@ -412,10 +412,42 @@ namespace TAO::API
 
                             /* Request the sig chain. */
                             debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
-
-                            //LLP::TritiumNode::BlockingMessage(30000, pNode.get(), LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast);
-
+                            LLP::TritiumNode::BlockingMessage
+                            (
+                                10000,
+                                pNode.get(), LLP::TritiumNode::ACTION::LIST,
+                                uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
+                            );
                             debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
+
+                            /* Get the last event txid */
+                            uint512_t hashLastEvent;
+                            LLD::Ledger->ReadLastEvent(hashGenesis, hashLastEvent);
+
+                            /* Request the sig chain. */
+                            debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashGenesis.SubString());
+                            LLP::TritiumNode::BlockingMessage
+                            (
+                                10000,
+                                pNode.get(),
+                                LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastEvent
+                            );
+                            debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashGenesis.SubString());
+
+                            /* Get our last list of events from legacy transactions. */
+                            LLD::Legacy->ReadLastEvent(hashGenesis, hashLastEvent);
+
+                            /* Request the sig chain. */
+                            debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION for ", hashGenesis.SubString());
+                            LLP::TritiumNode::BlockingMessage
+                            (
+                                10000,
+                                pNode.get(),
+                                LLP::TritiumNode::ACTION::LIST,
+                                uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
+                                hashGenesis, hashLastEvent
+                            );
+                            debug::log(0, FUNCTION, "CLIENT MODE: LIST::LEGACY::NOTIFICATION received for ", hashGenesis.SubString());
                         }
                         else
                             debug::error(FUNCTION, "no connections available...");
@@ -647,7 +679,7 @@ namespace TAO::API
                                     continue;
                                 }
 
-                                debug::log(3, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                                debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
                                     "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashEvent.SubString()), ", ", VARIABLE(nContract));
 
                                 break;
@@ -685,7 +717,7 @@ namespace TAO::API
                                     continue;
                                 }
 
-                                debug::log(3, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashEvent.SubString()), ", ", VARIABLE(nContract));
+                                debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashEvent.SubString()), ", ", VARIABLE(nContract));
 
                                 break;
                             }

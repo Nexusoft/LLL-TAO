@@ -45,8 +45,21 @@ namespace TAO
             if(!LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "failed to write credit proof");
 
+            /* Client mode checks to keep database in sync. */
+            if(config::fClient.load())
+            {
+                /* Get the partial amount already claimed. */
+                uint64_t nClaimed = 0;
+                if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                    nClaimed = 0; //reset value to double check here and continue
+
+                /* Update the the claimed amount to reflect this credit */
+                if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
+                    return debug::error(FUNCTION, "failed to update claimed amount");
+            }
+
             /* DISABLED for -client mode. */
-            //if(!config::fClient.load()) XXX: this shouldn't be disabled for client mode
+            else
             {
                 /* Read the debit. */
                 debit.Reset();

@@ -122,6 +122,7 @@ namespace LLP
                 TRANSACTIONS = 0x43, //specify to send memory transactions first
                 CLIENT       = 0x44, //specify for blocks to be sent and received for clients
                 REGISTER     = 0x45, //specify that a register is being received and should only keep memory of it.
+                DEPENDANT    = 0x46, //specify that a transaction is a dependant and therfore only process the ledger layer.
             };
         };
 

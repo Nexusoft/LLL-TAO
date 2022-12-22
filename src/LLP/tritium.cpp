@@ -1729,7 +1729,7 @@ namespace LLP
 
                             /* Reverse container to message forward. */
                             for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
-                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
+                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::DEPENDANT), (*tx));
                         }
 
 
@@ -1770,13 +1770,14 @@ namespace LLP
                     ssPacket >> nType;
 
                     /* Check for legacy or transactions specifiers. */
-                    bool fLegacy = false, fTransactions = false, fClient = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::CLIENT)
+                    bool fLegacy = false, fTransactions = false, fClient = false, fDependant = false;
+                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::CLIENT || nType == SPECIFIER::DEPENDANT)
                     {
                         /* Set specifiers. */
                         fLegacy       = (nType == SPECIFIER::LEGACY);
                         fTransactions = (nType == SPECIFIER::TRANSACTIONS);
                         fClient       = (nType == SPECIFIER::CLIENT);
+                        fDependant    = (nType == SPECIFIER::DEPENDANT);
 
                         /* Go to next type in stream. */
                         ssPacket >> nType;
@@ -1961,7 +1962,11 @@ namespace LLP
                                 if(!TAO::Ledger::mempool.Has(hashTx))
                                     merkle.BuildMerkleBranch();
 
-                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                                /* Check for dependant specifier. */
+                                if(fDependant)
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::DEPENDANT), merkle);
+                                else
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
                             }
 
                             /* Debug output. */
@@ -3148,7 +3153,7 @@ namespace LLP
                                     {
                                         /* Read the owner of register. (check this for MEMPOOL, too) */
                                         TAO::Register::State state;
-                                        if(!LLD::Register->ReadState(hashTo, state))
+                                        if(!LLD::Register->ReadState(hashTo, state, TAO::Ledger::FLAGS::MEMPOOL))
                                             return debug::error(FUNCTION, "failed to read register to");
 
                                         /* Commit an event for receiving sigchain in the legay DB. */
@@ -3183,7 +3188,7 @@ namespace LLP
                         uint512_t hashTx = tx.GetHash();
 
                         /* Check if we have this transaction already. */
-                        if(!LLD::Client->HasTx(hashTx))
+                        //if(!LLD::Client->HasTx(hashTx))
                         {
                             LOCK(CLIENT_MUTEX);
 
@@ -3266,18 +3271,9 @@ namespace LLP
                                 if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                     return debug::error(FUNCTION, "merkle transaction has invalid path");
 
-                                if(config::nVerbose >= 3)
-                                    tx.print();
-
-                                /* Commit transaction to disk. */
-                                //LLD::TxnBegin(TAO::Ledger::FLAGS::LOOKUP);
-
                                 /* Connect transaction in memory. */
                                 if(!tx.Connect(TAO::Ledger::FLAGS::LOOKUP))
                                     return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-                                /* Flush to disk and clear mempool. */
-                                //LLD::TxnCommit(TAO::Ledger::FLAGS::LOOKUP);
 
                                 debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
                             }
@@ -3286,6 +3282,64 @@ namespace LLP
                         }
                         else
                             return debug::drop(NODE, "FLAGS::LOOKUP: No merkle branch for tx ", hashTx.SubString());
+
+                        break;
+                    }
+
+                    /* Handle for a dependant transaction. This only accepts the ledger level data. */
+                    case SPECIFIER::DEPENDANT:
+                    {
+                        /* Get the transction from the stream. */
+                        TAO::Ledger::MerkleTx tx;
+                        ssPacket >> tx;
+
+                        /* Cache the txid. */
+                        uint512_t hashTx = tx.GetHash();
+
+                        /* Check if we have this transaction already. */
+                        if(!LLD::Client->HasTx(hashTx))
+                        {
+                            LOCK(CLIENT_MUTEX);
+
+                            /* Check for empty merkle tx. */
+                            if(tx.hashBlock != 0)
+                            {
+                                /* Grab the block to check merkle path. */
+                                TAO::Ledger::ClientBlock block;
+                                if(LLD::Client->ReadBlock(tx.hashBlock, block))
+                                {
+                                    /* Check the merkle branch. */
+                                    if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
+                                        return debug::error(FUNCTION, "merkle transaction has invalid path");
+
+                                    /* Check transaction contains valid information. */
+                                    if(!tx.Check())
+                                        return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+
+                                    /* Commit transaction to disk. */
+                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                    if(!LLD::Client->WriteTx(hashTx, tx))
+                                    {
+                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                        return debug::error(FUNCTION, "failed to write transaction");
+                                    }
+
+                                    /* Index the transaction to it's block. */
+                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                    {
+                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                        return debug::error(FUNCTION, "failed to write block indexing entry");
+                                    }
+
+                                    /* Flush to disk and clear mempool. */
+                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+
+                                    debug::log(0, "FLAGS::DEPENDANT: ", hashTx.SubString(), " ACCEPTED");
+                                }
+                                else
+                                    debug::error(0, "FLAGS::DEPENDANT: ", hashTx.SubString(), "REJECTED: missing block ", tx.hashBlock.SubString());
+                            }
+                        }
 
                         break;
                     }
