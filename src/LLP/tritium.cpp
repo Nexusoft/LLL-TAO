@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLP/templates/events.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/types/indexing.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -3231,6 +3232,9 @@ namespace LLP
                                     /* Flush to disk and clear mempool. */
                                     LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                                     TAO::Ledger::mempool.Remove(hashTx);
+
+                                    /* Add an indexing event. */
+                                    TAO::API::Indexing::PushTransaction(hashTx);
 
                                     debug::log(0, hashTx.SubString(), " ACCEPTED");
                                 }

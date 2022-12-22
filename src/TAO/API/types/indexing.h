@@ -41,7 +41,7 @@ namespace TAO::API
     class Indexing
     {
         /** Queue to handle dispatch requests. **/
-        static util::atomic::lock_unique_ptr<std::queue<uint1024_t>> DISPATCH;
+        static util::atomic::lock_unique_ptr<std::queue<uint512_t>> DISPATCH;
 
 
         /** Thread for running dispatch. **/
@@ -100,14 +100,14 @@ namespace TAO::API
         static void RefreshEvents();
 
 
-        /** PushBlock
+        /** PushTransaction
          *
          *  Index a new block to relay thread.
          *
-         *  @param[in] hashBlock The txid to dispatch indexing for.
+         *  @param[in] hashTx The txid to dispatch indexing for.
          *
          **/
-        static void PushBlock(const uint1024_t& hashBlock);
+        static void PushTransaction(const uint512_t& hashTx);
 
 
         /** Register

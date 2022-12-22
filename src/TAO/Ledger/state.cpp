@@ -1197,6 +1197,10 @@ namespace TAO
 
                 /* Write the indexing entries. */
                 LLD::Ledger->IndexBlock(proof.second, hashBlock);
+
+                /* Push to our logical indexing in API. */
+                if(nTime > NEXUS_TRITIUM_TIMELOCK)
+                    TAO::API::Indexing::PushTransaction(hashBlock);
             }
 
             if(config::nVerbose >= 3)
@@ -1236,10 +1240,6 @@ namespace TAO
                 if(hashPrevBlock == ChainState::Genesis())
                     ChainState::stateGenesis = prev;
             }
-
-            /* Push to our logical indexing in API. */
-            if(nTime > NEXUS_TRITIUM_TIMELOCK)
-                TAO::API::Indexing::PushBlock(hashBlock);
 
             return true;
         }

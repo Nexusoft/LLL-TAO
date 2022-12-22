@@ -39,7 +39,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Queue to handle dispatch requests. */
-    util::atomic::lock_unique_ptr<std::queue<uint1024_t>> Indexing::DISPATCH;
+    util::atomic::lock_unique_ptr<std::queue<uint512_t>> Indexing::DISPATCH;
 
 
     /* Thread for running dispatch. */
@@ -76,7 +76,7 @@ namespace TAO::API
         /* Read our list of active login sessions. */
 
         /* Initialize our thread objects now. */
-        Indexing::DISPATCH      = util::atomic::lock_unique_ptr<std::queue<uint1024_t>>(new std::queue<uint1024_t>());
+        Indexing::DISPATCH      = util::atomic::lock_unique_ptr<std::queue<uint512_t>>(new std::queue<uint512_t>());
         Indexing::EVENTS_THREAD = std::thread(&Indexing::Manager);
 
 
@@ -188,9 +188,9 @@ namespace TAO::API
 
 
     /*  Index a new block hash to relay thread.*/
-    void Indexing::PushBlock(const uint1024_t& hashBlock)
+    void Indexing::PushTransaction(const uint512_t& hashTx)
     {
-        DISPATCH->push(hashBlock);
+        DISPATCH->push(hashTx);
         CONDITION.notify_one();
     }
 
@@ -226,83 +226,72 @@ namespace TAO::API
             swTimer.start();
 
             /* Grab the next entry in the queue. */
-            const uint1024_t hashBlock = DISPATCH->front();
+            const uint512_t hashTx = DISPATCH->front();
             DISPATCH->pop();
 
-            /* Get block and read transaction history. */
-            TAO::Ledger::BlockState oBlock;
-            if(!LLD::Ledger->ReadBlock(hashBlock, oBlock))
-                continue;
-
-            /* Loop through our transactions. */
-            for(const auto& rtx : oBlock.vtx)
+            /* Check if handling legacy or tritium. */
+            if(hashTx.GetType() == TAO::Ledger::TRITIUM)
             {
-                /* Get our txid. */
-                const uint512_t hashTx = rtx.second;
+                /* Make sure the transaction is on disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashTx, tx))
+                    continue;
 
-                /* Check if handling legacy or tritium. */
-                if(hashTx.GetType() == TAO::Ledger::TRITIUM)
+                /* Build our local sigchain events indexes. */
+                index_transaction(hashTx, tx);
+
+                /* Iterate the transaction contracts. */
+                for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
                 {
-                    /* Make sure the transaction is on disk. */
-                    TAO::Ledger::Transaction tx;
-                    if(!LLD::Ledger->ReadTx(hashTx, tx))
-                        continue;
+                    /* Grab contract reference. */
+                    const TAO::Operation::Contract& rContract = tx[nContract];
 
-                    /* Build our local sigchain events indexes. */
-                    index_transaction(hashTx, tx);
-
-                    /* Iterate the transaction contracts. */
-                    for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
                     {
-                        /* Grab contract reference. */
-                        const TAO::Operation::Contract& rContract = tx[nContract];
+                        LOCK(REGISTERED_MUTEX);
 
+                        /* Loop through registered commands. */
+                        for(const auto& strCommands : REGISTERED)
                         {
-                            LOCK(REGISTERED_MUTEX);
-
-                            /* Loop through registered commands. */
-                            for(const auto& strCommands : REGISTERED)
-                            {
-                                debug::log(3, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
-                                Commands::Instance(strCommands)->Index(rContract, nContract);
-                            }
+                            debug::log(3, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
+                            Commands::Instance(strCommands)->Index(rContract, nContract);
                         }
                     }
-
-                    /* Write our last index now. */
-                    if(!LLD::Logical->WriteLastIndex(hashTx))
-                        continue;
                 }
 
-                /* Check for legacy transaction type. */
-                if(hashTx.GetType() == TAO::Ledger::LEGACY)
+                /* Write our last index now. */
+                if(!LLD::Logical->WriteLastIndex(hashTx))
+                    continue;
+            }
+
+            /* Check for legacy transaction type. */
+            if(hashTx.GetType() == TAO::Ledger::LEGACY)
+            {
+                /* Make sure the transaction is on disk. */
+                Legacy::Transaction tx;
+                if(!LLD::Legacy->ReadTx(hashTx, tx))
+                    continue;
+
+                /* Loop thgrough the available outputs. */
+                for(const auto txout : tx.vout)
                 {
-                    /* Make sure the transaction is on disk. */
-                    Legacy::Transaction tx;
-                    if(!LLD::Legacy->ReadTx(hashTx, tx))
-                        continue;
-
-                    /* Loop thgrough the available outputs. */
-                    for(const auto txout : tx.vout)
+                    /* Extract our register address. */
+                    uint256_t hashTo;
+                    if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
                     {
-                        /* Extract our register address. */
-                        uint256_t hashTo;
-                        if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
+                        /* Read the owner of register. (check this for MEMPOOL, too) */
+                        TAO::Register::State state;
+                        if(!LLD::Register->ReadState(hashTo, state))
+                            continue;
+
+                        /* Check if owner is authenticated. */
+                        if(Authentication::Active(state.hashOwner))
                         {
-                            /* Read the owner of register. (check this for MEMPOOL, too) */
-                            TAO::Register::State state;
-                            if(!LLD::Register->ReadState(hashTo, state))
-                                continue;
 
-                            /* Check if owner is authenticated. */
-                            if(Authentication::Active(state.hashOwner))
-                            {
-
-                            }
                         }
                     }
                 }
             }
+
 
             //TODO: check for legacy transaction events for sigchain events.
 
