@@ -94,11 +94,11 @@ namespace TAO::API
                     /* Get a list of our active events. */
                     std::vector<std::pair<uint512_t, uint32_t>> vEvents;
 
-                    /* Get our list of active contracts we have issued. */
-                    LLD::Logical->ListContracts(hashGenesis, vEvents);
-
                     /* Get our list of active events we need to respond to. */
                     LLD::Logical->ListEvents(hashGenesis, vEvents);
+
+                    /* Get our list of active contracts we have issued. */
+                    LLD::Logical->ListContracts(hashGenesis, vEvents);
 
                     /* Track our unique events as we progress forward. */
                     std::set<std::pair<uint512_t, uint32_t>> setUnique;

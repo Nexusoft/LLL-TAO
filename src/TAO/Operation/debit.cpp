@@ -34,19 +34,23 @@ namespace TAO
         bool Debit::Commit(const TAO::Register::Object& account, const uint512_t& hashTx,
                            const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
-            /* Only commit events on new block. */
-            if(hashTo != TAO::Register::WILDCARD_ADDRESS)
+            /* DISABLED for -client mode. */
+            if(!config::fClient.load())
             {
-                /* Read the owner of register. */
-                TAO::Register::State state;
-                if(!LLD::Register->ReadState(hashTo, state, nFlags) && !config::fClient.load()) // don't error in client mode
-                    return debug::error(FUNCTION, "failed to read register to");
-
-                if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                /* Only commit events on new block. */
+                if(hashTo != TAO::Register::WILDCARD_ADDRESS)
                 {
-                    /* Commit an event for other sigchain. */
-                    if(!state.IsNull() && !LLD::Ledger->WriteEvent(state.hashOwner, hashTx))
-                        return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                    /* Read the owner of register. */
+                    TAO::Register::State state;
+                    if(!LLD::Register->ReadState(hashTo, state, nFlags) && !config::fClient.load()) // don't error in client mode
+                        return debug::error(FUNCTION, "failed to read register to");
+
+                    if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                    {
+                        /* Commit an event for other sigchain. */
+                        if(!LLD::Ledger->WriteEvent(state.hashOwner, hashTx))
+                            return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
+                    }
                 }
             }
 

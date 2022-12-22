@@ -23,16 +23,19 @@ namespace TAO
     /* Operation Layer namespace. */
     namespace Operation
     {
-
         /* Commit the final state to disk. */
         bool Coinbase::Commit(const uint256_t& hashAddress, const uint512_t& hashTx, const uint8_t nFlags)
         {
-            /* Check to contract caller. */
-            if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+            /* DISABLED for -client mode. */
+            if(!config::fClient.load())
             {
-                /* Write the event to the database. */
-                if(!LLD::Ledger->WriteEvent(hashAddress, hashTx))
-                    return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
+                /* Check to contract caller. */
+                if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                {
+                    /* Write the event to the database. */
+                    if(!LLD::Ledger->WriteEvent(hashAddress, hashTx))
+                        return debug::error(FUNCTION, "OP::COINBASE: failed to write event for coinbase");
+                }
             }
 
             return true;

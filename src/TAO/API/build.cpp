@@ -490,7 +490,7 @@ namespace TAO::API
 
                 /* Read our crediting account. */
                 TAO::Register::Object oCredit;
-                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::LOOKUP))
                     return false;
 
                 /* Let's check our credit account is correct token. */
@@ -538,12 +538,12 @@ namespace TAO::API
 
                 /* Retrieve the account we are debiting from */
                 TAO::Register::Object oSource;
-                if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::LOOKUP))
                     return false;
 
                 /* Read our crediting account. */
                 TAO::Register::Object oCredit;
-                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::LOOKUP))
                     throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Let's check our credit account is correct token. */
@@ -567,7 +567,7 @@ namespace TAO::API
 
             /* Get the token / account object that the debit was made to. */
             TAO::Register::Object oRecipient;
-            if(!LLD::Register->ReadObject(addrRecipient, oRecipient, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadObject(addrRecipient, oRecipient, TAO::Ledger::FLAGS::LOOKUP))
                 return false;
 
             /* Check for standard credit to account. */
@@ -579,7 +579,7 @@ namespace TAO::API
                 {
                     /* Retrieve the account we are debiting from */
                     TAO::Register::Object oSource;
-                    if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::MEMPOOL))
+                    if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::LOOKUP))
                         return false;
 
                     /* Check if we are the sender. */
@@ -629,7 +629,7 @@ namespace TAO::API
 
                 /* Read our token contract now since we now know it's correct. */
                 TAO::Register::Object oToken;
-                if(!LLD::Register->ReadObject(oRecipient.hashOwner, oToken, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadObject(oRecipient.hashOwner, oToken, TAO::Ledger::FLAGS::LOOKUP))
                     return false;
 
                 /* We shouldn't ever evaluate to true here, but if we do let's not make things worse for ourselves. */
@@ -638,7 +638,7 @@ namespace TAO::API
 
                 /* Retrieve the hash proof account and check that it is the same token type as the asset owner */
                 TAO::Register::Object oProof;
-                if(!LLD::Register->ReadObject(addrProof, oProof, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadObject(addrProof, oProof, TAO::Ledger::FLAGS::LOOKUP))
                     return false;
 
                 /* Check that the proof is an account for the same token as the asset owner */
@@ -647,12 +647,12 @@ namespace TAO::API
 
                 /* Retrieve the account to debit from. */
                 TAO::Register::Object oSource;
-                if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadObject(addrSource, oSource, TAO::Ledger::FLAGS::LOOKUP))
                     return false;
 
                 /* Read our crediting account. */
                 TAO::Register::Object oCredit;
-                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::LOOKUP))
                     throw Exception(-33, "Incorrect or missing name / address");
 
                 /* Check that the account being debited from is the same token type as credit. */
@@ -716,7 +716,7 @@ namespace TAO::API
 
         /* Check out our object now. */
         TAO::Register::Object tObject;
-        if(!LLD::Register->ReadObject(hashAddress, tObject))
+        if(!LLD::Register->ReadObject(hashAddress, tObject, TAO::Ledger::FLAGS::LOOKUP))
             throw Exception(-13, "Object not found");
 
         /* Now lets check our expected types match. */
@@ -807,7 +807,7 @@ namespace TAO::API
 
                 /* Get the register off the disk. */
                 TAO::Register::Object tToken;
-                if(!LLD::Register->ReadObject(hashToken, tToken, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadObject(hashToken, tToken, TAO::Ledger::FLAGS::LOOKUP))
                     throw Exception(-13, "Object not found");
 
                 /* Check the standard */
@@ -895,7 +895,7 @@ namespace TAO::API
 
                 /* Make sure the namespace exists. */
                 TAO::Register::Object rNamespace;
-                if(!LLD::Register->ReadObject(hashNamespace, rNamespace))
+                if(!LLD::Register->ReadObject(hashNamespace, rNamespace, TAO::Ledger::FLAGS::LOOKUP))
                     throw Exception(-95, "Namespace does not exist [", strNamespace, "]");
 
                 /* Check that the namespace is owned by us. */

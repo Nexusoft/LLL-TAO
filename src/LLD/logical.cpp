@@ -526,6 +526,27 @@ namespace LLD
     }
 
 
+    /* List the current active events for given genesis-id. */
+    bool LogicalDB::GetLastEvent(const uint256_t& hashGenesis, uint512_t &hashEvent)
+    {
+        /* Cache our txid and contract as a pair. */
+        std::pair<uint512_t, uint32_t> pairEvent;
+
+        /* Read our current sequence. */
+        uint32_t nSequence = 0;
+        ReadLastEvent(hashGenesis, nSequence);
+
+        /* Read our current record. */
+        if(!Read(std::make_tuple(std::string("events.index"), --nSequence, hashGenesis), pairEvent))
+            return false;
+
+        /* Set our event internal hash. */
+        hashEvent = pairEvent.first;
+
+        return true;
+    }
+
+
     /* Read the last event that was processed for given sigchain. */
     bool LogicalDB::ReadLastEvent(const uint256_t& hashGenesis, uint32_t &nSequence)
     {

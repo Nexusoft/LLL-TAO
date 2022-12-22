@@ -3171,7 +3171,11 @@ namespace LLP
                                 if(config::nVerbose >= 3)
                                     tx.print();
 
+                                /* Write Success to log. */
                                 debug::log(0, hashTx.SubString(), " ACCEPTED");
+
+                                /* Add an indexing event. */
+                                TAO::API::Indexing::PushTransaction(hashTx);
                             }
                         }
 
@@ -3189,7 +3193,7 @@ namespace LLP
                         uint512_t hashTx = tx.GetHash();
 
                         /* Check if we have this transaction already. */
-                        //if(!LLD::Client->HasTx(hashTx))
+                        if(!LLD::Client->HasTx(hashTx))
                         {
                             LOCK(CLIENT_MUTEX);
 
@@ -3233,10 +3237,15 @@ namespace LLP
                                     LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                                     TAO::Ledger::mempool.Remove(hashTx);
 
+                                    /* Verbose=3 dumps transaction data. */
+                                    if(config::nVerbose >= 3)
+                                        tx.print();
+
+                                    /* Write Success to log. */
+                                    debug::log(0, hashTx.SubString(), " ACCEPTED");
+
                                     /* Add an indexing event. */
                                     TAO::API::Indexing::PushTransaction(hashTx);
-
-                                    debug::log(0, hashTx.SubString(), " ACCEPTED");
                                 }
                                 else
                                     debug::error(0, hashTx.SubString(), "REJECTED: missing block ", tx.hashBlock.SubString());
@@ -3338,7 +3347,15 @@ namespace LLP
                                     /* Flush to disk and clear mempool. */
                                     LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
 
+                                    /* Verbose=3 dumps transaction data. */
+                                    if(config::nVerbose >= 3)
+                                        tx.print();
+
+                                    /* Write Success to log. */
                                     debug::log(0, "FLAGS::DEPENDANT: ", hashTx.SubString(), " ACCEPTED");
+
+                                    /* Add an indexing event. */
+                                    TAO::API::Indexing::PushTransaction(hashTx);
                                 }
                                 else
                                     debug::error(0, "FLAGS::DEPENDANT: ", hashTx.SubString(), "REJECTED: missing block ", tx.hashBlock.SubString());

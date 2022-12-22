@@ -237,6 +237,10 @@ namespace TAO::API
         const TAO::Operation::Stream& ssContract =
             vContracts[nContract].Conditions();
 
+        /* Check for empty contracts. */
+        if(ssContract.size() == 0)
+            return true;
+
         /* Check our values byte for byte. */
         for(uint32_t nIndex = 0; nIndex < std::min(ssContract.size(), ssCheck.size()); nIndex++)
         {
