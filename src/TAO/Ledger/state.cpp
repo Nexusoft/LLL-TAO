@@ -1200,7 +1200,7 @@ namespace TAO
 
                 /* Push to our logical indexing in API. */
                 if(nTime > NEXUS_TRITIUM_TIMELOCK)
-                    TAO::API::Indexing::PushTransaction(hashBlock);
+                    TAO::API::Indexing::PushTransaction(hash);
             }
 
             if(config::nVerbose >= 3)
