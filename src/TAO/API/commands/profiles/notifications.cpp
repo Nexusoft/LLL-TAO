@@ -79,7 +79,7 @@ namespace TAO::API
                     continue;
 
                 /* Check if contract has been spent. */
-                if(!tx.Spendable(hashEvent, rEvent.second))
+                if(!tx.Burned(hashEvent, rEvent.second))
                     continue;
 
                 /* Get the transaction JSON. */

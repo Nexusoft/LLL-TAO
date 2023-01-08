@@ -83,7 +83,7 @@ namespace LLP
     private:
 
         /* Externally set coinbase to be set on mined blocks */
-        Legacy::Coinbase CoinbaseTx;
+        Legacy::Coinbase tCoinbaseTx;
 
 
         /** Mutex for thread safe data access **/

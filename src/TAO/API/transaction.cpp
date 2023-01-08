@@ -218,7 +218,7 @@ namespace TAO::API
     }
 
     /* Check if a specific contract can be spent. */
-    bool Transaction::Spendable(const uint512_t& hash, const uint32_t nContract) const
+    bool Transaction::Burned(const uint512_t& hash, const uint32_t nContract) const
     {
         /* Build a static contract to check with. */
         static TAO::Operation::Stream ssCheck;

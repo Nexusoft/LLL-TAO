@@ -145,7 +145,7 @@ namespace TAO::API
         bool Mature(const uint512_t& hash) const;
 
 
-        /** Spendable
+        /** Burned
          *
          *  Check if a specific contract can be spent. This checks mainly for the burn contract 4 == 2.
          *
@@ -155,7 +155,7 @@ namespace TAO::API
          *  @return true if the contract has been spent.
          *
          **/
-        bool Spendable(const uint512_t& hash, const uint32_t nContract) const;
+        bool Burned(const uint512_t& hash, const uint32_t nContract) const;
 
 
         /** Spent

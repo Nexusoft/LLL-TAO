@@ -130,8 +130,8 @@ namespace TAO::API
                         if(tx.Spent(hashEvent, rEvent.second))
                             continue;
 
-                        /* Check if contract has been spent. */
-                        if(!tx.Spendable(hashEvent, rEvent.second))
+                        /* Check if contract has been burned. */
+                        if(!tx.Burned(hashEvent, rEvent.second))
                             continue;
 
                         /* Check if the transaction is mature. */
