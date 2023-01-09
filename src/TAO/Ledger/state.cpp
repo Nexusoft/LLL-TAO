@@ -1067,14 +1067,14 @@ namespace TAO
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
             {
+                /* Get the transaction hash. */
+                const uint512_t& hash = proof.second;
+
                 /* Only work on tritium transactions for now. */
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Start the contracts stopwatch. */
                     swContract.start();
-
-                    /* Get the transaction hash. */
-                    const uint512_t& hash = proof.second;
 
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))
@@ -1161,9 +1161,6 @@ namespace TAO
                 {
                     /* Start the script stopwatch. */
                     swScript.start();
-
-                    /* Get the transaction hash. */
-                    const uint512_t& hash = proof.second;
 
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))
