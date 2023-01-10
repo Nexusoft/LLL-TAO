@@ -1578,7 +1578,15 @@ namespace TAO::API
 
             /* Otherwise output the address if supplied. */
             if(hashRegister != 0)
+            {
+                /* Add the address field into register. */
                 jRet["address"] = hashRegister.ToString();
+
+                /* Check for reverse ptr record if not token (that resolves a ticker). */
+                std::string strName = "";
+                if(Names::ReverseLookup(hashRegister, strName))
+                    jRet["name"] = strName;
+            }
 
             return jRet;
         }
