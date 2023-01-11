@@ -37,6 +37,10 @@ ________________________________________________________________________________
 #define MAINNET_TIME_LLP_PORT 9324
 #endif
 
+#ifndef MAINNET_LOOKUP_LLP_PORT
+#define MAINNET_LOOKUP_LLP_PORT 9889
+#endif
+
 #ifndef MAINNET_API_PORT
 #define MAINNET_API_PORT 8080
 #endif
@@ -79,6 +83,10 @@ ________________________________________________________________________________
 
 #ifndef TESTNET_TIME_LLP_PORT
 #define TESTNET_TIME_LLP_PORT 8329
+#endif
+
+#ifndef TESTNET_LOOKUP_LLP_PORT
+#define TESTNET_LOOKUP_LLP_PORT 8889
 #endif
 
 #ifndef TESTNET_API_PORT
@@ -177,6 +185,24 @@ namespace LLP
             config::fTestNet.load() ?
                 TESTNET_TIME_LLP_PORT :
                 MAINNET_TIME_LLP_PORT
+        );
+    }
+
+
+    /** GetLookupPort
+     *
+     *  Get the lookup LLP port for Nexus.
+     *
+     *  @return Returns a 16-bit port number for core mainnet or testnet.
+     *
+     **/
+    inline uint16_t GetLookupPort()
+    {
+        return static_cast<uint16_t>
+        (
+            config::fTestNet.load() ?
+                TESTNET_LOOKUP_LLP_PORT :
+                MAINNET_LOOKUP_LLP_PORT
         );
     }
 

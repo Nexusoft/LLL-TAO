@@ -26,6 +26,7 @@ namespace LLP
 
     /* Declare the Global LLP Instances. */
     Server<TritiumNode>* TRITIUM_SERVER;
+    Server<LookupNode>*  LOOKUP_SERVER;
     Server<TimeNode>*    TIME_SERVER;
     Server<APINode>*     API_SERVER;
     Server<RPCNode>*     RPC_SERVER;
@@ -203,6 +204,33 @@ namespace LLP
         }
 
 
+        /* LOOKUP_SERVER instance */
+        if(config::GetBoolArg(std::string("-lookup"), true) && !config::fClient.load())
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetLookupPort());
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_METERS   = false;
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = false;
+            CONFIG.ENABLE_REMOTE   = true;
+            CONFIG.REQUIRE_SSL     = false;
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-lookupthreads"), 4);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-lookupcscore"), 1);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-lookuprscore"), 50);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-lookuptimespan"), 10);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-lookuptimeout"), 30);
+
+            /* Create the server instance. */
+            LOOKUP_SERVER = new Server<LookupNode>(CONFIG);
+        }
+
+
         return true;
     }
 
@@ -214,6 +242,9 @@ namespace LLP
 
         /* Shutdown the tritium server and its subsystems. */
         Shutdown<TritiumNode>(TRITIUM_SERVER);
+
+        /* Shutdown the lookup server and its subsystems. */
+        Shutdown<LookupNode>(LOOKUP_SERVER);
 
         /* Shutdown the time server and its subsystems. */
         Shutdown<TimeNode>(TIME_SERVER);

@@ -12,11 +12,11 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLP_PACKETS_PACKET_H
-#define NEXUS_LLP_PACKETS_PACKET_H
 
 #include <vector>
 #include <cstdint>
+
+#include <Util/templates/datastream.h>
 
 namespace LLP
 {
@@ -213,5 +213,3 @@ namespace LLP
         }
     };
 }
-
-#endif

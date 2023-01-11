@@ -3118,7 +3118,7 @@ namespace LLP
                         uint512_t hashTx = tx.GetHash();
 
                         /* Check if we have this transaction already. */
-                        if(!LLD::Client->HasTx(hashTx))
+                        if(!LLD::Client->HasIndex(hashTx))
                         {
                             LOCK(CLIENT_MUTEX);
 
@@ -3193,7 +3193,7 @@ namespace LLP
                         uint512_t hashTx = tx.GetHash();
 
                         /* Check if we have this transaction already. */
-                        if(!LLD::Client->HasTx(hashTx))
+                        if(!LLD::Client->HasIndex(hashTx))
                         {
                             LOCK(CLIENT_MUTEX);
 
