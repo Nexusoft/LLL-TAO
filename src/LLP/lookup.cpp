@@ -192,6 +192,9 @@ namespace LLP
                         else if(!tx.Connect(TAO::Ledger::FLAGS::LOOKUP))
                             return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
+                        /* Add an indexing event. */
+                        TAO::API::Indexing::PushTransaction(hashTx);
+
                         debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                         break;
@@ -245,8 +248,11 @@ namespace LLP
                         /* Flush to disk and clear mempool. */
                         LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
 
+                        /* Add an indexing event. */
+                        TAO::API::Indexing::PushTransaction(hashTx);
+
                         /* Write Success to log. */
-                        debug::log(0, hashTx.SubString(), " ACCEPTED");
+                        debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                         break;
                     }
