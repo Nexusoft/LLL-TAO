@@ -1976,261 +1976,6 @@ namespace LLP
                             break;
                         }
 
-
-                        /* Standard type for a genesis transaction. */
-                        case TYPES::GENESIS:
-                        {
-                            /* Check for available protocol version. */
-                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
-                                return true;
-
-                            /* Check for valid specifier. */
-                            if(fTransactions || fClient || fLegacy)
-                                return debug::drop(NODE, "ACTION::GET::GENESIS: invalid specifier for TYPES::GENESIS");
-
-                            /* Get the index of transaction. */
-                            uint256_t hashGenesis;
-                            ssPacket >> hashGenesis;
-
-                            /* Get the genesis txid. */
-                            uint512_t hashTx;
-                            if(LLD::Ledger->ReadFirst(hashGenesis, hashTx))
-                            {
-                                TAO::Ledger::Transaction tx;
-                                if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                {
-                                    /* Build a markle transaction. */
-                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-
-                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
-                                    if(!TAO::Ledger::mempool.Has(hashTx))
-                                        merkle.BuildMerkleBranch();
-
-                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
-                                }
-                            }
-
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::GET: GENESIS TRANSACTION ", hashTx.SubString());
-
-                            break;
-                        }
-
-
-                        /* Standard type for last sigchain transaction. */
-                        case TYPES::SIGCHAIN:
-                        {
-                            /* Check for available protocol version. */
-                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
-                                return true;
-
-                            /* Check for valid specifier. */
-                            if(fTransactions || fClient || fLegacy)
-                                return debug::drop(NODE, "ACTION::GET::SIGCHAIN: invalid specifier for TYPES::SIGCHAIN");
-
-                            /* Get the index of transaction. */
-                            uint256_t hashGenesis;
-                            ssPacket >> hashGenesis;
-
-                            /* Get the genesis txid. */
-                            uint512_t hashTx;
-                            if(LLD::Ledger->ReadLast(hashGenesis, hashTx))
-                            {
-                                TAO::Ledger::Transaction tx;
-                                if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                {
-                                    /* Build a markle transaction. */
-                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-
-                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
-                                    if(!TAO::Ledger::mempool.Has(hashTx))
-                                        merkle.BuildMerkleBranch();
-
-                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
-                                }
-                            }
-
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::GET: SIGCHAIN TRANSACTION ", hashTx.SubString());
-
-                            break;
-                        }
-
-
-                        /* Standard type for register in form of merkle transaction. */
-                        case TYPES::REGISTER:
-                        {
-                            /* Check for available protocol version. */
-                            if(nProtocolVersion < MIN_TRITIUM_VERSION)
-                                return true;
-
-                            /* Check for valid specifier. */
-                            if(fTransactions || fClient || fLegacy)
-                                return debug::drop(NODE, "ACTION::GET::REGISTER: invalid specifier for TYPES::REGISTER");
-
-                            /* Get the index of transaction. */
-                            uint256_t hashRegister;
-                            ssPacket >> hashRegister;
-
-                            /* Check for existing localdb indexes. */
-                            std::pair<uint512_t, uint64_t> pairIndex;
-                            if(LLD::Local->ReadIndex(hashRegister, pairIndex))
-                            {
-                                /* Check for cache expiration. */
-                                if(runtime::unifiedtimestamp() <= pairIndex.second)
-                                {
-                                    /* Get the transaction from disk. */
-                                    TAO::Ledger::Transaction tx;
-                                    if(!LLD::Ledger->ReadTx(pairIndex.first, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                        break;
-
-                                    /* Build a markle transaction. */
-                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-
-                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
-                                    if(!TAO::Ledger::mempool.Has(pairIndex.first))
-                                        merkle.BuildMerkleBranch();
-
-                                    /* Send off the transaction to remote node. */
-                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::REGISTER), merkle);
-
-                                    debug::log(0, NODE, "ACTION::GET: Using INDEX CACHE for ", hashRegister.SubString());
-
-                                    break;
-                                }
-                            }
-
-                            /* Get the register from disk. */
-                            TAO::Register::State state;
-                            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                                break;
-
-                            /* If register is in the middle of a transfer, hashOwner will be owned by system. Detect and continue.*/
-                            uint256_t hashOwner = state.hashOwner;
-                            if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
-                                hashOwner.SetType(TAO::Ledger::GENESIS::UserType());
-
-                            /* Read the last hash of owner. */
-                            uint512_t hashLast = 0;
-                            if(!LLD::Ledger->ReadLast(hashOwner, hashLast, TAO::Ledger::FLAGS::MEMPOOL))
-                                break;
-
-                            /* Iterate through sigchain for register updates. */
-                            while(hashLast != 0)
-                            {
-                                /* Get the transaction from disk. */
-                                TAO::Ledger::Transaction tx;
-                                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                    break;
-
-                                /* Handle DDOS. */
-                                if(fDDOS.load() && DDOS)
-                                    DDOS->rSCORE += 1;
-
-                                /* Set the next last. */
-                                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
-
-                                /* Check through all the contracts. */
-                                for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)
-                                {
-                                    /* Get the contract. */
-                                    const TAO::Operation::Contract& contract = tx[nContract];
-
-                                    /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
-                                    contract.Reset();
-
-                                    /* Get the operation byte. */
-                                    uint8_t OPERATION = 0;
-                                    contract >> OPERATION;
-
-                                    /* Check for conditional OP */
-                                    switch(OPERATION)
-                                    {
-                                        case TAO::Operation::OP::VALIDATE:
-                                        {
-                                            /* Seek through validate. */
-                                            contract.Seek(68);
-                                            contract >> OPERATION;
-
-                                            break;
-                                        }
-
-                                        case TAO::Operation::OP::CONDITION:
-                                        {
-                                            /* Get new operation. */
-                                            contract >> OPERATION;
-                                        }
-                                    }
-
-                                    /* Check for key operations. */
-                                    switch(OPERATION)
-                                    {
-                                        /* Break when at the register declaration. */
-                                        case TAO::Operation::OP::WRITE:
-                                        case TAO::Operation::OP::CREATE:
-                                        case TAO::Operation::OP::APPEND:
-                                        case TAO::Operation::OP::CLAIM:
-                                        case TAO::Operation::OP::DEBIT:
-                                        case TAO::Operation::OP::CREDIT:
-                                        case TAO::Operation::OP::TRUST:
-                                        case TAO::Operation::OP::GENESIS:
-                                        case TAO::Operation::OP::LEGACY:
-                                        case TAO::Operation::OP::FEE:
-                                        {
-                                            /* Seek past claim txid. */
-                                            if(OPERATION == TAO::Operation::OP::CLAIM ||
-                                               OPERATION == TAO::Operation::OP::CREDIT)
-                                                contract.Seek(68);
-
-                                            /* Extract the address from the contract. */
-                                            TAO::Register::Address hashAddress;
-                                            if(OPERATION == TAO::Operation::OP::TRUST ||
-                                               OPERATION == TAO::Operation::OP::GENESIS)
-                                            {
-                                                hashAddress =
-                                                    TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
-                                            }
-                                            else
-                                                contract >> hashAddress;
-
-                                            /* Check for same address. */
-                                            if(hashAddress != hashRegister)
-                                                break;
-
-                                            /* Build a markle transaction. */
-                                            TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-
-                                            /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
-                                            if(!TAO::Ledger::mempool.Has(hashLast))
-                                                merkle.BuildMerkleBranch();
-
-                                            /* Send off the transaction to remote node. */
-                                            PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::REGISTER), merkle);
-
-                                            /* Build indexes for optimized processing. */
-                                            debug::log(0, NODE, "ACTION::GET: Update INDEX for register ", hashAddress.SubString());
-                                            std::pair<uint512_t, uint64_t> pairIndex = std::make_pair(tx.GetHash(), runtime::unifiedtimestamp() + 3600);
-                                            if(!LLD::Local->WriteIndex(hashAddress, pairIndex)) //Index expires 1 hour after created
-                                                break;
-
-                                            /* Break out of main hash last. */
-                                            hashLast = 0;
-
-                                            break;
-                                        }
-
-                                        default:
-                                            continue;
-                                    }
-                                }
-                            }
-
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::GET: REGISTER ", hashRegister.SubString());
-
-                            break;
-                        }
-
                         /* Catch malformed notify binary streams. */
                         default:
                             return debug::drop(NODE, "ACTION::GET malformed binary stream");
@@ -3115,7 +2860,7 @@ namespace LLP
                         ssPacket >> tx;
 
                         /* Cache the txid. */
-                        uint512_t hashTx = tx.GetHash();
+                        const uint512_t hashTx = tx.GetHash();
 
                         /* Check if we have this transaction already. */
                         if(!LLD::Client->HasIndex(hashTx))
@@ -3143,24 +2888,6 @@ namespace LLP
                                 {
                                     LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
                                     return debug::error(FUNCTION, "failed to write block indexing entry");
-                                }
-
-                                /* UTXO to Sig Chain Client Mode Support */
-                                for(const auto txout : tx.vout)
-                                {
-                                    /* Extract the output addresses to find relevant events. */
-                                    uint256_t hashTo;
-                                    if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
-                                    {
-                                        /* Read the owner of register. (check this for MEMPOOL, too) */
-                                        TAO::Register::State state;
-                                        if(!LLD::Register->ReadState(hashTo, state, TAO::Ledger::FLAGS::MEMPOOL))
-                                            return debug::error(FUNCTION, "failed to read register to");
-
-                                        /* Commit an event for receiving sigchain in the legay DB. */
-                                        if(!LLD::Legacy->WriteEvent(state.hashOwner, hashTx))
-                                            return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
-                                    }
                                 }
 
                                 /* Flush to disk and clear mempool. */
@@ -3261,44 +2988,6 @@ namespace LLP
                         break;
                     }
 
-                    /* Handle for a tritium transaction. */
-                    case SPECIFIER::REGISTER:
-                    {
-                        /* Get the transction from the stream. */
-                        TAO::Ledger::MerkleTx tx;
-                        ssPacket >> tx;
-
-                        /* Cache the txid. */
-                        uint512_t hashTx = tx.GetHash();
-
-                        LOCK(CLIENT_MUTEX);
-
-                        /* Check for empty merkle tx. */
-                        if(tx.hashBlock != 0)
-                        {
-                            /* Grab the block to check merkle path. */
-                            TAO::Ledger::ClientBlock block;
-                            if(LLD::Client->ReadBlock(tx.hashBlock, block))
-                            {
-                                /* Check the merkle branch. */
-                                if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
-                                    return debug::error(FUNCTION, "merkle transaction has invalid path");
-
-                                /* Connect transaction in memory. */
-                                if(!tx.Connect(TAO::Ledger::FLAGS::LOOKUP))
-                                    return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-                                debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
-                            }
-                            else
-                                debug::error(0, "FLAGS::LOOKUP: ", hashTx.SubString(), "REJECTED: invalid block ", tx.hashBlock.SubString());
-                        }
-                        else
-                            return debug::drop(NODE, "FLAGS::LOOKUP: No merkle branch for tx ", hashTx.SubString());
-
-                        break;
-                    }
-
                     /* Handle for a dependant transaction. This only accepts the ledger level data. */
                     case SPECIFIER::DEPENDANT:
                     {
@@ -3307,10 +2996,10 @@ namespace LLP
                         ssPacket >> tx;
 
                         /* Cache the txid. */
-                        uint512_t hashTx = tx.GetHash();
+                        const uint512_t hashTx = tx.GetHash();
 
                         /* Check if we have this transaction already. */
-                        if(!LLD::Client->HasTx(hashTx))
+                        if(!LLD::Client->HasIndex(hashTx))
                         {
                             LOCK(CLIENT_MUTEX);
 
@@ -3367,7 +3056,7 @@ namespace LLP
 
                     /* Default catch all. */
                     default:
-                        return debug::drop(NODE, "FLAGS::LOOKUP: invalid type specifier for TYPES::MERKLE");
+                        return debug::drop(NODE, "TYPES::MERKLE: invalid type specifier for TYPES::MERKLE");
                 }
 
                 break;

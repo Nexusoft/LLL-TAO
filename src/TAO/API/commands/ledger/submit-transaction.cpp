@@ -71,7 +71,7 @@ namespace TAO::API
             ssData >> tx;
 
             /* Check if tx is valid. */
-            if(!tx.CheckTransaction())
+            if(!tx.Check())
                 throw Exception(-150, "Transaction rejected.");
 
             /* Add the transaction to the memory pool. */

@@ -444,7 +444,7 @@ namespace Legacy
 		 *  Check the transaction for validity.
 		 *
 		 **/
-		bool CheckTransaction() const;
+		bool Check() const;
 
 
 		/** Fetch Inputs

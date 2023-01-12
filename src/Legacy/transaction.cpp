@@ -851,7 +851,7 @@ namespace Legacy
 
 
 	/* Check the transaction for validity. */
-	bool Transaction::CheckTransaction() const
+	bool Transaction::Check() const
     {
         /* Validate tx version 2 required when v7+ active and after v6 grace period end. */
         if(nTime < TAO::Ledger::StartBlockTimelock(7) && nVersion != (TRANSACTION_CURRENT_VERSION - 1))

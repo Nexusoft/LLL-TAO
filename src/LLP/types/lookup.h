@@ -12,8 +12,12 @@ ________________________________________________________________________________
 
 #pragma once
 
+#include <LLC/include/random.h>
+
 #include <LLP/packets/packet.h>
 #include <LLP/templates/connection.h>
+
+#include <Util/types/lock_unique_ptr.h>
 
 namespace LLP
 {
@@ -26,10 +30,25 @@ namespace LLP
             enum : Packet::message_t
             {
                 /* Object Types. */
-                DEPENDANT     = 0x01,
-                TRIGGER       = 0x02,
-                PING          = 0x03,
+                RESERVED1     = 0x00,
+                CONNECT       = 0x01,
+                DEPENDANT     = 0x02,
+                //PING          = 0x04,
+                RESERVED2     = 0x03,
             };
+
+            /** VALID
+             *
+             *  Inline function to check if message request is valid request.
+             *
+             *  @param[in] nMsg The message value to check if valid.
+             *
+             *  @return true if the request was in range.
+             */
+            static inline bool VALID(const Packet::message_t nMsg)
+            {
+                return (nMsg > RESERVED1 && nMsg < RESERVED2);
+            }
         };
 
         /** Status returns available states. **/
@@ -37,9 +56,8 @@ namespace LLP
         {
             enum : Packet::message_t
             {
-                MERKLE       = 0x11,
-                COMPLETED    = 0x12, //let node know an event was completed
-                PONG         = 0x13,
+                MERKLE       = 0x11, //for legacy data types
+                MEMPOOL      = 0x12, //for tritium data types
             };
         };
 
@@ -57,6 +75,13 @@ namespace LLP
 
     public:
 
+
+        /** Set our static locked ptr. **/
+        static util::atomic::lock_unique_ptr<std::set<uint64_t>> setRequests;
+
+
+        /** Our global processing lock for dependants. **/
+        static std::mutex DEPENDANT_MUTEX;
 
         /** Name
          *
@@ -102,5 +127,55 @@ namespace LLP
          **/
         bool ProcessPacket();
 
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         **/
+        template<typename... Args>
+        void PushMessage(const uint8_t nMsg, Args&&... args)
+        {
+            /* Buyild a datastream with the message parameters. */
+            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
+            ((ssData << args), ...);
+
+            /* Build the message packet. */
+            Packet RESPONSE(nMsg);
+            RESPONSE.SetData(ssData);
+
+            /* Write to sockets. */
+            WritePacket(RESPONSE);
+
+            /* Log the packet details if verbose is set. */
+            if(config::nVerbose >= 4)
+                debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+        }
+
+        /** BlockingMessage
+         *
+         *  Adds a tritium packet to the queue and waits for the peer to send a COMPLETED message.
+         *
+         *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
+         *  @param[in] nMsg The message type.
+         *  @param[in] args variable args to be sent in the message.
+         **/
+        template<typename... Args>
+        void BlockingMessage(const uint32_t nTimeout, const uint8_t nMsg, Args&&... args)
+        {
+            /* Create our trigger nonce. */
+            const uint64_t nRequestID = LLC::GetRand();
+            PushMessage(nMsg, nRequestID, std::forward<Args>(args)...);
+
+            /* Create the condition variable trigger. */
+            LLP::Trigger REQUEST_TRIGGER;
+            AddTrigger(nMsg, &REQUEST_TRIGGER);
+
+            /* Process the event. */
+            REQUEST_TRIGGER.wait_for_nonce(nRequestID, nTimeout);
+
+            /* Cleanup our event trigger. */
+            Release(nMsg);
+        }
     };
 }
