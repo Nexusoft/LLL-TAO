@@ -152,30 +152,33 @@ namespace LLP
                 debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
         }
 
-        /** BlockingMessage
+        /** BlockingLookup
          *
-         *  Adds a tritium packet to the queue and waits for the peer to send a COMPLETED message.
+         *  Adds a packet to the queue and waits for the peer to respond to the message.
          *
          *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
          *  @param[in] nMsg The message type.
          *  @param[in] args variable args to be sent in the message.
          **/
         template<typename... Args>
-        void BlockingMessage(const uint32_t nTimeout, const uint8_t nMsg, Args&&... args)
+        void BlockingLookup(const uint32_t nTimeout, const uint8_t nMsg, Args&&... args)
         {
             /* Create our trigger nonce. */
             const uint64_t nRequestID = LLC::GetRand();
-            PushMessage(nMsg, nRequestID, std::forward<Args>(args)...);
+
+            /* Add to our request tracker and make request. */
+            LookupNode::setRequests->insert(nRequestID);
+            PushMessage(REQUEST::DEPENDANT, nRequestID, std::forward<Args>(args)...);
 
             /* Create the condition variable trigger. */
             LLP::Trigger REQUEST_TRIGGER;
-            AddTrigger(nMsg, &REQUEST_TRIGGER);
+            AddTrigger(RESPONSE::MERKLE, &REQUEST_TRIGGER);
 
             /* Process the event. */
             REQUEST_TRIGGER.wait_for_nonce(nRequestID, nTimeout);
 
             /* Cleanup our event trigger. */
-            Release(nMsg);
+            Release(RESPONSE::MERKLE);
         }
     };
 }

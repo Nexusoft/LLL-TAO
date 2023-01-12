@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/merkle.h>
 
+#include <TAO/API/types/indexing.h>
+
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Ledger/types/client.h>
@@ -105,8 +107,8 @@ namespace LLP
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
 
         /* Get our request-id. */
-        uint64_t nPacketID;
-        ssPacket >> nPacketID;
+        uint64_t nRequestID;
+        ssPacket >> nRequestID;
 
         /* Switch based on our incoming message. */
         switch(INCOMING.HEADER)
@@ -115,8 +117,8 @@ namespace LLP
             case RESPONSE::MERKLE:
             {
                 /* Check that we made this request. */
-                if(!setRequests->count(nPacketID))
-                    return debug::drop(NODE, "unsolicted response-id ", nPacketID);
+                if(!setRequests->count(nRequestID))
+                    return debug::drop(NODE, "unsolicted response-id ", nRequestID);
 
                 /* Get the specifier for dependant. */
                 uint8_t nSpecifier;
@@ -262,6 +264,12 @@ namespace LLP
                         return debug::drop(NODE, "invalid specifier message: ", std::hex, nSpecifier);
                     }
                 }
+
+                /* Let any blocking thread know we are finished processing now. */
+                TriggerEvent(RESPONSE::MERKLE, nRequestID);
+
+                /* Cleanup our requests set. */
+                setRequests->erase(nRequestID);
 
                 break;
             }
@@ -527,9 +535,6 @@ namespace LLP
                 break;
             }
         }
-
-        /* Get our request identification. */
-        TriggerEvent(INCOMING.HEADER, nPacketID);
 
         return true;
     }
