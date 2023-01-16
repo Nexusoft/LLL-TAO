@@ -71,6 +71,66 @@ namespace LLP
     }
 
 
+    /* Establishes a new connection and adds it to current Data Thread and returns the active connection pointer. */
+    template <class ProtocolType>
+    bool DataThread<ProtocolType>::NewConnection(const BaseAddress &addr, DDOS_Filter* DDOS, const bool& fSSL, std::shared_ptr<ProtocolType> &pNodeRet)
+    {
+        try
+        {
+            /* Create a new pointer on the heap. */
+            ProtocolType* pnode = new ProtocolType(nullptr, false); //turn off DDOS for outgoing connections
+
+            /* Set the SSL flag */
+            pnode->SetSSL(fSSL);
+
+            /* Attempt to make the connection. */
+            if(!pnode->Connect(addr))
+            {
+                delete pnode;
+                return false;
+            }
+
+            /* Find an available slot. */
+            uint32_t nSlot = find_slot();
+
+            /* Update the indexes. */
+            pnode->nDataThread     = ID;
+            pnode->nDataIndex      = nSlot;
+            pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+
+            /* Set our return connection pointer. */
+            pNodeRet = std::shared_ptr<ProtocolType>(pnode);
+
+            /* Find a slot that is empty. */
+            if(nSlot == CONNECTIONS->size())
+                CONNECTIONS->push_back(pNodeRet);
+            else
+                CONNECTIONS->at(nSlot) = pNodeRet;
+
+            /* Fire the connected event. */
+            pnode->Event(EVENTS::CONNECT);
+
+            /* Check for inbound socket. */
+            if(pnode->Incoming())
+                ++nIncoming;
+            else
+                ++nOutbound;
+
+            /* Notify data thread to wake up. */
+            CONDITION.notify_all();
+
+        }
+        catch(const std::runtime_error& e)
+        {
+            debug::error(FUNCTION, e.what()); //catch any atomic_ptr exceptions
+
+            return false;
+        }
+
+        return true;
+    }
+
+
     /*  Disconnects all connections by issuing a DISCONNECT::FORCE event message
      *  and then removes the connection from this data thread. */
     template <class ProtocolType>

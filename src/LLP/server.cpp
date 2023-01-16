@@ -205,7 +205,7 @@ namespace LLP
 
     /*  Add a node address to the internal address manager */
     template <class ProtocolType>
-    void Server<ProtocolType>::AddNode(std::string strAddress, bool fLookup)
+    void Server<ProtocolType>::AddNode(const std::string& strAddress, bool fLookup)
     {
        /* Assemble the address from input parameters. */
        BaseAddress addr(strAddress, CONFIG.PORT_BASE, fLookup);
@@ -217,6 +217,49 @@ namespace LLP
        /* Add the address to the address manager if it exists. */
        if(pAddressManager)
           pAddressManager->AddAddress(addr, ConnectState::NEW);
+    }
+
+
+    /* Connect a node address to the internal server manager */
+    template <class ProtocolType>
+    bool Server<ProtocolType>::ConnectNode(const std::string& strAddress, std::shared_ptr<ProtocolType> &pNodeRet, bool fLookup)
+    {
+        /* Assemble the address from input parameters. */
+        BaseAddress addrConnect(strAddress, CONFIG.PORT_BASE, fLookup);
+
+        /* Make sure address is valid. */
+        if(!addrConnect.IsValid())
+             return debug::error(FUNCTION, "address ", addrConnect.ToStringIP(), " is invalid");
+
+         /* Create new DDOS Filter if Needed. */
+         if(CONFIG.ENABLE_DDOS)
+         {
+             /* Add new filter to map if it doesn't exist. */
+             if(!DDOS_MAP->count(addrConnect))
+                 DDOS_MAP->emplace(std::make_pair(addrConnect, new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
+
+             /* DDOS Operations: Only executed when DDOS is enabled. */
+             if(!addrConnect.IsLocal() && DDOS_MAP->at(addrConnect)->Banned())
+                 return debug::error(FUNCTION, "address ", addrConnect.ToStringIP(), " is banned");
+         }
+
+         /* Find a balanced Data Thread to Add Connection to. */
+         int32_t nThread = FindThread();
+         if(nThread < 0)
+             return debug::error(FUNCTION, "no available connections for ", ProtocolType::Name());
+
+         /* Select the proper data thread. */
+         DataThread<ProtocolType> *dt = THREADS_DATA[nThread];
+
+         /* Attempt the connection. */
+         if(!dt->NewConnection(addrConnect, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addrConnect) : nullptr, false, pNodeRet))
+             return debug::error(FUNCTION, "connection attempt for address ", addrConnect.ToStringIP(), " failed");
+
+         /* Add the address to the address manager if it exists. */
+         if(pAddressManager)
+             pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
+
+         return true;
     }
 
 

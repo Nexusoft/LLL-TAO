@@ -136,7 +136,21 @@ namespace LLP
          *  @param[in] strAddress	IPv4 Address of outgoing connection
          *
          **/
-        void AddNode(std::string strAddress, bool fLookup = false);
+        void AddNode(const std::string& strAddress, bool fLookup = false);
+
+
+        /** ConnectNode
+         *
+         *  Connect a node address to the internal server manager
+         *
+         *  @param[in] strAddress	IPv4 Address of outgoing connection
+         *  @param[out] pNode The node that we have just connected to.
+         *  @param[in] fLookup Flag to determine if DNS record should be looked up.
+         *
+         *  @return true if the connection was established.
+         *
+         **/
+        bool ConnectNode(const std::string& strAddress, std::shared_ptr<ProtocolType> &pNodeRet, bool fLookup = false);
 
 
         /** AddConnection
@@ -153,7 +167,7 @@ namespace LLP
          *
          **/
         template<typename... Args>
-        bool AddConnection(std::string strAddress, uint16_t nPort, bool fSSL, bool fLookup, Args&&... args)
+        bool AddConnection(const std::string& strAddress, uint16_t nPort, bool fSSL, bool fLookup, Args&&... args)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
             BaseAddress addrConnect(strAddress, nPort, fLookup);

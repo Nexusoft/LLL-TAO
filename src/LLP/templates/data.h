@@ -236,6 +236,21 @@ namespace LLP
         }
 
 
+        /** NewConnection
+         *
+         *  Establishes a new connection and adds it to current Data Thread and returns the active connection pointer.
+         *
+         *  @param[in] addr Address class instnace containing the IP address and port for the connection.
+         *  @param[in] DDOS The pointer to the DDOS filter to add to the connection.
+         *  @param[in] fSSL Flag indicating if this connection should use SSL
+         *  @param[in] args variadic args to forward to the LLP protocol constructor
+         *
+         *  @return Returns true if successfully added, false otherwise.
+         *
+         **/
+        bool NewConnection(const BaseAddress &addr, DDOS_Filter* DDOS, const bool& fSSL, std::shared_ptr<ProtocolType> &pNodeRet);
+
+
         /** DisconnectAll
          *
          *  Disconnects all connections by issuing a DISCONNECT::FORCE event message
