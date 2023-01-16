@@ -24,6 +24,8 @@ namespace LLP
 
     class LookupNode : public Connection
     {
+    public:
+
         /** Types are objects that can be sent in packets. **/
         struct REQUEST
         {
@@ -72,8 +74,6 @@ namespace LLP
                 REGISTER     = 0x23, //specify for register transaction
             };
         };
-
-    public:
 
 
         /** Set our static locked ptr. **/

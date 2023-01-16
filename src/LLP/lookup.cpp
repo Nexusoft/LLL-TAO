@@ -13,6 +13,8 @@ ________________________________________________________________________________
 #include <LLP/types/lookup.h>
 #include <LLP/types/tritium.h>
 #include <LLP/templates/events.h>
+#include <LLP/include/global.h>
+
 #include <LLD/include/global.h>
 
 #include <Legacy/types/transaction.h>
@@ -92,7 +94,13 @@ namespace LLP
 
         /* On Connect Event, Assign the Proper Daemon Handle. */
         if(EVENT == EVENTS::CONNECT)
+        {
+            /* Initialize our conneciton now. */
+            if(!Incoming())
+                PushMessage(REQUEST::CONNECT, LLP::SESSION_ID);
+
             return;
+        }
 
         /* On Disconnect Event, Reduce the Connection Count for Daemon */
         if(EVENT == EVENTS::DISCONNECT)

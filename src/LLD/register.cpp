@@ -233,19 +233,29 @@ namespace LLD
                     std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
                     if(pNode != nullptr)
                     {
+                        /* Get our lookup address now. */
+                        const std::string strAddress =
+                            pNode->GetAddress().ToStringIP();
+
                         /* Handle expired. */
                         if(fExpired)
                             debug::warning(0, FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
 
-                        /* Request the sig chain. */
-                        debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
-                        LLP::TritiumNode::BlockingMessage
-                        (
-                            5000,
-                            pNode.get(), LLP::TritiumNode::ACTION::GET,
-                            uint8_t(LLP::TritiumNode::TYPES::REGISTER), hashRegister
-                        );
-                        debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
+                        /* Make our new connection now. */
+                        std::shared_ptr<LLP::LookupNode> pLookup;
+                        if(LLP::LOOKUP_SERVER->ConnectNode(strAddress, pLookup))
+                        {
+                            /* Debug output to console. */
+                            debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
+                            pLookup->BlockingLookup
+                            (
+                                5000,
+                                LLP::LookupNode::REQUEST::DEPENDANT,
+                                uint8_t(LLP::LookupNode::SPECIFIER::REGISTER), hashRegister
+                            );
+                            pLookup->Disconnect();
+                            debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
+                        }
                     }
                     else
                         return debug::error(FUNCTION, "no connections available...");
