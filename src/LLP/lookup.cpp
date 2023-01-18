@@ -176,22 +176,12 @@ namespace LLP
                                 return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: index already exists");
 
                             /* Commit transaction to disk. */
-                            LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
                             if(!LLD::Client->WriteTx(hashTx, tx))
-                            {
-                                LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
                                 return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
-                            }
 
                             /* Index the transaction to it's block. */
                             if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                            {
-                                LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
                                 return debug::error(FUNCTION, "failed to write block indexing entry");
-                            }
-
-                            /* Flush to disk and clear mempool. */
-                            LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
 
                             /* Add our events level indexes now. */
                             TAO::API::Indexing::IndexDependant(hashTx, tx);
@@ -237,22 +227,12 @@ namespace LLP
                             LOCK(DEPENDANT_MUTEX);
 
                             /* Commit transaction to disk. */
-                            LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
                             if(!LLD::Client->WriteTx(hashTx, tx))
-                            {
-                                LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
                                 return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
-                            }
 
                             /* Index the transaction to it's block. */
                             if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                            {
-                                LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
                                 return debug::error(FUNCTION, "failed to write block indexing entry");
-                            }
-
-                            /* Flush to disk and clear mempool. */
-                            LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
 
                             /* Add our events level indexes now. */
                             TAO::API::Indexing::IndexDependant(hashTx, tx);

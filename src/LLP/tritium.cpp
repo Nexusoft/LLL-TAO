@@ -2865,34 +2865,28 @@ namespace LLP
                                 if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                     return debug::error(FUNCTION, "merkle transaction has invalid path");
 
-                                /* Commit transaction to disk. */
-                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
-                                if(!LLD::Client->WriteTx(hashTx, tx))
+                                /* We want to lock our DEPENDANT MUTEX in case we have another lookup so we don't cross indexes. */
                                 {
-                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
-                                    return debug::error(FUNCTION, "failed to write transaction");
-                                }
+                                    LOCK(LookupNode::DEPENDANT_MUTEX);
 
-                                /* Index the transaction to it's block. */
-                                if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                {
-                                    LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
-                                    return debug::error(FUNCTION, "failed to write block indexing entry");
-                                }
+                                    /* Commit transaction to disk. */
+                                    if(!LLD::Client->WriteTx(hashTx, tx))
+                                        return debug::error(FUNCTION, "failed to write transaction");
 
-                                /* Flush to disk and clear mempool. */
-                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
-                                TAO::Ledger::mempool.Remove(hashTx);
+                                    /* Index the transaction to it's block. */
+                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                        return debug::error(FUNCTION, "failed to write block indexing entry");
+                                }
 
                                 /* Verbose=3 dumps transaction data. */
                                 if(config::nVerbose >= 3)
                                     tx.print();
 
                                 /* Write Success to log. */
-                                debug::log(0, hashTx.SubString(), " ACCEPTED");
+                                debug::log(0, "MERKLE::LEGACY: ", hashTx.SubString(), " ACCEPTED");
 
                                 /* Add an indexing event. */
-                                TAO::API::Indexing::PushTransaction(hashTx);
+                                TAO::API::Indexing::IndexDependant(hashTx, tx);
                             }
                         }
 
@@ -2910,7 +2904,7 @@ namespace LLP
                         uint512_t hashTx = tx.GetHash();
 
                         /* Check if we have this transaction already. */
-                        if(!LLD::Client->HasIndex(hashTx))
+                        if(!LLD::Ledger->HasIndex(hashTx))
                         {
                             LOCK(CLIENT_MUTEX);
 
@@ -2925,23 +2919,21 @@ namespace LLP
                                     if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                                         return debug::error(FUNCTION, "merkle transaction has invalid path");
 
-                                    if(config::nVerbose >= 3)
-                                        tx.print();
+                                    /* We want to lock our DEPENDANT MUTEX in case we have another lookup so we don't cross indexes. */
+                                    {
+                                        LOCK(LookupNode::DEPENDANT_MUTEX);
 
-                                    /* Commit transaction to disk. */
+                                        /* Commit transaction to disk. */
+                                        if(!LLD::Client->WriteTx(hashTx, tx))
+                                            return debug::error(FUNCTION, "failed to write transaction");
+
+                                        /* Index the transaction to it's block. */
+                                        if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                            return debug::error(FUNCTION, "failed to write block indexing entry");
+                                    }
+
+                                    /* Start our ACID transaction in case we have any failures here. */
                                     LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
-                                    if(!LLD::Client->WriteTx(hashTx, tx))
-                                    {
-                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
-                                        return debug::error(FUNCTION, "failed to write transaction");
-                                    }
-
-                                    /* Index the transaction to it's block. */
-                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                    {
-                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
-                                        return debug::error(FUNCTION, "failed to write block indexing entry");
-                                    }
 
                                     /* Connect transaction in memory. */
                                     if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
@@ -2952,14 +2944,13 @@ namespace LLP
 
                                     /* Flush to disk and clear mempool. */
                                     LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
-                                    TAO::Ledger::mempool.Remove(hashTx);
 
                                     /* Verbose=3 dumps transaction data. */
                                     if(config::nVerbose >= 3)
                                         tx.print();
 
                                     /* Write Success to log. */
-                                    debug::log(0, hashTx.SubString(), " ACCEPTED");
+                                    debug::log(0, "MERKLE::TRITIUM: ", hashTx.SubString(), " ACCEPTED");
 
                                     /* Add an indexing event. */
                                     TAO::API::Indexing::PushTransaction(hashTx);
@@ -3005,132 +2996,6 @@ namespace LLP
                 ssPacket >> nNonce;
 
                 TriggerEvent(INCOMING.MESSAGE, nNonce);
-
-                break;
-            }
-
-            case RESPONSE::VALIDATED:
-            {
-                /* deserialize the type */
-                uint8_t nType;
-                ssPacket >> nType;
-
-                /* De-serialize the trigger nonce. */
-                uint64_t nNonce = 0;
-                ssPacket >> nNonce;
-
-                switch(nType)
-                {
-                    case TYPES::TRANSACTION:
-                    {
-                        /* get the valid flag */
-                        bool fValid = false;
-                        ssPacket >> fValid;
-
-                        /* deserialize the transaction hash */
-                        uint512_t hashTx;
-                        ssPacket >> hashTx;
-
-                        if(fValid)
-                        {
-                            /* Trigger event with this nonce. */
-                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx);
-                        }
-                        else
-                        {
-                            /* deserialize the contract ID */
-                            uint32_t nContract;
-                            ssPacket >> nContract;
-
-                            /* Trigger active events with this nonce. */
-                            TriggerEvent(INCOMING.MESSAGE, nNonce, fValid, hashTx, nContract);
-                        }
-
-                        break;
-                    }
-                    default:
-                    {
-                        /* Trigger active events with this nonce. */
-                        TriggerEvent(INCOMING.MESSAGE, nNonce);
-                    }
-                }
-
-                break;
-            }
-
-            case ACTION::VALIDATE:
-            {
-                /* deserialize the type */
-                uint8_t nType;
-                ssPacket >> nType;
-
-                switch(nType)
-                {
-                    case TYPES::TRANSACTION:
-                    {
-                        /* deserialize the transaction */
-                        TAO::Ledger::Transaction tx;
-                        ssPacket >> tx;
-
-                        /* Validating a transaction simply sanitizes the contracts within it.  If any of them fail then we stop
-                           sanitizing and return the contract ID that failed */
-                        bool fSanitized = false;
-
-                        /* Temporary map for pre-states to be passed into the sanitization Build() for each contract. */
-                        std::map<uint256_t, TAO::Register::State> mapStates;
-
-                        /* Loop through each contract in the transaction. */
-                        for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
-                        {
-                            /* Get the contract. */
-                            TAO::Operation::Contract& contract = tx[nContract];
-
-                            /* Lock the mempool at this point so that we can see if the transaction would be accepted into the mempool */
-                            RECURSIVE(TAO::Ledger::mempool.MUTEX);
-
-                            try
-                            {
-                                /* Start a ACID transaction (to be disposed). */
-                                LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
-
-                                fSanitized = TAO::Register::Build(contract, mapStates, TAO::Ledger::FLAGS::MEMPOOL)
-                                            && TAO::Operation::Execute(contract, TAO::Ledger::FLAGS::MEMPOOL);
-
-                                /* Abort the mempool ACID transaction once the contract is sanitized */
-                                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
-
-                            }
-                            catch(const std::exception& e)
-                            {
-                                /* Abort the mempool ACID transaction */
-                                LLD::TxnAbort(TAO::Ledger::FLAGS::MEMPOOL);
-
-                                /* Log the error and attempt to continue processing */
-                                debug::error(FUNCTION, e.what());
-
-                                fSanitized = false;
-                            }
-
-                            /* If this contract failed, then respond with the failed contract ID */
-                            if(!fSanitized)
-                            {
-                                PushMessage(RESPONSE::VALIDATED, uint8_t(TYPES::TRANSACTION), nTriggerNonce, false, tx.GetHash(), nContract);
-
-                                /* Stop processing any more contracts  */
-                                break;
-                            }
-                        }
-
-                        /* If none failed then send a validated response */
-                        PushMessage(RESPONSE::VALIDATED, uint8_t(TYPES::TRANSACTION), nTriggerNonce, true, tx.GetHash());
-
-                        break;
-                    }
-                    default:
-                    {
-                        return debug::drop(NODE, "ACTION::VALIDATE invalid type specified");
-                    }
-                }
 
                 break;
             }

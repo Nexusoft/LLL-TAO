@@ -199,15 +199,15 @@ namespace LLD
                 if(LLP::LOOKUP_SERVER->ConnectNode(strAddress, pLookup))
                 {
                     /* Debug output to console. */
-                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::DEPENDANT for ", hashTx.SubString());
+                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::DEPENDANT::LEGACY for ", hashTx.SubString());
                     pLookup->BlockingLookup
                     (
                         5000,
                         LLP::LookupNode::REQUEST::DEPENDANT,
-                        uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM), hashTx
+                        uint8_t(LLP::LookupNode::SPECIFIER::LEGACY), hashTx
                     );
                     pLookup->Disconnect();
-                    debug::log(1, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT received for ", hashTx.SubString());
+                    debug::log(1, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT::LEGACY received for ", hashTx.SubString());
 
                     /* Recursively process once we have done the lookup. */
                     return ReadContract(hashTx, nContract, nFlags);
