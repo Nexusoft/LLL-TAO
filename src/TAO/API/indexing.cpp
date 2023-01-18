@@ -401,12 +401,12 @@ namespace TAO::API
 
                             /* Request the sig chain. */
                             debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
-                            //LLP::TritiumNode::BlockingMessage
-                            //(
-                            //    10000,
-                            //    pNode.get(), LLP::TritiumNode::ACTION::LIST,
-                            //    uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
-                            //);
+                            LLP::TritiumNode::BlockingMessage
+                            (
+                                10000,
+                                pNode.get(), LLP::TritiumNode::ACTION::LIST,
+                                uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
+                            );
                             debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 
                             /* Get the last event txid */

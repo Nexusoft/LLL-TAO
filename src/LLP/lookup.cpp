@@ -205,9 +205,6 @@ namespace LLP
                         else if(!tx.Connect(TAO::Ledger::FLAGS::LOOKUP))
                             return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-                        /* Add an indexing event. */
-                        TAO::API::Indexing::PushTransaction(hashTx);
-
                         debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                         break;
@@ -240,7 +237,6 @@ namespace LLP
                         if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
                             return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: merkle transaction has invalid path");
 
-
                         LOCK(DEPENDANT_MUTEX);
 
                         /* Commit transaction to disk. */
@@ -260,9 +256,6 @@ namespace LLP
 
                         /* Flush to disk and clear mempool. */
                         LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
-
-                        /* Add an indexing event. */
-                        TAO::API::Indexing::PushTransaction(hashTx);
 
                         /* Write Success to log. */
                         debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
