@@ -236,7 +236,7 @@ namespace LLD
 
             /* Check if our cache has expired. */
             const bool fCached  = (pLookup && pLookup->count(hashRegister));
-            const bool fExpired = (fCached && (pLookup->at(hashRegister).second + 5 < nTimestamp));
+            const bool fExpired = (fCached && (pLookup->at(hashRegister).second + 600 < nTimestamp));
 
             /* Check for expired or missing. */
             if(fExpired || !fCached)

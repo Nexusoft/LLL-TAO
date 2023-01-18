@@ -431,7 +431,7 @@ namespace LLP
                                         PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle);
 
                                         /* Build indexes for optimized processing. */
-                                        std::pair<uint512_t, uint64_t> pairIndex = std::make_pair(tx.GetHash(), runtime::unifiedtimestamp() + 3600);
+                                        std::pair<uint512_t, uint64_t> pairIndex = std::make_pair(tx.GetHash(), runtime::unifiedtimestamp() + 600);
                                         if(!LLD::Local->WriteIndex(hashAddress, pairIndex)) //Index expires 1 hour after created
                                             break;
 
