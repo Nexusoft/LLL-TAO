@@ -1673,7 +1673,7 @@ namespace LLP
                         ssPacket >> hashSigchain;
 
                         /* Get the txid to list from */
-                        uint64_t nSequence;
+                        uint32_t nSequence;
                         ssPacket >> nSequence;
 
                         /* Get the last event */

@@ -507,19 +507,6 @@ namespace LLD
         bool IncrementTritiumSequence(const uint256_t& hashGenesis);
 
 
-        /** LastLegacyEvent
-         *
-         *  Read the last event txid that was processed for given sigchain.
-         *
-         *  @param[in] hashGenesis The genesis-id to check event for.
-         *  @param[out] hashEvent The last txid that was written.
-         *
-         *  @return if the record was read successfully.
-         *
-         **/
-        bool LastLegacyEvent(const uint256_t& hashGenesis, uint512_t &hashEvent);
-
-
         /** ReadLegacySequence
          *
          *  Read the last event that was processed for given sigchain.

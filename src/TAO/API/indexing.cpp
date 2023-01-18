@@ -413,23 +413,26 @@ namespace TAO::API
                             );
                             debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 
-                            /* Get the last event txid */
-                            //uint512_t hashLastEvent;
+                            /* Get our current tritium events sequence now. */
+                            uint32_t nTritiumSequence = 0;
+                            LLD::Logical->ReadTritiumSequence(hashGenesis, nTritiumSequence);
 
                             /* Request the sig chain. */
-                            //debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashGenesis.SubString());
-                            //LLP::TritiumNode::BlockingMessage
-                            //(
-                            //    30000,
-                            //    pNode.get(),
-                            //    LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastEvent
-                            //);
-                            //debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashGenesis.SubString());
+                            debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashGenesis.SubString());
+                            LLP::TritiumNode::BlockingMessage
+                            (
+                                10000,
+                                pNode.get(),
+                                LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
+                                hashGenesis, nTritiumSequence
+                            );
+                            debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashGenesis.SubString());
 
-                            /* Get our last list of events from legacy transactions. */
-                            //LLD::Legacy->ReadTritiumSequence(hashGenesis, hashLastEvent);
+                            /* Get our current legacy events sequence now. */
+                            uint32_t nLegacySequence = 0;
+                            LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence);
 
-                            /* Request the sig chain.
+                            /* Request the sig chain. */
                             debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION for ", hashGenesis.SubString());
                             LLP::TritiumNode::BlockingMessage
                             (
@@ -437,10 +440,9 @@ namespace TAO::API
                                 pNode.get(),
                                 LLP::TritiumNode::ACTION::LIST,
                                 uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
-                                hashGenesis, hashLastEvent
+                                hashGenesis, nLegacySequence
                             );
                             debug::log(0, FUNCTION, "CLIENT MODE: LIST::LEGACY::NOTIFICATION received for ", hashGenesis.SubString());
-                            */
                         }
                         else
                             debug::error(FUNCTION, "no connections available...");
