@@ -526,18 +526,36 @@ namespace LLD
     }
 
 
+    /* Read the last event that was processed for given sigchain. */
+    bool LogicalDB::ReadTritiumSequence(const uint256_t& hashGenesis, uint32_t &nSequence)
+    {
+        return Read(std::make_pair(std::string("indexing.sequence"), hashGenesis), nSequence);
+    }
+
+
+    /* Write the last event that was processed for given sigchain. */
+    bool LogicalDB::IncrementTritiumSequence(const uint256_t& hashGenesis)
+    {
+        /* Read our current sequence. */
+        uint32_t nSequence = 0;
+        ReadTritiumSequence(hashGenesis, nSequence);
+
+        return Write(std::make_pair(std::string("indexing.sequence"), hashGenesis), ++nSequence);
+    }
+
+
     /* List the current active events for given genesis-id. */
-    bool LogicalDB::GetLastEvent(const uint256_t& hashGenesis, uint512_t &hashEvent)
+    bool LogicalDB::LastLegacyEvent(const uint256_t& hashGenesis, uint512_t &hashEvent)
     {
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairEvent;
 
         /* Read our current sequence. */
         uint32_t nSequence = 0;
-        ReadLastEvent(hashGenesis, nSequence);
+        ReadTritiumSequence(hashGenesis, nSequence);
 
         /* Read our current record. */
-        if(!Read(std::make_tuple(std::string("events.index"), --nSequence, hashGenesis), pairEvent))
+        if(!Read(std::make_tuple(std::string("events.index.legacy"), --nSequence, hashGenesis), pairEvent))
             return false;
 
         /* Set our event internal hash. */
@@ -548,20 +566,20 @@ namespace LLD
 
 
     /* Read the last event that was processed for given sigchain. */
-    bool LogicalDB::ReadLastEvent(const uint256_t& hashGenesis, uint32_t &nSequence)
+    bool LogicalDB::ReadLegacySequence(const uint256_t& hashGenesis, uint32_t &nSequence)
     {
-        return Read(std::make_pair(std::string("indexing.sequence"), hashGenesis), nSequence);
+        return Read(std::make_pair(std::string("indexing.sequence.legacy"), hashGenesis), nSequence);
     }
 
 
     /* Write the last event that was processed for given sigchain. */
-    bool LogicalDB::IncrementLastEvent(const uint256_t& hashGenesis)
+    bool LogicalDB::IncrementLegacySequence(const uint256_t& hashGenesis)
     {
         /* Read our current sequence. */
         uint32_t nSequence = 0;
-        ReadLastEvent(hashGenesis, nSequence);
+        ReadLegacySequence(hashGenesis, nSequence);
 
-        return Write(std::make_pair(std::string("indexing.sequence"), hashGenesis), ++nSequence);
+        return Write(std::make_pair(std::string("indexing.sequence.legacy"), hashGenesis), ++nSequence);
     }
 
 

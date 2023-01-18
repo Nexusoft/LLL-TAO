@@ -482,20 +482,7 @@ namespace LLD
         bool ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents);
 
 
-        /** GetLastEvent
-         *
-         *  Read the last event txid that was processed for given sigchain.
-         *
-         *  @param[in] hashGenesis The genesis-id to check event for.
-         *  @param[out] hashEvent The last txid that was written.
-         *
-         *  @return if the record was read successfully.
-         *
-         **/
-        bool GetLastEvent(const uint256_t& hashGenesis, uint512_t &hashEvent);
-
-
-        /** ReadLastEvent
+        /** ReadTritiumSequence
          *
          *  Read the last event that was processed for given sigchain.
          *
@@ -505,10 +492,10 @@ namespace LLD
          *  @return if the record was read successfully.
          *
          **/
-        bool ReadLastEvent(const uint256_t& hashGenesis, uint32_t &nSequence);
+        bool ReadTritiumSequence(const uint256_t& hashGenesis, uint32_t &nSequence);
 
 
-        /** IncrementLastEvent
+        /** IncrementTritiumSequence
          *
          *  Write the last event that was processed for given sigchain.
          *
@@ -517,7 +504,45 @@ namespace LLD
          *  @return if the record was written successfully.
          *
          **/
-        bool IncrementLastEvent(const uint256_t& hashGenesis);
+        bool IncrementTritiumSequence(const uint256_t& hashGenesis);
+
+
+        /** LastLegacyEvent
+         *
+         *  Read the last event txid that was processed for given sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *  @param[out] hashEvent The last txid that was written.
+         *
+         *  @return if the record was read successfully.
+         *
+         **/
+        bool LastLegacyEvent(const uint256_t& hashGenesis, uint512_t &hashEvent);
+
+
+        /** ReadLegacySequence
+         *
+         *  Read the last event that was processed for given sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *  @param[out] nSequence The last sequence that was written.
+         *
+         *  @return if the record was read successfully.
+         *
+         **/
+        bool ReadLegacySequence(const uint256_t& hashGenesis, uint32_t &nSequence);
+
+
+        /** IncrementLegacySequence
+         *
+         *  Write the last event that was processed for given sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *
+         *  @return if the record was written successfully.
+         *
+         **/
+        bool IncrementLegacySequence(const uint256_t& hashGenesis);
 
 
         /** HasEvent
