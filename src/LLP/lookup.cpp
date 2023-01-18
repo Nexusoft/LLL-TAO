@@ -185,6 +185,9 @@ namespace LLP
 
                             /* Flush to disk and clear mempool. */
                             LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+
+                            /* Add our events level indexes now. */
+                            TAO::API::Indexing::IndexDependant(hashTx, TAO::Ledger::Transaction(tx));
                         }
 
                         /* Connect transaction in memory if register specifier. */

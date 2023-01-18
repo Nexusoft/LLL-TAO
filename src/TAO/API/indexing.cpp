@@ -729,6 +729,111 @@ namespace TAO::API
     }
 
 
+    /* Index transaction level events for logged in sessions. */
+    void Indexing::IndexDependant(const uint512_t& hashTx, const TAO::Ledger::Transaction& tx)
+    {
+        /* Check all the tx contracts. */
+        for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
+        {
+            /* Grab reference of our contract. */
+            const TAO::Operation::Contract& rContract = tx[nContract];
+
+            /* Skip to our primitive. */
+            rContract.SeekToPrimitive();
+
+            /* Check the contract's primitive. */
+            uint8_t nOP = 0;
+            rContract >> nOP;
+            switch(nOP)
+            {
+                case TAO::Operation::OP::TRANSFER:
+                case TAO::Operation::OP::DEBIT:
+                {
+                    /* Get the register address. */
+                    TAO::Register::Address hashAddress;
+                    rContract >> hashAddress;
+
+                    /* Deserialize recipient from contract. */
+                    TAO::Register::Address hashRecipient;
+                    rContract >> hashRecipient;
+
+                    /* Special check when handling a DEBIT. */
+                    if(nOP == TAO::Operation::OP::DEBIT)
+                    {
+                        /* Skip over partials as this is handled seperate. */
+                        if(hashRecipient.IsObject())
+                            continue;
+
+                        /* Read the owner of register. (check this for MEMPOOL, too) */
+                        TAO::Register::State oRegister;
+                        if(!LLD::Register->ReadState(hashRecipient, oRegister))
+                            continue;
+
+                        /* Set our hash to based on owner. */
+                        hashRecipient = oRegister.hashOwner;
+
+                        /* Check for active debit from with contract. */
+                        if(Authentication::Active(tx.hashGenesis))
+                        {
+                            /* Write our events to database. */
+                            if(!LLD::Logical->PushContract(tx.hashGenesis, hashTx, nContract))
+                                continue;
+                        }
+                    }
+
+                    /* Check if we need to build index for this contract. */
+                    if(Authentication::Active(hashRecipient))
+                    {
+                        /* Push to unclaimed indexes if processing incoming transfer. */
+                        if(nOP == TAO::Operation::OP::TRANSFER && !LLD::Logical->PushUnclaimed(hashRecipient, hashAddress))
+                            continue;
+
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(hashRecipient, hashTx, nContract))
+                            continue;
+
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->IncrementLastEvent(hashRecipient))
+                            continue;
+                    }
+
+                    debug::log(2, FUNCTION, (nOP == TAO::Operation::OP::TRANSFER ? "TRANSFER: " : "DEBIT: "),
+                        "for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
+
+                    break;
+                }
+
+                case TAO::Operation::OP::COINBASE:
+                {
+                    /* Get the genesis. */
+                    uint256_t hashRecipient;
+                    rContract >> hashRecipient;
+
+                    /* Check if we need to build index for this contract. */
+                    if(Authentication::Active(hashRecipient))
+                    {
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(hashRecipient, hashTx, nContract))
+                            continue;
+
+                        /* We don't increment our events index for miner coinbase contract. */
+                        if(hashRecipient == tx.hashGenesis)
+                            continue;
+
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->IncrementLastEvent(hashRecipient))
+                            continue;
+
+                        debug::log(2, FUNCTION, "COINBASE: for genesis ", hashRecipient.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
+                    }
+
+                    break;
+                }
+            }
+        }
+    }
+
+
     /* Default destructor. */
     void Indexing::Shutdown()
     {

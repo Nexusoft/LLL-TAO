@@ -135,7 +135,42 @@ namespace LLD
             /* Get the transaction. */
             TAO::Ledger::Transaction tx;
             if(!ReadTx(hashTx, tx, nFlags))
-                throw debug::exception(FUNCTION, "failed to read contract");
+            {
+                /* Check for -client mode. */
+                if(!config::fClient.load())
+                    throw debug::exception(FUNCTION, "failed to read contract");
+
+                /* Check for genesis. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        /* Get our lookup address now. */
+                        const std::string strAddress =
+                            pNode->GetAddress().ToStringIP();
+
+                        /* Make our new connection now. */
+                        std::shared_ptr<LLP::LookupNode> pLookup;
+                        if(LLP::LOOKUP_SERVER->ConnectNode(strAddress, pLookup))
+                        {
+                            /* Debug output to console. */
+                            debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::DEPENDANT for ", hashTx.SubString());
+                            pLookup->BlockingLookup
+                            (
+                                5000,
+                                LLP::LookupNode::REQUEST::DEPENDANT,
+                                uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM), hashTx
+                            );
+                            pLookup->Disconnect();
+                            debug::log(1, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT received for ", hashTx.SubString());
+                        }
+                    }
+                    else
+                        throw debug::exception(FUNCTION, "no connections available...");
+                }
+            }
+
 
             /* Get const reference for read-only access. */
             const TAO::Ledger::Transaction& rtx = tx;
