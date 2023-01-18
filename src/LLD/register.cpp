@@ -211,6 +211,22 @@ namespace LLD
             }
         }
 
+        /* Special case for indexed addresses. */
+        if(config::GetBoolArg("-indexaddress"))
+        {
+            /* Create a pair to use for reading the reference for return. */
+            std::pair<uint256_t, TAO::Register::State&> pairResult =
+                std::make_pair(hashRegister, std::ref(state));
+
+            /* Check if it is on disk with -indexaddress. */
+            if(Read(std::make_pair(std::string("state"), hashRegister), pairResult))
+                return true;
+        }
+
+        /* Otherwise check that it is on disk without -indexaddress. */
+        else if(Read(std::make_pair(std::string("state"), hashRegister), state))
+            return true;
+
         /* Handle lookup if requested. */
         if(nFlags == TAO::Ledger::FLAGS::LOOKUP && config::fClient.load())
         {
@@ -237,7 +253,7 @@ namespace LLD
 
                         /* Handle expired. */
                         if(fExpired)
-                            debug::warning(0, FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
+                            debug::warning(FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
 
                         /* Make our new connection now. */
                         std::shared_ptr<LLP::LookupNode> pLookup;
@@ -258,29 +274,19 @@ namespace LLD
                     else
                         return debug::error(FUNCTION, "no connections available...");
                 }
+            }
 
-                /* Check for state in lookup map. */
-                if(pLookup && pLookup->count(hashRegister))
-                {
-                    /* Get the state from lookup memory. */
-                    state = pLookup->at(hashRegister).first;
+            /* Check for state in lookup map. */
+            if(pLookup && pLookup->count(hashRegister))
+            {
+                /* Get the state from lookup memory. */
+                state = pLookup->at(hashRegister).first;
 
-                    return true;
-                }
+                return true;
             }
         }
 
-        /* Special case for indexed addresses. */
-        if(config::GetBoolArg("-indexaddress"))
-        {
-            /* Create a pair to use for reading the reference for return. */
-            std::pair<uint256_t, TAO::Register::State&> pairResult =
-                std::make_pair(hashRegister, std::ref(state));
-
-            return Read(std::make_pair(std::string("state"), hashRegister), pairResult);
-        }
-
-        return Read(std::make_pair(std::string("state"), hashRegister), state);
+        return false;
     }
 
 

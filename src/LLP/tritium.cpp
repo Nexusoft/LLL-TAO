@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 #include <TAO/API/types/indexing.h>
+#include <TAO/API/types/authentication.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -363,7 +364,7 @@ namespace LLP
 
 
                 /* Disable AUTH for older protocol versions. */
-                if(nProtocolVersion >= MIN_TRITIUM_VERSION && !fLoggedIn.load() && fOUTGOING)
+                if(nProtocolVersion >= MIN_TRITIUM_VERSION && config::fClient.load() && !fLoggedIn.load() && fOUTGOING)
                 {
                     /* Generate an AUTH message to send to all peers */
                     DataStream ssMessage = LLP::TritiumNode::GetAuth(true);
@@ -714,43 +715,43 @@ namespace LLP
                     return debug::drop(NODE, "ACTION::AUTH: invalid session-id ", nNonce);
 
                 /* Get the public key. */
-                std::vector<uint8_t> vchPubKey;
-                ssPacket >> vchPubKey;
+                //std::vector<uint8_t> vchPubKey;
+                //ssPacket >> vchPubKey;
 
                 /* Build the byte stream from genesis+nonce in order to verify the signature */
                 DataStream ssCheck(SER_NETWORK, PROTOCOL_VERSION);
                 ssCheck << hashGenesis << nTimestamp << nNonce;
 
                 /* Get a hash of the data. */
-                uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
+                //uint256_t hashCheck = LLC::SK256(ssCheck.begin(), ssCheck.end());
 
                 /* Get the signature. */
-                std::vector<uint8_t> vchSig;
-                ssPacket >> vchSig;
+                //std::vector<uint8_t> vchSig;
+                //ssPacket >> vchSig;
 
                 /* Verify the signature */
-                if(!TAO::Ledger::SignatureChain::Verify(hashGenesis, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
-                    return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
+                //if(!TAO::Ledger::SignatureChain::Verify(hashGenesis, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
+                //    return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
                 /* Set to authorized node if passed all cryptographic checks. */
                 if(INCOMING.MESSAGE == ACTION::AUTH)
                 {
                     /* Get the trust object register. */
-                    TAO::Register::Object trust;
-                    if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
-                        hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
-                        return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
+                    //TAO::Register::Object trust;
+                    //if(!LLD::Register->ReadState(TAO::Register::Address(std::string("trust"),
+                    //    hashGenesis, TAO::Register::Address::TRUST), trust, TAO::Ledger::FLAGS::MEMPOOL))
+                    //    return debug::drop(NODE, "ACTION::AUTH: authorization failed, missing trust register");
 
                     /* Parse the object. */
-                    if(!trust.Parse())
-                        return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
+                    //if(!trust.Parse())
+                    //    return debug::drop(NODE, "ACTION::AUTH: failed to parse trust register");
 
                     /* Set as authorized and respond with acknowledgement. */
                     fAuthorized = true;
                     PushMessage(RESPONSE::AUTHORIZED, hashGenesis);
 
                     /* Set the node's current trust score. */
-                    nTrust = trust.get<uint64_t>("trust");
+                    //nTrust = trust.get<uint64_t>("trust");
 
                     debug::log(0, NODE, "ACTION::AUTH: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
                 }
@@ -3336,39 +3337,40 @@ namespace LLP
         /* Build auth message. */
         DataStream ssMessage(SER_NETWORK, MIN_PROTO_VERSION);
 
+        /* Get the hash genesis. */
+        const uint256_t hashSigchain = TAO::API::Authentication::Caller(uint256_t(TAO::API::Authentication::SESSION::DEFAULT), false); //no parameter goes to default session
+
         /* Only send auth messages if the auth key has been cached */
-        //if(TAO::API::Commands::Instance<TAO::API::Users>()->LoggedIn() && TAO::API::GetSessionManager().Get(0, false).GetNetworkKey() != 0)
-
-        /*
+        if(hashSigchain != 0)
         {
-            SecureString strPIN;
-            RECURSIVE(TAO::API::Authentication::Unlock())
+            /* Unlock sigchain to create new block. */
+            //SecureString strPIN;
+            //RECURSIVE(TAO::API::Authentication::Unlock(strPIN, TAO::Ledger::PinUnlock::NETWORK));
 
+            /* Get an instance of our credentials. */
+            //const auto& pCredentials =
+            //    TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::DEFAULT));
 
-            TAO::API::Session& session = TAO::API::GetSessionManager().Get(0, false);
+            /* Get our current network timestamps. */
+            const uint64_t nTimestamp = runtime::unifiedtimestamp();
+            ssMessage << hashSigchain << nTimestamp << SESSION_ID;
 
+            /* Build a hash of our current message. */
+            const uint256_t hashCheck =
+                LLC::SK256(ssMessage.begin(), ssMessage.end());
 
-            uint256_t hashSigchain = session.GetAccount()->Genesis();
+            /* Build our public key and signature. */
+            //std::vector<uint8_t> vchPubKey;
+            //std::vector<uint8_t> vchSig;
 
-            uint64_t nTimestamp = runtime::unifiedtimestamp();
+            /* Sign our message now with our network key. */
+            //pCredentials->Sign("network", hashCheck.GetBytes(), pCredentials->Key("network", 0, ), vchPubKey, vchSig);
 
-
-            ssMessage << hashSigchain <<  nTimestamp << SESSION_ID;
-
-
-            uint256_t hashCheck = LLC::SK256(ssMessage.begin(), ssMessage.end());
-
-            std::vector<uint8_t> vchPubKey;
-            std::vector<uint8_t> vchSig;
-
-            session.GetAccount()->Sign("network", hashCheck.GetBytes(), session.GetNetworkKey(), vchPubKey, vchSig);
-
-            ssMessage << vchPubKey;
-            ssMessage << vchSig;
+            //ssMessage << vchPubKey;
+            //ssMessage << vchSig;
 
             debug::log(0, FUNCTION, "SIGNING MESSAGE: ", hashSigchain.SubString(), " at timestamp ", nTimestamp);
         }
-        */
 
         return ssMessage;
     }
