@@ -778,6 +778,9 @@ namespace LLP
                 uint256_t hashGenesis;
                 ssPacket >> hashGenesis;
 
+                /* Subscribe to sigchain events now. */
+                Subscribe(SUBSCRIPTION::SIGCHAIN);
+
                 debug::log(0, NODE, "RESPONSE::AUTHORIZED: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
 
                 break;
