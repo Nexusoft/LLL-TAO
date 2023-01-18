@@ -194,7 +194,7 @@ namespace LLP
                             LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
 
                             /* Add our events level indexes now. */
-                            TAO::API::Indexing::IndexDependant(hashTx, TAO::Ledger::Transaction(tx));
+                            TAO::API::Indexing::IndexDependant(hashTx, tx);
                         }
 
                         /* Connect transaction in memory if register specifier. */
@@ -255,6 +255,9 @@ namespace LLP
 
                         /* Write Success to log. */
                         debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+
+                        /* Add our events level indexes now. */
+                        TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                         break;
                     }

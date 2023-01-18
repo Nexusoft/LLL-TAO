@@ -294,7 +294,7 @@ namespace TAO::API
                                 continue;
 
                             /* Increment our sequence. */
-                            if(!LLD::Logical->IncrementTritiumSequence(state.hashOwner))
+                            if(!LLD::Logical->IncrementLegacySequence(state.hashOwner))
                                 continue;
                         }
                     }
@@ -727,6 +727,39 @@ namespace TAO::API
             catch(const Exception& e)
             {
                 debug::warning(e.what());
+            }
+        }
+    }
+
+    /* Index transaction level events for logged in sessions. */
+    void Indexing::IndexDependant(const uint512_t& hashTx, const Legacy::Transaction& tx)
+    {
+        /* Loop thgrough the available outputs. */
+        for(uint32_t nContract = 0; nContract < tx.vout.size(); nContract++)
+        {
+            /* Grab a reference of our output. */
+            const Legacy::TxOut& txout = tx.vout[nContract];
+
+            /* Extract our register address. */
+            uint256_t hashTo;
+            if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
+            {
+                /* Read the owner of register. (check this for MEMPOOL, too) */
+                TAO::Register::State state;
+                if(!LLD::Register->ReadState(hashTo, state))
+                    continue;
+
+                /* Check if owner is authenticated. */
+                if(Authentication::Active(state.hashOwner))
+                {
+                    /* Write our events to database. */
+                    if(!LLD::Logical->PushEvent(state.hashOwner, hashTx, nContract))
+                        continue;
+
+                    /* Increment our sequence. */
+                    if(!LLD::Logical->IncrementLegacySequence(state.hashOwner))
+                        continue;
+                }
             }
         }
     }
