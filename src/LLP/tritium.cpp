@@ -1687,7 +1687,7 @@ namespace LLP
 
                             /* Look back through all events to find those that are not yet processed. */
                             Legacy::Transaction tx;
-                            while(LLD::Legacy->ReadEvent(hashSigchain, ++nSequence, tx))
+                            while(LLD::Legacy->ReadEvent(hashSigchain, nSequence++, tx))
                             {
                                 /* Build a markle transaction. */
                                 Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
@@ -1708,7 +1708,7 @@ namespace LLP
 
                             /* Look back through all events to find those that are not yet processed. */
                             TAO::Ledger::Transaction tx;
-                            while(LLD::Ledger->ReadEvent(hashSigchain, ++nSequence, tx))
+                            while(LLD::Ledger->ReadEvent(hashSigchain, nSequence++, tx))
                             {
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
@@ -1720,10 +1720,8 @@ namespace LLP
 
                             /* Reverse container to message forward. */
                             for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
-                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::DEPENDANT), (*tx));
+                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
                         }
-
-
 
                         break;
                     }
@@ -1761,14 +1759,13 @@ namespace LLP
                     ssPacket >> nType;
 
                     /* Check for legacy or transactions specifiers. */
-                    bool fLegacy = false, fTransactions = false, fClient = false, fDependant = false;
-                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::CLIENT || nType == SPECIFIER::DEPENDANT)
+                    bool fLegacy = false, fTransactions = false, fClient = false;
+                    if(nType == SPECIFIER::LEGACY || nType == SPECIFIER::TRANSACTIONS || nType == SPECIFIER::CLIENT)
                     {
                         /* Set specifiers. */
                         fLegacy       = (nType == SPECIFIER::LEGACY);
                         fTransactions = (nType == SPECIFIER::TRANSACTIONS);
                         fClient       = (nType == SPECIFIER::CLIENT);
-                        fDependant    = (nType == SPECIFIER::DEPENDANT);
 
                         /* Go to next type in stream. */
                         ssPacket >> nType;
@@ -1954,10 +1951,7 @@ namespace LLP
                                     merkle.BuildMerkleBranch();
 
                                 /* Check for dependant specifier. */
-                                if(fDependant)
-                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::DEPENDANT), merkle);
-                                else
-                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
                             }
 
                             /* Debug output. */
@@ -2963,7 +2957,6 @@ namespace LLP
                                 debug::log(0, "No merkle branch for tx ", hashTx.SubString());
                                 TAO::Ledger::mempool.Accept(tx, this);
                             }
-
                         }
 
                         break;
