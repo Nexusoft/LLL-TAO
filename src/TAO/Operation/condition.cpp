@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/Register/types/object.h>
 
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/types/client.h>
 
 #include <cmath>
 #include <limits>
@@ -1863,6 +1864,27 @@ namespace TAO
                     /* Get the current height of the chain. */
                     case OP::LEDGER::HEIGHT:
                     {
+                        /* Special check for timestamp if it is a client and already synced up. */
+                        if(config::fClient.load())
+                        {
+                            /* Check if we can read a current block for current caller. */
+                            TAO::Ledger::ClientBlock stateBest;
+                            if(LLD::Client->ReadBlock(caller.Hash(), stateBest))
+                            {
+                                /* Allocate our memory now. */
+                                allocate(stateBest.nHeight, vRet);
+
+                                /* Check for overflows. */
+                                if(nCost + 4 < nCost)
+                                    throw debug::exception("OP::LEDGER::HEIGHT costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 4;
+
+                                break;
+                            }
+                        }
+
                         /* Allocate to the registers. */
                         allocate(TAO::Ledger::ChainState::stateBest.load().nHeight, vRet);
 
@@ -1880,6 +1902,27 @@ namespace TAO
                     /* Get the current supply of the chain. */
                     case OP::LEDGER::SUPPLY:
                     {
+                        /* Special check for timestamp if it is a client and already synced up. */
+                        if(config::fClient.load())
+                        {
+                            /* Check if we can read a current block for current caller. */
+                            TAO::Ledger::ClientBlock stateBest;
+                            if(LLD::Client->ReadBlock(caller.Hash(), stateBest))
+                            {
+                                /* Allocate our memory now. */
+                                allocate(uint64_t(stateBest.nMoneySupply), vRet);
+
+                                /* Check for overflows. */
+                                if(nCost + 8 < nCost)
+                                    throw debug::exception("OP::LEDGER::SUPPLY costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 8;
+
+                                break;
+                            }
+                        }
+
                         /* Allocate to the registers. */
                         allocate(uint64_t(TAO::Ledger::ChainState::stateBest.load().nMoneySupply), vRet);
 
@@ -1897,6 +1940,27 @@ namespace TAO
                     /* Get the best block timestamp. */
                     case OP::LEDGER::TIMESTAMP:
                     {
+                        /* Special check for timestamp if it is a client and already synced up. */
+                        if(config::fClient.load())
+                        {
+                            /* Check if we can read a current block for current caller. */
+                            TAO::Ledger::ClientBlock stateBest;
+                            if(LLD::Client->ReadBlock(caller.Hash(), stateBest))
+                            {
+                                /* Allocate our memory now. */
+                                allocate(uint64_t(stateBest.nTime), vRet);
+
+                                /* Check for overflows. */
+                                if(nCost + 8 < nCost)
+                                    throw debug::exception("OP::LEDGER::TIMESTAMP costs value overflow");
+
+                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                nCost += 8;
+
+                                break;
+                            }
+                        }
+
                         /* Allocate to the registers. */
                         allocate(uint64_t(TAO::Ledger::ChainState::stateBest.load().nTime), vRet);
 
