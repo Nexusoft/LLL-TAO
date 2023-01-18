@@ -401,30 +401,30 @@ namespace TAO::API
 
                             /* Request the sig chain. */
                             debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
-                            LLP::TritiumNode::BlockingMessage
-                            (
-                                10000,
-                                pNode.get(), LLP::TritiumNode::ACTION::LIST,
-                                uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
-                            );
+                            //LLP::TritiumNode::BlockingMessage
+                            //(
+                            //    10000,
+                            //    pNode.get(), LLP::TritiumNode::ACTION::LIST,
+                            //    uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
+                            //);
                             debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 
                             /* Get the last event txid */
-                            uint512_t hashLastEvent;
-                            LLD::Logical->GetLastEvent(hashGenesis, hashLastEvent);
+                            //uint512_t hashLastEvent;
+                            //LLD::Logical->GetLastEvent(hashGenesis, hashLastEvent);
 
                             /* Request the sig chain. */
-                            debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashGenesis.SubString());
-                            LLP::TritiumNode::BlockingMessage
-                            (
-                                30000,
-                                pNode.get(),
-                                LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastEvent
-                            );
-                            debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashGenesis.SubString());
+                            //debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashGenesis.SubString());
+                            //LLP::TritiumNode::BlockingMessage
+                            //(
+                            //    30000,
+                            //    pNode.get(),
+                            //    LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, hashLastEvent
+                            //);
+                            //debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashGenesis.SubString());
 
                             /* Get our last list of events from legacy transactions. */
-                            LLD::Legacy->ReadLastEvent(hashGenesis, hashLastEvent);
+                            //LLD::Legacy->ReadLastEvent(hashGenesis, hashLastEvent);
 
                             /* Request the sig chain.
                             debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION for ", hashGenesis.SubString());

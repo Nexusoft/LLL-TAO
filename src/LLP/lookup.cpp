@@ -115,8 +115,11 @@ namespace LLP
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
 
         /* Get our request-id. */
-        uint64_t nRequestID;
-        ssPacket >> nRequestID;
+        uint64_t nRequestID = 0;
+
+        /* Get our request-id if not connecting. */
+        if(INCOMING.HEADER != REQUEST::CONNECT)
+            ssPacket >> nRequestID;
 
         /* Switch based on our incoming message. */
         switch(INCOMING.HEADER)
@@ -338,7 +341,7 @@ namespace LLP
                                 tMerkle.BuildMerkleBranch();
 
                                 /* Send off the transaction to remote node. */
-                                PushMessage(RESPONSE::MERKLE, uint8_t(SPECIFIER::REGISTER), tMerkle);
+                                PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle);
 
                                 debug::log(0, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX CACHE for ", hashRegister.SubString());
 
@@ -451,7 +454,7 @@ namespace LLP
                                         tMerkle.BuildMerkleBranch();
 
                                         /* Send off the transaction to remote node. */
-                                        PushMessage(RESPONSE::MERKLE, uint8_t(SPECIFIER::REGISTER), tMerkle);
+                                        PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle);
 
                                         /* Build indexes for optimized processing. */
                                         std::pair<uint512_t, uint64_t> pairIndex = std::make_pair(tx.GetHash(), runtime::unifiedtimestamp() + 3600);
@@ -498,7 +501,7 @@ namespace LLP
                             tMerkle.BuildMerkleBranch();
 
                             /* Send off the transaction to remote node. */
-                            PushMessage(RESPONSE::MERKLE, uint8_t(SPECIFIER::TRITIUM), tMerkle);
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::TRITIUM), tMerkle);
 
                             /* Debug output. */
                             debug::log(3, NODE, "REQUEST::DEPENDANT::TRITIUM TRANSACTION", hashTx.SubString());
@@ -528,7 +531,7 @@ namespace LLP
                             tMerkle.BuildMerkleBranch();
 
                             /* Send off the transaction to remote node. */
-                            PushMessage(RESPONSE::MERKLE, uint8_t(SPECIFIER::LEGACY), tMerkle);
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::LEGACY), tMerkle);
 
                             /* Debug output. */
                             debug::log(3, NODE, "REQUEST::DEPENDANT::LEGACY TRANSACTION", hashTx.SubString());

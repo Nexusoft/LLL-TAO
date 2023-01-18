@@ -205,11 +205,11 @@ namespace LLP
 
 
         /* LOOKUP_SERVER instance */
-        if(config::GetBoolArg(std::string("-lookup"), true) && !config::fClient.load())
+        if(config::GetBoolArg(std::string("-lookup"), true))
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetLookupPort());
-            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_LISTEN   = !config::fClient.load();
             CONFIG.ENABLE_METERS   = false;
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = false;

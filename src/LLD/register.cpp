@@ -98,7 +98,16 @@ namespace LLD
             if(pLookup)
             {
                 /* Insert into lookup map. */
-                pLookup->insert(std::make_pair(hashRegister, std::make_pair(state, runtime::unifiedtimestamp())));
+                if(!pLookup->count(hashRegister))
+                {
+                    /* Insert into our memory-only cache if we do not have it yet. */
+                    pLookup->insert(std::make_pair(hashRegister, std::make_pair(state, runtime::unifiedtimestamp())));
+
+                    return true;
+                }
+
+                /* Update our cache if we do have it. */
+                pLookup->at(hashRegister) = std::make_pair(state, runtime::unifiedtimestamp());
 
                 return true;
             }
@@ -181,15 +190,6 @@ namespace LLD
                 return true;
             }
 
-            /* Check for state in lookup map. */
-            if(pLookup && pLookup->count(hashRegister))
-            {
-                /* Get the state from lookup memory. */
-                state = pLookup->at(hashRegister).first;
-
-                return true;
-            }
-
             /* Check for state in memory map. */
             if(pCommit->mapStates.count(hashRegister))
             {
@@ -222,7 +222,7 @@ namespace LLD
 
             /* Check if our cache has expired. */
             const bool fCached  = (pLookup && pLookup->count(hashRegister));
-            const bool fExpired = (fCached && (pLookup->at(hashRegister).second + 600 < nTimestamp));
+            const bool fExpired = (fCached && (pLookup->at(hashRegister).second + 5 < nTimestamp));
 
             /* Check for expired or missing. */
             if(fExpired || !fCached)
