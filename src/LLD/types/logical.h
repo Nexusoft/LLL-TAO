@@ -260,6 +260,44 @@ namespace LLD
         bool ListTransactions(const uint256_t& hashRegister, std::vector<uint512_t> &vTransactions);
 
 
+        /** PushRegisterTx
+         *
+         *   Push an register transaction to process for given register address.
+         *
+         *  @param[in] hashRegister The address of register to list for
+         *  @param[in] hashTx The txid we are pushing register for.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool PushRegisterTx(const uint256_t& hashRegister, const uint512_t& hashTx);
+
+
+        /** EraseRegisterTx
+         *
+         *  Erase the last txide that modified a register state.
+         *
+         *  @param[in] hashRegister The address of register to list for
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool EraseRegisterTx(const uint256_t& hashRegister);
+
+
+        /** LastRegisterTx
+         *
+         *  Get an register transaction for given register address.
+         *
+         *  @param[in] hashRegister The address of register to list for
+         *  @param[in] hashTx The list of events extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool LastRegisterTx(const uint256_t& hashRegister, uint512_t &hashTx);
+
+
         /** PushRegister
          *
          *  Push an register to process for given genesis-id.
