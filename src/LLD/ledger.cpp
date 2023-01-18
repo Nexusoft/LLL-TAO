@@ -140,33 +140,40 @@ namespace LLD
                 if(!LLP::TRITIUM_SERVER || !config::fClient.load())
                     throw debug::exception(FUNCTION, "failed to read contract");
 
-                /* Get an available connection from our main server. */
-                std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                if(pNode == nullptr)
-                    throw debug::exception(FUNCTION, "no connections available...");
-
-                /* Get our lookup address now. */
-                const std::string strAddress =
-                    pNode->GetAddress().ToStringIP();
-
-                /* Make our new connection now. */
-                std::shared_ptr<LLP::LookupNode> pLookup;
-                if(LLP::LOOKUP_SERVER->ConnectNode(strAddress, pLookup))
+                /* Try to find a connection first. */
+                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
+                if(pConnection == nullptr)
                 {
-                    /* Debug output to console. */
-                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::DEPENDANT for ", hashTx.SubString());
-                    pLookup->BlockingLookup
-                    (
-                        5000,
-                        LLP::LookupNode::REQUEST::DEPENDANT,
-                        uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM), hashTx
-                    );
-                    pLookup->Disconnect();
-                    debug::log(1, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT received for ", hashTx.SubString());
+                    /* Check for genesis. */
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                        if(pNode != nullptr)
+                        {
+                            /* Get our lookup address now. */
+                            const std::string strAddress =
+                                pNode->GetAddress().ToStringIP();
 
-                    /* Recursively process once we have done the lookup. */
-                    return ReadContract(hashTx, nContract, nFlags);
+                            /* Make our new connection now. */
+                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                                throw debug::exception(FUNCTION, "no connections available...");
+
+                        }
+                    }
                 }
+
+                /* Debug output to console. */
+                debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::DEPENDANT for ", hashTx.SubString());
+                pConnection->BlockingLookup
+                (
+                    5000,
+                    LLP::LookupNode::REQUEST::DEPENDANT,
+                    uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM), hashTx
+                );
+                debug::log(1, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT received for ", hashTx.SubString());
+
+                /* Recursively process once we have done the lookup. */
+                return ReadContract(hashTx, nContract, nFlags);
             }
 
             /* Get const reference for read-only access. */
@@ -185,33 +192,40 @@ namespace LLD
                 if(!LLP::TRITIUM_SERVER || !config::fClient.load())
                     throw debug::exception(FUNCTION, "failed to read contract");
 
-                /* Get an available connection from our main server. */
-                std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                if(pNode == nullptr)
-                    throw debug::exception(FUNCTION, "no connections available...");
-
-                /* Get our lookup address now. */
-                const std::string strAddress =
-                    pNode->GetAddress().ToStringIP();
-
-                /* Make our new connection now. */
-                std::shared_ptr<LLP::LookupNode> pLookup;
-                if(LLP::LOOKUP_SERVER->ConnectNode(strAddress, pLookup))
+                /* Try to find a connection first. */
+                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
+                if(pConnection == nullptr)
                 {
-                    /* Debug output to console. */
-                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::DEPENDANT::LEGACY for ", hashTx.SubString());
-                    pLookup->BlockingLookup
-                    (
-                        5000,
-                        LLP::LookupNode::REQUEST::DEPENDANT,
-                        uint8_t(LLP::LookupNode::SPECIFIER::LEGACY), hashTx
-                    );
-                    pLookup->Disconnect();
-                    debug::log(1, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT::LEGACY received for ", hashTx.SubString());
+                    /* Check for genesis. */
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                        if(pNode != nullptr)
+                        {
+                            /* Get our lookup address now. */
+                            const std::string strAddress =
+                                pNode->GetAddress().ToStringIP();
 
-                    /* Recursively process once we have done the lookup. */
-                    return ReadContract(hashTx, nContract, nFlags);
+                            /* Make our new connection now. */
+                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                                throw debug::exception(FUNCTION, "no connections available...");
+
+                        }
+                    }
                 }
+
+                /* Debug output to console. */
+                debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::DEPENDANT::LEGACY for ", hashTx.SubString());
+                pConnection->BlockingLookup
+                (
+                    5000,
+                    LLP::LookupNode::REQUEST::DEPENDANT,
+                    uint8_t(LLP::LookupNode::SPECIFIER::LEGACY), hashTx
+                );
+                debug::log(1, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT::LEGACY received for ", hashTx.SubString());
+
+                /* Recursively process once we have done the lookup. */
+                return ReadContract(hashTx, nContract, nFlags);
             }
 
             return TAO::Operation::Contract(tx, nContract);

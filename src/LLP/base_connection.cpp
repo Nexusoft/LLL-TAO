@@ -111,6 +111,11 @@ namespace LLP
     template <class PacketType>
     BaseConnection<PacketType>::~BaseConnection()
     {
+        /* Release all of our triggers before disconnect. */
+        for(auto& rTrigger : TRIGGERS)
+            rTrigger.second->notify_all();
+
+        /* Standard shutdown sequence. */
         Disconnect();
         SetNull();
     }

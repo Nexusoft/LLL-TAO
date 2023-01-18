@@ -898,7 +898,7 @@ namespace TAO
             else
             {
                 /* We want this to trigger for times not in -client mode. */
-                if(!config::fClient.load() || TAO::API::Authentication::Active(hashGenesis))
+                if(!config::fClient.load() || (TAO::API::Authentication::Active(hashGenesis) && nFlags != FLAGS::LOOKUP))
                 {
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;
@@ -952,7 +952,7 @@ namespace TAO
             for(const auto& contract : vContracts)
             {
                 /* Check for dependants. */
-                if(contract.Dependant(hashPrev, nContract))
+                if(contract.Dependant(hashPrev, nContract) && nFlags != FLAGS::LOOKUP)
                 {
                     /* Read previous transaction from disk. */
                     const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);

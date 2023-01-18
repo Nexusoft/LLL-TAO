@@ -134,6 +134,10 @@ namespace LLP
             return CONDITION.wait_for(REQUEST_LOCK, std::chrono::milliseconds(nTimeout),
             [this, nTriggerNonce]
             {
+                /* Break out if shutdown. */
+                if(config::fShutdown.load())
+                    return true;
+
                 LOCK(TRIGGER_MUTEX);
 
                 /* Reset the stream. */

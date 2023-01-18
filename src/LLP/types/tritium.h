@@ -542,7 +542,6 @@ namespace LLP
 
             /* Cleanup our event trigger. */
             pNode->Release(LLP::TritiumNode::RESPONSE::COMPLETED);
-
         }
 
 

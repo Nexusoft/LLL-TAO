@@ -286,7 +286,10 @@ namespace TAO
                 ERASE       = 0x05,
 
                 /* Trigger remote lookups for -client mode. */
-                LOOKUP      = 0x06, //XXX: we may want to automatically handle this
+                LOOKUP      = 0x06,
+
+                /* Force a remote lookup for -client mode. */
+                FORCED      = 0x07,
             };
         };
 
