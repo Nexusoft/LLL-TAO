@@ -1673,27 +1673,22 @@ namespace LLP
                         ssPacket >> hashSigchain;
 
                         /* Get the txid to list from */
-                        uint512_t hashStart;
-                        ssPacket >> hashStart;
+                        uint64_t nSequence;
+                        ssPacket >> nSequence;
 
                         /* Get the last event */
                         debug::log(1, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
 
                         /* Check for legacy. */
-                        uint32_t nSequence = 0;
                         if(fLegacy)
                         {
+                            /* Build our list of events. */
                             std::vector<Legacy::MerkleTx> vtx;
-                            LLD::Legacy->ReadSequence(hashSigchain, nSequence);
 
                             /* Look back through all events to find those that are not yet processed. */
                             Legacy::Transaction tx;
-                            while(LLD::Legacy->ReadEvent(hashSigchain, --nSequence, tx))
+                            while(LLD::Legacy->ReadEvent(hashSigchain, ++nSequence, tx))
                             {
-                                /* Check to see if we have reached the requested start point */
-                                if(hashStart == tx.GetHash())
-                                    break;
-
                                 /* Build a markle transaction. */
                                 Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
                                 merkle.BuildMerkleBranch();
@@ -1708,18 +1703,13 @@ namespace LLP
                         }
                         else
                         {
+                            /* Build our list of events. */
                             std::vector<TAO::Ledger::MerkleTx> vtx;
-                            if(!LLD::Ledger->ReadSequence(hashSigchain, nSequence))
-                                nSequence = 0;
 
                             /* Look back through all events to find those that are not yet processed. */
                             TAO::Ledger::Transaction tx;
-                            while(LLD::Ledger->ReadEvent(hashSigchain, --nSequence, tx))
+                            while(LLD::Ledger->ReadEvent(hashSigchain, ++nSequence, tx))
                             {
-                                /* Check to see if we have reached the requested start point */
-                                if(hashStart == tx.GetHash())
-                                    break;
-
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
                                 merkle.BuildMerkleBranch();
