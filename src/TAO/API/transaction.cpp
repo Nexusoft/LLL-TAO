@@ -265,49 +265,7 @@ namespace TAO::API
             return true; //we use this method to skip contracts so if out of range we need to know.
 
         /* Get a reference of our internal contract. */
-        const TAO::Operation::Contract& rContract = vContracts[nContract];
-
-        /* Reset the contract to the position of the primitive. */
-        rContract.SeekToPrimitive();
-
-        /* The operation */
-        uint8_t nOP;
-        rContract >> nOP;
-
-        /* Check proofs based on spend type. */
-        switch(nOP)
-        {
-            /* Handle if checking for basic primitives. */
-            case TAO::Operation::OP::COINBASE:
-            case TAO::Operation::OP::TRANSFER:
-            case TAO::Operation::OP::DEBIT:
-            {
-                /* Get our proof to check. */
-                uint256_t hashRegister;
-                rContract >> hashRegister;
-
-                /* Check for forced transfers. */
-                if(nOP == TAO::Operation::OP::TRANSFER)
-                {
-                    /* Seek over recipient. */
-                    rContract.Seek(32);
-
-                    /* Read the force transfer flag */
-                    uint8_t nType = 0;
-                    rContract >> nType;
-
-                    /* Forced transfers don't require a proof. */
-                    if(nType == TAO::Operation::TRANSFER::FORCE)
-                        return true;
-                }
-
-                /* Check for a valid proof. */
-                return LLD::Ledger->HasProof(hashRegister, hash, nContract, TAO::Ledger::FLAGS::MEMPOOL);
-            }
-        }
-
-        /* Otherwise check for validated contract. */
-        return LLD::Contract->HasContract(std::make_pair(hash, nContract), TAO::Ledger::FLAGS::MEMPOOL);
+        return vContracts[nContract].Spent(nContract);
     }
 
 

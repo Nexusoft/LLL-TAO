@@ -129,10 +129,6 @@ namespace TAO::API
                             if(!LLD::Ledger->ReadTx(hashEvent, tx))
                                 continue;
 
-                            /* Check if contract has been spent. */
-                            if(tx.Spent(hashEvent, rEvent.second))
-                                continue;
-
                             /* Check if contract has been burned. */
                             if(!tx.Burned(hashEvent, rEvent.second))
                                 continue;
@@ -145,6 +141,10 @@ namespace TAO::API
                         /* Get a referecne of our contract. */
                         const TAO::Operation::Contract& rContract =
                             LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+
+                        /* Check if the given contract is spent already. */
+                        if(rContract.Spent(rEvent.second))
+                            continue;
 
                         /* Seek our contract to primitive OP. */
                         rContract.SeekToPrimitive();

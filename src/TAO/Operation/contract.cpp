@@ -14,6 +14,8 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/txout.h>
 
+#include <LLD/include/global.h>
+
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
@@ -243,6 +245,53 @@ namespace TAO::Operation
     const uint32_t& Contract::Version() const
     {
         return nVersion;
+    }
+
+
+    /* Check if a given contract has been spent yet */
+    bool Contract::Spent(const uint32_t nContract) const
+    {
+        /* Reset the contract to the position of the primitive. */
+        SeekToPrimitive();
+
+        /* The operation */
+        uint8_t nOP;
+        ssOperation >> nOP;
+
+        /* Check proofs based on spend type. */
+        switch(nOP)
+        {
+            /* Handle if checking for basic primitives. */
+            case TAO::Operation::OP::COINBASE:
+            case TAO::Operation::OP::TRANSFER:
+            case TAO::Operation::OP::DEBIT:
+            {
+                /* Get our proof to check. */
+                uint256_t hashRegister;
+                ssOperation >> hashRegister;
+
+                /* Check for forced transfers. */
+                if(nOP == TAO::Operation::OP::TRANSFER)
+                {
+                    /* Seek over recipient. */
+                    ssOperation.seek(32);
+
+                    /* Read the force transfer flag */
+                    uint8_t nType = 0;
+                    ssOperation >> nType;
+
+                    /* Forced transfers don't require a proof. */
+                    if(nType == TAO::Operation::TRANSFER::FORCE)
+                        return true;
+                }
+
+                /* Check for a valid proof. */
+                return LLD::Ledger->HasProof(hashRegister, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL);
+            }
+        }
+
+        /* Otherwise check for validated contract. */
+        return LLD::Contract->HasContract(std::make_pair(hashTx, nContract), TAO::Ledger::FLAGS::MEMPOOL);
     }
 
 
