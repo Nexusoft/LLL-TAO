@@ -241,7 +241,7 @@ namespace TAO::API
                 /* Get the object from the register DB.  We can read it as an Object and then check its nType
                 to determine whether or not it is a Name. */
                 TAO::Register::Object object;
-                if(!LLD::Register->ReadObject(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+                if(!LLD::Register->ReadObject(hashRegister, object, TAO::Ledger::FLAGS::LOOKUP))
                     continue;
 
                 /* Check the object register standards. */

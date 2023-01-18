@@ -33,7 +33,7 @@ namespace TAO::API
 
         /* Get the token / account object. */
         TAO::Register::Object tObject;
-        if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::MEMPOOL))
+        if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::LOOKUP))
             throw Exception(-13, "Object not found");
 
         /* Now lets check our expected types match. */

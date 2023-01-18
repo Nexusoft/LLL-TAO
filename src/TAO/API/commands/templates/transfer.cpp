@@ -41,7 +41,7 @@ namespace TAO::API
         const uint256_t hashRecipient = ExtractRecipient(jParams);
 
         /* Check that the destination exists. */
-        if(!LLD::Ledger->HasFirst(hashRecipient))
+        if(!LLD::Ledger->HasFirst(hashRecipient)) //TODO: lookup the user account
             throw Exception(-113, "Destination user doesn't exist");
 
         /* Check out our object now. */

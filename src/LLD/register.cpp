@@ -255,10 +255,6 @@ namespace LLD
                             const std::string strAddress =
                                 pNode->GetAddress().ToStringIP();
 
-                            /* Handle expired. */
-                            if(fExpired)
-                                debug::warning(FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
-
                             /* Make our new connection now. */
                             if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
                                 return debug::error(FUNCTION, "no connections available...");
@@ -267,11 +263,15 @@ namespace LLD
                     }
                 }
 
+                /* Handle expired. */
+                if(fExpired)
+                    debug::warning(FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
+
                 /* Debug output to console. */
                 debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
                 pConnection->BlockingLookup
                 (
-                    5000,
+                    30000,
                     LLP::LookupNode::REQUEST::DEPENDANT,
                     uint8_t(LLP::LookupNode::SPECIFIER::REGISTER), hashRegister
                 );
