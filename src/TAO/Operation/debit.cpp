@@ -34,7 +34,7 @@ namespace TAO
         bool Debit::Commit(const TAO::Register::Object& account, const uint512_t& hashTx,
                            const uint256_t& hashFrom, const uint256_t& hashTo, const uint8_t nFlags)
         {
-            /* DISABLED for -client mode. */
+            /* EVENTS DISABLED for -client mode. */
             if(!config::fClient.load())
             {
                 /* Only commit events on new block. */

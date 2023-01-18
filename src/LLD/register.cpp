@@ -153,8 +153,6 @@ namespace LLD
                 return true;
         }
 
-
-
         /* Check for register address index. */
         if(config::GetBoolArg("-indexaddress"))
         {

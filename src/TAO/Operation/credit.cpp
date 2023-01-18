@@ -45,54 +45,37 @@ namespace TAO
             if(!LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "failed to write credit proof");
 
-            /* Client mode checks to keep database in sync. */
-            if(config::fClient.load())
+            /* Read the debit. */
+            debit.Reset();
+
+            /* Get the operation byte. */
+            uint8_t nType = 0;
+            debit >> nType;
+
+            /* If this credit is for a debit (as opposed to for a coinbase) then we need to check to see whether the debit is a
+               split dividend / partial payment.  IF so then we need to update the Claimed amount in the ledger */
+            if(nType == OP::DEBIT)
             {
-                /* Get the partial amount already claimed. */
-                uint64_t nClaimed = 0;
-                if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
-                    nClaimed = 0; //reset value to double check here and continue
+                /* Get address from. */
+                TAO::Register::Address hashFrom;
+                debit >> hashFrom;
 
-                /* Update the the claimed amount to reflect this credit */
-                if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
-                    return debug::error(FUNCTION, "failed to update claimed amount");
-            }
+                /* Get the to address */
+                TAO::Register::Address hashTo;
+                debit >> hashTo;
 
-            /* DISABLED for -client mode. */
-            else
-            {
-                /* Read the debit. */
-                debit.Reset();
-
-                /* Get the operation byte. */
-                uint8_t nType = 0;
-                debit >> nType;
-
-                /* If this credit is for a debit (as opposed to for a coinbase) then we need to check to see whether the debit is a
-                   split dividend / partial payment.  IF so then we need to update the Claimed amount in the ledger */
-                if(nType == OP::DEBIT)
+                /* Check to see if the debit was made to an object register (as opposed to an account/token) indicating a
+                   tokenized debit .*/
+                if(hashTo.IsObject())
                 {
-                    /* Get address from. */
-                    TAO::Register::Address hashFrom;
-                    debit >> hashFrom;
+                    /* Get the partial amount already claimed. */
+                    uint64_t nClaimed = 0;
+                    if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
+                        nClaimed = 0; //reset value to double check here and continue
 
-                    /* Get the to address */
-                    TAO::Register::Address hashTo;
-                    debit >> hashTo;
-
-                    /* Check to see if the debit was made to an object register (as opposed to an account/token) indicating a
-                       tokenized debit .*/
-                    if(hashTo.IsObject())
-                    {
-                        /* Get the partial amount already claimed. */
-                        uint64_t nClaimed = 0;
-                        if(!LLD::Ledger->ReadClaimed(hashTx, nContract, nClaimed, nFlags))
-                            nClaimed = 0; //reset value to double check here and continue
-
-                        /* Update the the claimed amount to reflect this credit */
-                        if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
-                            return debug::error(FUNCTION, "failed to update claimed amount");
-                    }
+                    /* Update the the claimed amount to reflect this credit */
+                    if(!LLD::Ledger->WriteClaimed(hashTx, nContract, (nClaimed + nAmount), nFlags))
+                        return debug::error(FUNCTION, "failed to update claimed amount");
                 }
             }
 

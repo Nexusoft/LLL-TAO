@@ -26,7 +26,7 @@ namespace TAO
         /* Commit the final state to disk. */
         bool Coinbase::Commit(const uint256_t& hashAddress, const uint512_t& hashTx, const uint8_t nFlags)
         {
-            /* DISABLED for -client mode. */
+            /* EVENTS DISABLED for -client mode. */
             if(!config::fClient.load())
             {
                 /* Check to contract caller. */

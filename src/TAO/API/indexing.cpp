@@ -563,7 +563,7 @@ namespace TAO::API
                     }
                 }
 
-                /* DISABLED for -client mode. */
+                /* EVENTS DISABLED for -client mode. */
                 if(!config::fClient.load())
                 {
                     /* Read our last sequence. */

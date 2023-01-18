@@ -34,7 +34,7 @@ namespace TAO
         bool Transfer::Commit(const TAO::Register::State& state, const uint512_t& hashTx,
                               const uint256_t& hashAddress, const uint256_t& hashTransfer, const uint8_t nFlags)
         {
-            /* DISABLED for -client mode. */
+            /* EVENTS DISABLED for -client mode. */
             if(!config::fClient.load())
             {
                 /* Only commit events on new block. */
