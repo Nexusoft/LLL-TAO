@@ -125,7 +125,11 @@ int main(int argc, char** argv)
 
 
         /* Check for reindexing entries. */
-        LLD::Register->Reindex();
+        LLD::Logical->IndexRegisters();
+
+
+        /* Check for reindexing entries. */
+        LLD::Register->IndexAddress();
 
 
         /* Initialize the Lower Level Protocol. */

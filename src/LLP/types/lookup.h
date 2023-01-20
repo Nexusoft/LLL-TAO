@@ -60,6 +60,7 @@ namespace LLP
             {
                 MERKLE       = 0x11, //for legacy data types
                 MEMPOOL      = 0x12, //for tritium data types
+                MISSING      = 0x13, //if the data was not found
             };
         };
 

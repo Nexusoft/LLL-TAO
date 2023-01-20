@@ -97,21 +97,6 @@ namespace TAO::API
                                              const bool fThrow = true);
 
 
-        /** GetName
-         *
-         *  Retrieves a Name object by the register address, for a particular sig chain.
-         *
-         *  @param[in] hashGenesis The sig chain genesis hash
-         *  @param[in] hashObject register address of the object to look up
-         *  @param[out] hashNameObject The register address of the Name object, if found
-         *
-         *  @return The Name object .
-         **/
-        static TAO::Register::Object GetName(const uint256_t& hashGenesis,
-                                             const TAO::Register::Address& hashObject,
-                                             TAO::Register::Address& hashNameObject);
-
-
 
         /** ResolveAddress
          *

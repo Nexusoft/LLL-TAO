@@ -135,118 +135,134 @@ namespace LLP
                 uint8_t nSpecifier;
                 ssPacket >> nSpecifier;
 
-                /* Switch based on our specifier. */
-                switch(nSpecifier)
+                /* Check for a not found error. */
+                if(nSpecifier == RESPONSE::MISSING)
+                    debug::warning(NODE, "Request ", std::hex, nRequestID, " LOOKUP not found");
+
+                /* Otherwise proceed normally. */
+                else
                 {
-                    /* Standard type for register in form of merkle transaction. */
-                    case SPECIFIER::REGISTER:
-                    case SPECIFIER::TRITIUM:
+                    /* Switch based on our specifier. */
+                    switch(nSpecifier)
                     {
-                        /* Get the transction from the stream. */
-                        TAO::Ledger::MerkleTx tx;
-                        ssPacket >> tx;
-
-                        /* Cache the txid. */
-                        const uint512_t hashTx = tx.GetHash();
-
-                        /* Check for empty merkle tx. */
-                        if(tx.hashBlock == 0)
-                            return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: no merkle branch for tx ", hashTx.SubString());
-
-                        /* Grab the block to check merkle path. */
-                        TAO::Ledger::ClientBlock block;
-                        if(!LLD::Client->ReadBlock(tx.hashBlock, block))
-                            return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: missing block ", tx.hashBlock.SubString());
-
-                        /* Check transaction contains valid information. */
-                        if(!tx.Check())
-                            return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-                        /* Check the merkle branch. */
-                        if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
-                            return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: merkle transaction has invalid path");
-
-                        /* Handle for regular dependant specifier. */
-                        if(nSpecifier == SPECIFIER::TRITIUM)
+                        /* Standard type for register in form of merkle transaction. */
+                        case SPECIFIER::REGISTER:
+                        case SPECIFIER::TRITIUM:
                         {
-                            LOCK(DEPENDANT_MUTEX);
+                            /* Get the transction from the stream. */
+                            TAO::Ledger::MerkleTx tx;
+                            ssPacket >> tx;
 
-                            /* Terminate early if we have already indexed this transaction. */
+                            /* Cache the txid. */
+                            const uint512_t hashTx = tx.GetHash();
+
+                            /* Check for empty merkle tx. */
+                            if(tx.hashBlock == 0)
+                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: no merkle branch for tx ", hashTx.SubString());
+
+                            /* Grab the block to check merkle path. */
+                            TAO::Ledger::ClientBlock block;
+                            if(!LLD::Client->ReadBlock(tx.hashBlock, block))
+                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: missing block ", tx.hashBlock.SubString());
+
+                            /* Check transaction contains valid information. */
+                            if(!tx.Check())
+                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+
+                            /* Check the merkle branch. */
+                            if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
+                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: merkle transaction has invalid path");
+
+                            /* Handle for regular dependant specifier. */
+                            if(nSpecifier == SPECIFIER::TRITIUM)
+                            {
+                                LOCK(DEPENDANT_MUTEX);
+
+                                /* Terminate early if we have already indexed this transaction. */
+                                if(LLD::Client->HasIndex(hashTx))
+                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: index already exists");
+
+                                /* Commit transaction to disk. */
+                                if(!LLD::Client->WriteTx(hashTx, tx))
+                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
+
+                                /* Index the transaction to it's block. */
+                                if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                    return debug::error(FUNCTION, "failed to write block indexing entry");
+
+                                /* Add our events level indexes now. */
+                                TAO::API::Indexing::IndexDependant(hashTx, tx);
+                            }
+
+                            /* Connect transaction in memory if register specifier. */
+                            else
+                            {
+                                /* Get our register address. */
+                                uint256_t hashRegister;
+                                ssPacket >> hashRegister;
+
+                                /* Commit our register to disk now. */
+                                if(!tx.CommitLookup(hashRegister))
+                                    return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                            }
+
+                            debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+
+                            break;
+                        }
+
+                        /* Standard type for register in form of merkle transaction. */
+                        case SPECIFIER::LEGACY:
+                        {
+                            /* Get the transction from the stream. */
+                            Legacy::MerkleTx tx;
+                            ssPacket >> tx;
+
+                            /* Cache the txid. */
+                            uint512_t hashTx = tx.GetHash();
+
+                            /* Check if we have this transaction already. */
                             if(LLD::Client->HasIndex(hashTx))
                                 return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: index already exists");
 
-                            /* Commit transaction to disk. */
-                            if(!LLD::Client->WriteTx(hashTx, tx))
-                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
+                            /* Grab the block to check merkle path. */
+                            TAO::Ledger::ClientBlock block;
+                            if(!LLD::Client->ReadBlock(tx.hashBlock, block))
+                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: missing block ", tx.hashBlock.SubString());
 
-                            /* Index the transaction to it's block. */
-                            if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                return debug::error(FUNCTION, "failed to write block indexing entry");
+                            /* Check transaction contains valid information. */
+                            if(!tx.Check())
+                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-                            /* Add our events level indexes now. */
-                            TAO::API::Indexing::IndexDependant(hashTx, tx);
+                            /* Check the merkle branch. */
+                            if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
+                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: merkle transaction has invalid path");
+
+                            {
+                                LOCK(DEPENDANT_MUTEX);
+
+                                /* Commit transaction to disk. */
+                                if(!LLD::Client->WriteTx(hashTx, tx))
+                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
+
+                                /* Index the transaction to it's block. */
+                                if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                    return debug::error(FUNCTION, "failed to write block indexing entry");
+
+                                /* Add our events level indexes now. */
+                                TAO::API::Indexing::IndexDependant(hashTx, tx);
+                            }
+
+                            /* Write Success to log. */
+                            debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+
+                            break;
                         }
 
-                        /* Connect transaction in memory if register specifier. */
-                        else if(!tx.Connect(TAO::Ledger::FLAGS::LOOKUP))
-                            return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-                        debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
-
-                        break;
-                    }
-
-                    /* Standard type for register in form of merkle transaction. */
-                    case SPECIFIER::LEGACY:
-                    {
-                        /* Get the transction from the stream. */
-                        Legacy::MerkleTx tx;
-                        ssPacket >> tx;
-
-                        /* Cache the txid. */
-                        uint512_t hashTx = tx.GetHash();
-
-                        /* Check if we have this transaction already. */
-                        if(LLD::Client->HasIndex(hashTx))
-                            return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: index already exists");
-
-                        /* Grab the block to check merkle path. */
-                        TAO::Ledger::ClientBlock block;
-                        if(!LLD::Client->ReadBlock(tx.hashBlock, block))
-                            return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: missing block ", tx.hashBlock.SubString());
-
-                        /* Check transaction contains valid information. */
-                        if(!tx.Check())
-                            return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-                        /* Check the merkle branch. */
-                        if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
-                            return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: merkle transaction has invalid path");
-
+                        default:
                         {
-                            LOCK(DEPENDANT_MUTEX);
-
-                            /* Commit transaction to disk. */
-                            if(!LLD::Client->WriteTx(hashTx, tx))
-                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
-
-                            /* Index the transaction to it's block. */
-                            if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                return debug::error(FUNCTION, "failed to write block indexing entry");
-
-                            /* Add our events level indexes now. */
-                            TAO::API::Indexing::IndexDependant(hashTx, tx);
+                            return debug::drop(NODE, "invalid specifier message: ", std::hex, nSpecifier);
                         }
-
-                        /* Write Success to log. */
-                        debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
-
-                        break;
-                    }
-
-                    default:
-                    {
-                        return debug::drop(NODE, "invalid specifier message: ", std::hex, nSpecifier);
                     }
                 }
 
@@ -292,160 +308,178 @@ namespace LLP
                     case SPECIFIER::REGISTER:
                     {
                         /* Get the index of transaction. */
-                        uint256_t hashRegister;
+                        TAO::Register::Address hashRegister;
                         ssPacket >> hashRegister;
 
-                        /* Check for existing localdb indexes. */
-                        std::pair<uint512_t, uint64_t> pairIndex;
-                        if(LLD::Local->ReadIndex(hashRegister, pairIndex))
-                        {
-                            /* Check for cache expiration. */
-                            if(runtime::unifiedtimestamp() <= pairIndex.second)
-                            {
-                                /* Get the transaction from disk. */
-                                TAO::Ledger::Transaction tx;
-                                if(!LLD::Ledger->ReadTx(pairIndex.first, tx))
-                                    break;
-
-                                /* Build a markle transaction. */
-                                TAO::Ledger::MerkleTx tMerkle =
-                                    TAO::Ledger::MerkleTx(tx);
-
-                                /* Build our tMerkle branch from the block. */
-                                tMerkle.BuildMerkleBranch();
-
-                                /* Send off the transaction to remote node. */
-                                PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle);
-
-                                debug::log(0, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX CACHE for ", hashRegister.SubString());
-
-                                break;
-                            }
-                        }
-
-                        /* Get the register from disk. */
-                        TAO::Register::State state;
-                        if(!LLD::Register->ReadState(hashRegister, state))
-                            break;
-
-                        /* If register is in the middle of a transfer, hashOwner will be owned by system. Detect and continue.*/
-                        uint256_t hashOwner = state.hashOwner;
-                        if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
-                            hashOwner.SetType(TAO::Ledger::GENESIS::UserType());
-
-                        /* Read the last hash of owner. */
-                        uint512_t hashLast = 0;
-                        if(!LLD::Ledger->ReadLast(hashOwner, hashLast))
-                            break;
-
-                        /* Iterate through sigchain for register updates. */
-                        while(hashLast != 0)
+                        /* Handle the quick and indexed way. */
+                        uint512_t hashTx;
+                        if(config::GetBoolArg("-indexregister") && LLD::Logical->LastRegisterTx(hashRegister, hashTx))
                         {
                             /* Get the transaction from disk. */
                             TAO::Ledger::Transaction tx;
-                            if(!LLD::Ledger->ReadTx(hashLast, tx))
+                            if(!LLD::Ledger->ReadTx(hashTx, tx))
                                 break;
 
-                            /* Handle DDOS. */
-                            if(fDDOS.load() && DDOS)
-                                DDOS->rSCORE += 1;
+                            /* Build a markle transaction. */
+                            TAO::Ledger::MerkleTx tMerkle =
+                                TAO::Ledger::MerkleTx(tx);
 
-                            /* Set the next last. */
-                            hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
+                            /* Build our tMerkle branch from the block. */
+                            tMerkle.BuildMerkleBranch();
 
-                            /* Check through all the contracts. */
-                            for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)
+                            /* Send off the transaction to remote node. */
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle, hashRegister);
+
+                            return debug::success(0, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX REGISTER for ", hashRegister.ToString());
+                        }
+
+                        /* Handle the slow iterative way. */
+                        else
+                        {
+                            /* Check for existing localdb indexes. */
+                            std::pair<uint512_t, uint64_t> pairIndex;
+                            if(LLD::Local->ReadIndex(hashRegister, pairIndex))
                             {
-                                /* Get the contract. */
-                                const TAO::Operation::Contract& rContract = tx[nContract];
-
-                                /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
-                                rContract.Reset();
-
-                                /* Get the operation byte. */
-                                uint8_t OPERATION = 0;
-                                rContract >> OPERATION;
-
-                                /* Check for conditional OP */
-                                switch(OPERATION)
+                                /* Check for cache expiration. */
+                                if(runtime::unifiedtimestamp() <= pairIndex.second)
                                 {
-                                    case TAO::Operation::OP::VALIDATE:
-                                    {
-                                        /* Seek through validate. */
-                                        rContract.Seek(68);
-                                        rContract >> OPERATION;
-
+                                    /* Get the transaction from disk. */
+                                    TAO::Ledger::Transaction tx;
+                                    if(!LLD::Ledger->ReadTx(pairIndex.first, tx))
                                         break;
-                                    }
 
-                                    case TAO::Operation::OP::CONDITION:
-                                    {
-                                        /* Get new operation. */
-                                        rContract >> OPERATION;
-                                    }
+                                    /* Build a markle transaction. */
+                                    TAO::Ledger::MerkleTx tMerkle =
+                                        TAO::Ledger::MerkleTx(tx);
+
+                                    /* Build our tMerkle branch from the block. */
+                                    tMerkle.BuildMerkleBranch();
+
+                                    /* Send off the transaction to remote node. */
+                                    PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle, hashRegister);
+
+                                    return debug::success(0, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX CACHE for ", hashRegister.SubString());
                                 }
+                            }
 
-                                /* Check for key operations. */
-                                switch(OPERATION)
+                            /* Get the register from disk. */
+                            TAO::Register::State state;
+                            if(!LLD::Register->ReadState(hashRegister, state))
+                                break;
+
+                            /* If register is in the middle of a transfer, hashOwner will be owned by system. Detect and continue.*/
+                            uint256_t hashOwner = state.hashOwner;
+                            if(hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+                                hashOwner.SetType(TAO::Ledger::GENESIS::UserType());
+
+                            /* Read the last hash of owner. */
+                            uint512_t hashLast = 0;
+                            if(!LLD::Ledger->ReadLast(hashOwner, hashLast))
+                                break;
+
+                            /* Iterate through sigchain for register updates. */
+                            while(hashLast != 0)
+                            {
+                                /* Get the transaction from disk. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hashLast, tx))
+                                    break;
+
+                                /* Handle DDOS. */
+                                if(fDDOS.load() && DDOS)
+                                    DDOS->rSCORE += 1;
+
+                                /* Set the next last. */
+                                hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
+
+                                /* Check through all the contracts. */
+                                for(int32_t nContract = tx.Size() - 1; nContract >= 0; --nContract)
                                 {
-                                    /* Break when at the register declaration. */
-                                    case TAO::Operation::OP::WRITE:
-                                    case TAO::Operation::OP::CREATE:
-                                    case TAO::Operation::OP::APPEND:
-                                    case TAO::Operation::OP::CLAIM:
-                                    case TAO::Operation::OP::DEBIT:
-                                    case TAO::Operation::OP::CREDIT:
-                                    case TAO::Operation::OP::TRUST:
-                                    case TAO::Operation::OP::GENESIS:
-                                    case TAO::Operation::OP::LEGACY:
-                                    case TAO::Operation::OP::FEE:
+                                    /* Get the contract. */
+                                    const TAO::Operation::Contract& rContract = tx[nContract];
+
+                                    /* Reset the operation stream position in case it was loaded from mempool and therefore still in previous state */
+                                    rContract.Reset();
+
+                                    /* Get the operation byte. */
+                                    uint8_t OPERATION = 0;
+                                    rContract >> OPERATION;
+
+                                    /* Check for conditional OP */
+                                    switch(OPERATION)
                                     {
-                                        /* Seek past claim txid. */
-                                        if(OPERATION == TAO::Operation::OP::CLAIM ||
-                                           OPERATION == TAO::Operation::OP::CREDIT)
-                                            rContract.Seek(68);
-
-                                        /* Extract the address from the rContract. */
-                                        TAO::Register::Address hashAddress;
-                                        if(OPERATION == TAO::Operation::OP::TRUST ||
-                                           OPERATION == TAO::Operation::OP::GENESIS)
+                                        case TAO::Operation::OP::VALIDATE:
                                         {
-                                            hashAddress =
-                                                TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
+                                            /* Seek through validate. */
+                                            rContract.Seek(68);
+                                            rContract >> OPERATION;
+
+                                            break;
                                         }
-                                        else
-                                            rContract >> hashAddress;
 
-                                        /* Check for same address. */
-                                        if(hashAddress != hashRegister)
-                                            break;
-
-                                        /* Build a markle transaction. */
-                                        TAO::Ledger::MerkleTx tMerkle =
-                                            TAO::Ledger::MerkleTx(tx);
-
-                                        /* Build our merkle branch now. */
-                                        tMerkle.BuildMerkleBranch();
-
-                                        /* Send off the transaction to remote node. */
-                                        PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle);
-
-                                        /* Build indexes for optimized processing. */
-                                        std::pair<uint512_t, uint64_t> pairIndex = std::make_pair(tx.GetHash(), runtime::unifiedtimestamp() + 600);
-                                        if(!LLD::Local->WriteIndex(hashAddress, pairIndex)) //Index expires 1 hour after created
-                                            break;
-
-                                        /* Break out of main hash last. */
-                                        hashLast = 0;
-
-                                        /* Write update to our system logs. */
-                                        debug::log(0, NODE, "REQUEST::DEPENDANT::REGISTER: Update INDEX for register ", hashAddress.SubString());
-
-                                        break;
+                                        case TAO::Operation::OP::CONDITION:
+                                        {
+                                            /* Get new operation. */
+                                            rContract >> OPERATION;
+                                        }
                                     }
 
-                                    default:
-                                        continue;
+                                    /* Check for key operations. */
+                                    switch(OPERATION)
+                                    {
+                                        /* Break when at the register declaration. */
+                                        case TAO::Operation::OP::WRITE:
+                                        case TAO::Operation::OP::CREATE:
+                                        case TAO::Operation::OP::APPEND:
+                                        case TAO::Operation::OP::CLAIM:
+                                        case TAO::Operation::OP::DEBIT:
+                                        case TAO::Operation::OP::CREDIT:
+                                        case TAO::Operation::OP::TRUST:
+                                        case TAO::Operation::OP::GENESIS:
+                                        case TAO::Operation::OP::LEGACY:
+                                        case TAO::Operation::OP::FEE:
+                                        {
+                                            /* Seek past claim txid. */
+                                            if(OPERATION == TAO::Operation::OP::CLAIM ||
+                                               OPERATION == TAO::Operation::OP::CREDIT)
+                                                rContract.Seek(68);
+
+                                            /* Extract the address from the rContract. */
+                                            TAO::Register::Address hashAddress;
+                                            if(OPERATION == TAO::Operation::OP::TRUST ||
+                                               OPERATION == TAO::Operation::OP::GENESIS)
+                                            {
+                                                hashAddress =
+                                                    TAO::Register::Address(std::string("trust"), state.hashOwner, TAO::Register::Address::TRUST);
+                                            }
+                                            else
+                                                rContract >> hashAddress;
+
+                                            /* Check for same address. */
+                                            if(hashAddress != hashRegister)
+                                                break;
+
+                                            /* Build a markle transaction. */
+                                            TAO::Ledger::MerkleTx tMerkle =
+                                                TAO::Ledger::MerkleTx(tx);
+
+                                            /* Build our merkle branch now. */
+                                            tMerkle.BuildMerkleBranch();
+
+                                            /* Send off the transaction to remote node. */
+                                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle, hashRegister);
+
+                                            /* Build indexes for optimized processing. */
+                                            std::pair<uint512_t, uint64_t> pairIndex = std::make_pair(tx.GetHash(), runtime::unifiedtimestamp() + 600);
+                                            LLD::Local->WriteIndex(hashAddress, pairIndex); //Index expires 1 hour after created
+
+                                            /* Write update to our system logs. */
+                                            return debug::success(2, NODE, "REQUEST::DEPENDANT::REGISTER: Update INDEX for register ", hashAddress.SubString());
+                                        }
+
+                                        default:
+                                            continue;
+                                    }
                                 }
                             }
                         }
@@ -478,7 +512,7 @@ namespace LLP
                             PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::TRITIUM), tMerkle);
 
                             /* Debug output. */
-                            debug::log(3, NODE, "REQUEST::DEPENDANT::TRITIUM TRANSACTION", hashTx.SubString());
+                            return debug::success(3, NODE, "REQUEST::DEPENDANT::TRITIUM TRANSACTION", hashTx.SubString());
                         }
                         else if(DDOS)
                             DDOS->rSCORE += 10;
@@ -508,7 +542,7 @@ namespace LLP
                             PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::LEGACY), tMerkle);
 
                             /* Debug output. */
-                            debug::log(3, NODE, "REQUEST::DEPENDANT::LEGACY TRANSACTION", hashTx.SubString());
+                            return debug::success(3, NODE, "REQUEST::DEPENDANT::LEGACY TRANSACTION", hashTx.SubString());
                         }
                         else if(DDOS)
                             DDOS->rSCORE += 10;
@@ -516,6 +550,9 @@ namespace LLP
                         break;
                     }
                 }
+
+                /* We need to send a failure if we reach this far. */
+                PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(RESPONSE::MISSING));
 
                 break;
             }

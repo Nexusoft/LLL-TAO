@@ -219,48 +219,4 @@ namespace TAO::API
 
         return oNameRet;
     }
-
-
-    /* Scans the Name records associated with the hashGenesis sig chain to find an entry with a matching hashObject address */
-    TAO::Register::Object Names::GetName(const uint256_t& hashGenesis, const TAO::Register::Address& hashObject, TAO::Register::Address& hashNameAddress)
-    {
-        /* Declare the return val */
-        TAO::Register::Object oNameRet;
-
-        /* Get all object registers owned by this sig chain */
-        std::vector<TAO::Register::Address> vRegisters;
-        if(LLD::Logical->ListRegisters(hashGenesis, vRegisters))
-        {
-            /* Iterate through these to find all Name registers */
-            for(const auto& hashRegister : vRegisters)
-            {
-                /* Initial check that it is a name before we hit the DB to get the address */
-                if(!hashRegister.IsName())
-                    continue;
-
-                /* Get the object from the register DB.  We can read it as an Object and then check its nType
-                to determine whether or not it is a Name. */
-                TAO::Register::Object object;
-                if(!LLD::Register->ReadObject(hashRegister, object, TAO::Ledger::FLAGS::LOOKUP))
-                    continue;
-
-                /* Check the object register standards. */
-                if(object.Standard() != TAO::Register::OBJECTS::NAME)
-                    continue;
-
-                /* Check to see whether the address stored in this Name matches the hash we are searching for*/
-                if(object.get<uint256_t>("address") == hashObject)
-                {
-                    /* Set the return values */
-                    oNameRet = object;
-                    hashNameAddress = hashRegister;
-
-                    /* break out since we have a match */
-                    break;
-                }
-            }
-        }
-
-        return oNameRet;
-    }
 } /* End TAO namespace */

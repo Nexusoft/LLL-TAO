@@ -283,9 +283,13 @@ namespace debug
      *
      **/
     template<class... Args>
-    bool success(Args&&... args)
+    bool success(const uint32_t nLevel, Args&&... args)
     {
-        log(0, ANSI_COLOR_BRIGHT_GREEN, "SUCCESS: ", ANSI_COLOR_RESET, args...);
+        /* Don't write if log level is below set level. */
+        if(config::nVerbose < nLevel)
+            return true;
+
+        log(nLevel, ANSI_COLOR_BRIGHT_GREEN, "SUCCESS: ", ANSI_COLOR_RESET, args...);
 
         return true;
     }

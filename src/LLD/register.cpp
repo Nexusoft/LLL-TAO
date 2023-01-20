@@ -490,7 +490,7 @@ namespace LLD
 
 
     /* Flag to determine if address indexing has completed. For -indexaddress flag. */
-    void RegisterDB::Reindex()
+    void RegisterDB::IndexAddress()
     {
         /* Check for address indexing flag. */
         if(Exists(std::string("reindexed")) && !config::GetBoolArg("-forcereindex"))
@@ -539,7 +539,7 @@ namespace LLD
         std::set<uint256_t> setScanned;
 
         /* Start our scan. */
-        debug::notice(FUNCTION, "Reindexing from block ", state.GetHash().SubString());
+        debug::notice(FUNCTION, "Indexing addresses from block ", state.GetHash().SubString());
         while(!config::fShutdown.load())
         {
             /* Loop through found transactions. */

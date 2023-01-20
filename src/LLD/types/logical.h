@@ -298,6 +298,10 @@ namespace LLD
         bool LastRegisterTx(const uint256_t& hashRegister, uint512_t &hashTx);
 
 
+        /** Build indexes for transactions over a rolling modulus. For -indexregister flag. **/
+        void IndexRegisters();
+
+
         /** PushRegister
          *
          *  Push an register to process for given genesis-id.

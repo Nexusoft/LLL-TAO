@@ -176,6 +176,18 @@ namespace TAO
              **/
             bool BuildMerkleBranch();
 
+
+            /** CommitLookup
+             *
+             *  Commits a merkle transaction to lookup internal memory.
+             *
+             *  @param[in] hashRegister The register's hash that we are looking up.
+             *
+             *  @return true if commit was a success.
+             *
+             **/
+            bool CommitLookup(const uint256_t& hashRegister);
+
         };
 
     }

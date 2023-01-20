@@ -949,6 +949,7 @@ namespace TAO
             uint32_t nContract = 0;
 
             /* Run through all the contracts. */
+            std::set<uint256_t> setAddresses;
             for(const auto& contract : vContracts)
             {
                 /* Check for dependants. */
@@ -989,6 +990,26 @@ namespace TAO
                 /* If transaction fees should apply, calculate the additional transaction cost for the contract */
                 if(fApplyTxFee)
                     TAO::Operation::TxCost(contract, nCost);
+
+                /* Index our registers here now if not -client mode and setting enabled. */
+                if(!config::fClient.load() && config::GetBoolArg("-indexregister"))
+                {
+                    /* Unpack the address we will be working on. */
+                    uint256_t hashAddress;
+                    if(!TAO::Register::Unpack(contract, hashAddress))
+                        continue;
+
+                    /* Check for duplicate entries. */
+                    if(setAddresses.count(hashAddress))
+                        continue;
+
+                    /* Check fo register in database. */
+                    if(!LLD::Logical->PushRegisterTx(hashAddress, hash))
+                        return debug::error(FUNCTION, "failed to push register tx ", TAO::Register::Address(hashAddress).ToString());
+
+                    /* Push the address now. */
+                    setAddresses.insert(hashAddress);
+                }
             }
 
             /* Once we have executed the contracts we need to check the fees. */
@@ -1045,6 +1066,7 @@ namespace TAO
                 /* Revert last stake whan disconnect a coinstake tx */
                 if(IsCoinStake())
                 {
+                    /* Handle for trust keys. */
                     if(IsTrust())
                     {
                         /* Extract the last stake hash from the coinstake contract */
@@ -1083,11 +1105,32 @@ namespace TAO
             }
 
             /* Run through all the contracts in reverse order to disconnect. */
+            std::set<uint256_t> setAddresses;
             for(auto contract = vContracts.rbegin(); contract != vContracts.rend(); ++contract)
             {
                 contract->Bind(this);
                 if(!TAO::Register::Rollback(*contract, nFlags))
                     return false;
+
+                /* Erase our register index here now if not -client mode and setting enabled. */
+                if(!config::fClient.load() && config::GetBoolArg("-indexregister"))
+                {
+                    /* Unpack the address we will be working on. */
+                    uint256_t hashAddress;
+                    if(!TAO::Register::Unpack(*contract, hashAddress))
+                        continue;
+
+                    /* Check for duplicate entries. */
+                    if(setAddresses.count(hashAddress))
+                        continue;
+
+                    /* Check fo register in database. */
+                    if(!LLD::Logical->EraseRegisterTx(hashAddress))
+                        return debug::error(FUNCTION, "failed to erase register tx ", TAO::Register::Address(hashAddress).ToString());
+
+                    /* Push the address now. */
+                    setAddresses.insert(hashAddress);
+                }
             }
 
             return true;

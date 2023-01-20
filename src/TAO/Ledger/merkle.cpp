@@ -13,6 +13,10 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/execute.h>
+
+#include <TAO/Register/include/unpack.h>
+
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/state.h>
 
@@ -176,7 +180,8 @@ namespace TAO
         bool MerkleTx::CheckMerkleBranch(const uint512_t& hashMerkleRoot) const
         {
             /* Generate merkle root from merkle branch. */
-            uint512_t hashMerkleCheck = Block::CheckMerkleBranch(GetHash(), vMerkleBranch, nIndex);
+            const uint512_t hashMerkleCheck =
+                Block::CheckMerkleBranch(GetHash(), vMerkleBranch, nIndex);
 
             return hashMerkleRoot == hashMerkleCheck;
         }
@@ -239,6 +244,36 @@ namespace TAO
             hashBlock = state.GetHash();
 
             return BuildMerkleBranch(state);
+        }
+
+
+        /* Commits a merkle transaction to lookup internal memory. */
+        bool MerkleTx::CommitLookup(const uint256_t& hashRegister)
+        {
+            /* Reverse iterate contracts and terminate when we found the register. */
+            for(auto pContract = vContracts.rbegin(); pContract != vContracts.rend(); ++pContract)
+            {
+                /* Bind our contract to this transaction. */
+                pContract->Bind(this);
+
+                /* Unpack the address we will be working on. */
+                uint256_t hashAddress;
+                if(!TAO::Register::Unpack(*pContract, hashAddress))
+                    continue;
+
+                /* Check that our register addresses match. */
+                if(hashRegister != hashAddress)
+                    continue;
+
+                /* Get our register post-state now. */
+                const TAO::Register::Object tRegister =
+                    TAO::API::ExecuteContract(*pContract);
+
+                /* Commit our register to disk. */
+                return LLD::Register->WriteState(hashRegister, tRegister, TAO::Ledger::FLAGS::LOOKUP);
+            }
+
+            return false;
         }
     }
 }
