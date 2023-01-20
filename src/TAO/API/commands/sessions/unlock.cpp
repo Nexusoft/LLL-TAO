@@ -27,13 +27,12 @@ namespace TAO::API
     /* Unlock an account for any given action. */
     encoding::json Sessions::Unlock(const encoding::json& jParams, const bool fHelp)
     {
-        /* Check for unlock actions */
-        uint8_t nUnlockedActions =
-            TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
-
         /* Get our current unlocked status. */
         uint8_t nCurrentActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
         Authentication::Unlocked(jParams, nCurrentActions);
+
+        /* Check for unlock actions */
+        uint8_t nUnlockedActions = nCurrentActions;
 
         /* Check for mining flag. */
         if(ExtractBoolean(jParams, "mining"))
