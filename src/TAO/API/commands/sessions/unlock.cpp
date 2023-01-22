@@ -108,14 +108,6 @@ namespace TAO::API
         /* Update our session with new pin. */
         Authentication::Update(jParams, nUnlockedActions);
 
-        /* Get the genesis ID. */
-        //const uint256_t hashGenesis =
-        //    Authentication::Caller(jParams);
-
-        /* Update the saved session if there is one */
-        //if(LLD::Local->HasSession(hashGenesis))
-        //    rSession.Save(strPin);
-
         /* After unlock complete, attempt to start stake minter if unlocked for staking */
         if(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)
         {
