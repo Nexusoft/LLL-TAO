@@ -2075,6 +2075,10 @@ namespace LLP
                                 if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
                                     return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unsolicited notification");
 
+                                /* Check for legacy. */
+                                if(fLegacy)
+                                    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: cannot include legacy specifier");
+
                                 /* Get the sigchain genesis. */
                                 uint256_t hashSigchain = 0;
                                 ssPacket >> hashSigchain;
@@ -2098,6 +2102,10 @@ namespace LLP
                                 /* Check for subscription. */
                                 if(!(nSubscriptions & SUBSCRIPTION::REGISTER))
                                     return debug::drop(NODE, "ACTION::NOTIFY::REGISTER: unsolicited notification");
+
+                                /* Check for legacy. */
+                                if(fLegacy)
+                                    return debug::drop(NODE, "ACTION::NOTIFY::REGISTER: cannot include legacy specifier");
 
                                 /* Get the  address . */
                                 uint256_t hashAddress = 0;
