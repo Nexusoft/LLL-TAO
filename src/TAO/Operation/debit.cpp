@@ -42,7 +42,7 @@ namespace TAO
                 {
                     /* Read the owner of register. */
                     TAO::Register::State state;
-                    if(!LLD::Register->ReadState(hashTo, state, nFlags) && !config::fClient.load()) // don't error in client mode
+                    if(!LLD::Register->ReadState(hashTo, state, nFlags)) // don't error in client mode
                         return debug::error(FUNCTION, "failed to read register to");
 
                     if(nFlags == TAO::Ledger::FLAGS::BLOCK)

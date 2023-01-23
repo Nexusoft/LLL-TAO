@@ -1112,7 +1112,7 @@ namespace LLP
                         }
 
                         /* Subscribe to getting event transcations. */
-                        case TYPES::NOTIFICATION:
+                        case TYPES::REGISTER:
                         {
                             /* Check for available protocol version. */
                             if(nProtocolVersion < MIN_TRITIUM_VERSION)
