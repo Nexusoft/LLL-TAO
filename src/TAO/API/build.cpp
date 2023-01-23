@@ -767,11 +767,17 @@ namespace TAO::API
             /* Check for empty name and alert caller of error. */
             const std::string& strName = jParams["name"].get<std::string>();
             if(strName.empty())
-                throw Exception(-88, "Missing or empty name.");
+                return;
 
             /* Check if creating token, which would mean this is a global name. */
             std::string strNamespace = ""; //default to our local namespace
-            if(hashRegister.GetType() == TAO::Register::Address::TOKEN)
+
+            /* Check for namespace parameter. */
+            if(jParams.find("namespace") != jParams.end())
+                strNamespace = jParams["namespace"].get<std::string>();
+
+            /* Check for a global name override for tokens. */
+            if(strNamespace.empty() && hashRegister.GetType() == TAO::Register::Address::TOKEN)
                 strNamespace = TAO::Register::NAMESPACE::GLOBAL;
 
             /* Add an optional name if supplied. */

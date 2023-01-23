@@ -38,25 +38,15 @@ namespace TAO::API
             throw Exception(-88, "Missing or empty name.");
 
         /* Name can't start with : */
-        if(strName[0]== ':' )
+        if(strName[0]== ':')
             throw Exception(-161, "Names cannot start with a colon");
 
-        /* Declare the contract for the response */
-        TAO::Operation::Contract contract;
-
-        /* The hash representing the namespace that the Name will be created in.  For user local this will be the genesis hash
-           of the callers sig chain.  For global namespace this will be a SK256 hash of the namespace name. */
-        TAO::Register::Address hashNamespace;
-
-        /* The register address of the Name object. */
-        TAO::Register::Address hashNameAddress;
+        /* The hash representing the namespace that the Name will be created in. */
+        uint256_t hashNamespace = hashGenesis; //default to local name
 
         /* Check to see whether the name is being created in a namesace */
-        if(strNamespace.length() > 0)
+        if(!strNamespace.empty())
         {
-            /* Namespace hash is a SK256 hash of the namespace name */
-            hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
-
             /* If the name is not being created in the global namespace then check that the caller owns the namespace */
             if(strNamespace != TAO::Register::NAMESPACE::GLOBAL)
             {
@@ -71,44 +61,40 @@ namespace TAO::API
                 if(oNamespace.hashOwner != hashGenesis)
                     throw Exception(-96, "Cannot create a name in namespace " + strNamespace + " as you are not the owner.");
             }
-            else
-            {
-                /* If it is a global name then check it doesn't contain any colons */
-                if(strNamespace.find(":") != strNamespace.npos )
-                    throw Exception(-171, "Global names cannot cannot contain a colon");
-            }
+
+            /* If it is a global name then check it doesn't contain any colons */
+            else if(strNamespace.find(":") != strNamespace.npos)
+                throw Exception(-171, "Global names cannot cannot contain a colon");
+
+            /* Namespace hash is a SK256 hash of the namespace name */
+            hashNamespace =
+                TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
         }
-        else
-            /* If no namespace has been passed in then use the callers genesis hash for the hashNamespace. */
-            hashNamespace = hashGenesis;
 
         /* Obtain the name register address for the genesis/name combination */
-        hashNameAddress = TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
+        const TAO::Register::Address hashName =
+            TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
         /* Check to see whether the name already exists  */
-        TAO::Register::Object object;
-        if(LLD::Register->ReadState(hashNameAddress, object, TAO::Ledger::FLAGS::MEMPOOL))
-        {
-            if(!strNamespace.empty())
-                throw Exception(-97, "An object with this name already exists in this namespace.");
-
-            throw Exception(-98, "An object with this name already exists for this user.");
-        }
-
+        TAO::Register::Object oLookup;
+        if(LLD::Register->ReadState(hashName, oLookup, TAO::Ledger::FLAGS::LOOKUP))
+            throw Exception(-97, "An object with this name already exists.");
 
         /* Create the Name register object pointing to hashRegister */
-        TAO::Register::Object name = TAO::Register::CreateName(strNamespace, strName, hashRegister);
+        const TAO::Register::Object oName =
+            TAO::Register::CreateName(strNamespace, strName, hashRegister);
 
         /* Add the Name object register operation to the transaction */
-        contract << uint8_t(TAO::Operation::OP::CREATE) << hashNameAddress << uint8_t(TAO::Register::REGISTER::OBJECT) << name.GetState();
+        TAO::Operation::Contract tContract;
+        tContract << uint8_t(TAO::Operation::OP::CREATE) << hashName << uint8_t(TAO::Register::REGISTER::OBJECT) << oName.GetState();
 
-        return contract;
+        return tContract;
     }
 
 
     /* Retrieves a Name object by name. */
     TAO::Register::Object Names::GetName(const encoding::json& jParams, const std::string& strObjectName,
-                                         TAO::Register::Address& hashNameAddress, const bool fThrow)
+                                         TAO::Register::Address& hashName, const bool fThrow)
     {
         /* Declare the namespace hash to use for this object. */
         uint256_t hashGenesis;
@@ -135,7 +121,7 @@ namespace TAO::API
             if(TAO::Register::GetNameRegister(hashGenesis, strName, oNameRet))
             {
                 /* Set the return name address. */
-                hashNameAddress =
+                hashName =
                     TAO::Register::Address(strName, hashGenesis, TAO::Register::Address::NAME);
 
                 return oNameRet;
@@ -146,7 +132,7 @@ namespace TAO::API
         else if(TAO::Register::GetNameRegister(hashNamespace, strObjectName, oNameRet))
         {
             /* Set the return name address. */
-            hashNameAddress =
+            hashName =
                 TAO::Register::Address(strObjectName, hashNamespace, TAO::Register::Address::NAME);
 
             return oNameRet;
@@ -168,7 +154,7 @@ namespace TAO::API
             if(TAO::Register::GetNameRegister(hashNamespace, strName, oNameRet))
             {
                 /* Set the return name address. */
-                hashNameAddress =
+                hashName =
                     TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
                 return oNameRet;
@@ -192,7 +178,7 @@ namespace TAO::API
             if(TAO::Register::GetNameRegister(hashNamespace, strName, oNameRet))
             {
                 /* Set the return name address. */
-                hashNameAddress =
+                hashName =
                     TAO::Register::Address(strName, hashNamespace, TAO::Register::Address::NAME);
 
                 return oNameRet;
@@ -207,7 +193,7 @@ namespace TAO::API
         if(TAO::Register::GetNameRegister(hashGenesis, strObjectName, oNameRet))
         {
             /* Set the return name address. */
-            hashNameAddress =
+            hashName =
                 TAO::Register::Address(strObjectName, hashGenesis, TAO::Register::Address::NAME);
 
             return oNameRet;
