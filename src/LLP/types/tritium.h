@@ -187,7 +187,7 @@ namespace LLP
 
 
         /** Sig chain genesis hashes / register addresses that the peer has subscribed to notifications for **/
-        std::vector<uint256_t> vNotifications;
+        std::set<uint256_t> setSubscriptions;
 
 
     public:

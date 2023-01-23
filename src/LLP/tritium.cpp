@@ -116,7 +116,7 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
-    , vNotifications()
+    , setSubscriptions()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -145,7 +145,7 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
-    , vNotifications()
+    , setSubscriptions()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -174,7 +174,7 @@ namespace LLP
     , fInitialized(false)
     , nSubscriptions(0)
     , nNotifications(0)
-    , vNotifications()
+    , setSubscriptions()
     , nLastPing(0)
     , nLastSamples(0)
     , mapLatencyTracker()
@@ -1137,11 +1137,11 @@ namespace LLP
                                 nNotifications |= SUBSCRIPTION::REGISTER;
 
                                 /* Check that peer hasn't already subscribed to too many addresses, for overflow protection */
-                                if(vNotifications.size() == 10000)
+                                if(setSubscriptions.size() >= 10000)
                                     return debug::drop(NODE, "ACTION::SUBSCRIBE::NOTIFICATION exceeded max subscriptions");
 
                                 /* Add the address to the notifications vector for this peer */
-                                vNotifications.push_back(hashAddress);
+                                setSubscriptions.insert(hashAddress);
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::SUBSCRIBE::NOTIFICATION: ", hashAddress.ToString());
@@ -1156,7 +1156,7 @@ namespace LLP
                                 nNotifications &= ~SUBSCRIPTION::REGISTER;
 
                                 /* Remove the address from the notifications vector for this peer */
-                                vNotifications.erase(std::find(vNotifications.begin(), vNotifications.end(), hashAddress));
+                                setSubscriptions.erase(hashAddress);
 
                                 /* Debug output. */
                                 debug::log(3, NODE, "ACTION::UNSUBSCRIBE::NOTIFICATION: " , hashAddress.ToString());
@@ -3315,7 +3315,7 @@ namespace LLP
             nSubscriptions |=  SUBSCRIPTION::REGISTER;
 
             /* Store the address subscribed to so that we can validate when the peer sends us notifications */
-            vNotifications.push_back(hashAddress);
+            setSubscriptions.insert(hashAddress);
 
             /* Debug output. */
             debug::log(3, NODE, "SUBSCRIBING TO NOTIFICATION ", std::bitset<16>(nSubscriptions));
@@ -3323,7 +3323,7 @@ namespace LLP
         else
         {
             /* Remove the address from the notifications vector for this user */
-            vNotifications.erase(std::find(vNotifications.begin(), vNotifications.end(), hashAddress));
+            setSubscriptions.erase(hashAddress);
 
             /* Debug output. */
             debug::log(3, NODE, "UNSUBSCRIBING FROM NOTIFICATION ", std::bitset<16>(nSubscriptions));
@@ -3617,7 +3617,7 @@ namespace LLP
                             if(nNotifications & SUBSCRIPTION::REGISTER)
                             {
                                 /* Check that the address is one that has been subscribed to */
-                                if(std::find(vNotifications.begin(), vNotifications.end(), hashAddress) == vNotifications.end())
+                                if(std::find(setSubscriptions.begin(), setSubscriptions.end(), hashAddress) == setSubscriptions.end())
                                     break;
 
                                 /* Check for legacy. */
