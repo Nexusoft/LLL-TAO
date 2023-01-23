@@ -481,6 +481,19 @@ namespace LLD
         bool EraseEvent(const uint256_t& hashAddress);
 
 
+        /** HasEvent
+         *
+         *  Checks an event in the ledger database of foreign index.
+         *
+         *  @param[in] hashAddress The event address to write.
+         *  @param[in] nSequence The sequence number to read from event.
+         *
+         *  @return True if the event exists.
+         *
+         **/
+        bool HasEvent(const uint256_t& hashAddress, const uint32_t nSequence);
+
+
         /** ReadEvent
          *
          *  Reads a new event to the ledger database of foreign index.

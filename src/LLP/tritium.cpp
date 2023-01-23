@@ -775,13 +775,13 @@ namespace LLP
             case RESPONSE::AUTHORIZED:
             {
                 /* Grab the genesis. */
-                uint256_t hashGenesis;
-                ssPacket >> hashGenesis;
+                uint256_t hashSigchain;
+                ssPacket >> hashSigchain;
 
                 /* Subscribe to sigchain events now. */
                 Subscribe(SUBSCRIPTION::SIGCHAIN);
 
-                debug::log(0, NODE, "RESPONSE::AUTHORIZED: ", hashGenesis.SubString(), " AUTHORIZATION ACCEPTED");
+                debug::log(0, NODE, "RESPONSE::AUTHORIZED: ", hashSigchain.SubString(), " AUTHORIZATION ACCEPTED");
 
                 break;
             }
@@ -1120,7 +1120,7 @@ namespace LLP
 
                             /* Check that node is logged in. */
                             if(!fAuthorized || hashGenesis == 0)
-                                return debug::drop(NODE, "ACTION::SUBSCRIBE::NOTIFICATION: Access Denied");
+                                return debug::drop(NODE, "ACTION::SUBSCRIBE::REGISTER: Access Denied");
 
                             /* Deserialize the address for the event subscription */
                             uint256_t hashAddress;
@@ -1131,35 +1131,39 @@ namespace LLP
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
                                 if(config::fClient.load())
-                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::NOTIFICATION disabled in -client mode");
-
-                                /* Set the best chain flag. */
-                                nNotifications |= SUBSCRIPTION::REGISTER;
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::REGISTER disabled in -client mode");
 
                                 /* Check that peer hasn't already subscribed to too many addresses, for overflow protection */
                                 if(setSubscriptions.size() >= 10000)
-                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::NOTIFICATION exceeded max subscriptions");
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::REGISTER exceeded max subscriptions");
+
+                                /* Check for our transfer event. */
+                                if(!LLD::Ledger->HasEvent(hashAddress, 0))
+                                    return debug::drop(NODE, "ACTION::SUBSCRIBE::REGISTER register is not a valid tokenized asset");
 
                                 /* Add the address to the notifications vector for this peer */
                                 setSubscriptions.insert(hashAddress);
 
+                                /* Set the subscription flag. */
+                                nNotifications |= SUBSCRIPTION::REGISTER;
+
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::SUBSCRIBE::NOTIFICATION: ", hashAddress.ToString());
+                                debug::log(3, NODE, "ACTION::SUBSCRIBE::REGISTER: ", hashAddress.ToString());
                             }
                             else if(INCOMING.MESSAGE == ACTION::UNSUBSCRIBE)
                             {
                                 /* Check for client mode since this method should never be called except by a client. */
                                 if(config::fClient.load())
-                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::NOTIFICATION disabled in -client mode");
-
-                                /* Unset the bestchain flag. */
-                                nNotifications &= ~SUBSCRIPTION::REGISTER;
+                                    return debug::drop(NODE, "ACTION::UNSUBSCRIBE::REGISTER disabled in -client mode");
 
                                 /* Remove the address from the notifications vector for this peer */
                                 setSubscriptions.erase(hashAddress);
 
+                                /* Unset the subscription flag. */
+                                nNotifications &= ~SUBSCRIPTION::REGISTER;
+
                                 /* Debug output. */
-                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::NOTIFICATION: " , hashAddress.ToString());
+                                debug::log(3, NODE, "ACTION::UNSUBSCRIBE::REGISTER: " , hashAddress.ToString());
                             }
                             else
                             {
@@ -1167,7 +1171,7 @@ namespace LLP
                                 nSubscriptions &= ~SUBSCRIPTION::REGISTER;
 
                                 /* Debug output. */
-                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::NOTIFICATION: ", hashAddress.ToString());
+                                debug::log(3, NODE, "RESPONSE::UNSUBSCRIBED::REGISTER: ", hashAddress.ToString());
                             }
 
                             break;
@@ -2054,7 +2058,7 @@ namespace LLP
                         /* Standard type for a block. */
                         case TYPES::TRANSACTION:
                         case TYPES::SIGCHAIN:
-                        case TYPES::NOTIFICATION:
+                        case TYPES::REGISTER:
                         {
                             /* Check for active subscriptions. */
                             if(nType == TYPES::TRANSACTION && !(nSubscriptions & SUBSCRIPTION::TRANSACTION))
@@ -2076,13 +2080,16 @@ namespace LLP
                                 ssPacket >> hashSigchain;
 
                                 /* Check for expected genesis. */
-                                //uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
-                                //if(hashSigchain != hashLogin)
-                                //    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashLogin.SubString());
+                                const uint256_t hashSession =
+                                    TAO::API::Authentication::Caller(uint256_t(TAO::API::Authentication::SESSION::DEFAULT), false);
+
+                                /* Check this notification is for a valid logged in session. */
+                                if(hashSigchain != hashSession)
+                                    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unexpected genesis-id ", hashSession.SubString());
                             }
 
                             /* Notification validation */
-                            else if(nType == TYPES::NOTIFICATION)
+                            else if(nType == TYPES::REGISTER)
                             {
                                 /* Check for available protocol version. */
                                 if(nProtocolVersion < MIN_TRITIUM_VERSION)
@@ -2090,22 +2097,15 @@ namespace LLP
 
                                 /* Check for subscription. */
                                 if(!(nSubscriptions & SUBSCRIPTION::REGISTER))
-                                    return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unsolicited notification");
+                                    return debug::drop(NODE, "ACTION::NOTIFY::REGISTER: unsolicited notification");
 
                                 /* Get the  address . */
                                 uint256_t hashAddress = 0;
                                 ssPacket >> hashAddress;
 
-                                /* Get the genesis hash of the logged in user */
-                                //uint256_t hashLogin = TAO::API::Commands::Instance<TAO::API::Users>()->GetGenesis(0);
-
                                 /* If the address is a genesis hash, then make sure that it is for the currently logged in user */
                                 if(hashAddress.GetType() == TAO::Ledger::GENESIS::UserType())
-                                {
-                                    /* Check for expected genesis. */
-                                    //if(hashAddress != hashLogin)
-                                    //    return debug::drop(NODE, "ACTION::NOTIFY::NOTIFICATION: unexpected genesis-id ", hashAddress.SubString());
-                                }
+                                    return debug::drop(NODE, "ACTION::NOTIFY::REGISTER: notification cannot be genesis");
                             }
 
                             /* Get the index of transaction. */
@@ -3476,8 +3476,8 @@ namespace LLP
                             /* Check for legacy. */
                             if(fLegacy)
                             {
-                                debug::error(FUNCTION, "BESTHEIGHT cannot have legacy specifier");
-                                continue;
+                                debug::warning(FUNCTION, "BESTHEIGHT cannot have legacy specifier");
+                                break;
                             }
 
                             /* Check subscription. */
@@ -3603,7 +3603,7 @@ namespace LLP
 
 
                         /* Check for notification subscription. */
-                        case TYPES::NOTIFICATION:
+                        case TYPES::REGISTER:
                         {
                             /* Get the sig chain / register that the transaction relates to. */
                             uint256_t hashAddress = 0;
@@ -3613,19 +3613,22 @@ namespace LLP
                             uint512_t hashTx = 0;
                             ssData >> hashTx;
 
+                            /* Check for legacy. */
+                            if(fLegacy)
+                            {
+                                debug::warning(FUNCTION, "REGISTER cannot have legacy specifier");
+                                break;
+                            }
+
                             /* Check subscription. */
                             if(nNotifications & SUBSCRIPTION::REGISTER)
                             {
                                 /* Check that the address is one that has been subscribed to */
-                                if(std::find(setSubscriptions.begin(), setSubscriptions.end(), hashAddress) == setSubscriptions.end())
+                                if(!setSubscriptions.count(hashAddress))
                                     break;
 
-                                /* Check for legacy. */
-                                if(fLegacy)
-                                    ssRelay << uint8_t(SPECIFIER::LEGACY);
-
                                 /* Write transaction to stream. */
-                                ssRelay << uint8_t(TYPES::NOTIFICATION);
+                                ssRelay << uint8_t(TYPES::REGISTER);
                                 ssRelay << hashAddress;
                                 ssRelay << hashTx;
                             }
@@ -3644,6 +3647,7 @@ namespace LLP
 
                 break;
             }
+
             default:
             {
                 /* default behaviour is to let the message be relayed */

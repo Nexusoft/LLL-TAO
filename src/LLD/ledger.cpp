@@ -686,6 +686,16 @@ namespace LLD
         return Erase(std::make_pair(hashAddress, nSequence - 1));
     }
 
+    /* Checks an event in the ledger database of foreign index. */
+    bool LedgerDB::HasEvent(const uint256_t& hashAddress, const uint32_t nSequence)
+    {
+        /* Check for client mode. */
+        if(config::fClient.load())
+            return Client->Exists(std::make_pair(hashAddress, nSequence));
+
+        return Exists(std::make_pair(hashAddress, nSequence));
+    }
+
 
     /*  Reads a new event to the ledger database of foreign index.
      *  This is responsible for knowing foreign sigchain events that correlate to your own. */
