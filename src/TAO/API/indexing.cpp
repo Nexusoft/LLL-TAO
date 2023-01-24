@@ -308,7 +308,7 @@ namespace TAO::API
     void Indexing::InitializeThread()
     {
         /* Track our current genesis that we are initializing. */
-        uint256_t hashSession = 0;
+        uint256_t hashSession = TAO::API::Authentication::SESSION::INVALID;
 
         /* Main loop controlled by condition variable. */
         std::mutex CONDITION_MUTEX;
@@ -317,7 +317,7 @@ namespace TAO::API
             try
             {
                 /* Cleanup our previous indexing session by setting our status. */
-                if(hashSession != 0)
+                if(hashSession != TAO::API::Authentication::SESSION::INVALID)
                 {
                     /* Get our current genesis-id to start initialization. */
                     const uint256_t hashGenesis =
@@ -354,7 +354,7 @@ namespace TAO::API
                     debug::log(2, FUNCTION, "Completed building indexes at ", VARIABLE(nLedgerSequence), " | ", VARIABLE(nLogicalSequence), " | ", VARIABLE(nLedgerHeight), " | ", VARIABLE(nLogicalHeight), " for genesis=", hashGenesis.SubString());
 
                     /* Reset the genesis-id now. */
-                    hashSession = 0;
+                    hashSession = TAO::API::Authentication::SESSION::INVALID;
 
                     continue;
                 }
@@ -366,6 +366,10 @@ namespace TAO::API
                 {
                     /* Check for shutdown. */
                     if(config::fShutdown.load())
+                        return true;
+
+                    /* Check for a session that needs to be wiped. */
+                    if(hashSession != TAO::API::Authentication::SESSION::INVALID)
                         return true;
 
                     return Indexing::INITIALIZE->size() != 0;
