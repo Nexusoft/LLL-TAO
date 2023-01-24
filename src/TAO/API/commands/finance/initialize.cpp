@@ -197,7 +197,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , "account, token, trust"
+            , "any, account, token, trust"
         );
 
 
