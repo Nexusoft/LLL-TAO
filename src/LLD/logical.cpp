@@ -23,6 +23,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 namespace LLD
 {
@@ -313,11 +314,8 @@ namespace LLD
         timer.Start();
 
         /* Get our starting hash. */
-        uint1024_t hashBegin = TAO::Ledger::hashTritium;
-
-        /* Check for hybrid mode. */
-        if(config::fHybrid.load())
-            LLD::Ledger->ReadHybridGenesis(hashBegin);
+        const uint1024_t hashBegin =
+            TAO::Ledger::ChainState::Genesis();
 
         /* Read the first tritium block. */
         TAO::Ledger::BlockState state;
