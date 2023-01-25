@@ -817,11 +817,34 @@ namespace TAO::API
 
                     /* Output the json information. */
                     jRet["OP"]       = "DEBIT";
-                    jRet["from"]     = hashFrom.ToString();
+
+                    /* Build our from json key. */
+                    encoding::json jFrom =
+                        hashFrom.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strFrom;
+                    if(Names::ReverseLookup(hashFrom, strFrom))
+                        jFrom = { { "address", hashFrom.ToString() }, { "name", strFrom } };
+
+                    /* Add the from key address and name. */
+                    jRet["from"]     = jFrom;
 
                     /* Check for wildcard address before adding key. */
                     if(hashTo != TAO::Register::WILDCARD_ADDRESS)
-                        jRet["to"]       = hashTo.ToString();
+                    {
+                        /* Build our from json key. */
+                        encoding::json jTo =
+                            hashFrom.ToString();
+
+                        /* Check if we have a name record available. */
+                        std::string strTo;
+                        if(Names::ReverseLookup(hashTo, strTo))
+                            jFrom = { { "address", hashTo.ToString() }, { "name", strTo } };
+
+                        /* Add the from key address and name. */
+                        jRet["to"]     = jTo;
+                    }
                     else
                         jRet["wildcard"] = true;
 
@@ -961,14 +984,35 @@ namespace TAO::API
                                 }
                             }
                             else
-                                jRet["from"]  = hashProof.ToString();
+                            {
+                                /* Build our from json key. */
+                                encoding::json jFrom =
+                                    hashProof.ToString();
+
+                                /* Check if we have a name record available. */
+                                std::string strFrom;
+                                if(Names::ReverseLookup(hashProof, strFrom))
+                                    jFrom = { { "address", hashProof.ToString() }, { "name", strFrom } };
+
+                                /* Add the from key address and name. */
+                                jRet["from"]     = jFrom;
+                            }
                         }
                     }
                     else
                         jRet["wildcard"] = true;
 
-                    /* Track our address to. */
-                    jRet["to"]       = hashAddress.ToString();
+                    /* Build our from json key. */
+                    encoding::json jAddress =
+                        hashAddress.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strAddress;
+                    if(Names::ReverseLookup(hashAddress, strAddress))
+                        jAddress = { { "address", hashAddress.ToString() }, { "name", strAddress } };
+
+                    /* Add the from key address and name. */
+                    jRet["to"]     = jAddress;
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nCredit, hashToken);
