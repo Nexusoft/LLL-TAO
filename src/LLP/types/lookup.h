@@ -176,7 +176,7 @@ namespace LLP
             AddTrigger(RESPONSE::MERKLE, &REQUEST_TRIGGER);
 
             /* Process the event. */
-            REQUEST_TRIGGER.wait_for_nonce(nRequestID, nTimeout);
+            REQUEST_TRIGGER.wait_for_timeout(nRequestID, nTimeout);
 
             /* Cleanup our event trigger. */
             Release(RESPONSE::MERKLE);

@@ -206,7 +206,7 @@ namespace LLP
                                     return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
                             }
 
-                            debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+                            debug::log(2, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                             break;
                         }
@@ -254,7 +254,7 @@ namespace LLP
                             }
 
                             /* Write Success to log. */
-                            debug::log(0, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+                            debug::log(2, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                             break;
                         }

@@ -513,9 +513,6 @@ namespace LLP
         /** BlockingMessage
          *
          *  Adds a tritium packet to the queue and waits for the peer to send a COMPLETED message.
-         *  NOTE: this is a static method taking the node reference as a parameter to avoid locking access to the connection
-         *  in the atomic_ptr.  If we did not do this, the data threads could not access the atomic_ptr to process the incoming
-         *  messages until trigger timed out and this method returned
          *
          *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
          *  @param[in] nMsg The message type.
@@ -536,7 +533,37 @@ namespace LLP
             pNode->AddTrigger(LLP::TritiumNode::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
 
             /* Process the event. */
-            REQUEST_TRIGGER.wait_for_nonce(nNonce, nTimeout);
+            REQUEST_TRIGGER.wait_for_timeout(nNonce, nTimeout);
+
+            /* Cleanup our event trigger. */
+            pNode->Release(LLP::TritiumNode::RESPONSE::COMPLETED);
+        }
+
+
+        /** BlockingMessage
+         *
+         *  Adds a tritium packet to the queue and waits for the peer to send a COMPLETED message.
+         *
+         *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
+         *  @param[in] nMsg The message type.
+         *  @param[in] args variable args to be sent in the message.
+         **/
+        template<typename... Args>
+        static void BlockingMessage(LLP::TritiumNode* pNode, const uint16_t nMsg, Args&&... args)
+        {
+            /* Create our trigger nonce. */
+            uint64_t nNonce = LLC::GetRand();
+            pNode->PushMessage(LLP::TritiumNode::TYPES::TRIGGER, nNonce);
+
+            /* Request the inventory message. */
+            pNode->PushMessage(nMsg, std::forward<Args>(args)...);
+
+            /* Create the condition variable trigger. */
+            LLP::Trigger REQUEST_TRIGGER;
+            pNode->AddTrigger(LLP::TritiumNode::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
+
+            /* Process the event. */
+            REQUEST_TRIGGER.wait_for_nonce(nNonce);
 
             /* Cleanup our event trigger. */
             pNode->Release(LLP::TritiumNode::RESPONSE::COMPLETED);

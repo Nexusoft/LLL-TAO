@@ -278,7 +278,7 @@ namespace TAO::API
 
 
     /* Determine if a sigchain is unlocked for given actions. */
-    bool Authentication::Unlocked(const encoding::json& jParams, uint8_t &nRequestedActions)
+    bool Authentication::UnlockStatus(const encoding::json& jParams, uint8_t &nRequestedActions)
     {
         /* Get the current session-id. */
         const uint256_t hashSession =
@@ -305,6 +305,18 @@ namespace TAO::API
 
         return false;
     }
+
+
+    /* Determine if a sigchain is unlocked for given actions. */
+    bool Authentication::Unlocked(const uint8_t nRequestedActions, const encoding::json& jParams)
+    {
+        /* Get the current session-id. */
+        const uint256_t hashSession =
+            ExtractHash(jParams, "session", default_session());
+
+        return Unlocked(nRequestedActions, hashSession);
+    }
+
 
     /* Determine if a sigchain is unlocked for given actions. */
     bool Authentication::Unlocked(const uint8_t nRequestedActions, const uint256_t& hashSession)

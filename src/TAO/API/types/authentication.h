@@ -434,7 +434,20 @@ namespace TAO::API
          *  @return true if the PIN is unlocked for given actions.
          *
          **/
-        static bool Unlocked(const encoding::json& jParams, uint8_t &nRequestedActions);
+        static bool UnlockStatus(const encoding::json& jParams, uint8_t &nRequestedActions);
+
+
+        /** Unloacked
+         *
+         *  Determine if a sigchain is unlocked for given actions.
+         *
+         *  @param[in] jParams The incoming paramters to parse
+         *  @param[in] nRequestedActions The actions requested for PIN unlock.
+         *
+         *  @return true if the PIN is unlocked for given actions.
+         *
+         **/
+        static bool Unlocked(const uint8_t nRequestedActions, const encoding::json& jParams);
 
 
         /** Unloacked

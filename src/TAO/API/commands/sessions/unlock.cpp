@@ -29,7 +29,7 @@ namespace TAO::API
     {
         /* Get our current unlocked status. */
         uint8_t nCurrentActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
-        Authentication::Unlocked(jParams, nCurrentActions);
+        Authentication::UnlockStatus(jParams, nCurrentActions);
 
         /* Check for unlock actions */
         uint8_t nUnlockedActions = nCurrentActions;

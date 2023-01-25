@@ -212,7 +212,7 @@ namespace TAO::API
 
             /* Update the PIN in our authenticated session now if we are unlocked. */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::NONE;
-            if(Authentication::Unlocked(jParams, nUnlockedActions))
+            if(Authentication::UnlockStatus(jParams, nUnlockedActions))
                 Authentication::Update(jParams, nUnlockedActions, strNewPIN);
 
             /* Build a JSON response object. */

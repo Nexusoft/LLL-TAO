@@ -411,7 +411,6 @@ namespace TAO::API
                             debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
                             LLP::TritiumNode::BlockingMessage
                             (
-                                60000,
                                 pNode.get(), LLP::TritiumNode::ACTION::LIST,
                                 uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
                             );
@@ -425,7 +424,6 @@ namespace TAO::API
                             debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION for ", hashGenesis.SubString());
                             LLP::TritiumNode::BlockingMessage
                             (
-                                36000,
                                 pNode.get(),
                                 LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
                                 hashGenesis, nTritiumSequence
@@ -440,7 +438,6 @@ namespace TAO::API
                             debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION for ", hashGenesis.SubString());
                             LLP::TritiumNode::BlockingMessage
                             (
-                                30000,
                                 pNode.get(),
                                 LLP::TritiumNode::ACTION::LIST,
                                 uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),

@@ -262,6 +262,10 @@ namespace TAO::API
                     throw Exception(-67, "-safemode next hash mismatch, broadcast terminated");
             }
 
+            /* Check that account is unlocked. */
+            if(!Authentication::Unlocked(nUnlockedActions, jParams))
+                break;
+
             /* Execute the operations layer. */
             if(!TAO::Ledger::mempool.Accept(tx))
                 throw Exception(-32, "Failed to accept");

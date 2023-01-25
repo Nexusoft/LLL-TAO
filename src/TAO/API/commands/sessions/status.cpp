@@ -34,7 +34,7 @@ namespace TAO::API
 
         /* Populate unlocked status */
         uint8_t nCurrentActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
-        Authentication::Unlocked(jParams, nCurrentActions);
+        Authentication::UnlockStatus(jParams, nCurrentActions);
 
         /* Build all of our values now. */
         const encoding::json jUnlocked =

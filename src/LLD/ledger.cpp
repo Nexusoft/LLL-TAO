@@ -137,7 +137,7 @@ namespace LLD
             if(!ReadTx(hashTx, tx, nFlags))
             {
                 /* Check for -client mode or active server object. */
-                if(!LLP::TRITIUM_SERVER || !config::fClient.load())
+                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
                     throw debug::exception(FUNCTION, "failed to read contract");
 
                 /* Try to find a connection first. */
@@ -189,7 +189,7 @@ namespace LLD
             if(!LLD::Legacy->ReadTx(hashTx, tx, nFlags))
             {
                 /* Check for -client mode or active server object. */
-                if(!LLP::TRITIUM_SERVER || !config::fClient.load())
+                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
                     throw debug::exception(FUNCTION, "failed to read contract");
 
                 /* Try to find a connection first. */

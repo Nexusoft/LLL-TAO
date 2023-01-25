@@ -240,11 +240,11 @@ namespace LLP
     {
         debug::log(0, FUNCTION, "Shutting down LLP");
 
-        /* Shutdown the tritium server and its subsystems. */
-        Shutdown<TritiumNode>(TRITIUM_SERVER);
-
         /* Shutdown the lookup server and its subsystems. */
         Shutdown<LookupNode>(LOOKUP_SERVER);
+
+        /* Shutdown the tritium server and its subsystems. */
+        Shutdown<TritiumNode>(TRITIUM_SERVER);
 
         /* Shutdown the time server and its subsystems. */
         Shutdown<TimeNode>(TIME_SERVER);
