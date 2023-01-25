@@ -459,6 +459,14 @@ namespace LLP
     }
 
 
+    /* Release all pending triggers from BlockingMessages */
+    template <class ProtocolType>
+    void Server<ProtocolType>::ReleaseTriggers()
+    {
+
+    }
+
+
     /*  Tell the server an event has occured to wake up thread if it is sleeping. This can be used to orchestrate communication
      *  among threads if a strong ordering needs to be guaranteed. */
     template <class ProtocolType>

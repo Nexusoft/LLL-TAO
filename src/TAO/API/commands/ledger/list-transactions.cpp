@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/ledger.h>
 
 #include <TAO/API/include/extract.h>
@@ -31,6 +32,10 @@ namespace TAO::API
         /* Extract input parameters. */
         const uint256_t hashGenesis = ExtractGenesis(jParams);
         const uint32_t  nVerbose    = ExtractVerbose(jParams);
+
+        /* Check for logged=in sessions. */
+        if(Authentication::Active(hashGenesis))
+            throw Exception(-109, "Cannot use global Ledger API for logged in session. Use profiles/transactions/master instead");
 
         /* Number of results to return. */
         uint32_t nLimit = 100, nOffset = 0;
