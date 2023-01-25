@@ -1100,7 +1100,18 @@ namespace TAO::API
 
                     /* Output the json information. */
                     jRet["OP"]      = "FEE";
-                    jRet["from"]    = hashAccount.ToString();
+
+                    /* Build our from json key. */
+                    encoding::json jFrom =
+                        hashAccount.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strFrom;
+                    if(Names::ReverseLookup(hashAccount, strFrom))
+                        jFrom = { { "address", hashAccount.ToString() }, { "name", strFrom } };
+
+                    /* Add the from key address and name. */
+                    jRet["from"]    = jFrom;
                     jRet["amount"]  = FormatBalance(nFee);
                     jRet["token"]   = TOKEN::NXS.ToString();
                     jRet["ticker"]  = "NXS";
@@ -1125,7 +1136,18 @@ namespace TAO::API
 
                     /* Output the json information. */
                     jRet["OP"]       = "LEGACY";
-                    jRet["from"]     = hashFrom.ToString();
+
+                    /* Build our from json key. */
+                    encoding::json jFrom =
+                        hashFrom.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strFrom;
+                    if(Names::ReverseLookup(hashFrom, strFrom))
+                        jFrom = { { "address", hashFrom.ToString() }, { "name", strFrom } };
+
+                    /* Add the from key address and name. */
+                    jRet["from"]    = jFrom;
 
                     /* Extract the receiving legacy address */
                     Legacy::NexusAddress hashLegacy;
