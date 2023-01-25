@@ -363,6 +363,11 @@ namespace TAO::API
                     jRet["OP"]      = "WRITE";
                     jRet["address"] = hashAddress.ToString();
 
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAddress, strName))
+                        jRet["name"] = strName;
+
                     /* Get the register pre-state so we can build response with old values before OP::WRITE. */
                     TAO::Register::Object object = contract.PreState();
 
@@ -584,6 +589,12 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]      = "APPEND";
                     jRet["address"] = hashAddress.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAddress, strName))
+                        jRet["name"] = strName;
+
                     jRet["data"]    = HexStr(vchData.begin(), vchData.end());
 
                     break;
@@ -608,6 +619,12 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]      = "CREATE";
                     jRet["address"] = hashAddress.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAddress, strName))
+                        jRet["name"] = strName;
+
                     jRet["type"]    = GetRegisterName(nType);
 
                     /* If this is a register object then decode the object type */
@@ -661,6 +678,11 @@ namespace TAO::API
                     jRet["OP"]          = "TRANSFER";
                     jRet["address"]     = hashAddress.ToString();
 
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAddress, strName))
+                        jRet["name"] = strName;
+
                     /* Check for tokenized transfer. */
                     if(nType == TAO::Operation::TRANSFER::FORCE)
                     {
@@ -706,6 +728,11 @@ namespace TAO::API
                     jRet["txid"]       = hashTx.ToString();
                     jRet["contract"]   = nContract;
                     jRet["address"]    = hashAddress.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAddress, strName))
+                        jRet["name"] = strName;
 
                     break;
                 }
@@ -757,9 +784,19 @@ namespace TAO::API
                     uint64_t nReward = 0;
                     contract >> nReward;
 
+                    /* Cache our current address for genesis. */
+                    const TAO::Register::Address hashAccount =
+                        TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST);
+
                     /* Output the json information. */
                     jRet["OP"]      = "TRUST";
-                    jRet["address"] = TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST).ToString();
+                    jRet["address"] = hashAccount.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAccount, strName))
+                        jRet["name"] = strName;
+
                     jRet["last"]    = hashLastTrust.ToString();
                     jRet["score"]   = nScore;
                     jRet["amount"]  = FormatBalance(nReward);
@@ -785,9 +822,19 @@ namespace TAO::API
                     uint64_t nReward = 0;
                     contract >> nReward;
 
+                    /* Cache our current address for genesis. */
+                    const TAO::Register::Address hashAccount =
+                        TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST);
+
                     /* Output the json information. */
                     jRet["OP"]      = "GENESIS";
-                    jRet["address"] = TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST).ToString();
+                    jRet["address"] = hashAccount.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAccount, strName))
+                        jRet["name"] = strName;
+
                     jRet["amount"]  = FormatBalance(nReward);
                     jRet["token"]   = 0;
                     jRet["ticker"]  = "NXS";
@@ -1059,6 +1106,12 @@ namespace TAO::API
                     jRet["txid"]    = hashTx.ToString();
                     jRet["address"] = hashAccount.ToString();
                     jRet["amount"]  = FormatBalance(nAmount);
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAccount, strName))
+                        jRet["name"] = strName;
+
                     jRet["score"]   = nScore;
                     jRet["last"]    = hashLast.ToString();
                     jRet["token"]   = TOKEN::NXS.ToString();
