@@ -235,16 +235,41 @@ namespace LLP
     }
 
 
+    /* Notify the LLP. */
+    void Release()
+    {
+        debug::log(0, FUNCTION, "Releasing LLP Triggers");
+
+        /* Release the lookup server and its subsystems. */
+        Release<LookupNode>(LOOKUP_SERVER);
+
+        /* Release the tritium server and its subsystems. */
+        Release<TritiumNode>(TRITIUM_SERVER);
+
+        /* Release the time server and its subsystems. */
+        Release<TimeNode>(TIME_SERVER);
+
+        /* Release the core API server and its subsystems. */
+        Release<APINode>(API_SERVER);
+
+        /* Release the RPC server and its subsystems. */
+        Release<RPCNode>(RPC_SERVER);
+
+        /* Release the mining server and its subsystems. */
+        Release<Miner>(MINING_SERVER);
+    }
+
+
     /*  Shutdown the LLP. */
     void Shutdown()
     {
         debug::log(0, FUNCTION, "Shutting down LLP");
 
-        /* Shutdown the lookup server and its subsystems. */
-        Shutdown<LookupNode>(LOOKUP_SERVER);
-
         /* Shutdown the tritium server and its subsystems. */
         Shutdown<TritiumNode>(TRITIUM_SERVER);
+
+        /* Shutdown the lookup server and its subsystems. */
+        Shutdown<LookupNode>(LOOKUP_SERVER);
 
         /* Shutdown the time server and its subsystems. */
         Shutdown<TimeNode>(TIME_SERVER);

@@ -448,6 +448,10 @@ namespace TAO::API
                         else
                             debug::error(FUNCTION, "no connections available...");
                     }
+
+                    /* Exit out of this thread if we are shutting down. */
+                    if(config::fShutdown.load())
+                        return;
                 }
 
                 /* Check our current last hash from ledger layer. */
@@ -585,7 +589,7 @@ namespace TAO::API
                     {
                         /* Check for shutdown. */
                         if(config::fShutdown.load())
-                            break;
+                            return;
 
                         /* Cache our current event's txid. */
                         const uint512_t hashEvent =

@@ -19,21 +19,21 @@ namespace LLP
 
     /* Default Constructor */
     Connection::Connection()
-    : BaseConnection()
+    : BaseConnection<Packet>()
     {
     }
 
 
     /* Constructor */
     Connection::Connection(const Socket &SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn, bool fOutgoing)
-    : BaseConnection(SOCKET_IN, DDOS_IN, fDDOSIn, fOutgoing)
+    : BaseConnection<Packet>(SOCKET_IN, DDOS_IN, fDDOSIn, fOutgoing)
     {
     }
 
 
     /* Constructor */
     Connection::Connection(DDOS_Filter* DDOS_IN, bool fDDOSIn, bool fOutgoing)
-   : BaseConnection(DDOS_IN, fDDOSIn, fOutgoing)
+   : BaseConnection<Packet>(DDOS_IN, fDDOSIn, fOutgoing)
    {
    }
 

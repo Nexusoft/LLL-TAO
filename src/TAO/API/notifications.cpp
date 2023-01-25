@@ -71,7 +71,7 @@ namespace TAO::API
                 {
                     /* Check for shutdown. */
                     if(config::fShutdown.load())
-                        break;
+                        return;
 
                     /* Cache some local variables. */
                     const uint256_t& hashSession = rSession.first;

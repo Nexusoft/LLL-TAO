@@ -164,6 +164,10 @@ namespace LLP
         template<typename... Args>
         void BlockingLookup(const uint32_t nTimeout, const uint8_t nMsg, Args&&... args)
         {
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                return;
+
             /* Create our trigger nonce. */
             const uint64_t nRequestID = LLC::GetRand();
 

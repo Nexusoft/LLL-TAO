@@ -331,12 +331,12 @@ namespace LLP
         void DisconnectAll();
 
 
-        /** ReleaseTriggers
+        /** NotifyTriggers
          *
          *  Release all pending triggers from BlockingMessages
          *
          **/
-        void ReleaseTriggers();
+        void NotifyTriggers();
 
 
         /** NotifyEvent

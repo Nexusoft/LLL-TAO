@@ -196,6 +196,10 @@ int main(int argc, char** argv)
     timer.Reset();
 
 
+    /* Release network triggers. */
+    LLP::Release();
+
+
     /* Shutdown the API subsystems. */
     TAO::API::Shutdown();
 

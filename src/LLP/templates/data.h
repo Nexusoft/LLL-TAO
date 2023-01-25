@@ -260,6 +260,14 @@ namespace LLP
         void DisconnectAll();
 
 
+        /** NotifyTriggers
+         *
+         *  Release all pending triggers from BlockingMessages
+         *
+         **/
+        void NotifyTriggers();
+
+
         /** Thread
          *
          *  Thread that handles all the Reading of Data from Sockets.

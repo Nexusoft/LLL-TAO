@@ -230,6 +230,14 @@ namespace LLP
         void Release(const message_t nMsg);
 
 
+        /** NotifyTriggers
+         *
+         *  Notify the active triggers that we are exiting sequences.
+         *
+         **/
+        void NotifyTriggers();
+
+
         /** SetNull
          *
          *  Sets the object to an invalid state.

@@ -111,9 +111,17 @@ namespace LLP
     template <class PacketType>
     BaseConnection<PacketType>::~BaseConnection()
     {
-        /* Release all of our triggers before disconnect. */
-        for(auto& rTrigger : TRIGGERS)
-            rTrigger.second->notify_all();
+        {
+            LOCK(TRIGGER_MUTEX);
+
+            /* Release all of our triggers before disconnect. */
+            for(auto& rTrigger : TRIGGERS)
+            {
+                /* Check that the trigger was active. */
+                if(rTrigger.second)
+                    rTrigger.second->notify_all();
+            }
+        }
 
         /* Standard shutdown sequence. */
         Disconnect();
@@ -138,6 +146,22 @@ namespace LLP
         LOCK(TRIGGER_MUTEX);
 
         TRIGGERS.erase(nMsg);
+    }
+
+
+    /* Release an event listener from tirggers. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::NotifyTriggers()
+    {
+        LOCK(TRIGGER_MUTEX);
+
+        /* Release all of our triggers before disconnect. */
+        for(auto& rTrigger : TRIGGERS)
+        {
+            /* Check that the trigger was active. */
+            if(rTrigger.second)
+                rTrigger.second->notify_all();
+        }
     }
 
 

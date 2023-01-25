@@ -521,6 +521,10 @@ namespace LLP
         template<typename... Args>
         static void BlockingMessage(const uint32_t nTimeout, LLP::TritiumNode* pNode, const uint16_t nMsg, Args&&... args)
         {
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                return;
+
             /* Create our trigger nonce. */
             uint64_t nNonce = LLC::GetRand();
             pNode->PushMessage(LLP::TritiumNode::TYPES::TRIGGER, nNonce);
@@ -551,6 +555,10 @@ namespace LLP
         template<typename... Args>
         static void BlockingMessage(LLP::TritiumNode* pNode, const uint16_t nMsg, Args&&... args)
         {
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                return;
+
             /* Create our trigger nonce. */
             uint64_t nNonce = LLC::GetRand();
             pNode->PushMessage(LLP::TritiumNode::TYPES::TRIGGER, nNonce);

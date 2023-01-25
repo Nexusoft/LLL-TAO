@@ -461,9 +461,10 @@ namespace LLP
 
     /* Release all pending triggers from BlockingMessages */
     template <class ProtocolType>
-    void Server<ProtocolType>::ReleaseTriggers()
+    void Server<ProtocolType>::NotifyTriggers()
     {
-
+        for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
+            THREADS_DATA[nIndex]->NotifyTriggers();
     }
 
 

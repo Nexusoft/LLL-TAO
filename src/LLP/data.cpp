@@ -150,6 +150,23 @@ namespace LLP
         }
     }
 
+    /* Release all pending triggers from BlockingMessages */
+    template <class ProtocolType>
+    void DataThread<ProtocolType>::NotifyTriggers()
+    {
+        /* Iterate through connections to remove.*/
+        uint32_t nSize = CONNECTIONS->size();
+        for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+        {
+            /* Skip over inactive connections. */
+            if(!CONNECTIONS->at(nIndex))
+                continue;
+
+            /* Notify connection triggers. */
+            CONNECTIONS->at(nIndex)->NotifyTriggers();
+        }
+    }
+
 
     /*  Thread that handles all the Reading / Writing of Data from Sockets.
      *  Creates a Packet QUEUE on this connection to be processed by an

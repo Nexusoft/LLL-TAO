@@ -52,6 +52,14 @@ namespace LLP
     bool Initialize();
 
 
+    /** Release
+     *
+     *  Release the LLP active triggers.
+     *
+     **/
+    void Release();
+
+
     /** Shutdown
      *
      *  Shutdown the LLP.
@@ -111,8 +119,25 @@ namespace LLP
      *
      **/
     template <class ProtocolType>
+    void Release(Server<ProtocolType> *pServer)
+    {
+        /* Check if we need to release triggers first. */
+        if(pServer)
+            pServer->NotifyTriggers();
+    }
+
+
+    /** Shutdown
+     *
+     *  Performs a shutdown and cleanup of resources on a server if it exists.
+     *
+     *  pServer The potential server.
+     *
+     **/
+    template <class ProtocolType>
     void Shutdown(Server<ProtocolType> *pServer)
     {
+        /* Next we need to delete our server. */
         if(pServer)
             delete pServer;
     }
