@@ -882,12 +882,12 @@ namespace TAO::API
                     {
                         /* Build our from json key. */
                         encoding::json jTo =
-                            hashFrom.ToString();
+                            hashTo.ToString();
 
                         /* Check if we have a name record available. */
                         std::string strTo;
                         if(Names::ReverseLookup(hashTo, strTo))
-                            jFrom = { { "address", hashTo.ToString() }, { "name", strTo } };
+                            jTo = { { "address", hashTo.ToString() }, { "name", strTo } };
 
                         /* Add the from key address and name. */
                         jRet["to"]     = jTo;
