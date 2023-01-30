@@ -1635,7 +1635,7 @@ namespace LLP
                         std::vector<TAO::Ledger::MerkleTx> vtx;
                         while(!config::fShutdown.load())
                         {
-                            /* Check for genesis. */
+                            /* Break on the ending hash if not genesis. */
                             if(!fGenesis && hashStart == hashThis)
                                 break;
 
@@ -1728,7 +1728,7 @@ namespace LLP
 
                             /* Reverse container to message forward. */
                             for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
-                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
+                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::DEPENDANT), (*tx));
                         }
 
                         break;
@@ -2877,11 +2877,7 @@ namespace LLP
 
                                     /* Commit transaction to disk. */
                                     if(!LLD::Client->WriteTx(hashTx, tx))
-                                        return debug::error(FUNCTION, "failed to write transaction");
-
-                                    /* Index the transaction to it's block. */
-                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                        return debug::error(FUNCTION, "failed to write block indexing entry");
+                                        return debug::failed(LLD::Client, FUNCTION, "failed to write transaction");
                                 }
 
                                 /* Verbose=3 dumps transaction data. */
@@ -2893,6 +2889,15 @@ namespace LLP
 
                                 /* Add an indexing event. */
                                 TAO::API::Indexing::IndexDependant(hashTx, tx);
+
+                                /* We want to lock our DEPENDANT MUTEX in case we have another lookup so we don't cross indexes. */
+                                {
+                                    LOCK(LookupNode::DEPENDANT_MUTEX);
+
+                                    /* Index the transaction to it's block. */
+                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                        return debug::failed(LLD::Client, FUNCTION, "failed to write block indexing entry");
+                                }
                             }
                         }
 
@@ -2901,16 +2906,17 @@ namespace LLP
 
                     /* Handle for a tritium transaction. */
                     case SPECIFIER::TRITIUM:
+                    case SPECIFIER::DEPENDANT:
                     {
                         /* Get the transction from the stream. */
                         TAO::Ledger::MerkleTx tx;
                         ssPacket >> tx;
 
                         /* Cache the txid. */
-                        uint512_t hashTx = tx.GetHash();
+                        const uint512_t hashTx = tx.GetHash();
 
                         /* Check if we have this transaction already. */
-                        if(!LLD::Ledger->HasIndex(hashTx))
+                        if(!LLD::Client->HasIndex(hashTx))
                         {
                             LOCK(CLIENT_MUTEX);
 
@@ -2931,25 +2937,39 @@ namespace LLP
 
                                         /* Commit transaction to disk. */
                                         if(!LLD::Client->WriteTx(hashTx, tx))
-                                            return debug::error(FUNCTION, "failed to write transaction");
+                                            return debug::failed(LLD::Client, FUNCTION, "failed to write transaction");
+                                    }
+
+                                    /* Dependant specifier only needs to index dependant. */
+                                    if(nSpecifier == SPECIFIER::DEPENDANT)
+                                        TAO::API::Indexing::IndexDependant(hashTx, tx);
+                                    else
+                                    {
+                                        /* Start our ACID transaction in case we have any failures here. */
+                                        LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+
+                                        /* Connect transaction in memory. */
+                                        if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
+                                        {
+                                            LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
+                                            return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                                        }
+
+                                        /* Flush to disk and clear mempool. */
+                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+
+                                        /* Add an indexing event. */
+                                        TAO::API::Indexing::IndexSigchain(hashTx);
+                                    }
+
+                                    /* We want to lock our DEPENDANT MUTEX in case we have another lookup so we don't cross indexes. */
+                                    {
+                                        LOCK(LookupNode::DEPENDANT_MUTEX);
 
                                         /* Index the transaction to it's block. */
                                         if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                            return debug::error(FUNCTION, "failed to write block indexing entry");
+                                            return debug::failed(LLD::Client, FUNCTION, "failed to write block indexing entry");
                                     }
-
-                                    /* Start our ACID transaction in case we have any failures here. */
-                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
-
-                                    /* Connect transaction in memory. */
-                                    if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
-                                    {
-                                        LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
-                                        return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-                                    }
-
-                                    /* Flush to disk and clear mempool. */
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
 
                                     /* Verbose=3 dumps transaction data. */
                                     if(config::nVerbose >= 3)
@@ -2957,9 +2977,6 @@ namespace LLP
 
                                     /* Write Success to log. */
                                     debug::log(0, "MERKLE::TRITIUM: ", hashTx.SubString(), " ACCEPTED");
-
-                                    /* Add an indexing event. */
-                                    TAO::API::Indexing::PushTransaction(hashTx);
                                 }
                                 else
                                     debug::error(0, hashTx.SubString(), "REJECTED: missing block ", tx.hashBlock.SubString());

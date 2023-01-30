@@ -138,6 +138,16 @@ namespace TAO::API
         static void Manager();
 
 
+        /** IndexSigchain
+         *
+         *  Index tritium transaction level events for logged in sessions.
+         *
+         *  @param[in] hash The txid of the transactioun
+         *
+         **/
+        static void IndexSigchain(const uint512_t& hash);
+
+
         /** Initialize Thread
          *
          *  Handle indexing of all events for API.

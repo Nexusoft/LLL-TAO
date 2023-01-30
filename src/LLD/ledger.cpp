@@ -163,14 +163,14 @@ namespace LLD
                 }
 
                 /* Debug output to console. */
-                debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::DEPENDANT for ", hashTx.SubString());
+                debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::DEPENDANT for ", hashTx.SubString());
                 pConnection->BlockingLookup
                 (
                     5000,
                     LLP::LookupNode::REQUEST::DEPENDANT,
                     uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM), hashTx
                 );
-                debug::log(1, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT received for ", hashTx.SubString());
+                debug::log(2, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT received for ", hashTx.SubString());
 
                 /* Recursively process once we have done the lookup. */
                 return ReadContract(hashTx, nContract, nFlags);
@@ -627,7 +627,7 @@ namespace LLD
 
         /* Check indexes for -client mode. */
         if(config::fClient.load())
-            return Client->HasIndex(hashTx);
+            return Client->HasTx(hashTx);
 
         return Exists(hashTx);
     }

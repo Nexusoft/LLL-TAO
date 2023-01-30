@@ -229,74 +229,78 @@ namespace TAO::API
             const uint512_t hashTx = DISPATCH->front();
             DISPATCH->pop();
 
-            /* Check if handling legacy or tritium. */
-            if(hashTx.GetType() == TAO::Ledger::TRITIUM)
+            /* Fire off indexing now. */
+            IndexSigchain(hashTx);
+        }
+    }
+
+
+    /* Index tritium transaction level events for logged in sessions. */
+    void Indexing::IndexSigchain(const uint512_t& hashTx)
+    {
+        /* Check if handling legacy or tritium. */
+        if(hashTx.GetType() == TAO::Ledger::TRITIUM)
+        {
+            /* Make sure the transaction is on disk. */
+            TAO::Ledger::Transaction tx;
+            if(!LLD::Ledger->ReadTx(hashTx, tx))
+                return;
+
+            /* Build our local sigchain events indexes. */
+            index_transaction(hashTx, tx);
+
+            /* Iterate the transaction contracts. */
+            for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
             {
-                /* Make sure the transaction is on disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashTx, tx))
-                    continue;
+                /* Grab contract reference. */
+                const TAO::Operation::Contract& rContract = tx[nContract];
 
-                /* Build our local sigchain events indexes. */
-                index_transaction(hashTx, tx);
-
-                /* Iterate the transaction contracts. */
-                for(uint32_t nContract = 0; nContract < tx.Size(); nContract++)
                 {
-                    /* Grab contract reference. */
-                    const TAO::Operation::Contract& rContract = tx[nContract];
+                    LOCK(REGISTERED_MUTEX);
 
+                    /* Loop through registered commands. */
+                    for(const auto& strCommands : REGISTERED)
                     {
-                        LOCK(REGISTERED_MUTEX);
-
-                        /* Loop through registered commands. */
-                        for(const auto& strCommands : REGISTERED)
-                        {
-                            debug::log(3, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
-                            Commands::Instance(strCommands)->Index(rContract, nContract);
-                        }
+                        debug::log(3, FUNCTION, "Dispatching for ", VARIABLE(strCommands), " | ", VARIABLE(nContract));
+                        Commands::Instance(strCommands)->Index(rContract, nContract);
                     }
                 }
-
-                /* Write our last index now. */
-                if(!LLD::Logical->WriteLastIndex(hashTx))
-                    continue;
             }
+        }
 
-            /* Check for legacy transaction type. */
-            if(hashTx.GetType() == TAO::Ledger::LEGACY)
+        /* Check for legacy transaction type. */
+        if(hashTx.GetType() == TAO::Ledger::LEGACY)
+        {
+            /* Make sure the transaction is on disk. */
+            Legacy::Transaction tx;
+            if(!LLD::Legacy->ReadTx(hashTx, tx))
+                return;
+
+            /* Loop thgrough the available outputs. */
+            for(uint32_t nContract = 0; nContract < tx.vout.size(); nContract++)
             {
-                /* Make sure the transaction is on disk. */
-                Legacy::Transaction tx;
-                if(!LLD::Legacy->ReadTx(hashTx, tx))
-                    continue;
+                /* Grab a reference of our output. */
+                const Legacy::TxOut& txout = tx.vout[nContract];
 
-                /* Loop thgrough the available outputs. */
-                for(uint32_t nContract = 0; nContract < tx.vout.size(); nContract++)
+                /* Extract our register address. */
+                uint256_t hashTo;
+                if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
                 {
-                    /* Grab a reference of our output. */
-                    const Legacy::TxOut& txout = tx.vout[nContract];
+                    /* Read the owner of register. (check this for MEMPOOL, too) */
+                    TAO::Register::State state;
+                    if(!LLD::Register->ReadState(hashTo, state))
+                        continue;
 
-                    /* Extract our register address. */
-                    uint256_t hashTo;
-                    if(Legacy::ExtractRegister(txout.scriptPubKey, hashTo))
+                    /* Check if owner is authenticated. */
+                    if(Authentication::Active(state.hashOwner))
                     {
-                        /* Read the owner of register. (check this for MEMPOOL, too) */
-                        TAO::Register::State state;
-                        if(!LLD::Register->ReadState(hashTo, state))
+                        /* Write our events to database. */
+                        if(!LLD::Logical->PushEvent(state.hashOwner, hashTx, nContract))
                             continue;
 
-                        /* Check if owner is authenticated. */
-                        if(Authentication::Active(state.hashOwner))
-                        {
-                            /* Write our events to database. */
-                            if(!LLD::Logical->PushEvent(state.hashOwner, hashTx, nContract))
-                                continue;
-
-                            /* Increment our sequence. */
-                            if(!LLD::Logical->IncrementLegacySequence(state.hashOwner))
-                                continue;
-                        }
+                        /* Increment our sequence. */
+                        if(!LLD::Logical->IncrementLegacySequence(state.hashOwner))
+                            continue;
                     }
                 }
             }
@@ -391,6 +395,112 @@ namespace TAO::API
                 const uint256_t hashGenesis =
                     Authentication::Caller(hashSession);
 
+                /* Check our current last hash from ledger layer. */
+                uint512_t hashLedger;
+                if(LLD::Ledger->ReadLast(hashGenesis, hashLedger, TAO::Ledger::FLAGS::MEMPOOL))
+                {
+                    /* Check that our last indexing entries match. */
+                    uint512_t hashLogical = 0;
+                    if(!LLD::Logical->ReadLast(hashGenesis, hashLogical) || hashLedger != hashLogical)
+                    {
+                        /* Check if our logical hash is indexed so we know logical database is behind. */
+                        if(LLD::Ledger->HasIndex(hashLogical) || hashLogical == 0)
+                        {
+                            debug::log(1, FUNCTION, "Building indexes for genesis=", hashGenesis.SubString(), " from=", hashLedger.SubString());
+
+                            /* Build list of transaction hashes. */
+                            std::vector<uint512_t> vHashes;
+
+                            /* Read all transactions from our last index. */
+                            uint512_t hashTx = hashLedger;
+                            while(!config::fShutdown.load())
+                            {
+                                /* Read the transaction from the ledger database. */
+                                TAO::Ledger::Transaction tx;
+                                if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                {
+                                    debug::warning(FUNCTION, "read failed at ", hashTx.SubString());
+                                    break;
+                                }
+
+                                /* Push transaction to list. */
+                                vHashes.push_back(hashTx); //this will warm up the LLD cache if available, or remain low footprint if not
+
+                                /* Check for first. */
+                                if(tx.IsFirst() || hashTx == hashLogical)
+                                    break;
+
+                                /* Set hash to previous hash. */
+                                hashTx = tx.hashPrevTx;
+                            }
+
+                            /* Reverse iterate our list of entries and index. */
+                            for(auto hashTx = vHashes.rbegin(); hashTx != vHashes.rend(); ++hashTx)
+                            {
+                                /* Index our sigchain events now. */
+                                IndexSigchain(*hashTx);
+
+                                /* Log that tx was rebroadcast. */
+                                debug::log(1, FUNCTION, "Indexed ", hashTx->SubString(), " to logical db");
+                            }
+                        }
+
+                        /* Otherwise logical database is ahead and we need to re-broadcast. */
+                        else
+                        {
+                            debug::log(1, FUNCTION, "Rebroadcasting indexes for genesis=", hashGenesis.SubString());
+
+                            /* Build list of transaction hashes. */
+                            std::vector<uint512_t> vHashes;
+
+                            /* Read all transactions from our last index. */
+                            uint512_t hash = hashLogical;
+                            while(!config::fShutdown.load())
+                            {
+                                /* Read the transaction from the ledger database. */
+                                TAO::API::Transaction tx;
+                                if(!LLD::Logical->ReadTx(hash, tx))
+                                {
+                                    debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash.SubString()));
+                                    break;
+                                }
+
+                                /* Push transaction to list. */
+                                vHashes.push_back(hash); //this will warm up the LLD cache if available, or remain low footprint if not
+
+                                /* Check for first. */
+                                if(tx.IsFirst() || LLD::Ledger->HasIndex(tx.hashPrevTx))
+                                    break;
+
+                                /* Set hash to previous hash. */
+                                hash = tx.hashPrevTx;
+                            }
+
+                            /* Reverse iterate our list of entries. */
+                            for(auto hash = vHashes.rbegin(); hash != vHashes.rend(); ++hash)
+                            {
+                                /* Read the transaction from the ledger database. */
+                                TAO::API::Transaction tx;
+                                if(!LLD::Logical->ReadTx(*hash, tx))
+                                {
+                                    debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash->SubString()));
+                                    continue;
+                                }
+
+                                /* Execute the operations layer. */
+                                if(!TAO::Ledger::mempool.Accept(tx))
+                                {
+                                    debug::warning(FUNCTION, "accept for ", hash->SubString(), " failed");
+                                    continue;
+                                }
+
+                                /* Log that tx was rebroadcast. */
+                                debug::log(1, FUNCTION, "Re-Broadcasted ", hash->SubString(), " to network");
+                            }
+                        }
+                    }
+                }
+
                 /* Sync the sigchain if an active client before building our indexes. */
                 if(config::fClient.load())
                 {
@@ -454,127 +564,8 @@ namespace TAO::API
                         return;
                 }
 
-                /* Check our current last hash from ledger layer. */
-                uint512_t hashLedger;
-                if(!LLD::Ledger->ReadLast(hashGenesis, hashLedger, TAO::Ledger::FLAGS::MEMPOOL))
-                {
-                    debug::log(0, FUNCTION, "No indexes for genesis=", hashGenesis.SubString());
-                    continue;
-                }
-
-                /* Check that our last indexing entries match. */
-                uint512_t hashLogical = 0;
-                if(!LLD::Logical->ReadLast(hashGenesis, hashLogical) || hashLedger != hashLogical)
-                {
-                    /* Check if our logical hash is indexed so we know logical database is behind. */
-                    if(LLD::Ledger->HasIndex(hashLogical) || hashLogical == 0)
-                    {
-                        debug::log(2, FUNCTION, "Building indexes for genesis=", hashGenesis.SubString());
-
-                        /* Build list of transaction hashes. */
-                        std::vector<uint512_t> vHashes;
-
-                        /* Read all transactions from our last index. */
-                        uint512_t hash = hashLedger;
-                        while(hash != hashLogical && !config::fShutdown.load())
-                        {
-                            /* Read the transaction from the ledger database. */
-                            TAO::Ledger::Transaction tx;
-                            if(!LLD::Ledger->ReadTx(hash, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                            {
-                                debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash.SubString()));
-                                break;
-                            }
-
-                            /* Push transaction to list. */
-                            vHashes.push_back(hash); //this will warm up the LLD cache if available, or remain low footprint if not
-
-                            /* Check for first. */
-                            if(tx.IsFirst())
-                                break;
-
-                            /* Set hash to previous hash. */
-                            hash = tx.hashPrevTx;
-                        }
-
-                        /* Reverse iterate our list of entries. */
-                        for(auto hash = vHashes.rbegin(); hash != vHashes.rend(); ++hash)
-                        {
-                            /* Read the transaction from the ledger database. */
-                            TAO::Ledger::Transaction tx;
-                            if(!LLD::Ledger->ReadTx(*hash, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                            {
-                                debug::warning(FUNCTION, "index for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash->SubString()));
-                                break;
-                            }
-
-                            /* Build an API transaction. */
-                            TAO::API::Transaction tIndex =
-                                TAO::API::Transaction(tx);
-
-                            /* Index the transaction to the database. */
-                            if(!tIndex.Index(*hash))
-                                debug::warning(FUNCTION, "failed to index ", VARIABLE(hash->SubString()));
-                        }
-                    }
-
-                    /* Otherwise logical database is ahead and we need to re-broadcast. */
-                    else
-                    {
-                        debug::log(2, FUNCTION, "Rebroadcasting indexes for genesis=", hashGenesis.SubString());
-
-                        /* Build list of transaction hashes. */
-                        std::vector<uint512_t> vHashes;
-
-                        /* Read all transactions from our last index. */
-                        uint512_t hash = hashLogical;
-                        while(!config::fShutdown.load())
-                        {
-                            /* Read the transaction from the ledger database. */
-                            TAO::API::Transaction tx;
-                            if(!LLD::Logical->ReadTx(hash, tx))
-                            {
-                                debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash.SubString()));
-                                break;
-                            }
-
-                            /* Push transaction to list. */
-                            vHashes.push_back(hash); //this will warm up the LLD cache if available, or remain low footprint if not
-
-                            /* Check for first. */
-                            if(tx.IsFirst() || LLD::Ledger->HasIndex(tx.hashPrevTx))
-                                break;
-
-                            /* Set hash to previous hash. */
-                            hash = tx.hashPrevTx;
-                        }
-
-                        /* Reverse iterate our list of entries. */
-                        for(auto hash = vHashes.rbegin(); hash != vHashes.rend(); ++hash)
-                        {
-                            /* Read the transaction from the ledger database. */
-                            TAO::API::Transaction tx;
-                            if(!LLD::Logical->ReadTx(*hash, tx))
-                            {
-                                debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash->SubString()));
-                                continue;
-                            }
-
-                            /* Execute the operations layer. */
-                            if(!TAO::Ledger::mempool.Accept(tx))
-                            {
-                                debug::warning(FUNCTION, "accept for ", hash->SubString(), " failed");
-                                continue;
-                            }
-
-                            /* Log that tx was rebroadcast. */
-                            debug::log(2, FUNCTION, "Re-Broadcasted ", hash->SubString(), " to network");
-                        }
-                    }
-                }
-
                 /* EVENTS DISABLED for -client mode. */
-                if(!config::fClient.load())
+                else
                 {
                     /* Read our last sequence. */
                     uint32_t nSequence = 0;
@@ -814,14 +805,6 @@ namespace TAO::API
 
                         /* Set our hash to based on owner. */
                         hashRecipient = oRegister.hashOwner;
-
-                        /* Check for active debit from with contract. */
-                        if(Authentication::Active(tx.hashGenesis))
-                        {
-                            /* Write our events to database. */
-                            if(!LLD::Logical->PushContract(tx.hashGenesis, hashTx, nContract))
-                                continue;
-                        }
                     }
 
                     /* Check if we need to build index for this contract. */
@@ -910,7 +893,7 @@ namespace TAO::API
 
             /* Index the transaction to the database. */
             if(!tIndex.Index(hash))
-                debug::warning(FUNCTION, "failed to index ", VARIABLE(hash.SubString()));
+                return;
         }
 
         /* Check all the tx contracts. */

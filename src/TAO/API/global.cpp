@@ -84,12 +84,14 @@ namespace TAO::API
     {
         debug::log(0, FUNCTION, "Shutting down API");
 
+        /* Shutdown notifications subsystem. */
+        Notifications::Shutdown();
+
         /* Shut down indexing and commands. */
         Indexing::Shutdown();
         Commands::Shutdown();
 
-        /* Shutdown notification and authentication. */
-        Notifications::Shutdown();
+        /* Shutdown authentication. */
         Authentication::Shutdown();
     }
 }

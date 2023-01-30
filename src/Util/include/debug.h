@@ -220,6 +220,33 @@ namespace debug
     }
 
 
+    /** failed
+     *
+     *  Safe constant format debugging failure. This function aborts a transaction if failed.
+     *
+     *  @param[in] db The database we are failing for
+     *  @param[in] args The variadic template arguments in.
+     *
+     *  @return Returns false always. (Assumed to return an error.)
+     *
+     **/
+    template<typename DB, class... Args>
+    bool failed(DB* db, Args&&... args)
+    {
+        if(fLogError)
+        {
+            strLastError = safe_printstr(args...);
+
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "FAILED: ", ANSI_COLOR_RESET, args...);
+        }
+
+        /* Abort our transaction here. */
+        db->TxnRelease();
+
+        return false;
+    }
+
+
     /** warning
      *
      *  Safe constant format debugging warning logs.
