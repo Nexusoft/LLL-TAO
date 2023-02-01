@@ -1703,10 +1703,14 @@ namespace LLP
 
                                 /* Insert into container. */
                                 vtx.push_back(merkle);
+
+                                /* We want to limit our batch size. */
+                                if(vtx.size() >= ACTION::LIST_NOTIFICATIONS_MAX_ITEMS)
+                                    break;
                             }
 
                             /* Reverse container to message forward. */
-                            for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                            for(auto tx = vtx.begin(); tx != vtx.end(); ++tx)
                                 PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::LEGACY), (*tx));
                         }
                         else
@@ -1724,10 +1728,14 @@ namespace LLP
 
                                 /* Insert into container. */
                                 vtx.push_back(merkle);
+
+                                /* We want to limit our batch size. */
+                                if(vtx.size() >= ACTION::LIST_NOTIFICATIONS_MAX_ITEMS)
+                                    break;
                             }
 
                             /* Reverse container to message forward. */
-                            for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                            for(auto tx = vtx.begin(); tx != vtx.end(); ++tx)
                                 PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::DEPENDANT), (*tx));
                         }
 
@@ -2885,7 +2893,7 @@ namespace LLP
                                     tx.print();
 
                                 /* Write Success to log. */
-                                debug::log(0, "MERKLE::LEGACY: ", hashTx.SubString(), " ACCEPTED");
+                                debug::log(3, "MERKLE::LEGACY: ", hashTx.SubString(), " ACCEPTED");
 
                                 /* Add an indexing event. */
                                 TAO::API::Indexing::IndexDependant(hashTx, tx);
@@ -2976,7 +2984,7 @@ namespace LLP
                                         tx.print();
 
                                     /* Write Success to log. */
-                                    debug::log(0, "MERKLE::TRITIUM: ", hashTx.SubString(), " ACCEPTED");
+                                    debug::log(3, "MERKLE::TRITIUM: ", hashTx.SubString(), " ACCEPTED");
                                 }
                                 else
                                     debug::error(0, hashTx.SubString(), "REJECTED: missing block ", tx.hashBlock.SubString());

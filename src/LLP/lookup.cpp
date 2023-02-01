@@ -176,22 +176,28 @@ namespace LLP
                             /* Handle for regular dependant specifier. */
                             if(nSpecifier == SPECIFIER::TRITIUM)
                             {
-                                LOCK(DEPENDANT_MUTEX);
-
                                 /* Terminate early if we have already indexed this transaction. */
                                 if(LLD::Client->HasIndex(hashTx))
                                     return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: index already exists");
 
-                                /* Commit transaction to disk. */
-                                if(!LLD::Client->WriteTx(hashTx, tx))
-                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
+                                {
+                                    LOCK(DEPENDANT_MUTEX);
 
-                                /* Index the transaction to it's block. */
-                                if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                    return debug::error(FUNCTION, "failed to write block indexing entry");
+                                    /* Commit transaction to disk. */
+                                    if(!LLD::Client->WriteTx(hashTx, tx))
+                                        return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
+                                }
 
                                 /* Add our events level indexes now. */
                                 TAO::API::Indexing::IndexDependant(hashTx, tx);
+
+                                {
+                                    LOCK(DEPENDANT_MUTEX);
+
+                                    /* Index the transaction to it's block. */
+                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                        return debug::error(FUNCTION, "failed to write block indexing entry");
+                                }
                             }
 
                             /* Connect transaction in memory if register specifier. */
@@ -206,7 +212,7 @@ namespace LLP
                                     return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
                             }
 
-                            debug::log(2, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+                            debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                             break;
                         }
@@ -254,7 +260,7 @@ namespace LLP
                             }
 
                             /* Write Success to log. */
-                            debug::log(2, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+                            debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                             break;
                         }

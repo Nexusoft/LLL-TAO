@@ -323,7 +323,7 @@ namespace LLP
              * Then we have to use select below to check if connection was made.
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
              */
-            LOCK(SOCKET_MUTEX);
+            RECURSIVE(SOCKET_MUTEX);
             fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
@@ -338,7 +338,7 @@ namespace LLP
                 addr = BaseAddress(sockaddr);
             }
 
-            LOCK(SOCKET_MUTEX);
+            RECURSIVE(SOCKET_MUTEX);
             fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
 
@@ -517,7 +517,7 @@ namespace LLP
     /* Poll the socket to check for available data */
     int Socket::Available() const
     {
-        LOCK(SOCKET_MUTEX);
+        RECURSIVE(SOCKET_MUTEX);
 
     #ifdef WIN32
         long unsigned int nAvailable = 0;
@@ -538,7 +538,7 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
-        LOCK(SOCKET_MUTEX);
+        RECURSIVE(SOCKET_MUTEX);
 
         if(fd != INVALID_SOCKET)
         {
@@ -580,7 +580,7 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
-        LOCK(SOCKET_MUTEX);
+        RECURSIVE(SOCKET_MUTEX);
 
         /* Reset the error status */
         nError.store(0);
@@ -668,7 +668,7 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int32_t Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
     {
-        LOCK(SOCKET_MUTEX);
+        RECURSIVE(SOCKET_MUTEX);
 
         /* Reset the error status */
         nError.store(0);
@@ -775,7 +775,7 @@ namespace LLP
 
         /* Write the packet. */
         {
-            LOCK(SOCKET_MUTEX);
+            RECURSIVE(SOCKET_MUTEX);
 
             if(pSSL)
                 nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t*)&vData[0], nBytes));
@@ -837,7 +837,7 @@ namespace LLP
         /* If there were any errors, handle them gracefully. */
         {
             LOCK2(DATA_MUTEX);
-            LOCK(SOCKET_MUTEX);
+            RECURSIVE(SOCKET_MUTEX);
 
             if(pSSL)
                 nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t *)&vBuffer[0], nBytes));
@@ -902,6 +902,8 @@ namespace LLP
     /* Check that the socket has data that is buffered. */
     uint64_t Socket::Buffered() const
     {
+        LOCK(DATA_MUTEX);
+
         return vBuffer.size();
     }
 
