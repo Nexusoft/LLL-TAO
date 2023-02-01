@@ -48,7 +48,7 @@ namespace TAO::API
             return false;
 
         /* Now let's check for empty parameters. */
-        if(jParams[strKey].empty()) //XXX: this is extra check just in case, we may be able to remove
+        if(jParams[strKey].empty() || jParams[strKey].is_null())
             throw Exception(-58, "Empty Parameter [", strKey, "]");
 
         /* If no type specified, return now. */
