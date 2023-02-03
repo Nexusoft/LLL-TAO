@@ -705,7 +705,7 @@ namespace TAO::API
                 return "SYSTEM";
         }
 
-        return "UNKNOWN";
+        return "INVALID";
     }
 
 
@@ -717,8 +717,7 @@ namespace TAO::API
         {
             /* Non Standard types are NONSTANDARD. */
             case TAO::Register::OBJECTS::NONSTANDARD:
-                return "NONSTANDARD";
-                //strObjectType = "REGISTER";
+                return "OBJECT";
 
             /* Account standard types are ACCOUNT. */
             case TAO::Register::OBJECTS::ACCOUNT:

@@ -114,7 +114,7 @@ namespace TAO
              *  Parses out the data members of an object register.
              *
              **/
-            bool Parse();
+            bool Parse() const;
 
 
             /** Members

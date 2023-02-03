@@ -272,7 +272,7 @@ namespace TAO
 
 
         /* Parses out the data members of an object register. */
-        bool Object::Parse()
+        bool Object::Parse() const
         {
             /* Ensure that object register is of proper type. */
             if(this->nType != REGISTER::OBJECT

@@ -231,4 +231,28 @@ namespace TAO::API
      *
      **/
     __attribute__((pure)) encoding::json ParamsToJSON(const std::vector<std::string>& vParams);
+
+
+    /** AddressToJSON
+     *
+     *  Gets info about an address and creates a json object based on register address
+     *
+     *  @param[in] hashRegister The address that we are getting information for.
+     *  @param[in] rContract The contract that we are getting address info for.
+     *
+     *  @return The JSON object generated with query.
+     *
+     **/
+    __attribute__((pure)) encoding::json AddressToJSON(const TAO::Register::Address& hashRegister, const TAO::Operation::Contract& rContract);
+
+
+    /** RegisterTypesToJSON
+     *
+     *  Get's the names of the types for this given register to populate among contracts that need to have this info.
+     *
+     *  @param[in] rContract The contract we are extracting types from using the pre-state.
+     *  @param[out] jTypes The returned json value with types populated.
+     *
+     **/
+    void RegisterTypesToJSON(const TAO::Operation::Contract& rContract, encoding::json &jTypes);
 }
