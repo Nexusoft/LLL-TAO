@@ -1644,7 +1644,9 @@ namespace TAO::API
         jRet["version"]  = rObject.nVersion;
         jRet["created"]  = rObject.nCreated;
         jRet["modified"] = rObject.nModified;
-        jRet["type"]     = GetRegisterName(rObject.nType);
+
+        /* Populate our register types now. */
+        RegisterTypesToJSON(rObject, jRet);
 
         /* Handle if register isn't an object. */
         if(rObject.nType != TAO::Register::REGISTER::OBJECT)
@@ -1658,10 +1660,10 @@ namespace TAO::API
             /* Otherwise output the address if supplied. */
             if(hashRegister != 0)
             {
-                /* Add the address field into register. */
+                /* Add our address key now. */
                 jRet["address"] = hashRegister.ToString();
 
-                /* Check for reverse ptr record if not token (that resolves a ticker). */
+                /* Check for reverse ptr record. */
                 std::string strName = "";
                 if(Names::ReverseLookup(hashRegister, strName))
                     jRet["name"] = strName;
@@ -1735,6 +1737,15 @@ namespace TAO::API
 
                     break;
                 }
+            }
+
+            /* Check if address was found. */
+            if(jRet.find("address") != jRet.end())
+            {
+                /* Check for reverse ptr record. */
+                std::string strName = "";
+                if(Names::ReverseLookup(TAO::Register::Address(jRet["address"].get<std::string>()), strName))
+                    jRet["name"] = strName;
             }
         }
 
@@ -2497,19 +2508,39 @@ namespace TAO::API
         const TAO::Register::Object tObject =
             rContract.PreState();
 
+        /* Execute our next overload now. */
+        RegisterTypesToJSON(tObject, jTypes);
+    }
+
+
+    /* Get's the names of the types for this given register to populate among contracts that need to have this info. */
+    void RegisterTypesToJSON(const TAO::Register::Object& rObject, encoding::json &jTypes)
+    {
         /* Check for object register to parse. */
-        if(tObject.nType == TAO::Register::REGISTER::OBJECT)
+        if(rObject.nType == TAO::Register::REGISTER::OBJECT)
         {
             /* Parse if an object. */
-            tObject.Parse();
+            rObject.Parse();
 
             /* Populate our standard from name. */
             jTypes["type"] =
-                GetStandardName(tObject.Standard());
+                GetStandardName(rObject.Standard());
+
+            /* Check for a usertype name. */
+            if(rObject.Check("_usertype", TAO::Register::TYPES::UINT16_T, false))
+                jTypes["form"] = GetRegisterForm(rObject.get<uint16_t>("_usertype"));
         }
 
         /* Otherwise use the state register typename. */
         else
-            jTypes["type"] = GetRegisterName(tObject.nType);
+        {
+            /* Populate our register name now from state type. */
+            jTypes["type"] = GetRegisterName(rObject.nType);
+
+            /* Check for a usertype. */
+            const uint16_t nForm = GetStandardType(rObject);
+            if(nForm != 0)
+                jTypes["form"] = GetRegisterForm(nForm);
+        }
     }
 }

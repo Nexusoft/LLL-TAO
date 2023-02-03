@@ -166,6 +166,10 @@ namespace TAO::API
         uint16_t nType;
         rObject >> nType;
 
+        /* Check for valid usertype. */
+        if(!USER_TYPES::Valid(nType))
+            return 0;
+
         /* Cleanup our read position. */
         rObject.nReadPos = 0;
 
@@ -745,5 +749,28 @@ namespace TAO::API
         }
 
         return "UNKNOWN";
+    }
+
+
+    /* Returns a type string for the register _usertype name */
+    std::string GetRegisterForm(const uint8_t nType)
+    {
+        /* Switch based on standard type. */
+        switch(nType)
+        {
+            /* Supply standard _usertype. */
+            case USER_TYPES::SUPPLY:
+                return "SUPPLY";
+
+            /* Invoice standard _usertype. */
+            case USER_TYPES::INVOICE:
+                return "INVOICE";
+
+            /* Invoice standard _usertype. */
+            case USER_TYPES::ASSET:
+                return "ASSET";
+        }
+
+        return "STANDARD"; //this is our dummy type
     }
 } // End TAO namespace

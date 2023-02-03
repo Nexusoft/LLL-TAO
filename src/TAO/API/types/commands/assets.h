@@ -106,6 +106,19 @@ namespace TAO::API
         encoding::json Update(const encoding::json& jParams, const bool fHelp);
 
 
+        /** Verify
+         *
+         *  Verify an asset is currently tokenized for given asset.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Verify(const encoding::json& jParams, const bool fHelp);
+
+
         /** SchemaToJSON
          *
          *  Returns the JSON representation of a given schema

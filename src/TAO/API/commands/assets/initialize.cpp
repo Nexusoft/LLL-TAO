@@ -198,6 +198,18 @@ namespace TAO::API
             )
         );
 
+        /* Handle for all VERIFY operations with noun PARTIAL. */
+        mapFunctions["verify/partial"] = Function
+        (
+            std::bind
+            (
+                &Assets::Verify,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Handle for all TOKENIZE operations. */
         mapFunctions["tokenize"] = Function
         (

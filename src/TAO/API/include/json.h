@@ -255,4 +255,15 @@ namespace TAO::API
      *
      **/
     void RegisterTypesToJSON(const TAO::Operation::Contract& rContract, encoding::json &jTypes);
+
+
+    /** RegisterTypesToJSON
+     *
+     *  Get's the names of the types for this given register to populate among contracts that need to have this info.
+     *
+     *  @param[in] rObject The object we are extracting types from.
+     *  @param[out] jTypes The returned json value with types populated.
+     *
+     **/
+    void RegisterTypesToJSON(const TAO::Register::Object& rObject, encoding::json &jTypes);
 }

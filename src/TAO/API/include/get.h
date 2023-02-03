@@ -195,4 +195,16 @@ namespace TAO::API
      **/
     std::string GetStandardName(const uint8_t nType);
 
+
+    /** GetRegisterForm
+     *
+     *  Returns a type string for the register _usertype name
+     *
+     *  @param[in] nType The object type enum
+     *
+     *  @return A string representation of the _usertype value
+     *
+     **/
+    std::string GetRegisterForm(const uint8_t nType);
+
 }
