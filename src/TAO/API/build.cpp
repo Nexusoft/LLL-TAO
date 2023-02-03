@@ -262,8 +262,8 @@ namespace TAO::API
                     throw Exception(-67, "-safemode next hash mismatch, broadcast terminated");
             }
 
-            /* Check that account is unlocked. */
-            if(!Authentication::Unlocked(nUnlockedActions, jParams))
+            /* Check that account is unlocked and no pin has been supplied. */
+            if(!Authentication::Unlocked(nUnlockedActions, jParams) && !CheckParameter(jParams, "pin", "string, number"))
                 break;
 
             /* Execute the operations layer. */

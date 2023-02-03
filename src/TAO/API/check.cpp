@@ -51,6 +51,10 @@ namespace TAO::API
         if(jParams[strKey].empty() || jParams[strKey].is_null())
             return false;
 
+        /* Check for an empty string. */
+        if(jParams[strKey].is_string() && jParams[strKey] == "")
+            return false;
+
         /* If no type specified, return now. */
         if(strType.empty())
             return true;

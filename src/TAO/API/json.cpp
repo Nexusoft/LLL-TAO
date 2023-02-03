@@ -2446,8 +2446,8 @@ namespace TAO::API
                         strValue += " " + vParams[++n];
 
                     /* Check for empty value, due to ' ' or bad input. */
-                    if(strValue.empty())
-                        throw Exception(-58, "Empty Parameter [", strKey, "]");
+                    //if(strValue.empty())
+                    //    throw Exception(-58, "Empty Parameter [", strKey, "]");
                 }
 
                 /* Check for where clauses. */

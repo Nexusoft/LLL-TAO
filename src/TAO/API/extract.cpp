@@ -56,6 +56,8 @@ namespace TAO::API
             /* Check that it is valid */
             if(hashRet.IsValid())
                 return hashRet;
+
+            throw Exception(-56, "Invalid Address [", jParams[strAddr].get<std::string>(), "]");
         }
 
         /* Check if we are resolving for a name or namespace. */
