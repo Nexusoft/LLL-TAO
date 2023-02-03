@@ -84,7 +84,8 @@ namespace TAO::API
             encoding::json jRet =
             {
                 { "genesis", tSession.Genesis().ToString() },
-                { "session", hashSession.ToString() }
+                { "session", hashSession.ToString() },
+                { "success", true }
             };
 
             /* Check for single user mode. */
@@ -105,7 +106,8 @@ namespace TAO::API
         encoding::json jRet =
         {
             { "genesis", tSession.Genesis().ToString() },
-            { "session", hashSession.ToString() }
+            { "session", hashSession.ToString() },
+            { "success", true }
         };
 
         /* Initialize our indexing session. */
