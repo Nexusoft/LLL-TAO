@@ -38,7 +38,7 @@ namespace TAO::API
     encoding::json Invoices::Create(const encoding::json& jParams, const bool fHelp)
     {
         /* Grab our address we want to be paid to. */
-        const TAO::Register::Address hashAccount = ExtractAddress(jParams);
+        const TAO::Register::Address hashAccount = ExtractAddress(jParams, "to");
 
         /* Validate the payment account */
         TAO::Register::Object rObject;
