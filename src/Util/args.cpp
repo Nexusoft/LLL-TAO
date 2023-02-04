@@ -198,7 +198,7 @@ namespace config
         //fUseProxy               = GetBoolArg("-proxy")
         fAllowDNS               = GetBoolArg("-allowdns", true);
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
-        fMultiuser              = GetBoolArg("-multiuser", false);
+        fMultiuser              = GetBoolArg("-multiuser", false) || GetBoolArg("-multiusername", false);
         fProcessNotifications   = GetBoolArg("-processnotifications", true);
         fPoolStaking            = GetBoolArg("-poolstaking", false);
         fStaking                = GetBoolArg("-staking", false) || GetBoolArg("-stake", false); //Both supported, -stake deprecated

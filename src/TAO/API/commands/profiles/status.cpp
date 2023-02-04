@@ -45,10 +45,11 @@ namespace TAO::API
         jRet["transactions"] = 0;
 
         /* If PIN is supplied and logged in, give a more detailed status of profile. */
-        if(CheckParameter(jParams, "pin", "string, number"))
+        const bool fMultiUsername = config::GetBoolArg("-multiusername", false);
+        if(CheckParameter(jParams, "pin", "string, number") || fMultiUsername)
         {
             /* Make sure to drop if they have entered invalid PIN. */
-            if(!Authentication::Authenticate(jParams))
+            if(!fMultiUsername && !Authentication::Authenticate(jParams))
                throw Exception(-333, "Account failed to authenticate");
 
             /* Add in profile username for active session with profile. */

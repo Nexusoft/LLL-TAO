@@ -28,7 +28,7 @@ namespace TAO::API
         /* Add the access time */
         const uint64_t nAccessed =
             Authentication::Accessed(jParams);
-            
+
         /* Get our current object type. */
         const std::string strType = ExtractType(jParams);
 

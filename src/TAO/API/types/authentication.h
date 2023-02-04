@@ -380,12 +380,24 @@ namespace TAO::API
          *
          *  Get the last time that session was accessed
          *
-         *  @param[in] jParams The parameters to check against.
+         *  @param[in] hashSession The session identifier to check accessed with.
          *
          *  @return the timestamp of last session access
          *
          **/
         static uint64_t Accessed(const encoding::json& jParams);
+
+
+        /** Accessed
+         *
+         *  Get the last time that session was accessed
+         *
+         *  @param[in] jParams The parameters to check against.
+         *
+         *  @return the timestamp of last session access
+         *
+         **/
+        static uint64_t Accessed(const uint256_t& hashSession);
 
 
         /** Indexing

@@ -121,11 +121,18 @@ namespace TAO::API
     /* Get the last time that session was accessed */
     uint64_t Authentication::Accessed(const encoding::json& jParams)
     {
-        RECURSIVE(MUTEX);
-
         /* Get the current session-id. */
         const uint256_t hashSession =
             ExtractHash(jParams, "session", default_session());
+
+        return Accessed(hashSession);
+    }
+
+
+    /* Get the last time that session was accessed */
+    uint64_t Authentication::Accessed(const uint256_t& hashSession)
+    {
+        RECURSIVE(MUTEX);
 
         /* Check for active session. */
         if(!mapSessions.count(hashSession))

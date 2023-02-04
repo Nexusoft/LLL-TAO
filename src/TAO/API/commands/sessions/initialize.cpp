@@ -32,6 +32,23 @@ namespace TAO::API
             , "local"
         );
 
+        /* Handle for all LIST operations. */
+        if(config::GetBoolArg("-multiusername", false))
+        {
+            /* Only list sessions if -multiusername is supplied. */
+            mapFunctions["list"] = Function
+            (
+                std::bind
+                (
+                    &Sessions::List,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2
+                )
+                , "local"
+            );
+        }
+
         /* Handle for all LOAD operations. */
         mapFunctions["load"] = Function
         (

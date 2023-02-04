@@ -67,6 +67,18 @@ namespace TAO::API
         encoding::json Create(const encoding::json& jParams, const bool fHelp);
 
 
+        /** List
+         *
+         *  Lists the current logged in sessions for -multiusername mode
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json List(const encoding::json& jParams, const bool fHelp);
+
 
         /** Load
          *
