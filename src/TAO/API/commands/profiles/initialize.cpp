@@ -12,6 +12,7 @@
 ____________________________________________________________________________________________*/
 
 #include <TAO/API/types/commands/profiles.h>
+#include <TAO/API/types/commands/templates.h>
 
 #include <TAO/API/types/operators/initialize.h>
 
@@ -23,6 +24,17 @@ namespace TAO::API
     {
         /* Populate our operators. */
         Operators::Initialize(mapOperators);
+
+
+        /* Populate our any standard. */
+        mapStandards["register"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [this](const TAO::Register::Object& rObject)
+            {
+                return true;
+            }
+        );
 
 
         /* Handle for all CREATE operations. */
@@ -49,6 +61,19 @@ namespace TAO::API
                 std::placeholders::_2
             )
             , "master"
+        );
+
+
+        /* Handle for all transactions operations. */
+        mapFunctions["list"] = Function
+        (
+            std::bind
+            (
+                &Templates::List,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "register"
         );
 
         /* Handle for all RECOVER operations. */

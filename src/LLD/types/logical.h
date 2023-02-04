@@ -341,6 +341,19 @@ namespace LLD
         bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
 
 
+        /** ListTransfers
+         *
+         *  List the current active transfers for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] vRegisters The list of events extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListTransfers(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
+
+
         /** PushTokenized
          *
          *  Push a tokenized register to process for given genesis-id.

@@ -1640,7 +1640,18 @@ namespace TAO::API
     {
         /* Add the register owner */
         encoding::json jRet;
+        jRet["status"]   = "ACTIVE";
         jRet["owner"]    = rObject.hashOwner.ToString();
+
+        /* Check if object is pending a transfer. */
+        if(rObject.hashOwner.GetType() == TAO::Ledger::GENESIS::SYSTEM)
+            jRet["status"] = "TRANSFER";
+
+        /* Check if the object is tokenized. */
+        if(TAO::Register::Address(rObject.hashOwner).IsToken())
+            jRet["status"] = "TOKENIZED";
+
+        /* Populate rest of data fields. */
         jRet["version"]  = rObject.nVersion;
         jRet["created"]  = rObject.nCreated;
         jRet["modified"] = rObject.nModified;
