@@ -297,14 +297,14 @@ namespace TAO::API
     }
 
     /* Index a transaction into the ledger database. */
-    bool Transaction::Index(const uint512_t& hash)
+    bool Transaction::Index(const uint512_t& hash, const bool fAccepted)
     {
-        /* Set our status to acceoted if transaction has been connected to a block. */
-        if(LLD::Ledger->HasIndex(hash))
-            nStatus = ACCEPTED;
-
         /* Wrap this in an LLD transaction. */
         LLD::Logical->TxnBegin();
+
+        /* Check if we need to modify the status. */
+        if(fAccepted)
+            nStatus = ACCEPTED;
 
         /* Read our previous transaction. */
         if(!IsFirst())

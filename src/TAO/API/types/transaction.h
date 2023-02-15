@@ -184,11 +184,12 @@ namespace TAO::API
          *  Index a last transaction into the logical database.
          *
          *  @param[in] hash The txid to index the transaction by
+         *  @param[in] fAccepted Flag to indicate if transaction was accepted.
          *
          *  @return true if this was indexed as last tx
          *
          **/
-        bool Index(const uint512_t& hash);
+        bool Index(const uint512_t& hash, const bool fAccepted = false);
 
 
         /** Delete

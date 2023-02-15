@@ -920,7 +920,7 @@ namespace TAO::API
                 TAO::API::Transaction(tx);
 
             /* Index the transaction to the database. */
-            if(!tIndex.Index(hash))
+            if(!tIndex.Index(hash, true)) //we mark this accepted because we can't rely on HasIndex during processing and commit
                 return;
         }
 
