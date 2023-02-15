@@ -703,7 +703,7 @@ namespace TAO::API
                     {
                         /* Recipient is register address when tokenized. */
                         jRet["recipient"] =
-                            AddressToJSON(hashTransfer, contract);
+                            AddressToJSON(hashTransfer);
 
                         /* Special flag to tell it's tokenized. */
                         jRet["tokenized"] = true;
@@ -884,7 +884,7 @@ namespace TAO::API
 
                     /* Check for wildcard address before adding key. */
                     if(hashTo != TAO::Register::WILDCARD_ADDRESS)
-                        jRet["to"] = AddressToJSON(hashTo, contract);
+                        jRet["to"] = AddressToJSON(hashTo);
                     else
                         jRet["exchange"] = true;
 
@@ -1000,7 +1000,7 @@ namespace TAO::API
 
                                     /* Create a proof object to show account and token. */
                                     encoding::json jProof;
-                                    jProof["account"] = AddressToJSON(hashProof, contract);
+                                    jProof["account"] = AddressToJSON(hashProof);
 
                                     /* Calculate our partial ownership now. */
                                     const uint64_t nOwnership =
@@ -1033,7 +1033,7 @@ namespace TAO::API
                     //    jRet["wildcard"] = true;
 
                     /* Add the from key address and name. */
-                    jRet["to"]      = AddressToJSON(hashAddress, contract);
+                    jRet["to"]      = AddressToJSON(hashAddress);
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nCredit, hashToken);
@@ -2507,6 +2507,30 @@ namespace TAO::API
 
         /* Populate our register types now. */
         RegisterTypesToJSON(rContract, jRet);
+
+        return jRet;
+    }
+
+
+    /* Gets info about an address and creates a json object based on register address*/
+    encoding::json AddressToJSON(const TAO::Register::Address& hashRegister)
+    {
+        /* Build our from json key. */
+        encoding::json jRet;
+        jRet["address"] = hashRegister.ToString();
+
+        /* Check if we have a name record available. */
+        std::string strName;
+        if(Names::ReverseLookup(hashRegister, strName))
+            jRet["name"] = strName;
+
+        /* Get the object we are generating information for. */
+        TAO::Register::Object tObject;
+        if(!LLD::Register->ReadObject(hashRegister, tObject))
+            return jRet;
+
+        /* Populate our register types now. */
+        RegisterTypesToJSON(tObject, jRet);
 
         return jRet;
     }
