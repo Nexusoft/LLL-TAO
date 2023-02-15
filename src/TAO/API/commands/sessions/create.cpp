@@ -105,9 +105,9 @@ namespace TAO::API
         /* Build return json data. */
         encoding::json jRet =
         {
+            { "success", true },
             { "genesis", tSession.Genesis().ToString() },
-            { "session", hashSession.ToString() },
-            { "success", true }
+            { "session", hashSession.ToString() }
         };
 
         /* Initialize our indexing session. */
