@@ -55,6 +55,9 @@ namespace TAO::API
         LLD::Logical->ListEvents(hashGenesis, vEvents);
         LLD::Logical->ListContracts(hashGenesis, vEvents);
 
+        /* Track our unique events as we progress forward. */
+        std::set<std::pair<uint512_t, uint32_t>> setUnique;
+
         /* Only render if we have events that have been returned. */
         if(!vEvents.empty())
         {
@@ -66,6 +69,13 @@ namespace TAO::API
             uint32_t nTotal = 0;
             for(const auto& rEvent : vEvents)
             {
+                /* Check for unique events. */
+                if(setUnique.count(rEvent))
+                    continue;
+
+                /* Add our event to our unique set. */
+                setUnique.insert(rEvent);
+
                 /* Grab a reference of our hash. */
                 const uint512_t& hashEvent = rEvent.first;
 
