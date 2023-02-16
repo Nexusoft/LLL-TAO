@@ -153,10 +153,22 @@ namespace config
 
         if(mapArgs.count(strArg))
         {
-            if(mapArgs[strArg].empty())
+            /* Get a reference copy of arguement. */
+            const std::string& strValue = mapArgs[strArg];
+
+            /* Check for empty values. */
+            if(strValue.empty())
                 return true;
 
-            return (std::stoll(mapArgs[strArg]) != 0);
+            /* Check for raw boolean string value 'true'. */
+            if(strValue == "true")
+                return true;
+
+            /* Check for our raw boolean string value 'false'. */
+            if(strValue == "false")
+                return false;
+
+            return (std::stoll(strValue) != 0);
         }
 
         return fDefault;
