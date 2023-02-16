@@ -115,9 +115,15 @@ namespace TAO::API
                         /* Handle for MODIFY modifier type. */
                         case TAO::Operation::OP::WRITE:
                         case TAO::Operation::OP::APPEND:
-                        case TAO::Operation::OP::FEE:
                         {
                             jRegister["action"] = "MODIFY";
+                            break;
+                        }
+
+                        /* Handle for FEES modifier type. */
+                        case TAO::Operation::OP::FEE:
+                        {
+                            jRegister["action"] = "FEE";
                             break;
                         }
 

@@ -297,13 +297,10 @@ namespace TAO::API
     }
 
     /* Index a transaction into the ledger database. */
-    bool Transaction::Index(const uint512_t& hash, const bool fAccepted)
+    bool Transaction::Index(const uint512_t& hash)
     {
-        /* Wrap this in an LLD transaction. */
-        LLD::Logical->TxnBegin();
-
-        /* Check if we need to modify the status. */
-        if(fAccepted)
+        /* Set our status to acceoted if transaction has been connected to a block. */
+        if(LLD::Ledger->HasIndex(hash))
             nStatus = ACCEPTED;
 
         /* Read our previous transaction. */
@@ -312,33 +309,29 @@ namespace TAO::API
             /* Read our previous transaction to build indexes for it. */
             TAO::API::Transaction tx;
             if(!LLD::Logical->ReadTx(hashPrevTx, tx))
-                return debug::failed(LLD::Logical, FUNCTION, "failed to read previous ", VARIABLE(hashPrevTx.SubString()));
+                return debug::error(FUNCTION, "failed to read previous ", VARIABLE(hashPrevTx.SubString()));
 
             /* Set our forward iteration hash. */
             tx.hashNextTx = hash;
 
             /* Write our new transaction to disk. */
             if(!LLD::Logical->WriteTx(hashPrevTx, tx))
-                return debug::failed(LLD::Logical, FUNCTION, "failed to update previous ", VARIABLE(hashPrevTx.SubString()));
+                return debug::error(FUNCTION, "failed to update previous ", VARIABLE(hashPrevTx.SubString()));
         }
         else
         {
             /* Write our first index if applicable. */
             if(!LLD::Logical->WriteFirst(hashGenesis, hash))
-                return debug::failed(LLD::Logical, FUNCTION, "failed to write first index for ", VARIABLE(hashGenesis.SubString()));
+                return debug::error(FUNCTION, "failed to write first index for ", VARIABLE(hashGenesis.SubString()));
         }
 
         /* Push new transaction to database. */
         if(!LLD::Logical->WriteTx(hash, *this))
-            return debug::failed(LLD::Logical, FUNCTION, "failed to write ", VARIABLE(hash.SubString()));
+            return debug::error(FUNCTION, "failed to write ", VARIABLE(hash.SubString()));
 
         /* Write our last index to the database. */
         if(!LLD::Logical->WriteLast(hashGenesis, hash))
-            return debug::failed(LLD::Logical, FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
-
-        /* Commit the transaction to disk. */
-        if(!LLD::Logical->TxnCommit())
-            return debug::failed(LLD::Logical, FUNCTION, "failed to commit logical transaction");
+            return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
 
         /* Index our transaction level data now. */
         if(nStatus == ACCEPTED)

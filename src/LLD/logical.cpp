@@ -143,9 +143,6 @@ namespace LLD
     /* Push an register transaction to process for given genesis-id. */
     bool LogicalDB::PushTransaction(const uint256_t& hashRegister, const uint512_t& hashTx)
     {
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Get our current sequence number. */
         uint32_t nOwnerSequence = 0;
 
@@ -160,16 +157,13 @@ namespace LLD
         if(!Write(std::make_pair(std::string("transactions.sequence"), hashRegister), ++nOwnerSequence))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
     /* Erase an register transaction for given genesis-id. */
     bool LogicalDB::EraseTransaction(const uint256_t& hashRegister)
     {
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Get our current sequence number. */
         uint32_t nOwnerSequence = 0;
 
@@ -185,7 +179,7 @@ namespace LLD
         if(!Write(std::make_pair(std::string("transactions.sequence"), hashRegister), nOwnerSequence))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -223,9 +217,6 @@ namespace LLD
         /* Read our sequences from disk. */
         Read(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence);
 
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Add our indexing entry by owner sequence number. */
         if(!Write(std::make_tuple(std::string("register.tx.index"), (nOwnerSequence % 5), hashRegister), hashTx))
             return false;
@@ -234,7 +225,7 @@ namespace LLD
         if(!Write(std::make_pair(std::string("register.tx.sequence"), hashRegister), ++nOwnerSequence))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -248,9 +239,6 @@ namespace LLD
         if(!Read(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence))
             return false;
 
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Add our indexing entry by owner sequence number. */
         if(!Erase(std::make_tuple(std::string("register.tx.index"), (--nOwnerSequence % 5), hashRegister)))
             return false;
@@ -259,7 +247,7 @@ namespace LLD
         if(!Write(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -400,9 +388,6 @@ namespace LLD
     /* Push an register to process for given genesis-id. */
     bool LogicalDB::PushRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Check for an active de-index. */
         if(HasDeindex(hashGenesis, hashRegister))
             return EraseDeindex(hashGenesis, hashRegister);
@@ -429,7 +414,7 @@ namespace LLD
         if(!Write(std::make_tuple(std::string("registers.proof"), hashGenesis, hashRegister)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -503,9 +488,6 @@ namespace LLD
     /* Push a tokenized register to process for given genesis-id. */
     bool LogicalDB::PushTokenized(const uint256_t& hashGenesis, const std::pair<uint256_t, uint256_t>& pairTokenized)
     {
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Get our current sequence number. */
         uint32_t nOwnerSequence = 0;
 
@@ -524,7 +506,7 @@ namespace LLD
         if(!Write(std::make_tuple(std::string("tokenized.proof"), hashGenesis, pairTokenized)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -568,9 +550,6 @@ namespace LLD
     /* Push an unclaimed address event to process for given genesis-id. */
     bool LogicalDB::PushUnclaimed(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Check for an active de-index. */
         if(HasDeindex(hashGenesis, hashRegister))
             return EraseDeindex(hashGenesis, hashRegister);
@@ -593,7 +572,7 @@ namespace LLD
         if(!Write(std::make_tuple(std::string("unclaimed.proof"), hashGenesis, hashRegister)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -692,9 +671,6 @@ namespace LLD
         /* Read our sequences from disk. */
         Read(std::make_pair(std::string("events.sequence"), hashGenesis), nSequence);
 
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Add our indexing entry by owner sequence number. */
         if(!Write(std::make_tuple(std::string("events.index"), nSequence, hashGenesis), std::make_pair(hashTx, nContract)))
             return false;
@@ -707,7 +683,7 @@ namespace LLD
         if(!Write(std::make_tuple(std::string("events.proof"), hashTx, nContract)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -796,9 +772,6 @@ namespace LLD
         /* Read our sequences from disk. */
         Read(std::make_pair(std::string("contracts.sequence"), hashGenesis), nSequence);
 
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Add our indexing entry by owner sequence number. */
         if(!Write(std::make_tuple(std::string("contracts.index"), nSequence, hashGenesis), std::make_pair(hashTx, nContract)))
             return false;
@@ -811,7 +784,7 @@ namespace LLD
         if(!Write(std::make_tuple(std::string("contracts.proof"), hashTx, nContract)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -874,9 +847,6 @@ namespace LLD
         Read(std::make_pair(std::string("market.sequence"), pairMarket), nMarketSequence);
         Read(std::make_pair(std::string("owner.sequence"),  hashOwner),   nOwnerSequence);
 
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Write our order by sequence number. */
         if(!Write(std::make_pair(nMarketSequence, pairMarket), std::make_pair(hashTx, nContract)))
             return false;
@@ -897,7 +867,7 @@ namespace LLD
         if(!Write(std::make_pair(hashTx, nContract)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
