@@ -2925,7 +2925,6 @@ namespace LLP
                         const uint512_t hashTx = tx.GetHash();
 
                         /* Check if we have this transaction already. */
-                        //
                         {
                             LOCK(CLIENT_MUTEX);
 
