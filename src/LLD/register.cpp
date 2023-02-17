@@ -175,7 +175,8 @@ namespace LLD
     {
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL ||
-           nFlags == TAO::Ledger::FLAGS::LOOKUP)
+           nFlags == TAO::Ledger::FLAGS::LOOKUP  ||
+          (nFlags == TAO::Ledger::FLAGS::FORCED && !config::fClient.load())) //we want FLAGS::FORCED to act like FLAGS::MEMPOOL for non -clients
         {
             LOCK(MEMORY);
 
@@ -212,7 +213,7 @@ namespace LLD
         }
 
         /* Check if we have a forced flag. */
-        if(nFlags != TAO::Ledger::FLAGS::FORCED)
+        if(nFlags != TAO::Ledger::FLAGS::FORCED || !config::fClient.load()) //we want FLAGS::FORCED to act like FLAGS::MEMPOOL for non -clients
         {
             /* Special case for indexed addresses. */
             if(config::GetBoolArg("-indexaddress"))
