@@ -231,7 +231,7 @@ namespace TAO::API
 
         /* Check our expected contract ranges. */
         if(nContract >= vContracts.size())
-            return true; //we use this method to skip contracts so if out of range we need to know.
+            return false; //we use this method to skip contracts so if out of range we need to know.
 
         /* Check for conditions. */
         const TAO::Operation::Stream& ssContract =
@@ -239,21 +239,21 @@ namespace TAO::API
 
         /* Check for empty contracts. */
         if(ssContract.size() == 0)
-            return true;
+            return false;
 
         /* Check our values byte for byte. */
         for(uint32_t nIndex = 0; nIndex < std::min(ssContract.size(), ssCheck.size()); nIndex++)
         {
             /* Check for out of range and return as spendable if so. */
             if(nIndex >= ssContract.size() || nIndex >= ssCheck.size())
-                return true;
+                return false;
 
             /* Check for matching bytes. */
             if(ssContract.get(nIndex) != ssCheck.get(nIndex))
-                return true;
+                return false;
         }
 
-        return false;
+        return true;
     }
 
 

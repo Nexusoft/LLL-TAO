@@ -130,7 +130,7 @@ namespace TAO::API
                                 continue;
 
                             /* Check if contract has been burned. */
-                            if(!tx.Burned(hashEvent, rEvent.second))
+                            if(tx.Burned(hashEvent, rEvent.second))
                                 continue;
 
                             /* Check if the transaction is mature. */
