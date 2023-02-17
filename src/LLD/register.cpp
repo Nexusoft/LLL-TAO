@@ -211,24 +211,28 @@ namespace LLD
             }
         }
 
-        /* Special case for indexed addresses. */
-        if(config::GetBoolArg("-indexaddress"))
+        /* Check if we have a forced flag. */
+        if(nFlags != TAO::Ledger::FLAGS::FORCED)
         {
-            /* Create a pair to use for reading the reference for return. */
-            std::pair<uint256_t, TAO::Register::State&> pairResult =
-                std::make_pair(hashRegister, std::ref(state));
+            /* Special case for indexed addresses. */
+            if(config::GetBoolArg("-indexaddress"))
+            {
+                /* Create a pair to use for reading the reference for return. */
+                std::pair<uint256_t, TAO::Register::State&> pairResult =
+                    std::make_pair(hashRegister, std::ref(state));
 
-            /* Check if it is on disk with -indexaddress. */
-            if(Read(std::make_pair(std::string("state"), hashRegister), pairResult))
+                /* Check if it is on disk with -indexaddress. */
+                if(Read(std::make_pair(std::string("state"), hashRegister), pairResult))
+                    return true;
+            }
+
+            /* Otherwise check that it is on disk without -indexaddress. */
+            else if(Read(std::make_pair(std::string("state"), hashRegister), state))
                 return true;
         }
 
-        /* Otherwise check that it is on disk without -indexaddress. */
-        else if(Read(std::make_pair(std::string("state"), hashRegister), state))
-            return true;
-
         /* Handle lookup if requested. */
-        if(nFlags == TAO::Ledger::FLAGS::LOOKUP && config::fClient.load())
+        if((nFlags == TAO::Ledger::FLAGS::LOOKUP || nFlags == TAO::Ledger::FLAGS::FORCED) && config::fClient.load())
         {
             /* Get current timestamp. */
             const uint64_t nTimestamp =

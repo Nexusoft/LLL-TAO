@@ -57,7 +57,7 @@ namespace TAO::API
 
         /* Read the crypto object register. */
         TAO::Register::Object oCrypto;
-        if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
+        if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::FORCED))
             throw Exception(-139, "Invalid credentials");
 
         /* Read the key type from crypto object register. */
