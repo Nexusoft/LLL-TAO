@@ -13,6 +13,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/names.h>
 
 #include <TAO/API/include/check.h>
@@ -109,8 +110,15 @@ namespace TAO::API
             return true;
         }
 
+        /* Check that we have logged in session. */
+        uint256_t hashSession;
+        if(Authentication::Active(tName.hashOwner, hashSession))
+            strName = Authentication::Credentials(hashSession)->UserName();
+        else
+            strName = ""; //blank for local name that is not known
+
         /* Grab our name from object. */
-        strName = "local:" + tName.get<std::string>("name"); //local name
+        strName += ":" + tName.get<std::string>("name"); //local name
 
         return true;
     }
