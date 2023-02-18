@@ -188,6 +188,16 @@ namespace TAO
              **/
             bool CommitLookup(const uint256_t& hashRegister);
 
+
+            /** Verify
+             *
+             *  Verifies a merkle transaction against the block merkle root and internal checks.
+             *
+             *  @return true if the merkle transaction is valid.
+             *
+             **/
+            bool Verify() const;
+
         };
 
     }

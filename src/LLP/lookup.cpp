@@ -35,10 +35,6 @@ namespace LLP
     util::atomic::lock_unique_ptr<std::set<uint64_t>> LookupNode::setRequests = new std::set<uint64_t>();
 
 
-    /* Our global processing lock for dependants. */
-    std::mutex LookupNode::DEPENDANT_MUTEX;
-
-
     /** Constructor **/
     LookupNode::LookupNode()
     : Connection ( )
@@ -156,62 +152,52 @@ namespace LLP
                             /* Cache the txid. */
                             const uint512_t hashTx = tx.GetHash();
 
-                            /* Check for empty merkle tx. */
-                            if(tx.hashBlock == 0)
-                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: no merkle branch for tx ", hashTx.SubString());
-
-                            /* Grab the block to check merkle path. */
-                            TAO::Ledger::ClientBlock block;
-                            if(!LLD::Client->ReadBlock(tx.hashBlock, block))
-                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: missing block ", tx.hashBlock.SubString());
-
-                            /* Check transaction contains valid information. */
-                            if(!tx.Check())
-                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-                            /* Check the merkle branch. */
-                            if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
-                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: merkle transaction has invalid path");
-
-                            /* Handle for regular dependant specifier. */
-                            if(nSpecifier == SPECIFIER::TRITIUM)
                             {
-                                LOCK(DEPENDANT_MUTEX);
+                                LOCK(TritiumNode::CLIENT_MUTEX);
 
-                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                /* Run basic merkle tx checks */
+                                if(!tx.Verify())
+                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-                                /* Terminate early if we have already indexed this transaction. */
-                                if(!LLD::Client->HasIndex(hashTx))
+                                /* Handle for regular dependant specifier. */
+                                if(nSpecifier == SPECIFIER::TRITIUM)
                                 {
-                                    /* Commit transaction to disk. */
-                                    if(!LLD::Client->WriteTx(hashTx, tx))
-                                        return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
+                                    /* Begin our ACID transaction across LLD instances. */
+                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
 
-                                    /* Index the transaction to it's block. */
-                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                        return debug::error(FUNCTION, "failed to write block indexing entry");
+                                    /* Terminate early if we have already indexed this transaction. */
+                                    if(!LLD::Client->HasIndex(hashTx))
+                                    {
+                                        /* Commit transaction to disk. */
+                                        if(!LLD::Client->WriteTx(hashTx, tx))
+                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
 
+                                        /* Index the transaction to it's block. */
+                                        if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: failed to write block indexing entry");
+                                    }
+
+                                    /* Add our events level indexes now. */
+                                    TAO::API::Indexing::IndexDependant(hashTx, tx);
+
+                                    /* Commit our ACID transaction across LLD instances. */
+                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                                 }
 
-                                /* Add our events level indexes now. */
-                                TAO::API::Indexing::IndexDependant(hashTx, tx);
+                                /* Connect transaction in memory if register specifier. */
+                                else
+                                {
+                                    /* Get our register address. */
+                                    uint256_t hashRegister;
+                                    ssPacket >> hashRegister;
 
-                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                    /* Commit our register to disk now. */
+                                    if(!tx.CommitLookup(hashRegister))
+                                        return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                                }
+
+                                debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
                             }
-
-                            /* Connect transaction in memory if register specifier. */
-                            else
-                            {
-                                /* Get our register address. */
-                                uint256_t hashRegister;
-                                ssPacket >> hashRegister;
-
-                                /* Commit our register to disk now. */
-                                if(!tx.CommitLookup(hashRegister))
-                                    return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-                            }
-
-                            debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                             break;
                         }
@@ -224,42 +210,41 @@ namespace LLP
                             ssPacket >> tx;
 
                             /* Cache the txid. */
-                            uint512_t hashTx = tx.GetHash();
-
-                            /* Check if we have this transaction already. */
-                            if(LLD::Client->HasIndex(hashTx))
-                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: index already exists");
-
-                            /* Grab the block to check merkle path. */
-                            TAO::Ledger::ClientBlock block;
-                            if(!LLD::Client->ReadBlock(tx.hashBlock, block))
-                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: missing block ", tx.hashBlock.SubString());
-
-                            /* Check transaction contains valid information. */
-                            if(!tx.Check())
-                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-                            /* Check the merkle branch. */
-                            if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
-                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: merkle transaction has invalid path");
+                            const uint512_t hashTx = tx.GetHash();
 
                             {
-                                LOCK(DEPENDANT_MUTEX);
+                                LOCK(TritiumNode::CLIENT_MUTEX);
 
-                                /* Commit transaction to disk. */
-                                if(!LLD::Client->WriteTx(hashTx, tx))
-                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
+                                /* Run basic merkle tx checks */
+                                if(!tx.Verify())
+                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-                                /* Index the transaction to it's block. */
-                                if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                    return debug::error(FUNCTION, "failed to write block indexing entry");
+                                /* Begin our ACID transaction across LLD instances. */
+                                {
+                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
 
-                                /* Add our events level indexes now. */
-                                TAO::API::Indexing::IndexDependant(hashTx, tx);
+                                    /* Check if we have this transaction already. */
+                                    if(!LLD::Client->HasIndex(hashTx))
+                                    {
+                                        /* Commit transaction to disk. */
+                                        if(!LLD::Client->WriteTx(hashTx, tx))
+                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
+
+                                        /* Index the transaction to it's block. */
+                                        if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: failed to write block indexing entry");
+                                    }
+
+                                    /* Add our events level indexes now. */
+                                    TAO::API::Indexing::IndexDependant(hashTx, tx);
+
+                                    /* Commit our ACID transaction across LLD instances. */
+                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                }
+
+                                /* Write Success to log. */
+                                debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
                             }
-
-                            /* Write Success to log. */
-                            debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                             break;
                         }
@@ -335,7 +320,7 @@ namespace LLP
                             /* Send off the transaction to remote node. */
                             PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle, hashRegister);
 
-                            return debug::success(0, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX REGISTER for ", hashRegister.ToString());
+                            return debug::success(3, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX REGISTER for ", hashRegister.ToString());
                         }
 
                         /* Handle the slow iterative way. */
@@ -363,7 +348,7 @@ namespace LLP
                                     /* Send off the transaction to remote node. */
                                     PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::REGISTER), tMerkle, hashRegister);
 
-                                    return debug::success(0, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX CACHE for ", hashRegister.SubString());
+                                    return debug::success(3, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX CACHE for ", hashRegister.SubString());
                                 }
                             }
 
@@ -392,7 +377,7 @@ namespace LLP
 
                                 /* Handle DDOS. */
                                 if(fDDOS.load() && DDOS)
-                                    DDOS->rSCORE += 1;
+                                    DDOS->rSCORE += 10;
 
                                 /* Set the next last. */
                                 hashLast = !tx.IsFirst() ? tx.hashPrevTx : 0;
@@ -479,7 +464,7 @@ namespace LLP
                                             LLD::Local->WriteIndex(hashAddress, pairIndex); //Index expires 1 hour after created
 
                                             /* Write update to our system logs. */
-                                            return debug::success(2, NODE, "REQUEST::DEPENDANT::REGISTER: Update INDEX for register ", hashAddress.SubString());
+                                            return debug::success(3, NODE, "REQUEST::DEPENDANT::REGISTER: Update INDEX for register ", hashAddress.SubString());
                                         }
 
                                         default:

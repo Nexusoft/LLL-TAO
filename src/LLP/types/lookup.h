@@ -79,10 +79,7 @@ namespace LLP
 
         /** Set our static locked ptr. **/
         static util::atomic::lock_unique_ptr<std::set<uint64_t>> setRequests;
-
-
-        /** Our global processing lock for dependants. **/
-        static std::mutex DEPENDANT_MUTEX;
+        
 
         /** Name
          *
