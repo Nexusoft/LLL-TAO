@@ -2866,26 +2866,20 @@ namespace LLP
                         /* Cache the txid. */
                         const uint512_t hashTx = tx.GetHash();
 
-                        /* Check if we have this transaction already. */
-                        if(!LLD::Client->HasIndex(hashTx))
                         {
                             LOCK(CLIENT_MUTEX);
 
-                            /* Grab the block to check merkle path. */
-                            TAO::Ledger::ClientBlock block;
-                            if(LLD::Client->ReadBlock(tx.hashBlock, block))
+                            /* Run basic merkle tx checks */
+                            if(!tx.Verify())
+                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+
+                            /* Start our ACID transaction in case we have any failures here. */
                             {
-                                /* Check the merkle branch. */
-                                if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
-                                    return debug::error(FUNCTION, "merkle transaction has invalid path");
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
 
-                                /* We want to lock our DEPENDANT MUTEX in case we have another lookup so we don't cross indexes. */
+                                /* Build indexes if we don't have them. */
+                                if(!LLD::Client->HasIndex(hashTx))
                                 {
-                                    LOCK(LookupNode::DEPENDANT_MUTEX);
-
-                                    /* Start our ACID transaction in case we have any failures here. */
-                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
-
                                     /* Commit transaction to disk. */
                                     if(!LLD::Client->WriteTx(hashTx, tx))
                                         return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write transaction");
@@ -2893,21 +2887,21 @@ namespace LLP
                                     /* Index the transaction to it's block. */
                                     if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
                                         return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write block indexing entry");
-
-                                    /* Flush to disk and clear mempool. */
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                                 }
-
-                                /* Verbose=3 dumps transaction data. */
-                                if(config::nVerbose >= 3)
-                                    tx.print();
-
-                                /* Write Success to log. */
-                                debug::log(3, "MERKLE::LEGACY: ", hashTx.SubString(), " ACCEPTED");
 
                                 /* Add an indexing event. */
                                 TAO::API::Indexing::IndexDependant(hashTx, tx);
+
+                                /* Commit our ACID transaction across LLD instances. */
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                             }
+
+                            /* Verbose=3 dumps transaction data. */
+                            if(config::nVerbose >= 3)
+                                tx.print();
+
+                            /* Write Success to log. */
+                            debug::log(3, "MERKLE::LEGACY: ", hashTx.SubString(), " ACCEPTED");
                         }
 
                         break;
@@ -2931,62 +2925,49 @@ namespace LLP
                             /* Check for empty merkle tx. */
                             if(tx.hashBlock != 0)
                             {
-                                /* Grab the block to check merkle path. */
-                                TAO::Ledger::ClientBlock block;
-                                if(LLD::Client->ReadBlock(tx.hashBlock, block))
+                                /* Run basic merkle tx checks */
+                                if(!tx.Verify())
+                                    return debug::error(FUNCTION, hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+
+                                /* Start our ACID transaction in case we have any failures here. */
                                 {
-                                    /* Check the merkle branch. */
-                                    if(!tx.CheckMerkleBranch(block.hashMerkleRoot))
-                                        return debug::error(FUNCTION, "merkle transaction has invalid path");
+                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
 
-                                    /* We want to lock our DEPENDANT MUTEX in case we have another lookup so we don't cross indexes. */
+                                    /* Only write to disk and index if not completed already. */
+                                    if(!LLD::Client->HasIndex(hashTx))
                                     {
-                                        LOCK(LookupNode::DEPENDANT_MUTEX);
+                                        /* Commit transaction to disk. */
+                                        if(!LLD::Client->WriteTx(hashTx, tx))
+                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write transaction");
 
-                                        /* Start our ACID transaction in case we have any failures here. */
-                                        LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
-
-                                        /* Only write to disk and index if not completed already. */
-                                        if(!LLD::Client->HasIndex(hashTx))
-                                        {
-                                            /* Commit transaction to disk. */
-                                            if(!LLD::Client->WriteTx(hashTx, tx))
-                                                return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write transaction");
-
-                                            /* Index the transaction to it's block. */
-                                            if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                                return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write block indexing entry");
-                                        }
-
-                                        /* Dependant specifier only needs to index dependant. */
-                                        if(nSpecifier == SPECIFIER::DEPENDANT)
-                                            TAO::API::Indexing::IndexDependant(hashTx, tx);
-                                        else
-                                        {
-                                            /* Connect transaction in memory. */
-                                            if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
-                                            {
-                                                LLD::TxnAbort(TAO::Ledger::FLAGS::BLOCK);
-                                                return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-                                            }
-
-                                            /* Add an indexing event. */
-                                            TAO::API::Indexing::IndexSigchain(hashTx);
-                                        }
-
-                                        /* Flush to disk and clear mempool. */
-                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                        /* Index the transaction to it's block. */
+                                        if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write block indexing entry");
                                     }
 
-                                    /* Verbose=3 dumps transaction data. */
-                                    if(config::nVerbose >= 3)
-                                        tx.print();
+                                    /* Dependant specifier only needs to index dependant. */
+                                    if(nSpecifier == SPECIFIER::DEPENDANT)
+                                        TAO::API::Indexing::IndexDependant(hashTx, tx);
+                                    else
+                                    {
+                                        /* Connect transaction in memory. */
+                                        if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
+                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-                                    /* Write Success to log. */
-                                    debug::log(3, "MERKLE::TRITIUM: ", hashTx.SubString(), " ACCEPTED");
+                                        /* Add an indexing event. */
+                                        TAO::API::Indexing::IndexSigchain(hashTx);
+                                    }
+
+                                    /* Commit our ACID transaction across LLD instances. */
+                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                                 }
-                                else
-                                    debug::error(0, hashTx.SubString(), "REJECTED: missing block ", tx.hashBlock.SubString());
+
+                                /* Verbose=3 dumps transaction data. */
+                                if(config::nVerbose >= 3)
+                                    tx.print();
+
+                                /* Write Success to log. */
+                                debug::log(3, "MERKLE::TRITIUM: ", hashTx.SubString(), " ACCEPTED");
                             }
                             else
                             {

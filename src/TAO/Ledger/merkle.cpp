@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/client.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -274,6 +275,29 @@ namespace TAO
             }
 
             return false;
+        }
+
+        /* Verifies a merkle transaction against the block merkle root and internal checks. */
+        bool MerkleTx::Verify() const
+        {
+            /* Check for empty merkle tx. */
+            if(hashBlock == 0)
+                return debug::error(FUNCTION, "block to compare merkle branch");
+
+            /* Check transaction contains valid information. */
+            if(!Check())
+                return debug::error(FUNCTION, debug::GetLastError());
+
+            /* Grab the block to check merkle path. */
+            TAO::Ledger::ClientBlock block;
+            if(!LLD::Client->ReadBlock(hashBlock, block))
+                return debug::error(FUNCTION, "missing block ", hashBlock.SubString());
+
+            /* Check the merkle branch. */
+            if(!CheckMerkleBranch(block.hashMerkleRoot))
+                return debug::error(FUNCTION, "merkle transaction has invalid path");
+
+            return true;
         }
     }
 }
