@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <TAO/API/types/exception.h>
 
 #include <TAO/Register/types/crypto.h>
 
@@ -82,6 +83,29 @@ namespace TAO::Register
     }
 
 
+    /* Checks our credentials against a given generate key to make sure they match. */
+    bool Crypto::CheckCredentials(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& strPIN)
+    {
+        /* Read the key type from crypto object register. */
+        const uint256_t hashAuth =
+            this->get<uint256_t>("auth");
+
+        /* Check if the auth has is deactivated. */
+        if(hashAuth == 0)
+            throw TAO::API::Exception(-9, "auth key is disabled, please run profiles/create/auth to enable");
+
+        /* Generate a key to check credentials against. */
+        const uint256_t hashCheck =
+            pCredentials->KeyHash("auth", 0, strPIN, hashAuth.GetType());
+
+        /* Check for invalid authorization hash. */
+        if(hashAuth != hashCheck)
+            return false;
+
+        return true;
+    }
+
+
     /* Verify signature data to a pubkey and valid key hash inside crypto object register. */
     bool Crypto::VerifySignature(const std::string& strKey, const uint512_t& hashCheck, const bytes_t& vPubKey, const bytes_t& vSig)
     {
@@ -91,7 +115,7 @@ namespace TAO::Register
 
     /* Generate a signature from signature chain credentials with valid key hash. */
     bool Crypto::GenerateSignature(const std::string& strKey, const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
-                           const uint512_t& hashCheck, bytes_t &vPubKey, bytes_t &vSig)
+                                   const SecureString& strPIN, const uint512_t& hashCheck, bytes_t &vPubKey, bytes_t &vSig)
     {
         return true;
     }

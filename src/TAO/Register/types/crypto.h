@@ -71,6 +71,19 @@ namespace TAO::Register
         )
 
 
+        /** CheckCredentials
+         *
+         *  Checks our credentials against a given generate key to make sure they match.
+         *
+         *  @param[in] pCredentials The credential object to verify credentials.
+         *  @param[in] strPIN The pin number to be used to verify credentials.
+         *
+         *  @return true if the signature is a valid signature for this crypto object register.
+         *
+         **/
+        bool CheckCredentials(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& strPIN);
+
+
         /** VerifySignature
          *
          *  Verify signature data to a pubkey and valid key hash inside crypto object register.
@@ -92,6 +105,7 @@ namespace TAO::Register
          *
          *  @param[in] strKey The key name that we are checking for.
          *  @param[in] pCredentials The credential object to generate signature.
+         *  @param[in] strPIN The pin number to be used to generate signature.
          *  @param[in] hashCheck The hash of the data we need to check signature against.
          *  @param[out] vPubKey The byte vector of the public key to generate.
          *  @param[out] vSig The byte vector of the signature to generate.
@@ -100,6 +114,6 @@ namespace TAO::Register
          *
          **/
         bool GenerateSignature(const std::string& strKey, const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
-                               const uint512_t& hashCheck, bytes_t &vPubKey, bytes_t &vSig);
+                               const SecureString& strPIN, const uint512_t& hashCheck, bytes_t &vPubKey, bytes_t &vSig);
     };
 }
