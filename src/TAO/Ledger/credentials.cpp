@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/genesis.h>
 
 #include <TAO/Ledger/include/enum.h>
@@ -40,7 +40,7 @@ namespace TAO
     {
 
         /* Copy Constructor */
-        SignatureChain::SignatureChain(const SignatureChain& sigchain)
+        Credentials::Credentials(const Credentials& sigchain)
         : strUsername (sigchain.strUsername)
         , strPassword (sigchain.strPassword)
         , MUTEX       ( )
@@ -51,7 +51,7 @@ namespace TAO
 
 
         /** Move Constructor **/
-        SignatureChain::SignatureChain(SignatureChain&& sigchain) noexcept
+        Credentials::Credentials(Credentials&& sigchain) noexcept
         : strUsername (std::move(sigchain.strUsername.c_str()))
         , strPassword (std::move(sigchain.strPassword.c_str()))
         , MUTEX       ( )
@@ -62,45 +62,45 @@ namespace TAO
 
 
         /** Destructor. **/
-        SignatureChain::~SignatureChain()
+        Credentials::~Credentials()
         {
         }
 
 
         /* Constructor to generate Keychain */
-        SignatureChain::SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn)
+        Credentials::Credentials(const SecureString& strUsernameIn, const SecureString& strPasswordIn)
         : strUsername (strUsernameIn.c_str())
         , strPassword (strPasswordIn.c_str())
         , MUTEX       ( )
         , pairCache   (std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
-        , hashGenesis (SignatureChain::Genesis(strUsernameIn))
+        , hashGenesis (Credentials::Genesis(strUsernameIn))
         {
         }
 
 
         /* Equivilence operator. */
-        bool SignatureChain::operator==(const SignatureChain& pCheck) const
+        bool Credentials::operator==(const Credentials& pCheck) const
         {
             return (strUsername == pCheck.strUsername && strPassword == pCheck.strPassword && hashGenesis == pCheck.hashGenesis);
         }
 
 
         /* Equivilence operator. */
-        bool SignatureChain::operator!=(const SignatureChain& pCheck) const
+        bool Credentials::operator!=(const Credentials& pCheck) const
         {
             return !(*this == pCheck);
         }
 
 
         /* This function is responsible for returning the genesis ID.*/
-        uint256_t SignatureChain::Genesis() const
+        uint256_t Credentials::Genesis() const
         {
             return hashGenesis;
         }
 
 
         /* This function is responsible for generating the genesis ID.*/
-        uint256_t SignatureChain::Genesis(const SecureString& strUsername)
+        uint256_t Credentials::Genesis(const SecureString& strUsername)
         {
             /* The Genesis hash to return */
             uint256_t hashGenesis;
@@ -125,7 +125,7 @@ namespace TAO
 
 
         /* Set's the current cached key manually in case it was generated externally from this object. */
-        void SignatureChain::SetCache(const uint512_t& hashSecret, const uint32_t nKeyID)
+        void Credentials::SetCache(const uint512_t& hashSecret, const uint32_t nKeyID)
         {
             {
                 LOCK(MUTEX);
@@ -145,7 +145,7 @@ namespace TAO
 
 
         /* This function is responsible for genearting the private key in the keychain of a specific account. */
-        uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strSecret, const bool fCache) const
+        uint512_t Credentials::Generate(const uint32_t nKeyID, const SecureString& strSecret, const bool fCache) const
         {
             {
                 LOCK(MUTEX);
@@ -206,7 +206,7 @@ namespace TAO
 
 
         /* This function is responsible for generating the private key in the sigchain with a specific password and pin. */
-        uint512_t SignatureChain::Generate(const uint32_t nKeyID, const SecureString& strPassword, const SecureString& strSecret) const
+        uint512_t Credentials::Generate(const uint32_t nKeyID, const SecureString& strPassword, const SecureString& strSecret) const
         {
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
@@ -236,7 +236,7 @@ namespace TAO
 
 
         /* This function is responsible for genearting the private key in the keychain of a specific account. */
-        uint512_t SignatureChain::Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const
+        uint512_t Credentials::Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const
         {
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
@@ -267,7 +267,7 @@ namespace TAO
 
 
         /* This function version using far stronger argon2 hashing since the only data input is the seed phrase itself. */
-        uint512_t SignatureChain::Generate(const SecureString& strSecret) const
+        uint512_t Credentials::Generate(const SecureString& strSecret) const
         {
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
@@ -283,7 +283,7 @@ namespace TAO
 
 
         /* This function generates a public key generated from random seed phrase. */
-        std::vector<uint8_t> SignatureChain::Key(const std::string& strType, const uint32_t nKeyID,
+        std::vector<uint8_t> Credentials::Key(const std::string& strType, const uint32_t nKeyID,
                                                  const SecureString& strSecret, const uint8_t nType) const
         {
             /* The public key bytes */
@@ -342,7 +342,7 @@ namespace TAO
         }
 
         /* This function generates a hash of a public key generated from random seed phrase. */
-        uint256_t SignatureChain::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
+        uint256_t Credentials::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
         {
             /* Generate the public key */
             const std::vector<uint8_t> vchPubKey =
@@ -359,7 +359,7 @@ namespace TAO
 
 
         /* This function generates a hash of a public key generated from a recovery seed phrase. */
-        uint256_t SignatureChain::RecoveryHash(const SecureString& strRecovery, const uint8_t nType) const
+        uint256_t Credentials::RecoveryHash(const SecureString& strRecovery, const uint8_t nType) const
         {
             /* The hashed public key to return*/
             uint256_t hashRet = 0;
@@ -422,28 +422,28 @@ namespace TAO
 
 
         /* Returns the username for this sig chain */
-        const SecureString& SignatureChain::UserName() const
+        const SecureString& Credentials::UserName() const
         {
             return strUsername;
         }
 
 
         /* Returns the password for this sig chain */
-        const SecureString& SignatureChain::Password() const
+        const SecureString& Credentials::Password() const
         {
             return strPassword;
         }
 
 
         /* Updates the password for this sigchain. */
-        void SignatureChain::Update(const SecureString& strPasswordNew)
+        void Credentials::Update(const SecureString& strPasswordNew)
         {
             strPassword = strPasswordNew.c_str();
         }
 
 
         /* Special method for encrypting specific data types inside class. */
-        void SignatureChain::Encrypt()
+        void Credentials::Encrypt()
         {
             encrypt(strUsername);
             encrypt(strPassword);
@@ -453,7 +453,7 @@ namespace TAO
 
 
         /* Generates a signature for the data, using the specified crypto key from the crypto object register. */
-        bool SignatureChain::Sign(const std::string& strKey, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+        bool Credentials::Sign(const std::string& strKey, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
                                   std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const
         {
             /* The crypto register object */
@@ -481,7 +481,7 @@ namespace TAO
 
 
         /* Generates a signature for the data, using the specified crypto key type. */
-        bool SignatureChain::Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
+        bool Credentials::Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
                                   std::vector<uint8_t> &vchPubKey, std::vector<uint8_t> &vchSig) const
         {
             /* Get the secret from new key. */
@@ -545,7 +545,7 @@ namespace TAO
 
         /* Verifies a signature for the data, as well as verifying that the hashed public key matches the
         *  specified key from the crypto object register */
-        bool SignatureChain::Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData,
+        bool Credentials::Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData,
                     const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchSig)
         {
             /* Derive the object register address. */

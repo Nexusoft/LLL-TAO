@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/list.h>
 #include <TAO/API/include/json.h>
 
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>

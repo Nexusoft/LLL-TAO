@@ -32,7 +32,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <TAO/Register/types/object.h>
 

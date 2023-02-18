@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/port.h>
 
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/include/enum.h>
 
 #include <cstring>
@@ -246,7 +246,7 @@ namespace config
             const SecureString strOwner = mapArgs["-hybrid"].c_str();
 
             /* Calculate their genesis-id. */
-            hashNetworkOwner = TAO::Ledger::SignatureChain::Genesis(strOwner);
+            hashNetworkOwner = TAO::Ledger::Credentials::Genesis(strOwner);
             hashNetworkOwner.SetType(TAO::Ledger::GENESIS::OwnerType());
         }
 

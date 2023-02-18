@@ -5,7 +5,7 @@
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/include/enum.h>
@@ -33,7 +33,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
     config::fHybrid = false;
 
     /* Create a sig chain to use for these tests */
-    memory::encrypted_ptr<TAO::Ledger::SignatureChain> user = new TAO::Ledger::SignatureChain(strUsername, strPassword);
+    memory::encrypted_ptr<TAO::Ledger::Credentials> user = new TAO::Ledger::Credentials(strUsername, strPassword);
 
     /* store the genesis hash for later use */
     uint256_t hashGenesis = user->Genesis();

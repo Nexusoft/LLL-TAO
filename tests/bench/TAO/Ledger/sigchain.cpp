@@ -1,4 +1,4 @@
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -11,7 +11,7 @@ TEST_CASE( "Signature Chain Benchmarks", "[ledger]")
 
     runtime::timer bench;
     bench.Reset();
-    TAO::Ledger::SignatureChain user = TAO::Ledger::SignatureChain("user", "password");
+    TAO::Ledger::Credentials user = TAO::Ledger::Credentials("user", "password");
 
     //time output
     uint64_t nTime = bench.ElapsedMilliseconds();

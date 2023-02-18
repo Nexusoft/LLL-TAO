@@ -171,7 +171,7 @@ namespace TAO::API
 
             /* Get our namespace address now. */
             const uint256_t hashNamespace =
-                TAO::Ledger::SignatureChain::Genesis(SecureString(strNamespace.c_str()));
+                TAO::Ledger::Credentials::Genesis(SecureString(strNamespace.c_str()));
 
             /* Check for the name record in namespace. */
             TAO::Register::Object oNameRet;

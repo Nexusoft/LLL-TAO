@@ -19,7 +19,7 @@ ________________________________________________________________________________
 #include <LLC/types/uint1024.h>
 
 #include <TAO/Ledger/include/stake_change.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/state.h>
 #include <TAO/Ledger/types/tritium.h>
 
@@ -484,7 +484,7 @@ namespace TAO
          *  @return true if block successfully signed
          *
          **/
-        bool SignBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN);
+        bool SignBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& strPIN);
 
     };
 

@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <TAO/Register/types/object.h>
 

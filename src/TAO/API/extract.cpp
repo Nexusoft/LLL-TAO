@@ -233,7 +233,7 @@ namespace TAO::API
 
         /* Check if username has been supplied instead. */
         if(CheckParameter(jParams, "username", "string"))
-            return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());
+            return TAO::Ledger::Credentials::Genesis(jParams["username"].get<std::string>().c_str());
 
         return Authentication::Caller(jParams);
     }
@@ -257,7 +257,7 @@ namespace TAO::API
                     return hashGenesis;
             }
 
-            return TAO::Ledger::SignatureChain::Genesis(jParams["recipient"].get<std::string>().c_str());
+            return TAO::Ledger::Credentials::Genesis(jParams["recipient"].get<std::string>().c_str());
         }
 
         throw Exception(-56, "Missing Parameter [recipient]");

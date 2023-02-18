@@ -5,7 +5,7 @@
 
 #include <LLC/include/flkey.h>
 
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <Util/include/memory.h>
 

@@ -27,7 +27,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/memory.h>
@@ -77,8 +77,8 @@ namespace TAO::API
             throw Exception(-193, "Pin must be a minimum of 4 characters");
 
         /* Create a temp sig chain for checking credentials */
-        memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials =
-            new TAO::Ledger::SignatureChain(strUser, strPass);
+        memory::encrypted_ptr<TAO::Ledger::Credentials> pCredentials =
+            new TAO::Ledger::Credentials(strUser, strPass);
 
         /* Get our genesis-id for local checks. */
         const uint256_t hashGenesis = pCredentials->Genesis();

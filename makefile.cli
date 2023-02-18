@@ -559,6 +559,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_client.o \
 		build/Ledger_constants.o \
 		build/Ledger_create.o \
+		build/Ledger_credentials.o \
 		build/Ledger_difficulty.o \
 		build/Ledger_dispatch.o \
 		build/Ledger_genesis.o \
@@ -569,7 +570,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Ledger_prime.o \
 		build/Ledger_process.o \
 		build/Ledger_retarget.o \
-		build/Ledger_sigchain.o \
 		build/Ledger_stake.o \
 		build/Ledger_stake_change.o \
 		build/Ledger_stake_minter.o \

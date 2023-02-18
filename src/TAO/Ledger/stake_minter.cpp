@@ -729,7 +729,7 @@ namespace TAO
 
 
         /* Sign a candidate block after it is successfully mined. */
-        bool StakeMinter::SignBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& strPIN)
+        bool StakeMinter::SignBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& strPIN)
         {
             /* Sign the submitted block */
             std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, strPIN).GetBytes();

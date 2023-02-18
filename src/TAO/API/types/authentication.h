@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/pinunlock.h>
 
 #include <Util/include/json.h>
@@ -51,7 +51,7 @@ namespace TAO::API
         class Session
         {
             /** Our active sigchain object. **/
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials;
+            memory::encrypted_ptr<TAO::Ledger::Credentials> pCredentials;
 
 
             /** Our active pin unlock object. **/
@@ -75,7 +75,6 @@ namespace TAO::API
                 EMPTY   = 0,
                 LOCAL   = 1,
                 REMOTE  = 2,
-                NETWORK = 3,
             };
 
 
@@ -149,7 +148,7 @@ namespace TAO::API
 
             /** Constructor based on geneis. **/
             Session(const SecureString& strUsername, const SecureString& strPassword, const uint8_t nTypeIn = LOCAL)
-            : pCredentials  (new TAO::Ledger::SignatureChain(strUsername, strPassword))
+            : pCredentials  (new TAO::Ledger::Credentials(strUsername, strPassword))
             , pUnlock       (new TAO::Ledger::PinUnlock())
             , hashGenesis   (pCredentials->Genesis())
             , nType         (nTypeIn)
@@ -180,7 +179,7 @@ namespace TAO::API
              *  @return The signature chain credentials.
              *
              **/
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials() const
+            const memory::encrypted_ptr<TAO::Ledger::Credentials>& Credentials() const
             {
                 return pCredentials;
             }
@@ -510,7 +509,7 @@ namespace TAO::API
          *  @return The active session.
          *
          **/
-        static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const encoding::json& jParams);
+        static const memory::encrypted_ptr<TAO::Ledger::Credentials>& Credentials(const encoding::json& jParams);
 
 
         /** Credentials
@@ -523,7 +522,7 @@ namespace TAO::API
          *  @return The active session.
          *
          **/
-        static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const uint256_t& hashSession = default_session());
+        static const memory::encrypted_ptr<TAO::Ledger::Credentials>& Credentials(const uint256_t& hashSession = default_session());
 
 
         /** Sessions

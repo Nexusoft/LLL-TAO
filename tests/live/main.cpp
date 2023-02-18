@@ -40,7 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/create.h>
 
 #include <TAO/Ledger/types/genesis.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Ledger/include/ambassador.h>
