@@ -176,15 +176,13 @@ namespace LLP
                             /* Handle for regular dependant specifier. */
                             if(nSpecifier == SPECIFIER::TRITIUM)
                             {
+                                LOCK(DEPENDANT_MUTEX);
+
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+
                                 /* Terminate early if we have already indexed this transaction. */
-                                if(LLD::Client->HasIndex(hashTx))
-                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: index already exists");
-
+                                if(!LLD::Client->HasIndex(hashTx))
                                 {
-                                    LOCK(DEPENDANT_MUTEX);
-
-                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
-
                                     /* Commit transaction to disk. */
                                     if(!LLD::Client->WriteTx(hashTx, tx))
                                         return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
@@ -193,11 +191,12 @@ namespace LLP
                                     if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
                                         return debug::error(FUNCTION, "failed to write block indexing entry");
 
-                                    /* Add our events level indexes now. */
-                                    TAO::API::Indexing::IndexDependant(hashTx, tx);
-
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                                 }
+
+                                /* Add our events level indexes now. */
+                                TAO::API::Indexing::IndexDependant(hashTx, tx);
+
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                             }
 
                             /* Connect transaction in memory if register specifier. */
