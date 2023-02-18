@@ -552,6 +552,22 @@ namespace TAO
         }
 
 
+        /* Check that given field name is mutable within the object. */
+        bool Object::Mutable(const std::string& strName) const
+        {
+            /* Check for non-objects. */
+            if(this->nType != TAO::Register::REGISTER::OBJECT)
+                return false;
+
+            /* Check the given key exists.. */
+            if(!mapData.count(strName))
+                return false;
+
+            /* Check that the name exists in the object. */
+            return mapData[strName].second;
+        }
+
+
         /*  Get the size of value in object register. */
         uint64_t Object::Size(const std::string& strName) const
         {

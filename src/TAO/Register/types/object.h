@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_TAO_REGISTER_INCLUDE_OBJECT_H
-#define NEXUS_TAO_REGISTER_INCLUDE_OBJECT_H
 
 #include <TAO/Register/types/state.h>
 #include <TAO/Register/include/enum.h>
@@ -33,14 +31,15 @@ namespace TAO
          **/
         class Object : public State
         {
+        protected:
+
             /** Special system level memory for managing system states in protected portion of memory **/
             std::vector<uint8_t> vchSystem;
 
-        public:
-
             /** Internal map for managing object data members and their binary positions. **/
-            mutable std::map< std::string, std::pair<uint16_t, bool> > mapData; //internal map for data members
+            mutable std::map<std::string, std::pair<uint16_t, bool>> mapData; //internal map for data members
 
+        public:
 
             /** Default constructor. **/
             Object();
@@ -163,6 +162,18 @@ namespace TAO
              *
              **/
             bool Check(const std::string& strName) const;
+
+
+            /** Mutable
+             *
+             *  Check that given field name is mutable within the object.
+             *
+             *  @param[in] strName The name of the field to check
+             *
+             *  @return True if the field is mutable.
+             *
+             **/
+            bool Mutable(const std::string& strName) const;
 
 
             /** Size
@@ -428,5 +439,3 @@ namespace TAO
 
     }
 }
-
-#endif

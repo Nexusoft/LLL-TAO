@@ -155,10 +155,10 @@ namespace TAO::API
             }
 
             /* Add mutable flag */
-            jField["mutable"] = rObject.mapData[strMember].second;
+            jField["mutable"] = rObject.Mutable(strMember);
 
             /* If mutable, add the max size */
-            if(rObject.mapData[strMember].second && nMaxSize > 0)
+            if(rObject.Mutable(strMember) && nMaxSize > 0)
                 jField["maxlength"] = nMaxSize;
 
             /* Add the field to the response array */

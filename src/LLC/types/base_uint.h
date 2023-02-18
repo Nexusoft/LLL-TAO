@@ -29,6 +29,10 @@ namespace TAO
 }
 
 
+/** Makes our byte vectors easier to read. **/
+typedef std::vector<uint8_t> bytes_t;
+
+
 /** base_uint
  *
  *  The base_uint template class is designed to handle big number arithmetic of

@@ -547,6 +547,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/Register_basevm.o \
 		build/Register_build.o \
 		build/Register_create.o \
+		build/Register_crypto.o \
 		build/Register_names.o \
 		build/Register_object.o \
 		build/Register_rollback.o \
