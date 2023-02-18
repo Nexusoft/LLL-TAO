@@ -41,11 +41,11 @@ namespace TAO
 
         /* Copy Constructor */
         Credentials::Credentials(const Credentials& sigchain)
-        : strUsername (sigchain.strUsername)
-        , strPassword (sigchain.strPassword)
-        , MUTEX       ( )
-        , pairCache   (sigchain.pairCache)
-        , hashGenesis (sigchain.hashGenesis)
+        : strUsername    (sigchain.strUsername)
+        , strPassword    (sigchain.strPassword)
+        , pairCache      (sigchain.pairCache)
+        , mapCrypto      (sigchain.mapCrypto)
+        , hashGenesis    (sigchain.hashGenesis)
         {
         }
 
@@ -54,8 +54,8 @@ namespace TAO
         Credentials::Credentials(Credentials&& sigchain) noexcept
         : strUsername (std::move(sigchain.strUsername.c_str()))
         , strPassword (std::move(sigchain.strPassword.c_str()))
-        , MUTEX       ( )
         , pairCache   (std::move(sigchain.pairCache))
+        , mapCrypto   (std::move(sigchain.mapCrypto))
         , hashGenesis (std::move(sigchain.hashGenesis))
         {
         }
@@ -71,8 +71,8 @@ namespace TAO
         Credentials::Credentials(const SecureString& strUsernameIn, const SecureString& strPasswordIn)
         : strUsername (strUsernameIn.c_str())
         , strPassword (strPasswordIn.c_str())
-        , MUTEX       ( )
         , pairCache   (std::make_pair(std::numeric_limits<uint32_t>::max(), ""))
+        , mapCrypto   ( )
         , hashGenesis (Credentials::Genesis(strUsernameIn))
         {
         }
@@ -124,45 +124,21 @@ namespace TAO
         }
 
 
-        /* Set's the current cached key manually in case it was generated externally from this object. */
-        void Credentials::SetCache(const uint512_t& hashSecret, const uint32_t nKeyID)
-        {
-            {
-                LOCK(MUTEX);
-
-                /* Handle cache to stop exhaustive hash key generation. */
-                if(nKeyID == pairCache.first)
-                {
-                    /* Grab our key's binary data. */
-                    const std::vector<uint8_t> vBytes = hashSecret.GetBytes();
-
-                    /* Set our cache record now with it. */
-                    pairCache.first  = nKeyID;
-                    pairCache.second = SecureString(vBytes.begin(), vBytes.end());
-                }
-            }
-        }
-
-
         /* This function is responsible for genearting the private key in the keychain of a specific account. */
         uint512_t Credentials::Generate(const uint32_t nKeyID, const SecureString& strSecret, const bool fCache) const
         {
+            /* Handle cache to stop exhaustive hash key generation. */
+            if(fCache && nKeyID == pairCache.first)
             {
-                LOCK(MUTEX);
+                /* Get the bytes from secure allocator. */
+                const std::vector<uint8_t> vBytes =
+                    std::vector<uint8_t>(pairCache.second.begin(), pairCache.second.end());
 
-                /* Handle cache to stop exhaustive hash key generation. */
-                if(fCache && nKeyID == pairCache.first)
-                {
-                    /* Get the bytes from secure allocator. */
-                    const std::vector<uint8_t> vBytes =
-                        std::vector<uint8_t>(pairCache.second.begin(), pairCache.second.end());
+                /* Set the bytes of return value. */
+                uint512_t hashKey;
+                hashKey.SetBytes(vBytes);
 
-                    /* Set the bytes of return value. */
-                    uint512_t hashKey;
-                    hashKey.SetBytes(vBytes);
-
-                    return hashKey;
-                }
+                return hashKey;
             }
 
             /* Generate the Secret Phrase */
@@ -182,23 +158,19 @@ namespace TAO
             vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
             /* Argon2 hash the secret */
-            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret,
+            const uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret,
                             std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
                             uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
             /* Set the cache items. */
+            if(fCache)
             {
-                LOCK(MUTEX);
+                /* Grab our key's binary data. */
+                const std::vector<uint8_t> vBytes = hashKey.GetBytes();
 
-                if(fCache)
-                {
-                    /* Grab our key's binary data. */
-                    const std::vector<uint8_t> vBytes = hashKey.GetBytes();
-
-                    /* Set our cache record now with it. */
-                    pairCache.first  = nKeyID;
-                    pairCache.second = SecureString(vBytes.begin(), vBytes.end());
-                }
+                /* Set our cache record now with it. */
+                pairCache.first  = nKeyID;
+                pairCache.second = SecureString(vBytes.begin(), vBytes.end());
             }
 
             return hashKey;
@@ -226,7 +198,7 @@ namespace TAO
 
 
             /* Argon2 hash the secret */
-            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret,
+            const uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret,
                             std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
                             uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
@@ -238,6 +210,10 @@ namespace TAO
         /* This function is responsible for genearting the private key in the keychain of a specific account. */
         uint512_t Credentials::Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const
         {
+            /* Check if we have this key already. */
+            if(mapCrypto.count(strType))
+                return mapCrypto[strType];
+
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
             vUsername.insert(vUsername.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
@@ -258,19 +234,22 @@ namespace TAO
             vSecret.insert(vSecret.end(), strType.begin(), strType.end());
 
             /* Argon2 hash the secret */
-            uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret,
+            const uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret,
                             std::max(1u, uint32_t(config::GetArg("-argon2", 12))),
                             uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
+
+            /* Set our internal cache for quick access. */
+            mapCrypto[strType] = hashKey;
 
             return hashKey;
         }
 
 
         /* This function version using far stronger argon2 hashing since the only data input is the seed phrase itself. */
-        uint512_t Credentials::Generate(const SecureString& strSecret) const
+        uint512_t Credentials::RecoveryKey(const SecureString& strRecovery) const
         {
             /* Generate the Secret Phrase */
-            std::vector<uint8_t> vSecret(strSecret.begin(), strSecret.end());
+            std::vector<uint8_t> vSecret(strRecovery.begin(), strRecovery.end());
 
             /* Argon2 hash the secret */
             uint512_t hashKey = LLC::Argon2_512(vSecret);
@@ -283,15 +262,18 @@ namespace TAO
 
 
         /* This function generates a public key generated from random seed phrase. */
-        std::vector<uint8_t> Credentials::Key(const std::string& strType, const uint32_t nKeyID,
-                                                 const SecureString& strSecret, const uint8_t nType) const
+        std::vector<uint8_t> Credentials::SigningKey(const std::string& strType, const uint32_t nKeyID,
+                                                     const SecureString& strSecret, const uint8_t nType) const
         {
             /* The public key bytes */
             std::vector<uint8_t> vchPubKey;
 
-            /* Get the private key. */
-            const uint512_t hashSecret =
-                Generate(strType, nKeyID, strSecret);
+            /* Check if we have this key in our internal map. */
+            uint512_t hashSecret = 0;
+            if(mapCrypto.count(strType))
+                hashSecret = mapCrypto[strType];
+            else
+                hashSecret = Generate(strType, nKeyID, strSecret);
 
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
@@ -341,12 +323,13 @@ namespace TAO
             return vchPubKey;
         }
 
+
         /* This function generates a hash of a public key generated from random seed phrase. */
-        uint256_t Credentials::KeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
+        uint256_t Credentials::SigningKeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
         {
             /* Generate the public key */
             const std::vector<uint8_t> vchPubKey =
-                Key(strType, nKeyID, strSecret, nType);
+                SigningKey(strType, nKeyID, strSecret, nType);
 
             /* Calculate the key hash. */
             uint256_t hashRet =
@@ -369,7 +352,7 @@ namespace TAO
             timer.Reset();
 
             /* Get the private key. */
-            uint512_t hashSecret = Generate(strRecovery);
+            uint512_t hashSecret = RecoveryKey(strRecovery);
 
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
@@ -438,7 +421,26 @@ namespace TAO
         /* Updates the password for this sigchain. */
         void Credentials::Update(const SecureString& strPasswordNew)
         {
+            /* Clear our cached crypto keys. */
+            ClearCache();
+
+            /* Update our password now. */
             strPassword = strPasswordNew.c_str();
+        }
+
+
+        /** ClearCache
+         *
+         *  Clears all of the active crypto keys.
+         *
+         **/
+        void Credentials::ClearCache()
+        {
+            /* Clear our cached crypto keys. */
+            mapCrypto.clear();
+
+            /* Reset our internal key cache too. */
+            pairCache = std::make_pair(std::numeric_limits<uint32_t>::max(), "");
         }
 
 
@@ -450,178 +452,5 @@ namespace TAO
             encrypt(pairCache);
             encrypt(hashGenesis);
         }
-
-
-        /* Generates a signature for the data, using the specified crypto key from the crypto object register. */
-        bool Credentials::Sign(const std::string& strKey, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
-                                  std::vector<uint8_t>& vchPubKey, std::vector<uint8_t>& vchSig) const
-        {
-            /* The crypto register object */
-            TAO::Register::Object crypto;
-
-            /* Get the crypto register. This is needed so that we can determine the key type used to generate the public key */
-            TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::MEMPOOL))
-                return debug::error(FUNCTION, "Could not sign - missing crypto register");
-
-            /* Parse the object. */
-            if(!crypto.Parse())
-                return debug::error(FUNCTION, "failed to parse crypto register");
-
-            /* Check that the requested key is in the crypto register */
-            if(!crypto.Check(strKey))
-                return debug::error(FUNCTION, "Key type not found in crypto register: ", strKey);
-
-            /* Get the encryption key type from the hash of the public key */
-            uint8_t nType = crypto.get<uint256_t>(strKey).GetType();
-
-            /* call the Sign method with the retrieved type */
-            return Sign(nType, vchData, hashSecret, vchPubKey, vchSig);
-        }
-
-
-        /* Generates a signature for the data, using the specified crypto key type. */
-        bool Credentials::Sign(const uint8_t& nKeyType, const std::vector<uint8_t>& vchData, const uint512_t& hashSecret,
-                                  std::vector<uint8_t> &vchPubKey, std::vector<uint8_t> &vchSig) const
-        {
-            /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = hashSecret.GetBytes();
-            LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
-
-            /* Switch based on signature type. */
-            switch(nKeyType)
-            {
-                /* Support for the FALCON signature scheme. */
-                case SIGNATURE::FALCON:
-                {
-                    /* Create the FL Key object. */
-                    LLC::FLKey key;
-
-                    /* Set the secret key. */
-                    if(!key.SetSecret(vchSecret))
-                        throw debug::exception(FUNCTION, "failed to set falcon secret key");
-
-                    /* Generate the public key */
-                    vchPubKey = key.GetPubKey();
-
-                    /* Generate the signature */
-                    if(!key.Sign(vchData, vchSig))
-                        throw debug::exception(FUNCTION, "failed to sign data");
-
-                    break;
-
-                }
-
-                /* Support for the BRAINPOOL signature scheme. */
-                case SIGNATURE::BRAINPOOL:
-                {
-                    /* Create EC Key object. */
-                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                    /* Set the secret key. */
-                    if(!key.SetSecret(vchSecret, true))
-                        throw debug::exception(FUNCTION, "failed to set brainpool secret key");
-
-                    /* Generate the public key */
-                    vchPubKey = key.GetPubKey();
-
-                    /* Generate the signature */
-                    if(!key.Sign(vchData, vchSig))
-                        throw debug::exception(FUNCTION, "failed to sign data");
-
-                    break;
-                }
-                default:
-                {
-                    throw debug::exception(FUNCTION, "unknown crypto signature scheme");
-                }
-            }
-
-            /* Return success */
-            return true;
-
-        }
-
-
-        /* Verifies a signature for the data, as well as verifying that the hashed public key matches the
-        *  specified key from the crypto object register */
-        bool Credentials::Verify(const uint256_t hashGenesis, const std::string& strKey, const std::vector<uint8_t>& vchData,
-                    const std::vector<uint8_t>& vchPubKey, const std::vector<uint8_t>& vchSig)
-        {
-            /* Derive the object register address. */
-            TAO::Register::Address hashCrypto =
-                TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-
-            /* Get the crypto register. */
-            TAO::Register::Object crypto;
-            if(!LLD::Register->ReadState(hashCrypto, crypto, TAO::Ledger::FLAGS::LOOKUP))
-                return debug::error(FUNCTION, "Missing crypto register");
-
-            /* Parse the object. */
-            if(!crypto.Parse())
-                return debug::drop(FUNCTION, "failed to parse crypto register");
-
-            /* Check that the requested key is in the crypto register */
-            if(!crypto.Check(strKey))
-                return debug::error(FUNCTION, "Key type not found in crypto register: ", strKey);
-
-            /* Check the authorization hash. */
-            uint256_t hashCheck = crypto.get<uint256_t>(strKey);
-
-            /* Check that the hashed public key exists in the register*/
-            if(hashCheck == 0)
-                return debug::error(FUNCTION, "Public key hash not found in crypto register: ", strKey);
-
-            /* Get the encryption key type from the hash of the public key */
-            uint8_t nType = hashCheck.GetType();
-
-            /* Grab hash of incoming pubkey and set its type. */
-            uint256_t hashPubKey = LLC::SK256(vchPubKey);
-            hashPubKey.SetType(nType);
-
-            /* Check the public key to expected authorization key. */
-            if(hashPubKey != hashCheck)
-                return debug::error(FUNCTION, "Invalid public key");
-
-            /* Switch based on signature type. */
-            switch(nType)
-            {
-                /* Support for the FALCON signature scheeme. */
-                case TAO::Ledger::SIGNATURE::FALCON:
-                {
-                    /* Create the FL Key object. */
-                    LLC::FLKey key;
-
-                    /* Set the public key and verify. */
-                    key.SetPubKey(vchPubKey);
-                    if(!key.Verify(vchData, vchSig))
-                        return debug::error(FUNCTION, "Invalid transaction signature");
-
-                    break;
-                }
-
-                /* Support for the BRAINPOOL signature scheme. */
-                case TAO::Ledger::SIGNATURE::BRAINPOOL:
-                {
-                    /* Create EC Key object. */
-                    LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                    /* Set the public key and verify. */
-                    key.SetPubKey(vchPubKey);
-                    if(!key.Verify(vchData, vchSig))
-                        return debug::error(FUNCTION, "Invalid transaction signature");
-
-                    break;
-                }
-
-                default:
-                    return debug::error(FUNCTION, "Unknown signature scheme");
-
-            }
-
-            /* Verified! */
-            return true;
-        }
-
     }
 }

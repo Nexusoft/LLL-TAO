@@ -70,7 +70,7 @@ namespace TAO::API
 
         /* Generate a key to check credentials against. */
         const uint256_t hashCheck =
-            tSession.Credentials()->KeyHash("auth", 0, strPIN, hashAuth.GetType());
+            tSession.Credentials()->SigningKeyHash("auth", 0, strPIN, hashAuth.GetType());
 
         /* Check for invalid authorization hash. */
         if(hashAuth != hashCheck)

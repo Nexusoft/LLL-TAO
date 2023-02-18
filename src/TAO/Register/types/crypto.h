@@ -89,14 +89,14 @@ namespace TAO::Register
          *  Verify signature data to a pubkey and valid key hash inside crypto object register.
          *
          *  @param[in] strKey The key name that we are checking for.
-         *  @param[in] hashCheck The hash of the data we need to check signature against.
+         *  @param[in] vData The data we need to check signature against.
          *  @param[in] vPubKey The byte vector of the public key.
          *  @param[in] vSig The byte vector of the signature to check.
          *
          *  @return true if the signature is a valid signature for this crypto object register.
          *
          **/
-        bool VerifySignature(const std::string& strKey, const uint512_t& hashCheck, const bytes_t& vPubKey, const bytes_t& vSig);
+        bool VerifySignature(const std::string& strKey, const bytes_t& vData, const bytes_t& vPubKey, const bytes_t& vSig);
 
 
         /** GenerateSignature
@@ -106,7 +106,7 @@ namespace TAO::Register
          *  @param[in] strKey The key name that we are checking for.
          *  @param[in] pCredentials The credential object to generate signature.
          *  @param[in] strPIN The pin number to be used to generate signature.
-         *  @param[in] hashCheck The hash of the data we need to check signature against.
+         *  @param[in] vData The data we need to generate signature for.
          *  @param[out] vPubKey The byte vector of the public key to generate.
          *  @param[out] vSig The byte vector of the signature to generate.
          *
@@ -114,6 +114,6 @@ namespace TAO::Register
          *
          **/
         bool GenerateSignature(const std::string& strKey, const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
-                               const SecureString& strPIN, const uint512_t& hashCheck, bytes_t &vPubKey, bytes_t &vSig);
+                               const SecureString& strPIN, const bytes_t& vData, bytes_t &vPubKey, bytes_t &vSig);
     };
 }

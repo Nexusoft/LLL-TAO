@@ -11,9 +11,14 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/include/flkey.h>
+#include <LLC/include/eckey.h>
+
 #include <TAO/API/types/exception.h>
 
 #include <TAO/Register/types/crypto.h>
+
+#include <TAO/Ledger/include/enum.h>
 
 /* Global TAO namespace. */
 namespace TAO::Register
@@ -96,7 +101,7 @@ namespace TAO::Register
 
         /* Generate a key to check credentials against. */
         const uint256_t hashCheck =
-            pCredentials->KeyHash("auth", 0, strPIN, hashAuth.GetType());
+            pCredentials->SigningKeyHash("auth", 0, strPIN, hashAuth.GetType());
 
         /* Check for invalid authorization hash. */
         if(hashAuth != hashCheck)
@@ -107,16 +112,161 @@ namespace TAO::Register
 
 
     /* Verify signature data to a pubkey and valid key hash inside crypto object register. */
-    bool Crypto::VerifySignature(const std::string& strKey, const uint512_t& hashCheck, const bytes_t& vPubKey, const bytes_t& vSig)
+    bool Crypto::VerifySignature(const std::string& strKey, const bytes_t& vData, const bytes_t& vPubKey, const bytes_t& vSig)
     {
+        /* Check that the requested key is in the crypto register */
+        if(!Check(strKey))
+            return debug::error(FUNCTION, strKey, " type not found in crypto register");
+
+        /* Check the authorization hash. */
+        const uint256_t hashPubKey =
+            get<uint256_t>(strKey);
+
+        /* Check that the hashed public key exists in the register*/
+        if(hashPubKey == 0)
+            return debug::error(FUNCTION, strKey, " is disabled, run crypto/create/", strKey);
+
+        /* Get the encryption key type from the hash of the public key */
+        const uint8_t nType =
+            hashPubKey.GetType();
+
+        /* Grab hash of incoming pubkey and set its type. */
+        uint256_t hashCheck = LLC::SK256(vPubKey);
+        hashCheck.SetType(nType);
+
+        /* Check the public key to expected authorization key. */
+        if(hashPubKey != hashCheck)
+            return debug::error(FUNCTION, "public key hash mismatch");
+
+        /* Switch based on signature type. */
+        switch(nType)
+        {
+            /* Support for the FALCON signature scheeme. */
+            case TAO::Ledger::SIGNATURE::FALCON:
+            {
+                /* Create the FL Key object. */
+                LLC::FLKey key;
+
+                /* Set the public key and verify. */
+                key.SetPubKey(vPubKey);
+                if(!key.Verify(vData, vSig))
+                    return debug::error(FUNCTION, "Invalid transaction signature");
+
+                break;
+            }
+
+            /* Support for the BRAINPOOL signature scheme. */
+            case TAO::Ledger::SIGNATURE::BRAINPOOL:
+            {
+                /* Create EC Key object. */
+                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                /* Set the public key and verify. */
+                key.SetPubKey(vPubKey);
+                if(!key.Verify(vData, vSig))
+                    return debug::error(FUNCTION, "Invalid transaction signature");
+
+                break;
+            }
+
+            default:
+                return debug::error(FUNCTION, "Unknown signature scheme");
+
+        }
+
         return true;
     }
 
 
     /* Generate a signature from signature chain credentials with valid key hash. */
     bool Crypto::GenerateSignature(const std::string& strKey, const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
-                                   const SecureString& strPIN, const uint512_t& hashCheck, bytes_t &vPubKey, bytes_t &vSig)
+                                   const SecureString& strPIN, const bytes_t& vData, bytes_t &vPubKey, bytes_t &vSig)
     {
+        /* Check that the requested key is in the crypto register */
+        if(!Check(strKey))
+            return debug::error(FUNCTION, strKey, " type not found in crypto register");
+
+        /* Check the authorization hash. */
+        const uint256_t hashPubKey =
+            get<uint256_t>(strKey);
+
+        /* Check that the hashed public key exists in the register*/
+        if(hashPubKey == 0)
+            return debug::error(FUNCTION, strKey, " is disabled, run crypto/create/", strKey);
+
+        /* Get the encryption key type from the hash of the public key */
+        const uint8_t nType =
+            hashPubKey.GetType();
+
+        /* Generate our secret key. */
+        const uint512_t hashSecret =
+            pCredentials->Generate(strKey, 0, strPIN);
+
+        /* Get the secret from new key. */
+        std::vector<uint8_t> vBytes = hashSecret.GetBytes();
+        LLC::CSecret vSecret(vBytes.begin(), vBytes.end());
+
+        /* Switch based on signature type. */
+        switch(nType)
+        {
+            /* Support for the FALCON signature scheme. */
+            case TAO::Ledger::SIGNATURE::FALCON:
+            {
+                /* Create the FL Key object. */
+                LLC::FLKey key;
+
+                /* Set the secret key. */
+                if(!key.SetSecret(vSecret))
+                    return debug::error(FUNCTION, "failed to set falcon secret key");
+
+                /* Generate the public key */
+                vPubKey = key.GetPubKey();
+
+                /* Generate the signature */
+                if(!key.Sign(vData, vSig))
+                    return debug::error(FUNCTION, "failed to sign data");
+
+                break;
+
+            }
+
+            /* Support for the BRAINPOOL signature scheme. */
+            case TAO::Ledger::SIGNATURE::BRAINPOOL:
+            {
+                /* Create EC Key object. */
+                LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
+
+                /* Set the secret key. */
+                if(!key.SetSecret(vSecret, true))
+                    return debug::error(FUNCTION, "failed to set brainpool secret key");
+
+                /* Generate the public key */
+                vPubKey = key.GetPubKey();
+
+                /* Generate the signature */
+                if(!key.Sign(vData, vSig))
+                    return debug::error(FUNCTION, "failed to sign data");
+
+                break;
+            }
+
+            default:
+            {
+                return debug::error(FUNCTION, "unknown crypto signature scheme");
+            }
+        }
+
+        /* Calculate the key hash. */
+        uint256_t hashCheck =
+            LLC::SK256(vPubKey);
+
+        /* Set the leading byte. */
+        hashCheck.SetType(nType);
+
+        /* Check the public key to expected authorization key. */
+        if(hashPubKey != hashCheck)
+            return debug::error(FUNCTION, "public key hash mismatch");
+
         return true;
     }
 }

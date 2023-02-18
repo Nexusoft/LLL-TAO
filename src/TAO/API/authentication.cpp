@@ -657,7 +657,7 @@ namespace TAO::API
 
         /* Generate a key to check credentials against. */
         const uint256_t hashCheck =
-            rSession.Credentials()->KeyHash("auth", 0, strPIN, hashAuth.GetType());
+            rSession.Credentials()->SigningKeyHash("auth", 0, strPIN, hashAuth.GetType());
 
         /* Check for invalid authorization hash. */
         if(hashAuth != hashCheck)

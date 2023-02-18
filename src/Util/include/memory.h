@@ -720,17 +720,44 @@ namespace memory
      *  without needing to inherit from memory::encrypted or provide their own Encrypt() implementation
      *
      **/
-    template<class TypeName> class encrypted_type : memory::encrypted
+    template<class TypeName> class encrypted_type : public memory::encrypted
     {
-    public:
-        /* Constructor from primitive type data */
-        encrypted_type(TypeName data){DATA = data;}
-
-        /* Encrypts the internal data */
-        void Encrypt(){ encrypt(DATA);}
-
         /* The primitive data being encrypted */
         TypeName DATA;
+
+    public:
+
+        /* Constructor from primitive type data */
+        encrypted_type(TypeName tDataIn)
+        : DATA  (tDataIn)
+        {
+        }
+
+        /* Encrypts the internal data */
+        void Encrypt()
+        {
+            encrypt(DATA);
+        }
+
+
+        /** get
+         *
+         *  Allow encrypted_type access with decryption.
+         *
+         **/
+        TypeName get() const
+        {
+            /* Decrypt our data. */
+            encrypt(DATA);
+
+            //make a copy
+            const TypeName RET = DATA;
+
+            /* Encrypt our data. */
+            encrypt(DATA);
+
+            return std::move(RET);
+        }
     };
 }
 

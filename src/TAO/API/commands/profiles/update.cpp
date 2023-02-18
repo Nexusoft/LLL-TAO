@@ -107,7 +107,7 @@ namespace TAO::API
                     tx.hashRecovery = pCredentials->RecoveryHash(strRecoveryNew, nRecoveryType);
 
                     /* Sign the transaction. */
-                    if(!tx.Sign(pCredentials->Generate(strRecovery)))
+                    if(!tx.Sign(pCredentials->RecoveryKey(strRecovery)))
                         throw Exception(-31, "Ledger failed to sign transaction");
                 }
                 else
@@ -123,6 +123,9 @@ namespace TAO::API
                 /* Execute the operations layer. */
                 if(!TAO::Ledger::mempool.Accept(tx))
                     throw Exception(-32, "Failed to accept");
+
+                /* Refresh our internal authentication cache. */
+                pCredentials->ClearCache();
 
                 /* Build a JSON response object. */
                 encoding::json jRet;
@@ -209,6 +212,9 @@ namespace TAO::API
 
             /* Update our password now in authentication session. */
             Authentication::Update(jParams, strNewPassword);
+
+            /* Refresh our internal authentication cache. */
+            pCredentialsOld->ClearCache();
 
             /* Update the PIN in our authenticated session now if we are unlocked. */
             uint8_t nUnlockedActions = TAO::Ledger::PinUnlock::NONE;

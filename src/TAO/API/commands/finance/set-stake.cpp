@@ -25,7 +25,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/credentials.h>
 
-#include <TAO/Register/types/object.h>
+#include <TAO/Register/types/crypto.h>
 
 #include <Util/include/memory.h>
 
@@ -143,36 +143,16 @@ namespace TAO::API
             TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
 
         /* Get the crypto register so we can determine the key type used to generate the public key */
-        TAO::Register::Object oCrypto;
+        TAO::Register::Crypto oCrypto;
         if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::MEMPOOL))
             throw debug::exception(FUNCTION, "Could not sign - missing crypto register");
 
-        /* Read the key type from crypto object register. */
-        const uint256_t hashAuth =
-            oCrypto.get<uint256_t>("auth");
-
-        /* Check if the auth has is deactivated. */
-        if(hashAuth == 0)
-            throw Exception(-130, "Auth hash deactivated, please call crypto/create/auth");
-
-        /* Get the encryption key type from the hash of the public key */
-        const uint8_t nKeyType =
-            hashAuth.GetType();
-
-        /* Generate a key to check credentials against. */
-        const uint256_t hashCheck =
-            pCredentials->KeyHash("auth", 0, strPIN, nKeyType);
-
-        /* Check for invalid authorization hash. */
-        if(hashAuth != hashCheck)
-            throw Exception(-139, "Invalid credentials");
-
-        /* Retrieve the private "auth" key for use in signing */
-        const uint512_t hashSecret =
-            pCredentials->Generate("auth", 0, strPIN);
-
         /* Generate the public key and signature */
-        pCredentials->Sign(nKeyType, tChangeRequest.GetHash().GetBytes(), hashSecret, tChangeRequest.vchPubKey, tChangeRequest.vchSig);
+        if(!oCrypto.GenerateSignature("auth", pCredentials, strPIN, tChangeRequest.GetHash().GetBytes(),
+            tChangeRequest.vchPubKey, tChangeRequest.vchSig))
+        {
+            throw Exception(-139, "Invalid Credentials");
+        }
 
         /* Finally write our stake change to our local database. */
         if(!LLD::Local->WriteStakeChange(hashGenesis, tChangeRequest))

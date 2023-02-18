@@ -263,7 +263,7 @@ namespace TAO::API
              **/
             void Update(const SecureString& strPassword)
             {
-                /* Update the internal PIN object. */
+                /* Update the internal credentials object. */
                 pCredentials->Update(strPassword);
             }
 
