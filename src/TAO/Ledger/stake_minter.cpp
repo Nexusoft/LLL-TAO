@@ -34,6 +34,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/types/address.h>
+#include <TAO/Register/types/crypto.h>
 
 #include <Util/include/config.h>
 #include <Util/include/convert.h>
@@ -277,105 +278,52 @@ namespace TAO
             /* Validate the change request crypto signature */
             if(!fRemove)
             {
-                /* Get the crypto register for the current user hashGenesis. */
-                TAO::Register::Address hashCrypto = TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-                TAO::Register::Object crypto;
-                if(!LLD::Register->ReadState(hashCrypto, crypto))
+                /* Get the crypto register address. */
+                const uint256_t hashCrypto =
+                    TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
+                /* Get the crypto object register. */
+                TAO::Register::Crypto oCrypto;
+                if(!LLD::Register->ReadObject(hashCrypto, oCrypto))
                     return debug::error(FUNCTION, "Missing crypto register");
 
-                /* Parse the object. */
-                if(!crypto.Parse())
-                    return debug::error(FUNCTION, "Failed to parse crypto register");
-
-                if(crypto.Standard() != TAO::Register::OBJECTS::CRYPTO)
-                    return debug::error(FUNCTION, "Invalid crypto register");
-
                 /* Verify the signature on the stake change request */
-                uint256_t hashPublic = crypto.get<uint256_t>("auth");
-                if(hashPublic != 0) //no auth key disables check
+                if(!oCrypto.VerifySignature("auth", request.GetHash().GetBytes(), request.vchPubKey, request.vchSig))
                 {
-                    /* Get hash of public key and set to same type as crypto register hash for verification */
-                    uint256_t hashCheck = LLC::SK256(request.vchPubKey);
-                    hashCheck.SetType(hashPublic.GetType());
-
-                    /* Check the public key to expected authorization key. */
-                    if(hashCheck != hashPublic)
-                    {
-                        LLD::Local->EraseStakeChange(hashGenesis);
-                        return debug::error(FUNCTION, "Invalid public key on stake change request...removing");
-                    }
-
-                    /* Switch based on signature type. */
-                    switch(hashPublic.GetType())
-                    {
-                        /* Support for the FALCON signature scheeme. */
-                        case TAO::Ledger::SIGNATURE::FALCON:
-                        {
-                            /* Create the FL Key object. */
-                            LLC::FLKey key;
-
-                            /* Set the public key and verify. */
-                            key.SetPubKey(request.vchPubKey);
-                            if(!key.Verify(request.GetHash().GetBytes(), request.vchSig))
-                            {
-                                LLD::Local->EraseStakeChange(hashGenesis);
-                                return debug::error(FUNCTION, "Invalid signature on stake change request...removing");
-                            }
-
-                            break;
-                        }
-
-                        /* Support for the BRAINPOOL signature scheme. */
-                        case TAO::Ledger::SIGNATURE::BRAINPOOL:
-                        {
-                            /* Create EC Key object. */
-                            LLC::ECKey key = LLC::ECKey(LLC::BRAINPOOL_P512_T1, 64);
-
-                            /* Set the public key and verify. */
-                            key.SetPubKey(request.vchPubKey);
-                            if(!key.Verify(request.GetHash().GetBytes(), request.vchSig))
-                            {
-                                LLD::Local->EraseStakeChange(hashGenesis);
-                                return debug::error(FUNCTION, "Invalid signature on stake change request...removing");
-                            }
-
-                            break;
-                        }
-
-                        default:
-                        {
-                            LLD::Local->EraseStakeChange(hashGenesis);
-                            return debug::error(FUNCTION, "Invalid signature type on stake change request...removing");
-                        }
-                    }
+                    fRemove = true;
+                    debug::log(0, FUNCTION, "Stake change request has expired...removing");
                 }
-            }
 
-            /* Verify stake/unstake limits */
-            if(!fRemove)
-            {
+                /* Check that amount doesn't exceed stake. */
                 if(request.nAmount < 0 && (0 - request.nAmount) > nStake)
                 {
                     debug::log(0, FUNCTION, "Cannot unstake more than current stake, using current stake amount.");
                     request.nAmount = 0 - nStake;
                 }
-                else if(request.nAmount > 0 && request.nAmount > nBalance)
+
+                /* Check that amount doesn't exceed balance. */
+                if(request.nAmount > 0 && request.nAmount > nBalance)
                 {
                     debug::log(0, FUNCTION, "Cannot add more than current balance to stake, using current balance.");
                     request.nAmount = nBalance;
                 }
-                else if(request.nAmount == 0)
+
+                /* Check for empty amount. */
+                if(request.nAmount == 0)
                 {
                     /* Remove request if no change to stake amount */
                     fRemove = true;
                 }
             }
 
+            /* Proceed with removing stake change. */
             if(fRemove)
             {
+                /* Reset internal values. */
                 fStakeChange = false;
                 stakeChange.SetNull();
 
+                /* Erase from local database. */
                 if (!LLD::Local->EraseStakeChange(hashGenesis))
                     debug::error(FUNCTION, "Failed to remove stake change request");
 
