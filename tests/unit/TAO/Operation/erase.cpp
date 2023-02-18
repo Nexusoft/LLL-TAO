@@ -28,7 +28,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/enum.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/constants.h>
 
@@ -67,8 +67,8 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
     //two users
     uint256_t hashGenesis1[2] =
     {
-        TAO::Ledger::SignatureChain::Genesis("testuser"),
-        TAO::Ledger::SignatureChain::Genesis("testuser1")
+        TAO::Ledger::Credentials::Genesis("testuser"),
+        TAO::Ledger::Credentials::Genesis("testuser1")
     };
 
     uint512_t hashPrivKey1[2] =

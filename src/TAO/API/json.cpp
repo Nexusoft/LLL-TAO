@@ -31,7 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/tritium.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
@@ -2327,7 +2327,7 @@ namespace TAO::API
         {
             /* Get our genesis from username. */
             const uint256_t hashGenesis =
-                TAO::Ledger::SignatureChain::Genesis(SecureString(strParam.c_str()));
+                TAO::Ledger::Credentials::Genesis(SecureString(strParam.c_str()));
 
             return hashGenesis.ToString();
         }

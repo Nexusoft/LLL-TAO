@@ -20,7 +20,7 @@ ________________________________________________________________________________
 /* Forward Declarations. */
 namespace TAO::Operation { class Contract;    }
 namespace TAO::Register  { class Object;      }
-namespace TAO::Ledger    { class Transaction; class SignatureChain; }
+namespace TAO::Ledger    { class Transaction; class Credentials; }
 //namespace TAO::Register { class Address;     }
 
 /* Global TAO namespace. */
@@ -43,7 +43,7 @@ namespace TAO::API
      *  @return the formatted JSON response to return with.
      *
      **/
-    bool BuildCredentials(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+    bool BuildCredentials(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
                           const SecureString& strPIN, const uint8_t nKeyType, TAO::Ledger::Transaction &tx);
 
     /** BuildResponse
@@ -230,6 +230,6 @@ namespace TAO::API
      *  @return a contract containing code to update all specified keys.
      *
      **/
-    TAO::Operation::Contract BuildCrypto(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+    TAO::Operation::Contract BuildCrypto(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
                                          const SecureString& strPIN, const uint8_t nKeyType);
 }

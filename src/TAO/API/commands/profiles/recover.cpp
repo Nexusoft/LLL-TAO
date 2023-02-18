@@ -21,7 +21,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -66,8 +66,8 @@ namespace TAO::API
             ExtractPIN(jParams);
 
         /* Create a temp sig chain for checking credentials */
-        memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials =
-            new TAO::Ledger::SignatureChain(strUser, strPass);
+        memory::encrypted_ptr<TAO::Ledger::Credentials> pCredentials =
+            new TAO::Ledger::Credentials(strUser, strPass);
 
         /* Get our genesis-id for local checks. */
         const uint256_t hashGenesis =

@@ -22,7 +22,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -172,8 +172,8 @@ namespace TAO::API
             }
 
             /* Get our new set of credentials to build transaction with. */
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials =
-                new TAO::Ledger::SignatureChain(pCredentialsOld->UserName(), strNewPassword);
+            memory::encrypted_ptr<TAO::Ledger::Credentials> pCredentials =
+                new TAO::Ledger::Credentials(pCredentialsOld->UserName(), strNewPassword);
 
             /* Check if we haven't updated our credentials. */
             if(*pCredentialsOld == *pCredentials && strNewPIN == strPIN)

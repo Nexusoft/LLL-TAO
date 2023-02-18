@@ -27,7 +27,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/enum.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -53,7 +53,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
     {
 
         //create object
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis("testuser");
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis("testuser");
         uint512_t hashPrivKey1  = LLC::GetRand512();
         uint512_t hashPrivKey2  = LLC::GetRand512();
 
@@ -549,7 +549,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
         std::vector<TAO::Ledger::Transaction> vTX;
 
         //create object
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis("testuser");
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis("testuser");
         uint512_t hashPrivKey1  = LLC::GetRand512();
         uint512_t hashPrivKey2  = LLC::GetRand512();
 
@@ -999,7 +999,7 @@ TEST_CASE( "Mempool and memory sequencing tests", "[mempool]")
     {
 
         //create object
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis("testuser");
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis("testuser");
         uint512_t hashPrivKey1  = LLC::GetRand512();
         uint512_t hashPrivKey2  = LLC::GetRand512();
 

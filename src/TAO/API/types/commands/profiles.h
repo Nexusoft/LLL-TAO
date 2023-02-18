@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <Util/include/memory.h>
 
 namespace TAO::Operation { class Contract;       }
-namespace TAO::Ledger    { class SignatureChain; }
+namespace TAO::Ledger    { class Credentials; }
 
 /* Global TAO namespace. */
 namespace TAO::API

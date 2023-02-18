@@ -14,7 +14,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/include/enum.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -33,7 +33,7 @@ ________________________________________________________________________________
 TEST_CASE( "Signature Chain Generation", "[ledger]")
 {
     /* TODO Test needs updating */
-    // TAO::Ledger::SignatureChain user = TAO::Ledger::SignatureChain("user", "password");
+    // TAO::Ledger::Credentials user = TAO::Ledger::Credentials("user", "password");
 
     // REQUIRE(user.Genesis() == uint256_t("0xb5254d24183a77625e2dbe0c63570194aca6fb7156cb84edf3e238f706b51019"));
 
@@ -55,7 +55,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
     /* Failure case adding invalid contracts to genesis, tokens are not allowed */
     {
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
         TAO::Register::Address hashToken     = TAO::Register::Address(TAO::Register::Address::TOKEN);
 
         //create the transaction object
@@ -90,7 +90,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
     /* Failure case adding invalid contracts to genesis - too many names */
     {
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
         TAO::Register::Address hashAccount     = TAO::Register::Address(TAO::Register::Address::ACCOUNT);
 
         //create the transaction object
@@ -128,7 +128,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
     /* Failure case adding invalid contracts to genesis - too many trust accounts */
     {
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
 
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -163,7 +163,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
     /* Failure case adding invalid contracts to genesis - too many accounts */
     {
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
 
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -198,7 +198,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
     /* Failure case adding invalid contracts to genesis - too many crypto objects */
     {
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
 
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -233,7 +233,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
     /* Failure case correct number and type of contracts but with a global name which causes a high fee */
     {
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
 
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -286,7 +286,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
     /* Success case - 1 account, 1 trust, 1 crypto 2 names */
     {
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis(std::string("testuser" +std::to_string(LLC::GetRand())).c_str());
 
         //create the transaction object
         TAO::Ledger::Transaction tx;
@@ -334,7 +334,7 @@ TEST_CASE( "Signature Chain Genesis Transaction checks", "[sigchain]")
 
     /* Success case - 1 account, 1 trust, 1 crypto 2 names */
     {
-        uint256_t hashGenesis   = TAO::Ledger::SignatureChain::Genesis(std::string("recovery").c_str());
+        uint256_t hashGenesis   = TAO::Ledger::Credentials::Genesis(std::string("recovery").c_str());
 
         //create the transaction object
         TAO::Ledger::Transaction tx;

@@ -355,7 +355,7 @@ namespace TAO::API
 
 
     /* Get an instance of current session credentials indexed by session-id. */
-    const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Authentication::Credentials(const encoding::json& jParams)
+    const memory::encrypted_ptr<TAO::Ledger::Credentials>& Authentication::Credentials(const encoding::json& jParams)
     {
         /* Get the current session-id. */
         const uint256_t hashSession =
@@ -366,7 +366,7 @@ namespace TAO::API
 
 
     /* Get an instance of current session credentials indexed by session-id. */
-    const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Authentication::Credentials(const uint256_t& hashSession)
+    const memory::encrypted_ptr<TAO::Ledger::Credentials>& Authentication::Credentials(const uint256_t& hashSession)
     {
         RECURSIVE(MUTEX);
 

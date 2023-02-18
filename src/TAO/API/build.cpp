@@ -42,7 +42,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/transaction.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <Util/include/convert.h>
 #include <Util/include/math.h>
@@ -51,7 +51,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Build a credential set that engages sigchain or modifies its authentication data. This is done not logged in. */
-    bool BuildCredentials(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+    bool BuildCredentials(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
                           const SecureString& strPIN,   const uint8_t nKeyType, TAO::Ledger::Transaction &tx)
     {
         /* Create the transaction. */
@@ -1001,7 +1001,7 @@ namespace TAO::API
 
 
     /* Update the public keys in crypto object register. */
-    TAO::Operation::Contract BuildCrypto(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials,
+    TAO::Operation::Contract BuildCrypto(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
                                          const SecureString& strPIN, const uint8_t nKeyType)
     {
         /* Generate register address for crypto register deterministically */

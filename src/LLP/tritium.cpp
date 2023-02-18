@@ -41,7 +41,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/types/mempool.h>
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/syncblock.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #ifndef NO_WALLET
 #include <Legacy/wallet/wallet.h>
@@ -730,7 +730,7 @@ namespace LLP
                 //ssPacket >> vchSig;
 
                 /* Verify the signature */
-                //if(!TAO::Ledger::SignatureChain::Verify(hashGenesis, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
+                //if(!TAO::Ledger::Credentials::Verify(hashGenesis, "network", hashCheck.GetBytes(), vchPubKey, vchSig))
                 //    return debug::drop(NODE, "ACTION::AUTH: invalid transaction signature");
 
                 /* Set to authorized node if passed all cryptographic checks. */
