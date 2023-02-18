@@ -95,8 +95,21 @@ namespace TAO::API
             if(config::fMultiuser.load())
                 hashSession = LLC::GetRand256();
 
+            /* Read the crypto object register. */
+            TAO::Register::Crypto oCrypto;
+            if(!LLD::Register->ReadCrypto(tSession.Genesis(), oCrypto, TAO::Ledger::FLAGS::FORCED))
+                throw Exception(-139, "Invalid credentials");
+
+            /* Check our network auth keys. */
+            const uint256_t hashNetwork =
+                oCrypto.get<uint256_t>("network");
+
             /* Push the new session to auth. */
             Authentication::Insert(hashSession, tSession);
+
+            /* Update our network key if it's live. */
+            if(hashNetwork != 0)
+                Authentication::Update(jParams, TAO::Ledger::PinUnlock::NETWORK, strPIN);
 
             /* Build return json data. */
             encoding::json jRet =

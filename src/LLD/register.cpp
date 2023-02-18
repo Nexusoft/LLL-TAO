@@ -368,6 +368,25 @@ namespace LLD
     }
 
 
+    /* Read an crypto object register from the register database. */
+    bool RegisterDB::ReadCrypto(const uint256_t& hashGenesis, TAO::Register::Crypto& object, const uint8_t nFlags)
+    {
+        /* Check for crypto object register. */
+        const TAO::Register::Address hashRegister =
+            TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
+        /* Try to read the state here. */
+        if(!ReadState(hashRegister, object, nFlags))
+            return false;
+
+        /* Attempt to parse the object. */
+        if(object.nType == TAO::Register::REGISTER::OBJECT && !object.Parse())
+            return false;
+
+        return true;
+    }
+
+
     /* Index a genesis to a register address. */
     bool RegisterDB::IndexTrust(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {

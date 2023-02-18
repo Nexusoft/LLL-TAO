@@ -567,6 +567,20 @@ namespace TAO::API
                                                                  const uint256_t& hashSession = default_session());
 
 
+        /** Unlock
+         *
+         *  Unlock and get the active pin from current session.
+         *
+         *  @param[in] nRequestedActions The actions requested for PIN unlock.
+         *  @param[out] strPIN The pin number to return by reference
+         *  @param[in] hashSession The incoming session identifier
+         *
+         *  @return True if we were able to unlock.
+         *
+         **/
+        static bool GetPIN(const uint8_t nRequestedActions, SecureString &strPIN, const uint256_t& hashSession = default_session());
+
+
         /** Update
          *
          *  Update the allowed actions for given pin
@@ -576,6 +590,17 @@ namespace TAO::API
          *
          **/
         static void Update(const encoding::json& jParams, const uint8_t nUpdatedActions, const SecureString& strPIN = "");
+
+
+        /** Update
+         *
+         *  Update the allowed actions for given pin
+         *
+         *  @param[in] hashSession The incoming session identifier
+         *  @param[in] nUpdatedActions The actions allowed for PIN unlock.
+         *
+         **/
+        static void Update(const uint256_t& hashSession, const uint8_t nUpdatedActions, const SecureString& strPIN = "");
 
 
         /** Update

@@ -97,7 +97,7 @@ namespace TAO::Register
 
         /* Check if the auth has is deactivated. */
         if(hashAuth == 0)
-            throw TAO::API::Exception(-9, "auth key is disabled, please run profiles/create/auth to enable");
+            throw TAO::API::Exception(-9, "auth key is disabled, please run crypto/create/auth to enable");
 
         /* Generate a key to check credentials against. */
         const uint256_t hashCheck =

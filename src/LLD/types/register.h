@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
-#include <TAO/Register/types/object.h>
+#include <TAO/Register/types/crypto.h>
 
 #include <TAO/Ledger/include/enum.h>
 
@@ -146,6 +146,19 @@ namespace LLD
          *
          **/
         bool ReadObject(const uint256_t& hashRegister, TAO::Register::Object& object, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** ReadCrypto
+         *
+         *  Read a crypto object register from the register database.
+         *
+         *  @param[in] hashGenesis The genesis-id of crypto object register owner..
+         *  @param[out] object The object register to read.
+         *
+         *  @return True if read was successful, false otherwise.
+         *
+         **/
+        bool ReadCrypto(const uint256_t& hashGenesis, TAO::Register::Crypto& object, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** IndexTrust

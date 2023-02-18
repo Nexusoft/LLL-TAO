@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/indexing.h>
 #include <TAO/API/types/commands/sessions.h>
 
+#include <TAO/Register/types/crypto.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -51,30 +53,18 @@ namespace TAO::API
         Authentication::Session tSession =
             Authentication::Session(strUsername, strPassword, Authentication::Session::LOCAL);
 
-        /* Check for crypto object register. */
-        const TAO::Register::Address hashCrypto =
-            TAO::Register::Address(std::string("crypto"), tSession.Genesis(), TAO::Register::Address::CRYPTO);
-
         /* Read the crypto object register. */
-        TAO::Register::Object oCrypto;
-        if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::FORCED))
+        TAO::Register::Crypto oCrypto;
+        if(!LLD::Register->ReadCrypto(tSession.Genesis(), oCrypto, TAO::Ledger::FLAGS::FORCED))
             throw Exception(-139, "Invalid credentials");
-
-        /* Read the key type from crypto object register. */
-        const uint256_t hashAuth =
-            oCrypto.get<uint256_t>("auth");
-
-        /* Check if the auth has is deactivated. */
-        if(hashAuth == 0)
-            throw Exception(-130, "Auth hash deactivated, please call crypto/create/auth");
-
-        /* Generate a key to check credentials against. */
-        const uint256_t hashCheck =
-            tSession.Credentials()->SigningKeyHash("auth", 0, strPIN, hashAuth.GetType());
 
         /* Check for invalid authorization hash. */
-        if(hashAuth != hashCheck)
+        if(!oCrypto.CheckCredentials(tSession.Credentials(), strPIN))
             throw Exception(-139, "Invalid credentials");
+
+        /* Check our network auth keys. */
+        const uint256_t hashNetwork =
+            oCrypto.get<uint256_t>("network");
 
         /* Check if already logged in. */
         uint256_t hashSession = Authentication::SESSION::DEFAULT; //we fallback to this in single user mode.
@@ -86,6 +76,10 @@ namespace TAO::API
                 { "genesis", tSession.Genesis().ToString() },
                 { "session", hashSession.ToString() }
             };
+
+            /* Update our network key if it's live. */
+            if(hashNetwork != 0)
+                Authentication::Update(jParams, TAO::Ledger::PinUnlock::NETWORK, strPIN);
 
             /* Check for single user mode. */
             if(!config::fMultiuser.load())
@@ -100,6 +94,10 @@ namespace TAO::API
 
         /* Push the new session to auth. */
         Authentication::Insert(hashSession, tSession);
+
+        /* Update our network key if it's live. */
+        if(hashNetwork != 0)
+            Authentication::Update(jParams, TAO::Ledger::PinUnlock::NETWORK, strPIN);
 
         /* Build return json data. */
         encoding::json jRet =

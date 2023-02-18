@@ -52,6 +52,7 @@ namespace TAO
                 MINING          = (1 << 2),
                 STAKING         = (1 << 3),
                 NOTIFICATIONS   = (1 << 4),
+                NETWORK         = (1 << 5),
                 NONE            = (0 << 0),
 
                 ALL = TRANSACTIONS | MINING | STAKING | NOTIFICATIONS
