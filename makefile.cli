@@ -359,6 +359,20 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_argon2_encoding.o \
 		build/LLC_argon2_ref.o \
 		build/LLC_argon2_thread.o \
+		build/LLC_kyber_aes256ctr.o \
+		build/LLC_kyber_cbd.o \
+		build/LLC_kyber_fips202.o \
+		build/LLC_kyber_indcpa.o \
+		build/LLC_kyber_kem.o \
+		build/LLC_kyber_kex.o \
+		build/LLC_kyber_ntt.o \
+		build/LLC_kyber_poly.o \
+		build/LLC_kyber_polyvec.o \
+		build/LLC_kyber_randombytes.o \
+		build/LLC_kyber_reduce.o \
+		build/LLC_kyber_symmetric-aes.o \
+		build/LLC_kyber_symmetric-shake.o \
+		build/LLC_kyber_verify.o \
 		build/LLC_aes.o \
 		build/LLC_encrypt.o \
 		build/LLC_codec.o \
@@ -734,6 +748,9 @@ build/LLC_%.o: ./src/LLC/aes/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
 build/LLC_%.o: ./src/LLC/falcon/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -o $@ $<
+
+build/LLC_kyber_%.o: ./src/LLC/kyber/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -o $@ $<
 
 build/LLD_%.o: ./src/LLD/%.cpp $(HEADERS)
@@ -1286,6 +1303,13 @@ build/LLC_%.o: src/LLC/aes/%.c $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/LLC_%.o: src/LLC/falcon/%.c $(HEADERS)
+	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/LLC_kyber_%.o: src/LLC/kyber/%.c $(HEADERS)
 	$(CXX) -c $(CFLAGS) -x c -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
