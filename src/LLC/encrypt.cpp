@@ -24,35 +24,35 @@ namespace LLC
 {
 
     /* Encrypts the data using the AES 256 function and the specified symmetric key. */
-    bool EncryptAES256(const std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vchPlainText, std::vector<uint8_t> &vchEncrypted)
+    bool EncryptAES256(const std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vPlaintext, std::vector<uint8_t> &vCyphertext)
     {
         /* Check the key length.  NOTE that this should be double AES_KEYLEN as the incoming key is in hex */
         if(vchKey.size() != AES_KEYLEN)
             return debug::error(FUNCTION, "Invalid key length");
 
         /* Check the incoming data is not empty */
-        if(vchPlainText.empty())
+        if(vPlaintext.empty())
             return debug::error(FUNCTION, "Plain text is empty");
 
         /* Generate a random 128 bit Initialisation Vector */
         std::vector<uint8_t> vchIV = LLC::GetRand128().GetBytes();
-        
+
         /* Number of bytes to pad so that the ciphertext is a multiple of AES_BLOCKLEN */
-        uint8_t nPadBytes = AES_BLOCKLEN - (vchPlainText.size() % AES_BLOCKLEN);
+        uint8_t nPadBytes = AES_BLOCKLEN - (vPlaintext.size() % AES_BLOCKLEN);
 
         /* The ciphertext length.  This needs to be a multiple of the AES block size (16) based on the plain text length*/
-        uint32_t nCiphertextLen = vchPlainText.size() + nPadBytes;
+        uint32_t nCiphertextLen = vPlaintext.size() + nPadBytes;
 
         /* The ciphertext bytes */
         uint8_t* pCiphertext = (uint8_t*)malloc(nCiphertextLen);
 
         /* Copy the plain text data into the ciphertext buffer to pass to the AES function */
-        std::copy(vchPlainText.begin(), vchPlainText.end(), pCiphertext);
-        
-        /* PKCS7 padding - set the last X bytes to the value X so that the total number of bytes is a multiple of the block size */
-        memset(pCiphertext + vchPlainText.size(), nPadBytes, nPadBytes);
+        std::copy(vPlaintext.begin(), vPlaintext.end(), pCiphertext);
 
-   
+        /* PKCS7 padding - set the last X bytes to the value X so that the total number of bytes is a multiple of the block size */
+        memset(pCiphertext + vPlaintext.size(), nPadBytes, nPadBytes);
+
+
         /* Do the encryption */
         try
         {
@@ -69,13 +69,13 @@ namespace LLC
         }
 
         /* Reserve space in the vector for the IV, and ciphertext */
-        vchEncrypted.reserve(vchIV.size() + nCiphertextLen);        
+        vCyphertext.reserve(vchIV.size() + nCiphertextLen);
 
         /* Copy IV into the cipher text vector */
-        std::copy(vchIV.begin(), vchIV.end(), std::back_inserter(vchEncrypted));
-        
+        std::copy(vchIV.begin(), vchIV.end(), std::back_inserter(vCyphertext));
+
         /* Copy ciphertext into the cipher text vector */
-        std::copy(pCiphertext, pCiphertext + nCiphertextLen, std::back_inserter(vchEncrypted));
+        std::copy(pCiphertext, pCiphertext + nCiphertextLen, std::back_inserter(vCyphertext));
 
         /* Cleanup */
         free(pCiphertext);
@@ -85,24 +85,24 @@ namespace LLC
 
     }
 
-    
+
     /* Decrypts the data using the AES 256 function and the specified symmetric key. */
-    bool DecryptAES256(const std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vEncrypted, std::vector<uint8_t> &vPlainText)
+    bool DecryptAES256(const std::vector<uint8_t>& vchKey, const std::vector<uint8_t>& vCyphertext, std::vector<uint8_t> &vPlainText)
     {
         /* Check the key length.  NOTE that this should be double AES_KEYLEN as the incoming key is in hex */
         if(vchKey.size() != AES_KEYLEN)
             return debug::error(FUNCTION, "Invalid key length");
 
-        /* Check size of the encrypted data vector.  This must be at least 32 bytes, 16 for the IV and 16 for the minimum 
+        /* Check size of the encrypted data vector.  This must be at least 32 bytes, 16 for the IV and 16 for the minimum
            AES block size */
-        if(vEncrypted.size() < 32)
+        if(vCyphertext.size() < 32)
             return debug::error(FUNCTION, "Encrypted data size too small");
 
         /* 128 bit Initialisation Vector is the first 16 bytes of the cipher text bytes*/
-        std::vector<uint8_t> vchIV(&vEncrypted[0], &vEncrypted[16]);
+        std::vector<uint8_t> vchIV(&vCyphertext[0], &vCyphertext[16]);
 
-        /* Actual ciphertext length, which is vEncrypted length minus 16 bytes for the IV */
-        uint32_t nCiphertextLen = vEncrypted.size() - 16;
+        /* Actual ciphertext length, which is vCyphertext length minus 16 bytes for the IV */
+        uint32_t nCiphertextLen = vCyphertext.size() - 16;
 
         /* Ciphertext length must be a multiple of the AES block size (16) */
         if(nCiphertextLen % AES_BLOCKLEN > 0)
@@ -112,8 +112,8 @@ namespace LLC
         uint8_t *pDecrypted = (uint8_t*)malloc(nCiphertextLen);
 
         /* Copy the encrypted bytes into the buffer to be decrypted */
-        std::copy(vEncrypted.begin() + 16, vEncrypted.end(), pDecrypted);
-        
+        std::copy(vCyphertext.begin() + 16, vCyphertext.end(), pDecrypted);
+
         /* Do the decryption */
         try
         {
@@ -128,7 +128,7 @@ namespace LLC
 
             return debug::error(FUNCTION, "Error decrypting data");
         }
-        
+
         /* Strip off the PKCS7 padding.  The number of bytes to remove is stored in the last byte of the decrypted data */
         uint8_t nPadBytes = pDecrypted[nCiphertextLen-1];
 
@@ -141,13 +141,13 @@ namespace LLC
 
         /* Reserve space in the vector for the plain text bytes  */
         vPlainText.reserve(nPlaintextLen);
-        
+
         /* Copy decrypted bytes into the return vector */
         std::copy(pDecrypted, pDecrypted + nPlaintextLen, std::back_inserter(vPlainText));
 
         /* Cleanup */
         free(pDecrypted);
-        
+
         /* return true */
         return true;
 
