@@ -139,8 +139,144 @@ const uint256_t hashSeed = 55;
 
 #include <Util/types/precision.h>
 
+extern "C"
+{
+    #include <LLC/kyber/kem.h>
+    #include <LLC/kyber/symmetric.h>
+}
+
+#include <LLC/include/encrypt.h>
+
+
+class KyberHandshake
+{
+    std::vector<uint8_t> vPubKey;
+    std::vector<uint8_t> vPrivKey;
+
+    std::vector<uint8_t> vSeed;
+
+    /** The shared key stored as a 256-bit unsigned integer. **/
+    uint256_t hashKey;
+
+public:
+
+    KyberHandshake(const uint256_t& hashSeedIn)
+    : vPubKey  (CRYPTO_PUBLICKEYBYTES, 0)
+    , vPrivKey (CRYPTO_SECRETKEYBYTES, 0)
+    , vSeed    (hashSeedIn.GetBytes())
+    , hashKey  ( )
+    {
+    }
+
+    const uint256_t PubKeyHash() const
+    {
+        return LLC::SK256(vPubKey);
+    }
+
+
+    const uint256_t SharedKey() const
+    {
+        return hashKey;
+    }
+
+
+    const std::vector<uint8_t> InitiateHandshake()
+    {
+        /* Generate our shared key using entropy from our seed hash. */
+        crypto_kem_keypair_seed(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
+
+        return vPubKey;
+    }
+
+
+    const std::vector<uint8_t> RespondHandshake(const std::vector<uint8_t>& vPeerPub)
+    {
+        std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
+
+        crypto_kem_keypair_seed(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
+
+        std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
+        crypto_kem_enc(&vCiphertext[0], &vShared[0], &vPeerPub[0]);
+
+        hashKey = LLC::SK256(vShared);
+
+        DataStream ssHandshake(SER_NETWORK, 1);
+        ssHandshake << vPubKey << vCiphertext;
+
+        return ssHandshake.Bytes();
+    }
+
+
+    void CompleteHandshake(const std::vector<uint8_t>& vHandshake)
+    {
+        /* Get our handshake in a datastream to deserialize. */
+        DataStream ssHandshake(vHandshake, SER_NETWORK, 1);
+
+        /* Get our peer's public key. */
+        std::vector<uint8_t> vPeerPub(CRYPTO_PUBLICKEYBYTES, 0);
+        ssHandshake >> vPeerPub;
+
+        /* Get our cyphertext to decode our shared key from. */
+        std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
+        ssHandshake >> vCiphertext;
+
+        /* Decode our shared key from the cyphertext. */
+        std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
+        crypto_kem_dec(&vShared[0], &vCiphertext[0], &vPrivKey[0]);
+
+        /* Hash our shared key binary data to provide additional level of security. */
+        hashKey = LLC::SK256(vShared);
+    }
+
+
+    bool Encrypt(const std::vector<uint8_t>& vPlainText, std::vector<uint8_t> &vCipherText)
+    {
+        return LLC::EncryptAES256(hashKey.GetBytes(), vPlainText, vCipherText);
+    }
+
+
+    bool Decrypt(const std::vector<uint8_t>& vCipherText, std::vector<uint8_t> &vPlainText)
+    {
+        return LLC::DecryptAES256(hashKey.GetBytes(), vCipherText, vPlainText);
+    }
+};
+
+int main(void)
+{
+    uint256_t hash = LLC::SK256("testing");
+
+    uint256_t hash2 = LLC::SK256("testing2");
+
+    KyberHandshake shake(hash);
+    KyberHandshake shake2(hash2);
+
+    const std::vector<uint8_t> vPayload = shake.InitiateHandshake();
+
+    const std::vector<uint8_t> vResponse = shake2.RespondHandshake(vPayload);
+
+    shake.CompleteHandshake(vResponse);
+
+    debug::log(0, "PubKey 1: ", shake.PubKeyHash().ToString());
+    debug::log(0, "PubKey 2: ", shake2.PubKeyHash().ToString());
+
+    debug::log(0, "Shared 1: ", shake.SharedKey().ToString());
+    debug::log(0, "Shared 2: ", shake2.SharedKey().ToString());
+
+    std::string strPayload = "This is our message to encrypt!";
+
+    std::vector<uint8_t> vCipherText;
+    shake.Encrypt(std::vector<uint8_t>(strPayload.begin(), strPayload.end()), vCipherText);
+    debug::log(0, "Encrypted: ", std::string(vCipherText.begin(), vCipherText.end()));
+
+    std::vector<uint8_t> vPlainText;
+    shake2.Decrypt(vCipherText, vPlainText);
+    debug::log(0, "Decrypted: ", std::string(vPlainText.begin(), vPlainText.end()));
+
+  return 0;
+}
+
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
-int main(int argc, char** argv)
+int oldmain(int argc, char** argv)
 {
     precision_t nDigits1 = precision_t(5.98198, 5);
     precision_t nDigits2 = precision_t(3.321, 3);
