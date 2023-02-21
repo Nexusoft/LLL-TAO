@@ -364,7 +364,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_kyber_fips202.o \
 		build/LLC_kyber_indcpa.o \
 		build/LLC_kyber_kem.o \
-		build/LLC_kyber_kex.o \
 		build/LLC_kyber_ntt.o \
 		build/LLC_kyber_poly.o \
 		build/LLC_kyber_polyvec.o \

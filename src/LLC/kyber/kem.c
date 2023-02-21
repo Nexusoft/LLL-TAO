@@ -33,6 +33,34 @@ int crypto_kem_keypair(uint8_t *pk,
   return 0;
 }
 
+
+/*************************************************
+* Name:        crypto_kem_keypair
+*
+* Description: Generates public and private key
+*              for CCA-secure Kyber key encapsulation mechanism
+*
+* Arguments:   - uint8_t *pk: pointer to output public key
+*                (an already allocated array of KYBER_PUBLICKEYBYTES bytes)
+*              - uint8_t *sk: pointer to output private key
+*                (an already allocated array of KYBER_SECRETKEYBYTES bytes)
+*
+* Returns 0 (success)
+**************************************************/
+int crypto_kem_keypair_seed(uint8_t *pk,
+                            uint8_t *sk,
+                            uint8_t *seed)
+{
+  size_t i;
+  indcpa_keypair_seed(pk, sk, seed);
+  for(i=0;i<KYBER_INDCPA_PUBLICKEYBYTES;i++)
+    sk[i+KYBER_INDCPA_SECRETKEYBYTES] = pk[i];
+  hash_h(sk+KYBER_SECRETKEYBYTES-2*KYBER_SYMBYTES, pk, KYBER_PUBLICKEYBYTES);
+  /* Value z for pseudo-random output on reject */
+  randombytes(sk+KYBER_SECRETKEYBYTES-KYBER_SYMBYTES, KYBER_SYMBYTES);
+  return 0;
+}
+
 /*************************************************
 * Name:        crypto_kem_enc
 *

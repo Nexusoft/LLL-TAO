@@ -7,9 +7,15 @@
 
 #define gen_matrix KYBER_NAMESPACE(gen_matrix)
 void gen_matrix(polyvec *a, const uint8_t seed[KYBER_SYMBYTES], int transposed);
+
 #define indcpa_keypair KYBER_NAMESPACE(indcpa_keypair)
 void indcpa_keypair(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
                     uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES]);
+
+#define indcpa_keypair_seed KYBER_NAMESPACE(indcpa_keypair_seed)
+void indcpa_keypair_seed(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
+                         uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES],
+                         uint8_t buf[KYBER_SEEDBYTES]);
 
 #define indcpa_enc KYBER_NAMESPACE(indcpa_enc)
 void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],
