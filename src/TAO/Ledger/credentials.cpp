@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/include/argon2.h>
 #include <LLC/include/flkey.h>
+#include <LLC/include/kyber.h>
 #include <LLC/include/eckey.h>
 
 #include <LLD/include/global.h>
@@ -208,11 +209,11 @@ namespace TAO
 
 
         /* This function is responsible for genearting the private key in the keychain of a specific account. */
-        uint512_t Credentials::Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const
+        uint512_t Credentials::Generate(const std::string& strName, const uint32_t nKeyID, const SecureString& strSecret) const
         {
             /* Check if we have this key already. */
-            if(mapCrypto.count(strType))
-                return mapCrypto[strType];
+            if(mapCrypto.count(strName))
+                return mapCrypto[strName];
 
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
@@ -231,7 +232,7 @@ namespace TAO
             vSecret.insert(vSecret.end(), (uint8_t*)&nKeyID, (uint8_t*)&nKeyID + sizeof(nKeyID));
 
             /* Seed secret data with the key type. */
-            vSecret.insert(vSecret.end(), strType.begin(), strType.end());
+            vSecret.insert(vSecret.end(), strName.begin(), strName.end());
 
             /* Argon2 hash the secret */
             const uint512_t hashKey = LLC::Argon2_512(vPassword, vUsername, vSecret,
@@ -239,7 +240,7 @@ namespace TAO
                             uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
             /* Set our internal cache for quick access. */
-            mapCrypto[strType] = hashKey;
+            mapCrypto[strName] = hashKey;
 
             return hashKey;
         }
@@ -262,7 +263,7 @@ namespace TAO
 
 
         /* This function generates a hash of a public key generated from random seed phrase. */
-        uint256_t Credentials::SignatureKey(const std::string& strType, const SecureString& strSecret,
+        uint256_t Credentials::SignatureKey(const std::string& strName, const SecureString& strSecret,
                                             const uint8_t nType, const uint32_t nKeyID) const
         {
             /* The public key bytes */
@@ -270,10 +271,10 @@ namespace TAO
 
             /* Check if we have this key in our internal map. */
             uint512_t hashSecret = 0;
-            if(mapCrypto.count(strType))
-                hashSecret = mapCrypto[strType];
+            if(mapCrypto.count(strName))
+                hashSecret = mapCrypto[strName];
             else
-                hashSecret = Generate(strType, nKeyID, strSecret);
+                hashSecret = Generate(strName, nKeyID, strSecret);
 
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();
@@ -324,9 +325,41 @@ namespace TAO
 
 
         /* This function generates a hash of a public key generated from random seed phrase using key-encapsulation mechanism. */
-        uint256_t Credentials::CertificateKey(const SecureString& strSecret, const uint8_t nType, const uint32_t nKeyID) const
+        uint256_t Credentials::CertificateKey(const std::string& strName, const SecureString& strSecret, const uint8_t nType, const uint32_t nKeyID) const
         {
-            return 0;
+            /* The public key bytes */
+            std::vector<uint8_t> vPubKey (CRYPTO_PUBLICKEYBYTES, 0);
+            std::vector<uint8_t> vPrivKey(CRYPTO_SECRETKEYBYTES, 0);
+
+            /* Check if we have this key in our internal map. */
+            uint512_t hashSecret = 0;
+            if(mapCrypto.count(strName))
+                hashSecret = mapCrypto[strName];
+            else
+                hashSecret = Generate(strName, nKeyID, strSecret);
+
+            /* Get the secret from new key. */
+            const std::vector<uint8_t> vSecret =
+                hashSecret.GetBytes();
+
+            /* Switch based on signature type. */
+            switch(nType)
+            {
+                /* Support for the KYBER key encapsulation mechanism. */
+                case KEM::KYBER:
+                {
+                    /* Generate our shared key using entropy from our secret hash. */
+                    crypto_kem_keypair_from_secret(&vPubKey[0], &vPrivKey[0], &vSecret[0]);
+
+                    break;
+                }
+
+                default:
+                    throw debug::exception(FUNCTION, "unsupported key type ", uint32_t(nType));
+            }
+
+            /* Calculate the key hash. */
+            return LLC::SK256(vPubKey, nType);
         }
 
 

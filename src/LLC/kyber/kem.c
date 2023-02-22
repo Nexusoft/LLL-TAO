@@ -52,7 +52,7 @@ int crypto_kem_keypair(uint8_t *pk,
 **************************************************/
 int crypto_kem_keypair_from_secret(uint8_t *pk,
                                    uint8_t *sk,
-                                   uint8_t *secret)
+                                   const uint8_t *secret)
 {
   size_t i;
   indcpa_keypair_from_secret(pk, sk, secret);

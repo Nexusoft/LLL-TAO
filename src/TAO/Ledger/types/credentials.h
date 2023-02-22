@@ -166,13 +166,13 @@ namespace TAO
              *  This function is responsible for generating the private key in the sigchain of a specific account.
              *  The sigchain is a series of keys seeded from a secret phrase and a PIN number.
              *
-             *  @param[in] strType The type of signing key used.
+             *  @param[in] strName The type of signing key used.
              *  @param[in] nKeyID The key number in the keychian
              *  @param[in] strSecret The secret phrase to use
              *
              *  @return The 512 bit hash of this key in the series.
              **/
-            uint512_t Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const;
+            uint512_t Generate(const std::string& strName, const uint32_t nKeyID, const SecureString& strSecret) const;
 
 
             /** GenerateRecovery
@@ -192,27 +192,28 @@ namespace TAO
              *
              *  This function generates a hash of a public key generated from random seed phrase.
              *
-             *  @param[in] strType The type of signing key used.
+             *  @param[in] strName The name of signing key used.
              *  @param[in] strSecret The secret phrase to use
              *  @param[in] nType The key type to use.
              *  @param[in] nKeyID The key number in the keychian
              *
              *  @return The 256 bit hash of this key in the series.
              **/
-            uint256_t SignatureKey(const std::string& strType, const SecureString& strSecret, const uint8_t nType, const uint32_t nKeyID = 0) const;
+            uint256_t SignatureKey(const std::string& strName, const SecureString& strSecret, const uint8_t nType, const uint32_t nKeyID = 0) const;
 
 
             /** CertificateKey
              *
              *  This function generates a hash of a public key generated from random seed phrase using key-encapsulation mechanism.
              *
+             *  @param[in] strName The name of certificate key used.
              *  @param[in] strSecret The secret phrase to use
              *  @param[in] nType The key type to use.
              *  @param[in] nKeyID The key number in the keychian
              *
              *  @return The 256 bit hash of this key in the series.
              **/
-            uint256_t CertificateKey(const SecureString& strSecret, const uint8_t nType, const uint32_t nKeyID = 0) const;
+            uint256_t CertificateKey(const std::string& strName, const SecureString& strSecret, const uint8_t nType, const uint32_t nKeyID = 0) const;
 
 
             /** RecoveryHash

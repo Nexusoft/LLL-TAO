@@ -14,8 +14,8 @@ void indcpa_keypair(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
 
 #define indcpa_keypair_from_secret KYBER_NAMESPACE(indcpa_keypair_from_secret)
 void indcpa_keypair_from_secret(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
-                         uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES],
-                         uint8_t secret[2*KYBER_SYMBYTES]);
+                                uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES],
+                                const uint8_t secret[2*KYBER_SYMBYTES]);
 
 #define indcpa_enc KYBER_NAMESPACE(indcpa_enc)
 void indcpa_enc(uint8_t c[KYBER_INDCPA_BYTES],

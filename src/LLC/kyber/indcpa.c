@@ -254,7 +254,7 @@ void indcpa_keypair(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
 **************************************************/
 void indcpa_keypair_from_secret(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
                                 uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES],
-                                uint8_t secret[2*KYBER_SYMBYTES])
+                                const uint8_t secret[2*KYBER_SYMBYTES])
 {
     unsigned int i;
     uint8_t buf[2*KYBER_SYMBYTES];

@@ -139,13 +139,9 @@ const uint256_t hashSeed = 55;
 
 #include <Util/types/precision.h>
 
-extern "C"
-{
-    #include <LLC/kyber/kem.h>
-    #include <LLC/kyber/symmetric.h>
-}
-
 #include <LLC/include/encrypt.h>
+
+#include <LLC/include/kyber.h>
 
 
 class KyberHandshake
@@ -362,8 +358,10 @@ int main(void)
 
     node1.CompleteHandshake(vResponse);
 
-    debug::log(0, "PubKey 1: ", node1.PubKeyHash().ToString());
-    debug::log(0, "PubKey 2: ", node2.PubKeyHash().ToString());
+    debug::log(0, "PubKey 1a: ", node1.PubKeyHash().ToString());
+    debug::log(0, "PubKey 1b: ", user1.CertificateKey("cert", "1234", TAO::Ledger::KEM::KYBER).ToString());
+    debug::log(0, "PubKey 2a: ", node2.PubKeyHash().ToString());
+    debug::log(0, "PubKey 2b: ", user2.CertificateKey("cert", "1234", TAO::Ledger::KEM::KYBER).ToString());
 
     std::string strPayload = "This is our message that we have now decrypted! We want to test that this is coming through even with a lot of data!";
 
