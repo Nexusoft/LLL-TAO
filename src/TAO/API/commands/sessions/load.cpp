@@ -129,7 +129,9 @@ namespace TAO::API
         }
         catch(const std::exception& e)
         {
-            throw Exception(-309, "Error loading session."); // generic message callers can't brute force session id's
+            /* Erase our session if we failed to deserialize. */
+            LLD::Local->EraseSession(hashGenesis);
+            throw Exception(-309, "Error decrypting session"); // generic message callers can't brute force session id's
         }
     }
 }

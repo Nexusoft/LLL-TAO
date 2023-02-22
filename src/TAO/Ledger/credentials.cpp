@@ -312,7 +312,6 @@ namespace TAO
                     vchPubKey = key.GetPubKey();
 
                     break;
-
                 }
 
                 default:

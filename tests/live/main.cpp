@@ -162,6 +162,9 @@ class KyberHandshake
     /** The shared key stored as a 256-bit unsigned integer. **/
     uint256_t hashKey;
 
+    /** The current user that is initiating this handshake. **/
+    const uint256_t hashGenesis;
+
 public:
 
     /** KyberHandshake
@@ -171,11 +174,12 @@ public:
      *  @param[in] hashSeedIn The seed data used to generate public/private keypairs.
      *
      **/
-    KyberHandshake(const uint256_t& hashSeedIn)
-    : vPubKey  (CRYPTO_PUBLICKEYBYTES, 0)
-    , vPrivKey (CRYPTO_SECRETKEYBYTES, 0)
-    , vSeed    (hashSeedIn.GetBytes())
-    , hashKey  (0)
+    KyberHandshake(const uint256_t& hashSeedIn, const uint256_t& hashGenesisIn)
+    : vPubKey     (CRYPTO_PUBLICKEYBYTES, 0)
+    , vPrivKey    (CRYPTO_SECRETKEYBYTES, 0)
+    , vSeed       (hashSeedIn.GetBytes())
+    , hashKey     (0)
+    , hashGenesis (hashGenesisIn)
     {
     }
 
@@ -191,7 +195,7 @@ public:
     {
         return LLC::SK256(vPubKey);
     }
-    
+
 
     /** ValidateHandshake
      *
@@ -236,6 +240,7 @@ public:
 
         return vPubKey;
     }
+
 
     /** RespondHandshake
      *
@@ -345,8 +350,8 @@ int main(void)
 
     uint256_t hash2 = LLC::SK256("testing2");
 
-    KyberHandshake shake(hash);
-    KyberHandshake shake2(hash2);
+    KyberHandshake shake(hash, TAO::Ledger::Credentials::Genesis("testing"));
+    KyberHandshake shake2(hash2, TAO::Ledger::Credentials::Genesis("testing2"));
 
     const std::vector<uint8_t> vPayload = shake.InitiateHandshake();
 
