@@ -95,7 +95,7 @@ namespace TAO::API
         /* Push the new session to auth. */
         Authentication::Insert(hashSession, tSession);
 
-        /* Update our network key if it's live. */
+        /* Update our network signing key if it's enabled. */
         if(hashNetwork != 0)
             Authentication::Update(jParams, TAO::Ledger::PinUnlock::NETWORK, strPIN);
 

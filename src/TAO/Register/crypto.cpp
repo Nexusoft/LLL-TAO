@@ -112,19 +112,19 @@ namespace TAO::Register
 
 
     /* Verify signature data to a pubkey and valid key hash inside crypto object register. */
-    bool Crypto::VerifySignature(const std::string& strKey, const bytes_t& vData, const bytes_t& vPubKey, const bytes_t& vSig)
+    bool Crypto::VerifySignature(const std::string& strName, const bytes_t& vData, const bytes_t& vPubKey, const bytes_t& vSig)
     {
         /* Check that the requested key is in the crypto register */
-        if(!Check(strKey))
-            return debug::error(FUNCTION, strKey, " type not found in crypto register");
+        if(!Check(strName))
+            return debug::error(FUNCTION, strName, " type not found in crypto register");
 
         /* Check the authorization hash. */
         const uint256_t hashPubKey =
-            get<uint256_t>(strKey);
+            get<uint256_t>(strName);
 
         /* Check that the hashed public key exists in the register*/
         if(hashPubKey == 0)
-            return debug::error(FUNCTION, strKey, " is disabled, run crypto/create/", strKey);
+            return debug::error(FUNCTION, strName, " is disabled, run crypto/create/", strName);
 
         /* Get the encryption key type from the hash of the public key */
         const uint8_t nType =
@@ -178,20 +178,20 @@ namespace TAO::Register
 
 
     /* Generate a signature from signature chain credentials with valid key hash. */
-    bool Crypto::GenerateSignature(const std::string& strKey, const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
+    bool Crypto::GenerateSignature(const std::string& strName, const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
                                    const SecureString& strPIN, const bytes_t& vData, bytes_t &vPubKey, bytes_t &vSig)
     {
         /* Check that the requested key is in the crypto register */
-        if(!Check(strKey))
-            return debug::error(FUNCTION, strKey, " type not found in crypto register");
+        if(!Check(strName))
+            return debug::error(FUNCTION, strName, " type not found in crypto register");
 
         /* Check the authorization hash. */
         const uint256_t hashPubKey =
-            get<uint256_t>(strKey);
+            get<uint256_t>(strName);
 
         /* Check that the hashed public key exists in the register*/
         if(hashPubKey == 0)
-            return debug::error(FUNCTION, strKey, " is disabled, run crypto/create/", strKey);
+            return debug::error(FUNCTION, strName, " is disabled, run crypto/create/", strName);
 
         /* Get the encryption key type from the hash of the public key */
         const uint8_t nType =
@@ -199,7 +199,7 @@ namespace TAO::Register
 
         /* Generate our secret key. */
         const uint512_t hashSecret =
-            pCredentials->Generate(strKey, 0, strPIN);
+            pCredentials->Generate(strName, 0, strPIN);
 
         /* Get the secret from new key. */
         std::vector<uint8_t> vBytes = hashSecret.GetBytes();
