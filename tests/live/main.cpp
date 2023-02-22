@@ -150,9 +150,13 @@ extern "C"
 
 class KyberHandshake
 {
+    /** The internal binary data of the public key used for encryption. **/
     std::vector<uint8_t> vPubKey;
+
+    /** The internal binary data of the private key used for decryption. **/
     std::vector<uint8_t> vPrivKey;
 
+    /** The internal seed data that's used to deterministically generate our public keys. **/
     std::vector<uint8_t> vSeed;
 
     /** The shared key stored as a 256-bit unsigned integer. **/
@@ -160,26 +164,71 @@ class KyberHandshake
 
 public:
 
+    /** KyberHandshake
+     *
+     *  Create a handshake object using given deterministic seed.
+     *
+     *  @param[in] hashSeedIn The seed data used to generate public/private keypairs.
+     *
+     **/
     KyberHandshake(const uint256_t& hashSeedIn)
     : vPubKey  (CRYPTO_PUBLICKEYBYTES, 0)
     , vPrivKey (CRYPTO_SECRETKEYBYTES, 0)
     , vSeed    (hashSeedIn.GetBytes())
-    , hashKey  ( )
+    , hashKey  (0)
     {
     }
 
+
+    /** PubKeyHash
+     *
+     *  Get a hash of our internal public key for use in verification.
+     *
+     *  @return An SK-256 hash of the given public key.
+     *
+     **/
     const uint256_t PubKeyHash() const
     {
         return LLC::SK256(vPubKey);
     }
+    
 
-
-    const uint256_t SharedKey() const
+    /** ValidateHandshake
+     *
+     *  Validate a peer's certificate hash in crypto object register to the sent public key.
+     *
+     *  @param[in] hashPeerGenesis The genesis of the peer we are verifying.
+     *  @param[in] vPeerPub The binary data of peer's public key to check
+     *
+     *  @return True if the handshake was validated against the crypto object register.
+     *
+     **/
+    bool ValidateHandshake(const uint256_t& hashPeerGenesis, const std::vector<uint8_t>& vPeerPub) const
     {
-        return hashKey;
+        /* Generate register address for crypto register deterministically */
+        const TAO::Register::Address addrCrypto =
+            TAO::Register::Address(std::string("crypto"), hashPeerGenesis, TAO::Register::Address::CRYPTO);
+
+        /* Read the existing crypto object register. */
+        TAO::Register::Crypto oCrypto;
+        if(!LLD::Register->ReadObject(addrCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
+            return debug::error(FUNCTION, "Failed to read crypto object register");
+
+        /* Check the crypto object register mathces our peer's public key hash ot make sure they aren't an imposter. */
+        if(oCrypto.get<uint256_t>("cert") != LLC::SK256(vPeerPub))
+            return debug::error(FUNCTION, "peer certificate key mismatch to public key");
+
+        return true;
     }
 
 
+    /** InitiateHandshake
+     *
+     *  Generate a keypair using seed phrase and return the public key for transmission to peer.
+     *
+     *  @return The binary data of encdoded public key.
+     *
+     **/
     const std::vector<uint8_t> InitiateHandshake()
     {
         /* Generate our shared key using entropy from our seed hash. */
@@ -188,25 +237,45 @@ public:
         return vPubKey;
     }
 
-
+    /** RespondHandshake
+     *
+     *  Take a given peer's public key and encrypt a shared key to pass to peer.
+     *
+     *  @param[in] vPeerPub The binary data of peer's public key to encode
+     *
+     *  @return The binary data of encdoded handshake.
+     *
+     **/
     const std::vector<uint8_t> RespondHandshake(const std::vector<uint8_t>& vPeerPub)
     {
+        /* Build our ciphertext vector to hold the handshake data. */
         std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
 
+        /* Generate a keypair as part of our response. */
         crypto_kem_keypair_seed(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
 
+        /* Generate our shared key and encode using peer's public key. */
         std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
         crypto_kem_enc(&vCiphertext[0], &vShared[0], &vPeerPub[0]);
 
-        hashKey = LLC::SK256(vShared);
-
+        /* Build our response message packaging our public key and ciphertext. */
         DataStream ssHandshake(SER_NETWORK, 1);
         ssHandshake << vPubKey << vCiphertext;
+
+        /* Finally set our internal value for the shared key hash. */
+        hashKey = LLC::SK256(vShared);
 
         return ssHandshake.Bytes();
     }
 
 
+    /** CompleteHandshake
+     *
+     *  Take a given encoded handshake and decrypt the shared key using our private key.
+     *
+     *  @param[in] vHandshake The binary data of handshake passed from socket buffers.
+     *
+     **/
     void CompleteHandshake(const std::vector<uint8_t>& vHandshake)
     {
         /* Get our handshake in a datastream to deserialize. */
@@ -229,17 +298,46 @@ public:
     }
 
 
+    /** Encrypt
+     *
+     *  Encrypt a given piece of data with a shared key using AES256
+     *
+     *  @param[in] vPlainText The plaintext data to encrypt
+     *  @param[out] vCipherText The encrypted data returned.
+     *
+     *  @return True if encryption succeeded, false if not.
+     *
+     **/
     bool Encrypt(const std::vector<uint8_t>& vPlainText, std::vector<uint8_t> &vCipherText)
     {
+        /* Check that we have a shared key already. */
+        if(hashKey == 0)
+            return debug::error(FUNCTION, "cannot encrypt without first initiating handshake");
+
         return LLC::EncryptAES256(hashKey.GetBytes(), vPlainText, vCipherText);
     }
 
 
+    /** Decrypt
+     *
+     *  Decrypt a given piece of data with a shared key using AES256
+     *
+     *  @param[in] vCipherText The encrypted ciphertext data to decrypt.
+     *  @param[out] vPlainText The decrypted data returned.
+     *
+     *  @return True if decryption succeeded, false if not.
+     *
+     **/
     bool Decrypt(const std::vector<uint8_t>& vCipherText, std::vector<uint8_t> &vPlainText)
     {
+        /* Check that we have a shared key already. */
+        if(hashKey == 0)
+            return debug::error(FUNCTION, "cannot decrypt without first initiating handshake");
+
         return LLC::DecryptAES256(hashKey.GetBytes(), vCipherText, vPlainText);
     }
 };
+
 
 int main(void)
 {
@@ -258,9 +356,6 @@ int main(void)
 
     debug::log(0, "PubKey 1: ", shake.PubKeyHash().ToString());
     debug::log(0, "PubKey 2: ", shake2.PubKeyHash().ToString());
-
-    debug::log(0, "Shared 1: ", shake.SharedKey().ToString());
-    debug::log(0, "Shared 2: ", shake2.SharedKey().ToString());
 
     std::string strPayload = "This is our message to encrypt!";
 
