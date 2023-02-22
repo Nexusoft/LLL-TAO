@@ -79,6 +79,10 @@ namespace TAO::API
                 /* Grab a reference of our hash. */
                 const uint512_t& hashEvent = rEvent.first;
 
+                /* Check that transaction is in main-chain. */
+                if(!LLD::Ledger->HasIndex(hashEvent))
+                    continue;
+
                 /* Check for Tritium transaction. */
                 if(hashEvent.GetType() == TAO::Ledger::TRITIUM)
                 {
@@ -93,6 +97,12 @@ namespace TAO::API
 
                     /* Check if the transaction is mature. */
                     if(!tx.Mature(hashEvent))
+                        continue;
+                }
+                else
+                {
+                    /* Check if the transaction is mature. */
+                    if(LLD::Legacy->IsSpent(hashEvent, rEvent.second))
                         continue;
                 }
 
