@@ -543,6 +543,7 @@ namespace TAO::API
                             }
                             while(LLD::Logical->ReadTritiumSequence(hashGenesis, nTritiumSequence));
 
+
                             /* Get our current legacy events sequence now. */
                             uint32_t nLegacySequence = 0;
                             LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence);
@@ -573,7 +574,6 @@ namespace TAO::API
                                 }
                             }
                             while(LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence));
-
 
 
                             /* Get the last txid in sigchain. */
@@ -614,15 +614,15 @@ namespace TAO::API
                 else
                 {
                     /* Read our last sequence. */
-                    uint32_t nSequence = 0;
-                    LLD::Logical->ReadTritiumSequence(hashGenesis, nSequence);
+                    uint32_t nTritiumSequence = 0;
+                    LLD::Logical->ReadTritiumSequence(hashGenesis, nTritiumSequence);
 
                     /* Debug output so w4e can track our events indexes. */
-                    debug::log(2, FUNCTION, "Building events indexes from ", nSequence, " for genesis=", hashGenesis.SubString());
+                    debug::log(2, FUNCTION, "Building events indexes from ", VARIABLE(nTritiumSequence), " for genesis=", hashGenesis.SubString());
 
                     /* Loop through our ledger level events. */
                     TAO::Ledger::Transaction tNext;
-                    while(LLD::Ledger->ReadEvent(hashGenesis, nSequence++, tNext))
+                    while(LLD::Ledger->ReadEvent(hashGenesis, nTritiumSequence++, tNext))
                     {
                         /* Check for shutdown. */
                         if(config::fShutdown.load())
@@ -635,6 +635,29 @@ namespace TAO::API
                         /* Index our dependant transaction. */
                         IndexDependant(hashEvent, tNext);
                     }
+                }
+
+                /* Read our last sequence. */
+                uint32_t nLegacySequence = 0;
+                LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence);
+
+                /* Debug output so w4e can track our events indexes. */
+                debug::log(2, FUNCTION, "Building events indexes from ", VARIABLE(nLegacySequence), " for genesis=", hashGenesis.SubString());
+
+                /* Loop through our ledger level events. */
+                Legacy::Transaction tNext;
+                while(LLD::Legacy->ReadEvent(hashGenesis, nLegacySequence++, tNext))
+                {
+                    /* Check for shutdown. */
+                    if(config::fShutdown.load())
+                        return;
+
+                    /* Cache our current event's txid. */
+                    const uint512_t hashEvent =
+                        tNext.GetHash();
+
+                    /* Index our dependant transaction. */
+                    IndexDependant(hashEvent, tNext);
                 }
             }
             catch(const Exception& e)
