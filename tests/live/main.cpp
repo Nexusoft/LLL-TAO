@@ -362,7 +362,7 @@ int main(void)
     debug::log(0, "PubKey 1: ", shake.PubKeyHash().ToString());
     debug::log(0, "PubKey 2: ", shake2.PubKeyHash().ToString());
 
-    std::string strPayload = "This is our message to encrypt!";
+    std::string strPayload = "This is our message that we have now decrypted! We want to test that this is coming through even with a lot of data!";
 
     std::vector<uint8_t> vCipherText;
     shake.Encrypt(std::vector<uint8_t>(strPayload.begin(), strPayload.end()), vCipherText);

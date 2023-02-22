@@ -152,52 +152,50 @@ namespace LLP
                             /* Cache the txid. */
                             const uint512_t hashTx = tx.GetHash();
 
+                            /* Run basic merkle tx checks */
+                            if(!tx.Verify())
+                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+
+                            /* Handle for regular dependant specifier. */
+                            if(nSpecifier == SPECIFIER::TRITIUM)
                             {
                                 LOCK(TritiumNode::CLIENT_MUTEX);
 
-                                /* Run basic merkle tx checks */
-                                if(!tx.Verify())
-                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                                /* Begin our ACID transaction across LLD instances. */
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
 
-                                /* Handle for regular dependant specifier. */
-                                if(nSpecifier == SPECIFIER::TRITIUM)
+                                /* Terminate early if we have already indexed this transaction. */
+                                if(!LLD::Client->HasIndex(hashTx))
                                 {
-                                    /* Begin our ACID transaction across LLD instances. */
-                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                    /* Commit transaction to disk. */
+                                    if(!LLD::Client->WriteTx(hashTx, tx))
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
 
-                                    /* Terminate early if we have already indexed this transaction. */
-                                    if(!LLD::Client->HasIndex(hashTx))
-                                    {
-                                        /* Commit transaction to disk. */
-                                        if(!LLD::Client->WriteTx(hashTx, tx))
-                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
-
-                                        /* Index the transaction to it's block. */
-                                        if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: failed to write block indexing entry");
-                                    }
-
-                                    /* Add our events level indexes now. */
-                                    TAO::API::Indexing::IndexDependant(hashTx, tx);
-
-                                    /* Commit our ACID transaction across LLD instances. */
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                    /* Index the transaction to it's block. */
+                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: failed to write block indexing entry");
                                 }
 
-                                /* Connect transaction in memory if register specifier. */
-                                else
-                                {
-                                    /* Get our register address. */
-                                    uint256_t hashRegister;
-                                    ssPacket >> hashRegister;
+                                /* Add our events level indexes now. */
+                                TAO::API::Indexing::IndexDependant(hashTx, tx);
 
-                                    /* Commit our register to disk now. */
-                                    if(!tx.CommitLookup(hashRegister))
-                                        return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-                                }
-
-                                debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+                                /* Commit our ACID transaction across LLD instances. */
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                             }
+
+                            /* Connect transaction in memory if register specifier. */
+                            else
+                            {
+                                /* Get our register address. */
+                                uint256_t hashRegister;
+                                ssPacket >> hashRegister;
+
+                                /* Commit our register to disk now. */
+                                if(!tx.CommitLookup(hashRegister))
+                                    return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                            }
+
+                            debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                             break;
                         }
@@ -212,39 +210,36 @@ namespace LLP
                             /* Cache the txid. */
                             const uint512_t hashTx = tx.GetHash();
 
-                            {
-                                LOCK(TritiumNode::CLIENT_MUTEX);
+                            /* Run basic merkle tx checks */
+                            if(!tx.Verify())
+                                return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
-                                /* Run basic merkle tx checks */
-                                if(!tx.Verify())
-                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                            /* Begin our ACID transaction across LLD instances. */
+                            { LOCK(TritiumNode::CLIENT_MUTEX);
 
-                                /* Begin our ACID transaction across LLD instances. */
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+
+                                /* Check if we have this transaction already. */
+                                if(!LLD::Client->HasIndex(hashTx))
                                 {
-                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                    /* Commit transaction to disk. */
+                                    if(!LLD::Client->WriteTx(hashTx, tx))
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
 
-                                    /* Check if we have this transaction already. */
-                                    if(!LLD::Client->HasIndex(hashTx))
-                                    {
-                                        /* Commit transaction to disk. */
-                                        if(!LLD::Client->WriteTx(hashTx, tx))
-                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
-
-                                        /* Index the transaction to it's block. */
-                                        if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                            return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: failed to write block indexing entry");
-                                    }
-
-                                    /* Add our events level indexes now. */
-                                    TAO::API::Indexing::IndexDependant(hashTx, tx);
-
-                                    /* Commit our ACID transaction across LLD instances. */
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                    /* Index the transaction to it's block. */
+                                    if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: failed to write block indexing entry");
                                 }
 
-                                /* Write Success to log. */
-                                debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+                                /* Add our events level indexes now. */
+                                TAO::API::Indexing::IndexDependant(hashTx, tx);
+
+                                /* Commit our ACID transaction across LLD instances. */
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                             }
+
+                            /* Write Success to log. */
+                            debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
 
                             break;
                         }

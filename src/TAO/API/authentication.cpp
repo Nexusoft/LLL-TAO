@@ -528,7 +528,7 @@ namespace TAO::API
 
         /* Check for active session. */
         if(!mapSessions.count(hashSession))
-            return debug::error("Session not found");
+            return false;
 
         /* Get a copy of our current active session. */
         const Session& rSession =
@@ -536,20 +536,11 @@ namespace TAO::API
 
         /* Check for initializing sigchain. */
         if(rSession.fInitializing.load())
-            return debug::error("Cannot unlock while initializing dynamic indexing services: Check sessions/status/local");
+            return false;
 
         /* Get the active pin if not currently stored. */
         if(!rSession.Unlock(strPIN, nRequestedActions))
-            return debug::error("Failed to unlock (No PIN)");
-
-        /* Check internal authenticate function. */
-        if(!authenticate(strPIN, rSession))
-        {
-            /* Increment failure and throw. */
-            increment_failures(hashSession);
-
-            return debug::error("Failed to unlock (Invalid PIN)");
-        }
+            return false;
 
         return true;
     }
@@ -587,7 +578,7 @@ namespace TAO::API
                 mapSessions[hashSession];
 
             /* Check for initializing sigchain. */
-            if(rSession.fInitializing.load())
+            if(!(nUpdatedActions & TAO::Ledger::PinUnlock::NETWORK) && rSession.fInitializing.load())
                 throw Exception(-139, "Cannot unlock while initializing dynamic indexing services: Check sessions/status/local");
 
             /* Update our internal session. */
