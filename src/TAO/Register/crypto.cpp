@@ -131,8 +131,7 @@ namespace TAO::Register
             hashPubKey.GetType();
 
         /* Grab hash of incoming pubkey and set its type. */
-        uint256_t hashCheck = LLC::SK256(vPubKey);
-        hashCheck.SetType(nType);
+        const uint256_t hashCheck = LLC::SK256(vPubKey, nType);
 
         /* Check the public key to expected authorization key. */
         if(hashPubKey != hashCheck)
@@ -257,11 +256,8 @@ namespace TAO::Register
         }
 
         /* Calculate the key hash. */
-        uint256_t hashCheck =
-            LLC::SK256(vPubKey);
-
-        /* Set the leading byte. */
-        hashCheck.SetType(nType);
+        const uint256_t hashCheck =
+            LLC::SK256(vPubKey, nType);
 
         /* Check the public key to expected authorization key. */
         if(hashPubKey != hashCheck)
