@@ -261,9 +261,8 @@ namespace TAO
         }
 
 
-        /* This function generates a public key generated from random seed phrase. */
-        std::vector<uint8_t> Credentials::SigningKey(const std::string& strType, const uint32_t nKeyID,
-                                                     const SecureString& strSecret, const uint8_t nType) const
+        /* This function generates a hash of a public key generated from random seed phrase. */
+        uint256_t Credentials::SignatureKey(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
         {
             /* The public key bytes */
             std::vector<uint8_t> vchPubKey;
@@ -317,18 +316,6 @@ namespace TAO
                 default:
                     throw debug::exception(FUNCTION, "unsupported key type ", uint32_t(nType));
             }
-
-            /* return the public key */
-            return vchPubKey;
-        }
-
-
-        /* This function generates a hash of a public key generated from random seed phrase. */
-        uint256_t Credentials::SigningKeyHash(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
-        {
-            /* Generate the public key */
-            const std::vector<uint8_t> vchPubKey =
-                SigningKey(strType, nKeyID, strSecret, nType);
 
             /* Calculate the key hash. */
             return LLC::SK256(vchPubKey, nType);

@@ -178,10 +178,10 @@ namespace TAO::API
         const TAO::Register::Object oCrypto =
             TAO::Register::CreateCrypto
             (
-                pCredentials->SigningKeyHash("auth", 0, strPIN,    TAO::Ledger::SIGNATURE::BRAINPOOL),
+                pCredentials->SignatureKey("auth", 0, strPIN,    TAO::Ledger::SIGNATURE::BRAINPOOL),
                 0, //lisp key disabled for now
-                pCredentials->SigningKeyHash("network", 0, strPIN, TAO::Ledger::SIGNATURE::BRAINPOOL),
-                pCredentials->SigningKeyHash("sign", 0, strPIN,    TAO::Ledger::SIGNATURE::BRAINPOOL),
+                pCredentials->SignatureKey("network", 0, strPIN, TAO::Ledger::SIGNATURE::BRAINPOOL),
+                pCredentials->SignatureKey("sign", 0, strPIN,    TAO::Ledger::SIGNATURE::BRAINPOOL),
                 0, //verify key disabled for now
                 0, //cert disabled for now
                 0, //app1 disabled for now

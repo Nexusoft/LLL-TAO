@@ -238,6 +238,37 @@ namespace TAO
         };
 
 
+        /** Key encapuslation mechanisms for network encryption. Values must be unique with SIGNATURE enum. **/
+        struct KEM
+        {
+            enum : uint8_t
+            {
+                /** Reserved. **/
+                RESERVED    = 0x00,
+
+                /** KYBER key encapsulation mechanism. **/
+                KYBER       = 0x11,
+
+                /** SABER key encapsulation mechanism. **/
+                SABER       = 0x12,
+            };
+
+            /* Track a mapping to enum. */
+            __attribute__((const)) static inline uint8_t TYPE(const std::string& strType)
+            {
+                /* Check for brainpool standard. */
+                if(strType == "kyber")
+                    return KEM::KYBER;
+
+                /* Check for falcon standard. */
+                if(strType == "saber")
+                    return KEM::SABER;
+
+                return SIGNATURE::RESERVED;
+            }
+        };
+
+
         /** State values for a transaction. **/
         struct CHANNEL
         {
