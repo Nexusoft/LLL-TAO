@@ -331,12 +331,7 @@ namespace TAO
                 SigningKey(strType, nKeyID, strSecret, nType);
 
             /* Calculate the key hash. */
-            uint256_t hashRet =
-                LLC::SK256(vchPubKey);
-
-            /* Set the leading byte. */
-            hashRet.SetType(nType);
-            return hashRet;
+            return LLC::SK256(vchPubKey, nType);
         }
 
 

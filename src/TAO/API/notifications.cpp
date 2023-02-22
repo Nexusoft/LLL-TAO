@@ -129,12 +129,26 @@ namespace TAO::API
                             if(!LLD::Ledger->ReadTx(hashEvent, tx))
                                 continue;
 
+                            /* Check that transaction is in main-chain. */
+                            if(!LLD::Ledger->HasIndex(hashEvent))
+                                continue;
+
                             /* Check if contract has been burned. */
                             if(tx.Burned(hashEvent, rEvent.second))
                                 continue;
 
                             /* Check if the transaction is mature. */
                             if(!tx.Mature(hashEvent))
+                                continue;
+                        }
+                        else
+                        {
+                            /* Check if the transaction is mature. */
+                            if(LLD::Legacy->IsSpent(hashEvent, rEvent.second))
+                                continue;
+
+                            /* Check that transaction is in main-chain. */
+                            if(!LLD::Ledger->HasIndex(hashEvent))
                                 continue;
                         }
 

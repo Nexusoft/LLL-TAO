@@ -176,6 +176,39 @@ namespace LLC
 
 
 	/** SK256
+	 *
+	 *  256-bit hashing template for Address Generation .
+	 *
+	 **/
+	__attribute__((pure)) inline uint256_t SK256(const std::vector<uint8_t>& vch, const uint8_t nType)
+	{
+		/* Check the cache for this data */
+		uint256_t hashKeccak;
+		if(!cache256.Get(vch, hashKeccak))
+		{
+			uint256_t hashSkein = 0;
+			Skein_256_Ctxt_t ctxSkein;
+			Skein_256_Init(&ctxSkein, 256);
+			Skein_256_Update(&ctxSkein, (uint8_t *)&vch[0], vch.size());
+			Skein_256_Final(&ctxSkein, (uint8_t *)&hashSkein);
+
+			Keccak_HashInstance ctxKeccak;
+			Keccak_HashInitialize_SHA3_256(&ctxKeccak);
+			Keccak_HashUpdate(&ctxKeccak, (uint8_t *)&hashSkein, 256);
+			Keccak_HashFinal(&ctxKeccak, (uint8_t *)&hashKeccak);
+
+			/* Set our inline datatype now. */
+			hashKeccak.SetType(nType);
+
+			/* Cache the hashed value */
+			cache256.Put(vch, hashKeccak);
+		}
+
+		return hashKeccak;
+	}
+
+
+	/** SK256
      *
      *  256-bit hashing template for Address Generation.
      *

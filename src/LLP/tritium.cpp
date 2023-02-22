@@ -2856,7 +2856,7 @@ namespace LLP
 
                         /* Run basic merkle tx checks */
                         if(!tx.Verify())
-                            return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                            return debug::error(FUNCTION, hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
                         /* Start our ACID transaction in case we have any failures here. */
                         { LOCK(CLIENT_MUTEX);
