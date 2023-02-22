@@ -174,7 +174,7 @@ public:
      *  @param[in] hashSeedIn The seed data used to generate public/private keypairs.
      *
      **/
-    KyberHandshake(const uint256_t& hashSeedIn, const uint256_t& hashGenesisIn)
+    KyberHandshake(const uint512_t& hashSeedIn, const uint256_t& hashGenesisIn)
     : vPubKey     (CRYPTO_PUBLICKEYBYTES, 0)
     , vPrivKey    (CRYPTO_SECRETKEYBYTES, 0)
     , vSeed       (hashSeedIn.GetBytes())
@@ -193,7 +193,7 @@ public:
      **/
     const uint256_t PubKeyHash() const
     {
-        return LLC::SK256(vPubKey);
+        return LLC::SK256(vPubKey, TAO::Ledger::KEM::KYBER);
     }
 
 
@@ -219,7 +219,7 @@ public:
             return debug::error(FUNCTION, "Failed to read crypto object register");
 
         /* Check the crypto object register mathces our peer's public key hash ot make sure they aren't an imposter. */
-        if(oCrypto.get<uint256_t>("cert") != LLC::SK256(vPeerPub))
+        if(oCrypto.get<uint256_t>("cert") != LLC::SK256(vPeerPub, TAO::Ledger::KEM::KYBER))
             return debug::error(FUNCTION, "peer certificate key mismatch to public key");
 
         return true;
@@ -236,7 +236,7 @@ public:
     const std::vector<uint8_t> InitiateHandshake()
     {
         /* Generate our shared key using entropy from our seed hash. */
-        crypto_kem_keypair_seed(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
+        crypto_kem_keypair_from_secret(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
 
         return vPubKey;
     }
@@ -257,7 +257,7 @@ public:
         std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
 
         /* Generate a keypair as part of our response. */
-        crypto_kem_keypair_seed(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
+        crypto_kem_keypair_from_secret(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
 
         /* Generate our shared key and encode using peer's public key. */
         std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
@@ -269,6 +269,8 @@ public:
 
         /* Finally set our internal value for the shared key hash. */
         hashKey = LLC::SK256(vShared);
+
+        debug::log(0, FUNCTION, "Shared: ", hashKey.ToString());
 
         return ssHandshake.Bytes();
     }
@@ -300,6 +302,8 @@ public:
 
         /* Hash our shared key binary data to provide additional level of security. */
         hashKey = LLC::SK256(vShared);
+
+        debug::log(0, FUNCTION, "Shared: ", hashKey.ToString());
     }
 
 
@@ -346,30 +350,29 @@ public:
 
 int main(void)
 {
-    uint256_t hash = LLC::SK256("testing");
+    TAO::Ledger::Credentials user1 = TAO::Ledger::Credentials("testing", "password");
+    TAO::Ledger::Credentials user2 = TAO::Ledger::Credentials("testing2", "password");
 
-    uint256_t hash2 = LLC::SK256("testing2");
+    KyberHandshake node1(user1.Generate("cert", 0, "1234"), user1.Genesis());
+    KyberHandshake node2(user2.Generate("cert", 0, "1234"), user2.Genesis());
 
-    KyberHandshake shake(hash, TAO::Ledger::Credentials::Genesis("testing"));
-    KyberHandshake shake2(hash2, TAO::Ledger::Credentials::Genesis("testing2"));
+    const std::vector<uint8_t> vPayload = node1.InitiateHandshake();
 
-    const std::vector<uint8_t> vPayload = shake.InitiateHandshake();
+    const std::vector<uint8_t> vResponse = node2.RespondHandshake(vPayload);
 
-    const std::vector<uint8_t> vResponse = shake2.RespondHandshake(vPayload);
+    node1.CompleteHandshake(vResponse);
 
-    shake.CompleteHandshake(vResponse);
-
-    debug::log(0, "PubKey 1: ", shake.PubKeyHash().ToString());
-    debug::log(0, "PubKey 2: ", shake2.PubKeyHash().ToString());
+    debug::log(0, "PubKey 1: ", node1.PubKeyHash().ToString());
+    debug::log(0, "PubKey 2: ", node2.PubKeyHash().ToString());
 
     std::string strPayload = "This is our message that we have now decrypted! We want to test that this is coming through even with a lot of data!";
 
     std::vector<uint8_t> vCipherText;
-    shake.Encrypt(std::vector<uint8_t>(strPayload.begin(), strPayload.end()), vCipherText);
+    node1.Encrypt(std::vector<uint8_t>(strPayload.begin(), strPayload.end()), vCipherText);
     debug::log(0, "Encrypted: ", std::string(vCipherText.begin(), vCipherText.end()));
 
     std::vector<uint8_t> vPlainText;
-    shake2.Decrypt(vCipherText, vPlainText);
+    node2.Decrypt(vCipherText, vPlainText);
     debug::log(0, "Decrypted: ", std::string(vPlainText.begin(), vPlainText.end()));
 
   return 0;

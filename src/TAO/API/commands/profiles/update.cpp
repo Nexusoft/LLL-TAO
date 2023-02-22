@@ -107,7 +107,7 @@ namespace TAO::API
                     tx.hashRecovery = pCredentials->RecoveryHash(strRecoveryNew, nRecoveryType);
 
                     /* Sign the transaction. */
-                    if(!tx.Sign(pCredentials->RecoveryKey(strRecovery)))
+                    if(!tx.Sign(pCredentials->GenerateRecovery(strRecovery)))
                         throw Exception(-31, "Ledger failed to sign transaction");
                 }
                 else

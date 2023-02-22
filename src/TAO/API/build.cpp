@@ -1018,34 +1018,34 @@ namespace TAO::API
 
         /* Update the AUTH key always. */
         ssUpdate << std::string("auth") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
-        ssUpdate << pCredentials->SignatureKey("auth", 0, strPIN, nKeyType);
+        ssUpdate << pCredentials->SignatureKey("auth", strPIN, nKeyType);
 
         /* Update the LISP network key if enabled. */
         if(oCrypto.get<uint256_t>("lisp") != 0)
         {
             ssUpdate << std::string("lisp") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
-            ssUpdate << pCredentials->SignatureKey("lisp", 0, strPIN, nKeyType);
+            ssUpdate << pCredentials->SignatureKey("lisp", strPIN, nKeyType);
         }
 
         /* Update the NETWORK key if enabled. */
         if(oCrypto.get<uint256_t>("network") != 0)
         {
             ssUpdate << std::string("network") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
-            ssUpdate << pCredentials->SignatureKey("network", 0, strPIN, nKeyType);
+            ssUpdate << pCredentials->SignatureKey("network", strPIN, nKeyType);
         }
 
         /* Update the SIGN key if enabled. */
         if(oCrypto.get<uint256_t>("sign") != 0)
         {
             ssUpdate << std::string("sign") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
-            ssUpdate << pCredentials->SignatureKey("sign", 0, strPIN, nKeyType);
+            ssUpdate << pCredentials->SignatureKey("sign", strPIN, nKeyType);
         }
 
         /* Update the VERIFY key if enabled. */
         if(oCrypto.get<uint256_t>("verify") != 0)
         {
             ssUpdate << std::string("verify") << uint8_t(TAO::Operation::OP::TYPES::UINT256_T);
-            ssUpdate << pCredentials->SignatureKey("verify", 0, strPIN, nKeyType);
+            ssUpdate << pCredentials->SignatureKey("verify", strPIN, nKeyType);
         }
 
         /* Add the crypto update contract. */

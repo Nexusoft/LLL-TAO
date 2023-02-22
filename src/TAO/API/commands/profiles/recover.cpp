@@ -115,7 +115,7 @@ namespace TAO::API
         }
 
         /* Sign the transaction. */
-        if(!tx.Sign(pCredentials->RecoveryKey(strRecovery)))
+        if(!tx.Sign(pCredentials->GenerateRecovery(strRecovery)))
         {
             pCredentials.free();
             throw Exception(-31, "Ledger failed to sign transaction");

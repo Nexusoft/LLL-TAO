@@ -246,7 +246,7 @@ namespace TAO
 
 
         /* This function version using far stronger argon2 hashing since the only data input is the seed phrase itself. */
-        uint512_t Credentials::RecoveryKey(const SecureString& strRecovery) const
+        uint512_t Credentials::GenerateRecovery(const SecureString& strRecovery) const
         {
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vSecret(strRecovery.begin(), strRecovery.end());
@@ -262,7 +262,8 @@ namespace TAO
 
 
         /* This function generates a hash of a public key generated from random seed phrase. */
-        uint256_t Credentials::SignatureKey(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret, const uint8_t nType) const
+        uint256_t Credentials::SignatureKey(const std::string& strType, const SecureString& strSecret,
+                                            const uint8_t nType, const uint32_t nKeyID) const
         {
             /* The public key bytes */
             std::vector<uint8_t> vchPubKey;
@@ -322,6 +323,13 @@ namespace TAO
         }
 
 
+        /* This function generates a hash of a public key generated from random seed phrase using key-encapsulation mechanism. */
+        uint256_t Credentials::CertificateKey(const SecureString& strSecret, const uint8_t nType, const uint32_t nKeyID) const
+        {
+            return 0;
+        }
+
+
         /* This function generates a hash of a public key generated from a recovery seed phrase. */
         uint256_t Credentials::RecoveryHash(const SecureString& strRecovery, const uint8_t nType) const
         {
@@ -333,7 +341,7 @@ namespace TAO
             timer.Reset();
 
             /* Get the private key. */
-            uint512_t hashSecret = RecoveryKey(strRecovery);
+            uint512_t hashSecret = GenerateRecovery(strRecovery);
 
             /* Get the secret from new key. */
             std::vector<uint8_t> vBytes = hashSecret.GetBytes();

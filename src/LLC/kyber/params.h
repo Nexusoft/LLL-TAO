@@ -2,7 +2,7 @@
 #define PARAMS_H
 
 #ifndef KYBER_K
-#define KYBER_K 3	/* Change this for different security strengths */
+#define KYBER_K 4	/* Change this for different security strengths */
 #endif
 
 //#define KYBER_90S	/* Uncomment this if you want the 90S variant */
@@ -35,7 +35,6 @@
 
 #define KYBER_SYMBYTES  32   /* size in bytes of hashes, and seeds */
 #define KYBER_SSBYTES   32   /* size in bytes of shared key */
-#define KYBER_SEEDBYTES 64   /* size in bytes of seeds to generate key */
 
 #define KYBER_POLYBYTES		384
 #define KYBER_POLYVECBYTES	(KYBER_K * KYBER_POLYBYTES)

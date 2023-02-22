@@ -32,8 +32,8 @@
 #define crypto_kem_keypair KYBER_NAMESPACE(keypair)
 int crypto_kem_keypair(uint8_t *pk, uint8_t *sk);
 
-#define crypto_kem_keypair_seed KYBER_NAMESPACE(keypair_seed)
-int crypto_kem_keypair_seed(uint8_t *pk, uint8_t *sk, uint8_t *seed);
+#define crypto_kem_keypair_from_secret KYBER_NAMESPACE(keypair_from_secret)
+int crypto_kem_keypair_from_secret(uint8_t *pk, uint8_t *sk, uint8_t *secret);
 
 #define crypto_kem_enc KYBER_NAMESPACE(enc)
 int crypto_kem_enc(uint8_t *ct, uint8_t *ss, const uint8_t *pk);

@@ -240,7 +240,7 @@ void indcpa_keypair(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
 
 
 /*************************************************
-* Name:        indcpa_keypair
+* Name:        indcpa_keypair_from_secret
 *
 * Description: Generates public and private key for the CPA-secure
 *              public-key encryption scheme underlying Kyber
@@ -248,11 +248,13 @@ void indcpa_keypair(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
 * Arguments:   - uint8_t *pk: pointer to output public key
 *                             (of length KYBER_INDCPA_PUBLICKEYBYTES bytes)
 *              - uint8_t *sk: pointer to output private key
-                              (of length KYBER_INDCPA_SECRETKEYBYTES bytes)
+*                             (of length KYBER_INDCPA_SECRETKEYBYTES bytes)
+*              - uint8_t *secret: pointer to input secret phrase
+                              (of length 2*KYBER_SYMBYTES)
 **************************************************/
-void indcpa_keypair_seed(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
-                         uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES],
-                         uint8_t seed[KYBER_SYMBYTES])
+void indcpa_keypair_from_secret(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
+                                uint8_t sk[KYBER_INDCPA_SECRETKEYBYTES],
+                                uint8_t secret[2*KYBER_SYMBYTES])
 {
     unsigned int i;
     uint8_t buf[2*KYBER_SYMBYTES];
@@ -261,11 +263,8 @@ void indcpa_keypair_seed(uint8_t pk[KYBER_INDCPA_PUBLICKEYBYTES],
     uint8_t nonce = 0;
     polyvec a[KYBER_K], e, pkpv, skpv;
 
-    //copy our seed into our buffer
-    for(i=0;i<KYBER_SYMBYTES;i++)
-        buf[i] = seed[i];
-
-    hash_g(buf, buf, KYBER_SYMBYTES);
+    //hash to generate publicseed and noiseseed to keep secret phrase hidden
+    hash_g(buf, secret, 2*KYBER_SYMBYTES);
 
     gen_a(a, publicseed);
 
