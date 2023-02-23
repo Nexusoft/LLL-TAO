@@ -1621,6 +1621,9 @@ namespace LLP
                         uint512_t hashStart;
                         ssPacket >> hashStart;
 
+                        /* Get the last event */
+                        debug::log(1, NODE, "ACTION::LIST: SIGCHAIN for ", hashSigchain.SubString());
+
                         /* Check for empty hash start. */
                         bool fGenesis = (hashStart == 0);
                         if(hashStart == 0 && !LLD::Ledger->ReadFirst(hashSigchain, hashStart))
@@ -1688,6 +1691,7 @@ namespace LLP
                         debug::log(1, NODE, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
 
                         /* Check for legacy. */
+                        int32_t nLimits = ACTION::LIST_NOTIFICATIONS_MAX_ITEMS + 1;
                         if(fLegacy)
                         {
                             /* Build our list of events. */
@@ -1695,7 +1699,7 @@ namespace LLP
 
                             /* Look back through all events to find those that are not yet processed. */
                             Legacy::Transaction tx;
-                            while(LLD::Legacy->ReadEvent(hashSigchain, nSequence++, tx))
+                            while(--nLimits > 0 && LLD::Legacy->ReadEvent(hashSigchain, nSequence++, tx))
                             {
                                 /* Build a markle transaction. */
                                 Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
@@ -1720,7 +1724,7 @@ namespace LLP
 
                             /* Look back through all events to find those that are not yet processed. */
                             TAO::Ledger::Transaction tx;
-                            while(LLD::Ledger->ReadEvent(hashSigchain, nSequence++, tx))
+                            while(--nLimits > 0 && LLD::Ledger->ReadEvent(hashSigchain, nSequence++, tx))
                             {
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
