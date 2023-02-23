@@ -57,7 +57,7 @@ namespace LLP
 
 
             /** Limit for maximum subscriptions that can be requested per packet. **/
-            static const uint32_t SUBSCRIBE_MAX_ITEMS = 16;
+            static const uint32_t SUBSCRIBE_MAX_ITEMS = 100;
 
 
             /* Message enumeration values. */

@@ -1685,7 +1685,7 @@ namespace LLP
                         ssPacket >> nSequence;
 
                         /* Get the last event */
-                        debug::log(1, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
+                        debug::log(1, NODE, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
 
                         /* Check for legacy. */
                         if(fLegacy)
