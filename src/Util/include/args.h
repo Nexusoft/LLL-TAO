@@ -51,6 +51,7 @@ namespace config
     extern std::atomic<bool> fStaking;
     extern std::atomic<bool> fHybrid;
     extern std::atomic<bool> fSister;
+    extern std::atomic<bool> fApiAuth;
     extern std::atomic<int32_t> nVerbose;
 
     /* Hybrid/Sister specific configuration variables. */

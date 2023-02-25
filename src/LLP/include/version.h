@@ -23,7 +23,7 @@ namespace LLP
 
     /* The current Protocol Version. */
     const uint32_t PROTOCOL_MAJOR     = 3;
-    const uint32_t PROTOCOL_MINOR     = 1;
+    const uint32_t PROTOCOL_MINOR     = 2;
     const uint32_t PROTOCOL_REVISION  = 0;
     const uint32_t PROTOCOL_BUILD     = 0;
 

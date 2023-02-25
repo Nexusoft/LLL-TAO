@@ -317,7 +317,7 @@ namespace LLP
             (config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", ""));
 
         /* Check for apiauth settings. */
-        if(!config::GetBoolArg("-apiauth", true))
+        if(!config::fApiAuth.load())
             return true;
 
         /* Check the headers. */

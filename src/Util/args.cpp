@@ -51,6 +51,7 @@ namespace config
     std::atomic<bool> fHybrid(false);
     std::atomic<bool> fSister(false);
     std::atomic<int32_t> nVerbose(0);
+    std::atomic<bool> fApiAuth(false);
 
     /* Keeps track of the network owner hash. */
     uint256_t hashNetworkOwner;
@@ -215,7 +216,8 @@ namespace config
         fPoolStaking            = GetBoolArg("-poolstaking", false);
         fStaking                = GetBoolArg("-staking", false) || GetBoolArg("-stake", false); //Both supported, -stake deprecated
         fHybrid                 = (GetArg("-hybrid", "") != ""); //-hybrid=<username> where username is the owner.
-        //fSister                 = (GetArg("-sister", "") != ""); NOTE: disabled for now, -sister=<token> for sister network.
+        //fSister                 = (GetArg("-sister", "") != ""); NOTE: disabled for now, -sister=<token> for sister network.for
+        fApiAuth                = GetBoolArg("-apiauth", true);
         nVerbose                = GetArg("-verbose", 0);
 
         /* Private Mode: Sub-Network Testnet. DO NOT USE FOR PRODUCTION. */

@@ -541,6 +541,10 @@ namespace LLP
                 if(nProtocolVersion < MIN_PROTO_VERSION)
                     return debug::drop(NODE, "connection using obsolete protocol version");
 
+                /* Check client mode version switch. */
+                if(MinorVersion(nProtocolVersion, 3) < 2 && config::fClient.load())
+                    return debug::drop(NODE, "-client server using obsolete protocol version");
+
                 /* Client mode only wants connections to correct version. */
                 if(config::fClient.load() && nProtocolVersion < MIN_TRITIUM_VERSION)
                 {
