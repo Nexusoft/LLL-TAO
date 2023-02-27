@@ -24,7 +24,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Saves the users session into the local DB so that it can be resumed later after a crash */
+    /* Saves the users session into the local DB so that it can be resumed later. */
     encoding::json Sessions::Save(const encoding::json& jParams, const bool fHelp)
     {
         /* Pin parameter. */

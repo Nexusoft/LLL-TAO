@@ -106,22 +106,9 @@ namespace TAO::API
         encoding::json Lock(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Has
-         *
-         *  Checks to see if a saved session exists in the Logical DB for the given user
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Has(const encoding::json& jParams, const bool fHelp);
-
-
         /** Save
          *
-         *  Saves the users session into the Logical DB so that it can be resumed later after restart.
+         *  Saves the users session into the Logical DB so that it can be resumed later.
          *
          *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.

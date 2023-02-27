@@ -11,7 +11,10 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <TAO/API/include/build.h>
+#include <TAO/API/include/extract.h>
 
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/sessions.h>
@@ -33,6 +36,10 @@ namespace TAO::API
         /* Check for authenticated sigchain. */
         if(config::GetBoolArg("-terminateauth", true) && !Authentication::Authenticate(jParams))
             throw Exception(-333, "Account failed to authenticate");
+
+        /* Check if we have set to clear session too. */
+        if(ExtractBoolean(jParams, "clear"))
+            LLD::Local->EraseSession(hashGenesis);
 
         /* Terminate our session now. */
         Authentication::Terminate(jParams);
