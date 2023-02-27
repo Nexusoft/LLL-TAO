@@ -153,8 +153,6 @@ namespace LLP
                             const uint512_t hashTx = tx.GetHash();
 
                             {
-                                LOCK(TritiumNode::CLIENT_MUTEX);
-
                                 /* Run basic merkle tx checks */
                                 if(!tx.Verify())
                                     return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
@@ -162,6 +160,8 @@ namespace LLP
                                 /* Handle for regular dependant specifier. */
                                 if(nSpecifier == SPECIFIER::TRITIUM)
                                 {
+                                    LOCK(TritiumNode::CLIENT_MUTEX);
+
                                     /* Begin our ACID transaction across LLD instances. */
                                     LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
 
