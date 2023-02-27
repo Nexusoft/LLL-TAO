@@ -1622,6 +1622,7 @@ namespace LLP
                         ssPacket >> hashStart;
 
                         /* Get the last event */
+                        int32_t nLimits = ACTION::LIST_NOTIFICATIONS_MAX_ITEMS + 1;
                         debug::log(1, NODE, "ACTION::LIST: SIGCHAIN for ", hashSigchain.SubString());
 
                         /* Check for empty hash start. */
@@ -1635,7 +1636,7 @@ namespace LLP
                             break;
 
                         /* Read sigchain entries. */
-                        std::vector<TAO::Ledger::MerkleTx> vtx;
+                        std::vector<uint512_t> vHashes;
                         while(!config::fShutdown.load())
                         {
                             /* Break on the ending hash if not genesis. */
@@ -1647,15 +1648,8 @@ namespace LLP
                             if(!LLD::Ledger->ReadTx(hashThis, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 break;
 
-                            /* Build a markle transaction. */
-                            TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-
-                            /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
-                            if(!TAO::Ledger::mempool.Has(hashThis))
-                                merkle.BuildMerkleBranch();
-
-                            /* Insert into container. */
-                            vtx.push_back(merkle);
+                            /* Track our list of hashes without filling up our memory. */
+                            vHashes.push_back(hashThis);
 
                             /* Check for genesis. */
                             if(fGenesis && hashStart == hashThis)
@@ -1665,8 +1659,22 @@ namespace LLP
                         }
 
                         /* Reverse container to message forward. */
-                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
-                            PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
+                        for(auto hash = vHashes.rbegin(); hash != vHashes.rend() && --nLimits > 0; ++hash)
+                        {
+                            /* Read from disk. */
+                            TAO::Ledger::Transaction tx;
+                            if(!LLD::Ledger->ReadTx((*hash), tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Build a markle transaction. */
+                            TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                            /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                            if(!TAO::Ledger::mempool.Has(*hash))
+                                merkle.BuildMerkleBranch();
+
+                            PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                        }
 
                         break;
                     }

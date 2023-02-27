@@ -547,16 +547,32 @@ namespace TAO::API
                             uint32_t nLegacySequence = 0;
                             LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence);
 
-                            /* Request the sig chain. */
-                            debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION for ", hashGenesis.SubString());
-                            LLP::TritiumNode::BlockingMessage
-                            (
-                                pNode.get(),
-                                LLP::TritiumNode::ACTION::LIST,
-                                uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
-                                hashGenesis, nLegacySequence
-                            );
-                            debug::log(0, FUNCTION, "CLIENT MODE: LIST::LEGACY::NOTIFICATION received for ", hashGenesis.SubString());
+                            /* Loop until we have received all of our events. */
+                            do
+                            {
+                                /* Request the sig chain. */
+                                debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION from ", nLegacySequence, " for ", hashGenesis.SubString());
+                                LLP::TritiumNode::BlockingMessage
+                                (
+                                    pNode.get(),
+                                    LLP::TritiumNode::ACTION::LIST,
+                                    uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
+                                    hashGenesis, nLegacySequence
+                                );
+                                debug::log(0, FUNCTION, "CLIENT MODE: LIST::LEGACY::NOTIFICATION received for ", hashGenesis.SubString());
+
+                                /* Cache our current sequence to see if we got any new events while waiting. */
+                                uint32_t nCurrentSequence = 0;
+                                LLD::Logical->ReadLegacySequence(hashGenesis, nCurrentSequence);
+
+                                /* Check that are starting and current sequences match. */
+                                if(nCurrentSequence == nLegacySequence)
+                                {
+                                    debug::log(0, FUNCTION, "CLIENT MODE: LIST::LEGACY::NOTIFICATION completed for ", hashGenesis.SubString());
+                                    break;
+                                }
+                            }
+                            while(LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence));
 
                             /* Get the last txid in sigchain. */
                             uint512_t hashLast;
