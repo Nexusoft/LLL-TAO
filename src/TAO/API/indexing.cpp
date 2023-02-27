@@ -524,9 +524,9 @@ namespace TAO::API
                                 debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION from ", nTritiumSequence, " for ", hashGenesis.SubString());
                                 LLP::TritiumNode::BlockingMessage
                                 (
-                                    pNode.get(),
-                                    LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
-                                    hashGenesis, nTritiumSequence
+                                    30000,
+                                    pNode.get(), LLP::TritiumNode::ACTION::LIST,
+                                    uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, nTritiumSequence
                                 );
                                 debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashGenesis.SubString());
 
@@ -554,8 +554,8 @@ namespace TAO::API
                                 debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION from ", nLegacySequence, " for ", hashGenesis.SubString());
                                 LLP::TritiumNode::BlockingMessage
                                 (
-                                    pNode.get(),
-                                    LLP::TritiumNode::ACTION::LIST,
+                                    30000,
+                                    pNode.get(), LLP::TritiumNode::ACTION::LIST,
                                     uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
                                     hashGenesis, nLegacySequence
                                 );
@@ -583,6 +583,7 @@ namespace TAO::API
                                 debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
                                 LLP::TritiumNode::BlockingMessage
                                 (
+                                    30000,
                                     pNode.get(), LLP::TritiumNode::ACTION::LIST,
                                     uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
                                 );
