@@ -271,6 +271,10 @@ namespace LLD
                         }
                     }
 
+                    /* Check that we have active connections. */
+                    if(pConnection == nullptr)
+                        throw TAO::API::Exception(-11, "No Connections Available");
+
                     /* Handle expired. */
                     if(fExpired)
                         debug::warning(FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
@@ -279,7 +283,7 @@ namespace LLD
                     debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
                     pConnection->BlockingLookup
                     (
-                        30000,
+                        10000,
                         LLP::LookupNode::REQUEST::DEPENDANT,
                         uint8_t(LLP::LookupNode::SPECIFIER::REGISTER), hashRegister
                     );
