@@ -530,21 +530,30 @@ namespace TAO::API
             /* Grab a reference of our hash. */
             const uint512_t& hashEvent = rEvent.first;
 
-            /* Get the transaction from disk. */
-            TAO::API::Transaction tx;
-            if(!LLD::Ledger->ReadTx(hashEvent, tx))
-                continue;
+            /* Check for Tritium transaction. */
+            if(hashEvent.GetType() == TAO::Ledger::TRITIUM)
+            {
+                /* Get the transaction from disk. */
+                TAO::API::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashEvent, tx))
+                    continue;
 
-            /* Check if contract has been spent. */
-            if(tx.Spent(hashEvent, rEvent.second))
-                continue;
+                /* Check if contract has been burned. */
+                if(tx.Burned(hashEvent, rEvent.second))
+                    continue;
 
-            /* Check if the transaction is mature. */
-            if(tx.Mature(hashEvent))
-                continue;
+                /* Check if the transaction is mature. */
+                if(!tx.Mature(hashEvent))
+                    continue;
+            }
 
             /* Get a referecne of our contract. */
-            const TAO::Operation::Contract& rContract = tx[rEvent.second];
+            const TAO::Operation::Contract& rContract =
+                LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+
+            /* Check if the given contract is spent already. */
+            if(rContract.Spent(rEvent.second))
+                continue;
 
             /* Seek our contract to primitive OP. */
             rContract.SeekToPrimitive();
@@ -559,25 +568,20 @@ namespace TAO::API
                 /* Handle for if we need to credit. */
                 case TAO::Operation::OP::COINBASE:
                 {
-                    try
-                    {
-                        /* Extract our coinbase recipient. */
-                        uint256_t hashRecipient;
-                        rContract >> hashRecipient;
+                    /* Extract our coinbase recipient. */
+                    uint256_t hashRecipient;
+                    rContract >> hashRecipient;
 
-                        /* Check for valid recipient. */
-                        if(hashRecipient != hashGenesis)
-                            continue;
-
-                        /* Build our credit contract now. */
-                        uint64_t nAmount = 0;
-                        if(TAO::Register::Unpack(rContract, nAmount))
-                            nImmature += nAmount;
-                    }
-                    catch(const Exception& e)
-                    {
+                    /* Check for valid recipient. */
+                    if(hashRecipient != hashGenesis)
                         continue;
-                    }
+
+                    /* Extract our amount from contract. */
+                    uint64_t nAmount = 0;
+                    rContract >> nAmount;
+
+                    /* Add to our total expected value. */
+                    nImmature += nAmount;
 
                     break;
                 }
