@@ -543,13 +543,13 @@ namespace LLP
                     return debug::drop(NODE, "connection using obsolete protocol version");
 
                 /* Client mode only wants connections to correct version. */
-                if(config::fClient.load() && nProtocolVersion < MIN_TRITIUM_VERSION)
+                if(config::fClient.load() && nProtocolVersion < MIN_TRITIUM_CLIENT_VERSION)
                 {
                     /* Remove address from address manager. */
                     if(TRITIUM_SERVER->GetAddressManager())
                         TRITIUM_SERVER->GetAddressManager()->RemoveAddress(GetAddress());
 
-                    return debug::drop(NODE, "-client mode requires version ", MIN_TRITIUM_VERSION);
+                    return debug::drop(NODE, "-client mode requires version ", MIN_TRITIUM_CLIENT_VERSION);
                 }
 
                 /* Get the current session-id. */
