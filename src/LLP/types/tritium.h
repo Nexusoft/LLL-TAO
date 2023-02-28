@@ -510,7 +510,9 @@ namespace LLP
 
             WritePacket(NewMessage(nMsg, ssData));
 
-            debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+            /* We want to track verbose to save some copies into log buffers. */
+            if(config::nVerbose >= 4)
+                debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
         }
 
 

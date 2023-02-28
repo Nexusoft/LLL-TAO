@@ -146,17 +146,22 @@ const uint256_t hashSeed = 55;
 
 class KyberHandshake
 {
+
     /** The internal binary data of the public key used for encryption. **/
     std::vector<uint8_t> vPubKey;
+
 
     /** The internal binary data of the private key used for decryption. **/
     std::vector<uint8_t> vPrivKey;
 
+
     /** The internal seed data that's used to deterministically generate our public keys. **/
     std::vector<uint8_t> vSeed;
 
+
     /** The shared key stored as a 256-bit unsigned integer. **/
     uint256_t hashKey;
+
 
     /** The current user that is initiating this handshake. **/
     TAO::Register::Crypto oCrypto;
@@ -245,7 +250,16 @@ public:
     }
 
 
-    DataStream Authenticate(const TAO::Register::Crypto& rCrypto)
+    /** AuthenticationMessage
+     *
+     *  Generate an authentication message that can be used to generate an encryption channel.
+     *
+     *  @param[in] rCrypto The crypto object register we are generating handshake for.
+     *
+     *  @return The serialized message payload.
+     *
+     **/
+    DataStream AuthenticationMessage(const TAO::Register::Crypto& rCrypto)
     {
         /* Generate our shared key using entropy from our seed hash. */
         crypto_kem_keypair_from_secret(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
