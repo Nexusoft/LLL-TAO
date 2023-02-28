@@ -212,8 +212,8 @@ namespace TAO
         uint512_t Credentials::Generate(const std::string& strName, const uint32_t nKeyID, const SecureString& strSecret) const
         {
             /* Check if we have this key already. */
-            if(mapCrypto.count(strName))
-                return mapCrypto[strName];
+            if(mapCrypto.count(strName) && mapCrypto[strName].first == strSecret)
+                return mapCrypto[strName].second;
 
             /* Generate the Secret Phrase */
             std::vector<uint8_t> vUsername(strUsername.begin(), strUsername.end());
@@ -240,7 +240,7 @@ namespace TAO
                             uint32_t(1 << std::max(4u, uint32_t(config::GetArg("-argon2_memory", 16)))));
 
             /* Set our internal cache for quick access. */
-            mapCrypto[strName] = hashKey;
+            mapCrypto[strName] = std::make_pair(strSecret, hashKey);
 
             return hashKey;
         }
@@ -271,8 +271,10 @@ namespace TAO
 
             /* Check if we have this key in our internal map. */
             uint512_t hashSecret = 0;
-            if(mapCrypto.count(strName))
-                hashSecret = mapCrypto[strName];
+
+            /* Check if we have this key already. */
+            if(mapCrypto.count(strName) && mapCrypto[strName].first == strSecret)
+                hashSecret = mapCrypto[strName].second;
             else
                 hashSecret = Generate(strName, nKeyID, strSecret);
 
@@ -333,8 +335,10 @@ namespace TAO
 
             /* Check if we have this key in our internal map. */
             uint512_t hashSecret = 0;
-            if(mapCrypto.count(strName))
-                hashSecret = mapCrypto[strName];
+
+            /* Check if we have this key already. */
+            if(mapCrypto.count(strName) && mapCrypto[strName].first == strSecret)
+                hashSecret = mapCrypto[strName].second;
             else
                 hashSecret = Generate(strName, nKeyID, strSecret);
 

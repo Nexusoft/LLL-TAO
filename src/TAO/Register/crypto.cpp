@@ -105,7 +105,11 @@ namespace TAO::Register
 
         /* Check for invalid authorization hash. */
         if(hashAuth != hashCheck)
+        {
+            /* Reset our internal credentials cache. */
+            pCredentials->ClearCache();
             return false;
+        }
 
         return true;
     }

@@ -63,7 +63,7 @@ namespace TAO
 
 
             /** Internal credential key hash of our generated crypto keys. **/
-            mutable std::map<std::string, uint512_t> mapCrypto;
+            mutable std::map<std::string, std::pair<SecureString, uint512_t>> mapCrypto;
 
 
             /** Internal genesis hash. **/
