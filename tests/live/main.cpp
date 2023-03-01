@@ -144,7 +144,7 @@ const uint256_t hashSeed = 55;
 #include <LLC/include/kyber.h>
 
 
-class KyberHandshake
+class PQSL_CTX
 {
 
     /** The internal binary data of the public key used for encryption. **/
@@ -166,27 +166,60 @@ class KyberHandshake
     /** The current user that is initiating this handshake. **/
     TAO::Register::Crypto oCrypto;
 
+
+    /** Internal ENUM to track if ciphertext is included. */
+    enum HANDSHAKE : uint8_t
+    {
+        INITIATE = 0x01,
+        RESPONSE = 0x02,
+    };
+
 public:
 
-    /** KyberHandshake
+
+    /** PQSL_CTX
      *
      *  Create a handshake object using given deterministic seed.
      *
      *  @param[in] hashSeedIn The seed data used to generate public/private keypairs.
      *
      **/
-    KyberHandshake(const uint512_t& hashSeedIn, const uint256_t& hashGenesis)
+    PQSL_CTX(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& strSecret)
+    : vPubKey     (CRYPTO_PUBLICKEYBYTES, 0)
+    , vPrivKey    (CRYPTO_SECRETKEYBYTES, 0)
+    , vSeed       (pCredentials->Generate("cert", 0, strSecret).GetBytes())
+    , hashKey     (0)
+    , oCrypto     ( )
+    {
+        /* Generate register address for crypto register deterministically */
+        const TAO::Register::Address addrCrypto =
+            TAO::Register::Address(std::string("crypto"), pCredentials->Genesis(), TAO::Register::Address::CRYPTO);
+
+        /* Read the existing crypto object register. */
+        if(!LLD::Register->ReadObject(addrCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
+            throw debug::exception(FUNCTION, "Failed to read crypto object register");
+    }
+
+
+    /** PQSL_CTX
+     *
+     *  Create a handshake object using given deterministic seed.
+     *
+     *  @param[in] hashSeedIn The seed data used to generate public/private keypairs.
+     *
+     **/
+    PQSL_CTX(const uint512_t& hashSeedIn, const uint256_t& hashGenesis)
     : vPubKey     (CRYPTO_PUBLICKEYBYTES, 0)
     , vPrivKey    (CRYPTO_SECRETKEYBYTES, 0)
     , vSeed       (hashSeedIn.GetBytes())
     , hashKey     (0)
+    , oCrypto     ( )
     {
         /* Generate register address for crypto register deterministically */
         const TAO::Register::Address addrCrypto =
             TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
 
         /* Read the existing crypto object register. */
-        TAO::Register::Crypto oCrypto;
         if(!LLD::Register->ReadObject(addrCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
             throw debug::exception(FUNCTION, "Failed to read crypto object register");
     }
@@ -205,73 +238,6 @@ public:
     }
 
 
-    /** ValidateHandshake
-     *
-     *  Validate a peer's certificate hash in crypto object register to the sent public key.
-     *
-     *  @param[in] hashPeerGenesis The genesis of the peer we are verifying.
-     *  @param[in] vPeerPub The binary data of peer's public key to check
-     *
-     *  @return True if the handshake was validated against the crypto object register.
-     *
-     **/
-    bool ValidateHandshake(const uint256_t& hashPeerGenesis, const std::vector<uint8_t>& vPeerPub) const
-    {
-        /* Generate register address for crypto register deterministically */
-        const TAO::Register::Address addrPeerCrypto =
-            TAO::Register::Address(std::string("crypto"), hashPeerGenesis, TAO::Register::Address::CRYPTO);
-
-        /* Read the existing crypto object register. */
-        TAO::Register::Crypto oPeerCrypto;
-        if(!LLD::Register->ReadObject(addrPeerCrypto, oPeerCrypto, TAO::Ledger::FLAGS::LOOKUP))
-            return debug::error(FUNCTION, "Failed to read crypto object register");
-
-        /* Check the crypto object register mathces our peer's public key hash ot make sure they aren't an imposter. */
-        if(oPeerCrypto.get<uint256_t>("cert") != LLC::SK256(vPeerPub, TAO::Ledger::KEM::KYBER))
-            return debug::error(FUNCTION, "peer certificate key mismatch to public key");
-
-        return true;
-    }
-
-
-    /** InitiateHandshake
-     *
-     *  Generate a keypair using seed phrase and return the public key for transmission to peer.
-     *
-     *  @return The binary data of encdoded public key.
-     *
-     **/
-    const std::vector<uint8_t> InitiateHandshake()
-    {
-        /* Generate our shared key using entropy from our seed hash. */
-        crypto_kem_keypair_from_secret(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
-
-        return vPubKey;
-    }
-
-
-    /** AuthenticationMessage
-     *
-     *  Generate an authentication message that can be used to generate an encryption channel.
-     *
-     *  @param[in] rCrypto The crypto object register we are generating handshake for.
-     *
-     *  @return The serialized message payload.
-     *
-     **/
-    DataStream AuthenticationMessage(const TAO::Register::Crypto& rCrypto)
-    {
-        /* Generate our shared key using entropy from our seed hash. */
-        crypto_kem_keypair_from_secret(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
-
-        /* Build our response message packaging our public key and ciphertext. */
-        DataStream ssHandshake(SER_NETWORK, 1);
-        ssSignature << rCrypto.hashOwner << rCrypto.hashChecksum << runtime::unifiedtimestamp() << vPubKey;
-
-        return ssHandshake;
-    }
-
-
     /** InitiateHandshake
      *
      *  Generate a keypair using seed phrase and return the public key for transmission to peer.
@@ -284,7 +250,7 @@ public:
     {
         /* Build our response message packaging our public key and ciphertext. */
         DataStream ssResponse =
-            Authenticate(oCrypto);
+            create_auth(oCrypto, false);
 
         /* Get a hash of our message to sign. */
         const uint256_t hashMessage = LLC::SK256(ssResponse.Bytes());
@@ -301,120 +267,7 @@ public:
         ssResponse << vCryptoPub << vCryptoSig;
 
         return ssResponse.Bytes();
-    } //THIS IS TO
-
-
-    /** AuthorizeHandshake
-     *
-     *  Take a given peer's verbose handshake and validates it, and responds if succees
-     *
-     *  @param[in] vPeerPub The binary data of peer's public key to encode
-     *
-     *  @return The binary data of encdoded handshake.
-     *
-     **/
-    bool AuthorizeHandshake(const std::vector<uint8_t>& vHandshake, std::vector<uint8_t> &vResponse,
-                            const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& strPIN)
-    {
-        /* Build our response message packaging our public key and ciphertext. */
-        DataStream ssHandshake(vHandshake, SER_NETWORK, 1);
-
-        /* Deserialize our handshake recipient. */
-        uint256_t hashGenesis;
-        ssHandshake >> hashGenesis;
-
-        /* Generate register address for crypto register deterministically */
-        const TAO::Register::Address addrCrypto =
-            TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-
-        /* Read the existing crypto object register. */
-        TAO::Register::Crypto oPeerCrypto;
-        if(!LLD::Register->ReadObject(addrCrypto, oPeerCrypto, TAO::Ledger::FLAGS::LOOKUP))
-            return debug::error(FUNCTION, "Failed to read crypto object register");
-
-        /* Get additional data to check. */
-        uint64_t hashChecksum = 0;
-        ssHandshake >> hashChecksum;
-
-        /* Check that our checksums match. */
-        if(hashChecksum != oPeerCrypto.hashChecksum)
-            return debug::error(FUNCTION, "crypto object register checksum mismatch");
-
-        /* Get the timestamp this was sent at. */
-        uint64_t nTimestamp = 0;
-        ssHandshake >> nTimestamp;
-
-        /* Check that handshake wasn't stale. */
-        if(nTimestamp + 30 < runtime::unifiedtimestamp())
-            return debug::error(FUNCTION, "handshake is stale by ", runtime::unifiedtimestamp() - (nTimestamp + 30), " seconds");
-
-        /* Get our peer's public key for this handshake. */
-        std::vector<uint8_t> vPeerPub;
-        ssHandshake >> vPeerPub;
-
-        /* Assemble a datastream to hash (XXX: this needs to be optimized). */
-        DataStream ssChecksum(vHandshake, SER_NETWORK, 1);
-        ssSignature << hashGenesis << hashChecksum << nTimestamp << vPeerPub;
-
-        /* Get a hash of our message to sign. */
-        const uint256_t hashMessage = LLC::SK256(ssSignature.Bytes());
-
-        /* Get our last two items to verify. */
-        std::vector<uint8_t> vCryptoPub;
-        std::vector<uint8_t> vCryptoSig;
-
-        /* Deserialize the values. */
-        ssHandshake >> vCryptoPub;
-        ssHandshake >> vCryptoSig;
-
-        /* Verify our signature is a valid authentication of crypto object register. */
-        if(!oPeerCrypto.VerifySignature("network", hashMessage.GetBytes(), vCryptoPub, vCryptoSig))
-            return debug::error(FUNCTION, "invalid signature for handshake authentication");
-
-        /* Build our ciphertext vector to hold the handshake data. */
-        std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
-
-        /* Generate our shared key and encode using peer's public key. */
-        std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
-        crypto_kem_enc(&vCiphertext[0], &vShared[0], &vPeerPub[0]);
-
-        /* Build our response message packaging our public key and ciphertext. */
-        DataStream ssResponse =
-            Authenticate(oCrypto);
-
-        /* Add our cyphertext now. */
-        ssResponse << vCiphertext;
-
-        //TODO hash our response and sign it, append to back. send off to socket buffers or byte vector
-
-        /* Finally set our internal value for the shared key hash. */
-        hashKey = LLC::SK256(vShared);
-
-        debug::log(0, FUNCTION, "Shared: ", hashKey.ToString());
-
-        vResponse = ssResponse.Bytes();
-
-        return true;
-    } //THIS IS FROM
-
-    //TODO: authenticated complete handshake, we need to process the above message and generate the shared key
-    //THIS HAS NO RESPONSE, WE PROCESS THE LAST FROM
-    //WE COULD DO AN ACK MESSAGE ONCE COMPLETE IN THE LLP
-
-    /*
-    potentially process tor onion style or simply bridge between nodes that have a genesis registered and pass along to them
-    this could eventually expand to nearest connections DHT style
-    //or we could have genesis registrations, and use a hashGenesis % nShards, and have each node assigned by their own genesis or
-    potentially IP address. This could go through mitosos where shards can multiply and each relay node is a part of the shard.
-    each shard could operate as one, potentially know their peers and keep same replicated dataset where they relay to each other
-    each time a new connection is made. That way any of them could accept a connection and then forward it to the node in their shard
-    that does have an open connection to it.
-
-    we could also just have a simple protocol messsage that gives list of genesis each node is currently servicing.
-    when a new remote login request is made you get a list of the active nodes servicing genesis you wish to connect with
-    and you then initiate connection to them to start
-
-    */
+    }
 
 
     /** RespondHandshake
@@ -426,28 +279,48 @@ public:
      *  @return The binary data of encdoded handshake.
      *
      **/
-    const std::vector<uint8_t> RespondHandshake(const std::vector<uint8_t>& vPeerPub)
+    const std::vector<uint8_t> RespondHandshake(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
+                                                const SecureString& strPIN, const std::vector<uint8_t>& vPeerHandshake)
     {
-        /* Build our ciphertext vector to hold the handshake data. */
-        std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
+        /* Check that the handshake is a valid response. */
+        std::vector<uint8_t> vPeerPub;
+        if(!validate_auth(vPeerHandshake, vPeerPub))
+            throw debug::exception(FUNCTION, "handshake invalid: ", debug::GetLastError());
 
-        /* Generate a keypair as part of our response. */
-        crypto_kem_keypair_from_secret(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
+        /* Build our response message packaging our public key and ciphertext. */
+        DataStream ssResponse =
+            create_auth(oCrypto, true);
+
+        /* Build our ciphertext vector to hold the handshake data. */
+        std::vector<uint8_t> vCipherText(CRYPTO_CIPHERTEXTBYTES, 0);
 
         /* Generate our shared key and encode using peer's public key. */
         std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
-        crypto_kem_enc(&vCiphertext[0], &vShared[0], &vPeerPub[0]);
+        crypto_kem_enc(&vCipherText[0], &vShared[0], &vPeerPub[0]);
+
+        /* Add our cyphertext to our response object. */
+        ssResponse << vCipherText;
+
+        /* Get a hash of our message to sign. */
+        const uint256_t hashMessage = LLC::SK256(ssResponse.Bytes());
+
+        /* Use our crypto register to create a signature. */
+        std::vector<uint8_t> vCryptoPub;
+        std::vector<uint8_t> vCryptoSig;
+
+        /* Now sign our message hash with crypto object register. */
+        if(!oCrypto.GenerateSignature("network", pCredentials, strPIN, hashMessage.GetBytes(), vCryptoPub, vCryptoSig))
+            throw debug::exception(FUNCTION, "failed to sign when initiating handshake");
 
         /* Build our response message packaging our public key and ciphertext. */
-        DataStream ssHandshake(SER_NETWORK, 1);
-        ssHandshake << vPubKey << vCiphertext;
+        ssResponse << vCryptoPub << vCryptoSig;
 
         /* Finally set our internal value for the shared key hash. */
         hashKey = LLC::SK256(vShared);
 
         debug::log(0, FUNCTION, "Shared: ", hashKey.ToString());
 
-        return ssHandshake.Bytes();
+        return ssResponse.Bytes();
     }
 
 
@@ -460,16 +333,10 @@ public:
      **/
     void CompleteHandshake(const std::vector<uint8_t>& vHandshake)
     {
-        /* Get our handshake in a datastream to deserialize. */
-        DataStream ssHandshake(vHandshake, SER_NETWORK, 1);
-
-        /* Get our peer's public key. */
-        std::vector<uint8_t> vPeerPub(CRYPTO_PUBLICKEYBYTES, 0);
-        ssHandshake >> vPeerPub;
-
-        /* Get our cyphertext to decode our shared key from. */
-        std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
-        ssHandshake >> vCiphertext;
+        /* Check that the handshake is a valid response. */
+        std::vector<uint8_t> vCiphertext;
+        if(!validate_auth(vHandshake, vCiphertext))
+            throw debug::exception(FUNCTION, "handshake invalid: ", debug::GetLastError());
 
         /* Decode our shared key from the cyphertext. */
         std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
@@ -520,6 +387,126 @@ public:
 
         return LLC::DecryptAES256(hashKey.GetBytes(), vCipherText, vPlainText);
     }
+
+private:
+
+    /** create_auth
+     *
+     *  Generate an authentication message that can be used to generate an encryption channel.
+     *
+     *  @param[in] rCrypto The crypto object register we are generating handshake for.
+     *
+     *  @return The serialized message payload.
+     *
+     **/
+    DataStream create_auth(const TAO::Register::Crypto& rCrypto, const bool fResponse)
+    {
+        /* Generate our shared key using entropy from our seed hash. */
+        crypto_kem_keypair_from_secret(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
+
+        /* Build our response message packaging our public key and ciphertext. */
+        DataStream ssHandshake(SER_NETWORK, 1);
+
+        /* Add our type byte. */
+        uint8_t nType = HANDSHAKE::INITIATE;
+        if(fResponse)
+            nType = HANDSHAKE::RESPONSE;
+
+        /* Serialize our data to stream now. */
+        ssHandshake << nType << rCrypto.hashOwner << rCrypto.hashChecksum << runtime::unifiedtimestamp() << vPubKey;
+
+        return ssHandshake;
+    }
+
+
+    /** validate_auth
+     *
+     *  Take a given peer's handshake and validates it, and responds if succees
+     *
+     *  @param[in] vPeerPub The binary data of peer's public key to encode
+     *
+     *  @return True if the handshake is valid.
+     *
+     **/
+    bool validate_auth(const std::vector<uint8_t>& vHandshake, std::vector<uint8_t> &vDataOut)
+    {
+        /* Build our response message packaging our public key and ciphertext. */
+        DataStream ssHandshake(vHandshake, SER_NETWORK, 1);
+
+        /* Get our type for auth message. */
+        uint8_t nType = 0;
+        ssHandshake >> nType;
+
+        /* Deserialize our handshake recipient. */
+        uint256_t hashGenesis;
+        ssHandshake >> hashGenesis;
+
+        /* Generate register address for crypto register deterministically */
+        const TAO::Register::Address addrCrypto =
+            TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
+        /* Read the existing crypto object register. */
+        TAO::Register::Crypto oPeerCrypto;
+        if(!LLD::Register->ReadObject(addrCrypto, oPeerCrypto, TAO::Ledger::FLAGS::LOOKUP))
+            return debug::error(FUNCTION, "Failed to read crypto object register");
+
+        /* Get additional data to check. */
+        uint64_t hashChecksum = 0;
+        ssHandshake >> hashChecksum;
+
+        /* Check that our checksums match. */
+        if(hashChecksum != oPeerCrypto.hashChecksum)
+            return debug::error(FUNCTION, "crypto object register checksum mismatch");
+
+        /* Get the timestamp this was sent at. */
+        uint64_t nTimestamp = 0;
+        ssHandshake >> nTimestamp;
+
+        /* Check that handshake wasn't stale. */
+        if(nTimestamp + 30 < runtime::unifiedtimestamp())
+            return debug::error(FUNCTION, "handshake is stale by ", runtime::unifiedtimestamp() - (nTimestamp + 30), " seconds");
+
+        /* Get our peer's public key for this handshake. */
+        std::vector<uint8_t> vPeerPub;
+        ssHandshake >> vPeerPub;
+
+        /* Verify our peer's public key is correct public key. */
+        const uint256_t hashCertificate = oPeerCrypto.get<uint256_t>("cert");
+        if(hashCertificate != LLC::SK256(vPeerPub, hashCertificate.GetType()))
+            return debug::error(FUNCTION, "peer's public key does not match crypto object register");
+
+        /* Assemble a datastream to hash. */
+        DataStream ssSignature(SER_NETWORK, 1);
+        ssSignature << hashGenesis << hashChecksum << nTimestamp << vPeerPub;
+
+        /* If we are responding add ciphertext. */
+        if(nType == HANDSHAKE::RESPONSE)
+        {
+            /* Get our ciphertext from handshake and serialize for signature. */
+            ssHandshake >> vDataOut; //we copy our ciphertext into our data out
+            ssSignature << vDataOut;
+        }
+        else
+            vDataOut = vPeerPub;
+
+        /* Get a hash of our message to sign. */
+        const uint256_t hashMessage =
+            LLC::SK256(ssSignature.Bytes());
+
+        /* Get our last two items to verify. */
+        std::vector<uint8_t> vCryptoPub;
+        std::vector<uint8_t> vCryptoSig;
+
+        /* Deserialize the values. */
+        ssHandshake >> vCryptoPub;
+        ssHandshake >> vCryptoSig;
+
+        /* Verify our signature is a valid authentication of crypto object register. */
+        if(!oPeerCrypto.VerifySignature("network", hashMessage.GetBytes(), vCryptoPub, vCryptoSig))
+            return debug::error(FUNCTION, "invalid signature for handshake authentication");
+
+        return true;
+    }
 };
 
 
@@ -528,14 +515,14 @@ int main(void)
     TAO::Ledger::Credentials user1 = TAO::Ledger::Credentials("testing", "password");
     TAO::Ledger::Credentials user2 = TAO::Ledger::Credentials("testing2", "password");
 
-    KyberHandshake node1(user1.Generate("cert", 0, "1234"), user1.Genesis());
-    KyberHandshake node2(user2.Generate("cert", 0, "1234"), user2.Genesis());
+    PQSL_CTX node1(user1.Generate("cert", 0, "1234"), user1.Genesis());
+    PQSL_CTX node2(user2.Generate("cert", 0, "1234"), user2.Genesis());
 
-    const std::vector<uint8_t> vPayload = node1.InitiateHandshake();
+    //const std::vector<uint8_t> vPayload = node1.InitiateHandshake();
 
-    const std::vector<uint8_t> vResponse = node2.RespondHandshake(vPayload);
+    //const std::vector<uint8_t> vResponse = node2.RespondHandshake(vPayload);
 
-    node1.CompleteHandshake(vResponse);
+    //node1.CompleteHandshake(vResponse);
 
     debug::log(0, "PubKey 1a: ", node1.PubKeyHash().ToString());
     debug::log(0, "PubKey 1b: ", user1.CertificateKey("cert", "1234", TAO::Ledger::KEM::KYBER).ToString());
@@ -552,7 +539,7 @@ int main(void)
     node2.Decrypt(vCipherText, vPlainText);
     debug::log(0, "Decrypted: ", std::string(vPlainText.begin(), vPlainText.end()));
 
-  return 0;
+    return 0;
 }
 
 /* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */

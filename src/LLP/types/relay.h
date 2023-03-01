@@ -62,6 +62,7 @@ namespace LLP
             enum : Packet::message_t
             {
                 HANDSHAKE       = 0x11, //respond with response data for handshake to exchange keys
+                PONG            = 0x12, //pong messages give us latency and keep connection alive
             };
         };
 
@@ -71,6 +72,16 @@ namespace LLP
             enum : Packet::message_t
             {
                 RELAY       = 0x20, //relay data is intended to pass through to recipient
+            };
+        }
+
+        /** Remote messages are messages clients use to communicate with relay services. **/
+        struct REMOTE
+        {
+            enum : Packet::message_t
+            {
+                AUTHENTICATE       = 0x30, //authenticate this genesis to the relay server
+                COMMAND            = 0x31, //run a commond for a remote login session
             };
         }
 
@@ -164,11 +175,33 @@ namespace LLP
          *  @param[in] nMsg The message type.
          *
          **/
-        void PushMessage(const uint16_t nMsg)
+        void PushMessage(const uint16_t nMsg, const std::vector<uint8_t>& vData)
         {
-            DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
-            ((ssData << args), ...);
+            /* Build our packet to send now. */
+            MessagePacket RESPONSE(nMsg);
+            RESPONSE.SetData(vData);
 
+            /* Write the packet to our pipe. */
+            WritePacket(RESPONSE);
+
+            //TODO: encrypt if we have a valid SSL context
+
+            /* We want to track verbose to save some copies into log buffers. */
+            if(config::nVerbose >= 4)
+                debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+        }
+
+
+        /** PushMessage
+         *
+         *  Adds a tritium packet to the queue to write to the socket.
+         *
+         *  @param[in] nMsg The message type.
+         *
+         **/
+        void PushMessage(const uint16_t nMsg, const DataStream& ssData)
+        {
+            /* Write the packet to our pipe. */
             WritePacket(NewMessage(nMsg, ssData));
 
             /* We want to track verbose to save some copies into log buffers. */
