@@ -2515,7 +2515,7 @@ namespace TAO::API
 
         /* Get the object we are generating information for. */
         TAO::Register::Object tObject;
-        if(!LLD::Register->ReadObject(hashRegister, tObject))
+        if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::LOOKUP))
             return jRet;
 
         /* Populate our register types now. */
