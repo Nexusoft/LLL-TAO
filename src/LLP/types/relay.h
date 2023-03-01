@@ -24,6 +24,11 @@ namespace LLP
 
     class RelayNode : public BaseConnection<MessagePacket>
     {
+
+        /** Create a context to track SSL related data. **/
+        PQSSL_CTX* pSSL;
+
+
     public:
 
         /** Requests are core functions to ask for response. **/
@@ -145,26 +150,27 @@ namespace LLP
          *  @return Returns a filled out tritium packet.
          *
          **/
-        static MessagePacket NewMessage(const uint16_t nMsg, const DataStream& ssData)
+        MessagePacket NewMessage(const uint16_t nMsg, const DataStream& ssData)
         {
+            /* Build our packet to send now. */
             MessagePacket RESPONSE(nMsg);
-            RESPONSE.SetData(ssData);
+
+            /* Encrypt packet if we have valid context. */
+            if(pSSL && pSSL->Completed())
+            {
+                /* Encrypt our packet payload now. */
+                std::vector<uint8_t> vCipherText;
+                pSSL->Encrypt(ssData, vCipherText);
+
+                /* Set our packet payload. */
+                RESPONSE.SetData(vCipherText);
+            }
+
+            /* Otherwise no encryption set data like normal. */
+            else
+                RESPONSE.SetData(vData);
 
             return RESPONSE;
-        }
-
-
-        /** PushMessage
-         *
-         *  Adds a tritium packet to the queue to write to the socket.
-         *
-         *  @param[in] nMsg The message type.
-         *
-         **/
-        void PushMessage(const uint16_t nMsg)
-        {
-            MessagePacket RESPONSE(nMsg);
-            WritePacket(RESPONSE);
         }
 
 
@@ -179,12 +185,24 @@ namespace LLP
         {
             /* Build our packet to send now. */
             MessagePacket RESPONSE(nMsg);
-            RESPONSE.SetData(vData);
+
+            /* Encrypt packet if we have valid context. */
+            if(pSSL && pSSL->Completed())
+            {
+                /* Encrypt our packet payload now. */
+                std::vector<uint8_t> vCipherText;
+                pSSL->Encrypt(vData, vCipherText);
+
+                /* Set our packet payload. */
+                RESPONSE.SetData(vCipherText);
+            }
+
+            /* Otherwise no encryption set data like normal. */
+            else
+                RESPONSE.SetData(vData);
 
             /* Write the packet to our pipe. */
             WritePacket(RESPONSE);
-
-            //TODO: encrypt if we have a valid SSL context
 
             /* We want to track verbose to save some copies into log buffers. */
             if(config::nVerbose >= 4)
