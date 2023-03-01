@@ -337,6 +337,16 @@ namespace LLP
         void NotifyEvent();
 
 
+        /** Disconnect
+         *
+         *  Disconnects given connection from current Data Thread.
+         *
+         *  @param[in] nIndex The index of the connection to remove.
+         *
+         **/
+        void Disconnect(const uint32_t nIndex);
+
+
       private:
 
 

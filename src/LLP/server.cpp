@@ -459,6 +459,14 @@ namespace LLP
     }
 
 
+    /* Force a connection disconnect and cleanup server connections. */
+    template <class ProtocolType>
+    void Server<ProtocolType>::Disconnect(const uint32_t nDataThread, const uint32_t nDataIndex)
+    {
+        THREADS_DATA[nDataThread]->Disconnect(nDataIndex);
+    }
+
+
     /* Release all pending triggers from BlockingMessages */
     template <class ProtocolType>
     void Server<ProtocolType>::NotifyTriggers()

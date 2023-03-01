@@ -266,7 +266,6 @@ namespace LLD
                                 /* Make our new connection now. */
                                 if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
                                     return debug::error(FUNCTION, "no connections available...");
-
                             }
                         }
                     }
