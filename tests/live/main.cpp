@@ -225,6 +225,17 @@ public:
     }
 
 
+    /** Completed
+     *
+     *  Tell if the current handshake has been completed.
+     *
+     **/
+    bool Completed() const
+    {
+        return (hashKey != 0);
+    }
+
+
     /** PubKeyHash
      *
      *  Get a hash of our internal public key for use in verification.
@@ -250,7 +261,7 @@ public:
     {
         /* Build our response message packaging our public key and ciphertext. */
         DataStream ssResponse =
-            create_auth(oCrypto, false);
+            initialize_auth(oCrypto, false);
 
         /* Get a hash of our message to sign. */
         const uint256_t hashMessage = LLC::SK256(ssResponse.Bytes());
@@ -289,7 +300,7 @@ public:
 
         /* Build our response message packaging our public key and ciphertext. */
         DataStream ssResponse =
-            create_auth(oCrypto, true);
+            initialize_auth(oCrypto, true);
 
         /* Build our ciphertext vector to hold the handshake data. */
         std::vector<uint8_t> vCipherText(CRYPTO_CIPHERTEXTBYTES, 0);
@@ -318,8 +329,6 @@ public:
         /* Finally set our internal value for the shared key hash. */
         hashKey = LLC::SK256(vShared);
 
-        debug::log(0, FUNCTION, "Shared: ", hashKey.ToString());
-
         return ssResponse.Bytes();
     }
 
@@ -334,18 +343,16 @@ public:
     void CompleteHandshake(const std::vector<uint8_t>& vHandshake)
     {
         /* Check that the handshake is a valid response. */
-        std::vector<uint8_t> vCiphertext;
-        if(!validate_auth(vHandshake, vCiphertext))
+        std::vector<uint8_t> vCipherText;
+        if(!validate_auth(vHandshake, vCipherText))
             throw debug::exception(FUNCTION, "handshake invalid: ", debug::GetLastError());
 
         /* Decode our shared key from the cyphertext. */
         std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
-        crypto_kem_dec(&vShared[0], &vCiphertext[0], &vPrivKey[0]);
+        crypto_kem_dec(&vShared[0], &vCipherText[0], &vPrivKey[0]);
 
         /* Hash our shared key binary data to provide additional level of security. */
         hashKey = LLC::SK256(vShared);
-
-        debug::log(0, FUNCTION, "Shared: ", hashKey.ToString());
     }
 
 
@@ -390,7 +397,7 @@ public:
 
 private:
 
-    /** create_auth
+    /** initialize_auth
      *
      *  Generate an authentication message that can be used to generate an encryption channel.
      *
@@ -399,7 +406,7 @@ private:
      *  @return The serialized message payload.
      *
      **/
-    DataStream create_auth(const TAO::Register::Crypto& rCrypto, const bool fResponse)
+    DataStream initialize_auth(const TAO::Register::Crypto& rCrypto, const bool fResponse)
     {
         /* Generate our shared key using entropy from our seed hash. */
         crypto_kem_keypair_from_secret(&vPubKey[0], &vPrivKey[0], &vSeed[0]);

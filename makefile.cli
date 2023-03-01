@@ -343,6 +343,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLC_bignum.o \
 		build/LLC_eckey.o \
 		build/LLC_flkey.o \
+		build/LLC_pqssl.o \
 		build/LLC_random.o \
 		build/LLC_SK_Keccak-compact64.o \
 		build/LLC_SK_KeccakDuplex.o \
