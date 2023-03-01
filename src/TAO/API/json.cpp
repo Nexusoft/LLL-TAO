@@ -985,7 +985,7 @@ namespace TAO::API
                     {
                         /* Attempt to read the proof so we can show from or proof fields. */
                         TAO::Register::Object oProof;
-                        if(LLD::Register->ReadObject(hashProof, oProof))
+                        if(LLD::Register->ReadObject(hashProof, oProof, TAO::Ledger::FLAGS::LOOKUP))
                         {
                             /* Check for matching token to indicate proof or from. */
                             const TAO::Register::Address hashProofToken = oProof.get<uint256_t>("token");
@@ -993,7 +993,7 @@ namespace TAO::API
                             {
                                 /* Get our token object. */
                                 TAO::Register::Object oToken;
-                                if(LLD::Register->ReadObject(hashProofToken, oToken))
+                                if(LLD::Register->ReadObject(hashProofToken, oToken, TAO::Ledger::FLAGS::LOOKUP))
                                 {
                                     /* Get our account balance. */
                                     const uint64_t nBalance = oProof.get<uint64_t>("balance");
