@@ -576,7 +576,8 @@ namespace TAO::API
 
                             /* Get the last txid in sigchain. */
                             uint512_t hashLast;
-                            LLD::Logical->ReadLast(hashGenesis, hashLast);
+                            LLD::Logical->ReadLastConfirmed(hashGenesis, hashLast);
+
                             do
                             {
                                 /* Request the sig chain. */
@@ -589,10 +590,10 @@ namespace TAO::API
                                 );
                                 debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 
-                                uint512_t hashCurrnet;
-                                LLD::Logical->ReadLast(hashGenesis, hashCurrnet);
+                                uint512_t hashCurrent;
+                                LLD::Logical->ReadLastConfirmed(hashGenesis, hashCurrent);
 
-                                if(hashCurrnet == hashLast)
+                                if(hashCurrent == hashLast)
                                 {
                                     debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN completed for ", hashGenesis.SubString());
                                     break;

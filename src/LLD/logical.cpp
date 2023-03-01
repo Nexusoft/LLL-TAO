@@ -78,6 +78,37 @@ namespace LLD
     }
 
 
+    /* Reads the last txid that was confirmed. */
+    bool LogicalDB::ReadLastConfirmed(const uint256_t& hashGenesis, uint512_t &hashTx)
+    {
+        /* Read the last transaction entry. */
+        if(!Read(std::make_pair(std::string("indexing.last"), hashGenesis), hashTx))
+            return false;
+
+        /* Now iterate backwards and check for indexing entries. */
+        while(!config::fShutdown.load())
+        {
+            /* Check if we have a valid indexing entry. */
+            if(LLD::Ledger->HasIndex(hashTx))
+                break;
+
+            /* Read the transaction from the ledger database. */
+            TAO::API::Transaction tx;
+            if(!ReadTx(hashTx, tx))
+                break;
+
+            /* Check for first. */
+            if(tx.IsFirst())
+                break;
+
+            /* Set hash to previous hash. */
+            hashTx = tx.hashPrevTx;
+        }
+
+        return true;
+    }
+
+
     /* Writes the last txid that was indexed. */
     bool LogicalDB::WriteLast(const uint256_t& hashGenesis, const uint512_t& hashTx)
     {
