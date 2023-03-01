@@ -26,7 +26,7 @@ namespace LLP
     {
 
         /** Create a context to track SSL related data. **/
-        PQSSL_CTX* pSSL;
+        PQSSL_CTX* pqSSL;
 
 
     public:
@@ -43,8 +43,10 @@ namespace LLP
                 FIND          = 0x03, //find a given node by genesis-id
                 LIST          = 0x04, //list active datatypes
                 PING          = 0x05,
+                COMMAND       = 0x06,
+                RELAY         = 0x07,
 
-                RESERVED2     = 0x06,
+                RESERVED2     = 0x07,
             };
 
             /** VALID
@@ -68,27 +70,9 @@ namespace LLP
             {
                 HANDSHAKE       = 0x11, //respond with response data for handshake to exchange keys
                 PONG            = 0x12, //pong messages give us latency and keep connection alive
+                COMMAND         = 0x13, //command response passes command information back to remote host
             };
         };
-
-        /** Types are available data types that this protocol can process. **/
-        struct TYPES
-        {
-            enum : Packet::message_t
-            {
-                RELAY       = 0x20, //relay data is intended to pass through to recipient
-            };
-        }
-
-        /** Remote messages are messages clients use to communicate with relay services. **/
-        struct REMOTE
-        {
-            enum : Packet::message_t
-            {
-                AUTHENTICATE       = 0x30, //authenticate this genesis to the relay server
-                COMMAND            = 0x31, //run a commond for a remote login session
-            };
-        }
 
 
         /** Set our static locked ptr. **/
@@ -156,11 +140,11 @@ namespace LLP
             MessagePacket RESPONSE(nMsg);
 
             /* Encrypt packet if we have valid context. */
-            if(pSSL && pSSL->Completed())
+            if(pqSSL && pqSSL->Completed())
             {
                 /* Encrypt our packet payload now. */
                 std::vector<uint8_t> vCipherText;
-                pSSL->Encrypt(ssData, vCipherText);
+                pqSSL->Encrypt(ssData, vCipherText);
 
                 /* Set our packet payload. */
                 RESPONSE.SetData(vCipherText);
@@ -187,11 +171,11 @@ namespace LLP
             MessagePacket RESPONSE(nMsg);
 
             /* Encrypt packet if we have valid context. */
-            if(pSSL && pSSL->Completed())
+            if(pqSSL && pqSSL->Completed())
             {
                 /* Encrypt our packet payload now. */
                 std::vector<uint8_t> vCipherText;
-                pSSL->Encrypt(vData, vCipherText);
+                pqSSL->Encrypt(vData, vCipherText);
 
                 /* Set our packet payload. */
                 RESPONSE.SetData(vCipherText);
