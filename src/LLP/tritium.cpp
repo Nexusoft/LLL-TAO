@@ -2380,10 +2380,10 @@ namespace LLP
                                 /* Add addresses to manager.. */
                                 if(TRITIUM_SERVER->GetAddressManager())
                                     TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
-                            }
 
-                            /* Debug output. */
-                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
+                                /* Debug output. */
+                                debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
+                            }
 
                             break;
                         }
@@ -2478,7 +2478,7 @@ namespace LLP
             }
 
 
-            /* Standard type for a block. */
+            /* Standard type for an address. */
             case TYPES::ADDRESS:
             {
                 /* Check for subscription. */
@@ -2490,7 +2490,7 @@ namespace LLP
                 ssPacket >> addr;
 
                 /* Add addresses to manager.. */
-                if(TRITIUM_SERVER->GetAddressManager())
+                if(!config::fClient.load() && TRITIUM_SERVER->GetAddressManager())
                     TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
 
                 break;

@@ -632,13 +632,21 @@ namespace TAO
             /* Debug output about the best chain. */
             uint64_t nTimer   = timer.ElapsedMilliseconds();
 
-            if(config::nVerbose >= TAO::Ledger::ChainState::Synchronizing() ? 1 : 0)
-                debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION,
+            /* Watch our verbose levels based on syncronizing. */
+            const uint32_t nVerboseCheck =
+                (TAO::Ledger::ChainState::Synchronizing() ? 2 : 0); //we can safely assume this is -client only for verbose=2
+
+            /* Output our chain data for other verbose levels. */
+            if(config::nVerbose >= nVerboseCheck)
+            {
+                /* Write to our debug log files. */
+                debug::log(nVerboseCheck, FUNCTION,
                     "New Best Block hash=", hash.SubString(),
                     " height=", nHeight,
                     " supply=", std::fixed, (double)nMoneySupply / TAO::Ledger::NXS_COIN,
                     " [verified in ", nTimer, " ms]",
                     " [", ::GetSerializeSize(*this, SER_LLD, nVersion), " bytes]");
+            }
 
             /* Set the best chain variables. */
             ChainState::stateBest          = *this;
