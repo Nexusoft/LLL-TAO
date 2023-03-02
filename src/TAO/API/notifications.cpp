@@ -58,7 +58,7 @@ namespace TAO::API
         while(!config::fShutdown.load())
         {
             /* We want to sleep while looping to not consume our cpu cycles. */
-            runtime::sleep(500);
+            runtime::sleep(1000);
 
             /* Get a current list of our active sessions. */
             const auto vSessions =

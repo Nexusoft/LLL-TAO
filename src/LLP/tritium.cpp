@@ -224,6 +224,28 @@ namespace LLP
                 /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
                 {
+                    /* Special check for -client modes. */
+                    if(config::fClient.load() && LLP::LOOKUP_SERVER)
+                    {
+                        /* Get a copy of our current address. */
+                        const std::string strAddress =
+                            GetAddress().ToStringIP();
+
+                        /* Check that this node has a valid lookup server active. */
+                        std::shared_ptr<LLP::LookupNode> pConnection;
+                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                        {
+                            /* Delete this from manager. */
+                            if(LLP::TRITIUM_SERVER->GetAddressManager())
+                                LLP::TRITIUM_SERVER->GetAddressManager()->Ban(GetAddress());
+
+                            /* Remove it from our data threads. */
+                            LLP::TRITIUM_SERVER->Disconnect(nDataThread, nDataIndex);
+
+                            break;
+                        }
+                    }
+
                     /* If we are on version 3.1, we want to send their address on connect. */
                     if(MinorVersion(LLP::PROTOCOL_VERSION, 3) >= 1) //3 is major version, 1 is minor (3.1)
                     {
@@ -546,13 +568,13 @@ namespace LLP
                     return debug::drop(NODE, "-client server using obsolete protocol version");
 
                 /* Client mode only wants connections to correct version. */
-                if(config::fClient.load() && nProtocolVersion < MIN_TRITIUM_VERSION)
+                if(config::fClient.load() && nProtocolVersion < MIN_TRITIUM_CLIENT_VERSION)
                 {
                     /* Remove address from address manager. */
                     if(TRITIUM_SERVER->GetAddressManager())
                         TRITIUM_SERVER->GetAddressManager()->RemoveAddress(GetAddress());
 
-                    return debug::drop(NODE, "-client mode requires version ", MIN_TRITIUM_VERSION);
+                    return debug::drop(NODE, "-client mode requires version ", MIN_TRITIUM_CLIENT_VERSION);
                 }
 
                 /* Get the current session-id. */
@@ -1613,6 +1635,10 @@ namespace LLP
                         uint512_t hashStart;
                         ssPacket >> hashStart;
 
+                        /* Get the last event */
+                        int32_t nLimits = ACTION::LIST_NOTIFICATIONS_MAX_ITEMS + 1;
+                        debug::log(1, NODE, "ACTION::LIST: SIGCHAIN for ", hashSigchain.SubString());
+
                         /* Check for empty hash start. */
                         bool fGenesis = (hashStart == 0);
                         if(hashStart == 0 && !LLD::Ledger->ReadFirst(hashSigchain, hashStart))
@@ -1624,7 +1650,7 @@ namespace LLP
                             break;
 
                         /* Read sigchain entries. */
-                        std::vector<TAO::Ledger::MerkleTx> vtx;
+                        std::vector<uint512_t> vHashes;
                         while(!config::fShutdown.load())
                         {
                             /* Break on the ending hash if not genesis. */
@@ -1636,15 +1662,8 @@ namespace LLP
                             if(!LLD::Ledger->ReadTx(hashThis, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 break;
 
-                            /* Build a markle transaction. */
-                            TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
-
-                            /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
-                            if(!TAO::Ledger::mempool.Has(hashThis))
-                                merkle.BuildMerkleBranch();
-
-                            /* Insert into container. */
-                            vtx.push_back(merkle);
+                            /* Track our list of hashes without filling up our memory. */
+                            vHashes.push_back(hashThis);
 
                             /* Check for genesis. */
                             if(fGenesis && hashStart == hashThis)
@@ -1654,8 +1673,22 @@ namespace LLP
                         }
 
                         /* Reverse container to message forward. */
-                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
-                            PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), (*tx));
+                        for(auto hash = vHashes.rbegin(); hash != vHashes.rend() && --nLimits > 0; ++hash)
+                        {
+                            /* Read from disk. */
+                            TAO::Ledger::Transaction tx;
+                            if(!LLD::Ledger->ReadTx((*hash), tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Build a markle transaction. */
+                            TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+
+                            /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                            if(!TAO::Ledger::mempool.Has(*hash))
+                                merkle.BuildMerkleBranch();
+
+                            PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                        }
 
                         break;
                     }
@@ -1677,9 +1710,10 @@ namespace LLP
                         ssPacket >> nSequence;
 
                         /* Get the last event */
-                        debug::log(1, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
+                        debug::log(1, NODE, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
 
                         /* Check for legacy. */
+                        int32_t nLimits = ACTION::LIST_NOTIFICATIONS_MAX_ITEMS + 1;
                         if(fLegacy)
                         {
                             /* Build our list of events. */
@@ -1687,7 +1721,7 @@ namespace LLP
 
                             /* Look back through all events to find those that are not yet processed. */
                             Legacy::Transaction tx;
-                            while(LLD::Legacy->ReadEvent(hashSigchain, nSequence++, tx))
+                            while(--nLimits > 0 && LLD::Legacy->ReadEvent(hashSigchain, nSequence++, tx))
                             {
                                 /* Build a markle transaction. */
                                 Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
@@ -1712,7 +1746,7 @@ namespace LLP
 
                             /* Look back through all events to find those that are not yet processed. */
                             TAO::Ledger::Transaction tx;
-                            while(LLD::Ledger->ReadEvent(hashSigchain, nSequence++, tx))
+                            while(--nLimits > 0 && LLD::Ledger->ReadEvent(hashSigchain, nSequence++, tx))
                             {
                                 /* Build a markle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);

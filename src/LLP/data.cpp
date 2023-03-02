@@ -512,6 +512,22 @@ namespace LLP
     }
 
 
+    /* Disconnects given connection from current Data Thread. */
+    template<class ProtocolType>
+    void DataThread<ProtocolType>::Disconnect(const uint32_t nIndex)
+    {
+        /* Make sure connection is active. */
+        if(CONNECTIONS->at(nIndex))
+        {
+            /* First disconnect our sockets. */
+            CONNECTIONS->at(nIndex)->Disconnect();
+
+            /* Now remove it from our connections vector. */
+            remove_connection_with_event(nIndex, DISCONNECT::FORCE);
+        }
+    }
+
+
     /* Get the number of active connection pointers from data threads. */
     template <class ProtocolType>
     uint32_t DataThread<ProtocolType>::GetConnectionCount(const uint8_t nFlags)

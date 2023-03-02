@@ -355,7 +355,7 @@ namespace TAO::API
                     Authentication::SetReady(hashSession);
 
                     /* Debug output to track our sequences. */
-                    debug::log(1, FUNCTION, "Completed building indexes at ", VARIABLE(nLegacySequence), " | ", VARIABLE(nTritiumSequence), " | ", VARIABLE(nLedgerHeight), " | ", VARIABLE(nLogicalHeight), " for genesis=", hashGenesis.SubString());
+                    debug::log(0, FUNCTION, "Completed building indexes at ", VARIABLE(nLegacySequence), " | ", VARIABLE(nTritiumSequence), " | ", VARIABLE(nLedgerHeight), " | ", VARIABLE(nLogicalHeight), " for genesis=", hashGenesis.SubString());
 
                     /* Reset the genesis-id now. */
                     hashSession = TAO::API::Authentication::SESSION::INVALID;
@@ -524,9 +524,9 @@ namespace TAO::API
                                 debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION from ", nTritiumSequence, " for ", hashGenesis.SubString());
                                 LLP::TritiumNode::BlockingMessage
                                 (
-                                    pNode.get(),
-                                    LLP::TritiumNode::ACTION::LIST, uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
-                                    hashGenesis, nTritiumSequence
+                                    30000,
+                                    pNode.get(), LLP::TritiumNode::ACTION::LIST,
+                                    uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, nTritiumSequence
                                 );
                                 debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashGenesis.SubString());
 
@@ -555,8 +555,8 @@ namespace TAO::API
                                 debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION from ", nLegacySequence, " for ", hashGenesis.SubString());
                                 LLP::TritiumNode::BlockingMessage
                                 (
-                                    pNode.get(),
-                                    LLP::TritiumNode::ACTION::LIST,
+                                    30000,
+                                    pNode.get(), LLP::TritiumNode::ACTION::LIST,
                                     uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
                                     hashGenesis, nLegacySequence
                                 );
@@ -575,25 +575,28 @@ namespace TAO::API
                             }
                             while(LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence));
 
-
                             /* Get the last txid in sigchain. */
                             uint512_t hashLast;
-                            LLD::Logical->ReadLast(hashGenesis, hashLast);
+                            LLD::Logical->ReadLastConfirmed(hashGenesis, hashLast);
+
                             do
                             {
                                 /* Request the sig chain. */
                                 debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
                                 LLP::TritiumNode::BlockingMessage
                                 (
+                                    30000,
                                     pNode.get(), LLP::TritiumNode::ACTION::LIST,
                                     uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
                                 );
                                 debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
 
-                                uint512_t hashCurrnet;
-                                LLD::Logical->ReadLast(hashGenesis, hashCurrnet);
+                                /* Read our last confirmed transaction to check. */
+                                uint512_t hashCurrent;
+                                LLD::Logical->ReadLastConfirmed(hashGenesis, hashCurrent);
 
-                                if(hashCurrnet == hashLast)
+                                /* Check that our current hash is the same as in database state. */
+                                if(hashCurrent == hashLast)
                                 {
                                     debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN completed for ", hashGenesis.SubString());
                                     break;

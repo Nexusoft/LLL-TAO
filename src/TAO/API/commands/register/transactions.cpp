@@ -121,7 +121,7 @@ namespace TAO::API
                         {
                             /* Get our address field now. */
                             const std::string strAddress =
-                                jValue["from"].get<std::string>();
+                                jValue["from"]["address"].get<std::string>();
 
                             /* Check if we have valid address. */
                             if(TAO::Register::Address(strAddress) == hashRegister)
@@ -133,7 +133,7 @@ namespace TAO::API
                         {
                             /* Get our address field now. */
                             const std::string strAddress =
-                                jValue["to"].get<std::string>();
+                                jValue["to"]["address"].get<std::string>();
 
                             /* Check if we have valid address. */
                             if(TAO::Register::Address(strAddress) == hashRegister)

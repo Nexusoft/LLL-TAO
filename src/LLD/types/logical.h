@@ -106,6 +106,19 @@ namespace LLD
         bool ReadLast(const uint256_t& hashGenesis, uint512_t &hashTx);
 
 
+        /** ReadLastConfirmed
+         *
+         *  Reads the last txid that was confirmed.
+         *
+         *  @param[in] hashGenesis The genesis-id we are reading last index for.
+         *  @param[out] hashTx The txid of the last indexed transaction.
+         *
+         *  @return true if read successfully
+         *
+         **/
+        bool ReadLastConfirmed(const uint256_t& hashGenesis, uint512_t &hashTx);
+
+
         /** WriteLast
          *
          *  Writes the last txid that was indexed.

@@ -89,7 +89,7 @@ namespace TAO::API
             /* Generate register address for crypto register deterministically */
             const uint256_t hashCrypto =
                 TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-
+                
             /* Read our crypto object register. */
             TAO::Register::Object oCrypto;
             if(!LLD::Register->ReadObject(hashCrypto, oCrypto)) //XXX: we want to create the crypto object register here

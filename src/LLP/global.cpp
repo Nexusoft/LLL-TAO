@@ -52,6 +52,34 @@ namespace LLP
         /* Initialize API Pointers. */
         TAO::API::Initialize();
 
+
+        /* LOOKUP_SERVER instance */
+        if(config::GetBoolArg(std::string("-lookup"), true))
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetLookupPort());
+            CONFIG.ENABLE_LISTEN   = !config::fClient.load();
+            CONFIG.ENABLE_METERS   = false;
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = false;
+            CONFIG.ENABLE_REMOTE   = true;
+            CONFIG.REQUIRE_SSL     = false;
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-lookupthreads"), 4);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-lookupcscore"), 1);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-lookuprscore"), 50);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-lookuptimespan"), 10);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-lookuptimeout"), 30);
+
+            /* Create the server instance. */
+            LOOKUP_SERVER = new Server<LookupNode>(CONFIG);
+        }
+        
+
         /* TRITIUM_SERVER instance */
         {
             /* Generate our config object and use correct settings. */
@@ -201,33 +229,6 @@ namespace LLP
 
             /* Create the server instance. */
             MINING_SERVER = new Server<Miner>(CONFIG);
-        }
-
-
-        /* LOOKUP_SERVER instance */
-        if(config::GetBoolArg(std::string("-lookup"), true))
-        {
-            /* Generate our config object and use correct settings. */
-            LLP::Config CONFIG     = LLP::Config(GetLookupPort());
-            CONFIG.ENABLE_LISTEN   = !config::fClient.load();
-            CONFIG.ENABLE_METERS   = false;
-            CONFIG.ENABLE_DDOS     = true;
-            CONFIG.ENABLE_MANAGER  = false;
-            CONFIG.ENABLE_SSL      = false;
-            CONFIG.ENABLE_REMOTE   = true;
-            CONFIG.REQUIRE_SSL     = false;
-            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
-            CONFIG.MAX_INCOMING    = 128;
-            CONFIG.MAX_CONNECTIONS = 128;
-            CONFIG.MAX_THREADS     = config::GetArg(std::string("-lookupthreads"), 4);
-            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-lookupcscore"), 1);
-            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-lookuprscore"), 50);
-            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-lookuptimespan"), 10);
-            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
-            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-lookuptimeout"), 30);
-
-            /* Create the server instance. */
-            LOOKUP_SERVER = new Server<LookupNode>(CONFIG);
         }
 
 

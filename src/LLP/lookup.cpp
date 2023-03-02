@@ -238,9 +238,6 @@ namespace LLP
                                 LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                             }
 
-                            /* Write Success to log. */
-                            debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
-
                             break;
                         }
 

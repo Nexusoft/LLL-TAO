@@ -136,7 +136,7 @@ namespace TAO::API
 
         /* Check for active session. */
         if(!mapSessions.count(hashSession))
-            return 0;
+            return runtime::unifiedtimestamp();
 
         /* Get a copy of our current active session. */
         const Session& rSession =
@@ -157,7 +157,7 @@ namespace TAO::API
 
         /* Check for active session. */
         if(!mapSessions.count(hashSession))
-            return true;
+            return false;
 
         /* Get a copy of our current active session. */
         const Session& rSession =
@@ -296,7 +296,7 @@ namespace TAO::API
 
             /* Check for active session. */
             if(!mapSessions.count(hashSession))
-                throw Exception(-11, "Session not found");
+                return TAO::Ledger::PinUnlock::UnlockActions::NONE;
 
             /* Get a copy of our current active session. */
             const Session& rSession =

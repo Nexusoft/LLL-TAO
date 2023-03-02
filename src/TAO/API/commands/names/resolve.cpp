@@ -115,7 +115,7 @@ namespace TAO::API
         if(Authentication::Active(tName.hashOwner, hashSession))
             strName = Authentication::Credentials(hashSession)->UserName();
         else
-            strName = "local"; //local name that username is not known
+            strName = "user"; //local name that username is not known
 
         /* Grab our name from object. */
         strName += ":" + tName.get<std::string>("name"); //local name

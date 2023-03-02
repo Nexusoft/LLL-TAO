@@ -331,6 +331,17 @@ namespace LLP
         void DisconnectAll();
 
 
+        /** Disconnect
+         *
+         *  Force a connection disconnect and cleanup server connections.
+         *
+         *  @param[in] nDataThread The data thread index.
+         *  @param[in] nDataIndex The index to remove for.
+         *
+         **/
+        void Disconnect(const uint32_t nDataThread, const uint32_t nDataIndex);
+
+
         /** NotifyTriggers
          *
          *  Release all pending triggers from BlockingMessages

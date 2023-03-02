@@ -201,15 +201,10 @@ namespace TAO
 
             /* Check for valid index. */
             if(nIndex == state.vtx.size())
-                return debug::error(FUNCTION, "transaction not found");
+                return false;
 
             /* Build merkle branch. */
             vMerkleBranch = state.GetMerkleBranch(state.vtx, nIndex);
-
-            /* NOTE: extra expensive check for testing, consider removing in production */
-            uint512_t hashCheck = Block::CheckMerkleBranch(hash, vMerkleBranch, nIndex);
-            if(state.hashMerkleRoot != hashCheck)
-                return debug::error(FUNCTION, "merkle root mismatch ", hashCheck.SubString());
 
             return true;
         }
@@ -239,7 +234,7 @@ namespace TAO
             /* Get the confirming block. */
             TAO::Ledger::BlockState state;
             if(!LLD::Ledger->ReadBlock(hash, state))
-                return debug::error(FUNCTION, "no valid block to generate merkle path");
+                return false;
 
             /* Set his block's hash. */
             hashBlock = state.GetHash();

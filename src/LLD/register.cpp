@@ -266,10 +266,13 @@ namespace LLD
                                 /* Make our new connection now. */
                                 if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
                                     return debug::error(FUNCTION, "no connections available...");
-
                             }
                         }
                     }
+
+                    /* Check that we have active connections. */
+                    if(pConnection == nullptr)
+                        throw TAO::API::Exception(-11, "No Connections Available");
 
                     /* Handle expired. */
                     if(fExpired)
@@ -279,7 +282,7 @@ namespace LLD
                     debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
                     pConnection->BlockingLookup
                     (
-                        30000,
+                        10000,
                         LLP::LookupNode::REQUEST::DEPENDANT,
                         uint8_t(LLP::LookupNode::SPECIFIER::REGISTER), hashRegister
                     );

@@ -44,6 +44,10 @@ namespace LLP
     const uint32_t MIN_TRITIUM_VERSION = 3000000;
 
 
+    /* Used to define the baseline of -client mode Version. */
+    const uint32_t MIN_TRITIUM_CLIENT_VERSION = 3020000;
+
+
     /* The name that will be shared with other nodes. */
     const std::string strProtocolName = "Tritium";
 
