@@ -67,12 +67,12 @@ namespace version
     #else
         const std::string BUILD_ARCH = "[x64]";
     #endif
-    
+
 
     /* Our literal build string. */
     const std::string CLIENT_VERSION_BUILD_STRING
     (
-          CLIENT_VERSION_STRING + "-rc2 "
+          CLIENT_VERSION_STRING + "-rc3 "
         + CLIENT_NAME           + " "
         + CLIENT_INTERFACE      + " "
         + CLIENT_DATABASE + BUILD_ARCH
