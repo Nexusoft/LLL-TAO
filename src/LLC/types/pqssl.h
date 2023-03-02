@@ -62,6 +62,14 @@ namespace LLC
 
         /** PQSSL_CTX
          *
+         *  Default Constructor.
+         *
+         **/
+        PQSSL_CTX();
+
+
+        /** PQSSL_CTX
+         *
          *  Create a handshake object using given deterministic seed.
          *
          *  @param[in] hashSeedIn The seed data used to generate public/private keypairs.
@@ -78,6 +86,27 @@ namespace LLC
          *
          **/
         PQSSL_CTX(const uint512_t& hashSeedIn, const uint256_t& hashGenesis);
+
+
+        /** Initialize
+         *
+         *  Setup this context with credentials if not constructed.
+         *
+         *  @param[in] pCredentials The credentials object used to generate our keypairs.
+         *  @param[in] strSecret The secret phrase to generate our keyapris with.
+         *
+         *  @return true if the context was initialized correctly.
+         *
+         **/
+        bool Initialize(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& strSecret);
+
+
+        /** Initialized
+         *
+         *  Tell if the current ssl context has been initialized.
+         *
+         **/
+        bool Initialized() const;
 
 
         /** Completed
@@ -129,7 +158,7 @@ namespace LLC
          *  @param[in] vHandshake The binary data of handshake passed from socket buffers.
          *
          **/
-        void CompleteHandshake(const std::vector<uint8_t>& vHandshake);
+        bool CompleteHandshake(const std::vector<uint8_t>& vHandshake);
 
 
         /** Encrypt

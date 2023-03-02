@@ -13,11 +13,10 @@ ________________________________________________________________________________
 #pragma once
 
 #include <LLC/include/random.h>
+#include <LLC/types/pqssl.h>
 
-#include <LLP/packets/packet.h>
-#include <LLP/templates/connection.h>
-
-#include <Util/types/lock_unique_ptr.h>
+#include <LLP/packets/message.h>
+#include <LLP/templates/base_connection.h>
 
 namespace LLP
 {
@@ -26,7 +25,11 @@ namespace LLP
     {
 
         /** Create a context to track SSL related data. **/
-        PQSSL_CTX* pqSSL;
+        LLC::PQSSL_CTX* pqSSL;
+
+
+        /** Crypto Object Register of Peer for Verification. **/
+        TAO::Register::Crypto oCrypto;
 
 
     public:
@@ -34,19 +37,20 @@ namespace LLP
         /** Requests are core functions to ask for response. **/
         struct REQUEST
         {
-            enum : Packet::message_t
+            enum : MessagePacket::message_t
             {
                 /* Object Types. */
                 RESERVED1     = 0x00,
 
-                SESSION       = 0x01, //establish a new session
+                HANDSHAKE     = 0x01, //establish a new handshake
+                SESSION       = 0x02, //establish a new session
                 FIND          = 0x03, //find a given node by genesis-id
                 LIST          = 0x04, //list active datatypes
                 PING          = 0x05,
                 COMMAND       = 0x06,
                 RELAY         = 0x07,
 
-                RESERVED2     = 0x07,
+                RESERVED2     = 0x08,
             };
 
             /** VALID
@@ -57,7 +61,7 @@ namespace LLP
              *
              *  @return true if the request was in range.
              */
-            static inline bool VALID(const Packet::message_t nMsg)
+            static inline bool VALID(const MessagePacket::message_t nMsg)
             {
                 return (nMsg > RESERVED1 && nMsg < RESERVED2);
             }
@@ -66,17 +70,13 @@ namespace LLP
         /** A response is a given message response to requests. **/
         struct RESPONSE
         {
-            enum : Packet::message_t
+            enum : MessagePacket::message_t
             {
                 HANDSHAKE       = 0x11, //respond with response data for handshake to exchange keys
                 PONG            = 0x12, //pong messages give us latency and keep connection alive
                 COMMAND         = 0x13, //command response passes command information back to remote host
             };
         };
-
-
-        /** Set our static locked ptr. **/
-        static util::atomic::lock_unique_ptr<std::set<uint64_t>> setRequests;
 
 
         /** Name
@@ -144,15 +144,15 @@ namespace LLP
             {
                 /* Encrypt our packet payload now. */
                 std::vector<uint8_t> vCipherText;
-                pqSSL->Encrypt(ssData, vCipherText);
+                pqSSL->Encrypt(ssData.Bytes(), vCipherText);
 
                 /* Set our packet payload. */
-                RESPONSE.SetData(vCipherText);
+                RESPONSE.DATA = vCipherText;
             }
 
             /* Otherwise no encryption set data like normal. */
             else
-                RESPONSE.SetData(vData);
+                RESPONSE.DATA = ssData.Bytes();
 
             return RESPONSE;
         }
@@ -160,7 +160,7 @@ namespace LLP
 
         /** PushMessage
          *
-         *  Adds a tritium packet to the queue to write to the socket.
+         *  Adds a relay packet to the queue to write to the socket.
          *
          *  @param[in] nMsg The message type.
          *
@@ -178,25 +178,25 @@ namespace LLP
                 pqSSL->Encrypt(vData, vCipherText);
 
                 /* Set our packet payload. */
-                RESPONSE.SetData(vCipherText);
+                RESPONSE.DATA = vCipherText;
             }
 
             /* Otherwise no encryption set data like normal. */
             else
-                RESPONSE.SetData(vData);
+                RESPONSE.DATA = vData;
 
             /* Write the packet to our pipe. */
             WritePacket(RESPONSE);
 
             /* We want to track verbose to save some copies into log buffers. */
             if(config::nVerbose >= 4)
-                debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
+                debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, vData.size(), " bytes");
         }
 
 
         /** PushMessage
          *
-         *  Adds a tritium packet to the queue to write to the socket.
+         *  Adds a relay packet to the queue to write to the socket.
          *
          *  @param[in] nMsg The message type.
          *

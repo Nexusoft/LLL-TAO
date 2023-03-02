@@ -23,21 +23,32 @@ ________________________________________________________________________________
 namespace LLC
 {
 
+    /** PQSSL_CTX
+     *
+     *  Default Constructor.
+     *
+     **/
+    PQSSL_CTX::PQSSL_CTX( )
+    : vPubKey     (CRYPTO_PUBLICKEYBYTES, 0)
+    , vPrivKey    (CRYPTO_SECRETKEYBYTES, 0)
+    , vSeed       ( )
+    , hashKey     (0)
+    , oCrypto     ( )
+    {
+    }
+
+
     /* Create a handshake object using given credentials and secret. */
     PQSSL_CTX::PQSSL_CTX(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& strSecret)
     : vPubKey     (CRYPTO_PUBLICKEYBYTES, 0)
     , vPrivKey    (CRYPTO_SECRETKEYBYTES, 0)
-    , vSeed       (pCredentials->Generate("cert", 0, strSecret).GetBytes())
+    , vSeed       ( )
     , hashKey     (0)
     , oCrypto     ( )
     {
-        /* Generate register address for crypto register deterministically */
-        const TAO::Register::Address addrCrypto =
-            TAO::Register::Address(std::string("crypto"), pCredentials->Genesis(), TAO::Register::Address::CRYPTO);
-
-        /* Read the existing crypto object register. */
-        if(!LLD::Register->ReadObject(addrCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
-            throw debug::exception(FUNCTION, "Failed to read crypto object register");
+        /* Just wrap around this function for constructor. */
+        if(!Initialize(pCredentials, strSecret))
+            throw debug::exception(FUNCTION, "failed ot initialize our context");
     }
 
 
@@ -59,6 +70,31 @@ namespace LLC
     }
 
 
+    /* Setup this context with credentials if not constructed. */
+    bool PQSSL_CTX::Initialize(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& strSecret)
+    {
+        /* Set our deterministic seed. */
+        vSeed = pCredentials->Generate("cert", 0, strSecret).GetBytes();
+
+        /* Generate register address for crypto register deterministically */
+        const TAO::Register::Address addrCrypto =
+            TAO::Register::Address(std::string("crypto"), pCredentials->Genesis(), TAO::Register::Address::CRYPTO);
+
+        /* Read the existing crypto object register. */
+        if(!LLD::Register->ReadObject(addrCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
+            return debug::error(FUNCTION, "Failed to read crypto object register");
+
+        return true;
+    }
+
+
+    /* Tell if the current ssl context has been initialized. */
+    bool PQSSL_CTX::Initialized() const
+    {
+        return (!vSeed.empty() && !oCrypto.IsNull());
+    }
+
+
     /* Tell if the current handshake has been completed. */
     bool PQSSL_CTX::Completed() const
     {
@@ -75,7 +111,7 @@ namespace LLC
 
     /* Generate a keypair using seed phrase and return the public key for transmission to peer. */
     const std::vector<uint8_t> PQSSL_CTX::InitiateHandshake(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
-                                                 const SecureString& strPIN)
+                                                            const SecureString& strPIN)
     {
         /* Build our response message packaging our public key and ciphertext. */
         DataStream ssResponse =
@@ -101,7 +137,7 @@ namespace LLC
 
     /* Take a given peer's public key and encrypt a shared key to pass to peer. */
     const std::vector<uint8_t> PQSSL_CTX::RespondHandshake(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
-                                                const SecureString& strPIN, const std::vector<uint8_t>& vPeerHandshake)
+                                                           const SecureString& strPIN, const std::vector<uint8_t>& vPeerHandshake)
     {
         /* Check that the handshake is a valid response. */
         std::vector<uint8_t> vPeerPub;
@@ -144,12 +180,12 @@ namespace LLC
 
 
     /* Take a given encoded handshake and decrypt the shared key using our private key. */
-    void PQSSL_CTX::CompleteHandshake(const std::vector<uint8_t>& vHandshake)
+    bool PQSSL_CTX::CompleteHandshake(const std::vector<uint8_t>& vHandshake)
     {
         /* Check that the handshake is a valid response. */
         std::vector<uint8_t> vCipherText;
         if(!validate_auth(vHandshake, vCipherText))
-            throw debug::exception(FUNCTION, "handshake invalid: ", debug::GetLastError());
+            return debug::error(FUNCTION, "handshake invalid: ", debug::GetLastError());
 
         /* Decode our shared key from the cyphertext. */
         std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
@@ -157,6 +193,8 @@ namespace LLC
 
         /* Hash our shared key binary data to provide additional level of security. */
         hashKey = LLC::SK256(vShared);
+
+        return true;
     }
 
 
@@ -189,7 +227,7 @@ namespace LLC
         crypto_kem_keypair_from_secret(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
 
         /* Build our response message packaging our public key and ciphertext. */
-        DataStream ssHandshake(SER_NETWORK, 1);
+        DataStream ssHandshake(SER_NETWORK, LLP::PROTOCOL_VERSION);
 
         /* Add our type byte. */
         uint8_t nType = HANDSHAKE::INITIATE;
@@ -207,7 +245,7 @@ namespace LLC
     bool PQSSL_CTX::validate_auth(const std::vector<uint8_t>& vHandshake, std::vector<uint8_t> &vDataOut)
     {
         /* Build our response message packaging our public key and ciphertext. */
-        DataStream ssHandshake(vHandshake, SER_NETWORK, 1);
+        DataStream ssHandshake(vHandshake, SER_NETWORK, LLP::PROTOCOL_VERSION);
 
         /* Get our type for auth message. */
         uint8_t nType = 0;
