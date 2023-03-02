@@ -239,9 +239,6 @@ namespace LLP
                             if(LLP::TRITIUM_SERVER->GetAddressManager())
                                 LLP::TRITIUM_SERVER->GetAddressManager()->Ban(GetAddress());
 
-                            /* Disconnect this node. */
-                            Disconnect();
-
                             /* Remove it from our data threads. */
                             LLP::TRITIUM_SERVER->Disconnect(nDataThread, nDataIndex);
 
