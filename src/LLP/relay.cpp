@@ -139,7 +139,7 @@ namespace LLP
             {
                 /* Check that this is not an outgoing connection. */
                 if(!Incoming())
-                    return debug::drop(NODE, "REQUEST::HANDSHALE is invalid for outgoing connections");
+                    return debug::drop(NODE, "REQUEST::HANDSHAKE is invalid for outgoing connections");
 
                 /* Only send auth messages if the auth key has been cached */
                 SecureString strPIN;
