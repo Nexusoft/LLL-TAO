@@ -176,7 +176,7 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL ||
            nFlags == TAO::Ledger::FLAGS::LOOKUP  ||
-          (nFlags == TAO::Ledger::FLAGS::FORCED && !config::fClient.load())) //we want FLAGS::FORCED to act like FLAGS::MEMPOOL for non -clients
+           nFlags == TAO::Ledger::FLAGS::FORCED)
         {
             LOCK(MEMORY);
 
