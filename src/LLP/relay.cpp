@@ -185,11 +185,11 @@ namespace LLP
             {
                 /* Check that this is not an outgoing connection. */
                 if(Incoming())
-                    return debug::drop(NODE, "RESPONSE::HANDSHALE is invalid for incoming connections");
+                    return debug::drop(NODE, "RESPONSE::HANDSHAKE is invalid for incoming connections");
 
                 /* Complete our handshake sequence now. */
                 if(!pqSSL->CompleteHandshake(vPlainText))
-                    return debug::drop(NODE, "RESPONSE::HANDHSAKE: failed to complete handshake: ", debug::GetLastError());
+                    return debug::drop(NODE, "RESPONSE::HANDSHAKE: failed to complete handshake: ", debug::GetLastError());
 
                 /* Get some of our connection related data now. */
                 ssPacket.SetPos(1);
