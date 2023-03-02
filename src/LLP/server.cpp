@@ -534,7 +534,7 @@ namespace LLP
             /* Sleep between connection attempts.
                If there are no connections then sleep for a minimum interval until a connection is established. */
             if(nConnections == 0)
-                runtime::sleep(10);
+                runtime::sleep(1000);
             else
                 /* Sleep in 1 second intervals for easy break on shutdown. */
                 for(int i = 0; i < (CONFIG.MANAGER_SLEEP / 1000) && !config::fShutdown.load(); ++i)

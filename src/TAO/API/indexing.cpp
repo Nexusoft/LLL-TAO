@@ -288,7 +288,7 @@ namespace TAO::API
                 {
                     /* Read the owner of register. (check this for MEMPOOL, too) */
                     TAO::Register::State state;
-                    if(!LLD::Register->ReadState(hashTo, state))
+                    if(!LLD::Register->ReadState(hashTo, state, TAO::Ledger::FLAGS::LOOKUP))
                         continue;
 
                     /* Check if owner is authenticated. */
@@ -328,8 +328,8 @@ namespace TAO::API
                         Authentication::Caller(hashSession);
 
                     /* Track our ledger database sequence. */
-                    uint32_t nLedgerSequence = 0;
-                    LLD::Ledger->ReadSequence(hashGenesis, nLedgerSequence);
+                    uint32_t nLegacySequence = 0;
+                    LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence);
 
                     /* Track our logical database sequence. */
                     uint32_t nLogicalSequence = 0;
@@ -355,7 +355,7 @@ namespace TAO::API
                     Authentication::SetReady(hashSession);
 
                     /* Debug output to track our sequences. */
-                    debug::log(1, FUNCTION, "Completed building indexes at ", VARIABLE(nLedgerSequence), " | ", VARIABLE(nLogicalSequence), " | ", VARIABLE(nLedgerHeight), " | ", VARIABLE(nLogicalHeight), " for genesis=", hashGenesis.SubString());
+                    debug::log(0, FUNCTION, "Completed building indexes at ", VARIABLE(nLegacySequence), " | ", VARIABLE(nLogicalSequence), " | ", VARIABLE(nLedgerHeight), " | ", VARIABLE(nLogicalHeight), " for genesis=", hashGenesis.SubString());
 
                     /* Reset the genesis-id now. */
                     hashSession = TAO::API::Authentication::SESSION::INVALID;
@@ -790,7 +790,7 @@ namespace TAO::API
             {
                 /* Read the owner of register. (check this for MEMPOOL, too) */
                 TAO::Register::State state;
-                if(!LLD::Register->ReadState(hashTo, state))
+                if(!LLD::Register->ReadState(hashTo, state, TAO::Ledger::FLAGS::LOOKUP))
                     continue;
 
                 /* Check if owner is authenticated. */
@@ -976,7 +976,7 @@ namespace TAO::API
 
                         /* Read the owner of register. (check this for MEMPOOL, too) */
                         TAO::Register::State oRegister;
-                        if(!LLD::Register->ReadState(hashRecipient, oRegister))
+                        if(!LLD::Register->ReadState(hashRecipient, oRegister, TAO::Ledger::FLAGS::LOOKUP))
                             continue;
 
                         /* Set our hash to based on owner. */
