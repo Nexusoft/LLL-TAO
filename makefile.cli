@@ -456,6 +456,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_market_user.o \
 		build/API_commands_names_initialize.o \
 		build/API_commands_names_index.o \
+		build/API_commands_names_lookup.o \
 		build/API_commands_names_names.o \
 		build/API_commands_names_resolve.o \
 		build/API_commands_profiles_create.o \

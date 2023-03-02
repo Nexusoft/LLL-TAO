@@ -62,6 +62,19 @@ namespace TAO::API
         void Index(const TAO::Operation::Contract& rContract, const uint32_t nContract) override;
 
 
+        /** Lookup
+         *
+         *  Lookup any record using our internal names indexing system.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Lookup(const encoding::json& jParams, const bool fHelp);
+
+
         /** CreateName
          *
          *  Creates a new Name Object register for the given name and register address adds the register

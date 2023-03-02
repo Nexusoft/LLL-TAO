@@ -167,6 +167,19 @@ namespace TAO::API
             )
         );
 
+        /* Handle for all LOOKUP operations. */
+        mapFunctions["lookup"] = Function
+        (
+            std::bind
+            (
+                &Names::Lookup,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "address"
+        );
+
         /* Handle for all TRANSACTIONS operations. */
         mapFunctions["transactions"] = Function
         (
