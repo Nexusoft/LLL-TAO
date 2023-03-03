@@ -1662,7 +1662,7 @@ namespace LLP
                                 break;
 
                             /* Check for genesis. */
-                            if(hashStart == hashThis && tx.IsFirst())
+                            if(hashStart == hashThis)
                                 break;
 
                             /* Track our list of hashes without filling up our memory. */
