@@ -154,7 +154,7 @@ namespace LLP
 
                             {
                                 /* Run basic merkle tx checks */
-                                if(!tx.Verify())
+                                if(!tx.Verify(TAO::Ledger::FLAGS::LOOKUP))
                                     return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
                                 /* Handle for regular dependant specifier. */
@@ -219,7 +219,7 @@ namespace LLP
 
                                 /* Begin our ACID transaction across LLD instances. */
                                 { LOCK(TritiumNode::CLIENT_MUTEX);
-                                    
+
                                     LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
 
                                     /* Check if we have this transaction already. */

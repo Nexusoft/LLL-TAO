@@ -99,7 +99,10 @@ namespace LLD
 
             /* Check for first. */
             if(tx.IsFirst())
+            {
+                hashTx = 0; //we mark unindexed first transaction as 0 to get it from Tritium LLP
                 break;
+            }
 
             /* Set hash to previous hash. */
             hashTx = tx.hashPrevTx;
@@ -133,6 +136,18 @@ namespace LLD
     bool LogicalDB::ReadFirst(const uint256_t& hashGenesis, uint512_t& hashTx)
     {
         return Read(std::make_pair(std::string("indexing.first"), hashGenesis), hashTx);
+    }
+
+
+    /* Reads the first transaction-id from disk. */
+    bool LogicalDB::ReadFirst(const uint256_t& hashGenesis, TAO::API::Transaction &tx)
+    {
+        /* Get our txid of first event. */
+        uint512_t hashFirst = 0;
+        if(!Read(std::make_pair(std::string("indexing.first"), hashGenesis), hashFirst))
+            return false;
+
+        return Read(std::make_pair(std::string("tx"), hashFirst), tx);
     }
 
 

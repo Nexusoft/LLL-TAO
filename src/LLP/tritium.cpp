@@ -1647,34 +1647,29 @@ namespace LLP
                         int32_t nLimits = ACTION::LIST_NOTIFICATIONS_MAX_ITEMS + 1;
                         debug::log(1, NODE, "ACTION::LIST: SIGCHAIN for ", hashSigchain.SubString());
 
-                        /* Check for empty hash start. */
-                        bool fGenesis = (hashStart == 0);
-                        if(hashStart == 0 && !LLD::Ledger->ReadFirst(hashSigchain, hashStart))
-                            break;
-
                         /* Check for empty hash stop. */
                         uint512_t hashThis;
-                        if(hashThis == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashThis, TAO::Ledger::FLAGS::MEMPOOL))
+                        if(!LLD::Ledger->ReadLast(hashSigchain, hashThis, TAO::Ledger::FLAGS::MEMPOOL))
                             break;
 
                         /* Read sigchain entries. */
                         std::vector<uint512_t> vHashes;
                         while(!config::fShutdown.load())
                         {
-                            /* Break on the ending hash if not genesis. */
-                            if(!fGenesis && hashStart == hashThis)
-                                break;
-
                             /* Read from disk. */
                             TAO::Ledger::Transaction tx;
                             if(!LLD::Ledger->ReadTx(hashThis, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Check for genesis. */
+                            if(hashStart == hashThis && tx.IsFirst())
                                 break;
 
                             /* Track our list of hashes without filling up our memory. */
                             vHashes.push_back(hashThis);
 
                             /* Check for genesis. */
-                            if(fGenesis && hashStart == hashThis)
+                            if(hashStart == hashThis || tx.IsFirst())
                                 break;
 
                             hashThis = tx.hashPrevTx;

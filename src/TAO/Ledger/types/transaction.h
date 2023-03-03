@@ -234,7 +234,7 @@ namespace TAO::Ledger
          *  @return true if transaction is valid.
          *
          **/
-        bool Check() const;
+        bool Check(const uint8_t nFlags = 0) const;
 
 
         /** Verify

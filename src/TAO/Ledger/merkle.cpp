@@ -273,14 +273,14 @@ namespace TAO
         }
 
         /* Verifies a merkle transaction against the block merkle root and internal checks. */
-        bool MerkleTx::Verify() const
+        bool MerkleTx::Verify(const uint8_t nFlags) const
         {
             /* Check for empty merkle tx. */
             if(hashBlock == 0)
                 return debug::error(FUNCTION, "block to compare merkle branch");
 
             /* Check transaction contains valid information. */
-            if(!Check())
+            if(!Check(nFlags))
                 return debug::error(FUNCTION, debug::GetLastError());
 
             /* Grab the block to check merkle path. */

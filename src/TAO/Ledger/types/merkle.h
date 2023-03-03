@@ -196,7 +196,7 @@ namespace TAO
              *  @return true if the merkle transaction is valid.
              *
              **/
-            bool Verify() const;
+            bool Verify(const uint8_t nFlags = 0) const;
 
         };
 

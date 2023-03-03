@@ -91,6 +91,15 @@ namespace TAO::API
             Authentication::Session tSession =
                 Authentication::Session(strUsername, strPassword, Authentication::Session::LOCAL);
 
+            /* Check our session's credentials. */
+            if(!validate_session(tSession, strPIN)) //this is a paranoid check, but let's still do it
+            {
+                /* Erase our session on failed auth. */
+                LLD::Local->EraseSession(hashGenesis);
+
+                throw Exception(-139, "Invalid credentials");
+            }
+
             /* Build a new session key. */
             if(config::fMultiuser.load())
                 hashSession = LLC::GetRand256();
