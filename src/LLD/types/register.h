@@ -260,6 +260,20 @@ namespace LLD
 
     private:
 
+
+        /** client_lookup
+         *
+         *  Does a -client mode lookup using lookup service.
+         *
+         *  @param[in] hashRegister The register address.
+         *  @param[out] state The state register to read.
+         *
+         *  @return True if read was successful, false otherwise.
+         *
+         **/
+        bool client_lookup(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags);
+
+
         /** get_address_type
          *
          *  Get a type string of the given address for sequential write keys.

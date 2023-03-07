@@ -131,12 +131,8 @@ namespace LLP
                 uint8_t nSpecifier;
                 ssPacket >> nSpecifier;
 
-                /* Check for a not found error. */
-                if(nSpecifier == RESPONSE::MISSING)
-                    debug::warning(NODE, "Request ", std::hex, nRequestID, " LOOKUP not found");
-
-                /* Otherwise proceed normally. */
-                else
+                /* Proceed if it was found. */
+                if(nSpecifier != RESPONSE::MISSING)
                 {
                     /* Switch based on our specifier. */
                     switch(nSpecifier)
