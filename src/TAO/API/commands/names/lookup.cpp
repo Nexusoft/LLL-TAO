@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/API/include/check.h>
+#include <TAO/API/include/filter.h>
 
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/names.h>
@@ -25,26 +26,29 @@ namespace TAO::API
     encoding::json Names::Lookup(const encoding::json& jParams, const bool fHelp)
     {
         /* Extract our address for name lookup. */
-        if(!CheckParameter(jParams, "name", "string"))
-            throw Exception(-11, "Missing Parameter [name]");
+        if(!CheckParameter(jParams, "address", "string"))
+            throw Exception(-11, "Missing Parameter [address]");
 
         /* Build our response object. */
         const TAO::Register::Address hashAddress =
-            Names::ResolveAddress(jParams, jParams["name"].get<std::string>(), true).ToString();
+            TAO::Register::Address(jParams["address"].get<std::string>());
 
-        /* Check for this in database. */
-        TAO::Register::Object tObject;
-        if(!LLD::Register->ReadObject(hashAddress, tObject, TAO::Ledger::FLAGS::LOOKUP))
+        /* Handle for NXS hardcoded token name. */
+        uint256_t hashName;
+        if(!LLD::Logical->ReadPTR(hashAddress, hashName))
+            throw Exception(-22, "No PTR Record found: Address has no valid name index");
+
+        /* Get the name object now. */
+        TAO::Register::Object tName;
+        if(!LLD::Register->ReadObject(hashName, tName))
             throw Exception(-12, "Object does not exist");
 
-        /* Build our returned JSON data. */
+        /* Build our response object. */
         encoding::json jRet =
-        {
-            { "address", hashAddress.ToString() }
-        };
+            RegisterToJSON(tName, hashName);
 
-        /* Add some register type info. */
-        RegisterTypesToJSON(tObject, jRet);
+        /* Filter out our expected fieldnames if specified. */
+        FilterFieldname(jParams, jRet);
 
         return jRet;
     }

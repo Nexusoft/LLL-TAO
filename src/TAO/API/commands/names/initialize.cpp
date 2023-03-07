@@ -168,7 +168,7 @@ namespace TAO::API
         );
 
         /* Handle for all LOOKUP operations. */
-        mapFunctions["lookup"] = Function
+        mapFunctions["reverse"] = Function
         (
             std::bind
             (
@@ -177,7 +177,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , "address"
+            , "lookup"
         );
 
         /* Handle for all TRANSACTIONS operations. */
