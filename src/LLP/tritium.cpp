@@ -1699,7 +1699,7 @@ namespace LLP
                         ssPacket >> nSequence;
 
                         /* Get the last event */
-                        debug::log(1, NODE, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
+                        debug::log(1, NODE, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION from ", nSequence, " for ", hashSigchain.SubString());
 
                         /* Check for legacy. */
                         int32_t nLimits = ACTION::LIST_NOTIFICATIONS_MAX_ITEMS + 1;
