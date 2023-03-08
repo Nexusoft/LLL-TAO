@@ -211,21 +211,7 @@ namespace LLP
                 {
                     /* We want to add failures up to a specified limit. */
                     if(pAddressManager->Has(addrConnect))
-                    {
-                        /* Grab our trust address if valid. */
-                        const TrustAddress& addrInfo = pAddressManager->Get(addrConnect);
-
-                        /* Kill address if we haven't found any valid connections. */
-                        const uint32_t nLimit = config::GetArg("-prunefailed", 0);
-                        if(nLimit > 0 && addrInfo.nFailed > nLimit  && addrInfo.nConnected == 0)
-                        {
-                            /* Remove from database */
-                            pAddressManager->RemoveAddress(addrConnect);
-                            debug::log(3, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CLEAN: ", ANSI_COLOR_RESET, "address has reached failure limit: ", addrInfo.nFailed);
-                        }
-                        else
-                            pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
-                    }
+                        pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
 
                 }
 

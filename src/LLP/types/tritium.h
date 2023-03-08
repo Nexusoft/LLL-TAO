@@ -39,6 +39,76 @@ namespace LLP
      **/
     class TritiumNode : public BaseConnection<MessagePacket>
     {
+        /** @class Inventory class
+         *
+         *  Track inventory with expiring cache.
+         *
+         **/
+        class Inventory
+        {
+            /** Inventory set with expiring cache. **/
+            std::map<uint512_t, uint64_t> mapInventory;
+
+
+            /** Mutex to lock internal map inventory. **/
+            std::recursive_mutex MUTEX;
+
+        public:
+
+            /** Default Constructor. **/
+            Inventory ( )
+            : mapInventory ( )
+            , MUTEX        ( )
+            {
+            }
+
+
+            /** Expired
+             *
+             *  Check if given txid cache is expired to be requested from peer.
+             *
+             *  @param[in] hashTx The txid that we want to filter out.
+             *  @param[in] nTimeout The time to wait for cache timeout.
+             *
+             *  @return true if the txid is availble for request.
+             *
+             **/
+            bool Expired(const uint512_t& hashTx, const uint32_t nTimeout = 15)
+            {
+                RECURSIVE(MUTEX);
+
+                /* Check if we don't have it in our map. */
+                if(!mapInventory.count(hashTx))
+                    return true;
+
+                /* Check our timeout here. */
+                if(mapInventory[hashTx] + nTimeout < runtime::unifiedtimestamp())
+                {
+                    /* Cleanup our memory records. */
+                    mapInventory.erase(hashTx);
+                    return true;
+                }
+
+                return false; //otherwise don't request it
+            }
+
+
+            /** Cache
+             *
+             *  Caches current txid to be filtered for given timestamp.
+             *
+             *  @param[in] hashTx The txid that we want to filter out.
+             *
+             **/
+            void Cache(const uint512_t& hashTx)
+            {
+                RECURSIVE(MUTEX);
+
+                /* Set our inventory value to our current time. */
+                mapInventory[hashTx] = runtime::unifiedtimestamp();
+            }
+        };
+
     public: //encapsulate protocol messages inside node class
 
         /** Actions invoke behavior in remote node. **/
@@ -90,6 +160,7 @@ namespace LLP
             {
                 /* Key Types. */
                 UINT256_T     = 0x20,
+
                 UINT512_T     = 0x21,
                 UINT1024_T    = 0x22,
                 STRING        = 0x23,
@@ -192,6 +263,10 @@ namespace LLP
 
         /** Sig chain genesis hashes / register addresses that the peer has subscribed to notifications for **/
         std::set<uint256_t> setSubscriptions;
+
+
+        /** Inventory class to track caches. **/
+        static Inventory tInventory;
 
 
     public:

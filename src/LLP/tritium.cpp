@@ -64,6 +64,10 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /* Inventory class to track recent relays with expiring cache. */
+    TritiumNode::Inventory TritiumNode::tInventory;
+
+
     /* Declaration of client mutex for synchronizing client mode transactions. */
     std::mutex TritiumNode::CLIENT_MUTEX;
 
@@ -102,10 +106,6 @@ namespace LLP
 
     /** This node's address, as seen by the peer **/
     memory::atomic<LLP::BaseAddress> TritiumNode::addrThis;
-
-
-    /* The local relay inventory cache. */
-    static LLD::KeyLRU cacheInventory = LLD::KeyLRU(1024 * 1024);
 
 
     /** Default Constructor **/
@@ -494,21 +494,7 @@ namespace LLP
                 /* Update address status. */
                 const BaseAddress& addr = GetAddress();
                 if(TRITIUM_SERVER->GetAddressManager() && TRITIUM_SERVER->GetAddressManager()->Has(addr))
-                {
-                    /* Grab our trust address if valid. */
-                    const TrustAddress& addrInfo = TRITIUM_SERVER->GetAddressManager()->Get(addr);
-
-                    /* Kill address if we haven't found any valid connections. */
-                    const uint32_t nLimit = config::GetArg("-prunefailed", 0);
-                    if(nLimit > 0 && addrInfo.nFailed > nLimit && addrInfo.nConnected == addrInfo.nFailed)
-                    {
-                        /* Remove from database */
-                        TRITIUM_SERVER->GetAddressManager()->RemoveAddress(addr);
-                        debug::log(3, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CLEAN: ", ANSI_COLOR_RESET, "address has reached failure limit: ", addrInfo.nFailed);
-                    }
-                    else
-                        TRITIUM_SERVER->GetAddressManager()->AddAddress(addr, nState);
-                }
+                    TRITIUM_SERVER->GetAddressManager()->AddAddress(addr, nState);
 
                 /* Check if we need to switch sync nodes. */
                 if(nCurrentSession != 0)
@@ -2117,7 +2103,7 @@ namespace LLP
                                     return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: cannot include legacy specifier");
 
                                 /* Get the sigchain genesis. */
-                                uint256_t hashSigchain = 0;
+                                uint256_t hashSigchain;
                                 ssPacket >> hashSigchain;
 
                                 /* Check for expected genesis. */
@@ -2145,7 +2131,7 @@ namespace LLP
                                     return debug::drop(NODE, "ACTION::NOTIFY::REGISTER: cannot include legacy specifier");
 
                                 /* Get the  address . */
-                                uint256_t hashAddress = 0;
+                                uint256_t hashAddress;
                                 ssPacket >> hashAddress;
 
                                 /* If the address is a genesis hash, then make sure that it is for the currently logged in user */
@@ -2158,10 +2144,10 @@ namespace LLP
                             ssPacket >> hashTx;
 
                             /* Handle for -client mode which deals with merkle transactions. */
-                            if(config::fClient.load())
+                            if(nType == TYPES::SIGCHAIN && config::fClient.load())
                             {
                                 /* Check ledger database. */
-                                if(!cacheInventory.Has(hashTx) && !LLD::Client->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(tInventory.Expired(hashTx, 10)) //10 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: MERKLE TRANSACTION ", hashTx.SubString());
@@ -2170,8 +2156,14 @@ namespace LLP
                                     if(fLegacy)
                                         ssResponse << uint8_t(SPECIFIER::LEGACY);
 
+                                    /* Build our response to get transaction. */
                                     ssResponse << uint8_t(TYPES::MERKLE) << hashTx;
+
+                                    /* Add to our cache inventory. */
+                                    tInventory.Cache(hashTx);
                                 }
+                                else
+                                    debug::log(3, NODE, "ACTION::NOTIFY: [CACHED] MERKLE TRANSACTION ", hashTx.SubString());
 
                                 break;
                             }
@@ -2180,24 +2172,36 @@ namespace LLP
                             if(fLegacy)
                             {
                                 /* Check legacy database. */
-                                if(!cacheInventory.Has(hashTx) && !LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(tInventory.Expired(hashTx, 10)) //10 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString());
 
+                                    /* Build our response to get transaction. */
                                     ssResponse << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
+
+                                    /* Add to our cache inventory. */
+                                    tInventory.Cache(hashTx);
                                 }
+                                else
+                                    debug::log(3, NODE, "ACTION::NOTIFY: [CACHED] LEGACY TRANSACTION ", hashTx.SubString());
                             }
                             else
                             {
                                 /* Check ledger database. */
-                                if(!cacheInventory.Has(hashTx) && !LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(tInventory.Expired(hashTx, 10)) //10 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: TRITIUM TRANSACTION ", hashTx.SubString());
 
+                                    /* Build our response to get transaction. */
                                     ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
+
+                                    /* Add to our cache inventory. */
+                                    tInventory.Cache(hashTx);
                                 }
+                                else
+                                    debug::log(3, NODE, "ACTION::NOTIFY: [CACHED] TRITIUM TRANSACTION ", hashTx.SubString());
                             }
 
                             break;
@@ -2605,7 +2609,7 @@ namespace LLP
                                 }
                             }
 
-                            /* Request our missing block last. */
+                            /* Expired our missing block last. */
                             PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
                         }
 

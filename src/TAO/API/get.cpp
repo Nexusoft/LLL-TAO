@@ -598,32 +598,6 @@ namespace TAO::API
     }
 
 
-    /* Reads a batch of states registers from the Register DB */
-    bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses,
-                      std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates)
-    {
-        for(const auto& hashRegister : vAddresses)
-        {
-            /* Get the state from the register DB. */
-            TAO::Register::State state;
-            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw Exception(-104, "Object not found");
-
-            vStates.push_back(std::make_pair(hashRegister, state));
-        }
-
-        /* Now sort the states based on the creation time */
-        std::sort(vStates.begin(), vStates.end(),
-            [](const std::pair<TAO::Register::Address, TAO::Register::State> &a,
-            const std::pair<TAO::Register::Address, TAO::Register::State> &b)
-            {
-                return ( a.second.nCreated < b.second.nCreated );
-            });
-
-        return vStates.size() > 0;
-    }
-
-
     /* Get any unclaimed transfer transactions. */
     bool GetUnclaimed(const uint256_t& hashGenesis,
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
