@@ -78,7 +78,7 @@ namespace LLP
             /* Create the server instance. */
             LOOKUP_SERVER = new Server<LookupNode>(CONFIG);
         }
-        
+
 
         /* TRITIUM_SERVER instance */
         {
@@ -233,6 +233,56 @@ namespace LLP
 
 
         return true;
+    }
+
+
+    /* Closes the listening sockets on all running servers. */
+    void CloseListening()
+    {
+        debug::log(0, FUNCTION, "Closing LLP Listeners");
+
+        /* Close sockets for the lookup server and its subsystems. */
+        CloseListening<LookupNode>(LOOKUP_SERVER);
+
+        /* Close sockets for the tritium server and its subsystems. */
+        CloseListening<TritiumNode>(TRITIUM_SERVER);
+
+        /* Close sockets for the time server and its subsystems. */
+        CloseListening<TimeNode>(TIME_SERVER);
+
+        /* Close sockets for the core API server and its subsystems. */
+        CloseListening<APINode>(API_SERVER);
+
+        /* Close sockets for the RPC server and its subsystems. */
+        CloseListening<RPCNode>(RPC_SERVER);
+
+        /* Close sockets for the mining server and its subsystems. */
+        CloseListening<Miner>(MINING_SERVER);
+    }
+
+
+    /* Restarts the listening sockets on all running servers. */
+    void OpenListening()
+    {
+        debug::log(0, FUNCTION, "Opening LLP Listeners");
+
+        /* Open sockets for the lookup server and its subsystems. */
+        OpenListening<LookupNode>(LOOKUP_SERVER);
+
+        /* Open sockets for the tritium server and its subsystems. */
+        OpenListening<TritiumNode>(TRITIUM_SERVER);
+
+        /* Open sockets for the time server and its subsystems. */
+        OpenListening<TimeNode>(TIME_SERVER);
+
+        /* Open sockets for the core API server and its subsystems. */
+        OpenListening<APINode>(API_SERVER);
+
+        /* Open sockets for the RPC server and its subsystems. */
+        OpenListening<RPCNode>(RPC_SERVER);
+
+        /* Open sockets for the mining server and its subsystems. */
+        OpenListening<Miner>(MINING_SERVER);
     }
 
 
