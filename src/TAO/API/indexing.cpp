@@ -862,7 +862,10 @@ namespace TAO::API
 
                         /* Write our events to database. */
                         if(!LLD::Logical->PushEvent(hashRecipient, hashTx, nContract))
+                        {
+                            debug::warning(FUNCTION, "failed to push event for ", hashTx.SubString(), " contract ", nContract);
                             continue;
+                        }
 
                         /* Increment our sequence. */
                         if(!LLD::Logical->IncrementTritiumSequence(hashRecipient))
