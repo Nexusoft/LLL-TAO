@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/profiles.h>
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/transaction.h>
+#include <TAO/API/types/notifications.h>
 
 #include <TAO/Ledger/types/state.h>
 
@@ -97,11 +98,19 @@ namespace TAO::API
                 }
 
                 /* Get a referecne of our contract. */
-                const TAO::Operation::Contract& rContract =
+                TAO::Operation::Contract rContract =
                     LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
 
                 /* Check if the given contract is spent already. */
                 if(rContract.Spent(rEvent.second))
+                    continue;
+
+                /* Bind our contract now to a timestamp and caller. */
+                rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
+
+                /* Sanitize the contract. */
+                std::map<uint256_t, TAO::Register::State> mapStates;
+                if(!Notifications::SanitizeContract(rContract, mapStates))
                     continue;
 
                 /* Get the transaction JSON. */

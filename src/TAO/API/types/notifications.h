@@ -57,10 +57,9 @@ namespace TAO::API
          *
          **/
         static void Shutdown();
+        
 
-    private:
-
-        /** sanitize_contract
+        /** SanitizeContract
         *
         *  Checks that the contract passes both Build() and Execute()
         *
@@ -70,7 +69,7 @@ namespace TAO::API
         *  @return True if the contract was sanitized without errors.
         *
         **/
-        static bool sanitize_contract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates);
+        static bool SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates);
 
     };
 }

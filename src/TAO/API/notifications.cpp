@@ -384,7 +384,7 @@ namespace TAO::API
                         rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
 
                         /* Sanitize the contract. */
-                        if(sanitize_contract(rContract, mapStates))
+                        if(SanitizeContract(rContract, mapStates))
                             vSanitized.emplace_back(std::move(rContract));
                     }
 
@@ -414,7 +414,7 @@ namespace TAO::API
 
 
     /* Checks that the contract passes both Build() and Execute() */
-    bool Notifications::sanitize_contract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates)
+    bool Notifications::SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates)
     {
         /* Return flag */
         bool fSanitized = false;
