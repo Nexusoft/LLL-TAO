@@ -72,7 +72,7 @@ namespace version
     /* Our literal build string. */
     const std::string CLIENT_VERSION_BUILD_STRING
     (
-          CLIENT_VERSION_STRING + "-rc3 "
+          CLIENT_VERSION_STRING + "-rc4 "
         + CLIENT_NAME           + " "
         + CLIENT_INTERFACE      + " "
         + CLIENT_DATABASE + BUILD_ARCH
