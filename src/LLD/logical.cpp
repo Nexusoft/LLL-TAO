@@ -349,7 +349,7 @@ namespace LLD
 
         /* Get our starting hash. */
         const uint1024_t hashBegin =
-            TAO::Ledger::ChainState::Genesis();
+             TAO::Ledger::hashTritium;
 
         /* Read the first tritium block. */
         TAO::Ledger::BlockState state;
