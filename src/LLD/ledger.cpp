@@ -960,6 +960,9 @@ namespace LLD
                 /* Set indexing argument now. */
                 RECURSIVE(config::ARGS_MUTEX);
                 config::mapArgs["-indexproofs"] = "1";
+
+                /* Cache our internal arguments. */
+                config::fIndexProofs.store(true);
             }
 
             /* Quit if we have reindexed proofs. */
@@ -968,7 +971,7 @@ namespace LLD
         }
 
         /* Check there is no argument supplied. */
-        if(!config::GetBoolArg("-indexproofs"))
+        if(!config::fIndexProofs.load())
             return;
 
         /* Start a timer to track. */

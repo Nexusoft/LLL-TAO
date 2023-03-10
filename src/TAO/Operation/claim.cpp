@@ -38,11 +38,11 @@ namespace TAO
                 return debug::error(FUNCTION, "transfer is already claimed");
 
             /* Write the claimed proof. */
-            if(config::GetBoolArg("-indexproofs") && !LLD::Ledger->IndexProof(hashAddress, hashTx, nContract, contract.Hash(), nFlags))
+            if(config::fIndexProofs.load() && !LLD::Ledger->IndexProof(hashAddress, hashTx, nContract, contract.Hash(), nFlags))
                 return debug::error(FUNCTION, "failed to write claim index");
 
             /* Write the claimed proof. */
-            if(!config::GetBoolArg("-indexproofs") && !LLD::Ledger->WriteProof(hashAddress, hashTx, nContract, nFlags))
+            if(!config::fIndexProofs.load() && !LLD::Ledger->WriteProof(hashAddress, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "failed to write claim proof");
 
             /* Attempt to write new state to disk. */

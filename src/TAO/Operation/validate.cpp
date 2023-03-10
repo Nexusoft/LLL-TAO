@@ -34,7 +34,7 @@ namespace TAO
         bool Validate::Commit(const Contract& contract, const uint512_t& hashTx, const uint32_t nContract, const uint256_t& hashCaller, const uint8_t nFlags)
         {
             /* Check for disk write to add indexes. */
-            if(nFlags == TAO::Ledger::FLAGS::BLOCK && config::GetBoolArg("-indexproofs"))
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK && config::fIndexProofs.load())
             {
                 /* Write a ledger level index if validated. */
                 if(!LLD::Ledger->IndexContract(hashTx, nContract, contract.Hash()))

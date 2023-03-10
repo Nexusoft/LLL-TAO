@@ -62,7 +62,7 @@ namespace TAO
             uint64_t nTotalTokenized = 0;
 
             /* Special handle if address indexed. */
-            if(config::GetBoolArg("-indexaddress"))
+            if(config::fIndexAddress.load())
             {
                 /* Batch read all trust keys. */
                 std::vector<std::pair<uint256_t, TAO::Register::Object>> vTrust;
@@ -120,7 +120,7 @@ namespace TAO
 
 
             /* Special handle if address indexed. */
-            if(config::GetBoolArg("-indexaddress"))
+            if(config::fIndexAddress.load())
             {
                 /* Batch read all names. */
                 std::vector<std::pair<uint256_t, TAO::Register::Object>> vNames;
@@ -182,7 +182,7 @@ namespace TAO
 
 
             /* Special handle if address indexed. */
-            if(config::GetBoolArg("-indexaddress"))
+            if(config::fIndexAddress.load())
             {
                 /* Batch read all object registers. */
                 std::vector<std::pair<uint256_t, TAO::Register::Object>> vObjects;
@@ -229,7 +229,7 @@ namespace TAO
             std::set<uint256_t> setOwners;
 
             /* Special handle if address indexed. */
-            if(config::GetBoolArg("-indexaddress"))
+            if(config::fIndexAddress.load())
             {
                 /* Batch read all object registers. */
                 std::vector<std::pair<uint256_t, TAO::Register::Object>> vCrypto;
@@ -352,7 +352,7 @@ namespace TAO
         uint64_t System::count_registers(const std::string& strType)
         {
             /* Special handle if address indexed. */
-            if(config::GetBoolArg("-indexaddress"))
+            if(config::fIndexAddress.load())
             {
                 /* Batch read up to 1000 at a time */
                 std::vector<std::pair<uint256_t, TAO::Register::Object>> vRegisters;

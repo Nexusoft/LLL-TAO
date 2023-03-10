@@ -154,7 +154,7 @@ namespace LLD
         }
 
         /* Check for register address index. */
-        if(config::GetBoolArg("-indexaddress"))
+        if(config::fIndexAddress.load())
         {
             /* We include address if we are indexing by address. */
             return Write(
@@ -216,7 +216,7 @@ namespace LLD
         if(nFlags != TAO::Ledger::FLAGS::FORCED || !config::fClient.load()) //we want FLAGS::FORCED to act like FLAGS::MEMPOOL for non -clients
         {
             /* Special case for indexed addresses. */
-            if(config::GetBoolArg("-indexaddress"))
+            if(config::fIndexAddress.load())
             {
                 /* Create a pair to use for reading the reference for return. */
                 std::pair<uint256_t, TAO::Register::State&> pairResult =
@@ -285,7 +285,7 @@ namespace LLD
         }
 
         /* Special case for indexed addresses. */
-        if(config::GetBoolArg("-indexaddress"))
+        if(config::fIndexAddress.load())
             return Erase(std::make_pair(std::string("state"), hashRegister));
 
         return Erase(std::make_pair(std::string("state"), hashRegister));
@@ -311,7 +311,7 @@ namespace LLD
     bool RegisterDB::IndexTrust(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
         /* We have our own logic here for indexing keys. */
-        if(config::GetBoolArg("-indexaddress"))
+        if(config::fIndexAddress.load())
             return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("state"), hashRegister));
 
         return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("state"), hashRegister));
@@ -430,7 +430,7 @@ namespace LLD
         }
 
         /* Special case for indexed addresses. */
-        if(config::GetBoolArg("-indexaddress"))
+        if(config::fIndexAddress.load())
             return Exists(std::make_pair(std::string("state"), hashRegister));
 
         /* Check our disk to make sure it exists. */
@@ -465,6 +465,9 @@ namespace LLD
                 /* Set indexing argument now. */
                 RECURSIVE(config::ARGS_MUTEX);
                 config::mapArgs["-indexaddress"] = "1";
+
+                /* Set our internal configuration value. */
+                config::fIndexAddress.store(true);
             }
 
             if(!config::GetBoolArg("-forcereindex"))
@@ -472,7 +475,7 @@ namespace LLD
         }
 
         /* Check there is no argument supplied. */
-        if(!config::GetBoolArg("-indexaddress"))
+        if(!config::fIndexAddress.load())
             return;
 
         /* Start a timer to track. */

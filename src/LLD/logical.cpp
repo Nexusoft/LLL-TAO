@@ -334,13 +334,16 @@ namespace LLD
                 /* Set indexing argument now. */
                 RECURSIVE(config::ARGS_MUTEX);
                 config::mapArgs["-indexregister"] = "1";
+
+                /* Set our internal configuration. */
+                config::fIndexRegister.store(true);
             }
 
             return;
         }
 
         /* Check there is no argument supplied. */
-        if(!config::GetBoolArg("-indexregister"))
+        if(!config::fIndexRegister.load())
             return;
 
         /* Start a timer to track. */

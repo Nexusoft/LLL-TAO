@@ -550,7 +550,7 @@ namespace LLP
 
                         /* Handle the quick and indexed way. */
                         uint512_t hashTx;
-                        if(config::GetBoolArg("-indexregister") && LLD::Logical->LastRegisterTx(hashRegister, hashTx))
+                        if(config::fIndexRegister.load() && LLD::Logical->LastRegisterTx(hashRegister, hashTx))
                         {
                             /* Get the transaction from disk. */
                             TAO::Ledger::Transaction tx;

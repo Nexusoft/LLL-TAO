@@ -1164,11 +1164,11 @@ namespace Legacy
                     if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                     {
                         /* Handle if we are using -indexproofs. */
-                        if(config::GetBoolArg("-indexproofs") && !LLD::Legacy->IndexSpend(prevout.hash, prevout.n, GetHash()))
+                        if(config::fIndexProofs.load() && !LLD::Legacy->IndexSpend(prevout.hash, prevout.n, GetHash()))
                             return debug::error(FUNCTION, "failed to index spend");
 
                         /* Handle if we are using -indexproofs. */
-                        if(!config::GetBoolArg("-indexproofs") && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                        if(!config::fIndexProofs.load() && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
                             return debug::error(FUNCTION, "failed to write spend");
                     }
 
@@ -1233,11 +1233,11 @@ namespace Legacy
                     if(nFlags == TAO::Ledger::FLAGS::BLOCK)
                     {
                         /* Handle if we are using -indexproofs. */
-                        if(config::GetBoolArg("-indexproofs") && !LLD::Legacy->IndexSpend(prevout.hash, prevout.n, GetHash()))
+                        if(config::fIndexProofs.load() && !LLD::Legacy->IndexSpend(prevout.hash, prevout.n, GetHash()))
                             return debug::error(FUNCTION, "failed to write spend");
 
                         /* Handle if we are using -indexproofs. */
-                        if(!config::GetBoolArg("-indexproofs") && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                        if(!config::fIndexProofs.load() && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
                             return debug::error(FUNCTION, "failed to write spend");
                     }
 

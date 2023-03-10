@@ -992,7 +992,7 @@ namespace TAO
                     TAO::Operation::TxCost(contract, nCost);
 
                 /* Index our registers here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::GetBoolArg("-indexregister"))
+                if(!config::fClient.load() && config::fIndexRegister.load())
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;
@@ -1113,7 +1113,7 @@ namespace TAO
                     return false;
 
                 /* Erase our register index here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::GetBoolArg("-indexregister"))
+                if(!config::fClient.load() && config::fIndexRegister.load())
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;

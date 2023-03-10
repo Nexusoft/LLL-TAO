@@ -42,11 +42,11 @@ namespace TAO
                 return debug::error(FUNCTION, "credit is already claimed ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
 
             /* Write the claimed proof. */
-            if(config::GetBoolArg("-indexproofs") && !LLD::Ledger->IndexProof(hashProof, hashTx, nContract, credit.Hash(), nFlags))
+            if(config::fIndexProofs.load() && !LLD::Ledger->IndexProof(hashProof, hashTx, nContract, credit.Hash(), nFlags))
                 return debug::error(FUNCTION, "failed to write credit index");
 
             /* Write the claimed proof. */
-            if(!config::GetBoolArg("-indexproofs") && !LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))
+            if(!config::fIndexProofs.load() && !LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))
                 return debug::error(FUNCTION, "failed to write credit index");
 
             /* Read the debit. */

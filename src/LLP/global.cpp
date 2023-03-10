@@ -59,7 +59,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetLookupPort());
             CONFIG.ENABLE_LISTEN   = //we only listen if we have the valid indexes created
-                (!config::fClient.load() && config::GetBoolArg("-indexproofs") && config::GetBoolArg("-indexregister"));
+                (!config::fClient.load() && config::fIndexProofs.load() && config::fIndexRegister.load());
 
             CONFIG.ENABLE_METERS   = false;
             CONFIG.ENABLE_DDOS     = true;
