@@ -429,10 +429,6 @@ namespace LLD
                 return true;
         }
 
-        /* Special case for indexed addresses. */
-        if(config::fIndexAddress.load())
-            return Exists(std::make_pair(std::string("state"), hashRegister));
-
         /* Check our disk to make sure it exists. */
         if(Exists(std::make_pair(std::string("state"), hashRegister)))
             return true;
