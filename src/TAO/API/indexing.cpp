@@ -231,6 +231,9 @@ namespace TAO::API
 
             /* Fire off indexing now. */
             IndexSigchain(hashTx);
+
+            /* Write our last index now. */
+            LLD::Logical->WriteLastIndex(hashTx);
         }
     }
 
