@@ -78,6 +78,21 @@ namespace TAO::Register
 
     /** Unpack
      *
+     *  Unpack a previous transaction hash and contract ID from a contract
+     *
+     *  @param[in] contract The contract to unpack from.
+     *  @param[in] hashProof The proof included in transfer transaction.
+     *  @param[out] hashPrevTx finds a previous transaction
+     *  @param[out] nContract the contract ID of the previous transaction
+     *
+     *  @return true if the previous tx hash and contract ID was unpacked successfully
+     *
+     **/
+    bool Unpack(const TAO::Operation::Contract& contract, uint256_t& hashProof, uint512_t& hashPrevTx, uint32_t& nContract);
+
+
+    /** Unpack
+     *
      *  Unpack the amount of NXS in contract.
      *
      *  Will unpack amount minted from coinbase, genesis, trust, ambassador, developer operations.

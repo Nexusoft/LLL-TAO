@@ -473,7 +473,7 @@ namespace TAO::Operation
                         return debug::error(FUNCTION, "OP::CLAIM: invalid register post-state");
 
                     /* Commit the register to disk. */
-                    if(!Claim::Commit(state, hashAddress, hashTx, nContract, nFlags))
+                    if(!Claim::Commit(state, contract, hashAddress, hashTx, nContract, nFlags))
                         return false;
 
                     break;
@@ -795,7 +795,7 @@ namespace TAO::Operation
                         return debug::error(FUNCTION, "OP::CREDIT: invalid register post-state");
 
                     /* Commit the register to disk. */
-                    if(!Credit::Commit(object, debit, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
+                    if(!Credit::Commit(object, debit, contract, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
                         return false;
 
                     break;

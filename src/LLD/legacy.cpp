@@ -114,21 +114,28 @@ namespace LLD
 
 
     /* Writes an output as spent. */
-    bool LegacyDB::WriteSpend(const uint512_t& hashTx, uint32_t nOutput)
+    bool LegacyDB::WriteSpend(const uint512_t& hashTx, const uint32_t nOutput)
     {
         return Write(std::make_pair(hashTx, nOutput));
     }
 
 
+    /* Indexes an output as spent to the spending transaction. */
+    bool LegacyDB::IndexSpend(const uint512_t& hashTx, const uint32_t nOutput, const uint512_t& hashIndex)
+    {
+        return Index(std::make_pair(hashTx, nOutput), std::make_pair(std::string("tx"), hashIndex));
+    }
+
+
     /* Removes a spend flag on an output. */
-    bool LegacyDB::EraseSpend(const uint512_t& hashTx, uint32_t nOutput)
+    bool LegacyDB::EraseSpend(const uint512_t& hashTx, const uint32_t nOutput)
     {
         return Erase(std::make_pair(hashTx, nOutput));
     }
 
 
     /* Checks if an output was spent. */
-    bool LegacyDB::IsSpent(const uint512_t& hashTx, uint32_t nOutput)
+    bool LegacyDB::IsSpent(const uint512_t& hashTx, const uint32_t nOutput)
     {
         return Exists(std::make_pair(hashTx, nOutput));
     }
@@ -205,7 +212,7 @@ namespace LLD
     {
         /* Get the last known event sequence for this address  */
         uint32_t nSequence = 0;
-        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value 
+        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value
 
         /* Read the transaction ID of the last event */
         if(nSequence > 0)

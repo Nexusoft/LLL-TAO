@@ -124,7 +124,20 @@ namespace LLD
          *  @return True if the spend is written, false otherwise.
          *
          **/
-        bool WriteSpend(const uint512_t& hashTx, uint32_t nOutput);
+        bool WriteSpend(const uint512_t& hashTx, const uint32_t nOutput);
+
+
+        /** IndexSpend
+         *
+         *  Indexes an output as spent to the spending transaction.
+         *
+         *  @param[in] hashTx The txid of transaction to write.
+         *  @param[in] nOutput The output that was spent.
+         *
+         *  @return True if the spend is written, false otherwise.
+         *
+         **/
+        bool IndexSpend(const uint512_t& hashTx, const uint32_t nOutput, const uint512_t& hashIndex);
 
 
         /** EraseSpend
@@ -137,7 +150,7 @@ namespace LLD
          *  @return True if the spend is erased, false otherwise.
          *
          **/
-        bool EraseSpend(const uint512_t& hashTx, uint32_t nOutput);
+        bool EraseSpend(const uint512_t& hashTx, const uint32_t nOutput);
 
 
         /** IsSpent
@@ -150,7 +163,7 @@ namespace LLD
          *  @return True if the output is spent, false otherwise.
          *
          **/
-        bool IsSpent(const uint512_t& hashTx, uint32_t nOutput);
+        bool IsSpent(const uint512_t& hashTx, const uint32_t nOutput);
 
 
         /** WriteSequence

@@ -33,7 +33,7 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Credit::Commit(const TAO::Register::Object& account, const Contract& debit,
+        bool Credit::Commit(const TAO::Register::Object& account, const Contract& debit, const Contract& credit,
                             const uint256_t& hashAddress, const uint256_t& hashProof, const uint512_t& hashTx,
                             const uint32_t nContract, const uint64_t nAmount, const uint8_t nFlags)
         {
@@ -42,8 +42,12 @@ namespace TAO
                 return debug::error(FUNCTION, "credit is already claimed ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
 
             /* Write the claimed proof. */
-            if(!LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))
-                return debug::error(FUNCTION, "failed to write credit proof");
+            if(config::GetBoolArg("-indexproofs") && !LLD::Ledger->IndexProof(hashProof, hashTx, nContract, credit.Hash(), nFlags))
+                return debug::error(FUNCTION, "failed to write credit index");
+
+            /* Write the claimed proof. */
+            if(!config::GetBoolArg("-indexproofs") && !LLD::Ledger->WriteProof(hashProof, hashTx, nContract, nFlags))
+                return debug::error(FUNCTION, "failed to write credit index");
 
             /* Read the debit. */
             debit.Reset();

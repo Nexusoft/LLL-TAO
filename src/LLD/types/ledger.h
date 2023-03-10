@@ -616,6 +616,23 @@ namespace LLD
                         const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** IndexProof
+         *
+         *  Indexes a proof to disk tied to spending transactions. Proofs are used to keep track of spent temporal proofs.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is spending.
+         *  @param[in] nContract The contract that proof is for
+         *  @param[in] hashIndex The transaction hash that spent this proof.
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE).
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool IndexProof(const uint256_t& hashProof, const uint512_t& hashTx,
+                        const uint32_t nContract, const uint512_t& hashIndex, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
         /** HasProof
          *
          *  Checks if a proof exists. Proofs are used to keep track of spent temporal proofs.
@@ -646,6 +663,14 @@ namespace LLD
          **/
         bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTx,
                         const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** IndexProofs
+         *
+         *  Index our proofs as keychain entries to add support to read spending transaction from the proof itself
+         *
+         **/
+        void IndexProofs();
 
 
         /** WriteBlock

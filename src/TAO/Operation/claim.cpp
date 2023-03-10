@@ -30,7 +30,7 @@ namespace TAO
     {
 
         /* Commit the final state to disk. */
-        bool Claim::Commit(const TAO::Register::State& state,
+        bool Claim::Commit(const TAO::Register::State& state, const Contract& contract,
             const uint256_t& hashAddress, const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
         {
             /* Check if this transfer is already claimed. */
@@ -38,8 +38,12 @@ namespace TAO
                 return debug::error(FUNCTION, "transfer is already claimed");
 
             /* Write the claimed proof. */
-            if(!LLD::Ledger->WriteProof(hashAddress, hashTx, nContract, nFlags))
-                return debug::error(FUNCTION, "transfer is already claimed");
+            if(config::GetBoolArg("-indexproofs") && !LLD::Ledger->IndexProof(hashAddress, hashTx, nContract, contract.Hash(), nFlags))
+                return debug::error(FUNCTION, "failed to write claim index");
+
+            /* Write the claimed proof. */
+            if(!config::GetBoolArg("-indexproofs") && !LLD::Ledger->WriteProof(hashAddress, hashTx, nContract, nFlags))
+                return debug::error(FUNCTION, "failed to write claim proof");
 
             /* Attempt to write new state to disk. */
             if(!LLD::Register->WriteState(hashAddress, state, nFlags))

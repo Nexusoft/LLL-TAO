@@ -421,13 +421,15 @@ namespace LLD
             /* Iterate to the next block in the queue. */
             state = state.Next();
             if(!state)
+            {
+                /* Write our last index now. */
+                Write(std::string("register.indexed"));
+
+                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " in ", timer.Elapsed(), " seconds");
+
                 break;
+            }
         }
-
-        /* Write our last index now. */
-        Write(std::string("register.indexed"));
-
-        debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " in ", timer.Elapsed(), " seconds");
     }
 
 

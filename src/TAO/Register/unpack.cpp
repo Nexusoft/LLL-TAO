@@ -29,17 +29,17 @@ ________________________________________________________________________________
 namespace TAO::Register
 {
     /* Unpack a state register from operation scripts. */
-    bool Unpack(const TAO::Operation::Contract& contract, State &state, uint256_t &hashAddress)
+    bool Unpack(const TAO::Operation::Contract& rContract, State &state, uint256_t &hashAddress)
     {
-        /* Reset the contract to the position of the primitive. */
-        contract.SeekToPrimitive();
+        /* Reset the rContract to the position of the primitive. */
+        rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
         try
         {
             /* De-Serialize the operation. */
             uint8_t OPERATION = 0;
-            contract >> OPERATION;
+            rContract >> OPERATION;
 
             /* Check the current opcode. */
             switch(OPERATION)
@@ -47,24 +47,24 @@ namespace TAO::Register
                 /* Create a new register. */
                 case TAO::Operation::OP::CREATE:
                 {
-                    /* Extract the address from the contractn. */
-                    contract >> hashAddress;
+                    /* Extract the address from the rContractn. */
+                    rContract >> hashAddress;
 
-                    /* Extract the register type from contractn. */
+                    /* Extract the register type from rContractn. */
                     uint8_t nType = 0;
-                    contract >> nType;
+                    rContract >> nType;
 
                     /* Extract the register data. */
                     std::vector<uint8_t> vchData;
-                    contract >> vchData;
+                    rContract >> vchData;
 
                     /* Create the register object. */
                     state.nVersion   = 1;
                     state.nType      = nType;
-                    state.hashOwner  = contract.Caller();
+                    state.hashOwner  = rContract.Caller();
 
                     /* Calculate the new operation. */
-                    if(!TAO::Operation::Create::Execute(state, vchData, contract.Timestamp()))
+                    if(!TAO::Operation::Create::Execute(state, vchData, rContract.Timestamp()))
                         return false;
 
                     return true;
@@ -87,7 +87,7 @@ namespace TAO::Register
     /* Unpack a source register address from operation scripts. */
     bool Unpack(const TAO::Operation::Contract& rContract, uint256_t &hashAddress)
     {
-        /* Reset the contract to the position of the primitive. */
+        /* Reset the rContract to the position of the primitive. */
         rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
@@ -109,7 +109,7 @@ namespace TAO::Register
                 case TAO::Operation::OP::FEE:
                 case TAO::Operation::OP::LEGACY:
                 {
-                    /* Extract the address from the contract. */
+                    /* Extract the address from the rContract. */
                     rContract >> hashAddress;
 
                     return true;
@@ -118,19 +118,19 @@ namespace TAO::Register
                 /* Operations that only contain txid. */
                 case TAO::Operation::OP::MIGRATE:
                 {
-                    /* Extract the contract calling address. */
+                    /* Extract the rContract calling address. */
                     rContract.Seek(64); //seek over our txid
                     rContract >> hashAddress;
 
                     return true;
                 }
 
-                /* Operations that have a txid and contract-id. */
+                /* Operations that have a txid and rContract-id. */
                 case TAO::Operation::OP::CLAIM:
                 case TAO::Operation::OP::CREDIT:
                 {
-                    /* Extract the contract calling address. */
-                    rContract.Seek(68); //seek over our txid and contract-id
+                    /* Extract the rContract calling address. */
+                    rContract.Seek(68); //seek over our txid and rContract-id
                     rContract >> hashAddress;
 
                     return true;
@@ -140,7 +140,7 @@ namespace TAO::Register
                 case TAO::Operation::OP::GENESIS:
                 case TAO::Operation::OP::TRUST:
                 {
-                    /* Get trust account address for contract caller */
+                    /* Get trust account address for rContract caller */
                     hashAddress =  //XXX: we may want to remove this section, as this has a high overhead.
                         TAO::Register::Address(std::string("trust"), rContract.Caller(), TAO::Register::Address::TRUST);
 
@@ -157,17 +157,17 @@ namespace TAO::Register
 
 
     /* Unpack a previous transaction from operation scripts. */
-    bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx)
+    bool Unpack(const TAO::Operation::Contract& rContract, uint512_t& hashPrevTx)
     {
-        /* Reset the contract to the position of the primitive. */
-        contract.SeekToPrimitive();
+        /* Reset the rContract to the position of the primitive. */
+        rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
         try
         {
             /* Deserialize the operation. */
             uint8_t OPERATION = 0;
-            contract >> OPERATION;
+            rContract >> OPERATION;
 
             /* Check the current opcode. */
             switch(OPERATION)
@@ -176,8 +176,8 @@ namespace TAO::Register
                 case TAO::Operation::OP::CREDIT:
                 case TAO::Operation::OP::CLAIM:
                 {
-                    /* Extract the previous tx hash from the contract. */
-                    contract >> hashPrevTx;
+                    /* Extract the previous tx hash from the rContract. */
+                    rContract >> hashPrevTx;
 
                     return true;
                 }
@@ -185,6 +185,58 @@ namespace TAO::Register
                 default:
                 {
                     return false;
+                }
+            }
+        }
+        catch(const std::exception& e)
+        {
+        }
+
+        return false;
+    }
+
+
+    /* Unpack a previous transaction hash and rContract ID from a rContract */
+    bool Unpack(const TAO::Operation::Contract& rContract, uint256_t& hashProof, uint512_t& hashPrevTx, uint32_t& nContract)
+    {
+        /* Reset the rContract to the position of the primitive. */
+        rContract.SeekToPrimitive();
+
+        /* Make sure no exceptions are thrown. */
+        try
+        {
+            /* Deserialize the operation. */
+            uint8_t OPERATION = 0;
+            rContract >> OPERATION;
+
+            /* Check the current opcode. */
+            switch(OPERATION)
+            {
+                /* Check for the CREDIT opcode. */
+                case TAO::Operation::OP::CREDIT:
+                {
+                    /* Extract the binary data from contract streams. */
+                    rContract >> hashPrevTx;
+                    rContract >> nContract;
+
+                    /* Jump past our address so we get to the proof section. */
+                    rContract.Seek(32);
+
+                    /* Now extract our proof data. */
+                    rContract >> hashProof;
+
+                    return true;
+                }
+
+                /* Check for the CLAIM opcode. */
+                case TAO::Operation::OP::CLAIM:
+                {
+                    /* Extract the binary data from contract streams. */
+                    rContract >> hashPrevTx;
+                    rContract >> nContract;
+                    rContract >> hashProof;
+
+                    return true;
                 }
             }
         }
@@ -197,17 +249,17 @@ namespace TAO::Register
 
 
     /* Unpack a previous transaction from operation scripts. */
-    bool Unpack(const TAO::Operation::Contract& contract, uint512_t& hashPrevTx, uint32_t& nContract)
+    bool Unpack(const TAO::Operation::Contract& rContract, uint512_t& hashPrevTx, uint32_t& nContract)
     {
-        /* Reset the contract to the position of the primitive. */
-        contract.SeekToPrimitive();
+        /* Reset the rContract to the position of the primitive. */
+        rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
         try
         {
             /* Deserialize the operation. */
             uint8_t OPERATION = 0;
-            contract >> OPERATION;
+            rContract >> OPERATION;
 
             /* Check the current opcode. */
             switch(OPERATION)
@@ -216,11 +268,11 @@ namespace TAO::Register
                 case TAO::Operation::OP::CREDIT:
                 case TAO::Operation::OP::CLAIM:
                 {
-                    /* Extract the previous tx hash from the contract. */
-                    contract >> hashPrevTx;
+                    /* Extract the previous tx hash from the rContract. */
+                    rContract >> hashPrevTx;
 
-                    /* Extract the previous contact ID from the contract */
-                    contract >> nContract;
+                    /* Extract the previous contact ID from the rContract */
+                    rContract >> nContract;
 
                     return true;
                 }
@@ -239,11 +291,11 @@ namespace TAO::Register
     }
 
 
-    /* Unpack the amount of NXS in contract. */
-    bool Unpack(const TAO::Operation::Contract& contract, uint64_t& nAmount)
+    /* Unpack the amount of NXS in rContract. */
+    bool Unpack(const TAO::Operation::Contract& rContract, uint64_t& nAmount)
     {
-        /* Reset the contract to the position of the primitive. */
-        contract.SeekToPrimitive();
+        /* Reset the rContract to the position of the primitive. */
+        rContract.SeekToPrimitive();
         nAmount = 0;
 
         /* Make sure no exceptions are thrown. */
@@ -251,7 +303,7 @@ namespace TAO::Register
         {
             /* Deserialize the operation. */
             uint8_t OPERATION = 0;
-            contract >> OPERATION;
+            rContract >> OPERATION;
 
             /* Check the current opcode. */
             switch(OPERATION)
@@ -259,9 +311,9 @@ namespace TAO::Register
                 case TAO::Operation::OP::COINBASE:
                 {
                     /* Seek to coinbase/coinstake. */
-                    contract.Seek(32);
+                    rContract.Seek(32);
 
-                    contract >> nAmount;
+                    rContract >> nAmount;
 
                     return true;
                 }
@@ -269,16 +321,16 @@ namespace TAO::Register
                 case TAO::Operation::OP::TRUST:
                 {
                     /* Seek to reward. */
-                    contract.Seek(80);
+                    rContract.Seek(80);
 
-                    contract >> nAmount;
+                    rContract >> nAmount;
 
                     return true;
                 }
 
                 case TAO::Operation::OP::GENESIS:
                 {
-                    contract >> nAmount;
+                    rContract >> nAmount;
 
                     return true;
                 }
@@ -286,9 +338,9 @@ namespace TAO::Register
                 case TAO::Operation::OP::DEBIT:
                 {
                     /* Seek to debit amount. */
-                    contract.Seek(64);
+                    rContract.Seek(64);
 
-                    contract >> nAmount;
+                    rContract >> nAmount;
 
                     return true;
                 }
@@ -296,9 +348,9 @@ namespace TAO::Register
                 case TAO::Operation::OP::CREDIT:
                 {
                     /* Seek to credit amount. */
-                    contract.Seek(132);
+                    rContract.Seek(132);
 
-                    contract >> nAmount;
+                    rContract >> nAmount;
 
                     return true;
                 }
@@ -306,9 +358,9 @@ namespace TAO::Register
                 case TAO::Operation::OP::MIGRATE:
                 {
                     /* Seek to migrate amount. */
-                    contract.Seek(168);
+                    rContract.Seek(168);
 
-                    contract >> nAmount;
+                    rContract >> nAmount;
 
                     return true;
                 }
@@ -316,9 +368,9 @@ namespace TAO::Register
                 case TAO::Operation::OP::LEGACY:
                 {
                     /* Seek to debit amount. */
-                    contract.Seek(32);
+                    rContract.Seek(32);
 
-                    contract >> nAmount;
+                    rContract >> nAmount;
 
                     return true;
                 }
@@ -340,24 +392,24 @@ namespace TAO::Register
 
 
     /* Unpack a transaction and test for the operation it contains. */
-    bool Unpack(const TAO::Operation::Contract& contract, const uint8_t nCode)
+    bool Unpack(const TAO::Operation::Contract& rContract, const uint8_t nCode)
     {
-        return contract.Primitive() == nCode;
+        return rContract.Primitive() == nCode;
     }
 
 
-    /* Unpack an op legacy contract to find it's output script. */
-    bool Unpack(const TAO::Operation::Contract& contract, Legacy::Script& script)
+    /* Unpack an op legacy rContract to find it's output script. */
+    bool Unpack(const TAO::Operation::Contract& rContract, Legacy::Script& script)
     {
-        /* Reset the contract to the position of the primitive. */
-        contract.SeekToPrimitive();
+        /* Reset the rContract to the position of the primitive. */
+        rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
         try
         {
             /* Deserialize the operation. */
             uint8_t OPERATION = 0;
-            contract >> OPERATION;
+            rContract >> OPERATION;
 
             /* Check the current opcode. */
             switch(OPERATION)
@@ -366,9 +418,9 @@ namespace TAO::Register
                 case TAO::Operation::OP::LEGACY:
                 {
                     /* Seek to output script. */
-                    contract.Seek(40);
+                    rContract.Seek(40);
 
-                    contract >> script;
+                    rContract >> script;
 
                     return true;
                 }

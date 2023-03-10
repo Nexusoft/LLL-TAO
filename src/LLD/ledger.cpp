@@ -20,6 +20,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/constants.h>
+#include <TAO/Register/include/unpack.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -860,6 +861,22 @@ namespace LLD
     }
 
 
+    /* Indexes a proof to disk tied to spending transactions. Proofs are used to keep track of spent temporal proofs. */
+    bool LedgerDB::IndexProof(const uint256_t& hashProof, const uint512_t& hashTx,
+                    const uint32_t nContract, const uint512_t& hashIndex, const uint8_t nFlags)
+    {
+        /* Check for block flag. */
+        if(nFlags != TAO::Ledger::FLAGS::BLOCK)
+            return WriteProof(hashProof, hashTx, nContract, nFlags);
+
+        /* Get the key typle. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+            std::make_tuple(hashProof, hashTx, nContract);
+
+        return Index(tIndex, hashIndex);
+    }
+
+
     /* Checks if a proof exists. Proofs are used to keep track of spent temporal proofs. */
     bool LedgerDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTx,
                             const uint32_t nContract, const uint8_t nFlags)
@@ -945,6 +962,154 @@ namespace LLD
         }
 
         return Erase(tuple);
+    }
+
+
+    /* Index our proofs as keychain entries to add support to read spending transaction from the proof itself. */
+    void LedgerDB::IndexProofs()
+    {
+        /* Check for address indexing flag. */
+        if(Exists(std::string("index.proofs.complete")))
+        {
+            /* Check there is no argument supplied. */
+            if(!config::HasArg("-indexproofs"))
+            {
+                /* Warn that -indexheight is persistent. */
+                debug::notice(FUNCTION, "-indexproofs enabled from valid indexes");
+
+                /* Set indexing argument now. */
+                RECURSIVE(config::ARGS_MUTEX);
+                config::mapArgs["-indexproofs"] = "1";
+            }
+
+            /* Quit if we have reindexed proofs. */
+            if(!config::GetBoolArg("-forcereindexproofs"))
+                return;
+        }
+
+        /* Check there is no argument supplied. */
+        if(!config::GetBoolArg("-indexproofs"))
+            return;
+
+        /* Start a timer to track. */
+        runtime::timer timer;
+        timer.Start();
+
+        /* Get our starting hash. */
+        uint1024_t hashBegin = TAO::Ledger::hashTritium;
+
+        /* Check for hybrid mode. */
+        if(config::fHybrid.load())
+            LLD::Ledger->ReadHybridGenesis(hashBegin);
+
+        /* Read the first tritium block. */
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(hashBegin, state))
+        {
+            debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
+            return;
+        }
+
+        /* Keep track of our total count. */
+        uint32_t nScannedCount = 0;
+        uint32_t nContract     = 0;
+
+        /* Track our txid and proof data. */
+        uint512_t hashTx;
+        uint256_t hashProof;
+
+        /* Start our scan. */
+        debug::notice(FUNCTION, "Indexing proofs from block ", state.GetHash().SubString());
+        while(!config::fShutdown.load())
+        {
+            /* Loop through found transactions. */
+            for(uint32_t nIndex = 0; nIndex < state.vtx.size(); ++nIndex)
+            {
+                /* Get a copy of our txid. */
+                const uint512_t hash =
+                    state.vtx[nIndex].second;
+
+                /* Handle for Tritium Transactions. */
+                if(state.vtx[nIndex].first == TAO::Ledger::TRANSACTION::TRITIUM)
+                {
+                    /* Read the transaction from disk. */
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(hash, tx))
+                        continue;
+
+                    /* Iterate the transaction contracts. */
+                    for(uint32_t nIndex = 0; nIndex < tx.Size(); ++nIndex)
+                    {
+                        /* Grab contract reference. */
+                        const TAO::Operation::Contract& rContract = tx[nIndex];
+
+                        /* Unpack the contract info we are working on. */
+                        if(!TAO::Register::Unpack(rContract, hashProof, hashTx, nContract))
+                            continue;
+
+                        /* Get the key pair. */
+                        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+                            std::make_tuple(hashProof, hashTx, nContract);
+
+                        /* Check for a valid proof. */
+                        if(!HasProof(hashProof, hashTx, nContract))
+                            continue;
+
+                        /* Erase our record from the database. */
+                        if(!Index(tIndex, hash))
+                            debug::warning(FUNCTION, "TRITIUM: failed to write index proof for ", hash.ToString());
+                    }
+                }
+
+                /* Handle for Legacy Transactions. */
+                if(state.vtx[nIndex].first == TAO::Ledger::TRANSACTION::LEGACY)
+                {
+                    /* Read the transaction from disk. */
+                    Legacy::Transaction tx;
+                    if(!LLD::Legacy->ReadTx(hash, tx))
+                        continue;
+
+                    /* Iterate the transaction contracts. */
+                    for(const auto& in : tx.vin)
+                    {
+                        const std::pair<uint512_t, uint32_t> tIndex =
+                            std::make_pair(in.prevout.hash, in.prevout.n);
+
+                        /* Check for double spends. */
+                        if(!LLD::Legacy->IsSpent(in.prevout.hash, in.prevout.n))
+                            continue;
+
+                        /* Index our spend into legacy database. */
+                        if(!LLD::Legacy->IndexSpend(in.prevout.hash, in.prevout.n, hash))
+                            debug::warning(FUNCTION, "LEGACY: failed to write index proof for ", hash.ToString());
+                    }
+                }
+
+                /* Update the scanned count for meters. */
+                ++nScannedCount;
+
+                /* Meter for output. */
+                if(nScannedCount % 100000 == 0)
+                {
+                    /* Get the time it took to rescan. */
+                    uint32_t nElapsedSeconds = timer.Elapsed();
+                    debug::log(0, FUNCTION, "Re-indexed ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                        std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                }
+            }
+
+            /* Iterate to the next block in the queue. */
+            state = state.Next();
+            if(!state)
+            {
+                /* Write our last index now. */
+                Write(std::string("index.proofs.complete"));
+
+                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
+
+                break;
+            }
+        }
     }
 
 

@@ -449,8 +449,12 @@ namespace LLD
     /* Flag to determine if address indexing has completed. For -indexaddress flag. */
     void RegisterDB::IndexAddress()
     {
+        /* Not allowed in -client mode. */
+        if(config::fClient.load())
+            return;
+
         /* Check for address indexing flag. */
-        if(Exists(std::string("reindexed")) && !config::GetBoolArg("-forcereindex"))
+        if(Exists(std::string("reindexed")))
         {
             /* Check there is no argument supplied. */
             if(!config::HasArg("-indexaddress"))
@@ -463,7 +467,8 @@ namespace LLD
                 config::mapArgs["-indexaddress"] = "1";
             }
 
-            return;
+            if(!config::GetBoolArg("-forcereindex"))
+                return;
         }
 
         /* Check there is no argument supplied. */
@@ -572,13 +577,15 @@ namespace LLD
             /* Iterate to the next block in the queue. */
             state = state.Next();
             if(!state)
+            {
+                /* Write our last index now. */
+                Write(std::string("reindexed"));
+
+                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " tx with ", setScanned.size(), " registers in ", timer.Elapsed(), " seconds");
+
                 break;
+            }
         }
-
-        /* Write our last index now. */
-        Write(std::string("reindexed"));
-
-        debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " tx with ", setScanned.size(), " registers in ", timer.Elapsed(), " seconds");
     }
 
 
