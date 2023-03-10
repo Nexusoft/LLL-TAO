@@ -921,7 +921,9 @@ namespace LLD
                 return true;
         }
 
-        //debug::log(0, FUNCTION, "Checking for Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+        /* Check the client database. */
+        if(config::fClient.load())
+            return Client->HasProof(hashProof, hashTx, nContract);
 
         return Exists(tuple);
     }
@@ -975,6 +977,10 @@ namespace LLD
             if(nFlags == TAO::Ledger::FLAGS::ERASE)
                 return true;
         }
+
+        /* Check the client database. */
+        if(config::fClient.load())
+            return Client->EraseProof(hashProof, hashTx, nContract);
 
         return Erase(tuple);
     }

@@ -13,6 +13,8 @@ ________________________________________________________________________________
 
 #include <LLD/types/client.h>
 
+#include <LLP/include/global.h>
+
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/client.h>
 
@@ -73,12 +75,6 @@ namespace LLD
     /* Reads a transaction from the client DB. */
     bool ClientDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::MerkleTx &tx, const uint8_t nFlags)
     {
-        /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            //get from client mempool
-        }
-
         return Read(hashTx, tx);
     }
 
@@ -93,12 +89,6 @@ namespace LLD
     /* Reads a transaction from the client DB. */
     bool ClientDB::ReadTx(const uint512_t& hashTx, Legacy::MerkleTx &tx, const uint8_t nFlags)
     {
-        /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            //get from client mempool
-        }
-
         return Read(hashTx, tx);
     }
 
@@ -106,12 +96,6 @@ namespace LLD
     /* Checks client DB if a transaction exists. */
     bool ClientDB::HasTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
-        /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            //get from client mempool
-        }
-
         return Exists(hashTx);
     }
 
@@ -128,13 +112,59 @@ namespace LLD
 
 
     /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
-    bool ClientDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract)
+    bool ClientDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
     {
         /* Get the key typle. */
         const std::tuple<uint256_t, uint512_t, uint32_t> tuple =
             std::make_tuple(hashProof, hashTx, nContract);
 
-        return Exists(tuple);
+        /* If the proof doesn't exist, let's check our lookup protocol. */
+        if(Exists(tuple))
+            return true;
+
+        /* Additional routine if the proof doesn't exist. */
+        if(config::fClient.load() && nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        {
+            /* Check for -client mode or active server object. */
+            if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
+                throw debug::exception(FUNCTION, "no connections available...");
+
+            /* Try to find a connection first. */
+            std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
+            if(pConnection == nullptr)
+            {
+                /* Check for genesis. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        /* Get our lookup address now. */
+                        const std::string strAddress =
+                            pNode->GetAddress().ToStringIP();
+
+                        /* Make our new connection now. */
+                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                            throw debug::exception(FUNCTION, "no connections available...");
+                    }
+                }
+            }
+
+            /* Debug output to console. */
+            debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::DEPENDANT for ", hashTx.SubString());
+            pConnection->BlockingLookup
+            (
+                5000,
+                LLP::LookupNode::REQUEST::PROOF,
+                uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM), hashTx
+            );
+            debug::log(2, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT received for ", hashTx.SubString());
+
+            /* Return if the proof exists or not now. */
+            return Exists(tuple);
+        }
+
+        return false;
     }
 
 

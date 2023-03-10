@@ -187,7 +187,8 @@ namespace LLD
          *  @return True if the last was successfully read, false otherwise.
          *
          **/
-        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract);
+        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTx,
+                      const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** EraseProof
