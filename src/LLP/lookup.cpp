@@ -383,7 +383,7 @@ namespace LLP
                 }
 
                 /* Let any blocking thread know we are finished processing now. */
-                TriggerEvent(RESPONSE::MERKLE, nRequestID);
+                TriggerEvent(RESPONSE::PROOF, nRequestID);
 
                 /* Cleanup our requests set. */
                 setRequests->erase(nRequestID);
