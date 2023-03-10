@@ -111,14 +111,14 @@ namespace TAO::API
         }
 
         /* Check that we have logged in session. */
-        uint256_t hashSession;
-        if(Authentication::Active(tName.hashOwner, hashSession))
-            strName = Authentication::Credentials(hashSession)->UserName();
-        else
-            strName = "user"; //local name that username is not known
+        //uint256_t hashSession;
+        //if(Authentication::Active(tName.hashOwner, hashSession))
+        //    strName = Authentication::Credentials(hashSession)->UserName();
+        //else
+        //    strName = "user"; //local name that username is not known
 
         /* Grab our name from object. */
-        strName += ":" + tName.get<std::string>("name"); //local name
+        strName = tName.get<std::string>("name"); //local name
 
         return true;
     }
