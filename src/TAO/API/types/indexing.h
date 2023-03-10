@@ -121,7 +121,7 @@ namespace TAO::API
             /* Grab a copy of our name. */
             const std::string strCommands = Type::Name();
             if(!Commands::Has(strCommands))
-                return; //we just exit if already registered
+                return; //we just exit if there are no commands registered
 
             LOCK(REGISTERED_MUTEX);
             REGISTERED.insert(strCommands);

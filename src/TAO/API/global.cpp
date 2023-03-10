@@ -48,24 +48,27 @@ namespace TAO::API
         /* Create the API instances. */
         Commands::Register<Assets>();
         //Commands::Register<Crypto>();
-        Commands::Register<Market>();
+        Commands::Register<Market>(config::fClient.load()); //DISABLED for -client mode
         Commands::Register<Finance>();
         Commands::Register<Invoices>();
         Commands::Register<Ledger>();
         Commands::Register<Names>();
         Commands::Register<Profiles>();
-        Commands::Register<Register>();
+        Commands::Register<Register>(config::fClient.load()); //DISABLED for -client mode
         Commands::Register<Sessions>();
         Commands::Register<Supply>();
         Commands::Register<System>();
         Commands::Register<Tokens>();
 
-        /* Import our standard objects to global API. */
-        Commands::Instance<Register>()->Import<Assets>();
-        Commands::Instance<Register>()->Import<Finance>();
-        Commands::Instance<Register>()->Import<Invoices>();
-        Commands::Instance<Register>()->Import<Names>();
-        Commands::Instance<Register>()->Import<Supply>();
+        /* Import our standard objects to Register API. */
+        if(!config::fClient.load())
+        {
+            Commands::Instance<Register>()->Import<Assets>();
+            Commands::Instance<Register>()->Import<Finance>();
+            Commands::Instance<Register>()->Import<Invoices>();
+            Commands::Instance<Register>()->Import<Names>();
+            Commands::Instance<Register>()->Import<Supply>();
+        }
 
         /* Initialize our indexing services. */
         Indexing::Register<Market>();
