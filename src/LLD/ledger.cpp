@@ -928,8 +928,6 @@ namespace LLD
         const std::tuple<std::string, uint512_t, uint32_t> tIndex =
             std::make_tuple("validated", hashTx, nContract);
 
-        debug::notice(FUNCTION, "contract indexed to ", hashIndex.SubString());
-
         /* Index our record to the database. */
         return Index(tIndex, hashIndex);
     }
