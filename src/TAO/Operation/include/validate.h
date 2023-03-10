@@ -49,6 +49,7 @@ namespace TAO
              *
              *  Commit validation proofs.
              *
+             *  @param[in] contract The contract that is executing.
              *  @param[in] hashTx The transaction-id being claimed.
              *  @param[in] nContract The contract output being claimed.
              *  @param[in] hashCaller The contract caller.
@@ -57,7 +58,7 @@ namespace TAO
              *  @return true if successful.
              *
              **/
-            bool Commit(const uint512_t& hashTx, const uint32_t nContract, const uint256_t& hashCaller, const uint8_t nFlags);
+            bool Commit(const Contract& contract, const uint512_t& hashTx, const uint32_t nContract, const uint256_t& hashCaller, const uint8_t nFlags);
 
 
             /** Verify

@@ -363,8 +363,7 @@ namespace LLD
                     (nLimit == -1) ? nFileSize : (1024 * 1024); //1 MB read buffer
 
                 /* Loop until stream encounters exceptions. */
-                int32_t nBreak = 100; //limits to total loop iterations
-                while(stream && --nBreak > 0)
+                while(stream)
                 {
                     /* Check that we aren't seeking past end of file. */
                     if(nStart >= nFileSize)
@@ -400,8 +399,8 @@ namespace LLD
                             uint64_t nSize = ReadCompactSize(ssData);
                             if(nSize == 0) //reached end of current file
                             {
-                                debug::warning(FUNCTION, "zero length size, malformed binary stream");
-                                break;
+                                ssData.SetPos(nPos + 1); //continue forward until we reach a valid length
+                                continue;
                             }
 
                             /* Deserialize the String. */
@@ -427,9 +426,6 @@ namespace LLD
 
                             /* Iterate to next position. */
                             nStart += nSize + GetSizeOfCompactSize(nSize);
-
-                            /* Reset our break counter. */
-                            nBreak = 100;
                         }
                         catch(const std::exception& e)
                         {

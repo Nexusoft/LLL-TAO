@@ -111,7 +111,7 @@ namespace TAO::Operation
                         return false;
 
                     /* Commit the validation to disk. */
-                    if(!Validate::Commit(hashTx, nContract, contract.Caller(), nFlags))
+                    if(!Validate::Commit(contract, hashTx, nContract, contract.Caller(), nFlags))
                         return false;
 
                     /* Get next OP. */

@@ -257,18 +257,12 @@ namespace LLP
                             switch(nType)
                             {
                                 /* Standard type for register in form of merkle transaction. */
+                                case SPECIFIER::CONTRACT:
                                 case SPECIFIER::TRITIUM:
                                 {
                                     /* Get the transction from the stream. */
                                     TAO::Ledger::MerkleTx tx;
                                     ssPacket >> tx;
-
-                                    /* Track our contract-id to unpack proof data. */
-                                    uint32_t nContract = 0;
-
-                                    /* Track our txid and proof data. */
-                                    uint512_t hashTx;
-                                    uint256_t hashProof;
 
                                     /* Cache the txid. */
                                     const uint512_t hash = tx.GetHash();
@@ -282,30 +276,53 @@ namespace LLP
                                         /* Begin our ACID transaction across LLD instances. */
                                         LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
 
+                                        /* Track our contract-id to unpack proof data. */
+                                        uint32_t nContract = 0;
+
+                                        /* Track our txid and proof data. */
+                                        uint512_t hashTx;
+
                                         /* Iterate the transaction contracts. */
                                         for(uint32_t nIndex = 0; nIndex < tx.Size(); ++nIndex)
                                         {
                                             /* Grab contract reference. */
                                             const TAO::Operation::Contract& rContract = tx[nIndex];
 
-                                            /* Unpack the contract info we are working on. */
-                                            if(!TAO::Register::Unpack(rContract, hashProof, hashTx, nContract))
-                                                continue;
+                                            /* Check for a contract specifier. */
+                                            if(nType == SPECIFIER::CONTRACT)
+                                            {
+                                                /* Unpack the contract info we are working on. */
+                                                if(!TAO::Register::Unpack(rContract, hashTx, nContract))
+                                                    continue;
 
-                                            /* Get the key pair. */
-                                            const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
-                                                std::make_tuple(hashProof, hashTx, nContract);
+                                                /* Check that we have the contract validated. */
+                                                if(!LLD::Contract->HasContract(std::make_pair(hashTx, nContract)))
+                                                    LLD::Contract->WriteContract(std::make_pair(hashTx, nContract), tx.hashGenesis);
+                                            }
+                                            else
+                                            {
+                                                /* Track our proof as well here. */
+                                                uint256_t hashProof;
 
-                                            /* Check for a valid proof. */
-                                            if(!LLD::Client->HasProof(hashProof, hashTx, nContract))
-                                                LLD::Client->WriteProof(hashProof, hashTx, nContract);
+                                                /* Unpack the contract info we are working on. */
+                                                if(!TAO::Register::Unpack(rContract, hashProof, hashTx, nContract))
+                                                    continue;
+
+                                                /* Get the key pair. */
+                                                const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+                                                    std::make_tuple(hashProof, hashTx, nContract);
+
+                                                /* Check for a valid proof. */
+                                                if(!LLD::Client->HasProof(hashProof, hashTx, nContract))
+                                                    LLD::Client->WriteProof(hashProof, hashTx, nContract);
+                                            }
                                         }
 
                                         /* Commit our ACID transaction across LLD instances. */
                                         LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                                     }
 
-                                    debug::log(3, "FLAGS::LOOKUP::PROOF: ", hash.SubString(), " ACCEPTED");
+                                    debug::log(3, "FLAGS::LOOKUP::TRITIUM::", (nType == SPECIFIER::CONTRACT) ? "CONTRACT: " : "PROOF: ", hash.SubString(), " ACCEPTED");
 
                                     break;
                                 }
@@ -342,7 +359,7 @@ namespace LLP
                                     }
 
                                     /* Write Success to log. */
-                                    debug::log(3, "FLAGS::LOOKUP::PROOF: ", hash.SubString(), " ACCEPTED");
+                                    debug::log(3, "FLAGS::LOOKUP::LEGACY::PROOF: ", hash.SubString(), " ACCEPTED");
 
                                     break;
                                 }
@@ -429,6 +446,40 @@ namespace LLP
 
                             /* Send off the transaction to remote node. */
                             PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::TRITIUM), tMerkle);
+
+                            /* Debug output. */
+                            return debug::success(3, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");
+                        }
+                        else if(DDOS)
+                            DDOS->rSCORE += 10;
+
+                        break;
+                    }
+
+
+                    /* Handle for a raw tritium transaction. */
+                    case SPECIFIER::CONTRACT:
+                    {
+                        /* Get the index of transaction. */
+                        uint512_t hashTx;
+                        ssPacket >> hashTx;
+
+                        /* Get the contract of the proof. */
+                        uint32_t nContract = 0;
+                        ssPacket >> nContract;
+
+                        /* Check ledger database. */
+                        TAO::Ledger::Transaction tx;
+                        if(LLD::Ledger->ReadTx(hashTx, nContract, tx))
+                        {
+                            /* Build a markle transaction. */
+                            TAO::Ledger::MerkleTx tMerkle = TAO::Ledger::MerkleTx(tx);
+
+                            /* Build the tMerkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                            tMerkle.BuildMerkleBranch();
+
+                            /* Send off the transaction to remote node. */
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::CONTRACT), tMerkle);
 
                             /* Debug output. */
                             return debug::success(3, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");

@@ -196,7 +196,40 @@ namespace TAO::Register
     }
 
 
-    /* Unpack a previous transaction hash and rContract ID from a rContract */
+    /* Unpacks a source txid and contract from an OP::VALIDATE transaction. */
+    bool Unpack(const TAO::Operation::Contract& rContract, uint512_t& hashPrevTx, uint32_t& nContract)
+    {
+        /* Reset the contract to the position of the primitive. */
+        rContract.Reset(TAO::Operation::Contract::OPERATIONS);
+
+        /* Make sure no exceptions are thrown. */
+        try
+        {
+            /* Deserialize the operation. */
+            uint8_t OPERATION = 0;
+            rContract >> OPERATION;
+
+            /* Check the current opcode. */
+            if(OPERATION != TAO::Operation::OP::VALIDATE)
+                return false;
+
+            /* Extract the previous tx hash from the rContract. */
+            rContract >> hashPrevTx;
+
+            /* Extract the previous contact ID from the rContract */
+            rContract >> nContract;
+
+            return true;
+        }
+        catch(const std::exception& e)
+        {
+        }
+
+        return false;
+    }
+
+
+    /* Unpacks the values used to read and write proofs for any given transaction type. */
     bool Unpack(const TAO::Operation::Contract& rContract, uint256_t& hashProof, uint512_t& hashPrevTx, uint32_t& nContract)
     {
         /* Reset the contract to the position of the primitive. */
@@ -248,49 +281,6 @@ namespace TAO::Register
     }
 
 
-    /* Unpack a previous transaction from operation scripts. */
-    bool Unpack(const TAO::Operation::Contract& rContract, uint512_t& hashPrevTx, uint32_t& nContract)
-    {
-        /* Reset the contract to the position of the primitive. */
-        rContract.SeekToPrimitive();
-
-        /* Make sure no exceptions are thrown. */
-        try
-        {
-            /* Deserialize the operation. */
-            uint8_t OPERATION = 0;
-            rContract >> OPERATION;
-
-            /* Check the current opcode. */
-            switch(OPERATION)
-            {
-                /* Create a new register. */
-                case TAO::Operation::OP::CREDIT:
-                case TAO::Operation::OP::CLAIM:
-                {
-                    /* Extract the previous tx hash from the rContract. */
-                    rContract >> hashPrevTx;
-
-                    /* Extract the previous contact ID from the rContract */
-                    rContract >> nContract;
-
-                    return true;
-                }
-
-                default:
-                {
-                    return false;
-                }
-            }
-        }
-        catch(const std::exception& e)
-        {
-        }
-
-        return false;
-    }
-
-
     /* Unpack the amount of NXS in rContract. */
     bool Unpack(const TAO::Operation::Contract& rContract, uint64_t& nAmount)
     {
@@ -312,7 +302,6 @@ namespace TAO::Register
                 {
                     /* Seek to coinbase/coinstake. */
                     rContract.Seek(32);
-
                     rContract >> nAmount;
 
                     return true;
@@ -322,7 +311,6 @@ namespace TAO::Register
                 {
                     /* Seek to reward. */
                     rContract.Seek(80);
-
                     rContract >> nAmount;
 
                     return true;
@@ -339,7 +327,6 @@ namespace TAO::Register
                 {
                     /* Seek to debit amount. */
                     rContract.Seek(64);
-
                     rContract >> nAmount;
 
                     return true;
@@ -349,7 +336,6 @@ namespace TAO::Register
                 {
                     /* Seek to credit amount. */
                     rContract.Seek(132);
-
                     rContract >> nAmount;
 
                     return true;
@@ -359,7 +345,6 @@ namespace TAO::Register
                 {
                     /* Seek to migrate amount. */
                     rContract.Seek(168);
-
                     rContract >> nAmount;
 
                     return true;
@@ -369,7 +354,6 @@ namespace TAO::Register
                 {
                     /* Seek to debit amount. */
                     rContract.Seek(32);
-
                     rContract >> nAmount;
 
                     return true;

@@ -306,6 +306,17 @@ namespace LLD
     }
 
 
+    /* Reads a contract spending tx. Contracts are used to keep track of contract validators. */
+    bool LedgerDB::ReadTx(const uint512_t& hashTx, const uint32_t nContract, TAO::Ledger::Transaction &tx)
+    {
+        /* Get the key pair. */
+        const std::tuple<std::string, uint512_t, uint32_t> tIndex =
+            std::make_tuple("validated", hashTx, nContract);
+
+        return Read(tIndex, tx);
+    }
+
+
     /* Erases a transaction from the ledger DB. */
     bool LedgerDB::EraseTx(const uint512_t& hashTx)
     {
@@ -910,6 +921,32 @@ namespace LLD
     }
 
 
+    /* Indexes a contract to disk tied to validating transactions */
+    bool LedgerDB::IndexContract(const uint512_t& hashTx, const uint32_t nContract, const uint512_t& hashIndex)
+    {
+        /* Get the key pair. */
+        const std::tuple<std::string, uint512_t, uint32_t> tIndex =
+            std::make_tuple("validated", hashTx, nContract);
+
+        debug::notice(FUNCTION, "contract indexed to ", hashIndex.SubString());
+
+        /* Index our record to the database. */
+        return Index(tIndex, hashIndex);
+    }
+
+
+    /* Remove a contract index from the database. */
+    bool LedgerDB::EraseContract(const uint512_t& hashTx, const uint32_t nContract)
+    {
+        /* Get the key pair. */
+        const std::tuple<std::string, uint512_t, uint32_t> tIndex =
+            std::make_tuple("validated", hashTx, nContract);
+
+        /* Index our record to the database. */
+        return Erase(tIndex);
+    }
+
+
     /* Index our proofs as keychain entries to add support to read spending transaction from the proof itself. */
     void LedgerDB::IndexProofs()
     {
@@ -988,20 +1025,30 @@ namespace LLD
                         /* Grab contract reference. */
                         const TAO::Operation::Contract& rContract = tx[nIndex];
 
+                        /* Check for a validation index. */
+                        if(TAO::Register::Unpack(rContract, hashTx, nContract))
+                        {
+                            /* Check that we have the contract validated. */
+                            if(!LLD::Contract->HasContract(std::make_pair(hashTx, nContract)))
+                                continue;
+
+                            /* Index our record to the database. */
+                            if(!IndexContract(hashTx, nContract, hash))
+                                debug::warning(FUNCTION, "TRITIUM: failed to write contract index for ", hash.ToString());
+
+                            continue;
+                        }
+
                         /* Unpack the contract info we are working on. */
                         if(!TAO::Register::Unpack(rContract, hashProof, hashTx, nContract))
                             continue;
-
-                        /* Get the key pair. */
-                        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
-                            std::make_tuple(hashProof, hashTx, nContract);
 
                         /* Check for a valid proof. */
                         if(!HasProof(hashProof, hashTx, nContract))
                             continue;
 
-                        /* Erase our record from the database. */
-                        if(!Index(tIndex, hash))
+                        /* Index our record to the database. */
+                        if(!IndexProof(hashProof, hashTx, nContract, hash))
                             debug::warning(FUNCTION, "TRITIUM: failed to write index proof for ", hash.ToString());
                     }
                 }

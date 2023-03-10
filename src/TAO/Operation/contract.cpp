@@ -290,12 +290,8 @@ namespace TAO::Operation
             }
         }
 
-        /* Skip over our contract database for now. */
-        if(config::fClient.load())
-            return false;
-
         /* Otherwise check for validated contract. */
-        return LLD::Contract->HasContract(std::make_pair(hashTx, nContract), TAO::Ledger::FLAGS::MEMPOOL);
+        return LLD::Contract->HasContract(std::make_pair(hashTx, nContract), TAO::Ledger::FLAGS::LOOKUP);
     }
 
 

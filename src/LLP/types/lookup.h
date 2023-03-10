@@ -77,6 +77,7 @@ namespace LLP
                 TRITIUM      = 0x22, //specify for tritium data types
                 REGISTER     = 0x23, //specify for register transaction
                 PROOF        = 0x24, //specify for a proof type
+                CONTRACT     = 0x25, //specify for a contract type
             };
         };
 
