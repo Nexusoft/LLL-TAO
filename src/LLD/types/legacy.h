@@ -89,6 +89,20 @@ namespace LLD
         bool ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** ReadTx
+         *
+         *  Reads the spending transaction from a spent output.
+         *
+         *  @param[in] hashTx The txid of transaction to check.
+         *  @param[in] nOutput The output to check.
+         *  @param[out] tx The transaction object to read.
+         *
+         *  @return True if the output is spent, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint512_t& hashTx, const uint32_t nOutput, Legacy::Transaction& tx);
+
+
         /** EraseTx
          *
          *  Erases a transaction from the ledger DB.

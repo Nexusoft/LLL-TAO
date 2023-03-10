@@ -249,6 +249,21 @@ namespace LLD
         bool ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** ReadTx
+         *
+         *  Reads a proof spending tx. Proofs are used to keep track of spent temporal proofs.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
+         *  @param[out] tx The transaction object to read.
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract, TAO::Ledger::Transaction &tx);
+
+
         /** EraseTx
          *
          *  Erases a transaction from the ledger DB.

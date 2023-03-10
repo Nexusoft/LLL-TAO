@@ -161,6 +161,49 @@ namespace LLD
         bool HasTx(const uint512_t& hashTx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** WriteProof
+         *
+         *  Writes a proof to disk. Proofs are used to keep track of spent temporal proofs.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract);
+
+
+        /** HasProof
+         *
+         *  Checks if a proof exists. Proofs are used to keep track of spent temporal proofs.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract);
+
+
+        /** EraseProof
+         *
+         *  Remove a temporal proof from the database.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract);
+
 
         /** WriteBlock
          *

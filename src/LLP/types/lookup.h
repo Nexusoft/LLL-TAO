@@ -35,8 +35,9 @@ namespace LLP
                 RESERVED1     = 0x00,
                 CONNECT       = 0x01,
                 DEPENDANT     = 0x02,
-                //PING          = 0x04,
-                RESERVED2     = 0x03,
+                PROOF         = 0x03,
+
+                RESERVED2     = 0x04,
             };
 
             /** VALID
@@ -59,7 +60,7 @@ namespace LLP
             enum : Packet::message_t
             {
                 MERKLE       = 0x11, //for legacy data types
-                MEMPOOL      = 0x12, //for tritium data types
+                PROOF        = 0x12, //for proof of spends
                 MISSING      = 0x13, //if the data was not found
             };
         };
@@ -79,7 +80,7 @@ namespace LLP
 
         /** Set our static locked ptr. **/
         static util::atomic::lock_unique_ptr<std::set<uint64_t>> setRequests;
-        
+
 
         /** Name
          *

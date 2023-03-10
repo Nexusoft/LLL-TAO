@@ -116,6 +116,39 @@ namespace LLD
     }
 
 
+    /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
+    bool ClientDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract)
+    {
+        /* Get the key typle. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tuple =
+            std::make_tuple(hashProof, hashTx, nContract);
+
+        return Write(tuple);
+    }
+
+
+    /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
+    bool ClientDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract)
+    {
+        /* Get the key typle. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tuple =
+            std::make_tuple(hashProof, hashTx, nContract);
+
+        return Exists(tuple);
+    }
+
+
+    /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
+    bool ClientDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract)
+    {
+        /* Get the key typle. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tuple =
+            std::make_tuple(hashProof, hashTx, nContract);
+
+        return Erase(tuple);
+    }
+
+
     /* Writes a block block object to disk. */
     bool ClientDB::WriteBlock(const uint1024_t& hashBlock, const TAO::Ledger::ClientBlock& block)
     {

@@ -86,6 +86,13 @@ namespace LLD
     }
 
 
+    /* Reads the spending transaction from a spent output. */
+    bool LegacyDB::ReadTx(const uint512_t& hashTx, const uint32_t nOutput, Legacy::Transaction& tx)
+    {
+        return Read(std::make_pair(hashTx, nOutput), tx);
+    }
+
+
     /* Erases a transaction from the ledger DB. */
     bool LegacyDB::EraseTx(const uint512_t& hashTx)
     {

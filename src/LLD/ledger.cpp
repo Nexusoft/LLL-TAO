@@ -373,6 +373,17 @@ namespace LLD
     }
 
 
+    /* Reads a proof spending tx. Proofs are used to keep track of spent temporal proofs. */
+    bool LedgerDB::ReadTx(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract, TAO::Ledger::Transaction &tx)
+    {
+        /* Get the key tuple. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+            std::make_tuple(hashProof, hashTx, nContract);
+
+        return Read(tIndex, tx);
+    }
+
+
     /* Erases a transaction from the ledger DB. */
     bool LedgerDB::EraseTx(const uint512_t& hashTx)
     {
@@ -856,6 +867,10 @@ namespace LLD
             if(nFlags == TAO::Ledger::FLAGS::ERASE)
                 return true;
         }
+
+        /* Check the client database. */
+        if(config::fClient.load())
+            return Client->WriteProof(hashProof, hashTx, nContract);
 
         return Write(tuple);
     }
