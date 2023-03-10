@@ -416,6 +416,8 @@ namespace TAO::API
     /* Checks that the contract passes both Build() and Execute() */
     bool Notifications::SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates)
     {
+        LOCK(LLP::TritiumNode::CLIENT_MUTEX);
+
         /* Return flag */
         bool fSanitized = false;
 
