@@ -1786,7 +1786,7 @@ namespace Legacy
                         for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
                         {
                             /* Check that the contract is an op legacy */
-                            if(TAO::Register::Unpack(txPrevTritium[nContract], TAO::Operation::OP::LEGACY))
+                            if(txPrevTritium[nContract].Primitive() == TAO::Operation::OP::LEGACY)
                             {
                                 /* The register address of the account that made the OP::LEGACY */
                                 TAO::Register::Address hashRegister;
@@ -1832,7 +1832,7 @@ namespace Legacy
             for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
             {
                 /* Check that the contract is an op legacy */
-                if(TAO::Register::Unpack(txTritium[nContract], TAO::Operation::OP::LEGACY ))
+                if(txTritium[nContract].Primitive() == TAO::Operation::OP::LEGACY)
                 {
                     /* The amount for this op legacy contract */
                     uint64_t nAmount;
