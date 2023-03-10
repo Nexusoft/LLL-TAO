@@ -408,7 +408,7 @@ namespace LLD
     bool RegisterDB::HasState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || (nFlags == TAO::Ledger::FLAGS::LOOKUP && !config::fClient.load()))
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
         {
             LOCK(MEMORY);
 

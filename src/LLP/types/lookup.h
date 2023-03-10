@@ -31,12 +31,15 @@ namespace LLP
         {
             enum : Packet::message_t
             {
-                /* Object Types. */
+                //begin protocol requests
                 RESERVED1     = 0x00,
+
+                /* Main protocol requests. */
                 CONNECT       = 0x01,
                 DEPENDANT     = 0x02,
                 PROOF         = 0x03,
 
+                //end protocol requests
                 RESERVED2     = 0x04,
             };
 
@@ -60,8 +63,7 @@ namespace LLP
             enum : Packet::message_t
             {
                 MERKLE       = 0x11, //for legacy data types
-                PROOF        = 0x12, //for proof of spends
-                MISSING      = 0x13, //if the data was not found
+                MISSING      = 0x12, //if the data was not found
             };
         };
 
@@ -74,6 +76,7 @@ namespace LLP
                 LEGACY       = 0x21, //specify for legacy data types
                 TRITIUM      = 0x22, //specify for tritium data types
                 REGISTER     = 0x23, //specify for register transaction
+                PROOF        = 0x24, //specify for a proof type
             };
         };
 
@@ -151,16 +154,17 @@ namespace LLP
                 debug::log(4, NODE, "sent message ", std::hex, nMsg, " of ", std::dec, ssData.size(), " bytes");
         }
 
+
         /** BlockingLookup
          *
          *  Adds a packet to the queue and waits for the peer to respond to the message.
          *
          *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
-         *  @param[in] nMsg The message type.
+         *  @param[in] nRequest The message request for lookup
          *  @param[in] args variable args to be sent in the message.
          **/
         template<typename... Args>
-        void BlockingLookup(const uint32_t nTimeout, const uint8_t nMsg, Args&&... args)
+        void BlockingLookup(const uint32_t nTimeout, const uint8_t nRequest, Args&&... args)
         {
             /* Check for shutdown. */
             if(config::fShutdown.load())
@@ -171,7 +175,7 @@ namespace LLP
 
             /* Add to our request tracker and make request. */
             LookupNode::setRequests->insert(nRequestID);
-            PushMessage(REQUEST::DEPENDANT, nRequestID, std::forward<Args>(args)...);
+            PushMessage(nRequest, nRequestID, std::forward<Args>(args)...);
 
             /* Create the condition variable trigger. */
             LLP::Trigger REQUEST_TRIGGER;

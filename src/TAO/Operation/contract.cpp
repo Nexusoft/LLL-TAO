@@ -286,9 +286,13 @@ namespace TAO::Operation
                 }
 
                 /* Check for a valid proof. */
-                return LLD::Ledger->HasProof(hashRegister, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL);
+                return LLD::Ledger->HasProof(hashRegister, hashTx, nContract, TAO::Ledger::FLAGS::LOOKUP);
             }
         }
+
+        /* Skip over our contract database for now. */
+        if(config::fClient.load())
+            return false;
 
         /* Otherwise check for validated contract. */
         return LLD::Contract->HasContract(std::make_pair(hashTx, nContract), TAO::Ledger::FLAGS::MEMPOOL);

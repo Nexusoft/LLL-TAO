@@ -150,11 +150,11 @@ namespace LLD
 
 
     /* Checks if an output was spent. */
-    bool LegacyDB::IsSpent(const uint512_t& hashTx, const uint32_t nOutput)
+    bool LegacyDB::IsSpent(const uint512_t& hashTx, const uint32_t nOutput, const uint8_t nFlags)
     {
         /* Check for -client mode. */
         if(config::fClient.load())
-            return Client->IsSpent(hashTx, nOutput, TAO::Ledger::FLAGS::LOOKUP);
+            return Client->IsSpent(hashTx, nOutput, nFlags);
 
         return Exists(std::make_pair(hashTx, nOutput));
     }

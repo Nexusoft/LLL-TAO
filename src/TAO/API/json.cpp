@@ -922,7 +922,7 @@ namespace TAO::API
                     }
 
                     /* Check if this debit has been credited. */
-                    else if(LLD::Ledger->HasProof(hashFrom, contract.Hash(), nContract))
+                    else if(LLD::Ledger->HasProof(hashFrom, contract.Hash(), nContract, TAO::Ledger::FLAGS::LOOKUP))
                         jRet["claimed"] = FormatBalance(nAmount, hashToken);
 
 

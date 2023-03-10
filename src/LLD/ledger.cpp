@@ -136,46 +136,7 @@ namespace LLD
             /* Get the transaction. */
             TAO::Ledger::Transaction tx;
             if(!ReadTx(hashTx, tx, nFlags))
-            {
-                /* Check for -client mode or active server object. */
-                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
-                    throw debug::exception(FUNCTION, "failed to read contract");
-
-                /* Try to find a connection first. */
-                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
-                if(pConnection == nullptr)
-                {
-                    /* Check for genesis. */
-                    if(LLP::TRITIUM_SERVER)
-                    {
-                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                        if(pNode != nullptr)
-                        {
-                            /* Get our lookup address now. */
-                            const std::string strAddress =
-                                pNode->GetAddress().ToStringIP();
-
-                            /* Make our new connection now. */
-                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                                throw debug::exception(FUNCTION, "no connections available...");
-
-                        }
-                    }
-                }
-
-                /* Debug output to console. */
-                debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::DEPENDANT for ", hashTx.SubString());
-                pConnection->BlockingLookup
-                (
-                    5000,
-                    LLP::LookupNode::REQUEST::DEPENDANT,
-                    uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM), hashTx
-                );
-                debug::log(2, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT received for ", hashTx.SubString());
-
-                /* Recursively process once we have done the lookup. */
-                return ReadContract(hashTx, nContract, nFlags);
-            }
+                throw debug::exception(FUNCTION, "failed to read contract");
 
             /* Get const reference for read-only access. */
             const TAO::Ledger::Transaction& rtx = tx;
@@ -188,46 +149,7 @@ namespace LLD
             /* Get the transaction. */
             Legacy::Transaction tx;
             if(!LLD::Legacy->ReadTx(hashTx, tx, nFlags))
-            {
-                /* Check for -client mode or active server object. */
-                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
-                    throw debug::exception(FUNCTION, "failed to read contract");
-
-                /* Try to find a connection first. */
-                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
-                if(pConnection == nullptr)
-                {
-                    /* Check for genesis. */
-                    if(LLP::TRITIUM_SERVER)
-                    {
-                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                        if(pNode != nullptr)
-                        {
-                            /* Get our lookup address now. */
-                            const std::string strAddress =
-                                pNode->GetAddress().ToStringIP();
-
-                            /* Make our new connection now. */
-                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                                throw debug::exception(FUNCTION, "no connections available...");
-
-                        }
-                    }
-                }
-
-                /* Debug output to console. */
-                debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::DEPENDANT::LEGACY for ", hashTx.SubString());
-                pConnection->BlockingLookup
-                (
-                    5000,
-                    LLP::LookupNode::REQUEST::DEPENDANT,
-                    uint8_t(LLP::LookupNode::SPECIFIER::LEGACY), hashTx
-                );
-                debug::log(1, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT::LEGACY received for ", hashTx.SubString());
-
-                /* Recursively process once we have done the lookup. */
-                return ReadContract(hashTx, nContract, nFlags);
-            }
+                throw debug::exception(FUNCTION, "failed to read contract");
 
             return TAO::Operation::Contract(tx, nContract);
         }
@@ -818,10 +740,11 @@ namespace LLD
                               const uint32_t nContract, const uint8_t nFlags)
     {
         /* Get the key typle. */
-        const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+            std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -829,14 +752,14 @@ namespace LLD
             if(pMemory)
             {
                 /* Write proof to memory. */
-                pMemory->setEraseProofs.erase(tuple);
-                pMemory->setProofs.insert(tuple);
+                pMemory->setEraseProofs.erase(tIndex);
+                pMemory->setProofs.insert(tIndex);
 
                 return true;
             }
 
             /* Write proof to commited memory. */
-            pCommit->setProofs.insert(tuple);
+            pCommit->setProofs.insert(tIndex);
 
             return true;
         }
@@ -846,7 +769,7 @@ namespace LLD
 
             /* Check for pending transactions. */
             if(pMiner)
-                pMiner->setProofs.insert(tuple);
+                pMiner->setProofs.insert(tIndex);
 
             return true;
         }
@@ -857,11 +780,11 @@ namespace LLD
             /* Erase memory proof if they exist. */
             if(pMemory)
             {
-                pMemory->setEraseProofs.insert(tuple);
-                pMemory->setProofs.erase(tuple);
+                pMemory->setEraseProofs.insert(tIndex);
+                pMemory->setProofs.erase(tIndex);
             }
             else
-               pCommit->setProofs.erase(tuple);
+               pCommit->setProofs.erase(tIndex);
 
             /* Check for erase to short circuit out. */
             if(nFlags == TAO::Ledger::FLAGS::ERASE)
@@ -872,7 +795,7 @@ namespace LLD
         if(config::fClient.load())
             return Client->WriteProof(hashProof, hashTx, nContract);
 
-        return Write(tuple);
+        return Write(tIndex);
     }
 
 
@@ -897,19 +820,20 @@ namespace LLD
                             const uint32_t nContract, const uint8_t nFlags)
     {
         /* Get the key pair. */
-        const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+            std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Check pending transaction memory. */
-            if(pMemory && pMemory->setProofs.count(tuple))
+            if(pMemory && pMemory->setProofs.count(tIndex))
                 return true;
 
             /* Check commited memory. */
-            if(pCommit->setProofs.count(tuple))
+            if(pCommit->setProofs.count(tIndex))
                 return true;
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
@@ -917,15 +841,15 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check pending transaction memory. */
-            if(pMiner && pMiner->setProofs.count(tuple))
+            if(pMiner && pMiner->setProofs.count(tIndex))
                 return true;
         }
 
         /* Check the client database. */
         if(config::fClient.load())
-            return Client->HasProof(hashProof, hashTx, nContract, TAO::Ledger::FLAGS::LOOKUP);
+            return Client->HasProof(hashProof, hashTx, nContract, nFlags);
 
-        return Exists(tuple);
+        return Exists(tIndex);
     }
 
 

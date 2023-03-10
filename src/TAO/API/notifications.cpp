@@ -320,7 +320,7 @@ namespace TAO::API
                                                 rAccounts.GetAddress();
 
                                             /* Skip over account if active proof. */
-                                            if(!LLD::Ledger->HasProof(addrAccount, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                                            if(!LLD::Ledger->HasProof(addrAccount, hashTx, nContract, TAO::Ledger::FLAGS::LOOKUP))
                                             {
                                                 /* Build our credit now. */
                                                 try

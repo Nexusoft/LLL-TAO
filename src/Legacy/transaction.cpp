@@ -1165,7 +1165,7 @@ namespace Legacy
                     {
                         /* Handle if we are using -indexproofs. */
                         if(config::GetBoolArg("-indexproofs") && !LLD::Legacy->IndexSpend(prevout.hash, prevout.n, GetHash()))
-                            return debug::error(FUNCTION, "failed to write spend");
+                            return debug::error(FUNCTION, "failed to index spend");
 
                         /* Handle if we are using -indexproofs. */
                         if(!config::GetBoolArg("-indexproofs") && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))

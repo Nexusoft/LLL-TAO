@@ -177,7 +177,7 @@ namespace LLD
          *  @return True if the output is spent, false otherwise.
          *
          **/
-        bool IsSpent(const uint512_t& hashTx, const uint32_t nOutput);
+        bool IsSpent(const uint512_t& hashTx, const uint32_t nOutput, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteSequence

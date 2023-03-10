@@ -246,6 +246,116 @@ namespace LLP
                             break;
                         }
 
+                        /* Standard type of a proof specifier in the form of a merkle transaction. */
+                        case SPECIFIER::PROOF:
+                        {
+                            /* Get the specifier for dependant. */
+                            uint8_t nType;
+                            ssPacket >> nType;
+
+                            /* Switch type based on our specifier. */
+                            switch(nType)
+                            {
+                                /* Standard type for register in form of merkle transaction. */
+                                case SPECIFIER::TRITIUM:
+                                {
+                                    /* Get the transction from the stream. */
+                                    TAO::Ledger::MerkleTx tx;
+                                    ssPacket >> tx;
+
+                                    /* Track our contract-id to unpack proof data. */
+                                    uint32_t nContract = 0;
+
+                                    /* Track our txid and proof data. */
+                                    uint512_t hashTx;
+                                    uint256_t hashProof;
+
+                                    /* Cache the txid. */
+                                    const uint512_t hash = tx.GetHash();
+
+                                    /* Run basic merkle tx checks */
+                                    if(!tx.Verify(TAO::Ledger::FLAGS::LOOKUP))
+                                        return debug::drop(NODE, "FLAGS::LOOKUP::PROOF: ", hash.SubString(), " REJECTED: ", debug::GetLastError());
+
+                                    { LOCK(TritiumNode::CLIENT_MUTEX);
+
+                                        /* Begin our ACID transaction across LLD instances. */
+                                        LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+
+                                        /* Iterate the transaction contracts. */
+                                        for(uint32_t nIndex = 0; nIndex < tx.Size(); ++nIndex)
+                                        {
+                                            /* Grab contract reference. */
+                                            const TAO::Operation::Contract& rContract = tx[nIndex];
+
+                                            /* Unpack the contract info we are working on. */
+                                            if(!TAO::Register::Unpack(rContract, hashProof, hashTx, nContract))
+                                                continue;
+
+                                            /* Get the key pair. */
+                                            const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+                                                std::make_tuple(hashProof, hashTx, nContract);
+
+                                            /* Check for a valid proof. */
+                                            if(!LLD::Client->HasProof(hashProof, hashTx, nContract))
+                                                LLD::Client->WriteProof(hashProof, hashTx, nContract);
+                                        }
+
+                                        /* Commit our ACID transaction across LLD instances. */
+                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                    }
+
+                                    debug::log(3, "FLAGS::LOOKUP::PROOF: ", hash.SubString(), " ACCEPTED");
+
+                                    break;
+                                }
+
+                                /* Standard type for register in form of merkle transaction. */
+                                case SPECIFIER::LEGACY:
+                                {
+                                    /* Get the transction from the stream. */
+                                    Legacy::MerkleTx tx;
+                                    ssPacket >> tx;
+
+                                    /* Cache the txid. */
+                                    const uint512_t hash = tx.GetHash();
+
+                                    /* Run basic merkle tx checks */
+                                    if(!tx.Verify())
+                                        return debug::drop(NODE, "FLAGS::LOOKUP::PROOF: ", hash.SubString(), " REJECTED: ", debug::GetLastError());
+
+                                    /* Begin our ACID transaction across LLD instances. */
+                                    { LOCK(TritiumNode::CLIENT_MUTEX);
+
+                                        LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+
+                                        /* Iterate the transaction contracts. */
+                                        for(const auto& in : tx.vin)
+                                        {
+                                            /* Check for double spends. */
+                                            if(!LLD::Legacy->IsSpent(in.prevout.hash, in.prevout.n))
+                                                LLD::Legacy->WriteSpend(in.prevout.hash, in.prevout.n);
+                                        }
+
+                                        /* Commit our ACID transaction across LLD instances. */
+                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                    }
+
+                                    /* Write Success to log. */
+                                    debug::log(3, "FLAGS::LOOKUP::PROOF: ", hash.SubString(), " ACCEPTED");
+
+                                    break;
+                                }
+
+                                default:
+                                {
+                                    return debug::drop(NODE, "invalid specifier message: ", std::hex, nSpecifier);
+                                }
+                            }
+
+                            break;
+                        }
+
                         default:
                         {
                             return debug::drop(NODE, "invalid specifier message: ", std::hex, nSpecifier);
@@ -255,135 +365,6 @@ namespace LLP
 
                 /* Let any blocking thread know we are finished processing now. */
                 TriggerEvent(RESPONSE::MERKLE, nRequestID);
-
-                /* Cleanup our requests set. */
-                setRequests->erase(nRequestID);
-
-                break;
-            }
-
-
-            /* Standard handle for a merkle transaction. */
-            case RESPONSE::PROOF:
-            {
-                /* Check that we made this request. */
-                if(!setRequests->count(nRequestID))
-                    return debug::drop(NODE, "unsolicted response-id ", nRequestID);
-
-                /* Get the specifier for dependant. */
-                uint8_t nSpecifier;
-                ssPacket >> nSpecifier;
-
-                /* Proceed if it was found. */
-                if(nSpecifier != RESPONSE::MISSING)
-                {
-                    /* Switch based on our specifier. */
-                    switch(nSpecifier)
-                    {
-                        /* Standard type for register in form of merkle transaction. */
-                        case SPECIFIER::TRITIUM:
-                        {
-                            /* Get the transction from the stream. */
-                            TAO::Ledger::MerkleTx tx;
-                            ssPacket >> tx;
-
-                            /* Cache the txid. */
-                            const uint512_t hashTx = tx.GetHash();
-
-                            {
-                                /* Run basic merkle tx checks */
-                                if(!tx.Verify(TAO::Ledger::FLAGS::LOOKUP))
-                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-                                { LOCK(TritiumNode::CLIENT_MUTEX);
-
-                                    /* Track our contract-id to unpack proof data. */
-                                    uint32_t nContract     = 0;
-
-                                    /* Track our txid and proof data. */
-                                    uint512_t hashTx;
-                                    uint256_t hashProof;
-
-                                    /* Begin our ACID transaction across LLD instances. */
-                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
-
-                                    /* Iterate the transaction contracts. */
-                                    for(uint32_t nIndex = 0; nIndex < tx.Size(); ++nIndex)
-                                    {
-                                        /* Grab contract reference. */
-                                        const TAO::Operation::Contract& rContract = tx[nIndex];
-
-                                        /* Unpack the contract info we are working on. */
-                                        if(!TAO::Register::Unpack(rContract, hashProof, hashTx, nContract))
-                                            continue;
-
-                                        /* Get the key pair. */
-                                        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
-                                            std::make_tuple(hashProof, hashTx, nContract);
-
-                                        /* Check for a valid proof. */
-                                        if(!LLD::Client->HasProof(hashProof, hashTx, nContract))
-                                            LLD::Client->WriteProof(hashProof, hashTx, nContract);
-                                    }
-
-                                    /* Commit our ACID transaction across LLD instances. */
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
-                                }
-
-                                debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
-                            }
-
-                            break;
-                        }
-
-                        /* Standard type for register in form of merkle transaction. */
-                        case SPECIFIER::LEGACY:
-                        {
-                            /* Get the transction from the stream. */
-                            Legacy::MerkleTx tx;
-                            ssPacket >> tx;
-
-                            /* Cache the txid. */
-                            const uint512_t hashTx = tx.GetHash();
-
-                            {
-                                /* Run basic merkle tx checks */
-                                if(!tx.Verify())
-                                    return debug::drop(NODE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-
-                                /* Begin our ACID transaction across LLD instances. */
-                                { LOCK(TritiumNode::CLIENT_MUTEX);
-
-                                    LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
-
-                                    /* Iterate the transaction contracts. */
-                                    for(const auto& in : tx.vin)
-                                    {
-                                        /* Check for double spends. */
-                                        if(!LLD::Legacy->IsSpent(in.prevout.hash, in.prevout.n))
-                                            LLD::Legacy->WriteSpend(in.prevout.hash, in.prevout.n);
-                                    }
-
-                                    /* Commit our ACID transaction across LLD instances. */
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
-                                }
-
-                                /* Write Success to log. */
-                                debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
-                            }
-
-                            break;
-                        }
-
-                        default:
-                        {
-                            return debug::drop(NODE, "invalid specifier message: ", std::hex, nSpecifier);
-                        }
-                    }
-                }
-
-                /* Let any blocking thread know we are finished processing now. */
-                TriggerEvent(RESPONSE::PROOF, nRequestID);
 
                 /* Cleanup our requests set. */
                 setRequests->erase(nRequestID);
@@ -447,7 +428,7 @@ namespace LLP
                             tMerkle.BuildMerkleBranch();
 
                             /* Send off the transaction to remote node. */
-                            PushMessage(RESPONSE::PROOF, nRequestID, uint8_t(SPECIFIER::TRITIUM), tMerkle);
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::TRITIUM), tMerkle);
 
                             /* Debug output. */
                             return debug::success(3, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");
@@ -481,10 +462,10 @@ namespace LLP
                             tMerkle.BuildMerkleBranch();
 
                             /* Send off the transaction to remote node. */
-                            PushMessage(RESPONSE::PROOF, nRequestID, uint8_t(SPECIFIER::LEGACY), tMerkle);
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::LEGACY), tMerkle);
 
                             /* Debug output. */
-                            return debug::success(3, NODE, "REQUEST::DEPENDANT::LEGACY TRANSACTION");
+                            return debug::success(3, NODE, "REQUEST::PROOF::LEGACY TRANSACTION");
                         }
                         else if(DDOS)
                             DDOS->rSCORE += 10;
@@ -494,7 +475,7 @@ namespace LLP
                 }
 
                 /* We need to send a failure if we reach this far. */
-                PushMessage(RESPONSE::PROOF, nRequestID, uint8_t(RESPONSE::MISSING));
+                PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(RESPONSE::MISSING));
 
                 break;
             }
