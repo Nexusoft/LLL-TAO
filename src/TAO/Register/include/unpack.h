@@ -112,19 +112,6 @@ namespace TAO::Register
 
     /** Unpack
      *
-     *  Unpack a contract to find it's primitive operation.
-     *
-     *  @param[in] tx the transaction to unpack
-     *  @param[in] nCode op code value to test
-     *
-     *  @return true if the transaction contains the requested op code
-     *
-     **/
-    bool Unpack(const TAO::Operation::Contract& contract, const uint8_t nCode);
-
-
-    /** Unpack
-     *
      *  Unpack an op legacy contract to find it's output script.
      *
      *  @param[in] tx the transaction to unpack

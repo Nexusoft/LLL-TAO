@@ -31,7 +31,7 @@ namespace TAO::Register
     /* Unpack a state register from operation scripts. */
     bool Unpack(const TAO::Operation::Contract& rContract, State &state, uint256_t &hashAddress)
     {
-        /* Reset the rContract to the position of the primitive. */
+        /* Reset the contract to the position of the primitive. */
         rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
@@ -87,7 +87,7 @@ namespace TAO::Register
     /* Unpack a source register address from operation scripts. */
     bool Unpack(const TAO::Operation::Contract& rContract, uint256_t &hashAddress)
     {
-        /* Reset the rContract to the position of the primitive. */
+        /* Reset the contract to the position of the primitive. */
         rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
@@ -159,7 +159,7 @@ namespace TAO::Register
     /* Unpack a previous transaction from operation scripts. */
     bool Unpack(const TAO::Operation::Contract& rContract, uint512_t& hashPrevTx)
     {
-        /* Reset the rContract to the position of the primitive. */
+        /* Reset the contract to the position of the primitive. */
         rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
@@ -199,7 +199,7 @@ namespace TAO::Register
     /* Unpack a previous transaction hash and rContract ID from a rContract */
     bool Unpack(const TAO::Operation::Contract& rContract, uint256_t& hashProof, uint512_t& hashPrevTx, uint32_t& nContract)
     {
-        /* Reset the rContract to the position of the primitive. */
+        /* Reset the contract to the position of the primitive. */
         rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
@@ -251,7 +251,7 @@ namespace TAO::Register
     /* Unpack a previous transaction from operation scripts. */
     bool Unpack(const TAO::Operation::Contract& rContract, uint512_t& hashPrevTx, uint32_t& nContract)
     {
-        /* Reset the rContract to the position of the primitive. */
+        /* Reset the contract to the position of the primitive. */
         rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
@@ -294,7 +294,7 @@ namespace TAO::Register
     /* Unpack the amount of NXS in rContract. */
     bool Unpack(const TAO::Operation::Contract& rContract, uint64_t& nAmount)
     {
-        /* Reset the rContract to the position of the primitive. */
+        /* Reset the contract to the position of the primitive. */
         rContract.SeekToPrimitive();
         nAmount = 0;
 
@@ -391,17 +391,10 @@ namespace TAO::Register
     }
 
 
-    /* Unpack a transaction and test for the operation it contains. */
-    bool Unpack(const TAO::Operation::Contract& rContract, const uint8_t nCode)
-    {
-        return rContract.Primitive() == nCode;
-    }
-
-
     /* Unpack an op legacy rContract to find it's output script. */
     bool Unpack(const TAO::Operation::Contract& rContract, Legacy::Script& script)
     {
-        /* Reset the rContract to the position of the primitive. */
+        /* Reset the contract to the position of the primitive. */
         rContract.SeekToPrimitive();
 
         /* Make sure no exceptions are thrown. */
