@@ -123,6 +123,10 @@ namespace LLD
     /* Writes an output as spent. */
     bool LegacyDB::WriteSpend(const uint512_t& hashTx, const uint32_t nOutput)
     {
+        /* Check for -client mode. */
+        if(config::fClient.load())
+            return Client->WriteSpend(hashTx, nOutput);
+
         return Write(std::make_pair(hashTx, nOutput));
     }
 
@@ -137,6 +141,10 @@ namespace LLD
     /* Removes a spend flag on an output. */
     bool LegacyDB::EraseSpend(const uint512_t& hashTx, const uint32_t nOutput)
     {
+        /* Check for -client mode. */
+        if(config::fClient.load())
+            return Client->EraseSpend(hashTx, nOutput);
+
         return Erase(std::make_pair(hashTx, nOutput));
     }
 
@@ -144,6 +152,10 @@ namespace LLD
     /* Checks if an output was spent. */
     bool LegacyDB::IsSpent(const uint512_t& hashTx, const uint32_t nOutput)
     {
+        /* Check for -client mode. */
+        if(config::fClient.load())
+            return Client->IsSpent(hashTx, nOutput, TAO::Ledger::FLAGS::LOOKUP);
+
         return Exists(std::make_pair(hashTx, nOutput));
     }
 

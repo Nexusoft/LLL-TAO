@@ -179,6 +179,73 @@ namespace LLD
     }
 
 
+    /* Writes an output as spent. */
+    bool ClientDB::WriteSpend(const uint512_t& hashTx, const uint32_t nOutput)
+    {
+        return Write(std::make_pair(hashTx, nOutput));
+    }
+
+
+    /* Removes a spend flag on an output. */
+    bool ClientDB::EraseSpend(const uint512_t& hashTx, const uint32_t nOutput)
+    {
+        return Erase(std::make_pair(hashTx, nOutput));
+    }
+
+
+    /* Checks if an output was spent. */
+    bool ClientDB::IsSpent(const uint512_t& hashTx, const uint32_t nOutput, const uint8_t nFlags)
+    {
+        /* Return if we have it on our disk. */
+        if(Exists(std::make_pair(hashTx, nOutput)))
+            return true;
+
+        /* Additional routine if the proof doesn't exist. */
+        if(config::fClient.load() && nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        {
+            /* Check for -client mode or active server object. */
+            if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
+                throw debug::exception(FUNCTION, "no connections available...");
+
+            /* Try to find a connection first. */
+            std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
+            if(pConnection == nullptr)
+            {
+                /* Check for genesis. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        /* Get our lookup address now. */
+                        const std::string strAddress =
+                            pNode->GetAddress().ToStringIP();
+
+                        /* Make our new connection now. */
+                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                            throw debug::exception(FUNCTION, "no connections available...");
+                    }
+                }
+            }
+
+            /* Debug output to console. */
+            debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::DEPENDANT for ", hashTx.SubString());
+            pConnection->BlockingLookup
+            (
+                5000,
+                LLP::LookupNode::REQUEST::PROOF,
+                uint8_t(LLP::LookupNode::SPECIFIER::LEGACY), hashTx
+            );
+            debug::log(2, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT received for ", hashTx.SubString());
+
+            /* Return if the proof exists or not now. */
+            return Exists(std::make_pair(hashTx, nOutput));
+        }
+
+        return false;
+    }
+
+
     /* Writes a block block object to disk. */
     bool ClientDB::WriteBlock(const uint1024_t& hashBlock, const TAO::Ledger::ClientBlock& block)
     {

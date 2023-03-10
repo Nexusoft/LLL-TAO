@@ -821,7 +821,7 @@ namespace LLD
         const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -923,7 +923,7 @@ namespace LLD
 
         /* Check the client database. */
         if(config::fClient.load())
-            return Client->HasProof(hashProof, hashTx, nContract);
+            return Client->HasProof(hashProof, hashTx, nContract, TAO::Ledger::FLAGS::LOOKUP);
 
         return Exists(tuple);
     }
@@ -937,7 +937,7 @@ namespace LLD
         std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Check for memory transaction. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
         {
             LOCK(MEMORY_MUTEX);
 

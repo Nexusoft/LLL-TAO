@@ -206,6 +206,46 @@ namespace LLD
         bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract);
 
 
+        /** WriteSpend
+         *
+         *  Writes an output as spent.
+         *
+         *  @param[in] hashTx The txid of transaction to write.
+         *  @param[in] nOutput The output that was spent.
+         *
+         *  @return True if the spend is written, false otherwise.
+         *
+         **/
+        bool WriteSpend(const uint512_t& hashTx, const uint32_t nOutput);
+
+
+        /** EraseSpend
+         *
+         *  Removes a spend flag on an output.
+         *
+         *  @param[in] hashTx The txid of transaction to write.
+         *  @param[in] nOutput The output that is unspent.
+         *
+         *  @return True if the spend is erased, false otherwise.
+         *
+         **/
+        bool EraseSpend(const uint512_t& hashTx, const uint32_t nOutput);
+
+
+        /** IsSpent
+         *
+         *  Checks if an output was spent.
+         *
+         *  @param[in] hashTx The txid of transaction to check.
+         *  @param[in] nOutput The output to check.
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
+         *
+         *  @return True if the output is spent, false otherwise.
+         *
+         **/
+        bool IsSpent(const uint512_t& hashTx, const uint32_t nOutput, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
         /** WriteBlock
          *
          *  Writes a client block object to disk.
