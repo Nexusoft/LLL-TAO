@@ -71,7 +71,7 @@ namespace TAO
                             if(hashToken != 0)
                             {
                                 /* Check that the token register exists. */
-                                if(!LLD::Register->HasState(hashToken, TAO::Ledger::FLAGS::LOOKUP))
+                                if(!config::fClient.load() && !LLD::Register->HasState(hashToken, TAO::Ledger::FLAGS::LOOKUP))
                                     return debug::error(FUNCTION, "cannot create account without token identifier");
 
                                 /* Check that the token identifier is for a token */
@@ -102,7 +102,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.SubString());
 
                             /* Check that the token address hasn't already been used. */
-                            if(LLD::Register->HasState(hashIdentifier, TAO::Ledger::FLAGS::LOOKUP))
+                            if(!config::fClient.load() && LLD::Register->HasState(hashIdentifier, TAO::Ledger::FLAGS::LOOKUP))
                                 return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.SubString());
 
                             /* Check that the current supply and max supply are the same. */
