@@ -640,6 +640,10 @@ namespace TAO::Operation
     /* Get the register's pre-state from the register script. */
     const TAO::Register::State Contract::PreState() const
     {
+        /* Check our minimum register size. */
+        if(ssRegister.size() <= 9) //1 byte prestate byte, 8 byte checksum at minimum
+            return debug::error(FUNCTION, "contract register script too small ", ssRegister.size());
+
         /* Seek to first byte. */
         ssRegister.seek(0, STREAM::BEGIN);
 

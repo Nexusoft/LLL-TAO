@@ -115,7 +115,7 @@ namespace TAO::API
         if(Authentication::Active(tName.hashOwner, hashSession))
             strName = Authentication::Credentials(hashSession)->UserName();
         else
-            strName = "username"; //local name that username is not known
+            strName = "user"; //local name that username is not known
 
         /* Grab our name from object. */
         strName += ":" + tName.get<std::string>("name"); //local name
@@ -184,7 +184,7 @@ namespace TAO::API
 
         /* Add our username namespace if we are logged in. */
         if(fMine)
-            jRet["namespace"] = Authentication::Credentials(hashSession)->UserName();
+            jRet["user"] = Authentication::Credentials(hashSession)->UserName();
 
         /* Set our remaining values. */
         jRet["local"]     = true;

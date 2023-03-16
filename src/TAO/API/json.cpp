@@ -2490,9 +2490,7 @@ namespace TAO::API
         jRet["address"] = hashRegister.ToString();
 
         /* Check if we have a name record available. */
-        std::string strName;
-        if(Names::ReverseLookup(hashRegister, strName))
-            jRet["name"] = strName;
+        Names::ReverseLookup(hashRegister, jRet);
 
         /* Populate our register types now. */
         RegisterTypesToJSON(rContract, jRet);
@@ -2509,9 +2507,7 @@ namespace TAO::API
         jRet["address"] = hashRegister.ToString();
 
         /* Check if we have a name record available. */
-        std::string strName;
-        if(Names::ReverseLookup(hashRegister, strName))
-            jRet["name"] = strName;
+        Names::ReverseLookup(hashRegister, jRet);
 
         /* Get the object we are generating information for. */
         TAO::Register::Object tObject;
@@ -2522,6 +2518,20 @@ namespace TAO::API
         RegisterTypesToJSON(tObject, jRet);
 
         return jRet;
+    }
+
+
+    /* Gets info about an address and creates a json object based on register address for a foreign register. */
+    void AddressToJSON(const TAO::Register::Address& hashRegister, const TAO::Operation::Contract& rContract, encoding::json &jRet)
+    {
+        /* Build our address json key. */
+        jRet["address"] = hashRegister.ToString();
+
+        /* Check if we have a name record available. */
+        Names::ReverseLookup(hashRegister, jRet);
+
+        /* Populate our register types now. */
+        RegisterTypesToJSON(rContract, jRet);
     }
 
 
