@@ -526,7 +526,7 @@ namespace TAO
                 if((nEquals == 2 && nGreater == 1) || nGreater > 1)
                 {
                     /* Log the weights. */
-                    debug::log(2, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
+                    debug::log(TAO::Ledger::ChainState::Synchronizing() ? 4 : 0, FUNCTION, "WEIGHTS [", uint32_t(nGreater), "]",
                         " Prime ", nChannelWeight[1].Get64(),
                         " Hash ",  nChannelWeight[2].Get64(),
                         " Stake ", nChannelWeight[0].Get64());
@@ -538,7 +538,7 @@ namespace TAO
             }
 
             /* Debug output. */
-            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 1 : 0, FUNCTION, "ACCEPTED");
+            debug::log(TAO::Ledger::ChainState::Synchronizing() ? 4 : 0, FUNCTION, "ACCEPTED");
 
             return true;
         }
@@ -634,7 +634,7 @@ namespace TAO
 
             /* Watch our verbose levels based on syncronizing. */
             const uint32_t nVerboseCheck =
-                (TAO::Ledger::ChainState::Synchronizing() ? 2 : 0); //we can safely assume this is -client only for verbose=2
+                (TAO::Ledger::ChainState::Synchronizing() ? 4 : 0); //we can safely assume this is -client only for verbose=2
 
             /* Output our chain data for other verbose levels. */
             if(config::nVerbose >= nVerboseCheck)

@@ -118,24 +118,6 @@ namespace TAO::Ledger
             /* Wait for minter thread to stop */
             TritiumMinter::stakeMinterThread.join();
 
-            /* Reset internals */
-            hashLastBlock = 0;
-            nSleepTime = 1000;
-            fWait.store(false);
-            nWaitTime.store(0);
-            nTrustWeight.store(0.0);
-            nBlockWeight.store(0.0);
-            nStakeRate.store(0.0);
-
-            account = TAO::Register::Object();
-            stateLast = BlockState();
-            fStakeChange = false;
-            stakeChange = StakeChange();
-            block = TritiumBlock();
-            fGenesis = false;
-            nTrust = 0;
-            nBlockAge = 0;
-
             /* Update minter status */
             StakeMinter::fStop.store(false);
             StakeMinter::fStarted.store(false);

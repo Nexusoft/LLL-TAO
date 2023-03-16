@@ -260,6 +260,7 @@ namespace LLP
 
         /* Close sockets for the mining server and its subsystems. */
         CloseListening<Miner>(MINING_SERVER);
+
     }
 
 
@@ -267,6 +268,9 @@ namespace LLP
     void OpenListening()
     {
         debug::log(0, FUNCTION, "Opening LLP Listeners");
+
+        /* Open sockets for the core API server and its subsystems. */
+        OpenListening<APINode>(API_SERVER);
 
         /* Open sockets for the lookup server and its subsystems. */
         OpenListening<LookupNode>(LOOKUP_SERVER);
@@ -277,14 +281,21 @@ namespace LLP
         /* Open sockets for the time server and its subsystems. */
         OpenListening<TimeNode>(TIME_SERVER);
 
-        /* Open sockets for the core API server and its subsystems. */
-        OpenListening<APINode>(API_SERVER);
-
         /* Open sockets for the RPC server and its subsystems. */
         OpenListening<RPCNode>(RPC_SERVER);
 
         /* Open sockets for the mining server and its subsystems. */
         OpenListening<Miner>(MINING_SERVER);
+
+        /* Special method to sync up sigchain and events when opening app for iPhone. */
+        #if defined(REFRESH_BACKGROUND)
+
+        /* Get our current logged in user. */
+
+        debug::log(0, FUNCTION, "Refreshing sigchain events");
+
+
+        #endif
     }
 
 
@@ -318,14 +329,11 @@ namespace LLP
     {
         debug::log(0, FUNCTION, "Shutting down LLP");
 
-        /* Shutdown the tritium server and its subsystems. */
-        Shutdown<TritiumNode>(TRITIUM_SERVER);
-
-        /* Shutdown the lookup server and its subsystems. */
-        Shutdown<LookupNode>(LOOKUP_SERVER);
-
         /* Shutdown the time server and its subsystems. */
         Shutdown<TimeNode>(TIME_SERVER);
+
+        /* Shutdown the mining server and its subsystems. */
+        Shutdown<Miner>(MINING_SERVER);
 
         /* Shutdown the core API server and its subsystems. */
         Shutdown<APINode>(API_SERVER);
@@ -333,8 +341,11 @@ namespace LLP
         /* Shutdown the RPC server and its subsystems. */
         Shutdown<RPCNode>(RPC_SERVER);
 
-        /* Shutdown the mining server and its subsystems. */
-        Shutdown<Miner>(MINING_SERVER);
+        /* Shutdown the tritium server and its subsystems. */
+        Shutdown<TritiumNode>(TRITIUM_SERVER);
+
+        /* Shutdown the lookup server and its subsystems. */
+        Shutdown<LookupNode>(LOOKUP_SERVER);
 
         /* After all servers shut down, clean up underlying network resources. */
         NetworkShutdown();

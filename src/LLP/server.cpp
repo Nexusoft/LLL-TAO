@@ -240,7 +240,7 @@ namespace LLP
 
              /* DDOS Operations: Only executed when DDOS is enabled. */
              if(!addrConnect.IsLocal() && DDOS_MAP->at(addrConnect)->Banned())
-                 return debug::error(FUNCTION, "address ", addrConnect.ToStringIP(), " is banned");
+                 return debug::drop(FUNCTION, "address ", addrConnect.ToStringIP(), " is banned");
          }
 
          /* Find a balanced Data Thread to Add Connection to. */
@@ -253,7 +253,7 @@ namespace LLP
 
          /* Attempt the connection. */
          if(!dt->NewConnection(addrConnect, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addrConnect) : nullptr, false, pNodeRet))
-             return debug::error(FUNCTION, "connection attempt for address ", addrConnect.ToStringIP(), " failed");
+             return debug::drop(FUNCTION, "connection attempt for address ", addrConnect.ToStringIP(), " failed");
 
          /* Add the address to the address manager if it exists. */
          if(pAddressManager)
@@ -308,16 +308,18 @@ namespace LLP
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection()
     {
-        /* Set our initial return values. */
-        int16_t nRetThread = -1;
-        int16_t nRetIndex  = -1;
+        /* Set our internal return pointer. */
+        std::shared_ptr<ProtocolType> pRet;
 
         /* List of connections to return. */
         uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
         for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
         {
             /* Loop through connections in data thread. */
-            uint16_t nSize = static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
+            const uint16_t nSize =
+                static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
+
+            /* Loop through all connections. */
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 try
@@ -330,10 +332,11 @@ namespace LLP
                     /* Push the active connection. */
                     if(CONNECTION->nLatency < nLatency)
                     {
+                        /* Set our new latency value. */
                         nLatency = CONNECTION->nLatency;
 
-                        nRetThread = nThread;
-                        nRetIndex  = nIndex;
+                        /* Set our return value. */
+                        pRet = CONNECTION;
                     }
                 }
                 catch(const std::exception& e)
@@ -343,12 +346,7 @@ namespace LLP
             }
         }
 
-        /* Handle if no connections were found. */
-        static std::shared_ptr<ProtocolType> pNULL;
-        if(nRetThread == -1 || nRetIndex == -1)
-            return pNULL;
-
-        return THREADS_DATA[nRetThread]->CONNECTIONS->at(nRetIndex);
+        return pRet;
     }
 
 
@@ -939,6 +937,10 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::OpenListening()
     {
+        /* Skip over opening listeners if listening is disabled. */
+        if(!CONFIG.ENABLE_LISTEN)
+            return;
+
         /* If SSL is required then don't listen on the standard port */
         if(!CONFIG.REQUIRE_SSL)
         {
@@ -952,6 +954,7 @@ namespace LLP
             debug::log(0, "Opening ", ProtocolType::Name(), " listening sockets on port ", CONFIG.PORT_BASE);
         }
 
+        /* Handle for our SSL socket. */
         if(CONFIG.ENABLE_SSL)
         {
             if(!BindListenPort(hListenSSL.first, CONFIG.PORT_SSL, true, CONFIG.ENABLE_REMOTE))

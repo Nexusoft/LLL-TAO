@@ -910,6 +910,11 @@ ifdef NO_ANSI
     DEFS+= -DNO_ANSI
 endif
 
+#Handle for open listening
+ifdef REFRESH_BACKGROUND
+    DEFS+= -DREFRESH_BACKGROUND
+endif
+
 
 #Configure OS Specific Build Environment
 DEFS+= -DMAC_OSX \

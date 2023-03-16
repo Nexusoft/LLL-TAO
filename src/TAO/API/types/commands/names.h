@@ -159,5 +159,18 @@ namespace TAO::API
          **/
         static bool ReverseLookup(const uint256_t& hashAddress, std::string &strName);
 
+
+        /** ReverseLookup
+         *
+         *  Does a reverse name look-up by PTR records from names API logical indexes.
+         *
+         *  @param[in] hashAddress The address we are performing reverse lookup on.
+         *  @param[out] jRet The returned JSON to add our name keys to.
+         *
+         *  @return true if the lookup succeeded with valid ptr records.
+         *
+         **/
+        static bool ReverseLookup(const uint256_t& hashAddress, encoding::json &jRet);
+
     };
 }

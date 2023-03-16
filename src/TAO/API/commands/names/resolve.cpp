@@ -122,4 +122,74 @@ namespace TAO::API
 
         return true;
     }
+
+    /* Does a reverse name look-up by PTR records from names API logical indexes. */
+    bool Names::ReverseLookup(const uint256_t& hashAddress, encoding::json &jRet)
+    {
+        /* Check for regular NXS accounts. */
+        if(hashAddress == TOKEN::NXS)
+        {
+            /* Set to our NXS ticker. */
+            jRet["name"]   = "NXS";
+            jRet["global"] = true;
+            jRet["mine"]   = false;
+
+            return true;
+        }
+
+        /* Handle for NXS hardcoded token name. */
+        uint256_t hashName;
+        if(!LLD::Logical->ReadPTR(hashAddress, hashName))
+            return false;
+
+        /* Get the name object now. */
+        TAO::Register::Object tName;
+        if(!LLD::Register->ReadObject(hashName, tName))
+            return false;
+
+        /* Get our namespace. */
+        const std::string strNamespace =
+            tName.get<std::string>("namespace");
+
+        /* Check if this is our register. */
+        uint256_t hashSession;
+        const bool fMine =
+            Authentication::Active(tName.hashOwner, hashSession);
+
+        /* Check for namespace. */
+        if(!strNamespace.empty())
+        {
+            /* Check for global. */
+            if(strNamespace == TAO::Register::NAMESPACE::GLOBAL)
+            {
+                /* Set to our NXS ticker. */
+                jRet["name"]   = tName.get<std::string>("name");
+                jRet["global"] = true;
+                jRet["mine"]   = fMine;
+
+                return true;
+            }
+
+            /* Set to our NXS ticker. */
+            jRet["name"]      = tName.get<std::string>("name");
+            jRet["namespace"] = strNamespace;
+            jRet["global"]    = false;
+            jRet["mine"]      = fMine;
+
+            return true;
+        }
+
+        /* Set our value for local name. */
+        jRet["name"]      = tName.get<std::string>("name");
+
+        /* Add our username namespace if we are logged in. */
+        if(fMine)
+            jRet["namespace"] = Authentication::Credentials(hashSession)->UserName();
+
+        /* Set our remaining values. */
+        jRet["local"]     = true;
+        jRet["mine"]      = fMine;
+
+        return true;
+    }
 } /* End TAO namespace */
