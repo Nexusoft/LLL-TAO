@@ -1,6 +1,6 @@
-# Lower Level Library / TAO Framework
+# Nexus
 
-Series of Templates for developing Crypto, Database, or Protocol. Base templates for the TAO framework, which will inherit these templates and create higher level functionality.
+Nexus is a high performance Application Framework that provides a Peer to Peer electronic cash system with support for real-time smart contracts powered with a 64-bit register virtual machine. Nexus technology is developed to improve the overall security, scalability, and usability of Internet driven Applications.
 
 ## Branching
 
@@ -20,122 +20,12 @@ We use Make to build our project to multiple platforms. Please read out build do
 
 [iPhone OS / Android OS](docs/build-mobile.md)
 
-## TAO Framework
+## Developing
 
-The core base upgrades utilizing the LLL as base templates for Tritium, Amine, and Obsidian feature sets.
+Developing on Nexus has been designed to be powerful, yet simple to use. Tritium++ packages features from SQL Queries, filters, sorting, statistical operators, functions, variables, and much more. The API uses a RESTFul HTTP-JSON protocol, so that you can access the power of Smart Contracts on Nexus from very basic web experience to advanced capabilities. The API is always expanding, so if you find any bugs or wish to suggest improvements, please use the Issues tracker and submit your feedback.
 
-### Tritium
-
-The first of the three updates in the TAO Framework. Tritium will include the following feature sets:
-
-- Trust System
-- Legacy Mode
-- Contract Layers
-- API/SDK
-- Hybrid Mode
-- Ambassador DAO
-- LISP
-- Interface/Wallet
-
-### Amine
-
-The second of the three updates in the TAO Framework. Amine will include the following feature sets:
-
-- pBFT + Reputation Channels (L1)
-- Network Data Sharding
-- LLD Global File System
-- Domain Specific Languages
-- DAO Voting Groups
-- pBFT + PoS Trust Network (L2)
-- LISP Multicast Links for (L1) and (L2)
-- Interface Application Market
-
-### Obsidian
-
-The third of the three updates in the TAO Framework. Obsidian will include the following feature sets:
-
-- Extended Data Sharding
-- Decentralized Mining Pool (L3)
-- Miner Reputation to improve BFT
-- Extending DAO Voting Groups
-- DAO: L1 Voting Group
-- DAO: L2 Voting Group
-- DAO: L3 Voting Group
-- LISP Multicast Links for L3
-
-## LISP (Locator / Identifier Separation Protocol)
-
-Tritium provides support to run over the LISP overlay. Included in this repository are docker build files for deploying in a docker container (recommended), and of course native support for LISP, if you decide to build and run yourself. If you would like to learn more about LISP, it is open source and available here:
-
-https://github.com/farinacci/lispers.net
-
-## Lower Level Library
-
-Following will include descriptions of the core components of the Lower Level Library. These base templates lay the foundation for any higher inheritance as a series of base classes for Crypto, Database, and Protocol.
-
-### Lower Level Crypto
-
-Set of Operations for handling Crypto including:
-
-- Digital Signatures (ECDSA, Hash Based)
-- Hashing (SHA3 / Notable Secure Algorithms)
-- Encryption (Symmetric / Asymmetric)
-- Post-Quantum Cryptography (Experimental)
-
-Currently Implemented:
-
-- SK Hashing (Skein and Keccak)
-- Argon2 Password hashing
-- AES Standard (Symmetric)
-- FALCON (Quantum Resistant Lattice Signatures)
-- OpenSSL wrapping functions (EC_KEY, BIGNUM)
-
-### Lower Level Database
-
-Set of Templates for designing high efficiency database systems. Core templates can be expanded into higher level database types.
-
-- Keychain Database
-- ACID Transactions
-- Sector Database
-
-Keychains Included:
-
-- Binary File Map
-- Binary Hash Map
-
-We welcome any contributions of new keychains to provide different indexing data structures of the sector data.
-
-### Lower Level Protocol
-
-Set of Client / Server templates for efficient data handling. Inherit and create custom packet types to write a new protocol with ease and no network programming required.
-
-- Data Server
-- Listening Server
-- Connection Types
-- Packet Styles
-- Event Triggers
-- DDOS Throttling
-
-LLP Protocols Implemented:
-
-- Legacy
-- Tritium
-- HTTP
-
-### Utilities
-
-Set of useful tools for developing any program such as:
-
-- Serialization
-- Runtime
-- Debug
-- Json
-- Arguments
-- Containers
-- Configuration
-- Sorting
-- Allocators
-- Filesystem
+The developer documentation can be found below:
+https://wiki.nexus.io/en/tritium++
 
 ## License
 
@@ -144,16 +34,4 @@ information or see https://opensource.org/licenses/MIT.
 
 ## Contributing
 
-If you would like to contribute as always submit a pull request. This library development is expected to be on-going, with new higher level templates created for any types of use in the web.
-
-All code contributions should follow the comments and style guides. The latest versions are in the contrib folder.
-
-## L5 Stack
-
-L5 stands for 'Linux Lower Level Library & LISP' which is the stack that the TAO framework is built on top of.
-We envision this becoming a new standard for component based web design, which has the potential to decentralize web services.
-It is also a very useful and scale-able stack for Cryptocurrency and Blockchain designs.
-
-## Why?
-
-A lot of software that we use today for databases, or protocols, or cryptography was created back in the 1990's as open source software. Since then the industry has expanded and bloated this code causing performance degradation. The aim of these templates is performance in simplicity. Include only what is needed, no more, and no less. This allows extremely high performance and scaleability necessary for the new distributed systems that will continue to evolve over the next few decades.
+If you would like to contribute as always submit a pull request. All code contributions should follow the comments and style guides. The latest versions are in the contrib folder.
