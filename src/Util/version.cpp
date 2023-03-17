@@ -26,6 +26,9 @@ namespace version
     /* Patch version Z (x.y.Z | Z > 0). */
     const uint32_t CLIENT_PATCH = 0;
 
+    /* Build version determines release candidate. */
+    const uint32_t CLIENT_BUILD = 6;
+
 
     /* The version of the actual wallet client. */
     const uint32_t CLIENT_VERSION =
@@ -38,7 +41,7 @@ namespace version
 
     /* The version number */
     const std::string CLIENT_VERSION_STRING =
-        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH);
+        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, "-rc", CLIENT_BUILD);
 
 
     /* The interface used Qt, CLI, or Tritium) */
@@ -72,7 +75,7 @@ namespace version
     /* Our literal build string. */
     const std::string CLIENT_VERSION_BUILD_STRING
     (
-          CLIENT_VERSION_STRING + "-rc6"
+          CLIENT_VERSION_STRING + " "
         + CLIENT_NAME           + " "
         + CLIENT_INTERFACE      + " "
         + CLIENT_DATABASE + BUILD_ARCH

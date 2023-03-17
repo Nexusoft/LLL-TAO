@@ -1755,10 +1755,16 @@ namespace TAO::API
             /* Add address from input parameters. */
             jRet["address"] = hashRegister.ToString();
 
-            /* Check for reverse ptr record if not token (that resolves a ticker). */
-            std::string strName = "";
-            if(!hashRegister.IsToken() && Names::ReverseLookup(hashRegister, strName))
-                jRet["name"] = strName;
+            /* Special handle for names or namespaces. */
+            if(hashRegister.IsName())
+                Names::ReverseLookup(hashRegister, jRet);
+            else
+            {
+                /* Check for reverse ptr record if not token (that resolves a ticker). */
+                std::string strName = "";
+                if(!hashRegister.IsToken() && Names::ReverseLookup(hashRegister, strName))
+                    jRet["name"] = strName;
+            }
         }
 
         return jRet;
