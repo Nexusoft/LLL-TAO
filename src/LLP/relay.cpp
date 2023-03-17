@@ -28,6 +28,7 @@ namespace LLP
     : BaseConnection<MessagePacket> ( )
     , pqSSL   (new LLC::PQSSL_CTX())
     , oCrypto ( )
+    , mapRoutingTable (new std::multimap<uint256_t, LLP::BaseAddress>())
     {
     }
 
@@ -37,6 +38,7 @@ namespace LLP
     : BaseConnection<MessagePacket> (SOCKET_IN, DDOS_IN, fDDOSIn)
     , pqSSL (new LLC::PQSSL_CTX())
     , oCrypto ( )
+    , mapRoutingTable (new std::multimap<uint256_t, LLP::BaseAddress>())
     {
     }
 
@@ -46,6 +48,7 @@ namespace LLP
     : BaseConnection<MessagePacket> (DDOS_IN, fDDOSIn)
     , pqSSL (new LLC::PQSSL_CTX())
     , oCrypto ( )
+    , mapRoutingTable (new std::multimap<uint256_t, LLP::BaseAddress>())
     {
     }
 
@@ -170,7 +173,7 @@ namespace LLP
 
                     /* Read the existing crypto object register. */
                     if(!LLD::Register->ReadObject(addrCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
-                        return debug::error(FUNCTION, "Failed to read crypto object register");
+                        return debug::drop(NODE, "Failed to read crypto object register");
 
                     /* Push this message now. */
                     PushMessage(RESPONSE::HANDSHAKE, vPayload);
@@ -204,7 +207,26 @@ namespace LLP
 
                 /* Read the existing crypto object register. */
                 if(!LLD::Register->ReadObject(addrCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
-                    return debug::error(FUNCTION, "Failed to read crypto object register");
+                    return debug::drop(NODE, "Failed to read crypto object register");
+
+                break;
+            }
+
+
+
+            /* Message to determine that a given user-id is being serviced by that node. */
+            case RELAY::AVAILABLE:
+            {
+                /* Deserialize our user-id. */
+                uint256_t hashGenesis;
+                ssPacket >> hashGenesis;
+
+                /* Deserialize the node. */
+                LLP::BaseAddress addrRouter;
+                ssPacket >> addrRouter;
+
+                /* Add this to our routing table. */
+                mapRoutingTable->insert(std::make_pair(hashGenesis, addrRouter));
 
                 break;
             }

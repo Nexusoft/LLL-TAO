@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <LLP/packets/message.h>
 #include <LLP/templates/base_connection.h>
 
+#include <Util/types/lock_unique_ptr.h>
+
 namespace LLP
 {
 
@@ -30,6 +32,10 @@ namespace LLP
 
         /** Crypto Object Register of Peer for Verification. **/
         TAO::Register::Crypto oCrypto;
+
+
+        /** Internal map to track RTR's that are servicing each user-id. **/
+        util::atomic::lock_unique_ptr<std::multimap<uint256_t, LLP::BaseAddress>> mapRoutingTable;
 
 
     public:
@@ -48,7 +54,6 @@ namespace LLP
                 LIST          = 0x04, //list active datatypes
                 PING          = 0x05,
                 COMMAND       = 0x06,
-                RELAY         = 0x07,
 
                 RESERVED2     = 0x08,
             };
@@ -75,6 +80,16 @@ namespace LLP
                 HANDSHAKE       = 0x11, //respond with response data for handshake to exchange keys
                 PONG            = 0x12, //pong messages give us latency and keep connection alive
                 COMMAND         = 0x13, //command response passes command information back to remote host
+            };
+        };
+
+        /** Relay messages are messages meant to be passed on to another available node. **/
+        struct RELAY
+        {
+            enum : MessagePacket::message_t
+            {
+                AVAILABLE = 0x20, //this message is responsible for keeping the list of active nodes synced
+                FORWARD   = 0x21, //this message is responsible for forwarding between nodes
             };
         };
 
