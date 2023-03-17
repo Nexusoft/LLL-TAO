@@ -19,6 +19,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/commands/sessions.h>
 
+#include <TAO/Ledger/types/tritium_minter.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -36,6 +38,9 @@ namespace TAO::API
         /* Check for authenticated sigchain. */
         if(config::fMultiuser.load() && config::GetBoolArg("-terminateauth", true) && !Authentication::Authenticate(jParams))
             throw Exception(-333, "Account failed to authenticate");
+
+        /* Stop stake minter if running. Minter ignores request if not running, so safe to just call both */
+        TAO::Ledger::StakeMinter::GetInstance().Stop();
 
         /* Check if we have set to clear session too. */
         if(ExtractBoolean(jParams, "clear"))
