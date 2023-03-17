@@ -277,7 +277,7 @@ namespace LLC
         ssHandshake >> nTimestamp;
 
         /* Check that handshake wasn't stale. */
-        if(nTimestamp + 30 < runtime::unifiedtimestamp())
+        if(nTimestamp + 30 < runtime::unifiedtimestamp() || nTimestamp > runtime::unifiedtimestamp())
             return debug::error(FUNCTION, "handshake is stale by ", runtime::unifiedtimestamp() - (nTimestamp + 30), " seconds");
 
         /* Get our peer's public key for this handshake. */

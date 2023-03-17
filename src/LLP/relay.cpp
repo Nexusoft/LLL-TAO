@@ -213,7 +213,6 @@ namespace LLP
             }
 
 
-
             /* Message to determine that a given user-id is being serviced by that node. */
             case RELAY::AVAILABLE:
             {
@@ -221,9 +220,52 @@ namespace LLP
                 uint256_t hashGenesis;
                 ssPacket >> hashGenesis;
 
+                /* Check our broadcast time for replay protection. */
+                uint64_t nTimestamp = 0;
+                ssPacket >> nTimestamp;
+
+                /* Check that handshake wasn't stale. */
+                if(nTimestamp + 30 < runtime::unifiedtimestamp() || nTimestamp > runtime::unifiedtimestamp())
+                {
+                    /* Give us just a little warning message. */
+                    debug::warning(NODE, "handshake is stale by ", runtime::unifiedtimestamp() - (nTimestamp + 30), " seconds");
+                    break;
+                }
+
                 /* Deserialize the node. */
                 LLP::BaseAddress addrRouter;
                 ssPacket >> addrRouter;
+
+                /* Assemble a datastream to hash. */
+                DataStream ssSignature(SER_NETWORK, 1);
+                ssSignature << hashGenesis << nTimestamp << addrRouter;
+
+                /* Get a hash of our message to sign. */
+                const uint256_t hashMessage =
+                    LLC::SK256(ssSignature.Bytes());
+
+                /* Generate register address for crypto register deterministically */
+                const TAO::Register::Address addrCrypto =
+                    TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
+                /* Read the existing crypto object register. */
+                if(!LLD::Register->ReadObject(addrCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
+                    return debug::drop(NODE, "Failed to read crypto object register");
+
+                /* Get our public key. */
+                std::vector<uint8_t> vCryptoPub;
+                ssPacket >> vCryptoPub;
+
+                /* Get our current signature. */
+                std::vector<uint8_t> vCryptoSig;
+                ssPacket >> vCryptoSig;
+
+                /* Verify our signature is a valid authentication of crypto object register. */
+                if(!oCrypto.VerifySignature("network", hashMessage.GetBytes(), vCryptoPub, vCryptoSig))
+                {
+                    debug::warning(FUNCTION, "invalid signature for handshake authentication");
+                    break;
+                }
 
                 /* Add this to our routing table. */
                 mapRoutingTable->insert(std::make_pair(hashGenesis, addrRouter));
