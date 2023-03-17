@@ -1161,8 +1161,16 @@ namespace Legacy
                         return debug::error(FUNCTION, "signature is invalid");
 
                     /* Commit to disk if flagged. */
-                    if((nFlags == TAO::Ledger::FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
-                        return debug::error(FUNCTION, "failed to write spend");
+                    if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                    {
+                        /* Handle if we are using -indexproofs. */
+                        if(config::fIndexProofs.load() && !LLD::Legacy->IndexSpend(prevout.hash, prevout.n, GetHash()))
+                            return debug::error(FUNCTION, "failed to index spend");
+
+                        /* Handle if we are using -indexproofs. */
+                        if(!config::fIndexProofs.load() && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                            return debug::error(FUNCTION, "failed to write spend");
+                    }
 
                     break;
                 }
@@ -1222,8 +1230,16 @@ namespace Legacy
                     }
 
                     /* Commit to disk if flagged. */
-                    if((nFlags == TAO::Ledger::FLAGS::BLOCK) && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
-                        return debug::error(FUNCTION, "failed to write spend");
+                    if(nFlags == TAO::Ledger::FLAGS::BLOCK)
+                    {
+                        /* Handle if we are using -indexproofs. */
+                        if(config::fIndexProofs.load() && !LLD::Legacy->IndexSpend(prevout.hash, prevout.n, GetHash()))
+                            return debug::error(FUNCTION, "failed to write spend");
+
+                        /* Handle if we are using -indexproofs. */
+                        if(!config::fIndexProofs.load() && !LLD::Legacy->WriteSpend(prevout.hash, prevout.n))
+                            return debug::error(FUNCTION, "failed to write spend");
+                    }
 
                     break;
                 }

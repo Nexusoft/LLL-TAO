@@ -145,9 +145,6 @@ namespace LLP
                 else
                     CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
-                /* Fire the connected event. */
-                pnode->Event(EVENTS::CONNECT);
-
                 /* Iterate the DDOS cScore (Connection score). */
                 if(fDDOS.load())
                     DDOS -> cSCORE += 1;
@@ -157,6 +154,9 @@ namespace LLP
                     ++nIncoming;
                 else
                     ++nOutbound;
+
+                /* Fire the connected event. */
+                pnode->Event(EVENTS::CONNECT);
 
                 /* Notify data thread to wake up. */
                 CONDITION.notify_all();
@@ -212,14 +212,14 @@ namespace LLP
                 else
                     CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
-                /* Fire the connected event. */
-                pnode->Event(EVENTS::CONNECT);
-
                 /* Check for inbound socket. */
                 if(pnode->Incoming())
                     ++nIncoming;
                 else
                     ++nOutbound;
+
+                /* Fire the connected event. */
+                pnode->Event(EVENTS::CONNECT);
 
                 /* Notify data thread to wake up. */
                 CONDITION.notify_all();

@@ -337,7 +337,7 @@ namespace TAO
 
 
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
-        bool Transaction::Check() const
+        bool Transaction::Check(const uint8_t nFlags) const
         {
             /* Check transaction version */
             if(!TransactionVersionActive(nTimestamp, nVersion))
@@ -414,8 +414,8 @@ namespace TAO
                 if(IsFirst())
                 {
                     /* Check for transaction version 3. */
-                    if(nVersion >= 3 && LLD::Ledger->HasFirst(hashGenesis))
-                        return debug::error(FUNCTION, "invalid genesis-id ", hashGenesis.SubString());
+                    if(!(nFlags & TAO::Ledger::FLAGS::LOOKUP) && nVersion >= 3 && LLD::Ledger->HasFirst(hashGenesis))
+                        return debug::error(FUNCTION, "duplicate genesis-id ", hashGenesis.SubString());
 
                     /* Reset the contract operation stream */
                     contract.Reset();
@@ -855,7 +855,7 @@ namespace TAO
             {
                 /* Check for transaction version 3. */
                 if(nVersion >= 3 && LLD::Ledger->HasFirst(hashGenesis))
-                    return debug::error(FUNCTION, "invalid genesis-id ", hashGenesis.SubString());
+                    return debug::error(FUNCTION, "duplicate genesis-id ", hashGenesis.SubString());
 
                 /* Check ambassador sigchains based on all versions, not the smaller subset of versions. */
                 for(uint32_t nSwitchVersion = 7; nSwitchVersion <= CurrentBlockVersion(); ++nSwitchVersion)
@@ -992,7 +992,7 @@ namespace TAO
                     TAO::Operation::TxCost(contract, nCost);
 
                 /* Index our registers here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::GetBoolArg("-indexregister"))
+                if(!config::fClient.load() && config::fIndexRegister.load())
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;
@@ -1113,7 +1113,7 @@ namespace TAO
                     return false;
 
                 /* Erase our register index here now if not -client mode and setting enabled. */
-                if(!config::fClient.load() && config::GetBoolArg("-indexregister"))
+                if(!config::fClient.load() && config::fIndexRegister.load())
                 {
                     /* Unpack the address we will be working on. */
                     uint256_t hashAddress;

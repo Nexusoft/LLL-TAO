@@ -247,6 +247,8 @@ namespace memory
         template<class TypeName>
         void encrypt(const TypeName& data)
         {
+            return;
+
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(AES_KEYLEN);
             static std::vector<uint8_t> vIV(AES_BLOCKLEN);
@@ -277,6 +279,8 @@ namespace memory
         template<class TypeName>
         void encrypt(const std::vector<TypeName>& data)
         {
+            return;
+
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(AES_KEYLEN);
             static std::vector<uint8_t> vIV(AES_BLOCKLEN);
@@ -306,6 +310,8 @@ namespace memory
          **/
         void encrypt(const std::string& data)
         {
+            return;
+
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(AES_KEYLEN);
             static std::vector<uint8_t> vIV(AES_BLOCKLEN);
@@ -336,6 +342,8 @@ namespace memory
          **/
         void encrypt(const SecureString& data)
         {
+            return;
+            
             static bool fKeySet = false;
             static std::vector<uint8_t> vKey(AES_KEYLEN);
             static std::vector<uint8_t> vIV(AES_BLOCKLEN);

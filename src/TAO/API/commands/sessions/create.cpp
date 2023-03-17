@@ -17,9 +17,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
 
+#include <TAO/API/types/commands/sessions.h>
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/indexing.h>
-#include <TAO/API/types/commands/sessions.h>
 
 #include <TAO/Register/types/crypto.h>
 
@@ -53,13 +53,17 @@ namespace TAO::API
         Authentication::Session tSession =
             Authentication::Session(strUsername, strPassword, Authentication::Session::LOCAL);
 
-        /* Read the crypto object register. */
-        TAO::Register::Crypto oCrypto;
-        if(!LLD::Register->ReadCrypto(tSession.Genesis(), oCrypto, TAO::Ledger::FLAGS::FORCED))
+        /* Check our session's credentials. */
+        if(!validate_session(tSession, strPIN))
             throw Exception(-139, "Invalid credentials");
 
-        /* Check for invalid authorization hash. */
-        if(!oCrypto.CheckCredentials(tSession.Credentials(), strPIN))
+        /* Check for crypto object register. */
+        const TAO::Register::Address hashCrypto =
+            TAO::Register::Address(std::string("crypto"), tSession.Genesis(), TAO::Register::Address::CRYPTO);
+
+        /* Read the crypto object register. */
+        TAO::Register::Object oCrypto;
+        if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::FORCED))
             throw Exception(-139, "Invalid credentials");
 
         /* Check our network auth keys. */

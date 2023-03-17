@@ -23,7 +23,7 @@ namespace LLP
 
     /* The current Protocol Version. */
     const uint32_t PROTOCOL_MAJOR     = 3;
-    const uint32_t PROTOCOL_MINOR     = 2;
+    const uint32_t PROTOCOL_MINOR     = 4;
     const uint32_t PROTOCOL_REVISION  = 0;
     const uint32_t PROTOCOL_BUILD     = 0;
 
@@ -45,7 +45,7 @@ namespace LLP
 
 
     /* Used to define the baseline of -client mode Version. */
-    const uint32_t MIN_TRITIUM_CLIENT_VERSION = 3020000;
+    const uint32_t MIN_TRITIUM_CLIENT_VERSION = 3040000;
 
 
     /* The name that will be shared with other nodes. */

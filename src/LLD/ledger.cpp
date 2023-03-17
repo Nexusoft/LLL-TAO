@@ -20,6 +20,7 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/enum.h>
 #include <TAO/Register/include/constants.h>
+#include <TAO/Register/include/unpack.h>
 
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/include/chainstate.h>
@@ -135,46 +136,7 @@ namespace LLD
             /* Get the transaction. */
             TAO::Ledger::Transaction tx;
             if(!ReadTx(hashTx, tx, nFlags))
-            {
-                /* Check for -client mode or active server object. */
-                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
-                    throw debug::exception(FUNCTION, "failed to read contract");
-
-                /* Try to find a connection first. */
-                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
-                if(pConnection == nullptr)
-                {
-                    /* Check for genesis. */
-                    if(LLP::TRITIUM_SERVER)
-                    {
-                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                        if(pNode != nullptr)
-                        {
-                            /* Get our lookup address now. */
-                            const std::string strAddress =
-                                pNode->GetAddress().ToStringIP();
-
-                            /* Make our new connection now. */
-                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                                throw debug::exception(FUNCTION, "no connections available...");
-
-                        }
-                    }
-                }
-
-                /* Debug output to console. */
-                debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::DEPENDANT for ", hashTx.SubString());
-                pConnection->BlockingLookup
-                (
-                    5000,
-                    LLP::LookupNode::REQUEST::DEPENDANT,
-                    uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM), hashTx
-                );
-                debug::log(2, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT received for ", hashTx.SubString());
-
-                /* Recursively process once we have done the lookup. */
-                return ReadContract(hashTx, nContract, nFlags);
-            }
+                throw debug::exception(FUNCTION, "failed to read contract");
 
             /* Get const reference for read-only access. */
             const TAO::Ledger::Transaction& rtx = tx;
@@ -187,46 +149,7 @@ namespace LLD
             /* Get the transaction. */
             Legacy::Transaction tx;
             if(!LLD::Legacy->ReadTx(hashTx, tx, nFlags))
-            {
-                /* Check for -client mode or active server object. */
-                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
-                    throw debug::exception(FUNCTION, "failed to read contract");
-
-                /* Try to find a connection first. */
-                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
-                if(pConnection == nullptr)
-                {
-                    /* Check for genesis. */
-                    if(LLP::TRITIUM_SERVER)
-                    {
-                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                        if(pNode != nullptr)
-                        {
-                            /* Get our lookup address now. */
-                            const std::string strAddress =
-                                pNode->GetAddress().ToStringIP();
-
-                            /* Make our new connection now. */
-                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                                throw debug::exception(FUNCTION, "no connections available...");
-
-                        }
-                    }
-                }
-
-                /* Debug output to console. */
-                debug::log(1, FUNCTION, "CLIENT MODE: Requesting GET::DEPENDANT::LEGACY for ", hashTx.SubString());
-                pConnection->BlockingLookup
-                (
-                    5000,
-                    LLP::LookupNode::REQUEST::DEPENDANT,
-                    uint8_t(LLP::LookupNode::SPECIFIER::LEGACY), hashTx
-                );
-                debug::log(1, FUNCTION, "CLIENT MODE: TYPES::DEPENDANT::LEGACY received for ", hashTx.SubString());
-
-                /* Recursively process once we have done the lookup. */
-                return ReadContract(hashTx, nContract, nFlags);
-            }
+                throw debug::exception(FUNCTION, "failed to read contract");
 
             return TAO::Operation::Contract(tx, nContract);
         }
@@ -369,6 +292,28 @@ namespace LLD
         }
 
         return false;
+    }
+
+
+    /* Reads a proof spending tx. Proofs are used to keep track of spent temporal proofs. */
+    bool LedgerDB::ReadTx(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract, TAO::Ledger::Transaction &tx)
+    {
+        /* Get the key tuple. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+            std::make_tuple(hashProof, hashTx, nContract);
+
+        return Read(tIndex, tx);
+    }
+
+
+    /* Reads a contract spending tx. Contracts are used to keep track of contract validators. */
+    bool LedgerDB::ReadTx(const uint512_t& hashTx, const uint32_t nContract, TAO::Ledger::Transaction &tx)
+    {
+        /* Get the key pair. */
+        const std::tuple<std::string, uint512_t, uint32_t> tIndex =
+            std::make_tuple("validated", hashTx, nContract);
+
+        return Read(tIndex, tx);
     }
 
 
@@ -806,7 +751,8 @@ namespace LLD
                               const uint32_t nContract, const uint8_t nFlags)
     {
         /* Get the key typle. */
-        const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+            std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
@@ -817,14 +763,14 @@ namespace LLD
             if(pMemory)
             {
                 /* Write proof to memory. */
-                pMemory->setEraseProofs.erase(tuple);
-                pMemory->setProofs.insert(tuple);
+                pMemory->setEraseProofs.erase(tIndex);
+                pMemory->setProofs.insert(tIndex);
 
                 return true;
             }
 
             /* Write proof to commited memory. */
-            pCommit->setProofs.insert(tuple);
+            pCommit->setProofs.insert(tIndex);
 
             return true;
         }
@@ -834,7 +780,7 @@ namespace LLD
 
             /* Check for pending transactions. */
             if(pMiner)
-                pMiner->setProofs.insert(tuple);
+                pMiner->setProofs.insert(tIndex);
 
             return true;
         }
@@ -845,18 +791,38 @@ namespace LLD
             /* Erase memory proof if they exist. */
             if(pMemory)
             {
-                pMemory->setEraseProofs.insert(tuple);
-                pMemory->setProofs.erase(tuple);
+                pMemory->setEraseProofs.insert(tIndex);
+                pMemory->setProofs.erase(tIndex);
             }
             else
-               pCommit->setProofs.erase(tuple);
+               pCommit->setProofs.erase(tIndex);
 
             /* Check for erase to short circuit out. */
             if(nFlags == TAO::Ledger::FLAGS::ERASE)
                 return true;
         }
 
-        return Write(tuple);
+        /* Check the client database. */
+        if(config::fClient.load())
+            return Client->WriteProof(hashProof, hashTx, nContract);
+
+        return Write(tIndex);
+    }
+
+
+    /* Indexes a proof to disk tied to spending transactions. Proofs are used to keep track of spent temporal proofs. */
+    bool LedgerDB::IndexProof(const uint256_t& hashProof, const uint512_t& hashTx,
+                    const uint32_t nContract, const uint512_t& hashIndex, const uint8_t nFlags)
+    {
+        /* Check for block flag. */
+        if(nFlags != TAO::Ledger::FLAGS::BLOCK)
+            return WriteProof(hashProof, hashTx, nContract, nFlags);
+
+        /* Get the key typle. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+            std::make_tuple(hashProof, hashTx, nContract);
+
+        return Index(tIndex, hashIndex);
     }
 
 
@@ -865,19 +831,20 @@ namespace LLD
                             const uint32_t nContract, const uint8_t nFlags)
     {
         /* Get the key pair. */
-        const std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+            std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
         {
             LOCK(MEMORY_MUTEX);
 
             /* Check pending transaction memory. */
-            if(pMemory && pMemory->setProofs.count(tuple))
+            if(pMemory && pMemory->setProofs.count(tIndex))
                 return true;
 
             /* Check commited memory. */
-            if(pCommit->setProofs.count(tuple))
+            if(pCommit->setProofs.count(tIndex))
                 return true;
         }
         else if(nFlags == TAO::Ledger::FLAGS::MINER)
@@ -885,13 +852,15 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check pending transaction memory. */
-            if(pMiner && pMiner->setProofs.count(tuple))
+            if(pMiner && pMiner->setProofs.count(tIndex))
                 return true;
         }
 
-        //debug::log(0, FUNCTION, "Checking for Proof ", hashProof.SubString(), " txid ", hashTx.SubString(), " contract ", nContract);
+        /* Check the client database. */
+        if(config::fClient.load())
+            return Client->HasProof(hashProof, hashTx, nContract, nFlags);
 
-        return Exists(tuple);
+        return Exists(tIndex);
     }
 
 
@@ -903,7 +872,7 @@ namespace LLD
         std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Check for memory transaction. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -944,7 +913,196 @@ namespace LLD
                 return true;
         }
 
+        /* Check the client database. */
+        if(config::fClient.load())
+            return Client->EraseProof(hashProof, hashTx, nContract);
+
         return Erase(tuple);
+    }
+
+
+    /* Indexes a contract to disk tied to validating transactions */
+    bool LedgerDB::IndexContract(const uint512_t& hashTx, const uint32_t nContract, const uint512_t& hashIndex)
+    {
+        /* Get the key pair. */
+        const std::tuple<std::string, uint512_t, uint32_t> tIndex =
+            std::make_tuple("validated", hashTx, nContract);
+
+        /* Index our record to the database. */
+        return Index(tIndex, hashIndex);
+    }
+
+
+    /* Remove a contract index from the database. */
+    bool LedgerDB::EraseContract(const uint512_t& hashTx, const uint32_t nContract)
+    {
+        /* Get the key pair. */
+        const std::tuple<std::string, uint512_t, uint32_t> tIndex =
+            std::make_tuple("validated", hashTx, nContract);
+
+        /* Index our record to the database. */
+        return Erase(tIndex);
+    }
+
+
+    /* Index our proofs as keychain entries to add support to read spending transaction from the proof itself. */
+    void LedgerDB::IndexProofs()
+    {
+        /* Check for address indexing flag. */
+        if(Exists(std::string("index.proofs.complete")))
+        {
+            /* Check there is no argument supplied. */
+            if(!config::HasArg("-indexproofs"))
+            {
+                /* Warn that -indexheight is persistent. */
+                debug::notice(FUNCTION, "-indexproofs enabled from valid indexes");
+
+                /* Set indexing argument now. */
+                RECURSIVE(config::ARGS_MUTEX);
+                config::mapArgs["-indexproofs"] = "1";
+
+                /* Cache our internal arguments. */
+                config::fIndexProofs.store(true);
+            }
+
+            /* Quit if we have reindexed proofs. */
+            if(!config::GetBoolArg("-forcereindexproofs"))
+                return;
+        }
+
+        /* Check there is no argument supplied. */
+        if(!config::fIndexProofs.load())
+            return;
+
+        /* Start a timer to track. */
+        runtime::timer timer;
+        timer.Start();
+
+        /* Get our starting hash. */
+        uint1024_t hashBegin = TAO::Ledger::hashTritium;
+
+        /* Check for hybrid mode. */
+        if(config::fHybrid.load())
+            LLD::Ledger->ReadHybridGenesis(hashBegin);
+
+        /* Read the first tritium block. */
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(hashBegin, state))
+        {
+            debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
+            return;
+        }
+
+        /* Keep track of our total count. */
+        uint32_t nScannedCount = 0;
+        uint32_t nContract     = 0;
+
+        /* Track our txid and proof data. */
+        uint512_t hashTx;
+        uint256_t hashProof;
+
+        /* Start our scan. */
+        debug::notice(FUNCTION, "Indexing proofs from block ", state.GetHash().SubString());
+        while(!config::fShutdown.load())
+        {
+            /* Loop through found transactions. */
+            for(uint32_t nIndex = 0; nIndex < state.vtx.size(); ++nIndex)
+            {
+                /* Get a copy of our txid. */
+                const uint512_t hash =
+                    state.vtx[nIndex].second;
+
+                /* Handle for Tritium Transactions. */
+                if(state.vtx[nIndex].first == TAO::Ledger::TRANSACTION::TRITIUM)
+                {
+                    /* Read the transaction from disk. */
+                    TAO::Ledger::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(hash, tx))
+                        continue;
+
+                    /* Iterate the transaction contracts. */
+                    for(uint32_t nIndex = 0; nIndex < tx.Size(); ++nIndex)
+                    {
+                        /* Grab contract reference. */
+                        const TAO::Operation::Contract& rContract = tx[nIndex];
+
+                        /* Check for a validation index. */
+                        if(TAO::Register::Unpack(rContract, hashTx, nContract))
+                        {
+                            /* Check that we have the contract validated. */
+                            if(!LLD::Contract->HasContract(std::make_pair(hashTx, nContract)))
+                                continue;
+
+                            /* Index our record to the database. */
+                            if(!IndexContract(hashTx, nContract, hash))
+                                debug::warning(FUNCTION, "TRITIUM: failed to write contract index for ", hash.ToString());
+
+                            continue;
+                        }
+
+                        /* Unpack the contract info we are working on. */
+                        if(!TAO::Register::Unpack(rContract, hashProof, hashTx, nContract))
+                            continue;
+
+                        /* Check for a valid proof. */
+                        if(!HasProof(hashProof, hashTx, nContract))
+                            continue;
+
+                        /* Index our record to the database. */
+                        if(!IndexProof(hashProof, hashTx, nContract, hash))
+                            debug::warning(FUNCTION, "TRITIUM: failed to write index proof for ", hash.ToString());
+                    }
+                }
+
+                /* Handle for Legacy Transactions. */
+                if(state.vtx[nIndex].first == TAO::Ledger::TRANSACTION::LEGACY)
+                {
+                    /* Read the transaction from disk. */
+                    Legacy::Transaction tx;
+                    if(!LLD::Legacy->ReadTx(hash, tx))
+                        continue;
+
+                    /* Iterate the transaction contracts. */
+                    for(const auto& in : tx.vin)
+                    {
+                        const std::pair<uint512_t, uint32_t> tIndex =
+                            std::make_pair(in.prevout.hash, in.prevout.n);
+
+                        /* Check for double spends. */
+                        if(!LLD::Legacy->IsSpent(in.prevout.hash, in.prevout.n))
+                            continue;
+
+                        /* Index our spend into legacy database. */
+                        if(!LLD::Legacy->IndexSpend(in.prevout.hash, in.prevout.n, hash))
+                            debug::warning(FUNCTION, "LEGACY: failed to write index proof for ", hash.ToString());
+                    }
+                }
+
+                /* Update the scanned count for meters. */
+                ++nScannedCount;
+
+                /* Meter for output. */
+                if(nScannedCount % 100000 == 0)
+                {
+                    /* Get the time it took to rescan. */
+                    uint32_t nElapsedSeconds = timer.Elapsed();
+                    debug::log(0, FUNCTION, "Re-indexed ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                        std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                }
+            }
+
+            /* Iterate to the next block in the queue. */
+            state = state.Next();
+            if(!state)
+            {
+                /* Write our last index now. */
+                Write(std::string("index.proofs.complete"));
+
+                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
+
+                break;
+            }
+        }
     }
 
 

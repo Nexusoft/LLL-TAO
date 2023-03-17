@@ -143,21 +143,6 @@ namespace TAO::API
     uint64_t GetImmature(const uint256_t& hashGenesis);
 
 
-    /** GetRegisters
-     *
-     *  Reads a batch of states registers from the Register DB
-     *
-     *  @param[in] vAddresses The list of register addresses to read
-     *  @param[out] vStates The list of states paired to the register address.
-     *              The list will be sorted by the create timestamp of the register, oldest first
-     *
-     *  @return True if successful
-     *
-     **/
-    bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses,
-                      std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates);
-
-
     /** GetUnclaimed
      *
      *  Get all the unclaimed funds by searching the ledger level events.

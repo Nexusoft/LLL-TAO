@@ -56,7 +56,7 @@ namespace TAO::API
                 mapStandards[strType].Type();
 
             /* Special handle if address indexed. */
-            if(config::GetBoolArg("-indexaddress"))
+            if(config::fIndexAddress.load())
             {
                 /* Batch read up to 1000 at a time */
                 std::vector<std::pair<uint256_t, TAO::Register::Object>> vObjects;

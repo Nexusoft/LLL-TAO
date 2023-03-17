@@ -107,14 +107,14 @@ namespace LLP
             else
                 CONNECTIONS->at(nSlot) = pNodeRet;
 
-            /* Fire the connected event. */
-            pnode->Event(EVENTS::CONNECT);
-
             /* Check for inbound socket. */
             if(pnode->Incoming())
                 ++nIncoming;
             else
                 ++nOutbound;
+
+            /* Fire the connected event. */
+            pnode->Event(EVENTS::CONNECT);
 
             /* Notify data thread to wake up. */
             CONDITION.notify_all();

@@ -86,6 +86,13 @@ namespace LLD
     }
 
 
+    /* Reads the spending transaction from a spent output. */
+    bool LegacyDB::ReadTx(const uint512_t& hashTx, const uint32_t nOutput, Legacy::Transaction& tx)
+    {
+        return Read(std::make_pair(hashTx, nOutput), tx);
+    }
+
+
     /* Erases a transaction from the ledger DB. */
     bool LegacyDB::EraseTx(const uint512_t& hashTx)
     {
@@ -114,22 +121,41 @@ namespace LLD
 
 
     /* Writes an output as spent. */
-    bool LegacyDB::WriteSpend(const uint512_t& hashTx, uint32_t nOutput)
+    bool LegacyDB::WriteSpend(const uint512_t& hashTx, const uint32_t nOutput)
     {
+        /* Check for -client mode. */
+        if(config::fClient.load())
+            return Client->WriteSpend(hashTx, nOutput);
+
         return Write(std::make_pair(hashTx, nOutput));
     }
 
 
-    /* Removes a spend flag on an output. */
-    bool LegacyDB::EraseSpend(const uint512_t& hashTx, uint32_t nOutput)
+    /* Indexes an output as spent to the spending transaction. */
+    bool LegacyDB::IndexSpend(const uint512_t& hashTx, const uint32_t nOutput, const uint512_t& hashIndex)
     {
+        return Index(std::make_pair(hashTx, nOutput), std::make_pair(std::string("tx"), hashIndex));
+    }
+
+
+    /* Removes a spend flag on an output. */
+    bool LegacyDB::EraseSpend(const uint512_t& hashTx, const uint32_t nOutput)
+    {
+        /* Check for -client mode. */
+        if(config::fClient.load())
+            return Client->EraseSpend(hashTx, nOutput);
+
         return Erase(std::make_pair(hashTx, nOutput));
     }
 
 
     /* Checks if an output was spent. */
-    bool LegacyDB::IsSpent(const uint512_t& hashTx, uint32_t nOutput)
+    bool LegacyDB::IsSpent(const uint512_t& hashTx, const uint32_t nOutput, const uint8_t nFlags)
     {
+        /* Check for -client mode. */
+        if(config::fClient.load())
+            return Client->IsSpent(hashTx, nOutput, nFlags);
+
         return Exists(std::make_pair(hashTx, nOutput));
     }
 
@@ -205,7 +231,7 @@ namespace LLD
     {
         /* Get the last known event sequence for this address  */
         uint32_t nSequence = 0;
-        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value 
+        ReadSequence(hashAddress, nSequence); // this can fail if no events exist yet, so dont check return value
 
         /* Read the transaction ID of the last event */
         if(nSequence > 0)

@@ -50,7 +50,8 @@ namespace TAO
              *  Commit the final state to disk.
              *
              *  @param[in] account The account to commit.
-             *  @param[in] debit The account that is being debited.
+             *  @param[in] debit The contract that is holds the debit.
+             *  @param[in] credit The contract that holds the credit
              *  @param[in] hashProof The proof address to commit.
              *  @param[in] hashAddress The register address to commit.
              *  @param[in] hashTx The transaction-id being claimed.
@@ -61,7 +62,7 @@ namespace TAO
              *  @return true if successful.
              *
              **/
-            bool Commit(const TAO::Register::Object& account, const Contract& debit,
+            bool Commit(const TAO::Register::Object& account, const Contract& debit, const Contract& credit,
                         const uint256_t& hashAddress, const uint256_t& hashProof, const uint512_t& hashTx,
                         const uint32_t nContract, const uint64_t nAmount, const uint8_t nFlags);
 

@@ -107,7 +107,7 @@ namespace TAO::API
             TAO::Register::Address(TAO::Register::NAMESPACE::GLOBAL, TAO::Register::Address::NAMESPACE);
 
         /* Check if we have a local name override. */
-        const auto nLocalNamePos = strObjectName.find("local:");
+        const auto nLocalNamePos = strObjectName.find("user:");
         if(nLocalNamePos != std::string::npos)
         {
             /* Extract our delimiter from string. */
@@ -115,7 +115,7 @@ namespace TAO::API
 
             /* First check the callers local namespace to see if it exists */
             if(!Authentication::Caller(jParams, hashGenesis))
-                throw Exception(-11, "local: override requires session");
+                throw Exception(-11, "user: override requires session");
 
             /* Check if we can find the local name record. */
             if(TAO::Register::GetNameRegister(hashGenesis, strName, oNameRet))

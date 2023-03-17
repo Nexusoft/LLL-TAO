@@ -76,7 +76,6 @@ namespace TAO
         /* When IsWaitPeriod() is true, this method returns the remaining wait time before staking is active. */
         uint64_t StakeMinter::GetWaitTime() const
         {
-
             if(!fWait.load())
                 return 0;
 

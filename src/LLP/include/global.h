@@ -52,6 +52,22 @@ namespace LLP
     bool Initialize();
 
 
+    /** CloseListening
+     *
+     *  Closes the listening sockets on all running servers.
+     *
+     **/
+    void CloseListening();
+
+
+    /** OpenListening
+     *
+     *  Restarts the listening sockets on all running servers.
+     *
+     **/
+    void OpenListening();
+
+
     /** Release
      *
      *  Release the LLP active triggers.
@@ -108,6 +124,38 @@ namespace LLP
             for(const auto& rNode : config::mapMultiArgs["-addnode"])
                 pServer->AddNode(rNode, true);
         }
+    }
+
+
+    /** CloseListening
+     *
+     *  Closes our listening sockets.
+     *
+     *  pServer The potential server.
+     *
+     **/
+    template <class ProtocolType>
+    void CloseListening(Server<ProtocolType> *pServer)
+    {
+        /* Check if we need to release triggers first. */
+        if(pServer)
+            pServer->CloseListening();
+    }
+
+
+    /** OpenListening
+     *
+     *  Opens up our listening sockets.
+     *
+     *  pServer The potential server.
+     *
+     **/
+    template <class ProtocolType>
+    void OpenListening(Server<ProtocolType> *pServer)
+    {
+        /* Check if we need to release triggers first. */
+        if(pServer)
+            pServer->OpenListening();
     }
 
 

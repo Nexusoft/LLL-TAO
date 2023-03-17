@@ -58,7 +58,7 @@ namespace TAO::API
         while(!config::fShutdown.load())
         {
             /* We want to sleep while looping to not consume our cpu cycles. */
-            runtime::sleep(1000);
+            runtime::sleep(3000);
 
             /* Get a current list of our active sessions. */
             const auto vSessions =
@@ -330,7 +330,7 @@ namespace TAO::API
                                                 rAccounts.GetAddress();
 
                                             /* Skip over account if active proof. */
-                                            if(!LLD::Ledger->HasProof(addrAccount, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL))
+                                            if(!LLD::Ledger->HasProof(addrAccount, hashTx, nContract, TAO::Ledger::FLAGS::LOOKUP))
                                             {
                                                 /* Build our credit now. */
                                                 try
@@ -394,7 +394,7 @@ namespace TAO::API
                         rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
 
                         /* Sanitize the contract. */
-                        if(sanitize_contract(rContract, mapStates))
+                        if(SanitizeContract(rContract, mapStates))
                             vSanitized.emplace_back(std::move(rContract));
                     }
 
@@ -424,8 +424,10 @@ namespace TAO::API
 
 
     /* Checks that the contract passes both Build() and Execute() */
-    bool Notifications::sanitize_contract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates)
+    bool Notifications::SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates)
     {
+        LOCK(LLP::TritiumNode::CLIENT_MUTEX);
+
         /* Return flag */
         bool fSanitized = false;
 

@@ -31,8 +31,16 @@ namespace TAO
     {
 
          /* Commit validation proofs. **/
-        bool Validate::Commit(const uint512_t& hashTx, const uint32_t nContract, const uint256_t& hashCaller, const uint8_t nFlags)
+        bool Validate::Commit(const Contract& contract, const uint512_t& hashTx, const uint32_t nContract, const uint256_t& hashCaller, const uint8_t nFlags)
         {
+            /* Check for disk write to add indexes. */
+            if(nFlags == TAO::Ledger::FLAGS::BLOCK && config::fIndexProofs.load())
+            {
+                /* Write a ledger level index if validated. */
+                if(!LLD::Ledger->IndexContract(hashTx, nContract, contract.Hash()))
+                    return debug::error(FUNCTION, "OP::VALIDATE: failed to write validation contract index");
+            }
+
             /* Check that contract hasn't already been completed. */
             if(LLD::Contract->HasContract(std::make_pair(hashTx, nContract), nFlags))
                 return debug::error(FUNCTION, "OP::VALIDATE: cannot validate when already fulfilled");
@@ -86,12 +94,12 @@ namespace TAO
                     if(nType != TRANSFER::CLAIM)
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate on forced transfer");
 
-                    /* Check that transfer is wildcard. NOTE: This rule was relaxed after version 1 */
+                    /* Check that transfer is wildcard for contract version 1 */
                     if(contract.Version() == 1 && hashTransfer != TAO::Register::WILDCARD_ADDRESS)
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
 
                     /* Check for condition. */
-                    if(!condition.End()) //NOTE: this is an extra sanity check, possibly remove
+                    if(!condition.End())
                         return debug::error(FUNCTION, "OP::VALIDATE: can't validate with extra conditions");
 
                     break;
@@ -116,12 +124,12 @@ namespace TAO
                     uint64_t nReference = 0;
                     condition >> nReference;
 
-                    /* Check that debit is wildcard. NOTE: This rule was relaxed after version 1 */
-                    if(contract.Version() <= 1 && hashTo != TAO::Register::WILDCARD_ADDRESS)
+                    /* Check that debit is wildcard for contract version 1 */
+                    if(contract.Version() == 1 && hashTo != TAO::Register::WILDCARD_ADDRESS)
                         return debug::error(FUNCTION, "OP::VALIDATE: cannot validate without wildcard");
 
                     /* Check for condition. */
-                    if(!condition.End()) //NOTE: this is an extra sanity check, possibly remove
+                    if(!condition.End())
                         return debug::error(FUNCTION, "OP::VALIDATE: can't validate with extra conditions");
 
                     break;

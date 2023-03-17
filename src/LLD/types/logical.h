@@ -170,6 +170,19 @@ namespace LLD
         bool ReadFirst(const uint256_t& hashGenesis, uint512_t& hashTx);
 
 
+        /** ReadFirst
+         *
+         *  Reads the first transaction-id from disk.
+         *
+         *  @param[in] hashGenesis The genesis ID to read for.
+         *  @param[out] tx The transaction object to read.
+         *
+         *  @return True if the genesis was read, false otherwise.
+         *
+         **/
+        bool ReadFirst(const uint256_t& hashGenesis, TAO::API::Transaction &tx);
+
+
         /** EraseLast
          *
          *  Erases the last txid that was indexed.

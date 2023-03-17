@@ -53,7 +53,11 @@ namespace LLP
     protected:
 
         /** Mutex to protect buffered data. **/
-        mutable std::mutex DATA_MUTEX;
+        mutable std::mutex ADDRESS_MUTEX;
+
+
+        /** Mutex to protect buffered data. **/
+        mutable std::mutex BUFFER_MUTEX;
 
 
         /** Keep track of last time data was sent. **/
@@ -70,6 +74,10 @@ namespace LLP
 
         /** Oversize buffer for large packets. **/
         std::vector<uint8_t> vBuffer;
+
+
+        /** Keep track of the buffer with an atomic. */
+        std::atomic<uint64_t> nBufferSize;
 
 
         /** Flag to catch if buffer write failed. **/

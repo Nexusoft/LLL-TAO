@@ -70,6 +70,10 @@ namespace TAO
                         if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract), nFlags))
                             return debug::error(FUNCTION, "failed to erase validation contract");
 
+                        /* Check for disk write to erase indexes. */
+                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && config::fIndexProofs.load())
+                            LLD::Ledger->EraseContract(hashTx, nContract); //we don't care if it fails here, we just want to make sure index is clean
+
                         /* Condition has no parameters. */
                         contract >> nOP;
 

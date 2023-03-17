@@ -154,7 +154,7 @@ namespace LLD
         }
 
         /* Check for register address index. */
-        if(config::GetBoolArg("-indexaddress"))
+        if(config::fIndexAddress.load())
         {
             /* We include address if we are indexing by address. */
             return Write(
@@ -176,7 +176,7 @@ namespace LLD
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL ||
            nFlags == TAO::Ledger::FLAGS::LOOKUP  ||
-          (nFlags == TAO::Ledger::FLAGS::FORCED && !config::fClient.load())) //we want FLAGS::FORCED to act like FLAGS::MEMPOOL for non -clients
+           nFlags == TAO::Ledger::FLAGS::FORCED)
         {
             LOCK(MEMORY);
 
@@ -216,7 +216,7 @@ namespace LLD
         if(nFlags != TAO::Ledger::FLAGS::FORCED || !config::fClient.load()) //we want FLAGS::FORCED to act like FLAGS::MEMPOOL for non -clients
         {
             /* Special case for indexed addresses. */
-            if(config::GetBoolArg("-indexaddress"))
+            if(config::fIndexAddress.load())
             {
                 /* Create a pair to use for reading the reference for return. */
                 std::pair<uint256_t, TAO::Register::State&> pairResult =
@@ -232,73 +232,9 @@ namespace LLD
                 return true;
         }
 
-        /* Handle lookup if requested. */
-        if((nFlags == TAO::Ledger::FLAGS::LOOKUP || nFlags == TAO::Ledger::FLAGS::FORCED) && config::fClient.load())
-        {
-            /* Get current timestamp. */
-            const uint64_t nTimestamp =
-                runtime::unifiedtimestamp();
-
-            /* Check if our cache has expired. */
-            const bool fCached  = (pLookup && pLookup->count(hashRegister));
-            const bool fExpired = (fCached && (pLookup->at(hashRegister).second + 600 < nTimestamp));
-
-            /* Check for expired or missing. */
-            if(fExpired || !fCached)
-            {
-                /* Only perform lookup when we have active servers. */
-                if(LLP::LOOKUP_SERVER)
-                {
-                    /* Try to find a connection first. */
-                    std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
-                    if(pConnection == nullptr)
-                    {
-                        /* Check for genesis. */
-                        if(LLP::TRITIUM_SERVER)
-                        {
-                            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                            if(pNode != nullptr)
-                            {
-                                /* Get our lookup address now. */
-                                const std::string strAddress =
-                                    pNode->GetAddress().ToStringIP();
-
-                                /* Make our new connection now. */
-                                if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                                    return debug::error(FUNCTION, "no connections available...");
-                            }
-                        }
-                    }
-
-                    /* Check that we have active connections. */
-                    if(pConnection == nullptr)
-                        throw TAO::API::Exception(-11, "No Connections Available");
-
-                    /* Handle expired. */
-                    if(fExpired)
-                        debug::warning(FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
-
-                    /* Debug output to console. */
-                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
-                    pConnection->BlockingLookup
-                    (
-                        10000,
-                        LLP::LookupNode::REQUEST::DEPENDANT,
-                        uint8_t(LLP::LookupNode::SPECIFIER::REGISTER), hashRegister
-                    );
-                    debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
-                }
-            }
-
-            /* Check for state in lookup map. */
-            if(pLookup && pLookup->count(hashRegister))
-            {
-                /* Get the state from lookup memory. */
-                state = pLookup->at(hashRegister).first;
-
-                return true;
-            }
-        }
+        /* Perform -client lookup if available. */
+        if(client_lookup(hashRegister, state, nFlags))
+            return true;
 
         return false;
     }
@@ -349,7 +285,7 @@ namespace LLD
         }
 
         /* Special case for indexed addresses. */
-        if(config::GetBoolArg("-indexaddress"))
+        if(config::fIndexAddress.load())
             return Erase(std::make_pair(std::string("state"), hashRegister));
 
         return Erase(std::make_pair(std::string("state"), hashRegister));
@@ -394,7 +330,7 @@ namespace LLD
     bool RegisterDB::IndexTrust(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
         /* We have our own logic here for indexing keys. */
-        if(config::GetBoolArg("-indexaddress"))
+        if(config::fIndexAddress.load())
             return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("state"), hashRegister));
 
         return Index(std::make_pair(std::string("genesis"), hashGenesis), std::make_pair(std::string("state"), hashRegister));
@@ -491,7 +427,7 @@ namespace LLD
     bool RegisterDB::HasState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY);
 
@@ -512,10 +448,7 @@ namespace LLD
                 return true;
         }
 
-        /* Special case for indexed addresses. */
-        if(config::GetBoolArg("-indexaddress"))
-            return Exists(std::make_pair(std::string("state"), hashRegister));
-
+        /* Check our disk to make sure it exists. */
         return Exists(std::make_pair(std::string("state"), hashRegister));
     }
 
@@ -523,8 +456,12 @@ namespace LLD
     /* Flag to determine if address indexing has completed. For -indexaddress flag. */
     void RegisterDB::IndexAddress()
     {
+        /* Not allowed in -client mode. */
+        if(config::fClient.load())
+            return;
+
         /* Check for address indexing flag. */
-        if(Exists(std::string("reindexed")) && !config::GetBoolArg("-forcereindex"))
+        if(Exists(std::string("reindexed")))
         {
             /* Check there is no argument supplied. */
             if(!config::HasArg("-indexaddress"))
@@ -535,13 +472,17 @@ namespace LLD
                 /* Set indexing argument now. */
                 RECURSIVE(config::ARGS_MUTEX);
                 config::mapArgs["-indexaddress"] = "1";
+
+                /* Set our internal configuration value. */
+                config::fIndexAddress.store(true);
             }
 
-            return;
+            if(!config::GetBoolArg("-forcereindex"))
+                return;
         }
 
         /* Check there is no argument supplied. */
-        if(!config::GetBoolArg("-indexaddress"))
+        if(!config::fIndexAddress.load())
             return;
 
         /* Start a timer to track. */
@@ -646,13 +587,15 @@ namespace LLD
             /* Iterate to the next block in the queue. */
             state = state.Next();
             if(!state)
+            {
+                /* Write our last index now. */
+                Write(std::string("reindexed"));
+
+                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " tx with ", setScanned.size(), " registers in ", timer.Elapsed(), " seconds");
+
                 break;
+            }
         }
-
-        /* Write our last index now. */
-        Write(std::string("reindexed"));
-
-        debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " tx with ", setScanned.size(), " registers in ", timer.Elapsed(), " seconds");
     }
 
 
@@ -726,6 +669,81 @@ namespace LLD
             delete pMemory;
             pMemory = nullptr;
         }
+    }
+
+
+    /* Does a -client mode lookup using lookup service. */
+    bool RegisterDB::client_lookup(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags)
+    {
+        /* Handle lookup if requested. */
+        if((nFlags == TAO::Ledger::FLAGS::LOOKUP || nFlags == TAO::Ledger::FLAGS::FORCED) && config::fClient.load())
+        {
+            /* Get current timestamp. */
+            const uint64_t nTimestamp =
+                runtime::unifiedtimestamp();
+
+            /* Check if our cache has expired. */
+            const bool fCached  = (pLookup && pLookup->count(hashRegister));
+            const bool fExpired = (fCached && (pLookup->at(hashRegister).second + 600 < nTimestamp));
+
+            /* Check for expired or missing. */
+            if(fExpired || !fCached)
+            {
+                /* Only perform lookup when we have active servers. */
+                if(LLP::LOOKUP_SERVER)
+                {
+                    /* Try to find a connection first. */
+                    std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
+                    if(pConnection == nullptr)
+                    {
+                        /* Check for genesis. */
+                        if(LLP::TRITIUM_SERVER)
+                        {
+                            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                            if(pNode != nullptr)
+                            {
+                                /* Get our lookup address now. */
+                                const std::string strAddress =
+                                    pNode->GetAddress().ToStringIP();
+
+                                /* Make our new connection now. */
+                                if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                                    return debug::error(FUNCTION, "couldn't connect to ", strAddress);;
+                            }
+                        }
+                    }
+
+                    /* Check that we have active connections. */
+                    if(pConnection == nullptr)
+                        throw TAO::API::Exception(-11, "No Connections Available");
+
+                    /* Handle expired. */
+                    if(fExpired)
+                        debug::warning(FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
+
+                    /* Debug output to console. */
+                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
+                    pConnection->BlockingLookup
+                    (
+                        10000,
+                        LLP::LookupNode::REQUEST::DEPENDANT,
+                        uint8_t(LLP::LookupNode::SPECIFIER::REGISTER), hashRegister
+                    );
+                    debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
+                }
+            }
+
+            /* Check for state in lookup map. */
+            if(pLookup && pLookup->count(hashRegister))
+            {
+                /* Get the state from lookup memory. */
+                state = pLookup->at(hashRegister).first;
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
 

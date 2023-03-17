@@ -286,12 +286,12 @@ namespace TAO::Operation
                 }
 
                 /* Check for a valid proof. */
-                return LLD::Ledger->HasProof(hashRegister, hashTx, nContract, TAO::Ledger::FLAGS::MEMPOOL);
+                return LLD::Ledger->HasProof(hashRegister, hashTx, nContract, TAO::Ledger::FLAGS::LOOKUP);
             }
         }
 
         /* Otherwise check for validated contract. */
-        return LLD::Contract->HasContract(std::make_pair(hashTx, nContract), TAO::Ledger::FLAGS::MEMPOOL);
+        return LLD::Contract->HasContract(std::make_pair(hashTx, nContract), TAO::Ledger::FLAGS::LOOKUP);
     }
 
 
@@ -640,6 +640,10 @@ namespace TAO::Operation
     /* Get the register's pre-state from the register script. */
     const TAO::Register::State Contract::PreState() const
     {
+        /* Check our minimum register size. */
+        if(ssRegister.size() <= 9) //1 byte prestate byte, 8 byte checksum at minimum
+            return debug::error(FUNCTION, "contract register script too small ", ssRegister.size());
+
         /* Seek to first byte. */
         ssRegister.seek(0, STREAM::BEGIN);
 

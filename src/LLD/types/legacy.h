@@ -89,6 +89,20 @@ namespace LLD
         bool ReadTx(const uint512_t& hashTx, Legacy::Transaction& tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** ReadTx
+         *
+         *  Reads the spending transaction from a spent output.
+         *
+         *  @param[in] hashTx The txid of transaction to check.
+         *  @param[in] nOutput The output to check.
+         *  @param[out] tx The transaction object to read.
+         *
+         *  @return True if the output is spent, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint512_t& hashTx, const uint32_t nOutput, Legacy::Transaction& tx);
+
+
         /** EraseTx
          *
          *  Erases a transaction from the ledger DB.
@@ -124,7 +138,20 @@ namespace LLD
          *  @return True if the spend is written, false otherwise.
          *
          **/
-        bool WriteSpend(const uint512_t& hashTx, uint32_t nOutput);
+        bool WriteSpend(const uint512_t& hashTx, const uint32_t nOutput);
+
+
+        /** IndexSpend
+         *
+         *  Indexes an output as spent to the spending transaction.
+         *
+         *  @param[in] hashTx The txid of transaction to write.
+         *  @param[in] nOutput The output that was spent.
+         *
+         *  @return True if the spend is written, false otherwise.
+         *
+         **/
+        bool IndexSpend(const uint512_t& hashTx, const uint32_t nOutput, const uint512_t& hashIndex);
 
 
         /** EraseSpend
@@ -137,7 +164,7 @@ namespace LLD
          *  @return True if the spend is erased, false otherwise.
          *
          **/
-        bool EraseSpend(const uint512_t& hashTx, uint32_t nOutput);
+        bool EraseSpend(const uint512_t& hashTx, const uint32_t nOutput);
 
 
         /** IsSpent
@@ -150,7 +177,7 @@ namespace LLD
          *  @return True if the output is spent, false otherwise.
          *
          **/
-        bool IsSpent(const uint512_t& hashTx, uint32_t nOutput);
+        bool IsSpent(const uint512_t& hashTx, const uint32_t nOutput, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
         /** WriteSequence

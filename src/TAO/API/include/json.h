@@ -259,6 +259,21 @@ namespace TAO::API
     __attribute__((pure)) encoding::json AddressToJSON(const TAO::Register::Address& hashRegister);
 
 
+    /** AddressToJSON
+     *
+     *  Gets info about an address and creates a json object based on register address for a foreign register.
+     *  This is a register that is not included in the current register's pre-state contract.
+     *
+     *  @param[in] hashRegister The address that we are getting information for.
+     *  @param[in] rContract The contract object to get the pre-state from.
+     *  @param[out] jRet The JSON object to add address info to.
+     *
+     *  @return The JSON object generated with query.
+     *
+     **/
+    void AddressToJSON(const TAO::Register::Address& hashRegister, const TAO::Operation::Contract& rContract, encoding::json &jRet);
+
+
     /** RegisterTypesToJSON
      *
      *  Get's the names of the types for this given register to populate among contracts that need to have this info.

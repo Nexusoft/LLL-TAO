@@ -33,7 +33,7 @@ namespace TAO::API
 
         /* Build our total precision_t object. */
         precision_t dTotal =
-            precision_t(0.0, nDecimals).double_t();
+            precision_t(0.0, nDecimals);
 
         /* Check for the stake field. */
         if(jRet.find("stake") != jRet.end())

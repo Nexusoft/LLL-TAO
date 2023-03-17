@@ -50,6 +50,9 @@ namespace config
     std::atomic<bool> fStaking(false);
     std::atomic<bool> fHybrid(false);
     std::atomic<bool> fSister(false);
+    std::atomic<bool> fIndexProofs(false);
+    std::atomic<bool> fIndexAddress(false);
+    std::atomic<bool> fIndexRegister(false);
     std::atomic<int32_t> nVerbose(0);
     std::atomic<bool> fApiAuth(false);
 
@@ -218,6 +221,9 @@ namespace config
         fHybrid                 = (GetArg("-hybrid", "") != ""); //-hybrid=<username> where username is the owner.
         //fSister                 = (GetArg("-sister", "") != ""); NOTE: disabled for now, -sister=<token> for sister network.for
         fApiAuth                = GetBoolArg("-apiauth", true);
+        fIndexProofs            = GetBoolArg("-indexproofs");
+        fIndexAddress           = GetBoolArg("-indexaddress");
+        fIndexRegister          = GetBoolArg("-indexregister");
         nVerbose                = GetArg("-verbose", 0);
 
         /* Private Mode: Sub-Network Testnet. DO NOT USE FOR PRODUCTION. */

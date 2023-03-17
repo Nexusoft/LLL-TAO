@@ -61,10 +61,10 @@ ifndef OPENSSL_LIB_PATH
 		OPENSSL_LIB_PATH= "C:\deps\lib"
 	endif
 	ifeq ($(detected_OS),OSX)
-		OPENSSL_LIB_PATH= /usr/local/opt/openssl/lib
+		OPENSSL_LIB_PATH=/opt/homebrew/opt/openssl@1.1/lib
 	endif
 	ifeq ($(detected_OS),iPhone)
-		OPENSSL_LIB_PATH= /usr/local/Cellar/openssl@iphones/lib
+		OPENSSL_LIB_PATH=/opt/homebrew/opt/openssl@1.1/lib
 	endif
 	ifeq ($(detected_OS),Android)
 		OPENSSL_LIB_PATH= /usr/local/Cellar/openssl@android/$(openssl_arch)/lib
@@ -83,10 +83,10 @@ ifndef OPENSSL_INCLUDE_PATH
 		OPENSSL_INCLUDE_PATH= "C:\deps\include"
 	endif
 	ifeq ($(detected_OS),OSX)
-		OPENSSL_INCLUDE_PATH= /usr/local/opt/openssl/include
+		OPENSSL_INCLUDE_PATH=/opt/homebrew/opt/openssl@1.1/include
 	endif
 	ifeq ($(detected_OS),iPhone)
-		OPENSSL_INCLUDE_PATH= /usr/local/Cellar/openssl@iphones/include
+		OPENSSL_INCLUDE_PATH=/opt/homebrew/opt/openssl@1.1/include
 	endif
 	ifeq ($(detected_OS),Android)
 		OPENSSL_INCLUDE_PATH= /usr/local/Cellar/openssl@android/$(openssl_arch)/include
@@ -471,6 +471,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_market_user.o \
 		build/API_commands_names_initialize.o \
 		build/API_commands_names_index.o \
+		build/API_commands_names_lookup.o \
 		build/API_commands_names_names.o \
 		build/API_commands_names_resolve.o \
 		build/API_commands_profiles_create.o \
@@ -494,6 +495,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_sessions_save.o \
 		build/API_commands_sessions_status.o \
 		build/API_commands_sessions_terminate.o \
+		build/API_commands_sessions_validate.o \
 		build/API_commands_supply_initialize.o \
 		build/API_commands_system_lisp.o \
 		build/API_commands_system_initialize.o \
@@ -927,6 +929,11 @@ ifdef NO_ANSI
     DEFS+= -DNO_ANSI
 endif
 
+#Handle for open listening
+ifdef REFRESH_BACKGROUND
+    DEFS+= -DREFRESH_BACKGROUND
+endif
+
 
 #Configure OS Specific Build Environment
 DEFS+= -DMAC_OSX \
@@ -1051,16 +1058,16 @@ endif
 ifeq ($(detected_OS),iPhone)
 
 ifeq ($(SIMULATOR),1)
-	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator$(IOS_SDK_VER).sdk
+	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk
 else
-	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS$(IOS_SDK_VER).sdk
+	CXXFLAGS+= -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
 	IOS_TYPE?= iphoneos
 	IOS_ARCH?= arm64
 endif
 
 IOS_ARCH ?= x86_64
 IOS_TYPE ?= ios-simulator
-IOS_SDK_VER ?= 13.2
+IOS_SDK_VER ?= 11.0
 MIN_OS_VER ?= 10
 
 
@@ -1118,7 +1125,7 @@ buildall:
 	mv build/tempdir/src build/obj/nexus-mobile-library.framework/Headers
 	rmdir build/tempdir
 	echo BUILDING FRAMEWORK
-	cd build/obj && LIPO -create -arch arm64 "iphoneos.a" -arch x86_64 "ios-simulator.a" -o "nexus-mobile-library.a"
+	cd build/obj && lipo -create -arch arm64 "iphoneos.a" -arch x86_64 "ios-simulator.a" -o "nexus-mobile-library.a"
 	cd build/obj && mv nexus-mobile-library.a nexus-mobile-library.framework/nexus-mobile-library
 
 

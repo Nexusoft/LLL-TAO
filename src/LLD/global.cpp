@@ -95,6 +95,25 @@ namespace LLD
     }
 
 
+    /* Run our indexing entries and routines. */
+    void Indexing() //TODO: combine all of these into one single indexing routine (include -indexheight)
+    {
+        debug::log(0, FUNCTION, "Indexing LLD");
+
+
+        /* Check for reindexing entries. */
+        Logical->IndexRegisters();
+
+
+        /* Check for reindexing entries. */
+        Register->IndexAddress();
+
+
+        /* Check for reindexing entries. */
+        Ledger->IndexProofs();
+    }
+
+
     /*  Shutdown and cleanup the global LLD instances. */
     void Shutdown()
     {

@@ -434,8 +434,16 @@ namespace TAO::API
                 case TAO::Operation::OP::CLAIM:
                 {
                     /* Write our register to database. */
-                    if(!LLD::Logical->PushRegister(hashGenesis, hashRegister))
-                        debug::warning(FUNCTION, "failed to push register ", VARIABLE(hashGenesis.SubString()));
+                    if(nOP == TAO::Operation::OP::CREATE && !LLD::Logical->PushRegister(hashGenesis, hashRegister))
+                        debug::warning(FUNCTION, "OP::CREATE: failed to push register ", VARIABLE(hashGenesis.SubString()));
+
+                    /* Erase a transfer if claiming again after transferring. */
+                    if(nOP == TAO::Operation::OP::CLAIM && !LLD::Logical->HasRegister(hashGenesis, hashRegister))
+                    {
+                        /* Erase our transfer index if claiming a register. */
+                        if(!LLD::Logical->PushRegister(hashGenesis, hashRegister))
+                            debug::warning(FUNCTION, "failed to erase transfer for ", VARIABLE(hashRegister.SubString()));
+                    }
 
                     /* Erase a transfer if claiming again after transferring. */
                     if(nOP == TAO::Operation::OP::CLAIM && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
@@ -573,7 +581,7 @@ namespace TAO::API
                 {
                     /* Write our register to database. */
                     if(!LLD::Logical->EraseRegister(hashGenesis, hashRegister))
-                        debug::warning(FUNCTION, "failed to push register ", VARIABLE(hashGenesis.SubString()));
+                        debug::warning(FUNCTION, "failed to erase register ", VARIABLE(hashGenesis.SubString()));
 
                     break;
                 }

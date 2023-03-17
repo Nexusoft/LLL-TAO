@@ -64,6 +64,10 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /* Inventory class to track recent relays with expiring cache. */
+    TritiumNode::Inventory TritiumNode::tInventory;
+
+
     /* Declaration of client mutex for synchronizing client mode transactions. */
     std::mutex TritiumNode::CLIENT_MUTEX;
 
@@ -102,10 +106,6 @@ namespace LLP
 
     /** This node's address, as seen by the peer **/
     memory::atomic<LLP::BaseAddress> TritiumNode::addrThis;
-
-
-    /* The local relay inventory cache. */
-    static LLD::KeyLRU cacheInventory = LLD::KeyLRU(1024 * 1024);
 
 
     /** Default Constructor **/
@@ -493,21 +493,7 @@ namespace LLP
                 /* Update address status. */
                 const BaseAddress& addr = GetAddress();
                 if(TRITIUM_SERVER->GetAddressManager() && TRITIUM_SERVER->GetAddressManager()->Has(addr))
-                {
-                    /* Grab our trust address if valid. */
-                    const TrustAddress& addrInfo = TRITIUM_SERVER->GetAddressManager()->Get(addr);
-
-                    /* Kill address if we haven't found any valid connections. */
-                    const uint32_t nLimit = config::GetArg("-prunefailed", 0);
-                    if(nLimit > 0 && addrInfo.nFailed > nLimit && addrInfo.nConnected == addrInfo.nFailed)
-                    {
-                        /* Remove from database */
-                        TRITIUM_SERVER->GetAddressManager()->RemoveAddress(addr);
-                        debug::log(3, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CLEAN: ", ANSI_COLOR_RESET, "address has reached failure limit: ", addrInfo.nFailed);
-                    }
-                    else
-                        TRITIUM_SERVER->GetAddressManager()->AddAddress(addr, nState);
-                }
+                    TRITIUM_SERVER->GetAddressManager()->AddAddress(addr, nState);
 
                 /* Check if we need to switch sync nodes. */
                 if(nCurrentSession != 0)
@@ -1639,34 +1625,29 @@ namespace LLP
                         int32_t nLimits = ACTION::LIST_NOTIFICATIONS_MAX_ITEMS + 1;
                         debug::log(1, NODE, "ACTION::LIST: SIGCHAIN for ", hashSigchain.SubString());
 
-                        /* Check for empty hash start. */
-                        bool fGenesis = (hashStart == 0);
-                        if(hashStart == 0 && !LLD::Ledger->ReadFirst(hashSigchain, hashStart))
-                            break;
-
                         /* Check for empty hash stop. */
                         uint512_t hashThis;
-                        if(hashThis == 0 && !LLD::Ledger->ReadLast(hashSigchain, hashThis, TAO::Ledger::FLAGS::MEMPOOL))
+                        if(!LLD::Ledger->ReadLast(hashSigchain, hashThis, TAO::Ledger::FLAGS::MEMPOOL))
                             break;
 
                         /* Read sigchain entries. */
                         std::vector<uint512_t> vHashes;
                         while(!config::fShutdown.load())
                         {
-                            /* Break on the ending hash if not genesis. */
-                            if(!fGenesis && hashStart == hashThis)
-                                break;
-
                             /* Read from disk. */
                             TAO::Ledger::Transaction tx;
                             if(!LLD::Ledger->ReadTx(hashThis, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                break;
+
+                            /* Check for genesis. */
+                            if(hashStart == hashThis)
                                 break;
 
                             /* Track our list of hashes without filling up our memory. */
                             vHashes.push_back(hashThis);
 
                             /* Check for genesis. */
-                            if(fGenesis && hashStart == hashThis)
+                            if(hashStart == hashThis || tx.IsFirst())
                                 break;
 
                             hashThis = tx.hashPrevTx;
@@ -1710,7 +1691,7 @@ namespace LLP
                         ssPacket >> nSequence;
 
                         /* Get the last event */
-                        debug::log(1, NODE, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION for ", hashSigchain.SubString());
+                        debug::log(1, NODE, "ACTION::LIST: ", fLegacy ? "LEGACY " : "", "NOTIFICATION from ", nSequence, " for ", hashSigchain.SubString());
 
                         /* Check for legacy. */
                         int32_t nLimits = ACTION::LIST_NOTIFICATIONS_MAX_ITEMS + 1;
@@ -2114,7 +2095,7 @@ namespace LLP
                                     return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: cannot include legacy specifier");
 
                                 /* Get the sigchain genesis. */
-                                uint256_t hashSigchain = 0;
+                                uint256_t hashSigchain;
                                 ssPacket >> hashSigchain;
 
                                 /* Check for expected genesis. */
@@ -2142,7 +2123,7 @@ namespace LLP
                                     return debug::drop(NODE, "ACTION::NOTIFY::REGISTER: cannot include legacy specifier");
 
                                 /* Get the  address . */
-                                uint256_t hashAddress = 0;
+                                uint256_t hashAddress;
                                 ssPacket >> hashAddress;
 
                                 /* If the address is a genesis hash, then make sure that it is for the currently logged in user */
@@ -2155,10 +2136,10 @@ namespace LLP
                             ssPacket >> hashTx;
 
                             /* Handle for -client mode which deals with merkle transactions. */
-                            if(config::fClient.load())
+                            if(nType == TYPES::SIGCHAIN && config::fClient.load())
                             {
                                 /* Check ledger database. */
-                                if(!cacheInventory.Has(hashTx) && !LLD::Client->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(tInventory.Expired(hashTx, 10)) //10 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: MERKLE TRANSACTION ", hashTx.SubString());
@@ -2167,8 +2148,14 @@ namespace LLP
                                     if(fLegacy)
                                         ssResponse << uint8_t(SPECIFIER::LEGACY);
 
+                                    /* Build our response to get transaction. */
                                     ssResponse << uint8_t(TYPES::MERKLE) << hashTx;
+
+                                    /* Add to our cache inventory. */
+                                    tInventory.Cache(hashTx);
                                 }
+                                else
+                                    debug::log(3, NODE, "ACTION::NOTIFY: [CACHED] MERKLE TRANSACTION ", hashTx.SubString());
 
                                 break;
                             }
@@ -2177,24 +2164,36 @@ namespace LLP
                             if(fLegacy)
                             {
                                 /* Check legacy database. */
-                                if(!cacheInventory.Has(hashTx) && !LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(tInventory.Expired(hashTx, 10)) //10 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString());
 
+                                    /* Build our response to get transaction. */
                                     ssResponse << uint8_t(SPECIFIER::LEGACY) << uint8_t(TYPES::TRANSACTION) << hashTx;
+
+                                    /* Add to our cache inventory. */
+                                    tInventory.Cache(hashTx);
                                 }
+                                else
+                                    debug::log(3, NODE, "ACTION::NOTIFY: [CACHED] LEGACY TRANSACTION ", hashTx.SubString());
                             }
                             else
                             {
                                 /* Check ledger database. */
-                                if(!cacheInventory.Has(hashTx) && !LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                if(tInventory.Expired(hashTx, 10)) //10 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: TRITIUM TRANSACTION ", hashTx.SubString());
 
+                                    /* Build our response to get transaction. */
                                     ssResponse << uint8_t(TYPES::TRANSACTION) << hashTx;
+
+                                    /* Add to our cache inventory. */
+                                    tInventory.Cache(hashTx);
                                 }
+                                else
+                                    debug::log(3, NODE, "ACTION::NOTIFY: [CACHED] TRITIUM TRANSACTION ", hashTx.SubString());
                             }
 
                             break;
@@ -2372,10 +2371,10 @@ namespace LLP
                                 /* Add addresses to manager.. */
                                 if(TRITIUM_SERVER->GetAddressManager())
                                     TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
-                            }
 
-                            /* Debug output. */
-                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
+                                /* Debug output. */
+                                debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
+                            }
 
                             break;
                         }
@@ -2470,7 +2469,7 @@ namespace LLP
             }
 
 
-            /* Standard type for a block. */
+            /* Standard type for an address. */
             case TYPES::ADDRESS:
             {
                 /* Check for subscription. */
@@ -2482,7 +2481,7 @@ namespace LLP
                 ssPacket >> addr;
 
                 /* Add addresses to manager.. */
-                if(TRITIUM_SERVER->GetAddressManager())
+                if(!config::fClient.load() && TRITIUM_SERVER->GetAddressManager())
                     TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
 
                 break;
@@ -2602,7 +2601,7 @@ namespace LLP
                                 }
                             }
 
-                            /* Request our missing block last. */
+                            /* Expired our missing block last. */
                             PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
                         }
 
