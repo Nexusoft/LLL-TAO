@@ -71,7 +71,7 @@ namespace TAO
                             if(hashToken != 0)
                             {
                                 /* Check that the token register exists. */
-                                if(!config::fClient.load() && !LLD::Register->HasState(hashToken, TAO::Ledger::FLAGS::LOOKUP))
+                                if(!config::fClient.load() && !LLD::Register->HasState(hashToken, nFlags))
                                     return debug::error(FUNCTION, "cannot create account without token identifier");
 
                                 /* Check that the token identifier is for a token */
@@ -102,7 +102,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.SubString());
 
                             /* Check that the token address hasn't already been used. */
-                            if(!config::fClient.load() && LLD::Register->HasState(hashIdentifier, TAO::Ledger::FLAGS::LOOKUP))
+                            if(!config::fClient.load() && LLD::Register->HasState(hashIdentifier, nFlags))
                                 return debug::error(FUNCTION, "token can't use reserved identifier ", hashIdentifier.SubString());
 
                             /* Check that the current supply and max supply are the same. */
@@ -257,7 +257,7 @@ namespace TAO
             }
 
             /* Check that the register doesn't exist yet.*/
-            if(!config::fClient.load() && LLD::Register->HasState(address))
+            if(!config::fClient.load() && LLD::Register->HasState(address, nFlags))
                 return debug::error(FUNCTION, "cannot allocate register of same memory address ", address.SubString());
 
             /* Attempt to write new state to disk. */

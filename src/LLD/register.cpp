@@ -408,7 +408,7 @@ namespace LLD
     bool RegisterDB::HasState(const uint256_t& hashRegister, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY);
 
@@ -430,15 +430,7 @@ namespace LLD
         }
 
         /* Check our disk to make sure it exists. */
-        if(Exists(std::make_pair(std::string("state"), hashRegister)))
-            return true;
-
-        /* Perform -client lookup if available. */
-        TAO::Register::State state;
-        if(client_lookup(hashRegister, state, nFlags))
-            return true;
-
-        return false;
+        return Exists(std::make_pair(std::string("state"), hashRegister));
     }
 
 
