@@ -283,6 +283,8 @@ namespace TAO::API
                     if(nAmount > 0)
                         tAccounts++; //iterate to next account
                 }
+
+                break; //we break if we detected legacy address so we don't process as tritium
             }
 
             /* Extract as a register address if legacy checks failed. */
