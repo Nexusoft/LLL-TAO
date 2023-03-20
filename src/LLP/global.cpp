@@ -80,9 +80,6 @@ namespace LLP
 
             /* Create the server instance. */
             TIME_SERVER = new Server<TimeNode>(CONFIG);
-
-            /* Add our connections from commandline. */
-            MakeConnections<LLP::TimeNode>(TIME_SERVER);
         }
 
 
@@ -138,9 +135,6 @@ namespace LLP
 
             /* Create the server instance. */
             TRITIUM_SERVER = new Server<TritiumNode>(CONFIG);
-
-            /* Add our connections from commandline. */
-            MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
         }
 
 
@@ -172,9 +166,9 @@ namespace LLP
         else
         {
             /* Output our new warning message if the API was disabled. */
-            debug::log(0, ANSI_COLOR_BRIGHT_RED, "API SERVER DISABLED", ANSI_COLOR_RESET);
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
+            debug::notice(ANSI_COLOR_BRIGHT_RED, "API SERVER DISABLED", ANSI_COLOR_RESET);
+            debug::notice(ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
+            debug::notice(ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
         }
 
 
@@ -240,6 +234,10 @@ namespace LLP
         }
 
 
+        /* Add our connections from commandline. */
+        MakeConnections<LLP::TimeNode>   (TIME_SERVER);
+        MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
+
         return true;
     }
 
@@ -283,7 +281,6 @@ namespace LLP
 
         /* Open sockets for the tritium server and its subsystems. */
         OpenListening  <TritiumNode> (TRITIUM_SERVER);
-        MakeConnections<TritiumNode> (TRITIUM_SERVER);
 
         /* Open sockets for the time server and its subsystems. */
         OpenListening<TimeNode>(TIME_SERVER);
@@ -293,6 +290,9 @@ namespace LLP
 
         /* Open sockets for the mining server and its subsystems. */
         OpenListening<Miner>(MINING_SERVER);
+
+        /* Add our connections from commandline. */
+        MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
 
         /* Special method to sync up sigchain and events when opening app for iPhone. */
         #if defined(REFRESH_BACKGROUND)

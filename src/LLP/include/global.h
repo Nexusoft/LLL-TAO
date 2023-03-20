@@ -94,6 +94,10 @@ namespace LLP
     template <class ProtocolType>
     void MakeConnections(Server<ProtocolType> *pServer)
     {
+        /* Check that the given server is active. */
+        if(!pServer)
+            return;
+
         /* -connect means try to establish a connection first. */
         if(config::HasArg("-connect"))
         {
