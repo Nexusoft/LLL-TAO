@@ -282,7 +282,8 @@ namespace LLP
         OpenListening<LookupNode>(LOOKUP_SERVER);
 
         /* Open sockets for the tritium server and its subsystems. */
-        OpenListening<TritiumNode>(TRITIUM_SERVER);
+        OpenListening  <TritiumNode> (TRITIUM_SERVER);
+        MakeConnections<TritiumNode> (TRITIUM_SERVER);
 
         /* Open sockets for the time server and its subsystems. */
         OpenListening<TimeNode>(TIME_SERVER);
