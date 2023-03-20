@@ -117,6 +117,10 @@ namespace TAO::API
                 READWRITE(nModified);
                 READWRITE(nStatus);
                 READWRITE(hashNextTx);
+
+                /* Reset our cache if deserializing. */
+                if(fRead)
+                    hashCache = 0;
             }
         )
 
@@ -127,6 +131,31 @@ namespace TAO::API
          *
          **/
         bool Confirmed() const;
+
+
+        /** Mature
+         *
+         *  Get if transaction is in a matured status.
+         *
+         *  @param[in] hash The txid to check maturity by.
+         *
+         *  @return true if the given transaction is mature.
+         *
+         **/
+        bool Mature(const uint512_t& hash) const;
+
+
+        /** Burned
+         *
+         *  Check if a specific contract can be spent. This checks mainly for the burn contract 4 == 2.
+         *
+         *  @param[in] hash The txid to check spends by.
+         *  @param[in] nContract The contract-id to check proofs for.
+         *
+         *  @return true if the contract has been spent.
+         *
+         **/
+        bool Burned(const uint512_t& hash, const uint32_t nContract) const;
 
 
         /** Spent

@@ -38,11 +38,13 @@ namespace LLP
     : pollfd             ( )
     , SOCKET_MUTEX       ( )
     , pSSL(nullptr)
-    , DATA_MUTEX         ( )
+    , ADDRESS_MUTEX      ( )
+    , BUFFER_MUTEX       ( )
     , nLastSend          (0)
     , nLastRecv          (0)
     , nError             (0)
     , vBuffer            ( )
+    , nBufferSize        (0)
     , fBufferFull        (false)
     , nConsecutiveErrors (0)
     , addr               ( )
@@ -60,11 +62,13 @@ namespace LLP
     : pollfd             (socket)
     , SOCKET_MUTEX       ( )
     , pSSL(nullptr)
-    , DATA_MUTEX         ( )
+    , ADDRESS_MUTEX      ( )
+    , BUFFER_MUTEX       ( )
     , nLastSend          (socket.nLastSend.load())
     , nLastRecv          (socket.nLastRecv.load())
     , nError             (socket.nError.load())
     , vBuffer            (socket.vBuffer)
+    , nBufferSize        (socket.nBufferSize.load())
     , fBufferFull        (socket.fBufferFull.load())
     , nConsecutiveErrors (socket.nConsecutiveErrors.load())
     , addr               (socket.addr)
@@ -94,11 +98,13 @@ namespace LLP
     : pollfd             ( )
     , SOCKET_MUTEX       ( )
     , pSSL(nullptr)
-    , DATA_MUTEX         ( )
+    , ADDRESS_MUTEX      ( )
+    , BUFFER_MUTEX       ( )
     , nLastSend          (0)
     , nLastRecv          (0)
     , nError             (0)
     , vBuffer            ( )
+    , nBufferSize        (0)
     , fBufferFull        (false)
     , nConsecutiveErrors (0)
     , addr               (addrIn)
@@ -211,11 +217,13 @@ namespace LLP
     : pollfd             ( )
     , SOCKET_MUTEX       ( )
     , pSSL(nullptr)
-    , DATA_MUTEX         ( )
+    , ADDRESS_MUTEX      ( )
+    , BUFFER_MUTEX       ( )
     , nLastSend          (0)
     , nLastRecv          (0)
     , nError             (0)
     , vBuffer            ( )
+    , nBufferSize        (0)
     , fBufferFull        (false)
     , nConsecutiveErrors (0)
     , addr               ( )
@@ -245,7 +253,7 @@ namespace LLP
     /* Returns the address of the socket. */
     BaseAddress Socket::GetAddress() const
     {
-        LOCK(DATA_MUTEX);
+        LOCK(ADDRESS_MUTEX);
 
         return addr;
     }
@@ -273,7 +281,7 @@ namespace LLP
 
         /* Create the Socket Object (Streaming TCP/IP). */
         {
-            LOCK(DATA_MUTEX);
+            LOCK(ADDRESS_MUTEX);
 
             if(addrDest.IsIPv4())
                 fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -313,7 +321,8 @@ namespace LLP
             addrDest.GetSockAddr(&sockaddr);
 
             {
-                LOCK(DATA_MUTEX);
+                LOCK(ADDRESS_MUTEX);
+
                 /* Copy in the new address. */
                 addr = BaseAddress(sockaddr);
             }
@@ -323,7 +332,7 @@ namespace LLP
              * Then we have to use select below to check if connection was made.
              * If it doesn't return that, it means it connected immediately and connection was successful. (very unusual, but possible)
              */
-            LOCK(SOCKET_MUTEX);
+            RECURSIVE(SOCKET_MUTEX);
             fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
         else
@@ -333,12 +342,13 @@ namespace LLP
             addrDest.GetSockAddr6(&sockaddr);
 
             {
-                LOCK(DATA_MUTEX);
+                LOCK(ADDRESS_MUTEX);
+
                 /* Copy in the new address. */
                 addr = BaseAddress(sockaddr);
             }
 
-            LOCK(SOCKET_MUTEX);
+            RECURSIVE(SOCKET_MUTEX);
             fConnected = (connect(fd, (struct sockaddr*)&sockaddr, sizeof(sockaddr)) == SOCKET_ERROR);
         }
 
@@ -517,7 +527,7 @@ namespace LLP
     /* Poll the socket to check for available data */
     int Socket::Available() const
     {
-        LOCK(SOCKET_MUTEX);
+        RECURSIVE(SOCKET_MUTEX);
 
     #ifdef WIN32
         long unsigned int nAvailable = 0;
@@ -538,7 +548,7 @@ namespace LLP
     /* Clear resources associated with socket and return to invalid state. */
     void Socket::Close()
     {
-        LOCK(SOCKET_MUTEX);
+        RECURSIVE(SOCKET_MUTEX);
 
         if(fd != INVALID_SOCKET)
         {
@@ -580,7 +590,7 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int Socket::Read(std::vector<uint8_t> &vData, size_t nBytes)
     {
-        LOCK(SOCKET_MUTEX);
+        RECURSIVE(SOCKET_MUTEX);
 
         /* Reset the error status */
         nError.store(0);
@@ -668,7 +678,7 @@ namespace LLP
     /* Read data from the socket buffer non-blocking */
     int32_t Socket::Read(std::vector<int8_t> &vData, size_t nBytes)
     {
-        LOCK(SOCKET_MUTEX);
+        RECURSIVE(SOCKET_MUTEX);
 
         /* Reset the error status */
         nError.store(0);
@@ -759,23 +769,25 @@ namespace LLP
     {
         int32_t nSent = 0;
 
+        /* Check overflow buffer. */
+        if(nBufferSize.load() > 0)
         {
-            LOCK(DATA_MUTEX);
+            LOCK(BUFFER_MUTEX);
 
-            /* Check overflow buffer. */
-            if(vBuffer.size() > 0)
-            {
-                debug::log(3, FUNCTION, "vBuffer ", vBuffer.size(), " bytes");
+            /* Insert data into the buffer. */
+            vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
 
-                vBuffer.insert(vBuffer.end(), vData.begin(), vData.end());
+            /* Set our atomic with size of vector. */
+            nBufferSize.store(vBuffer.size());
 
-                return static_cast<int32_t>(nBytes);
-            }
+            debug::log(3, FUNCTION, "vBuffer ", vBuffer.size(), " bytes");
+
+            return static_cast<int32_t>(nBytes);
         }
 
         /* Write the packet. */
         {
-            LOCK(SOCKET_MUTEX);
+            RECURSIVE(SOCKET_MUTEX);
 
             if(pSSL)
                 nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t*)&vData[0], nBytes));
@@ -802,8 +814,13 @@ namespace LLP
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent != vData.size())
         {
-            LOCK(DATA_MUTEX);
+            LOCK(BUFFER_MUTEX);
+
+            /* Insert remaining data into the buffer. */
             vBuffer.insert(vBuffer.end(), vData.begin() + nSent, vData.end());
+
+            /* Set our atomic with size of vector. */
+            nBufferSize.store(vBuffer.size());
         }
         else //don't update last sent unless all the data was written to the buffer
             nLastSend = runtime::timestamp(true);
@@ -817,12 +834,8 @@ namespace LLP
     {
         int32_t nSent   = 0;
         uint32_t nBytes = 0;
-        uint32_t nSize  = 0;
-
-        {
-            LOCK(DATA_MUTEX);
-            nSize = static_cast<uint32_t>(vBuffer.size());
-        }
+        uint32_t nSize  =
+            static_cast<uint32_t>(nBufferSize.load());
 
         /* Don't flush if buffer doesn't have any data. */
         if(nSize == 0)
@@ -836,8 +849,7 @@ namespace LLP
 
         /* If there were any errors, handle them gracefully. */
         {
-            LOCK2(DATA_MUTEX);
-            LOCK(SOCKET_MUTEX);
+            RECURSIVE(SOCKET_MUTEX);
 
             if(pSSL)
                 nSent = static_cast<int32_t>(SSL_write(pSSL, (int8_t *)&vBuffer[0], nBytes));
@@ -849,7 +861,6 @@ namespace LLP
                 nSent = static_cast<int32_t>(send(fd, (int8_t*)&vBuffer[0], nBytes, MSG_NOSIGNAL | MSG_DONTWAIT));
             #endif
             }
-
         }
 
         /* Handle errors on flush. */
@@ -866,10 +877,15 @@ namespace LLP
         /* If not all data was sent non-blocking, recurse until it is complete. */
         else if(nSent > 0)
         {
-            LOCK(DATA_MUTEX);
+            {
+                LOCK(BUFFER_MUTEX);
 
-            /* Erase from current buffer. */
-            vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
+                /* Erase from current buffer. */
+                vBuffer.erase(vBuffer.begin(), vBuffer.begin() + nSent);
+
+                /* Set our atomic with size of vector. */
+                nBufferSize.store(vBuffer.size());
+            }
 
             /* Update socket timers. */
             nLastSend          = runtime::timestamp(true);
@@ -902,7 +918,7 @@ namespace LLP
     /* Check that the socket has data that is buffered. */
     uint64_t Socket::Buffered() const
     {
-        return vBuffer.size();
+        return nBufferSize.load();
     }
 
 
@@ -916,8 +932,6 @@ namespace LLP
     /*  Checks for any flags in the Error Handle. */
     bool Socket::Errors() const
     {
-        LOCK(DATA_MUTEX);
-
         return error_code() != 0;
     }
 
@@ -925,8 +939,6 @@ namespace LLP
     /*  Give the message (c-string) of the error in the socket. */
     const char *Socket::Error() const
     {
-        LOCK(DATA_MUTEX);
-
         if(pSSL)
             return ERR_reason_error_string(error_code());
 
@@ -937,7 +949,6 @@ namespace LLP
     /* Returns the error of socket if any */
     int Socket::error_code() const
     {
-
         if(pSSL)
         {
             /* Check for errors from reads or writes. */
@@ -958,8 +969,6 @@ namespace LLP
     /*  Creates or destroys the SSL object depending on the flag set. */
     void Socket::SetSSL(bool fSSL)
     {
-        LOCK(DATA_MUTEX);
-
         if(fSSL && pSSL == nullptr)
         {
             pSSL = SSL_new(pSSL_CTX);
@@ -975,8 +984,6 @@ namespace LLP
     /* Determines if socket is using SSL encryption. */
     bool Socket::IsSSL() const
     {
-        LOCK(DATA_MUTEX);
-
         if(pSSL != nullptr)
             return SSL_is_init_finished(pSSL);
 

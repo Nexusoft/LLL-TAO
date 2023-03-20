@@ -197,7 +197,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , "account, token, trust"
+            , "any, account, token, trust"
         );
 
 
@@ -210,7 +210,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , "account, token, trust"
+            , "any, account, token, trust"
         );
 
         /* Handle for generic list operations. */
@@ -222,7 +222,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , "account, token, trust"
+            , "any, account, token, trust"
         );
 
         /* Handle for BALANCES. */

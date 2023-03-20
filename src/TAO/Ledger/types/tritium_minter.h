@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/stake_minter.h>
 
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <Util/include/allocators.h>
 

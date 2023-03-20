@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/Register/types/address.h>
+
 namespace TAO::API
 {
     /** Address for select all. **/
@@ -33,7 +35,7 @@ namespace TAO::API
     namespace TOKEN
     {
         /** Hard coded value for NXS token-id. **/
-        const uint256_t NXS = uint256_t(0);
+        const TAO::Register::Address NXS = uint256_t(0);
     }
 
 

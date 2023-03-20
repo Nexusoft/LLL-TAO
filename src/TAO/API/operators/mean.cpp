@@ -18,6 +18,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/json.h>
 
+#include <Util/types/precision.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -58,10 +60,11 @@ namespace TAO::API
         if(jRet[strField].is_number_float())
         {
             /* Grab our values. */
-            const double dValue = jRet[strField].get<double>();
+            const precision_t dValue =
+                precision_t(jRet[strField].dump());
 
             /* Add to our output value. */
-            jRet[strField] = (dValue / jResult.size());
+            jRet[strField] = (dValue / jResult.size()).double_t();
             return jRet;
         }
 

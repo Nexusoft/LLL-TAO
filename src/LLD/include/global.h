@@ -46,6 +46,14 @@ namespace LLD
     void Initialize();
 
 
+    /** Indexing
+     *
+     *  Run our indexing entries and routines.
+     *
+     **/
+    void Indexing();
+
+
     /** Shutdown
      *
      *  Shutdown and cleanup the global LLD instances.

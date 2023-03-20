@@ -124,12 +124,8 @@ int main(int argc, char** argv)
         TAO::Ledger::ChainState::Initialize();
 
 
-        /* Check for reindexing entries. */
-        LLD::Register->Reindex();
-
-
-        /* Initialize the Lower Level Protocol. */
-        LLP::Initialize();
+        /* Run our LLD indexing operations. */
+        LLD::Indexing();
 
 
         /* Initialize Legacy Environment. */
@@ -138,6 +134,10 @@ int main(int argc, char** argv)
             config::fShutdown.store(true);
             fFailed = true;
         }
+
+
+        /* Initialize the Lower Level Protocol. */
+        LLP::Initialize();
 
 
         /* Startup performance metric. */
@@ -190,6 +190,10 @@ int main(int argc, char** argv)
 
     /* Shutdown metrics. */
     timer.Reset();
+
+
+    /* Release network triggers. */
+    LLP::Release();
 
 
     /* Shutdown the API subsystems. */

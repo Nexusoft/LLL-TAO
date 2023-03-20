@@ -122,6 +122,10 @@ namespace TAO
                     READWRITE(hashBlock);
                     READWRITE(vMerkleBranch);
                     READWRITE(nIndex);
+
+                    /* Reset our cache if deserializing. */
+                    if(fRead)
+                        hashCache = 0;
                 }
             )
 
@@ -171,6 +175,28 @@ namespace TAO
              *
              **/
             bool BuildMerkleBranch();
+
+
+            /** CommitLookup
+             *
+             *  Commits a merkle transaction to lookup internal memory.
+             *
+             *  @param[in] hashRegister The register's hash that we are looking up.
+             *
+             *  @return true if commit was a success.
+             *
+             **/
+            bool CommitLookup(const uint256_t& hashRegister);
+
+
+            /** Verify
+             *
+             *  Verifies a merkle transaction against the block merkle root and internal checks.
+             *
+             *  @return true if the merkle transaction is valid.
+             *
+             **/
+            bool Verify(const uint8_t nFlags = 0) const;
 
         };
 

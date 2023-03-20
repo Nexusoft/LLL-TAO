@@ -145,9 +145,6 @@ namespace LLP
                 else
                     CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
-                /* Fire the connected event. */
-                pnode->Event(EVENTS::CONNECT);
-
                 /* Iterate the DDOS cScore (Connection score). */
                 if(fDDOS.load())
                     DDOS -> cSCORE += 1;
@@ -157,6 +154,9 @@ namespace LLP
                     ++nIncoming;
                 else
                     ++nOutbound;
+
+                /* Fire the connected event. */
+                pnode->Event(EVENTS::CONNECT);
 
                 /* Notify data thread to wake up. */
                 CONDITION.notify_all();
@@ -212,14 +212,14 @@ namespace LLP
                 else
                     CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
-                /* Fire the connected event. */
-                pnode->Event(EVENTS::CONNECT);
-
                 /* Check for inbound socket. */
                 if(pnode->Incoming())
                     ++nIncoming;
                 else
                     ++nOutbound;
+
+                /* Fire the connected event. */
+                pnode->Event(EVENTS::CONNECT);
 
                 /* Notify data thread to wake up. */
                 CONDITION.notify_all();
@@ -236,6 +236,21 @@ namespace LLP
         }
 
 
+        /** NewConnection
+         *
+         *  Establishes a new connection and adds it to current Data Thread and returns the active connection pointer.
+         *
+         *  @param[in] addr Address class instnace containing the IP address and port for the connection.
+         *  @param[in] DDOS The pointer to the DDOS filter to add to the connection.
+         *  @param[in] fSSL Flag indicating if this connection should use SSL
+         *  @param[in] args variadic args to forward to the LLP protocol constructor
+         *
+         *  @return Returns true if successfully added, false otherwise.
+         *
+         **/
+        bool NewConnection(const BaseAddress &addr, DDOS_Filter* DDOS, const bool& fSSL, std::shared_ptr<ProtocolType> &pNodeRet);
+
+
         /** DisconnectAll
          *
          *  Disconnects all connections by issuing a DISCONNECT::FORCE event message
@@ -243,6 +258,14 @@ namespace LLP
          *
          **/
         void DisconnectAll();
+
+
+        /** NotifyTriggers
+         *
+         *  Release all pending triggers from BlockingMessages
+         *
+         **/
+        void NotifyTriggers();
 
 
         /** Thread
@@ -312,6 +335,16 @@ namespace LLP
          *
          **/
         void NotifyEvent();
+
+
+        /** Disconnect
+         *
+         *  Disconnects given connection from current Data Thread.
+         *
+         *  @param[in] nIndex The index of the connection to remove.
+         *
+         **/
+        void Disconnect(const uint32_t nIndex);
 
 
       private:

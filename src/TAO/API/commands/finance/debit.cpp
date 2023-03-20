@@ -28,7 +28,11 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/finance.h>
 
+//this is our binary boilerplate contracts
+#include <TAO/API/types/contracts/expiring.h>
+
 #include <TAO/API/include/conditions.h>
+#include <TAO/API/include/contracts/build.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/include/execute.h>
@@ -41,7 +45,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/chainstate.h>
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <Util/templates/datastream.h>
 #include <Util/include/string.h>
@@ -279,6 +283,8 @@ namespace TAO::API
                     if(nAmount > 0)
                         tAccounts++; //iterate to next account
                 }
+
+                break; //we break if we detected legacy address so we don't process as tritium
             }
 
             /* Extract as a register address if legacy checks failed. */

@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/port.h>
 
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/include/enum.h>
 
 #include <cstring>
@@ -50,13 +50,16 @@ namespace config
     std::atomic<bool> fStaking(false);
     std::atomic<bool> fHybrid(false);
     std::atomic<bool> fSister(false);
+    std::atomic<bool> fIndexProofs(false);
+    std::atomic<bool> fIndexAddress(false);
+    std::atomic<bool> fIndexRegister(false);
     std::atomic<int32_t> nVerbose(0);
 
     /* Keeps track of the network owner hash. */
     uint256_t hashNetworkOwner;
 
     /* Declare our arguments mutex. */
-    std::mutex ARGS_MUTEX;
+    std::recursive_mutex ARGS_MUTEX;
 
     /* Give Opposite Argument Settings */
     void InterpretNegativeSetting(const std::string &name, std::map<std::string, std::string>& mapSettingsRet)
@@ -80,7 +83,7 @@ namespace config
     /* Parse the Argument Parameters */
     void ParseParameters(int argc, const char*const argv[])
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         for(int i = 1; i < argc; ++i)
         {
@@ -117,7 +120,7 @@ namespace config
     /* Return string argument or default value */
     std::string GetArg(const std::string& strArg, const std::string& strDefault)
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return mapArgs[strArg];
@@ -128,16 +131,16 @@ namespace config
     /* Return boolean if given argument is in map. */
     bool HasArg(const std::string& strArg)
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
-        return mapArgs.count(strArg);
+        return mapMultiArgs.count(strArg) || mapArgs.count(strArg);
     }
 
 
     /* Return integer argument or default value. */
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return convert::atoi64(mapArgs[strArg]);
@@ -149,13 +152,26 @@ namespace config
     /* Return boolean argument or default value */
     bool GetBoolArg(const std::string& strArg, bool fDefault)
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
         {
-            if(mapArgs[strArg].empty())
+            /* Get a reference copy of arguement. */
+            const std::string& strValue = mapArgs[strArg];
+
+            /* Check for empty values. */
+            if(strValue.empty())
                 return true;
-            return (convert::atoi32(mapArgs[strArg]) != 0);
+
+            /* Check for raw boolean string value 'true'. */
+            if(strValue == "true")
+                return true;
+
+            /* Check for our raw boolean string value 'false'. */
+            if(strValue == "false")
+                return false;
+
+            return (std::stoll(strValue) != 0);
         }
 
         return fDefault;
@@ -165,7 +181,7 @@ namespace config
     /* Set an argument if it doesn't already have a value */
     bool SoftSetArg(const std::string& strArg, const std::string& strValue)
     {
-        LOCK(ARGS_MUTEX);
+        RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return false;
@@ -197,19 +213,23 @@ namespace config
         //fUseProxy               = GetBoolArg("-proxy")
         fAllowDNS               = GetBoolArg("-allowdns", true);
         fLogTimestamps          = GetBoolArg("-logtimestamps", false);
-        fMultiuser              = GetBoolArg("-multiuser", false);
+        fMultiuser              = GetBoolArg("-multiuser", false) || GetBoolArg("-multiusername", false);
         fProcessNotifications   = GetBoolArg("-processnotifications", true);
         fPoolStaking            = GetBoolArg("-poolstaking", false);
         fStaking                = GetBoolArg("-staking", false) || GetBoolArg("-stake", false); //Both supported, -stake deprecated
         fHybrid                 = (GetArg("-hybrid", "") != ""); //-hybrid=<username> where username is the owner.
         //fSister                 = (GetArg("-sister", "") != ""); NOTE: disabled for now, -sister=<token> for sister network.
+
+        fIndexProofs            = GetBoolArg("-indexproofs");
+        fIndexAddress           = GetBoolArg("-indexaddress");
+        fIndexRegister          = GetBoolArg("-indexregister");
         nVerbose                = GetArg("-verbose", 0);
 
         /* Private Mode: Sub-Network Testnet. DO NOT USE FOR PRODUCTION. */
         if(GetBoolArg("-private", false))
         {
             {
-                LOCK(ARGS_MUTEX);
+                RECURSIVE(ARGS_MUTEX);
 
                 /* Set our hybrid value as PRIVATE in private mode. */
                 mapArgs["-hybrid"]  = ""; //delete hybrid parameters if supplied for testnet
@@ -227,19 +247,19 @@ namespace config
         /* Hybrid Mode: Sub-Network MainNet. USE FOR PRODUCTION. */
         else if(fHybrid.load())
         {
-            LOCK(ARGS_MUTEX);
+            RECURSIVE(ARGS_MUTEX);
 
             /* Grab our network owner. */
             const SecureString strOwner = mapArgs["-hybrid"].c_str();
 
             /* Calculate their genesis-id. */
-            hashNetworkOwner = TAO::Ledger::SignatureChain::Genesis(strOwner);
+            hashNetworkOwner = TAO::Ledger::Credentials::Genesis(strOwner);
             hashNetworkOwner.SetType(TAO::Ledger::GENESIS::OwnerType());
         }
 
 
         {
-            LOCK(ARGS_MUTEX);
+            RECURSIVE(ARGS_MUTEX);
 
             /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
             const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];
@@ -274,7 +294,7 @@ namespace config
         /* Handle reading our activation data for transactions. */
         if(fHybrid.load() || fTestNet.load()) //this rule is only to activate private, hybrid, or testnets
         {
-            LOCK(ARGS_MUTEX);
+            RECURSIVE(ARGS_MUTEX);
 
             /* Handle for our market fees. */
             if(config::mapMultiArgs["-activatetx"].size() > 0)

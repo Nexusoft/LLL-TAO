@@ -45,8 +45,8 @@ bool GenerateBlock()
         return debug::error("no generate parameters");
 
     /* Get the account. */
-    memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
-        new TAO::Ledger::SignatureChain("generate", config::GetArg("-generate", "").c_str());
+    memory::encrypted_ptr<TAO::Ledger::Credentials> user =
+        new TAO::Ledger::Credentials("generate", config::GetArg("-generate", "").c_str());
 
     /* Get the genesis ID. */
     if(hashGenesis == 0)

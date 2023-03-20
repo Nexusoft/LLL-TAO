@@ -554,19 +554,6 @@ namespace Legacy
         encoding::json ListUnspent(const encoding::json& params, const bool fHelp);
 
 
-        /** Reset
-        *
-        *  reset
-        *  Restart all node connections
-        *
-        *  @param[in] params Parameters array passed by the caller.
-        *
-        *  @return JSON containing the information.
-        *
-        **/
-        encoding::json Reset(const encoding::json& params, const bool fHelp);
-
-
         /** GetPeerInfo
         *
         *  getpeerinfo

@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/lookup.h>
 
 #include <LLP/include/trust_address.h>
 
@@ -204,7 +205,7 @@ namespace LLP
 
     /*  Add a node address to the internal address manager */
     template <class ProtocolType>
-    void Server<ProtocolType>::AddNode(std::string strAddress, bool fLookup)
+    void Server<ProtocolType>::AddNode(const std::string& strAddress, bool fLookup)
     {
        /* Assemble the address from input parameters. */
        BaseAddress addr(strAddress, CONFIG.PORT_BASE, fLookup);
@@ -216,6 +217,49 @@ namespace LLP
        /* Add the address to the address manager if it exists. */
        if(pAddressManager)
           pAddressManager->AddAddress(addr, ConnectState::NEW);
+    }
+
+
+    /* Connect a node address to the internal server manager */
+    template <class ProtocolType>
+    bool Server<ProtocolType>::ConnectNode(const std::string& strAddress, std::shared_ptr<ProtocolType> &pNodeRet, bool fLookup)
+    {
+        /* Assemble the address from input parameters. */
+        BaseAddress addrConnect(strAddress, CONFIG.PORT_BASE, fLookup);
+
+        /* Make sure address is valid. */
+        if(!addrConnect.IsValid())
+             return debug::error(FUNCTION, "address ", addrConnect.ToStringIP(), " is invalid");
+
+         /* Create new DDOS Filter if Needed. */
+         if(CONFIG.ENABLE_DDOS)
+         {
+             /* Add new filter to map if it doesn't exist. */
+             if(!DDOS_MAP->count(addrConnect))
+                 DDOS_MAP->emplace(std::make_pair(addrConnect, new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
+
+             /* DDOS Operations: Only executed when DDOS is enabled. */
+             if(!addrConnect.IsLocal() && DDOS_MAP->at(addrConnect)->Banned())
+                 return debug::drop(FUNCTION, "address ", addrConnect.ToStringIP(), " is banned");
+         }
+
+         /* Find a balanced Data Thread to Add Connection to. */
+         int32_t nThread = FindThread();
+         if(nThread < 0)
+             return debug::error(FUNCTION, "no available connections for ", ProtocolType::Name());
+
+         /* Select the proper data thread. */
+         DataThread<ProtocolType> *dt = THREADS_DATA[nThread];
+
+         /* Attempt the connection. */
+         if(!dt->NewConnection(addrConnect, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addrConnect) : nullptr, false, pNodeRet))
+             return debug::drop(FUNCTION, "connection attempt for address ", addrConnect.ToStringIP(), " failed");
+
+         /* Add the address to the address manager if it exists. */
+         if(pAddressManager)
+             pAddressManager->AddAddress(addrConnect, ConnectState::CONNECTED);
+
+         return true;
     }
 
 
@@ -264,16 +308,18 @@ namespace LLP
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection()
     {
-        /* Set our initial return values. */
-        int16_t nRetThread = -1;
-        int16_t nRetIndex  = -1;
+        /* Set our internal return pointer. */
+        std::shared_ptr<ProtocolType> pRet;
 
         /* List of connections to return. */
         uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
         for(uint16_t nThread = 0; nThread < CONFIG.MAX_THREADS; ++nThread)
         {
             /* Loop through connections in data thread. */
-            uint16_t nSize = static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
+            const uint16_t nSize =
+                static_cast<uint16_t>(THREADS_DATA[nThread]->CONNECTIONS->size());
+
+            /* Loop through all connections. */
             for(uint16_t nIndex = 0; nIndex < nSize; ++nIndex)
             {
                 try
@@ -286,10 +332,11 @@ namespace LLP
                     /* Push the active connection. */
                     if(CONNECTION->nLatency < nLatency)
                     {
+                        /* Set our new latency value. */
                         nLatency = CONNECTION->nLatency;
 
-                        nRetThread = nThread;
-                        nRetIndex  = nIndex;
+                        /* Set our return value. */
+                        pRet = CONNECTION;
                     }
                 }
                 catch(const std::exception& e)
@@ -299,12 +346,7 @@ namespace LLP
             }
         }
 
-        /* Handle if no connections were found. */
-        static std::shared_ptr<ProtocolType> pNULL;
-        if(nRetThread == -1 || nRetIndex == -1)
-            return pNULL;
-
-        return THREADS_DATA[nRetThread]->CONNECTIONS->at(nRetIndex);
+        return pRet;
     }
 
 
@@ -415,6 +457,23 @@ namespace LLP
     }
 
 
+    /* Force a connection disconnect and cleanup server connections. */
+    template <class ProtocolType>
+    void Server<ProtocolType>::Disconnect(const uint32_t nDataThread, const uint32_t nDataIndex)
+    {
+        THREADS_DATA[nDataThread]->Disconnect(nDataIndex);
+    }
+
+
+    /* Release all pending triggers from BlockingMessages */
+    template <class ProtocolType>
+    void Server<ProtocolType>::NotifyTriggers()
+    {
+        for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
+            THREADS_DATA[nIndex]->NotifyTriggers();
+    }
+
+
     /*  Tell the server an event has occured to wake up thread if it is sleeping. This can be used to orchestrate communication
      *  among threads if a strong ordering needs to be guaranteed. */
     template <class ProtocolType>
@@ -473,7 +532,7 @@ namespace LLP
             /* Sleep between connection attempts.
                If there are no connections then sleep for a minimum interval until a connection is established. */
             if(nConnections == 0)
-                runtime::sleep(10);
+                runtime::sleep(1000);
             else
                 /* Sleep in 1 second intervals for easy break on shutdown. */
                 for(int i = 0; i < (CONFIG.MANAGER_SLEEP / 1000) && !config::fShutdown.load(); ++i)
@@ -878,6 +937,10 @@ namespace LLP
     template <class ProtocolType>
     void Server<ProtocolType>::OpenListening()
     {
+        /* Skip over opening listeners if listening is disabled. */
+        if(!CONFIG.ENABLE_LISTEN)
+            return;
+
         /* If SSL is required then don't listen on the standard port */
         if(!CONFIG.REQUIRE_SSL)
         {
@@ -891,6 +954,7 @@ namespace LLP
             debug::log(0, "Opening ", ProtocolType::Name(), " listening sockets on port ", CONFIG.PORT_BASE);
         }
 
+        /* Handle for our SSL socket. */
         if(CONFIG.ENABLE_SSL)
         {
             if(!BindListenPort(hListenSSL.first, CONFIG.PORT_SSL, true, CONFIG.ENABLE_REMOTE))
@@ -908,6 +972,7 @@ namespace LLP
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class Server<TritiumNode>;
+    template class Server<LookupNode>;
     template class Server<TimeNode>;
     template class Server<APINode>;
     template class Server<RPCNode>;

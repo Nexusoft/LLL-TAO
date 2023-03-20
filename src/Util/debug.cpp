@@ -193,6 +193,9 @@ namespace debug
             log(0, "Configuration file parameters: ", confFileParams);
         }
 
+        #ifdef DEBUG_MISSING
+        warning("DEBUG_MISSING is enabled");
+        #endif
 
         /* Log command line parameters (which can override conf file settings) */
         std::string cmdLineParms = "";

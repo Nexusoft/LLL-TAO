@@ -29,6 +29,8 @@ ________________________________________________________________________________
 
 #include <Util/include/math.h>
 
+#include <Util/types/precision.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -64,11 +66,11 @@ namespace TAO::API
             oDeposit.get<uint256_t>("token");
 
         /* Extract the price field. */
-        const uint64_t nPrice =
-            ExtractAmount(jParams, GetFigures(pairMarket.second), "price");
+        precision_t dPrice =
+            ExtractPrecision(jParams, GetDecimals(pairMarket.second), "price");
 
         /* Calculate our required amount in order. */
-        uint64_t nTotal = 0, nAmount = 0;
+        uint64_t nDebit = 0, nCredit = 0;
         if(hashRequest != pairMarket.second)
         {
             /* Check our account token types. */
@@ -83,28 +85,21 @@ namespace TAO::API
             if(strType != "bid")
                 throw Exception(-7, "Order is not a bid, did you use the correct 'from' and 'to' accounts for your market pair?");
 
-            /* Check if we need to adjust our figures. */
-            const uint8_t nPrimaryDecimals   = GetDecimals(pairMarket.first);
-            const uint8_t nSecondaryDecimals = GetDecimals(pairMarket.second);
-
             /* Check they have the required funds */
-            nAmount =
-                ExtractAmount(jParams, GetFigures(pairMarket.second));
-
-            /* Temporary value to track our amounts and change based on decimals */
-            uint64_t nAmountAdjusted = nAmount;
-
-            /* If our price has less decimals, increase our product up by the difference. */
-            if(nPrimaryDecimals > nSecondaryDecimals)
-                nAmountAdjusted *= math::pow(10, nPrimaryDecimals - nSecondaryDecimals);
+            precision_t dAmount =
+                ExtractPrecision(jParams, GetDecimals(pairMarket.second));
 
             /* Calculate our total values now. */
-            nTotal =
-                ((nAmountAdjusted * math::pow(10, nSecondaryDecimals)) / nPrice);
+            precision_t dTotal =
+                precision_t(GetDecimals(pairMarket.first));
 
-            /* If our price has more decimals, reduce our product down by the difference. */
-            if(nSecondaryDecimals > nPrimaryDecimals)
-                nTotal /= math::pow(10, nSecondaryDecimals - nPrimaryDecimals);
+            /* Calculate our new total now. */
+            dTotal =
+                (dAmount / dPrice);
+
+            /* Set our values now. */
+            nDebit  = dAmount.nValue;
+            nCredit = dTotal.nValue;
         }
 
         /* Handle for asks. */
@@ -122,38 +117,31 @@ namespace TAO::API
             if(strType != "ask")
                 throw Exception(-7, "Order is not a ask, did you use the correct 'from' and 'to' accounts for your market pair?");
 
-            /* Check if we need to adjust our figures. */
-            const uint8_t nPrimaryDecimals   = GetDecimals(pairMarket.first);
-            const uint8_t nSecondaryDecimals = GetDecimals(pairMarket.second);
-
             /* Check they have the required funds */
-            nAmount =
-                ExtractAmount(jParams, GetFigures(pairMarket.first));
-
-            /* Temporary value to track our amounts and change based on decimals */
-            uint64_t nAmountAdjusted = nAmount;
-
-            /* If our price has more decimals, increase our product by the difference. */
-            if(nSecondaryDecimals > nPrimaryDecimals)
-                nAmountAdjusted *= math::pow(10, nSecondaryDecimals - nPrimaryDecimals);
+            precision_t dAmount =
+                ExtractPrecision(jParams, GetDecimals(pairMarket.first));
 
             /* Calculate our total values now. */
-            nTotal =
-                (nPrice * nAmountAdjusted) / math::pow(10, nSecondaryDecimals);
+            precision_t dTotal =
+                precision_t(GetDecimals(pairMarket.second));
 
-            /* If our price has less decimals, decrease our product down by the difference. */
-            if(nPrimaryDecimals > nSecondaryDecimals)
-                nTotal /= math::pow(10, nPrimaryDecimals - nSecondaryDecimals);
+            /* Calculate our total value now. */
+            dTotal =
+                (dAmount * dPrice);
+
+            /* Set our values now. */
+            nDebit  = dAmount.nValue;
+            nCredit = dTotal.nValue;
         }
 
         /* Transation payload. */
         std::vector<TAO::Operation::Contract> vContracts(1);
         vContracts[0] << uint8_t(TAO::Operation::OP::CONDITION) << uint8_t(TAO::Operation::OP::DEBIT);
-        vContracts[0] << hashRegister << TAO::Register::WILDCARD_ADDRESS << nAmount << uint64_t(0);
+        vContracts[0] << hashRegister << TAO::Register::WILDCARD_ADDRESS << nDebit << uint64_t(0);
 
         /* Create a comparison binary stream we will use for the contract requirement. */
         TAO::Operation::Stream ssCompare;
-        ssCompare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashDeposit << nTotal << uint64_t(0);
+        ssCompare << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashDeposit << nCredit << uint64_t(0);
 
         /* This conditional contract will require a DEBIT of given amount. */
         vContracts[0] <= uint8_t(TAO::Operation::OP::GROUP);

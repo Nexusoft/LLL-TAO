@@ -16,6 +16,8 @@ ________________________________________________________________________________
 
 #include <LLD/types/contract.h>
 
+#include <LLP/include/global.h>
+
 
 namespace LLD
 {
@@ -157,7 +159,7 @@ namespace LLD
 
 
     /* Reads a caller that fulfilled a conditional agreement.*/
-    bool ContractDB::ReadContract(const std::pair<uint512_t, uint32_t>& pair, uint256_t& hashCaller, const uint8_t nFlags)
+    bool ContractDB::ReadContract(const std::pair<uint512_t, uint32_t>& pairContract, uint256_t& hashCaller, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
@@ -165,19 +167,19 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check for a memory transaction first */
-            if(pMemory && pMemory->mapContracts.count(pair))
+            if(pMemory && pMemory->mapContracts.count(pairContract))
             {
                 /* Get the state from temporary transaction. */
-                hashCaller = pMemory->mapContracts[pair];
+                hashCaller = pMemory->mapContracts[pairContract];
 
                 return true;
             }
 
             /* Check for state in memory map. */
-            if(pCommit->mapContracts.count(pair))
+            if(pCommit->mapContracts.count(pairContract))
             {
                 /* Get the state from commited memory. */
-                hashCaller = pCommit->mapContracts[pair];
+                hashCaller = pCommit->mapContracts[pairContract];
 
                 return true;
             }
@@ -187,16 +189,17 @@ namespace LLD
             LOCK(MEMORY_MUTEX);
 
             /* Check for a memory transaction first */
-            if(pMiner && pMiner->mapContracts.count(pair))
+            if(pMiner && pMiner->mapContracts.count(pairContract))
             {
                 /* Get the state from temporary transaction. */
-                hashCaller = pMiner->mapContracts[pair];
+                hashCaller = pMiner->mapContracts[pairContract];
 
                 return true;
             }
         }
 
-        return Read(pair, hashCaller);
+        /* Check our disk state first. */
+        return Read(pairContract, hashCaller);
     }
 
 
@@ -204,7 +207,7 @@ namespace LLD
     bool ContractDB::HasContract(const std::pair<uint512_t, uint32_t>& pairContract, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -225,7 +228,54 @@ namespace LLD
                 return true;
         }
 
-        return Exists(pairContract);
+        /* Check our disk index first. */
+        if(Exists(pairContract))
+            return true;
+
+        /* Additional routine if the proof doesn't exist. */
+        if(config::fClient.load() && nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        {
+            /* Check for -client mode or active server object. */
+            if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
+                throw debug::exception(FUNCTION, "no connections available...");
+
+            /* Try to find a connection first. */
+            std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
+            if(pConnection == nullptr)
+            {
+                /* Check for genesis. */
+                if(LLP::TRITIUM_SERVER)
+                {
+                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
+                    {
+                        /* Get our lookup address now. */
+                        const std::string strAddress =
+                            pNode->GetAddress().ToStringIP();
+
+                        /* Make our new connection now. */
+                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                            throw debug::exception(FUNCTION, "no connections available...");
+                    }
+                }
+            }
+
+            /* Debug output to console. */
+            debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::CONTRACT for ", pairContract.first.SubString());
+            pConnection->BlockingLookup
+            (
+                5000,
+                LLP::LookupNode::REQUEST::PROOF,
+                uint8_t(LLP::LookupNode::SPECIFIER::CONTRACT),
+                pairContract.first, pairContract.second
+            );
+            debug::log(2, FUNCTION, "CLIENT MODE: TYPES::CONTRACT received for ", pairContract.first.SubString());
+
+            /* Return if the proof exists or not now. */
+            return Exists(pairContract);
+        }
+
+        return false;
     }
 
     /* Begin a memory transaction following ACID properties. */

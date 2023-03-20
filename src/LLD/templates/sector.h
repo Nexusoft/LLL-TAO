@@ -37,7 +37,7 @@ ________________________________________________________________________________
 
 namespace LLD
 {
-    
+
     /* Maximum size a file can be in the keychain. */
     const uint32_t MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 512; //512 MB per File
 
@@ -398,7 +398,10 @@ namespace LLD
                             /* Read compact size. */
                             uint64_t nSize = ReadCompactSize(ssData);
                             if(nSize == 0) //reached end of current file
-                                break;
+                            {
+                                ssData.SetPos(nPos + 1); //continue forward until we reach a valid length
+                                continue;
+                            }
 
                             /* Deserialize the String. */
                             std::string strThis;

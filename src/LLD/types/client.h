@@ -161,6 +161,90 @@ namespace LLD
         bool HasTx(const uint512_t& hashTx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** WriteProof
+         *
+         *  Writes a proof to disk. Proofs are used to keep track of spent temporal proofs.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool WriteProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract);
+
+
+        /** HasProof
+         *
+         *  Checks if a proof exists. Proofs are used to keep track of spent temporal proofs.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool HasProof(const uint256_t& hashProof, const uint512_t& hashTx,
+                      const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** EraseProof
+         *
+         *  Remove a temporal proof from the database.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract);
+
+
+        /** WriteSpend
+         *
+         *  Writes an output as spent.
+         *
+         *  @param[in] hashTx The txid of transaction to write.
+         *  @param[in] nOutput The output that was spent.
+         *
+         *  @return True if the spend is written, false otherwise.
+         *
+         **/
+        bool WriteSpend(const uint512_t& hashTx, const uint32_t nOutput);
+
+
+        /** EraseSpend
+         *
+         *  Removes a spend flag on an output.
+         *
+         *  @param[in] hashTx The txid of transaction to write.
+         *  @param[in] nOutput The output that is unspent.
+         *
+         *  @return True if the spend is erased, false otherwise.
+         *
+         **/
+        bool EraseSpend(const uint512_t& hashTx, const uint32_t nOutput);
+
+
+        /** IsSpent
+         *
+         *  Checks if an output was spent.
+         *
+         *  @param[in] hashTx The txid of transaction to check.
+         *  @param[in] nOutput The output to check.
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE)
+         *
+         *  @return True if the output is spent, false otherwise.
+         *
+         **/
+        bool IsSpent(const uint512_t& hashTx, const uint32_t nOutput, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
 
         /** WriteBlock
          *

@@ -378,7 +378,7 @@ namespace Legacy
                 return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
             /* Check the transaction for validitity. */
-            if(!vtx[i].CheckTransaction())
+            if(!vtx[i].Check())
                 return debug::error(FUNCTION, "check transaction failed.");
 
             /* Calculate the signature operations. */

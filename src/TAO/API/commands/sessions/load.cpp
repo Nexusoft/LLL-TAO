@@ -91,8 +91,14 @@ namespace TAO::API
             Authentication::Session tSession =
                 Authentication::Session(strUsername, strPassword, Authentication::Session::LOCAL);
 
-            /* Initialize our indexing session. */
-            Indexing::Initialize(tSession.Genesis());
+            /* Check our session's credentials. */
+            if(!validate_session(tSession, strPIN)) //this is a paranoid check, but let's still do it
+            {
+                /* Erase our session on failed auth. */
+                LLD::Local->EraseSession(hashGenesis);
+
+                throw Exception(-139, "Invalid credentials");
+            }
 
             /* Build a new session key. */
             if(config::fMultiuser.load())
@@ -107,6 +113,9 @@ namespace TAO::API
                 { "genesis", tSession.Genesis().ToString() },
                 { "session", hashSession.ToString() }
             };
+
+            /* Initialize our indexing session. */
+            Indexing::Initialize(hashSession);
 
             /* Check for single user mode. */
             if(!config::fMultiuser.load())

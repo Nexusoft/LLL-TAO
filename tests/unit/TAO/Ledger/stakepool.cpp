@@ -21,7 +21,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/create.h>
 #include <TAO/Register/types/address.h>
 
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/stakepool.h>
 
 #include <unit/catch2/catch.hpp>
@@ -33,7 +33,7 @@ TEST_CASE( "Stake Pool Tests", "[stakepool][stake]")
     using namespace TAO::Operation;
 
     /* Generate random genesis */
-    uint256_t hashGenesis = TAO::Ledger::SignatureChain::Genesis("teststakepool");
+    uint256_t hashGenesis = TAO::Ledger::Credentials::Genesis("teststakepool");
     uint512_t hashPrivKey1  = LLC::GetRand512();
     uint512_t hashPrivKey2  = LLC::GetRand512();
 

@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/contracts/exchange.h>
 
 #include <Util/include/math.h>
+#include <Util/types/precision.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -82,8 +83,8 @@ namespace TAO::API
                     rContract.Seek(32, TAO::Operation::Contract::OPERATIONS);
 
                     /* Deserialize our amount. */
-                    uint64_t nAmount = 0;
-                    rContract >> nAmount;
+                    uint64_t nSelling = 0;
+                    rContract >> nSelling;
 
                     /* Grab our other token from pre-state. */
                     TAO::Register::Object tPreState = rContract.PreState();
@@ -93,20 +94,24 @@ namespace TAO::API
                         tPreState.Parse();
 
                     /* Grab the rhs token. */
-                    TAO::Register::Address hashToken =
+                    TAO::Register::Address hashSelling =
                         tPreState.get<uint256_t>("token");
+
+                    /* Extract our precision_t from parameters. */
+                    const precision_t dSelling =
+                        GetPrecision(nSelling, hashSelling);
 
                     /* Build our from object. */
                     encoding::json jFrom =
                     {
                         { "OP",   "DEBIT"                              },
                         { "from" , hashFrom.ToString()                 },
-                        { "amount", FormatBalance(nAmount, hashToken)  },
-                        { "token", hashToken.ToString()                }
+                        { "amount", dSelling.double_t()                },
+                        { "token", hashSelling.ToString()              }
                     };
 
                     /* Add a ticker if found. */
-                    if(Names::ReverseLookup(hashToken, strName))
+                    if(Names::ReverseLookup(hashSelling, strName))
                         jFrom["ticker"] = strName;
 
                     /* Get the next OP. */
@@ -127,8 +132,8 @@ namespace TAO::API
                     rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
 
                     /* Grab our token-id now. */
-                    TAO::Register::Address hashRequest;
-                    rContract >= hashRequest;
+                    TAO::Register::Address hashBuying;
+                    rContract >= hashBuying;
 
                     /* Extract the data from the bytes. */
                     TAO::Operation::Stream ssCompare(vBytes);
@@ -139,49 +144,56 @@ namespace TAO::API
                     ssCompare >> hashTo;
 
                     /* Get the amount requested. */
-                    uint64_t nTotal = 0;
-                    ssCompare >> nTotal;
+                    uint64_t nBuying = 0;
+                    ssCompare >> nBuying;
+
+                    /* Extract our precision_t from parameters. */
+                    const precision_t dBuying =
+                        GetPrecision(nBuying, hashBuying);
 
                     /* Build our from object. */
                     encoding::json jRequired =
                     {
                         { "OP",     "DEBIT"                              },
                         { "to",     hashTo.ToString()                    },
-                        { "amount", FormatBalance(nTotal, hashRequest) },
-                        { "token",  hashRequest.ToString()               }
+                        { "amount", dBuying.double_t()                   },
+                        { "token",  hashBuying.ToString()               }
                     };
 
                     /* Add a ticker if found. */
-                    if(Names::ReverseLookup(hashRequest, strName))
+                    if(Names::ReverseLookup(hashBuying, strName))
                         jRequired["ticker"] = strName;
+
+                    /* Track our price field with correct number of decimals. */
+                    precision_t dPrice =
+                        precision_t(GetDecimals(pairMarket.second));
 
                     /* Handle if required is our base token. */
                     std::string strType = "";
-                    if(hashRequest != pairMarket.second)
+                    if(hashBuying != pairMarket.second)
                     {
-                        /* Calulate our price (TODO: this shouldn't use double's). */
-                        const uint64_t nPrice =
-                            (FormatBalance(nTotal, pairMarket.first) / FormatBalance(nAmount, pairMarket.second)) * GetFigures(pairMarket.second);
+                        /* Calculate our price using precision figures. */
+                        dPrice = dSelling;
+                        dPrice /= dBuying;
 
                         /* Set our price now with correct decimals. */
-                        jRet["price"] = FormatBalance(nPrice, pairMarket.second);
+                        jRet["price"] = dPrice.double_t();
 
                         /* Check what type of order this is. */
                         strType = "bid";
                     }
                     else
                     {
-                        /* Calulate our price (TODO: this shouldn't use double's). */
-                        const uint64_t nPrice =
-                            (FormatBalance(nAmount, pairMarket.first) / FormatBalance(nTotal, pairMarket.second)) * GetFigures(pairMarket.first);
+                        /* Calculate our price using precision figures. */
+                        dPrice = dBuying;
+                        dPrice /= dSelling;
 
                         /* Set our price now with correct decimals. */
-                        jRet["price"] = FormatBalance(nPrice, pairMarket.first);
+                        jRet["price"] = dPrice.double_t();
 
                         /* Check what type of order this is. */
                         strType = "ask";
                     }
-
 
                     /* Now populate the rest of our data. */
                     jRet["type"]        = strType;
@@ -239,8 +251,8 @@ namespace TAO::API
                     rContract.Seek(32, TAO::Operation::Contract::OPERATIONS);
 
                     /* Deserialize our amount. */
-                    uint64_t nAmount = 0;
-                    rContract >> nAmount;
+                    uint64_t nSelling = 0;
+                    rContract >> nSelling;
 
                     /* Grab our other token from pre-state. */
                     TAO::Register::Object tPreState = rContract.PreState();
@@ -250,7 +262,7 @@ namespace TAO::API
                         tPreState.Parse();
 
                     /* Grab the rhs token. */
-                    TAO::Register::Address hashToken =
+                    TAO::Register::Address hashSelling =
                         tPreState.get<uint256_t>("token");
 
                     /* Get the next OP. */
@@ -271,19 +283,19 @@ namespace TAO::API
                     rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
 
                     /* Grab our token-id now. */
-                    TAO::Register::Address hashRequest;
-                    rContract >= hashRequest;
+                    TAO::Register::Address hashBuying;
+                    rContract >= hashBuying;
 
                     /* Check if the order being placed is for native token. */
-                    if(hashToken == hashBase)
+                    if(hashSelling == hashBase)
                     {
                         /* This is an ask if for native token. */
-                        pairMarket.first = hashRequest;
+                        pairMarket.first = hashBuying;
                         return OrderToJSON(rContract, pairMarket);
                     }
 
                     /* Otherwise this is a bid. */
-                    pairMarket.first = hashToken;
+                    pairMarket.first = hashSelling;
                     return OrderToJSON(rContract, pairMarket);
                 }
                 catch(const std::exception& e)

@@ -15,9 +15,12 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/base.h>
 
+#include <TAO/API/types/authentication.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
+
     /** Sessions
      *
      *  Sessions API Class.
@@ -67,6 +70,18 @@ namespace TAO::API
         encoding::json Create(const encoding::json& jParams, const bool fHelp);
 
 
+        /** List
+         *
+         *  Lists the current logged in sessions for -multiusername mode
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json List(const encoding::json& jParams, const bool fHelp);
+
 
         /** Load
          *
@@ -94,22 +109,9 @@ namespace TAO::API
         encoding::json Lock(const encoding::json& jParams, const bool fHelp);
 
 
-        /** Has
-         *
-         *  Checks to see if a saved session exists in the Logical DB for the given user
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Has(const encoding::json& jParams, const bool fHelp);
-
-
         /** Save
          *
-         *  Saves the users session into the Logical DB so that it can be resumed later after restart.
+         *  Saves the users session into the Logical DB so that it can be resumed later.
          *
          *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.
@@ -157,6 +159,22 @@ namespace TAO::API
          *
          **/
         encoding::json Unlock(const encoding::json& jParams, const bool fHelp);
+
+
+    private:
+
+
+        /** validate_session
+         *
+         *  Validates a session to crypto object register to make sure credentials are correct.
+         *
+         *  @param[in] tSession The session object to validate before proceeding.
+         *  @param[in] strPIN The PIN number to be used to valide the session
+         *
+         *  @return true if the session authenticated correctly.
+         *
+         **/
+        bool validate_session(const Authentication::Session& tSession, const SecureString& strPIN);
 
     };
 }

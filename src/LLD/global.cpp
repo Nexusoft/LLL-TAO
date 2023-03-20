@@ -86,12 +86,31 @@ namespace LLD
             /* Create new client database if enabled. */
             Client    = new ClientDB(
                             FLAGS::CREATE | FLAGS::FORCE,
-                            77773);
+                            1000000);
         }
 
         /* Handle database recovery mode. */
         TxnRecovery();
 
+    }
+
+
+    /* Run our indexing entries and routines. */
+    void Indexing() //TODO: combine all of these into one single indexing routine (include -indexheight)
+    {
+        debug::log(0, FUNCTION, "Indexing LLD");
+
+
+        /* Check for reindexing entries. */
+        Logical->IndexRegisters();
+
+
+        /* Check for reindexing entries. */
+        Register->IndexAddress();
+
+
+        /* Check for reindexing entries. */
+        Ledger->IndexProofs();
     }
 
 
@@ -140,6 +159,10 @@ namespace LLD
         /* Flag to determine if there are any failures. */
         bool fRecovery = true;
 
+        /* Check the Logical DB journal. */
+        if(Logical && !Logical->TxnRecovery())
+            fRecovery = false;
+
         /* Check the contract DB journal. */
         if(Contract && !Contract->TxnRecovery())
             fRecovery = false;
@@ -168,6 +191,10 @@ namespace LLD
         if(fRecovery)
         {
             debug::log(0, FUNCTION, "all transactions are complete, recovering...");
+
+            /* Commit Logical DB transaction. */
+            if(Logical)
+                Logical->TxnCommit();
 
             /* Commit contract DB transaction. */
             if(Contract)
@@ -218,6 +245,10 @@ namespace LLD
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
             return;
 
+        /* Start the Logical DB transaction. */
+        if(Logical)
+            Logical->TxnBegin();
+
         /* Start the contract DB transaction. */
         if(Contract)
             Contract->TxnBegin();
@@ -262,6 +293,10 @@ namespace LLD
         /* Handle memory commits if in memory m ode. */
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
             return;
+
+        /* Abort the Logical DB transaction. */
+        if(Logical)
+            Logical->TxnRelease();
 
         /* Abort the contract DB transaction. */
         if(Contract)
@@ -308,6 +343,10 @@ namespace LLD
         if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
             return;
 
+        /* Set a checkpoint for Logical DB. */
+        if(Logical)
+            Logical->TxnCheckpoint();
+
         /* Set a checkpoint for contract DB. */
         if(Contract)
             Contract->TxnCheckpoint();
@@ -333,6 +372,10 @@ namespace LLD
             Legacy->TxnCheckpoint();
 
 
+        /* Commit Logical DB transaction. */
+        if(Logical)
+            Logical->TxnCommit();
+
         /* Commit contract DB transaction. */
         if(Contract)
             Contract->TxnCommit();
@@ -357,6 +400,10 @@ namespace LLD
         if(Legacy)
             Legacy->TxnCommit();
 
+
+        /* Abort the Logical DB transaction. */
+        if(Logical)
+            Logical->TxnRelease();
 
         /* Abort the contract DB transaction. */
         if(Contract)

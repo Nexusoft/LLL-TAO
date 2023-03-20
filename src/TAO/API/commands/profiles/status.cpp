@@ -44,13 +44,24 @@ namespace TAO::API
         jRet["crypto"]       = false;
         jRet["transactions"] = 0;
 
-        /* If PIN is supplied and logged in, give a more detailed status of profile. */
-        if(CheckParameter(jParams, "pin", "string, number"))
-        {
-            /* Make sure to drop if they have entered invalid PIN. */
-            if(!Authentication::Authenticate(jParams))
-               throw Exception(-333, "Account failed to authenticate");
+        /* By default don'r require authentication on single user or multiusername mode. */
+        bool fAuthenticated =
+            (!config::fMultiuser.load() || config::GetBoolArg("-multiusername", false));
 
+        /* If PIN is supplied and logged in, give a more detailed status of profile. */
+        if(!fAuthenticated && CheckParameter(jParams, "pin", "string, number"))
+        {
+            /* Check our authentication values if supplied. */
+            if(!Authentication::Authenticate(jParams))
+                throw Exception(-333, "Account failed to authenticate");
+
+            /* Set our authentication status now. */
+            fAuthenticated = true;
+        }
+
+        /* Add our session information if authenticated. */
+        if(fAuthenticated)
+        {
             /* Add in profile username for active session with profile. */
             const encoding::json jSession =
             {

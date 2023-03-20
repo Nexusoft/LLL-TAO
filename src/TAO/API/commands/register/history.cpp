@@ -170,7 +170,7 @@ namespace TAO::API
                 }
 
                 /* Check that we match our filters. */
-                if(!FilterObject(jParams, jRegister, tObject))
+                if(!FilterResults(jParams, jRegister))
                     continue;
 
                 /* Filter out our expected fieldnames if specified. */

@@ -31,7 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/transaction.h>
 #include <TAO/Ledger/types/tritium.h>
 
@@ -58,7 +58,7 @@ namespace LLP
     /* Default Constructor */
     Miner::Miner()
     : Connection()
-    , CoinbaseTx()
+    , tCoinbaseTx()
     , mapBlocks()
     , nBestHeight(0)
     , nSubscribed(0)
@@ -75,7 +75,7 @@ namespace LLP
     /* Constructor */
     Miner::Miner(const Socket& SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
     : Connection(SOCKET_IN, DDOS_IN, fDDOSIn)
-    , CoinbaseTx()
+    , tCoinbaseTx()
     , MUTEX()
     , mapBlocks()
     , nBestHeight(0)
@@ -93,7 +93,7 @@ namespace LLP
     /* Constructor */
     Miner::Miner(DDOS_Filter* DDOS_IN, bool fDDOSIn)
     : Connection(DDOS_IN, fDDOSIn)
-    , CoinbaseTx()
+    , tCoinbaseTx()
     , MUTEX()
     , mapBlocks()
     , nBestHeight(0)
@@ -256,12 +256,22 @@ namespace LLP
             /* On Connect Event, Assign the Proper Daemon Handle. */
             case EVENTS::CONNECT:
             {
-                /* Cache the last transaction ID of the sig chain so that we can detect if
-                   new transactions enter the mempool for this sig chain. */
-                LLD::Ledger->ReadLast(TAO::API::Authentication::Caller(), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
+                try
+                {
+                    /* Cache the last transaction ID of the sig chain so that we can detect if
+                       new transactions enter the mempool for this sig chain. */
+                    LLD::Ledger->ReadLast(TAO::API::Authentication::Caller(), nHashLast, TAO::Ledger::FLAGS::MEMPOOL);
 
-                /* Debug output. */
-                debug::log(2, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
+                    /* Debug output. */
+                    debug::log(2, FUNCTION, "New Connection from ", GetAddress().ToStringIP());
+                }
+                catch(const TAO::API::Exception& e)
+                {
+                    debug::warning(FUNCTION, "Miner Connection Failed: ", e.what());
+
+                    this->Disconnect();
+                }
+
                 return;
             }
 
@@ -441,13 +451,13 @@ namespace LLP
                 LOCK(MUTEX);
 
                 /* Update the coinbase transaction. */
-                CoinbaseTx = Legacy::Coinbase(vOutputs, nMaxValue, nWalletFee);
+                tCoinbaseTx = Legacy::Coinbase(vOutputs, nMaxValue, nWalletFee);
 
                 /* Check the consistency of the coibase transaction. */
-                if(!CoinbaseTx.IsValid())
+                if(!tCoinbaseTx.IsValid())
                 {
-                    CoinbaseTx.Print();
-                    CoinbaseTx.SetNull();
+                    tCoinbaseTx.Print();
+                    tCoinbaseTx.SetNull();
                     respond(COINBASE_FAIL);
                     return debug::error(FUNCTION, "Invalid Coinbase Tx");
                 }
@@ -458,7 +468,7 @@ namespace LLP
                 /* Verbose output. */
                 debug::log(2, FUNCTION, " Set Coinbase Reward of ", nMaxValue);
                 if(config::GetArg("-verbose", 0 ) >= 3)
-                    CoinbaseTx.Print();
+                    tCoinbaseTx.Print();
 
                 return true;
             }
@@ -781,7 +791,7 @@ namespace LLP
         mapBlocks.clear();
 
         /* Reset the coinbase transaction. */
-        CoinbaseTx.SetNull();
+        tCoinbaseTx.SetNull();
 
         /* Set the block iterator back to zero so we can iterate new blocks next round. */
         nBlockIterator = 0;
@@ -824,7 +834,7 @@ namespace LLP
         TAO::Ledger::TritiumBlock *pBlock = new TAO::Ledger::TritiumBlock();
 
         /* Create a new block and loop for prime channel if minimum bit target length isn't met */
-        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel.load(), *pBlock, ++nBlockIterator, &CoinbaseTx))
+        while(TAO::Ledger::CreateBlock(pCredentials, strPIN, nChannel.load(), *pBlock, ++nBlockIterator, &tCoinbaseTx))
         {
             /* Break out of loop when block is ready for prime mod. */
             if(is_prime_mod(nBitMask, pBlock))

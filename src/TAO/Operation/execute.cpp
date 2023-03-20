@@ -105,17 +105,13 @@ namespace TAO::Operation
                     uint32_t nContract = 0;
                     contract >> nContract;
 
-                    /* DISABLED for -client mode. */
-                    //if(!config::fClient.load()) XXX: this shouldn't be disabled for client mode
-                    {
-                        /* Verify the operation rules. */
-                        const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
-                        if(!Validate::Verify(contract, condition, nCost))
-                            return false;
-                    }
+                    /* Verify the operation rules. */
+                    const Contract condition = LLD::Ledger->ReadContract(hashTx, nContract);
+                    if(!Validate::Verify(contract, condition, nCost))
+                        return false;
 
                     /* Commit the validation to disk. */
-                    if(!Validate::Commit(hashTx, nContract, contract.Caller(), nFlags))
+                    if(!Validate::Commit(contract, hashTx, nContract, contract.Caller(), nFlags))
                         return false;
 
                     /* Get next OP. */
@@ -407,45 +403,41 @@ namespace TAO::Operation
                     uint256_t hashAddress = 0;
                     contract >> hashAddress;
 
-                    /* DISABLED for -client mode. */
-                    //if(!config::fClient.load()) XXX: this shouldn't be disabled for client mode
+                    /* Verify the operation rules. */
+                    const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
+                    if(!Claim::Verify(contract, transfer))
+                        return false;
+
+                    /* Check for conditions. */
+                    if(!transfer.Empty(Contract::CONDITIONS))
                     {
-                        /* Verify the operation rules. */
-                        const Contract transfer = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
-                        if(!Claim::Verify(contract, transfer))
-                            return false;
+                        /* Get the condition. */
+                        uint8_t nType = 0;
+                        transfer >> nType;
 
-                        /* Check for conditions. */
-                        if(!transfer.Empty(Contract::CONDITIONS))
+                        /* Check for condition. */
+                        Condition conditions = Condition(transfer, contract);
+                        if(nType == OP::CONDITION)
                         {
-                            /* Get the condition. */
-                            uint8_t nType = 0;
-                            transfer >> nType;
-
-                            /* Check for condition. */
-                            Condition conditions = Condition(transfer, contract);
-                            if(nType == OP::CONDITION)
+                            /* Read the contract database. */
+                            uint256_t hashValidator = 0;
+                            if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
                             {
-                                /* Read the contract database. */
-                                uint256_t hashValidator = 0;
-                                if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
-                                {
-                                    /* Check that the caller is the claimant. */
-                                    if(hashValidator != contract.Caller())
-                                        return debug::error(FUNCTION, "OP::CLAIM: caller is not authorized to claim validation");
-                                }
-
-                                /* If no validate fulfilled, try to exeucte conditions. */
-                                else if(!conditions.Execute())
-                                    return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
+                                /* Check that the caller is the claimant. */
+                                if(hashValidator != contract.Caller())
+                                    return debug::error(FUNCTION, "OP::CLAIM: caller is not authorized to claim validation");
                             }
+
+                            /* If no validate fulfilled, try to exeucte conditions. */
                             else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
-
-                            /* Assess the fees for the computation limits. */
-                            if(conditions.nCost > CONDITION_LIMIT_FREE)
-                                nCost += conditions.nCost - CONDITION_LIMIT_FREE;
                         }
+                        else if(!conditions.Execute())
+                            return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
+
+                        /* Assess the fees for the computation limits. */
+                        if(conditions.nCost > CONDITION_LIMIT_FREE)
+                            nCost += conditions.nCost - CONDITION_LIMIT_FREE;
                     }
 
                     /* Get the state byte. */
@@ -481,7 +473,7 @@ namespace TAO::Operation
                         return debug::error(FUNCTION, "OP::CLAIM: invalid register post-state");
 
                     /* Commit the register to disk. */
-                    if(!Claim::Commit(state, hashAddress, hashTx, nContract, nFlags))
+                    if(!Claim::Commit(state, contract, hashAddress, hashTx, nContract, nFlags))
                         return false;
 
                     break;
@@ -733,46 +725,41 @@ namespace TAO::Operation
                     uint64_t  nAmount = 0;
                     contract >> nAmount;
 
-                    /* DISABLED for -client mode. */
-                    Contract debit = Contract();
-                    //if(!config::fClient.load()) XXX: this shouldn't need to be disabled
+                    /* Verify the operation rules. */
+                    Contract debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
+                    if(!Credit::Verify(contract, debit, nFlags))
+                        return false;
+
+                    /* Check for conditions. */
+                    if(!debit.Empty(Contract::CONDITIONS))
                     {
-                        /* Verify the operation rules. */
-                        debit = LLD::Ledger->ReadContract(hashTx, nContract, nFlags);
-                        if(!Credit::Verify(contract, debit, nFlags))
-                            return false;
+                        /* Get the condition. */
+                        uint8_t nType = 0;
+                        debit >> nType;
 
-                        /* Check for conditions. */
-                        if(!debit.Empty(Contract::CONDITIONS))
+                        /* Check for condition. */
+                        Condition conditions = Condition(debit, contract);
+                        if(nType == OP::CONDITION)
                         {
-                            /* Get the condition. */
-                            uint8_t nType = 0;
-                            debit >> nType;
-
-                            /* Check for condition. */
-                            Condition conditions = Condition(debit, contract);
-                            if(nType == OP::CONDITION)
+                            /* Read the contract database. */
+                            uint256_t hashValidator = 0;
+                            if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
                             {
-                                /* Read the contract database. */
-                                uint256_t hashValidator = 0;
-                                if(LLD::Contract->ReadContract(std::make_pair(hashTx, nContract), hashValidator, nFlags))
-                                {
-                                    /* Check that the caller is the claimant. */
-                                    if(hashValidator != contract.Caller())
-                                        return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
-                                }
-
-                                /* If no validate fulfilled, try to exeucte conditions. */
-                                else if(!conditions.Execute())
-                                    return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+                                /* Check that the caller is the claimant. */
+                                if(hashValidator != contract.Caller())
+                                    return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
                             }
+
+                            /* If no validate fulfilled, try to exeucte conditions. */
                             else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
-
-                            /* Assess the fees for the computation limits. */
-                            if(conditions.nCost > CONDITION_LIMIT_FREE)
-                                nCost += conditions.nCost - CONDITION_LIMIT_FREE;
                         }
+                        else if(!conditions.Execute())
+                            return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
+
+                        /* Assess the fees for the computation limits. */
+                        if(conditions.nCost > CONDITION_LIMIT_FREE)
+                            nCost += conditions.nCost - CONDITION_LIMIT_FREE;
                     }
 
                     /* Deserialize the pre-state byte from the contract. */
@@ -808,7 +795,7 @@ namespace TAO::Operation
                         return debug::error(FUNCTION, "OP::CREDIT: invalid register post-state");
 
                     /* Commit the register to disk. */
-                    if(!Credit::Commit(object, debit, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
+                    if(!Credit::Commit(object, debit, contract, hashAddress, hashProof, hashTx, nContract, nAmount, nFlags))
                         return false;
 
                     break;
@@ -826,20 +813,16 @@ namespace TAO::Operation
                     uint512_t hashTx = 0;
                     contract >> hashTx;
 
-                    /* DISABLED for -client mode. */
-                    //if(!config::fClient.load()) XXX: this shouldn't bi disabled for -client mode
-                    {
-                        /* Retrieve a debit for the Legacy tx output. Migrate tx will only have one output (index 0) */
-                        Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
+                    /* Retrieve a debit for the Legacy tx output. Migrate tx will only have one output (index 0) */
+                    Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
 
-                        /* Add migrate data from Legacy tx to debit (base ReadContract returns generic Legacy send to register) */
-                        if(!::Legacy::BuildMigrateDebit(debit, hashTx))
-                            return false;
+                    /* Add migrate data from Legacy tx to debit (base ReadContract returns generic Legacy send to register) */
+                    if(!::Legacy::BuildMigrateDebit(debit, hashTx))
+                        return false;
 
-                        /* Verify the operation rules. */
-                        if(!Migrate::Verify(contract, debit))
-                            return false;
-                    }
+                    /* Verify the operation rules. */
+                    if(!Migrate::Verify(contract, debit))
+                        return false;
 
                     /* After Verify, reset streams */
                     contract.Reset();

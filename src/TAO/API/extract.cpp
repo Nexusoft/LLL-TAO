@@ -27,7 +27,10 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/names.h>
 
+#include <Util/include/math.h>
 #include <Util/include/string.h>
+
+#include <Util/types/precision.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -54,7 +57,7 @@ namespace TAO::API
             if(hashRet.IsValid())
                 return hashRet;
 
-            throw Exception(-35, "Invalid address [", hashRet.ToString(), "]");
+            throw Exception(-56, "Invalid Address [", jParams[strAddr].get<std::string>(), "]");
         }
 
         /* Check if we are resolving for a name or namespace. */
@@ -230,7 +233,7 @@ namespace TAO::API
 
         /* Check if username has been supplied instead. */
         if(CheckParameter(jParams, "username", "string"))
-            return TAO::Ledger::SignatureChain::Genesis(jParams["username"].get<std::string>().c_str());
+            return TAO::Ledger::Credentials::Genesis(jParams["username"].get<std::string>().c_str());
 
         return Authentication::Caller(jParams);
     }
@@ -254,7 +257,7 @@ namespace TAO::API
                     return hashGenesis;
             }
 
-            return TAO::Ledger::SignatureChain::Genesis(jParams["recipient"].get<std::string>().c_str());
+            return TAO::Ledger::Credentials::Genesis(jParams["recipient"].get<std::string>().c_str());
         }
 
         throw Exception(-56, "Missing Parameter [recipient]");
@@ -293,6 +296,10 @@ namespace TAO::API
     /* Extract an amount value from either string or integer and convert to its final value. */
     uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strKey)
     {
+        /* Count our total digits before setting return value. */
+        const uint32_t nDigits =
+            math::log(10, nFigures);
+
         /* Cache our name with prefix calculated. */
         const std::string strAmount =
             (strKey.empty() ? ("amount") : strKey);
@@ -300,45 +307,66 @@ namespace TAO::API
         /* Check for missing parameter. */
         if(CheckParameter(jParams, strAmount, "string, number"))
         {
-            /* Watch our numeric limits. */
-            const uint64_t nLimit = std::numeric_limits<uint64_t>::max();
+            /* Track our value at given precision. */
+            precision_t dValue = precision_t(nDigits);
 
-            /* Catch parsing exceptions. */
-            try
+            /* Convert to value if in string form. */
+            if(jParams[strAmount].is_string())
             {
-                /* Initialize our return value. */
-                uint64_t nValue = 0;
-
-                /* Convert to value if in string form. */
-                if(jParams[strAmount].is_string())
-                    nValue = (std::stod(jParams[strAmount].get<std::string>()) * nFigures);
-
-                /* Grab value regularly if it is integer. */
-                else if(jParams[strAmount].is_number_unsigned())
-                    nValue = (jParams[strAmount].get<uint64_t>() * nFigures);
-
-                /* Check for a floating point value. */
-                else if(jParams[strAmount].is_number_float())
-                    nValue = (jParams[strAmount].get<double>() * nFigures);
-
-                /* Otherwise we have an invalid parameter. */
-                else
-                    throw Exception(-57, "Invalid Parameter [", strAmount, "]");
-
-                /* Check our minimum range. */
-                if(nValue <= 0)
-                    throw Exception(-68, "[", strAmount, "] too small [", nValue, "]");
-
-                /* Check our limits and ranges now. */
-                if(nValue > (nLimit / nFigures))
-                    throw Exception(-60, "[", strAmount, "] out of range [", nLimit, "]");
-
-                /* Final compute of our figures. */
-                return nValue;
+                /* Generate our precision value. */
+                dValue =
+                    precision_t(jParams[strAmount].get<std::string>(), nDigits, true); //true to check our ranges
             }
-            catch(const encoding::detail::exception& e) { throw Exception(-57, "Invalid Parameter [", strAmount, "]");           }
-            catch(const std::invalid_argument& e)       { throw Exception(-57, "Invalid Parameter [", strAmount, "]");           }
-            catch(const std::out_of_range& e)           { throw Exception(-60, "[", strAmount, "] out of range [", nLimit, "]"); }
+
+            /* Grab value regularly if it is integer. */
+            else if(jParams[strAmount].is_number_unsigned())
+                return (jParams[strAmount].get<uint64_t>() * nFigures);
+
+            /* Check for a floating point value. */
+            else if(jParams[strAmount].is_number_float())
+            {
+                /* Generate our precision value. */
+                dValue =
+                    precision_t(jParams[strAmount].get<double>(), nDigits, true); //true to check our ranges
+            }
+
+            /* Otherwise we have an invalid parameter. */
+            else
+                throw Exception(-57, "Invalid Parameter [", strAmount, "]");
+
+            /* Return our internal precision value. */
+            return dValue.nValue;
+        }
+
+        throw Exception(-56, "Missing Parameter [", strAmount, "]");
+    }
+
+
+    /* Extract an amount value from either string or integer and convert to its final value. */
+    precision_t ExtractPrecision(const encoding::json& jParams, const uint8_t nDigits, const std::string& strKey)
+    {
+        /* Cache our name with prefix calculated. */
+        const std::string strAmount =
+            (strKey.empty() ? ("amount") : strKey);
+
+        /* Check for missing parameter. */
+        if(CheckParameter(jParams, strAmount, "string, number"))
+        {
+            /* Convert to value if in string form. */
+            if(jParams[strAmount].is_string())
+                return precision_t(jParams[strAmount].get<std::string>(), nDigits, true); //true to check our ranges
+
+            /* Grab value regularly if it is integer. */
+            else if(jParams[strAmount].is_number_unsigned())
+                return precision_t(jParams[strAmount].get<uint64_t>(), nDigits);
+
+            /* Check for a floating point value. */
+            else if(jParams[strAmount].is_number_float())
+                return precision_t(jParams[strAmount].dump(), nDigits, true); //true to check our ranges
+
+            /* Otherwise we have an invalid parameter. */
+            else
+                throw Exception(-57, "Invalid Parameter type [", strAmount, "]");
         }
 
         throw Exception(-56, "Missing Parameter [", strAmount, "]");

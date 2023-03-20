@@ -56,7 +56,7 @@ namespace TAO::API
                 mapStandards[strType].Type();
 
             /* Special handle if address indexed. */
-            if(config::GetBoolArg("-indexaddress"))
+            if(config::fIndexAddress.load())
             {
                 /* Batch read up to 1000 at a time */
                 std::vector<std::pair<uint256_t, TAO::Register::Object>> vObjects;
@@ -78,7 +78,7 @@ namespace TAO::API
                             StandardToJSON(jParams, rObject.second, rObject.first);
 
                         /* Check that we match our filters. */
-                        if(!FilterObject(jParams, jRegister, rObject.second))
+                        if(!FilterResults(jParams, jRegister))
                             continue;
 
                         /* Filter out our expected fieldnames if specified. */
@@ -112,7 +112,7 @@ namespace TAO::API
                             StandardToJSON(jParams, rObject);
 
                         /* Check that we match our filters. */
-                        if(!FilterObject(jParams, jRegister, rObject))
+                        if(!FilterResults(jParams, jRegister))
                             continue;
 
                         /* Filter out our expected fieldnames if specified. */

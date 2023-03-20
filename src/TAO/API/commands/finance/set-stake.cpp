@@ -23,7 +23,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/stake_change.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -94,7 +94,7 @@ namespace TAO::API
 
         /* Get our expiration if parameter supplied. */
         const uint64_t nExpires =
-            ExtractInteger<uint64_t>(jParams, "expires", nTimestamp);
+            ExtractInteger<uint64_t>(jParams, "expires", nTimestamp + (3 * 86400));
 
         /* Check our ranges compared to stake. */
         if(nAmount > nStakePrev && (nAmount - nStakePrev) > nBalancePrev)

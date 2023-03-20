@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/profiles.h>
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/transaction.h>
+#include <TAO/API/types/notifications.h>
 
 #include <TAO/Ledger/types/state.h>
 
@@ -55,6 +56,9 @@ namespace TAO::API
         LLD::Logical->ListEvents(hashGenesis, vEvents);
         LLD::Logical->ListContracts(hashGenesis, vEvents);
 
+        /* Track our unique events as we progress forward. */
+        std::set<std::pair<uint512_t, uint32_t>> setUnique;
+
         /* Only render if we have events that have been returned. */
         if(!vEvents.empty())
         {
@@ -66,24 +70,55 @@ namespace TAO::API
             uint32_t nTotal = 0;
             for(const auto& rEvent : vEvents)
             {
+                /* Check for unique events. */
+                if(setUnique.count(rEvent))
+                    continue;
+
+                /* Add our event to our unique set. */
+                setUnique.insert(rEvent);
+
                 /* Grab a reference of our hash. */
                 const uint512_t& hashEvent = rEvent.first;
 
-                /* Get the transaction from disk. */
-                TAO::API::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashEvent, tx))
-                    throw Exception(-108, "Failed to read transaction");
+                /* Check for Tritium transaction. */
+                if(hashEvent.GetType() == TAO::Ledger::TRITIUM)
+                {
+                    /* Get the transaction from disk. */
+                    TAO::API::Transaction tx;
+                    if(!LLD::Ledger->ReadTx(hashEvent, tx))
+                        continue;
 
-                /* Check if contract has been spent. */
-                if(tx.Spent(hashEvent, rEvent.second))
+                    /* Check if contract has been burned. */
+                    if(tx.Burned(hashEvent, rEvent.second))
+                        continue;
+
+                    /* Check if the transaction is mature. */
+                    if(!tx.Mature(hashEvent))
+                        continue;
+                }
+
+                /* Get a referecne of our contract. */
+                TAO::Operation::Contract rContract =
+                    LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+
+                /* Check if the given contract is spent already. */
+                if(rContract.Spent(rEvent.second))
+                    continue;
+
+                /* Bind our contract now to a timestamp and caller. */
+                rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
+
+                /* Sanitize the contract. */
+                std::map<uint256_t, TAO::Register::State> mapStates;
+                if(!Notifications::SanitizeContract(rContract, mapStates))
                     continue;
 
                 /* Get the transaction JSON. */
                 encoding::json jContract =
-                    TAO::API::ContractToJSON(tx[rEvent.second], rEvent.second, nVerbose);
+                    TAO::API::ContractToJSON(rContract, rEvent.second, nVerbose);
 
                 /* Add some items from our transction. */
-                jContract["timestamp"] = tx.nTimestamp;
+                jContract["timestamp"] = rContract.Timestamp();
                 jContract["txid"]      = hashEvent.ToString();
 
                 /* Check to see whether the transaction has had all children filtered out */

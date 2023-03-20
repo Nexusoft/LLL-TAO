@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/retarget.h>
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/types/tritium.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
@@ -362,6 +363,14 @@ namespace TAO::API
                     jRet["OP"]      = "WRITE";
                     jRet["address"] = hashAddress.ToString();
 
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAddress, strName))
+                        jRet["name"] = strName;
+
+                    /* Populate register info. */
+                    RegisterTypesToJSON(contract, jRet);
+
                     /* Get the register pre-state so we can build response with old values before OP::WRITE. */
                     TAO::Register::Object object = contract.PreState();
 
@@ -583,6 +592,16 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]      = "APPEND";
                     jRet["address"] = hashAddress.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAddress, strName))
+                        jRet["name"] = strName;
+
+                    /* Populate register info. */
+                    RegisterTypesToJSON(contract, jRet);
+
+                    /* Reprseent data transfer as raw hex. */
                     jRet["data"]    = HexStr(vchData.begin(), vchData.end());
 
                     break;
@@ -607,7 +626,11 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]      = "CREATE";
                     jRet["address"] = hashAddress.ToString();
-                    jRet["type"]    = GetRegisterName(nType);
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAddress, strName))
+                        jRet["name"] = strName;
 
                     /* If this is a register object then decode the object type */
                     if(nType == TAO::Register::REGISTER::OBJECT)
@@ -626,7 +649,7 @@ namespace TAO::API
                             throw Exception(-36, "Failed to parse object register");
 
                         /* Add object standard if available. */
-                        jRet["standard"] = GetStandardName(object.Standard());
+                        jRet["type"] = GetStandardName(object.Standard());
 
                         /* Add our fields json data now. */
                         jRet["object"]   = encoding::json::object();
@@ -635,7 +658,14 @@ namespace TAO::API
 
                     /* Handle for state registers. */
                     else
+                    {
+                        /* Populate our JSON types. */
+                        jRet["type"] =
+                            GetRegisterName(nType);
+
+                        /* Populate our state register data. */
                         StateToJSON(vchData, jRet);
+                    }
 
                     break;
                 }
@@ -660,12 +690,20 @@ namespace TAO::API
                     jRet["OP"]          = "TRANSFER";
                     jRet["address"]     = hashAddress.ToString();
 
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAddress, strName))
+                        jRet["name"] = strName;
+
+                    /* Populate register info. */
+                    RegisterTypesToJSON(contract, jRet);
+
                     /* Check for tokenized transfer. */
                     if(nType == TAO::Operation::TRANSFER::FORCE)
                     {
                         /* Recipient is register address when tokenized. */
                         jRet["recipient"] =
-                            TAO::Register::Address(hashTransfer).ToString();
+                            AddressToJSON(hashTransfer);
 
                         /* Special flag to tell it's tokenized. */
                         jRet["tokenized"] = true;
@@ -678,7 +716,7 @@ namespace TAO::API
                         if(hashTransfer != TAO::Register::WILDCARD_ADDRESS)
                             jRet["recipient"] = hashTransfer.ToString();
                         else
-                            jRet["wildcard"] = true;
+                            jRet["exchange"] = true;
                     }
 
                     break;
@@ -705,6 +743,14 @@ namespace TAO::API
                     jRet["txid"]       = hashTx.ToString();
                     jRet["contract"]   = nContract;
                     jRet["address"]    = hashAddress.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAddress, strName))
+                        jRet["name"] = strName;
+
+                    /* Populate register info. */
+                    RegisterTypesToJSON(contract, jRet);
 
                     break;
                 }
@@ -756,9 +802,19 @@ namespace TAO::API
                     uint64_t nReward = 0;
                     contract >> nReward;
 
+                    /* Cache our current address for genesis. */
+                    const TAO::Register::Address hashAccount =
+                        TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST);
+
                     /* Output the json information. */
                     jRet["OP"]      = "TRUST";
-                    jRet["address"] = TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST).ToString();
+                    jRet["address"] = hashAccount.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAccount, strName))
+                        jRet["name"] = strName;
+
                     jRet["last"]    = hashLastTrust.ToString();
                     jRet["score"]   = nScore;
                     jRet["amount"]  = FormatBalance(nReward);
@@ -766,12 +822,8 @@ namespace TAO::API
                     jRet["ticker"]  = "NXS";
 
                     /* Handle for add stake. */
-                    if(nStakeChange > 0)
-                        jRet["add_stake"] = FormatStake(nStakeChange);
-
-                    /* Handle for remove stake. */
-                    if(nStakeChange < 0)
-                        jRet["stake_change"] = FormatStake(0 - nStakeChange);
+                    if(nStakeChange != 0)
+                        jRet["change"] = FormatStake(nStakeChange);
 
                     break;
                 }
@@ -784,9 +836,19 @@ namespace TAO::API
                     uint64_t nReward = 0;
                     contract >> nReward;
 
+                    /* Cache our current address for genesis. */
+                    const TAO::Register::Address hashAccount =
+                        TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST);
+
                     /* Output the json information. */
                     jRet["OP"]      = "GENESIS";
-                    jRet["address"] = TAO::Register::Address("trust", contract.Caller(), TAO::Register::Address::TRUST).ToString();
+                    jRet["address"] = hashAccount.ToString();
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAccount, strName))
+                        jRet["name"] = strName;
+
                     jRet["amount"]  = FormatBalance(nReward);
                     jRet["token"]   = 0;
                     jRet["ticker"]  = "NXS";
@@ -816,13 +878,15 @@ namespace TAO::API
 
                     /* Output the json information. */
                     jRet["OP"]       = "DEBIT";
-                    jRet["from"]     = hashFrom.ToString();
+
+                    /* Add the from key address and name. */
+                    jRet["from"]     = AddressToJSON(hashFrom, contract);
 
                     /* Check for wildcard address before adding key. */
                     if(hashTo != TAO::Register::WILDCARD_ADDRESS)
-                        jRet["to"]       = hashTo.ToString();
+                        jRet["to"] = AddressToJSON(hashTo);
                     else
-                        jRet["wildcard"] = true;
+                        jRet["exchange"] = true;
 
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
                     TAO::Register::Object object = contract.PreState();
@@ -858,8 +922,9 @@ namespace TAO::API
                     }
 
                     /* Check if this debit has been credited. */
-                    else if(LLD::Ledger->HasProof(hashFrom, contract.Hash(), nContract))
+                    else if(LLD::Ledger->HasProof(hashFrom, contract.Hash(), nContract, TAO::Ledger::FLAGS::LOOKUP))
                         jRet["claimed"] = FormatBalance(nAmount, hashToken);
+
 
                     /* Add the reference to the response */
                     jRet["reference"] = nReference;
@@ -895,7 +960,6 @@ namespace TAO::API
                     jRet["OP"]      = "CREDIT";
 
                     /* Determine the transaction type that this credit is made for */
-                    std::string strInput;
                     if(hashTx.GetType() == TAO::Ledger::LEGACY)
                         jRet["for"] = "LEGACY";
                     else if(hashProof.IsAccount() || hashProof.IsToken() || hashProof.IsTrust())
@@ -921,7 +985,7 @@ namespace TAO::API
                     {
                         /* Attempt to read the proof so we can show from or proof fields. */
                         TAO::Register::Object oProof;
-                        if(LLD::Register->ReadObject(hashProof, oProof))
+                        if(LLD::Register->ReadObject(hashProof, oProof, TAO::Ledger::FLAGS::LOOKUP))
                         {
                             /* Check for matching token to indicate proof or from. */
                             const TAO::Register::Address hashProofToken = oProof.get<uint256_t>("token");
@@ -929,14 +993,14 @@ namespace TAO::API
                             {
                                 /* Get our token object. */
                                 TAO::Register::Object oToken;
-                                if(LLD::Register->ReadObject(hashProofToken, oToken))
+                                if(LLD::Register->ReadObject(hashProofToken, oToken, TAO::Ledger::FLAGS::LOOKUP))
                                 {
                                     /* Get our account balance. */
                                     const uint64_t nBalance = oProof.get<uint64_t>("balance");
 
                                     /* Create a proof object to show account and token. */
                                     encoding::json jProof;
-                                    jProof["account"] = hashProof.ToString();
+                                    jProof["account"] = AddressToJSON(hashProof);
 
                                     /* Calculate our partial ownership now. */
                                     const uint64_t nOwnership =
@@ -959,14 +1023,17 @@ namespace TAO::API
                                 }
                             }
                             else
-                                jRet["from"]  = hashProof.ToString();
+                            {
+                                /* Build our from key from our proof hash. */
+                                jRet["from"] = AddressToJSON(hashProof, contract);
+                            }
                         }
                     }
-                    else
-                        jRet["wildcard"] = true;
+                    //else
+                    //    jRet["wildcard"] = true;
 
-                    /* Track our address to. */
-                    jRet["to"]       = hashAddress.ToString();
+                    /* Add the from key address and name. */
+                    jRet["to"]      = AddressToJSON(hashAddress);
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nCredit, hashToken);
@@ -1013,6 +1080,12 @@ namespace TAO::API
                     jRet["txid"]    = hashTx.ToString();
                     jRet["address"] = hashAccount.ToString();
                     jRet["amount"]  = FormatBalance(nAmount);
+
+                    /* Check if we have a name record available. */
+                    std::string strName;
+                    if(Names::ReverseLookup(hashAccount, strName))
+                        jRet["name"] = strName;
+
                     jRet["score"]   = nScore;
                     jRet["last"]    = hashLast.ToString();
                     jRet["token"]   = TOKEN::NXS.ToString();
@@ -1054,7 +1127,9 @@ namespace TAO::API
 
                     /* Output the json information. */
                     jRet["OP"]      = "FEE";
-                    jRet["from"]    = hashAccount.ToString();
+
+                    /* Add the from key address and name. */
+                    jRet["from"]    = AddressToJSON(hashAccount, contract);
                     jRet["amount"]  = FormatBalance(nFee);
                     jRet["token"]   = TOKEN::NXS.ToString();
                     jRet["ticker"]  = "NXS";
@@ -1079,14 +1154,20 @@ namespace TAO::API
 
                     /* Output the json information. */
                     jRet["OP"]       = "LEGACY";
-                    jRet["from"]     = hashFrom.ToString();
+
+                    /* Add the from key address and name. */
+                    jRet["from"]    = AddressToJSON(hashFrom, contract);
 
                     /* Extract the receiving legacy address */
                     Legacy::NexusAddress hashLegacy;
                     Legacy::ExtractAddress(script, hashLegacy);
 
                     /* Add to our response JSON now. */
-                    jRet["to"]      = hashLegacy.ToString();
+                    jRet["to"]      =
+                    {
+                        { "address", hashLegacy.ToString() },
+                        { "type",    "LEGACY" }
+                    };
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount);
@@ -1102,7 +1183,455 @@ namespace TAO::API
             debug::error(FUNCTION, e.what());
         }
 
+        /* Add our conditions now. */
+        const std::string strConditions =
+            ConditionToJSON(contract, nVerbose);
+
+        /* Check that string isn't empty. */
+        if(!strConditions.empty())
+            jRet["conditions"] = strConditions;
+
         return jRet;
+    }
+
+
+    /* Converts a serialized contract condition stream to formattted JSON */
+    std::string ConditionToJSON(const TAO::Operation::Contract& rContract, const uint32_t nVerbose)
+    {
+        /* Encode a string to output our bytecode. */
+        std::string strCode;
+
+        /* Loop through the operation validation code. */
+        rContract.Reset(TAO::Operation::Contract::CONDITIONS);
+        while(!rContract.End(TAO::Operation::Contract::CONDITIONS))
+        {
+            /* Grab the next operation. */
+            uint8_t nOP = 0;
+            rContract >= nOP;
+
+            /* Switch based on our operation code now. */
+            switch(nOP)
+            {
+                /* Handle for the ( operator. */
+                case TAO::Operation::OP::GROUP:
+                {
+                    strCode += "(";
+                    break;
+                }
+
+                /* Handle for the ) operator. */
+                case TAO::Operation::OP::UNGROUP:
+                {
+                    strCode += ")";
+                    break;
+                }
+
+                /* Handle for the && operator. */
+                case TAO::Operation::OP::AND:
+                {
+                    strCode += " AND ";
+                    break;
+                }
+
+                /* Handle for the || operator. */
+                case TAO::Operation::OP::OR:
+                {
+                    strCode += " OR ";
+                    break;
+                }
+
+                /* Handle for the == operator. */
+                case TAO::Operation::OP::EQUALS:
+                {
+                    strCode += " == ";
+                    break;
+                }
+
+                /* Handle for < operator. */
+                case TAO::Operation::OP::LESSTHAN:
+                {
+                    strCode += " < ";
+                    break;
+                }
+
+                /* Handle for the > operator. */
+                case TAO::Operation::OP::GREATERTHAN:
+                {
+                    strCode += " > ";
+                    break;
+                }
+
+                /* Handle for <= operator. */
+                case TAO::Operation::OP::LESSEQUALS:
+                {
+                    strCode += " <= ";
+                    break;
+                }
+
+                /* Handle for the >= operator. */
+                case TAO::Operation::OP::GREATEREQUALS:
+                {
+                    strCode += " >= ";
+                    break;
+                }
+
+                /* Handle for the != operator. */
+                case TAO::Operation::OP::NOTEQUALS:
+                {
+                    strCode += " != ";
+                    break;
+                }
+
+                /* Handle to check if a sequence of bytes is inside another. */
+                case TAO::Operation::OP::CONTAINS:
+                {
+                    strCode += " ~= ";
+                    break;
+                }
+
+                /* Add two 64-bit numbers. */
+                case TAO::Operation::OP::ADD:
+                {
+                    strCode += " + ";
+                    break;
+                }
+
+                /* Subtract one number from another. */
+                case TAO::Operation::OP::SUB:
+                {
+                    strCode += " - ";
+                    break;
+                }
+
+                /* Increment a number by an order of 1. */
+                case TAO::Operation::OP::INC:
+                {
+                    strCode += "++ ";
+                    break;
+                }
+
+                /* De-increment a number by an order of 1. */
+                case TAO::Operation::OP::DEC:
+                {
+                    strCode += "-- ";
+                    break;
+                }
+
+                /* Divide a number by another. */
+                case TAO::Operation::OP::DIV:
+                {
+                    strCode += " / ";
+                    break;
+                }
+
+                /* Multiply a number by another. */
+                case TAO::Operation::OP::MUL:
+                {
+                    strCode += " * ";
+                    break;
+                }
+
+                /* Raise a number by the power of another. */
+                case TAO::Operation::OP::EXP:
+                {
+                    strCode += "^";
+                    break;
+                }
+
+                /* Get the remainder after a division. */
+                case TAO::Operation::OP::MOD:
+                {
+                    strCode += " % ";
+                    break;
+                }
+
+                /* Parse out subdata from bytes. */
+                case TAO::Operation::OP::SUBDATA:
+                {
+                    /* Get the beginning iterator. */
+                    uint16_t nBegin = 0;
+                    rContract >= nBegin;
+
+                    /* Get the size to extract. */
+                    uint16_t nSize = 0;
+                    rContract >= nSize;
+
+                    strCode += debug::safe_printstr(".subdata(", nBegin, ", ", nSize, ")");
+                    break;
+                }
+
+                /* Parse out subdata from bytes. */
+                case TAO::Operation::OP::CAT:
+                {
+                    strCode += " | ";
+                    break;
+                }
+
+                /* Extract an uint8_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT8_T:
+                {
+                    /* Extract the byte. */
+                    uint8_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint8_t(", uint32_t(n), ")");
+                    strCode += debug::safe_printstr(uint64_t(n));
+                    break;
+                }
+
+                /* Extract an uint16_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT16_T:
+                {
+                    /* Extract the byte. */
+                    uint16_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint16_t(", n, ")");
+                    strCode += debug::safe_printstr(uint64_t(n));
+                    break;
+                }
+
+                /* Extract an uint32_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT32_T:
+                {
+                    /* Extract the byte. */
+                    uint32_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint32_t(", n, ")");
+                    strCode += debug::safe_printstr(uint64_t(n));
+                    break;
+                }
+
+                /* Extract an uint64_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT64_T:
+                {
+                    /* Extract the byte. */
+                    uint64_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint64_t(", n, ")");
+                    strCode += debug::safe_printstr(uint64_t(n));
+                    break;
+                }
+
+                /* Extract an uint256_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT256_T:
+                {
+                    /* Extract the integer. */
+                    uint256_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint256_t(", n.ToString(), ")");
+                    strCode += debug::safe_printstr("0x", n.ToString());
+                    break;
+                }
+
+                /* Extract an uint512_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT512_T:
+                {
+                    /* Extract the integer. */
+                    uint512_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint512_t(", n.ToString(), ")");
+                    strCode += debug::safe_printstr("0x", n.ToString());
+                    break;
+                }
+
+                /* Extract an uint1024_t from the stream. */
+                case TAO::Operation::OP::TYPES::UINT1024_T:
+                {
+                    /* Extract the integer. */
+                    uint1024_t n = 0;
+                    rContract >= n;
+
+                    //strCode += debug::safe_printstr("uint1024_t(", n.ToString(), ")");
+                    strCode += debug::safe_printstr("0x", n.ToString());
+                    break;
+                }
+
+                /* Extract a string from the stream. */
+                case TAO::Operation::OP::TYPES::STRING:
+                {
+                    /* Extract the string. */
+                    std::string str;
+                    rContract >= str;
+
+                    //strCode += debug::safe_printstr("string(", str, ")");
+                    strCode += debug::safe_printstr("'", str, "'");
+                    break;
+                }
+
+                /* Extract bytes from the stream. */
+                case TAO::Operation::OP::TYPES::BYTES:
+                {
+                    /* Extract the string. */
+                    std::vector<uint8_t> vData;
+                    rContract >= vData;
+
+                    strCode += debug::safe_printstr("data(", HexStr(vData.begin(), vData.end()), ")");
+                    break;
+                }
+
+                /* Get a register's timestamp and push to the return value. */
+                case TAO::Operation::OP::CALLER::PRESTATE::MODIFIED:
+                {
+                    strCode += "caller.prestate.modified";
+                    break;
+                }
+
+                /* Get a register's timestamp and push to the return value. */
+                case TAO::Operation::OP::REGISTER::MODIFIED:
+                {
+                    strCode += ".register.modified";
+                    break;
+                }
+
+                /* Get a register's timestamp and push to the return value. */
+                case TAO::Operation::OP::CALLER::PRESTATE::CREATED:
+                {
+                    strCode += "caller.prestate.created";
+                    break;
+                }
+
+                /* Get the time register was created. */
+                case TAO::Operation::OP::REGISTER::CREATED:
+                {
+                    strCode += ".register.created";
+                    break;
+                }
+
+                /* The owner of given register pre-state. */
+                case TAO::Operation::OP::CALLER::PRESTATE::OWNER:
+                {
+                    strCode += "caller.prestate.owner";
+                    break;
+                }
+
+                /* The owner of given register. */
+                case TAO::Operation::OP::REGISTER::OWNER:
+                {
+                    strCode += ".register.owner";
+                    break;
+                }
+
+                /* The owner of given register pre-state. */
+                case TAO::Operation::OP::CALLER::PRESTATE::STATE:
+                {
+                    strCode += "caller.prestate.state";
+                    break;
+                }
+
+                /* The owner of given register. */
+                case TAO::Operation::OP::REGISTER::STATE:
+                {
+                    strCode += ".register.state";
+                    break;
+                }
+
+                /* The owner of given register pre-state. */
+                case TAO::Operation::OP::CALLER::PRESTATE::VALUE:
+                {
+                    /* Get the value string. */
+                    std::string strValue;
+                    rContract >= strValue;
+
+                    strCode += debug::safe_printstr("caller.prestate.value('", strValue, "')");
+                    break;
+                }
+
+                /* The owner of given register. */
+                case TAO::Operation::OP::REGISTER::VALUE:
+                {
+                    /* Get the value string. */
+                    std::string strValue;
+                    rContract >= strValue;
+
+                    strCode += debug::safe_printstr("caller.register.value('", strValue, "')");
+                    break;
+                }
+
+                /* Get the genesis-id of the calling sigchain. */
+                case TAO::Operation::OP::CALLER::GENESIS:
+                {
+                    strCode += "caller.genesis";
+                    break;
+                }
+
+                /* Get the timestamp of the transaction caller. */
+                case TAO::Operation::OP::CALLER::TIMESTAMP:
+                {
+                    strCode += "caller.timestamp";
+                    break;
+                }
+
+                /* Get the genesis-id of the calling sigchain. */
+                case TAO::Operation::OP::CONTRACT::GENESIS:
+                {
+                    strCode += "contract.genesis";
+                    break;
+                }
+
+                /* Get the timestamp of the transaction caller. */
+                case TAO::Operation::OP::CONTRACT::TIMESTAMP:
+                {
+                    strCode += "contract.timestamp";
+                    break;
+                }
+
+                /* Get the operations of the transaction caller. */
+                case TAO::Operation::OP::CONTRACT::OPERATIONS:
+                {
+                    strCode += "contract.operations";
+                    break;
+                }
+
+                /* Get the operations of the transaction caller. */
+                case TAO::Operation::OP::CALLER::OPERATIONS:
+                {
+                    strCode += "caller.operations";
+                    break;
+                }
+
+                /* Get the current height of the chain. */
+                case TAO::Operation::OP::LEDGER::HEIGHT:
+                {
+                    strCode += "ledger.height";
+                    break;
+                }
+
+                /* Get the current supply of the chain. */
+                case TAO::Operation::OP::LEDGER::SUPPLY:
+                {
+                    strCode += "ledger.supply";
+                    break;
+                }
+
+                /* Get the best block timestamp. */
+                case TAO::Operation::OP::LEDGER::TIMESTAMP:
+                {
+                    strCode += "ledger.timestamp";
+                    break;
+                }
+
+                /* Compute an SK256 hash of current return value. */
+                case TAO::Operation::OP::CRYPTO::SK256:
+                {
+                    strCode += ".crypto.sk256";
+                    break;
+                }
+
+                /* Compute an SK512 hash of current return value. */
+                case TAO::Operation::OP::CRYPTO::SK512:
+                {
+                    strCode += ".crypto.sk512";
+                    break;
+                }
+            }
+        }
+
+        return strCode;
     }
 
 
@@ -1115,7 +1644,9 @@ namespace TAO::API
         jRet["version"]  = rObject.nVersion;
         jRet["created"]  = rObject.nCreated;
         jRet["modified"] = rObject.nModified;
-        jRet["type"]     = GetRegisterName(rObject.nType);
+
+        /* Populate our register types now. */
+        RegisterTypesToJSON(rObject, jRet);
 
         /* Handle if register isn't an object. */
         if(rObject.nType != TAO::Register::REGISTER::OBJECT)
@@ -1128,7 +1659,15 @@ namespace TAO::API
 
             /* Otherwise output the address if supplied. */
             if(hashRegister != 0)
+            {
+                /* Add our address key now. */
                 jRet["address"] = hashRegister.ToString();
+
+                /* Check for reverse ptr record. */
+                std::string strName = "";
+                if(Names::ReverseLookup(hashRegister, strName))
+                    jRet["name"] = strName;
+            }
 
             return jRet;
         }
@@ -1169,35 +1708,43 @@ namespace TAO::API
                     break;
                 }
 
-                /* Special handle for names and namespaces. */
+                /* Special handle for names. */
                 case TAO::Register::OBJECTS::NAME:
-                case TAO::Register::OBJECTS::NAMESPACE:
                 {
-                    /* Start with default namespace generated by user-id. */
-                    TAO::Register::Address hashNamespace = rObject.hashOwner;
+                    /* The register address */
+                    const TAO::Register::Address hashAddress =
+                        TAO::Register::Address(rObject.get<std::string>("name"), rObject.hashOwner, TAO::Register::Address::NAME);
 
-                    /* Check if object contains a namespace. */
-                    const std::string strNamespace = rObject.get<std::string>("namespace");
-                    if(!strNamespace.empty())
-                    {
-                        /* Add our global flag to tell if it's global name. */
-                        jRet["global"]    = (strNamespace == TAO::Register::NAMESPACE::GLOBAL);
+                    /* Populate stake related information. */
+                    jRet["address"] = hashAddress.ToString();
 
-                        /* Add our namespace hash if not global or local. */
-                        if(!jRet["global"])
-                            hashNamespace = TAO::Register::Address(strNamespace, TAO::Register::Address::NAMESPACE);
-                    }
-
-                    /* Generate namespace object's address. */
-                    if(nStandard == TAO::Register::OBJECTS::NAMESPACE)
-                        jRet["address"] = hashNamespace.ToString();
-
-                    /* Generate name object's address. */
-                    if(nStandard == TAO::Register::OBJECTS::NAME)
-                        jRet["address"] = TAO::Register::Address(rObject.get<std::string>("name"), hashNamespace, TAO::Register::Address::NAME).ToString();
+                    /* Populate our name data now. */
+                    Names::NameToJSON(rObject, jRet);
 
                     break;
                 }
+
+                /* Special handle for namespaces. */
+                case TAO::Register::OBJECTS::NAMESPACE:
+                {
+                    /* The register address */
+                    const TAO::Register::Address hashNamespace =
+                        TAO::Register::Address(rObject.get<std::string>("namespace"), TAO::Register::Address::NAMESPACE);
+
+                    /* Populate stake related information. */
+                    jRet["address"] = hashNamespace.ToString();
+
+                    break;
+                }
+            }
+
+            /* Check if address was found. */
+            if(jRet.find("address") != jRet.end())
+            {
+                /* Check for reverse ptr record. */
+                std::string strName = "";
+                if(Names::ReverseLookup(TAO::Register::Address(jRet["address"].get<std::string>()), strName))
+                    jRet["name"] = strName;
             }
         }
 
@@ -1207,10 +1754,16 @@ namespace TAO::API
             /* Add address from input parameters. */
             jRet["address"] = hashRegister.ToString();
 
-            /* Check for reverse ptr record if not token (that resolves a ticker). */
-            std::string strName = "";
-            if(!hashRegister.IsToken() && Names::ReverseLookup(hashRegister, strName))
-                jRet["name"] = strName;
+            /* Special handle for names or namespaces. */
+            if(hashRegister.IsName())
+                Names::NameToJSON(rObject, jRet);
+            else
+            {
+                /* Check for reverse ptr record if not token (that resolves a ticker). */
+                std::string strName = "";
+                if(!hashRegister.IsToken() && Names::ReverseLookup(hashRegister, strName))
+                    jRet["name"] = strName;
+            }
         }
 
         return jRet;
@@ -1774,6 +2327,16 @@ namespace TAO::API
             return Names::ResolveAddress(jParams, strParam, true).ToString();
         }
 
+        /* Handle for username resolver. */
+        if(strVariable == "username")
+        {
+            /* Get our genesis from username. */
+            const uint256_t hashGenesis =
+                TAO::Ledger::Credentials::Genesis(SecureString(strParam.c_str()));
+
+            return hashGenesis.ToString();
+        }
+
         return strValue;
     }
 
@@ -1857,10 +2420,6 @@ namespace TAO::API
                     /* Check for valid parameter. */
                     while(n < vParams.size() - 1 && vParams[n + 1].find("=") == vParams[n + 1].npos)
                         strValue += " " + vParams[++n];
-
-                    /* Check for empty value, due to ' ' or bad input. */
-                    if(strValue.empty())
-                        throw Exception(-58, "Empty Parameter [", strKey, "]");
                 }
 
                 /* Check for where clauses. */
@@ -1925,5 +2484,102 @@ namespace TAO::API
             jRet["where"] = strWhere;
 
         return jRet;
+    }
+
+
+    /* Gets info about an address and creates a json object based on register address*/
+    encoding::json AddressToJSON(const TAO::Register::Address& hashRegister, const TAO::Operation::Contract& rContract)
+    {
+        /* Build our from json key. */
+        encoding::json jRet;
+        jRet["address"] = hashRegister.ToString();
+
+        /* Check if we have a name record available. */
+        Names::ReverseLookup(hashRegister, jRet);
+
+        /* Populate our register types now. */
+        RegisterTypesToJSON(rContract, jRet);
+
+        return jRet;
+    }
+
+
+    /* Gets info about an address and creates a json object based on register address*/
+    encoding::json AddressToJSON(const TAO::Register::Address& hashRegister)
+    {
+        /* Build our from json key. */
+        encoding::json jRet;
+        jRet["address"] = hashRegister.ToString();
+
+        /* Check if we have a name record available. */
+        Names::ReverseLookup(hashRegister, jRet);
+
+        /* Get the object we are generating information for. */
+        TAO::Register::Object tObject;
+        if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::LOOKUP))
+            return jRet;
+
+        /* Populate our register types now. */
+        RegisterTypesToJSON(tObject, jRet);
+
+        return jRet;
+    }
+
+
+    /* Gets info about an address and creates a json object based on register address for a foreign register. */
+    void AddressToJSON(const TAO::Register::Address& hashRegister, const TAO::Operation::Contract& rContract, encoding::json &jRet)
+    {
+        /* Build our address json key. */
+        jRet["address"] = hashRegister.ToString();
+
+        /* Check if we have a name record available. */
+        Names::ReverseLookup(hashRegister, jRet);
+
+        /* Populate our register types now. */
+        RegisterTypesToJSON(rContract, jRet);
+    }
+
+
+    /* Get's the names of the types for this given register to populate among contracts that need to have this info. */
+    void RegisterTypesToJSON(const TAO::Operation::Contract& rContract, encoding::json &jTypes)
+    {
+        /* Add our standard register information. */
+        const TAO::Register::Object tObject =
+            rContract.PreState();
+
+        /* Execute our next overload now. */
+        RegisterTypesToJSON(tObject, jTypes);
+    }
+
+
+    /* Get's the names of the types for this given register to populate among contracts that need to have this info. */
+    void RegisterTypesToJSON(const TAO::Register::Object& rObject, encoding::json &jTypes)
+    {
+        /* Check for object register to parse. */
+        if(rObject.nType == TAO::Register::REGISTER::OBJECT)
+        {
+            /* Parse if an object. */
+            rObject.Parse();
+
+            /* Populate our standard from name. */
+            jTypes["type"] =
+                GetStandardName(rObject.Standard());
+
+            /* Check for a usertype name. */
+            if(rObject.Check("_usertype", TAO::Register::TYPES::UINT16_T, false))
+                jTypes["form"] = GetRegisterForm(rObject.get<uint16_t>("_usertype"));
+        }
+
+        /* Otherwise use the state register typename. */
+        else
+        {
+            /* Populate our register name now from state type. */
+            jTypes["type"] = GetRegisterName(rObject.nType);
+
+            /* Check for a usertype. */
+            const uint16_t nForm = GetStandardType(rObject);
+            if(nForm != 0)
+                jTypes["form"] = GetRegisterForm(nForm);
+        }
     }
 }

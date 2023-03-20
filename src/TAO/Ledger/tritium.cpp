@@ -467,7 +467,7 @@ namespace TAO
                         return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
                     /* Check the transaction for validity. */
-                    if(!tx.CheckTransaction())
+                    if(!tx.Check())
                         return debug::error(FUNCTION, "check transaction failed.");
 
                     /* Check legacy transaction for finality. */

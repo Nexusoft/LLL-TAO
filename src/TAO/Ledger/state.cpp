@@ -1067,14 +1067,14 @@ namespace TAO
             /* Check through all the transactions. */
             for(const auto& proof : vtx)
             {
+                /* Get the transaction hash. */
+                const uint512_t& hash = proof.second;
+
                 /* Only work on tritium transactions for now. */
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Start the contracts stopwatch. */
                     swContract.start();
-
-                    /* Get the transaction hash. */
-                    const uint512_t& hash = proof.second;
 
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))
@@ -1098,7 +1098,7 @@ namespace TAO
 
                         /* Check that the last transaction is correct. */
                         if(tx.hashPrevTx != hashLast)
-                            return debug::error(FUNCTION, "last hash hash mismatch");
+                            return debug::error(FUNCTION, "last hash mismatch ", VARIABLE(hashLast.SubString()));
                     }
 
                     /* Verify the Ledger Pre-States. */
@@ -1162,9 +1162,6 @@ namespace TAO
                     /* Start the script stopwatch. */
                     swScript.start();
 
-                    /* Get the transaction hash. */
-                    const uint512_t& hash = proof.second;
-
                     /* Check for existing indexes. */
                     if(LLD::Ledger->HasIndex(hash))
                         return debug::error(FUNCTION, "transaction overwrites not allowed");
@@ -1197,6 +1194,10 @@ namespace TAO
 
                 /* Write the indexing entries. */
                 LLD::Ledger->IndexBlock(proof.second, hashBlock);
+
+                /* Push to our logical indexing in API. */
+                if(nTime > NEXUS_TRITIUM_TIMELOCK)
+                    TAO::API::Indexing::PushTransaction(hash);
             }
 
             if(config::nVerbose >= 3)
@@ -1236,10 +1237,6 @@ namespace TAO
                 if(hashPrevBlock == ChainState::Genesis())
                     ChainState::stateGenesis = prev;
             }
-
-            /* Push to our logical indexing in API. */
-            if(nTime > NEXUS_TRITIUM_TIMELOCK)
-                TAO::API::Indexing::PushBlock(hashBlock);
 
             return true;
         }

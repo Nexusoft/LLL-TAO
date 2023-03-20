@@ -337,7 +337,7 @@ namespace TAO
 
 
         /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
-        bool Transaction::Check() const
+        bool Transaction::Check(const uint8_t nFlags) const
         {
             /* Check transaction version */
             if(!TransactionVersionActive(nTimestamp, nVersion))
@@ -414,8 +414,8 @@ namespace TAO
                 if(IsFirst())
                 {
                     /* Check for transaction version 3. */
-                    if(nVersion >= 3 && LLD::Ledger->HasFirst(hashGenesis))
-                        return debug::error(FUNCTION, "invalid genesis-id ", hashGenesis.SubString());
+                    if(!(nFlags & TAO::Ledger::FLAGS::LOOKUP) && nVersion >= 3 && LLD::Ledger->HasFirst(hashGenesis))
+                        return debug::error(FUNCTION, "duplicate genesis-id ", hashGenesis.SubString());
 
                     /* Reset the contract operation stream */
                     contract.Reset();
@@ -855,7 +855,7 @@ namespace TAO
             {
                 /* Check for transaction version 3. */
                 if(nVersion >= 3 && LLD::Ledger->HasFirst(hashGenesis))
-                    return debug::error(FUNCTION, "invalid genesis-id ", hashGenesis.SubString());
+                    return debug::error(FUNCTION, "duplicate genesis-id ", hashGenesis.SubString());
 
                 /* Check ambassador sigchains based on all versions, not the smaller subset of versions. */
                 for(uint32_t nSwitchVersion = 7; nSwitchVersion <= CurrentBlockVersion(); ++nSwitchVersion)
@@ -897,13 +897,8 @@ namespace TAO
             }
             else
             {
-                /* We want to track the sigchain logged in so we can enforce certain rules for our own sigchain. */
-                uint256_t hashSigchain = 0;
-                if(config::fClient.load())
-                    hashSigchain = TAO::API::Authentication::Caller();
-
                 /* We want this to trigger for times not in -client mode. */
-                if(!config::fClient.load() || hashGenesis == hashSigchain)
+                if(!config::fClient.load() || (TAO::API::Authentication::Active(hashGenesis) && nFlags != FLAGS::LOOKUP))
                 {
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;
@@ -932,9 +927,6 @@ namespace TAO
                             if(txPrev.hashRecovery == 0)
                                 return debug::error(FUNCTION, "NOTICE: recovery hash disabled");
 
-                            /* Log that transaction is being recovered. */
-                            debug::log(0, FUNCTION, "NOTICE: transaction is using recovery hash");
-
                             /* Set recovery mode to be enabled. */
                             fRecovery = true;
                         }
@@ -957,42 +949,35 @@ namespace TAO
             uint32_t nContract = 0;
 
             /* Run through all the contracts. */
+            std::set<uint256_t> setAddresses;
             for(const auto& contract : vContracts)
             {
-                /* DISABLED for -client mode. */
-                if(!config::fClient.load())
+                /* Check for dependants. */
+                if(contract.Dependant(hashPrev, nContract) && nFlags != FLAGS::LOOKUP)
                 {
-                    /* Check for dependants. */
-                    if(contract.Dependant(hashPrev, nContract))
+                    /* Read previous transaction from disk. */
+                    const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
+                    switch(dependant.Primitive())
                     {
-                        /* Check for confirmations when on a block. */
-                        if(nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER)
+                        /* Handle coinbase rules. */
+                        case TAO::Operation::OP::COINBASE:
                         {
-                            /* Check that the previous transaction is indexed. */
-                            if(!LLD::Ledger->HasIndex(hashPrev))
-                                return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
+                            /* Get number of confirmations of previous TX */
+                            uint32_t nConfirms = 0;
+                            if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
+                                return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
-                            /* Read previous transaction from disk. */
-                            const TAO::Operation::Contract dependant = LLD::Ledger->ReadContract(hashPrev, nContract, nFlags);
-                            switch(dependant.Primitive())
-                            {
-                                /* Handle coinbase rules. */
-                                case TAO::Operation::OP::COINBASE:
-                                {
-                                    /* Get number of confirmations of previous TX */
-                                    uint32_t nConfirms = 0;
-                                    if(!LLD::Ledger->ReadConfirmations(hashPrev, nConfirms, pblock))
-                                        return debug::error(FUNCTION, "failed to read confirmations for coinbase");
+                            /* Check that the previous TX has reached sig chain maturity */
+                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
+                                return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
-                                    /* Check that the previous TX has reached sig chain maturity */
-                                    if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
-                                        return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
-
-                                    break;
-                                }
-                            }
+                            break;
                         }
                     }
+
+                    /* Check that the previous transaction is indexed. */
+                    if((nFlags == FLAGS::BLOCK || nFlags == FLAGS::MINER) && !LLD::Ledger->HasIndex(hashPrev))
+                        return debug::error(FUNCTION, hashPrev.SubString(), " not indexed");
                 }
 
                 /* Bind the contract to this transaction. */
@@ -1005,6 +990,26 @@ namespace TAO
                 /* If transaction fees should apply, calculate the additional transaction cost for the contract */
                 if(fApplyTxFee)
                     TAO::Operation::TxCost(contract, nCost);
+
+                /* Index our registers here now if not -client mode and setting enabled. */
+                if(!config::fClient.load() && config::fIndexRegister.load())
+                {
+                    /* Unpack the address we will be working on. */
+                    uint256_t hashAddress;
+                    if(!TAO::Register::Unpack(contract, hashAddress))
+                        continue;
+
+                    /* Check for duplicate entries. */
+                    if(setAddresses.count(hashAddress))
+                        continue;
+
+                    /* Check fo register in database. */
+                    if(!LLD::Logical->PushRegisterTx(hashAddress, hash))
+                        return debug::error(FUNCTION, "failed to push register tx ", TAO::Register::Address(hashAddress).ToString());
+
+                    /* Push the address now. */
+                    setAddresses.insert(hashAddress);
+                }
             }
 
             /* Once we have executed the contracts we need to check the fees. */
@@ -1061,6 +1066,7 @@ namespace TAO
                 /* Revert last stake whan disconnect a coinstake tx */
                 if(IsCoinStake())
                 {
+                    /* Handle for trust keys. */
                     if(IsTrust())
                     {
                         /* Extract the last stake hash from the coinstake contract */
@@ -1099,11 +1105,32 @@ namespace TAO
             }
 
             /* Run through all the contracts in reverse order to disconnect. */
+            std::set<uint256_t> setAddresses;
             for(auto contract = vContracts.rbegin(); contract != vContracts.rend(); ++contract)
             {
                 contract->Bind(this);
                 if(!TAO::Register::Rollback(*contract, nFlags))
                     return false;
+
+                /* Erase our register index here now if not -client mode and setting enabled. */
+                if(!config::fClient.load() && config::fIndexRegister.load())
+                {
+                    /* Unpack the address we will be working on. */
+                    uint256_t hashAddress;
+                    if(!TAO::Register::Unpack(*contract, hashAddress))
+                        continue;
+
+                    /* Check for duplicate entries. */
+                    if(setAddresses.count(hashAddress))
+                        continue;
+
+                    /* Check fo register in database. */
+                    if(!LLD::Logical->EraseRegisterTx(hashAddress))
+                        return debug::error(FUNCTION, "failed to erase register tx ", TAO::Register::Address(hashAddress).ToString());
+
+                    /* Push the address now. */
+                    setAddresses.insert(hashAddress);
+                }
             }
 
             return true;
@@ -1226,11 +1253,11 @@ namespace TAO
 
 
         /* Gets the hash of the transaction object. */
-        uint512_t Transaction::GetHash() const
+        uint512_t Transaction::GetHash(const bool fCacheOverride) const
         {
             /* Check if we have an active cache. */
-            if(hashCache != 0)
-                return hashCache;
+            //if(hashCache != 0 && !fCacheOverride)
+            //    return hashCache;
 
             /* Serialize the transaction data for hashing. */
             DataStream ss(SER_GETHASH, nVersion);

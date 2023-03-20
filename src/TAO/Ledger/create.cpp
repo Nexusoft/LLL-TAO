@@ -59,7 +59,7 @@ namespace TAO::Ledger
 
 
     /* Create a new transaction object from signature chain. */
-    bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& pCredentials, const SecureString& pin,
+    bool CreateTransaction(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials, const SecureString& pin,
                            TAO::Ledger::Transaction& tx, const uint8_t nScheme)
     {
         /* Get the genesis id of the sigchain. */
@@ -326,7 +326,7 @@ namespace TAO::Ledger
                 vHashes.push_back(tx.second);
 
             /* Producer transaction is last hash in list. */
-            vHashes.push_back(block.producer.GetHash());
+            vHashes.push_back(block.producer.GetHash(true));
 
             /* Build the block's merkle root. */
             block.hashMerkleRoot = block.BuildMerkleTree(vHashes);
@@ -343,7 +343,7 @@ namespace TAO::Ledger
 
 
     /* Create a new block object from the chain. */
-    bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+    bool CreateBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
         const uint32_t nChannel, TAO::Ledger::TritiumBlock &rBlockRet, const uint64_t nExtraNonce, Legacy::Coinbase *pCoinbaseRecipients)
     {
         /* Get the session */
@@ -413,7 +413,7 @@ namespace TAO::Ledger
                 vHashes.push_back(tx.second);
 
             /* Producer transaction is last. */
-            vHashes.push_back(rBlockRet.producer.GetHash());
+            vHashes.push_back(rBlockRet.producer.GetHash(true));
 
             /* Build the block's merkle root. */
             rBlockRet.hashMerkleRoot = rBlockRet.BuildMerkleTree(vHashes);
@@ -451,7 +451,7 @@ namespace TAO::Ledger
     }
 
     /* Create a producer transaction object from signature chain. */
-    bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+    bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                            TAO::Ledger::Transaction &rProducer,
                            const TAO::Ledger::BlockState& stateBest,
                            const uint32_t nBlockVersion,
@@ -600,7 +600,7 @@ namespace TAO::Ledger
 
 
     /* Create a new Proof of Stake (channel 0) block object from the chain. */
-    bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& user, const SecureString& pin,
+    bool CreateStakeBlock(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                           TAO::Ledger::TritiumBlock& block, const bool fGenesis)
     {
         /* Proof of stake has channel-id of 0. */
@@ -724,12 +724,12 @@ namespace TAO::Ledger
     /* Handles the creation of a private block chain. */
     void ThreadGenerator()
     {
-        if(!config::fHybrid.load() || !config::mapArgs.count("-generate"))
+        if(!config::fHybrid.load() || !config::HasArg("-generate"))
             return;
 
         /* Get the account. */
-        memory::encrypted_ptr<TAO::Ledger::SignatureChain> user =
-            new TAO::Ledger::SignatureChain("generate", config::GetArg("-generate", "").c_str());
+        memory::encrypted_ptr<TAO::Ledger::Credentials> user =
+            new TAO::Ledger::Credentials("generate", config::GetArg("-generate", "").c_str());
 
         /* Get the genesis ID. */
         const uint256_t hashGenesis = user->Genesis();

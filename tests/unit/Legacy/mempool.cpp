@@ -32,7 +32,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/chainstate.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <unit/catch2/catch.hpp>
 
@@ -61,7 +61,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
         std::vector<TAO::Ledger::Transaction> vTX;
 
         //create object
-        uint256_t hashGenesis     = TAO::Ledger::SignatureChain::Genesis("testuser");
+        uint256_t hashGenesis     = TAO::Ledger::Credentials::Genesis("testuser");
         uint512_t hashCoinbaseTx  = 0;
 
         uint512_t hashPrivKey1    = LLC::GetRand512();

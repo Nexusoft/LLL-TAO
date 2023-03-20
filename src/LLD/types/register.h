@@ -27,6 +27,9 @@ ________________________________________________________________________________
 
 namespace LLD
 {
+    /** Type to handle internal FLAGS::LOOKUP cache entries. **/
+    typedef std::map<uint256_t, std::pair<TAO::Register::State, uint64_t>> RegisterCache;
+
 
     /** RegisterTransaction
      *
@@ -56,7 +59,7 @@ namespace LLD
     {
 
         /** Memory mutex to lock when accessing internal memory states. **/
-        std::mutex MEMORY_MUTEX;
+        std::mutex MEMORY;
 
 
         /** Register transaction to track current open transaction. **/
@@ -69,6 +72,10 @@ namespace LLD
 
         /** Register transaction to keep open all commited data. **/
         RegisterTransaction* pCommit;
+
+
+        /** Register cache to keep lookup data in memory. **/
+        RegisterCache* pLookup;
 
 
     public:
@@ -218,14 +225,14 @@ namespace LLD
         bool HasState(const uint256_t& hashRegister, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
-        /** Reindex
+        /** IndexAddress
          *
          *  Handle a reindexing to add address to sequential reads. For -indexaddress flag.
          *
          *  @return true if indexing has completed.
          *
          **/
-        void Reindex();
+        void IndexAddress();
 
 
         /** MemoryBegin
@@ -252,6 +259,20 @@ namespace LLD
         void MemoryCommit();
 
     private:
+
+
+        /** client_lookup
+         *
+         *  Does a -client mode lookup using lookup service.
+         *
+         *  @param[in] hashRegister The register address.
+         *  @param[out] state The state register to read.
+         *
+         *  @return True if read was successful, false otherwise.
+         *
+         **/
+        bool client_lookup(const uint256_t& hashRegister, TAO::Register::State& state, const uint8_t nFlags);
+
 
         /** get_address_type
          *

@@ -34,16 +34,16 @@ namespace TAO
     namespace Ledger
     {
 
-        /** SignatureChain
+        /** Credentials
          *
-         *  Base Class for a Signature SignatureChain
+         *  Base Class for a Signature Credentials
          *
          *  Similar to HD wallet systems, but integrated into the Layer 2 of the nexus software stack.
          *  Seed phrase includes at least 128 bits of entropy (8 char username, 8 char password) and pin
          *  to attack a signature chain by dictionary attack.
          *
          */
-        class SignatureChain : public memory::encrypted
+        class Credentials : public memory::encrypted
         {
 
             /** Secure allocator to represent the username of this signature chain. **/
@@ -70,35 +70,35 @@ namespace TAO
 
 
             /** Default constructor. **/
-            SignatureChain() = delete;
+            Credentials() = delete;
 
 
             /** Copy Constructor **/
-            SignatureChain(const SignatureChain& sigchain);
+            Credentials(const Credentials& sigchain);
 
 
             /** Move Constructor **/
-            SignatureChain(SignatureChain&& sigchain) noexcept;
+            Credentials(Credentials&& sigchain) noexcept;
 
 
             /** Copy Assignment Operator **/
-            SignatureChain& operator=(const SignatureChain& sigchain)    = delete;
+            Credentials& operator=(const Credentials& sigchain)    = delete;
 
 
             /** Move Assignment Operator **/
-            SignatureChain& operator=(SignatureChain&& sigchain) noexcept = delete;
+            Credentials& operator=(Credentials&& sigchain) noexcept = delete;
 
 
             /** Destructor. **/
-            ~SignatureChain();
+            ~Credentials();
 
 
             /** Equivilence operator. **/
-            bool operator==(const SignatureChain& pCheck) const;
+            bool operator==(const Credentials& pCheck) const;
 
 
             /** Equivilence operator. **/
-            bool operator!=(const SignatureChain& pCheck) const;
+            bool operator!=(const Credentials& pCheck) const;
 
 
             /** Constructor to generate Keychain
@@ -107,7 +107,7 @@ namespace TAO
              *  @param[in] strPasswordIn The password to seed the signature chain
              *
              **/
-            SignatureChain(const SecureString& strUsernameIn, const SecureString& strPasswordIn);
+            Credentials(const SecureString& strUsernameIn, const SecureString& strPasswordIn);
 
 
             /** Genesis

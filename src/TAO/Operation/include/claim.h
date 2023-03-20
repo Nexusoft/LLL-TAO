@@ -50,6 +50,7 @@ namespace TAO
              *  Commit the final state to disk.
              *
              *  @param[in] state The state to commit.
+             *  @param[in] contract The contract that is claiming the transfer
              *  @param[in] hashAddress The register address to commit.
              *  @param[in] hashTx The transaction-id being claimed.
              *  @param[in] nContract The contract output being claimed.
@@ -58,7 +59,7 @@ namespace TAO
              *  @return true if successful.
              *
              **/
-            bool Commit(const TAO::Register::State& state,
+            bool Commit(const TAO::Register::State& state, const Contract& contract,
                 const uint256_t& hashAddress, const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags);
 
 

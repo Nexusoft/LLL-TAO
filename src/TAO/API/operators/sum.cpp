@@ -21,6 +21,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/filter.h>
 #include <TAO/API/include/json.h>
 
+#include <Util/types/precision.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -94,15 +96,16 @@ namespace TAO::API
             if(jItem.is_number_float())
             {
                 /* Grab our current value. */
-                double dCurrent = 0;
+                precision_t dCurrent = 0;
                 if(jRet.find(strField) != jRet.end())
-                    dCurrent = jRet[strField].get<double>();
+                    dCurrent = precision_t(jRet[strField].dump());
 
                 /* Grab our values. */
-                const double dValue = jItem.get<double>();
+                const precision_t dSum =
+                    precision_t(jItem.dump()) + dCurrent;
 
                 /* Add to our output value. */
-                jRet[strField] = (dCurrent + dValue);
+                jRet[strField] = dSum.double_t();
 
                 continue;
             }

@@ -13,8 +13,13 @@ ________________________________________________________________________________
 
 #include <LLD/include/global.h>
 
+#include <TAO/API/include/execute.h>
+
+#include <TAO/Register/include/unpack.h>
+
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/state.h>
+#include <TAO/Ledger/types/client.h>
 
 /* Global TAO namespace. */
 namespace TAO
@@ -176,7 +181,8 @@ namespace TAO
         bool MerkleTx::CheckMerkleBranch(const uint512_t& hashMerkleRoot) const
         {
             /* Generate merkle root from merkle branch. */
-            uint512_t hashMerkleCheck = Block::CheckMerkleBranch(GetHash(), vMerkleBranch, nIndex);
+            const uint512_t hashMerkleCheck =
+                Block::CheckMerkleBranch(GetHash(), vMerkleBranch, nIndex);
 
             return hashMerkleRoot == hashMerkleCheck;
         }
@@ -195,15 +201,10 @@ namespace TAO
 
             /* Check for valid index. */
             if(nIndex == state.vtx.size())
-                return debug::error(FUNCTION, "transaction not found");
+                return false;
 
             /* Build merkle branch. */
             vMerkleBranch = state.GetMerkleBranch(state.vtx, nIndex);
-
-            /* NOTE: extra expensive check for testing, consider removing in production */
-            uint512_t hashCheck = Block::CheckMerkleBranch(hash, vMerkleBranch, nIndex);
-            if(state.hashMerkleRoot != hashCheck)
-                return debug::error(FUNCTION, "merkle root mismatch ", hashCheck.SubString());
 
             return true;
         }
@@ -233,12 +234,65 @@ namespace TAO
             /* Get the confirming block. */
             TAO::Ledger::BlockState state;
             if(!LLD::Ledger->ReadBlock(hash, state))
-                return debug::error(FUNCTION, "no valid block to generate merkle path");
+                return false;
 
             /* Set his block's hash. */
             hashBlock = state.GetHash();
 
             return BuildMerkleBranch(state);
+        }
+
+
+        /* Commits a merkle transaction to lookup internal memory. */
+        bool MerkleTx::CommitLookup(const uint256_t& hashRegister)
+        {
+            /* Reverse iterate contracts and terminate when we found the register. */
+            for(auto pContract = vContracts.rbegin(); pContract != vContracts.rend(); ++pContract)
+            {
+                /* Bind our contract to this transaction. */
+                pContract->Bind(this);
+
+                /* Unpack the address we will be working on. */
+                uint256_t hashAddress;
+                if(!TAO::Register::Unpack(*pContract, hashAddress))
+                    continue;
+
+                /* Check that our register addresses match. */
+                if(hashRegister != hashAddress)
+                    continue;
+
+                /* Get our register post-state now. */
+                const TAO::Register::Object tRegister =
+                    TAO::API::ExecuteContract(*pContract);
+
+                /* Commit our register to disk. */
+                return LLD::Register->WriteState(hashRegister, tRegister, TAO::Ledger::FLAGS::LOOKUP);
+            }
+
+            return false;
+        }
+
+        /* Verifies a merkle transaction against the block merkle root and internal checks. */
+        bool MerkleTx::Verify(const uint8_t nFlags) const
+        {
+            /* Check for empty merkle tx. */
+            if(hashBlock == 0)
+                return debug::error(FUNCTION, "block to compare merkle branch");
+
+            /* Check transaction contains valid information. */
+            if(!Check(nFlags))
+                return debug::error(FUNCTION, debug::GetLastError());
+
+            /* Grab the block to check merkle path. */
+            TAO::Ledger::ClientBlock block;
+            if(!LLD::Client->ReadBlock(hashBlock, block))
+                return debug::error(FUNCTION, "missing block ", hashBlock.SubString());
+
+            /* Check the merkle branch. */
+            if(!CheckMerkleBranch(block.hashMerkleRoot))
+                return debug::error(FUNCTION, "merkle transaction has invalid path");
+
+            return true;
         }
     }
 }

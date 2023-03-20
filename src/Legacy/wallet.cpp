@@ -1476,7 +1476,7 @@ namespace Legacy
                 const WalletTx* wtx = item.second;
 
                 /* Validate the transaction, then process rebroadcast on it */
-                if(wtx->CheckTransaction())
+                if(wtx->Check())
                     wtx->RelayWalletTransaction();
             }
         }

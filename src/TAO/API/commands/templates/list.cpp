@@ -43,6 +43,7 @@ namespace TAO::API
         /* Get the list of registers owned by this sig chain */
         std::vector<TAO::Register::Address> vAddresses;
         LLD::Logical->ListRegisters(hashGenesis, vAddresses);
+        LLD::Logical->ListTransfers(hashGenesis, vAddresses);
         LLD::Logical->ListUnclaimed(hashGenesis, vAddresses);
 
         /* Check for empty return. */
@@ -57,7 +58,11 @@ namespace TAO::API
         {
             /* Grab our object from disk. */
             TAO::Register::Object tObject;
-            if(!LLD::Register->ReadObject(hashRegister, tObject))
+            if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::MEMPOOL))
+                continue;
+
+            /* Check for active transfers. */
+            if(tObject.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
                 continue;
 
             /* Check our object standards. */
@@ -69,7 +74,7 @@ namespace TAO::API
                 StandardToJSON(jParams, tObject, hashRegister);
 
             /* Check that we match our filters. */
-            if(!FilterObject(jParams, jRegister, tObject))
+            if(!FilterResults(jParams, jRegister))
                 continue;
 
             /* Filter out our expected fieldnames if specified. */

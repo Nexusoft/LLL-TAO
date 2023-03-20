@@ -40,7 +40,7 @@ ________________________________________________________________________________
 #include <TAO/Register/include/create.h>
 
 #include <TAO/Ledger/types/genesis.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <TAO/Ledger/include/ambassador.h>
@@ -123,6 +123,7 @@ const uint256_t hashSeed = 55;
 
 #include <Util/encoding/include/utf-8.h>
 
+#include <TAO/API/include/contracts/build.h>
 #include <TAO/API/include/contracts/verify.h>
 
 #include <TAO/API/types/contracts/expiring.h>
@@ -130,73 +131,221 @@ const uint256_t hashSeed = 55;
 
 #include <TAO/Operation/include/enum.h>
 
-/** Build
- *
- *  Build that a given contract with variadic parameters based on placeholder binary templates.
- *
- *  @param[in] vByteCode The binary template to build off of.
- *  @param[in] rContract The contract we are checking against.
- *  @param[in] args The variadic template pack
- *
- *  @return true if contract matches, false otherwise.
- *
- **/
-template<class... Args>
-bool Build(const std::vector<uint8_t> vByteCode, TAO::Operation::Contract &rContract, Args&&... args)
-{
-    /* Reset our conditional stream each time this is called. */
-    rContract.Clear(TAO::Operation::Contract::CONDITIONS);
 
-    /* Unpack our parameter pack and place expected parameters over the PLACEHOLDERS. */
-    TAO::API::Contracts::Params ssParams;
-    ((ssParams << args), ...);
-
-    /* Loop through our byte-code to generate our contract. */
-    uint32_t nMax = 0;
-    for(uint64_t nPos = 0; nPos < vByteCode.size(); ++nPos)
-    {
-        /* Get our current operation code. */
-        const uint8_t nCode = vByteCode[nPos];
-
-        /* Check for valid placeholder. */
-        if(TAO::Operation::PLACEHOLDER::Valid(nCode))
-        {
-            /* Get placeholder index. */
-            const uint32_t nIndex = (nCode - 1);
-
-            /* Check our placehoder. */
-            if(!ssParams.check(nIndex, vByteCode[++nPos]))
-                return debug::error(FUNCTION, "parameter type mismatch");
-
-            /* Bind parameter to placeholder. */
-            ssParams.bind(rContract, nIndex);
-            nMax = std::max(nIndex, nMax);
-
-            continue;
-        }
-
-        /* Add the instructions. */
-        rContract <= nCode;
-    }
-
-    /* Check that we don't have too many parameters passed into variadic template. */
-    if(nMax < ssParams.max())
-        return debug::error(FUNCTION, "too many parameters for binary template");
-
-    return true;
-}
 
 #include <TAO/API/include/extract.h>
 
 #include <Legacy/types/address.h>
 
-/* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
-int main(int argc, char** argv)
+#include <Util/types/precision.h>
+
+extern "C"
 {
+    #include <LLC/kyber/kem.h>
+    #include <LLC/kyber/symmetric.h>
+}
+
+#include <LLC/include/encrypt.h>
+
+
+class KyberHandshake
+{
+    std::vector<uint8_t> vPubKey;
+    std::vector<uint8_t> vPrivKey;
+
+    std::vector<uint8_t> vSeed;
+
+    /** The shared key stored as a 256-bit unsigned integer. **/
+    uint256_t hashKey;
+
+public:
+
+    KyberHandshake(const uint256_t& hashSeedIn)
+    : vPubKey  (CRYPTO_PUBLICKEYBYTES, 0)
+    , vPrivKey (CRYPTO_SECRETKEYBYTES, 0)
+    , vSeed    (hashSeedIn.GetBytes())
+    , hashKey  ( )
+    {
+    }
+
+    const uint256_t PubKeyHash() const
+    {
+        return LLC::SK256(vPubKey);
+    }
+
+
+    const uint256_t SharedKey() const
+    {
+        return hashKey;
+    }
+
+
+    const std::vector<uint8_t> InitiateHandshake()
+    {
+        /* Generate our shared key using entropy from our seed hash. */
+        crypto_kem_keypair_seed(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
+
+        return vPubKey;
+    }
+
+
+    const std::vector<uint8_t> RespondHandshake(const std::vector<uint8_t>& vPeerPub)
+    {
+        std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
+
+        crypto_kem_keypair_seed(&vPubKey[0], &vPrivKey[0], &vSeed[0]);
+
+        std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
+        crypto_kem_enc(&vCiphertext[0], &vShared[0], &vPeerPub[0]);
+
+        hashKey = LLC::SK256(vShared);
+
+        DataStream ssHandshake(SER_NETWORK, 1);
+        ssHandshake << vPubKey << vCiphertext;
+
+        return ssHandshake.Bytes();
+    }
+
+
+    void CompleteHandshake(const std::vector<uint8_t>& vHandshake)
+    {
+        /* Get our handshake in a datastream to deserialize. */
+        DataStream ssHandshake(vHandshake, SER_NETWORK, 1);
+
+        /* Get our peer's public key. */
+        std::vector<uint8_t> vPeerPub(CRYPTO_PUBLICKEYBYTES, 0);
+        ssHandshake >> vPeerPub;
+
+        /* Get our cyphertext to decode our shared key from. */
+        std::vector<uint8_t> vCiphertext(CRYPTO_CIPHERTEXTBYTES, 0);
+        ssHandshake >> vCiphertext;
+
+        /* Decode our shared key from the cyphertext. */
+        std::vector<uint8_t> vShared(CRYPTO_BYTES, 0);
+        crypto_kem_dec(&vShared[0], &vCiphertext[0], &vPrivKey[0]);
+
+        /* Hash our shared key binary data to provide additional level of security. */
+        hashKey = LLC::SK256(vShared);
+    }
+
+
+    bool Encrypt(const std::vector<uint8_t>& vPlainText, std::vector<uint8_t> &vCipherText)
+    {
+        return LLC::EncryptAES256(hashKey.GetBytes(), vPlainText, vCipherText);
+    }
+
+
+    bool Decrypt(const std::vector<uint8_t>& vCipherText, std::vector<uint8_t> &vPlainText)
+    {
+        return LLC::DecryptAES256(hashKey.GetBytes(), vCipherText, vPlainText);
+    }
+};
+
+int main(void)
+{
+    uint256_t hash = LLC::SK256("testing");
+
+    uint256_t hash2 = LLC::SK256("testing2");
+
+    KyberHandshake shake(hash);
+    KyberHandshake shake2(hash2);
+
+    const std::vector<uint8_t> vPayload = shake.InitiateHandshake();
+
+    const std::vector<uint8_t> vResponse = shake2.RespondHandshake(vPayload);
+
+    shake.CompleteHandshake(vResponse);
+
+    debug::log(0, "PubKey 1: ", shake.PubKeyHash().ToString());
+    debug::log(0, "PubKey 2: ", shake2.PubKeyHash().ToString());
+
+    debug::log(0, "Shared 1: ", shake.SharedKey().ToString());
+    debug::log(0, "Shared 2: ", shake2.SharedKey().ToString());
+
+    std::string strPayload = "This is our message to encrypt!";
+
+    std::vector<uint8_t> vCipherText;
+    shake.Encrypt(std::vector<uint8_t>(strPayload.begin(), strPayload.end()), vCipherText);
+    debug::log(0, "Encrypted: ", std::string(vCipherText.begin(), vCipherText.end()));
+
+    std::vector<uint8_t> vPlainText;
+    shake2.Decrypt(vCipherText, vPlainText);
+    debug::log(0, "Decrypted: ", std::string(vPlainText.begin(), vPlainText.end()));
+
+  return 0;
+}
+
+/* This is for prototyping new code. This main is accessed by building with LIVE_TESTS=1. */
+int oldmain(int argc, char** argv)
+{
+    precision_t nDigits1 = precision_t(5.98198, 5);
+    precision_t nDigits2 = precision_t(3.321, 3);
+
+    precision_t nDigits3 = std::move(precision_t("333.141592654", 9, true));
+
+    precision_t nSum = nDigits1 + nDigits2;
+    //nSum += nDigits2;//(nDigits1);// = nDigits1;// + nDigits2;
+
+    precision_t nProduct = nDigits1;// * nDigits2;
+    nProduct *= nDigits2;
+
+    precision_t nDiv = nDigits1 / nDigits2;
+
+    debug::log(0, VARIABLE(nDigits1.double_t()), " | ", VARIABLE(nDigits2.double_t()), " | ",
+                  VARIABLE(nSum.double_t()), " | ", VARIABLE(nProduct.double_t()), " | ", VARIABLE(nDiv.double_t()));
+
+
+    debug::log(0, VARIABLE(nDigits3.dump()));
+
+    precision_t nDigits4 = precision_t("3.142238743879234");
+
+    encoding::json jValue;
+    jValue["test"] = nDigits4.double_t();
+
+    debug::log(0, VARIABLE(jValue["test"].dump()), " | ", jValue.dump());
+
+    precision_t nDigits5 =
+        precision_t(jValue["test"].dump());
+
+    nDigits5 = nDigits5 / 2;
+
+    debug::log(0, VARIABLE(nDigits5.dump()));
+
+    nDigits5 = nDigits5 * 2;
+
+    debug::log(0, VARIABLE(nDigits5.dump()));
+
+    debug::log(0, jValue.dump());
+
+    debug::log(0, VARIABLE(nDigits4.dump()));
+
+    if(nDigits2 < nDigits1)
+        debug::log(0, "We have lessthan");
+
+
+    if(nDigits1 > nDigits2)
+        debug::log(0, "We have greaterthan");
+
+    if(nDigits1 == precision_t(5.98198, 6))
+        debug::log(0, "We have equal precision");
+
+    return 0;
+
+    encoding::json jParams;
+    jParams["test1"] = "12.58";
+    jParams["test2"] = 1.589;
+
+    uint64_t nAmount1 = TAO::API::ExtractAmount(jParams, 100, "test1");
+    uint64_t nAmount2 = TAO::API::ExtractAmount(jParams, 1000, "test2");
+
+    debug::log(0, VARIABLE(nAmount1), " | ", VARIABLE(nAmount2));
+
+    return 0;
+
     TAO::Operation::Contract tContract;
 
     //debug::log(0, "First param is ", ssParams.find(0, uint8_t(TAO::Operation::OP::TYPES::UINT256_T)).ToString());
-    Build(TAO::API::Contracts::Expiring::Receiver[1], tContract, uint64_t(3333));
+    TAO::API::Contracts::Build(TAO::API::Contracts::Expiring::Receiver[1], tContract, uint64_t(3333));
 
     if(!TAO::API::Contracts::Verify(TAO::API::Contracts::Expiring::Receiver[1], tContract))
         return debug::error("Contract binary template mismatch");

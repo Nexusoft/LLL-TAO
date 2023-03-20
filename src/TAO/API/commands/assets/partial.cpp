@@ -77,7 +77,7 @@ namespace TAO::API
             jRegister["ownership"] = double(nOwnership / 100.0);
 
             /* Check that we match our filters. */
-            if(!FilterObject(jParams, jRegister, oAsset))
+            if(!FilterResults(jParams, jRegister))
                 continue;
 
             /* Filter out our expected fieldnames if specified. */

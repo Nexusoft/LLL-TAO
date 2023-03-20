@@ -19,7 +19,11 @@ ________________________________________________________________________________
 
 #include <TAO/Operation/types/contract.h>
 
+#include <TAO/Register/include/unpack.h>
+
 #include <TAO/Ledger/include/enum.h>
+#include <TAO/Ledger/include/constants.h>
+#include <TAO/Ledger/include/chainstate.h>
 
 namespace LLD
 {
@@ -74,6 +78,40 @@ namespace LLD
     }
 
 
+    /* Reads the last txid that was confirmed. */
+    bool LogicalDB::ReadLastConfirmed(const uint256_t& hashGenesis, uint512_t &hashTx)
+    {
+        /* Read the last transaction entry. */
+        if(!Read(std::make_pair(std::string("indexing.last"), hashGenesis), hashTx))
+            return false;
+
+        /* Now iterate backwards and check for indexing entries. */
+        while(!config::fShutdown.load())
+        {
+            /* Check if we have a valid indexing entry. */
+            if(LLD::Ledger->HasIndex(hashTx))
+                break;
+
+            /* Read the transaction from the ledger database. */
+            TAO::API::Transaction tx;
+            if(!ReadTx(hashTx, tx))
+                break;
+
+            /* Check for first. */
+            if(tx.IsFirst())
+            {
+                hashTx = 0; //we mark unindexed first transaction as 0 to get it from Tritium LLP
+                break;
+            }
+
+            /* Set hash to previous hash. */
+            hashTx = tx.hashPrevTx;
+        }
+
+        return true;
+    }
+
+
     /* Writes the last txid that was indexed. */
     bool LogicalDB::WriteLast(const uint256_t& hashGenesis, const uint512_t& hashTx)
     {
@@ -98,6 +136,18 @@ namespace LLD
     bool LogicalDB::ReadFirst(const uint256_t& hashGenesis, uint512_t& hashTx)
     {
         return Read(std::make_pair(std::string("indexing.first"), hashGenesis), hashTx);
+    }
+
+
+    /* Reads the first transaction-id from disk. */
+    bool LogicalDB::ReadFirst(const uint256_t& hashGenesis, TAO::API::Transaction &tx)
+    {
+        /* Get our txid of first event. */
+        uint512_t hashFirst = 0;
+        if(!Read(std::make_pair(std::string("indexing.first"), hashGenesis), hashFirst))
+            return false;
+
+        return Read(std::make_pair(std::string("tx"), hashFirst), tx);
     }
 
 
@@ -139,9 +189,6 @@ namespace LLD
     /* Push an register transaction to process for given genesis-id. */
     bool LogicalDB::PushTransaction(const uint256_t& hashRegister, const uint512_t& hashTx)
     {
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Get our current sequence number. */
         uint32_t nOwnerSequence = 0;
 
@@ -156,16 +203,13 @@ namespace LLD
         if(!Write(std::make_pair(std::string("transactions.sequence"), hashRegister), ++nOwnerSequence))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
     /* Erase an register transaction for given genesis-id. */
     bool LogicalDB::EraseTransaction(const uint256_t& hashRegister)
     {
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Get our current sequence number. */
         uint32_t nOwnerSequence = 0;
 
@@ -181,7 +225,7 @@ namespace LLD
         if(!Write(std::make_pair(std::string("transactions.sequence"), hashRegister), nOwnerSequence))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -210,12 +254,191 @@ namespace LLD
     }
 
 
+    /* Push an register transaction to process for given register address. */
+    bool LogicalDB::PushRegisterTx(const uint256_t& hashRegister, const uint512_t& hashTx)
+    {
+        /* Get our current sequence number. */
+        uint32_t nOwnerSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence);
+
+        /* Add our indexing entry by owner sequence number. */
+        if(!Write(std::make_tuple(std::string("register.tx.index"), (nOwnerSequence % 5), hashRegister), hashTx))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("register.tx.sequence"), hashRegister), ++nOwnerSequence))
+            return false;
+
+        return true;
+    }
+
+
+    /* Erase an register transaction for given register address. */
+    bool LogicalDB::EraseRegisterTx(const uint256_t& hashRegister)
+    {
+        /* Get our current sequence number. */
+        uint32_t nOwnerSequence = 0;
+
+        /* Read our sequences from disk. */
+        if(!Read(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence))
+            return false;
+
+        /* Add our indexing entry by owner sequence number. */
+        if(!Erase(std::make_tuple(std::string("register.tx.index"), (--nOwnerSequence % 5), hashRegister)))
+            return false;
+
+        /* Write our new events sequence to disk. */
+        if(!Write(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence))
+            return false;
+
+        return true;
+    }
+
+
+    /* Get an register transaction for given register address. */
+    bool LogicalDB::LastRegisterTx(const uint256_t& hashRegister, uint512_t &hashTx)
+    {
+        /* Get our current sequence number. */
+        uint32_t nOwnerSequence = 0;
+
+        /* Read our sequences from disk. */
+        if(!Read(std::make_pair(std::string("register.tx.sequence"), hashRegister), nOwnerSequence))
+            return false;
+
+        /* Add our indexing entry by owner sequence number. */
+        if(!Read(std::make_tuple(std::string("register.tx.index"), (--nOwnerSequence % 5), hashRegister), hashTx))
+            return false;
+
+        return true;
+    }
+
+
+    /* Build indexes for transactions over a rolling modulus. For -indexregister flag. */
+    void LogicalDB::IndexRegisters()
+    {
+        /* Not allowed in -client mode. */
+        if(config::fClient.load())
+            return;
+
+        /* Check for address indexing flag. */
+        if(Exists(std::string("register.indexed")))
+        {
+            /* Check there is no argument supplied. */
+            if(!config::HasArg("-indexregister"))
+            {
+                /* Warn that -indexheight is persistent. */
+                debug::notice(FUNCTION, "-indexregister enabled from valid indexes");
+
+                /* Set indexing argument now. */
+                RECURSIVE(config::ARGS_MUTEX);
+                config::mapArgs["-indexregister"] = "1";
+
+                /* Set our internal configuration. */
+                config::fIndexRegister.store(true);
+            }
+
+            return;
+        }
+
+        /* Check there is no argument supplied. */
+        if(!config::fIndexRegister.load())
+            return;
+
+        /* Start a timer to track. */
+        runtime::timer timer;
+        timer.Start();
+
+        /* Get our starting hash. */
+        const uint1024_t hashBegin =
+             TAO::Ledger::hashTritium;
+
+        /* Read the first tritium block. */
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(hashBegin, state))
+        {
+            debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
+            return;
+        }
+
+        /* Keep track of our total count. */
+        uint32_t nScannedCount = 0;
+
+        /* Start our scan. */
+        debug::notice(FUNCTION, "Building register indexes from block ", state.GetHash().SubString());
+        while(!config::fShutdown.load())
+        {
+            /* Loop through found transactions. */
+            for(uint32_t nIndex = 0; nIndex < state.vtx.size(); ++nIndex)
+            {
+                /* We only care about tritium transactions. */
+                if(state.vtx[nIndex].first != TAO::Ledger::TRANSACTION::TRITIUM)
+                    continue;
+
+                /* Get a reference of our txid. */
+                const uint512_t& hashTx =
+                    state.vtx[nIndex].second;
+
+                /* Read the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashTx, tx))
+                    continue;
+
+                /* Iterate the transaction contracts. */
+                std::set<uint256_t> setAddresses;
+                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                {
+                    /* Grab contract reference. */
+                    const TAO::Operation::Contract& rContract = tx[nContract];
+
+                    /* Unpack the address we will be working on. */
+                    uint256_t hashAddress;
+                    if(!TAO::Register::Unpack(rContract, hashAddress))
+                        continue;
+
+                    /* Check for duplicate entries. */
+                    if(setAddresses.count(hashAddress))
+                        continue;
+
+                    /* Check fo register in database. */
+                    PushRegisterTx(hashAddress, hashTx);
+
+                    /* Push the address now. */
+                    setAddresses.insert(hashAddress);
+                }
+
+                /* Update the scanned count for meters. */
+                ++nScannedCount;
+
+                /* Meter for output. */
+                if(nScannedCount % 100000 == 0)
+                {
+                    /* Get the time it took to rescan. */
+                    uint32_t nElapsedSeconds = timer.Elapsed();
+                    debug::log(0, FUNCTION, "Built ", nScannedCount, " register indexes in ", nElapsedSeconds, " seconds (",
+                        std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                }
+            }
+
+            /* Iterate to the next block in the queue. */
+            state = state.Next();
+            if(!state)
+            {
+                /* Write our last index now. */
+                Write(std::string("register.indexed"));
+
+                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " in ", timer.Elapsed(), " seconds");
+
+                break;
+            }
+        }
+    }
+
+
     /* Push an register to process for given genesis-id. */
     bool LogicalDB::PushRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Check for an active de-index. */
         if(HasDeindex(hashGenesis, hashRegister))
             return EraseDeindex(hashGenesis, hashRegister);
@@ -242,7 +465,7 @@ namespace LLD
         if(!Write(std::make_tuple(std::string("registers.proof"), hashGenesis, hashRegister)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -277,9 +500,36 @@ namespace LLD
 
             /* Check for already executed contracts to omit. */
             vRegisters.push_back(hashRegister);
+        }
 
-            /* Increment our sequence number. */
-            //++nSequence;
+        return !vRegisters.empty();
+    }
+
+
+    /* List the current active transfers for given genesis-id. */
+    bool LogicalDB::ListTransfers(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters)
+    {
+        /* Cache our txid and contract as a pair. */
+        uint256_t hashRegister;
+
+        /* Loop until we have failed. */
+        uint32_t nSequence = 0;
+        while(!config::fShutdown.load()) //we want to early terminate on shutdown
+        {
+            /* Read our current record. */
+            if(!Read(std::make_tuple(std::string("registers.index"), nSequence++, hashGenesis), hashRegister))
+                break;
+
+            /* Check for de-indexed keys. */
+            if(HasDeindex(hashGenesis, hashRegister))
+                continue; //NOTE: we skip over deindexed keys
+
+            /* Check for transfer keys. */
+            if(!HasTransfer(hashGenesis, hashRegister))
+                continue; //NOTE: we skip over transfer keys
+
+            /* Check for already executed contracts to omit. */
+            vRegisters.push_back(hashRegister);
         }
 
         return !vRegisters.empty();
@@ -289,9 +539,6 @@ namespace LLD
     /* Push a tokenized register to process for given genesis-id. */
     bool LogicalDB::PushTokenized(const uint256_t& hashGenesis, const std::pair<uint256_t, uint256_t>& pairTokenized)
     {
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Get our current sequence number. */
         uint32_t nOwnerSequence = 0;
 
@@ -310,7 +557,7 @@ namespace LLD
         if(!Write(std::make_tuple(std::string("tokenized.proof"), hashGenesis, pairTokenized)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -354,9 +601,6 @@ namespace LLD
     /* Push an unclaimed address event to process for given genesis-id. */
     bool LogicalDB::PushUnclaimed(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Check for an active de-index. */
         if(HasDeindex(hashGenesis, hashRegister))
             return EraseDeindex(hashGenesis, hashRegister);
@@ -379,7 +623,7 @@ namespace LLD
         if(!Write(std::make_tuple(std::string("unclaimed.proof"), hashGenesis, hashRegister)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -478,9 +722,6 @@ namespace LLD
         /* Read our sequences from disk. */
         Read(std::make_pair(std::string("events.sequence"), hashGenesis), nSequence);
 
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Add our indexing entry by owner sequence number. */
         if(!Write(std::make_tuple(std::string("events.index"), nSequence, hashGenesis), std::make_pair(hashTx, nContract)))
             return false;
@@ -493,7 +734,7 @@ namespace LLD
         if(!Write(std::make_tuple(std::string("events.proof"), hashTx, nContract)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -527,20 +768,38 @@ namespace LLD
 
 
     /* Read the last event that was processed for given sigchain. */
-    bool LogicalDB::ReadLastEvent(const uint256_t& hashGenesis, uint32_t &nSequence)
+    bool LogicalDB::ReadTritiumSequence(const uint256_t& hashGenesis, uint32_t &nSequence)
     {
         return Read(std::make_pair(std::string("indexing.sequence"), hashGenesis), nSequence);
     }
 
 
     /* Write the last event that was processed for given sigchain. */
-    bool LogicalDB::IncrementLastEvent(const uint256_t& hashGenesis)
+    bool LogicalDB::IncrementTritiumSequence(const uint256_t& hashGenesis)
     {
         /* Read our current sequence. */
         uint32_t nSequence = 0;
-        ReadLastEvent(hashGenesis, nSequence);
+        ReadTritiumSequence(hashGenesis, nSequence);
 
         return Write(std::make_pair(std::string("indexing.sequence"), hashGenesis), ++nSequence);
+    }
+
+
+    /* Read the last event that was processed for given sigchain. */
+    bool LogicalDB::ReadLegacySequence(const uint256_t& hashGenesis, uint32_t &nSequence)
+    {
+        return Read(std::make_pair(std::string("indexing.sequence.legacy"), hashGenesis), nSequence);
+    }
+
+
+    /* Write the last event that was processed for given sigchain. */
+    bool LogicalDB::IncrementLegacySequence(const uint256_t& hashGenesis)
+    {
+        /* Read our current sequence. */
+        uint32_t nSequence = 0;
+        ReadLegacySequence(hashGenesis, nSequence);
+
+        return Write(std::make_pair(std::string("indexing.sequence.legacy"), hashGenesis), ++nSequence);
     }
 
 
@@ -564,9 +823,6 @@ namespace LLD
         /* Read our sequences from disk. */
         Read(std::make_pair(std::string("contracts.sequence"), hashGenesis), nSequence);
 
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Add our indexing entry by owner sequence number. */
         if(!Write(std::make_tuple(std::string("contracts.index"), nSequence, hashGenesis), std::make_pair(hashTx, nContract)))
             return false;
@@ -579,7 +835,7 @@ namespace LLD
         if(!Write(std::make_tuple(std::string("contracts.proof"), hashTx, nContract)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 
@@ -642,9 +898,6 @@ namespace LLD
         Read(std::make_pair(std::string("market.sequence"), pairMarket), nMarketSequence);
         Read(std::make_pair(std::string("owner.sequence"),  hashOwner),   nOwnerSequence);
 
-        /* Start an ACID transaction for this set of records. */
-        TxnBegin();
-
         /* Write our order by sequence number. */
         if(!Write(std::make_pair(nMarketSequence, pairMarket), std::make_pair(hashTx, nContract)))
             return false;
@@ -665,7 +918,7 @@ namespace LLD
         if(!Write(std::make_pair(hashTx, nContract)))
             return false;
 
-        return TxnCommit();
+        return true;
     }
 
 

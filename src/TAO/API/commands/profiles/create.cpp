@@ -19,6 +19,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/commands/names.h>
 #include <TAO/API/types/commands/profiles.h>
+#include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 
@@ -27,7 +28,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/create.h>
 #include <TAO/Ledger/include/enum.h>
 #include <TAO/Ledger/types/mempool.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/transaction.h>
 
 #include <Util/include/memory.h>
@@ -77,8 +78,8 @@ namespace TAO::API
             throw Exception(-193, "Pin must be a minimum of 4 characters");
 
         /* Create a temp sig chain for checking credentials */
-        memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials =
-            new TAO::Ledger::SignatureChain(strUser, strPass);
+        memory::encrypted_ptr<TAO::Ledger::Credentials> pCredentials =
+            new TAO::Ledger::Credentials(strUser, strPass);
 
         /* Get our genesis-id for local checks. */
         const uint256_t hashGenesis = pCredentials->Genesis();
@@ -92,7 +93,7 @@ namespace TAO::API
 
             /* Read our crypto object register. */
             TAO::Register::Object oCrypto;
-            if(!LLD::Register->ReadObject(hashCrypto, oCrypto))
+            if(!LLD::Register->ReadObject(hashCrypto, oCrypto)) //XXX: we want to create the crypto object register here
                 throw Exception(-130, "Can't generate crypto object register if no sigchain");
 
             /* Check for a disabled auth key. */
@@ -127,7 +128,7 @@ namespace TAO::API
         }
 
         /* Check for duplicates in ledger db. */
-        if(LLD::Ledger->HasFirst(hashGenesis) || TAO::Ledger::mempool.Has(hashGenesis))
+        if(LLD::Ledger->HasFirst(hashGenesis) || LLD::Logical->HasFirst(hashGenesis))
         {
             pCredentials.free();
             throw Exception(-130, "Account already exists");
@@ -231,6 +232,15 @@ namespace TAO::API
             pCredentials.free();
             throw Exception(-32, "Failed to accept");
         }
+
+        /* Build an API transaction. */
+        TAO::API::Transaction tIndex =
+            TAO::API::Transaction(tx);
+
+        /* Index the transaction to the database. */
+        const uint512_t hashTx = tx.GetHash();
+        if(tIndex.Index(hashTx))
+            debug::log(2, FUNCTION, "Indexed First: ", hashTx.SubString(), " for auth");
 
         /* Free our credentials object now. */
         pCredentials.free();

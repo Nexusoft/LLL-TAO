@@ -26,6 +26,7 @@ namespace LLP
 
     /* Declare the Global LLP Instances. */
     Server<TritiumNode>* TRITIUM_SERVER;
+    Server<LookupNode>*  LOOKUP_SERVER;
     Server<TimeNode>*    TIME_SERVER;
     Server<APINode>*     API_SERVER;
     Server<RPCNode>*     RPC_SERVER;
@@ -50,6 +51,69 @@ namespace LLP
 
         /* Initialize API Pointers. */
         TAO::API::Initialize();
+
+
+        /* TIME_SERVER instance */
+        {
+            /* Check if we need to enable listeners. */
+            const bool fServer =
+                (config::GetBoolArg(std::string("-unified"), false) && !config::fClient.load());
+
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetTimePort());
+            CONFIG.ENABLE_LISTEN   = fServer;
+            CONFIG.ENABLE_METERS   = false;
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = true;
+            CONFIG.ENABLE_SSL      = false;
+            CONFIG.ENABLE_REMOTE   = fServer;
+            CONFIG.REQUIRE_SSL     = false;
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = fServer ? static_cast<uint32_t>(config::GetArg(std::string("-maxincoming"), 84)) : 0;
+            CONFIG.MAX_CONNECTIONS = fServer ? static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100)) : 8;
+            CONFIG.MAX_THREADS     = fServer ? 8 : 1;
+            CONFIG.DDOS_CSCORE     = 1;
+            CONFIG.DDOS_RSCORE     = 10;
+            CONFIG.DDOS_TIMESPAN   = 10;
+            CONFIG.MANAGER_SLEEP   = 60000; //default: 60 second connection attempts
+            CONFIG.SOCKET_TIMEOUT  = 10;
+
+            /* Create the server instance. */
+            TIME_SERVER = new Server<TimeNode>(CONFIG);
+
+            /* Add our connections from commandline. */
+            MakeConnections<LLP::TimeNode>(TIME_SERVER);
+        }
+
+
+        /* LOOKUP_SERVER instance */
+        if(config::GetBoolArg(std::string("-lookup"), true))
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetLookupPort());
+            CONFIG.ENABLE_LISTEN   = //we only listen if we have the valid indexes created
+                (!config::fClient.load() && config::fIndexProofs.load() && config::fIndexRegister.load());
+
+            CONFIG.ENABLE_METERS   = false;
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = false;
+            CONFIG.ENABLE_REMOTE   = true;
+            CONFIG.REQUIRE_SSL     = false;
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-lookupthreads"), 4);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-lookupcscore"), 1);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-lookuprscore"), 50);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-lookuptimespan"), 10);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-lookuptimeout"), 30);
+
+            /* Create the server instance. */
+            LOOKUP_SERVER = new Server<LookupNode>(CONFIG);
+        }
+
 
         /* TRITIUM_SERVER instance */
         {
@@ -80,35 +144,8 @@ namespace LLP
         }
 
 
-        /* TIME_SERVER instance */
-        if(config::GetBoolArg(std::string("-unified"), false))
-        {
-            /* Generate our config object and use correct settings. */
-            LLP::Config CONFIG     = LLP::Config(GetTimePort());
-            CONFIG.ENABLE_LISTEN   = true;
-            CONFIG.ENABLE_METERS   = false;
-            CONFIG.ENABLE_DDOS     = true;
-            CONFIG.ENABLE_MANAGER  = true;
-            CONFIG.ENABLE_SSL      = false;
-            CONFIG.ENABLE_REMOTE   = true;
-            CONFIG.REQUIRE_SSL     = false;
-            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
-            CONFIG.MAX_INCOMING    = static_cast<uint32_t>(config::GetArg(std::string("-maxincoming"), 84));
-            CONFIG.MAX_CONNECTIONS = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100));
-            CONFIG.MAX_THREADS     = 8;
-            CONFIG.DDOS_CSCORE     = 1;
-            CONFIG.DDOS_RSCORE     = 10;
-            CONFIG.DDOS_TIMESPAN   = 10;
-            CONFIG.MANAGER_SLEEP   = 60000; //default: 60 second connection attempts
-            CONFIG.SOCKET_TIMEOUT  = 10;
-
-            /* Create the server instance. */
-            TIME_SERVER = new Server<TimeNode>(CONFIG);
-        }
-
-
         /* API_SERVER instance */
-        if((config::mapArgs.count("-apiuser") && config::mapArgs.count("-apipassword")) || !config::GetBoolArg("-apiauth", true))
+        if((config::HasArg("-apiuser") && config::HasArg("-apipassword")) || !config::GetBoolArg("-apiauth", true))
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetAPIPort());
@@ -135,7 +172,7 @@ namespace LLP
         else
         {
             /* Output our new warning message if the API was disabled. */
-            debug::log(0, ANSI_COLOR_BRIGHT_RED, "!!! WARNING !!! API DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "API SERVER DISABLED", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
             debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
         }
@@ -143,6 +180,7 @@ namespace LLP
 
         /* RPC_SERVER instance */
         #ifndef NO_WALLET
+        if(config::HasArg("-rpcuser") && config::HasArg("-rpcpassword"))
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetRPCPort());
@@ -165,6 +203,12 @@ namespace LLP
 
             /* Create the server instance. */
             RPC_SERVER = new Server<RPCNode>(CONFIG);
+        }
+        else
+        {
+            /* Output our new warning message if the API was disabled. */
+            debug::log(0, ANSI_COLOR_BRIGHT_RED, "RPC SERVER DISABLED", ANSI_COLOR_RESET);
+            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set rpcuser=<user> and rpcpassword=<password> configuration.", ANSI_COLOR_RESET);
         }
         #endif
 
@@ -200,16 +244,102 @@ namespace LLP
     }
 
 
+    /* Closes the listening sockets on all running servers. */
+    void CloseListening()
+    {
+        debug::log(0, FUNCTION, "Closing LLP Listeners");
+
+        /* Close sockets for the lookup server and its subsystems. */
+        CloseListening<LookupNode>(LOOKUP_SERVER);
+
+        /* Close sockets for the tritium server and its subsystems. */
+        CloseListening<TritiumNode>(TRITIUM_SERVER);
+
+        /* Close sockets for the time server and its subsystems. */
+        CloseListening<TimeNode>(TIME_SERVER);
+
+        /* Close sockets for the core API server and its subsystems. */
+        CloseListening<APINode>(API_SERVER);
+
+        /* Close sockets for the RPC server and its subsystems. */
+        CloseListening<RPCNode>(RPC_SERVER);
+
+        /* Close sockets for the mining server and its subsystems. */
+        CloseListening<Miner>(MINING_SERVER);
+
+    }
+
+
+    /* Restarts the listening sockets on all running servers. */
+    void OpenListening()
+    {
+        debug::log(0, FUNCTION, "Opening LLP Listeners");
+
+        /* Open sockets for the core API server and its subsystems. */
+        OpenListening<APINode>(API_SERVER);
+
+        /* Open sockets for the lookup server and its subsystems. */
+        OpenListening<LookupNode>(LOOKUP_SERVER);
+
+        /* Open sockets for the tritium server and its subsystems. */
+        OpenListening<TritiumNode>(TRITIUM_SERVER);
+
+        /* Open sockets for the time server and its subsystems. */
+        OpenListening<TimeNode>(TIME_SERVER);
+
+        /* Open sockets for the RPC server and its subsystems. */
+        OpenListening<RPCNode>(RPC_SERVER);
+
+        /* Open sockets for the mining server and its subsystems. */
+        OpenListening<Miner>(MINING_SERVER);
+
+        /* Special method to sync up sigchain and events when opening app for iPhone. */
+        #if defined(REFRESH_BACKGROUND)
+
+        /* Get our current logged in user. */
+
+        debug::log(0, FUNCTION, "Refreshing sigchain events");
+
+
+        #endif
+    }
+
+
+    /* Notify the LLP. */
+    void Release()
+    {
+        debug::log(0, FUNCTION, "Releasing LLP Triggers");
+
+        /* Release the lookup server and its subsystems. */
+        Release<LookupNode>(LOOKUP_SERVER);
+
+        /* Release the tritium server and its subsystems. */
+        Release<TritiumNode>(TRITIUM_SERVER);
+
+        /* Release the time server and its subsystems. */
+        Release<TimeNode>(TIME_SERVER);
+
+        /* Release the core API server and its subsystems. */
+        Release<APINode>(API_SERVER);
+
+        /* Release the RPC server and its subsystems. */
+        Release<RPCNode>(RPC_SERVER);
+
+        /* Release the mining server and its subsystems. */
+        Release<Miner>(MINING_SERVER);
+    }
+
+
     /*  Shutdown the LLP. */
     void Shutdown()
     {
         debug::log(0, FUNCTION, "Shutting down LLP");
 
-        /* Shutdown the tritium server and its subsystems. */
-        Shutdown<TritiumNode>(TRITIUM_SERVER);
-
         /* Shutdown the time server and its subsystems. */
         Shutdown<TimeNode>(TIME_SERVER);
+
+        /* Shutdown the mining server and its subsystems. */
+        Shutdown<Miner>(MINING_SERVER);
 
         /* Shutdown the core API server and its subsystems. */
         Shutdown<APINode>(API_SERVER);
@@ -217,8 +347,11 @@ namespace LLP
         /* Shutdown the RPC server and its subsystems. */
         Shutdown<RPCNode>(RPC_SERVER);
 
-        /* Shutdown the mining server and its subsystems. */
-        Shutdown<Miner>(MINING_SERVER);
+        /* Shutdown the tritium server and its subsystems. */
+        Shutdown<TritiumNode>(TRITIUM_SERVER);
+
+        /* Shutdown the lookup server and its subsystems. */
+        Shutdown<LookupNode>(LOOKUP_SERVER);
 
         /* After all servers shut down, clean up underlying network resources. */
         NetworkShutdown();

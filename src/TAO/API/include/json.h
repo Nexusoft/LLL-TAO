@@ -91,6 +91,20 @@ namespace TAO::API
                                                         const uint32_t nContract, const uint32_t nVerbose = 0);
 
 
+    /** ConditionToJSON
+     *
+     *  Converts a serialized contract condition stream to formattted JSON
+     *
+     *  @param[in] rContract The contract to de-serialize
+     *  @param[in] nContract the id of the contract within the transaction
+     *  @param[in] nVerbose The verbose output level.
+     *
+     *  @return the formatted JSON object
+     *
+     **/
+    __attribute__((pure)) std::string ConditionToJSON(const TAO::Operation::Contract& rContract, const uint32_t nVerbose = 0);
+
+
     /** RegisterToJSON
      *
      *  Converts an Object Register to formattted JSON with no external lookups
@@ -217,4 +231,67 @@ namespace TAO::API
      *
      **/
     __attribute__((pure)) encoding::json ParamsToJSON(const std::vector<std::string>& vParams);
+
+
+    /** AddressToJSON
+     *
+     *  Gets info about an address and creates a json object based on register address
+     *
+     *  @param[in] hashRegister The address that we are getting information for.
+     *  @param[in] rContract The contract that we are getting address info for.
+     *
+     *  @return The JSON object generated with query.
+     *
+     **/
+    __attribute__((pure)) encoding::json AddressToJSON(const TAO::Register::Address& hashRegister, const TAO::Operation::Contract& rContract);
+
+
+    /** AddressToJSON
+     *
+     *  Gets info about an address and creates a json object based on register address for a foreign register.
+     *  This is a register that is not included in the current register's pre-state contract.
+     *
+     *  @param[in] hashRegister The address that we are getting information for.
+     *
+     *  @return The JSON object generated with query.
+     *
+     **/
+    __attribute__((pure)) encoding::json AddressToJSON(const TAO::Register::Address& hashRegister);
+
+
+    /** AddressToJSON
+     *
+     *  Gets info about an address and creates a json object based on register address for a foreign register.
+     *  This is a register that is not included in the current register's pre-state contract.
+     *
+     *  @param[in] hashRegister The address that we are getting information for.
+     *  @param[in] rContract The contract object to get the pre-state from.
+     *  @param[out] jRet The JSON object to add address info to.
+     *
+     *  @return The JSON object generated with query.
+     *
+     **/
+    void AddressToJSON(const TAO::Register::Address& hashRegister, const TAO::Operation::Contract& rContract, encoding::json &jRet);
+
+
+    /** RegisterTypesToJSON
+     *
+     *  Get's the names of the types for this given register to populate among contracts that need to have this info.
+     *
+     *  @param[in] rContract The contract we are extracting types from using the pre-state.
+     *  @param[out] jTypes The returned json value with types populated.
+     *
+     **/
+    void RegisterTypesToJSON(const TAO::Operation::Contract& rContract, encoding::json &jTypes);
+
+
+    /** RegisterTypesToJSON
+     *
+     *  Get's the names of the types for this given register to populate among contracts that need to have this info.
+     *
+     *  @param[in] rObject The object we are extracting types from.
+     *  @param[out] jTypes The returned json value with types populated.
+     *
+     **/
+    void RegisterTypesToJSON(const TAO::Register::Object& rObject, encoding::json &jTypes);
 }

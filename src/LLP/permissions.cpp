@@ -63,6 +63,10 @@ bool CheckPermissions(const std::string &strAddress, const uint16_t nPort)
             fOpen = true;
     }
 
+    /* Check for lookup ports. */
+    if(nPort == LLP::GetLookupPort())
+        return true;
+
     /* If no llpallowip whitelist defined for a default open port then we assume permission */
     if(config::mapIPFilters[nPort].size() == 0 && fOpen)
         return true;

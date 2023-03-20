@@ -14,10 +14,14 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
+#include <TAO/API/include/constants.h>
+
 /* Forward Declarations. */
 namespace TAO::Operation { class Contract; }
 namespace TAO::Register  { class Object; class State; }
 
+/* Precision floating points. */
+class precision_t;
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -57,6 +61,19 @@ namespace TAO::API
      *
      **/
     uint64_t GetDecimals(const uint256_t& hashToken);
+
+
+    /** GetPrecision
+     *
+     *  Get a precision value based on given balance value and token type.
+     *
+     *  @param[in] nBalance The balance to encode for output.
+     *  @param[in] hashToken The token identifier we are formatting for
+     *
+     *  @return a double representation of the whole formatting.
+     *
+     **/
+    precision_t GetPrecision(const uint64_t nBalance, const uint256_t& hashToken = TOKEN::NXS);
 
 
     /** GetDecimals
@@ -126,21 +143,6 @@ namespace TAO::API
     uint64_t GetImmature(const uint256_t& hashGenesis);
 
 
-    /** GetRegisters
-     *
-     *  Reads a batch of states registers from the Register DB
-     *
-     *  @param[in] vAddresses The list of register addresses to read
-     *  @param[out] vStates The list of states paired to the register address.
-     *              The list will be sorted by the create timestamp of the register, oldest first
-     *
-     *  @return True if successful
-     *
-     **/
-    bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses,
-                      std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates);
-
-
     /** GetUnclaimed
      *
      *  Get all the unclaimed funds by searching the ledger level events.
@@ -177,5 +179,17 @@ namespace TAO::API
      *
      **/
     std::string GetStandardName(const uint8_t nType);
+
+
+    /** GetRegisterForm
+     *
+     *  Returns a type string for the register _usertype name
+     *
+     *  @param[in] nType The object type enum
+     *
+     *  @return A string representation of the _usertype value
+     *
+     **/
+    std::string GetRegisterForm(const uint8_t nType);
 
 }

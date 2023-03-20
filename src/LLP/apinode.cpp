@@ -312,6 +312,10 @@ namespace LLP
 
     bool APINode::Authorized(std::map<std::string, std::string>& mapHeaders)
     {
+        /* Make a local cache of our authorization header. */
+        const static std::string strUserPass =
+            (config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", ""));
+
         /* Check for apiauth settings. */
         if(!config::GetBoolArg("-apiauth", true))
             return true;
@@ -329,7 +333,6 @@ namespace LLP
         const std::string strUserPass64 = trim(strAuth.substr(6));
 
         /* Decode from base64 */
-        const std::string strUserPass = (config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", ""));
         return encoding::DecodeBase64(strUserPass64) == strUserPass;
     }
 }

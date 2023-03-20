@@ -89,14 +89,16 @@ namespace TAO::API
          *
          *  Register an API instance, indexed by our name.
          *
+         *  @param[in] fDisabled Flag to tell if this command-set is disabled.
+         *
          **/
         template<typename Type>
-        static void Register()
+        static void Register(const bool fDisabled = false)
         {
             /* Grab a copy of our name. */
             const std::string strAPI = Type::Name();
-            if(Commands::mapTypes.count(strAPI))
-                return; //we just exit if already registered
+            if(Commands::mapTypes.count(strAPI) || fDisabled)
+                return; //we just exit if already registered or disabled
 
             /* Create and initialize our new type. */
             Commands::mapTypes[strAPI] = new Type();

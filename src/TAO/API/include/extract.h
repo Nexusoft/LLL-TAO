@@ -20,6 +20,8 @@ ________________________________________________________________________________
 
 #include <set>
 
+class precision_t;
+
 //forward declarations
 namespace Legacy        { class NexusAddress; }
 namespace TAO::Register { class Address; }
@@ -153,6 +155,20 @@ namespace TAO::API
      *
      **/
     uint64_t ExtractAmount(const encoding::json& jParams, const uint64_t nFigures, const std::string& strKey = "");
+
+
+    /** ExtractPrecision
+     *
+     *  Extract an amount value from either string or integer and convert to its final value.
+     *
+     *  @param[in] jParams The parameters to extract amount from.
+     *  @param[in] nDigits The total digits to extract value from.
+     *  @param[in] strPrefix A string prefix for prepending to amount field.
+     *
+     *  @return The amount represented as whole integer value.
+     *
+     **/
+    precision_t ExtractPrecision(const encoding::json& jParams, const uint8_t nDigits, const std::string& strKey = "");
 
 
     /** ExtractFieldname

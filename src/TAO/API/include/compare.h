@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 
 #include <Util/include/json.h>
+#include <Util/types/precision.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -143,9 +144,9 @@ namespace TAO::API
             /* Handle based on signed integer type. */
             else if(a[strColumn].is_number_float())
             {
-                /* Grab both of our values. */
-                const double nA = a[strColumn].get<double>();
-                const double nB = b[strColumn].get<double>();
+                /* Grab a copy of our doubles here casting to ints at given figures for efficiency. */
+                const precision_t nA = precision_t(a[strColumn].dump());
+                const precision_t nB = precision_t(b[strColumn].dump());
 
                 /* Check if they are equal. */
                 if(nA == nB)

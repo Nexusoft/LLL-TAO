@@ -31,6 +31,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <Util/include/math.h>
+#include <Util/types/precision.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -62,12 +63,39 @@ namespace TAO::API
     }
 
 
+    /* Get a precision value based on given balance value and token type.*/
+    precision_t GetPrecision(const uint64_t nBalance, const uint256_t& hashToken)
+    {
+        /* Check for NXS as a value. */
+        if(hashToken == 0)
+            return precision_t(nBalance, TAO::Ledger::NXS_DIGITS);
+
+        /* Otherwise let's lookup our token object. */
+        TAO::Register::Object oToken;
+        if(!LLD::Register->ReadObject(hashToken, oToken))
+            throw Exception(-13, "Object not found");
+
+        /* Let's check that a token was passed in. */
+        if(oToken.Standard() != TAO::Register::OBJECTS::TOKEN)
+            throw Exception(-15, "Object is not a token");
+
+        /* Build our return value. */
+        precision_t dRet =
+            precision_t(oToken.get<uint8_t>("decimals"));
+
+        /* Set our value internally. */
+        dRet.nValue = nBalance;
+
+        return dRet;
+    }
+
+
     /* Converts the decimals from an object into raw figures using power function */
     uint64_t GetDecimals(const uint256_t& hashToken)
     {
         /* Check for NXS as a value. */
         if(hashToken == 0)
-            return TAO::Ledger::NXS_COIN;
+            return TAO::Ledger::NXS_DIGITS;
 
         /* Otherwise let's lookup our token object. */
         TAO::Register::Object tToken;
@@ -138,6 +166,10 @@ namespace TAO::API
         uint16_t nType;
         rObject >> nType;
 
+        /* Check for valid usertype. */
+        if(!USER_TYPES::Valid(nType))
+            return 0;
+
         /* Cleanup our read position. */
         rObject.nReadPos = 0;
 
@@ -155,7 +187,7 @@ namespace TAO::API
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
 
         /* Get our list of active contracts we have issued. */
-        LLD::Logical->ListContracts(hashGenesis, vEvents);
+        //LLD::Logical->ListContracts(hashGenesis, vEvents);
 
         /* Get our list of active events we need to respond to. */
         LLD::Logical->ListEvents(hashGenesis, vEvents);
@@ -179,17 +211,30 @@ namespace TAO::API
             /* Grab a reference of our hash. */
             const uint512_t& hashEvent = rEvent.first;
 
-            /* Get the transaction from disk. */
-            TAO::API::Transaction tx;
-            if(!LLD::Ledger->ReadTx(hashEvent, tx))
-                continue;
+            /* Check for Tritium transaction. */
+            if(hashEvent.GetType() == TAO::Ledger::TRITIUM)
+            {
+                /* Get the transaction from disk. */
+                TAO::API::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashEvent, tx))
+                    continue;
 
-            /* Check if contract has been spent. */
-            if(tx.Spent(hashEvent, rEvent.second))
-                continue;
+                /* Check if contract has been burned. */
+                if(tx.Burned(hashEvent, rEvent.second))
+                    continue;
+
+                /* Check if the transaction is mature. */
+                if(!tx.Mature(hashEvent))
+                    continue;
+            }
 
             /* Get a referecne of our contract. */
-            const TAO::Operation::Contract& rContract = tx[rEvent.second];
+            const TAO::Operation::Contract& rContract =
+                LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+
+            /* Check if the given contract is spent already. */
+            if(rContract.Spent(rEvent.second))
+                continue;
 
             /* Seek our contract to primitive OP. */
             rContract.SeekToPrimitive();
@@ -202,6 +247,7 @@ namespace TAO::API
             switch(nOP)
             {
                 /* Handle for if we need to credit. */
+                case TAO::Operation::OP::LEGACY:
                 case TAO::Operation::OP::DEBIT:
                 {
                     try
@@ -484,17 +530,30 @@ namespace TAO::API
             /* Grab a reference of our hash. */
             const uint512_t& hashEvent = rEvent.first;
 
-            /* Get the transaction from disk. */
-            TAO::API::Transaction tx;
-            if(!LLD::Ledger->ReadTx(hashEvent, tx))
-                continue;
+            /* Check for Tritium transaction. */
+            if(hashEvent.GetType() == TAO::Ledger::TRITIUM)
+            {
+                /* Get the transaction from disk. */
+                TAO::API::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashEvent, tx))
+                    continue;
 
-            /* Check if contract has been spent. */
-            if(tx.Spent(hashEvent, rEvent.second))
-                continue;
+                /* Check if contract has been burned. */
+                if(tx.Burned(hashEvent, rEvent.second))
+                    continue;
+
+                /* Check if the transaction is mature. */
+                if(!tx.Mature(hashEvent))
+                    continue;
+            }
 
             /* Get a referecne of our contract. */
-            const TAO::Operation::Contract& rContract = tx[rEvent.second];
+            const TAO::Operation::Contract& rContract =
+                LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+
+            /* Check if the given contract is spent already. */
+            if(rContract.Spent(rEvent.second))
+                continue;
 
             /* Seek our contract to primitive OP. */
             rContract.SeekToPrimitive();
@@ -509,25 +568,20 @@ namespace TAO::API
                 /* Handle for if we need to credit. */
                 case TAO::Operation::OP::COINBASE:
                 {
-                    try
-                    {
-                        /* Extract our coinbase recipient. */
-                        uint256_t hashRecipient;
-                        rContract >> hashRecipient;
+                    /* Extract our coinbase recipient. */
+                    uint256_t hashRecipient;
+                    rContract >> hashRecipient;
 
-                        /* Check for valid recipient. */
-                        if(hashRecipient != hashGenesis)
-                            continue;
-
-                        /* Build our credit contract now. */
-                        uint64_t nAmount = 0;
-                        if(TAO::Register::Unpack(rContract, nAmount))
-                            nImmature += nAmount;
-                    }
-                    catch(const Exception& e)
-                    {
+                    /* Check for valid recipient. */
+                    if(hashRecipient != hashGenesis)
                         continue;
-                    }
+
+                    /* Extract our amount from contract. */
+                    uint64_t nAmount = 0;
+                    rContract >> nAmount;
+
+                    /* Add to our total expected value. */
+                    nImmature += nAmount;
 
                     break;
                 }
@@ -541,32 +595,6 @@ namespace TAO::API
         }
 
         return nImmature;
-    }
-
-
-    /* Reads a batch of states registers from the Register DB */
-    bool GetRegisters(const std::vector<TAO::Register::Address>& vAddresses,
-                      std::vector<std::pair<TAO::Register::Address, TAO::Register::State>>& vStates)
-    {
-        for(const auto& hashRegister : vAddresses)
-        {
-            /* Get the state from the register DB. */
-            TAO::Register::State state;
-            if(!LLD::Register->ReadState(hashRegister, state, TAO::Ledger::FLAGS::MEMPOOL))
-                throw Exception(-104, "Object not found");
-
-            vStates.push_back(std::make_pair(hashRegister, state));
-        }
-
-        /* Now sort the states based on the creation time */
-        std::sort(vStates.begin(), vStates.end(),
-            [](const std::pair<TAO::Register::Address, TAO::Register::State> &a,
-            const std::pair<TAO::Register::Address, TAO::Register::State> &b)
-            {
-                return ( a.second.nCreated < b.second.nCreated );
-            });
-
-        return vStates.size() > 0;
     }
 
 
@@ -677,7 +705,7 @@ namespace TAO::API
                 return "SYSTEM";
         }
 
-        return "UNKNOWN";
+        return "INVALID";
     }
 
 
@@ -689,8 +717,7 @@ namespace TAO::API
         {
             /* Non Standard types are NONSTANDARD. */
             case TAO::Register::OBJECTS::NONSTANDARD:
-                return "NONSTANDARD";
-                //strObjectType = "REGISTER";
+                return "OBJECT";
 
             /* Account standard types are ACCOUNT. */
             case TAO::Register::OBJECTS::ACCOUNT:
@@ -718,5 +745,28 @@ namespace TAO::API
         }
 
         return "UNKNOWN";
+    }
+
+
+    /* Returns a type string for the register _usertype name */
+    std::string GetRegisterForm(const uint8_t nType)
+    {
+        /* Switch based on standard type. */
+        switch(nType)
+        {
+            /* Supply standard _usertype. */
+            case USER_TYPES::SUPPLY:
+                return "SUPPLY";
+
+            /* Invoice standard _usertype. */
+            case USER_TYPES::INVOICE:
+                return "INVOICE";
+
+            /* Invoice standard _usertype. */
+            case USER_TYPES::ASSET:
+                return "ASSET";
+        }
+
+        return "STANDARD"; //this is our dummy type
     }
 } // End TAO namespace

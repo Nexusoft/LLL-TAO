@@ -405,7 +405,7 @@ namespace TAO
                         debug::log(0, FUNCTION, "-indexheight enabled from valid indexes, to disable please use -noindexheight");
 
                         /* Set indexing argument now. */
-                        LOCK(config::ARGS_MUTEX);
+                        RECURSIVE(config::ARGS_MUTEX);
                         config::mapArgs["-indexheight"] = "1";
                     }
                     else

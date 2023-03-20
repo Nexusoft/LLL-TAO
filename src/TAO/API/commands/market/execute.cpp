@@ -142,6 +142,11 @@ namespace TAO::API
                         tValidate << uint8_t(TAO::Operation::OP::VALIDATE) << hashOrder   << nContract;
                         tValidate << uint8_t(TAO::Operation::OP::DEBIT)    << hashAddress << hashTo << nAmount << uint64_t(0);
 
+                        /* Make this spendable only by recipient. */
+                        tValidate <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
+                        tValidate <= uint8_t(TAO::Operation::OP::NOTEQUALS);
+                        tValidate <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
+
                         /* Add contract to our queue. */
                         vContracts.push_back(tValidate);
 
@@ -157,6 +162,11 @@ namespace TAO::API
                             TAO::Operation::Contract tDebit;
                             tDebit << uint8_t(TAO::Operation::OP::DEBIT) << hashAddress;
                             tDebit << mapFees[hashToken].first << nFees << uint64_t(0);
+
+                            /* Make this spendable only by recipient. */
+                            tDebit <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
+                            tDebit <= uint8_t(TAO::Operation::OP::NOTEQUALS);
+                            tDebit <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
 
                             /* Add contract to our queue. */
                             vContracts.push_back(tDebit);
@@ -182,6 +192,11 @@ namespace TAO::API
                             TAO::Operation::Contract tDebit;
                             tDebit << uint8_t(TAO::Operation::OP::DEBIT) << hashCredit;
                             tDebit << mapFees[hashToken].first << nFees << uint64_t(0);
+
+                            /* Make this spendable only by recipient. */
+                            tDebit <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
+                            tDebit <= uint8_t(TAO::Operation::OP::NOTEQUALS);
+                            tDebit <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
 
                             /* Add contract to our queue. */
                             vContracts.push_back(tDebit);

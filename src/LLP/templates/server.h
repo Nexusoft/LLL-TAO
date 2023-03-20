@@ -136,7 +136,21 @@ namespace LLP
          *  @param[in] strAddress	IPv4 Address of outgoing connection
          *
          **/
-        void AddNode(std::string strAddress, bool fLookup = false);
+        void AddNode(const std::string& strAddress, bool fLookup = false);
+
+
+        /** ConnectNode
+         *
+         *  Connect a node address to the internal server manager
+         *
+         *  @param[in] strAddress	IPv4 Address of outgoing connection
+         *  @param[out] pNode The node that we have just connected to.
+         *  @param[in] fLookup Flag to determine if DNS record should be looked up.
+         *
+         *  @return true if the connection was established.
+         *
+         **/
+        bool ConnectNode(const std::string& strAddress, std::shared_ptr<ProtocolType> &pNodeRet, bool fLookup = false);
 
 
         /** AddConnection
@@ -153,7 +167,7 @@ namespace LLP
          *
          **/
         template<typename... Args>
-        bool AddConnection(std::string strAddress, uint16_t nPort, bool fSSL, bool fLookup, Args&&... args)
+        bool AddConnection(const std::string& strAddress, uint16_t nPort, bool fSSL, bool fLookup, Args&&... args)
         {
             /* Initialize DDOS Protection for Incoming IP Address. */
             BaseAddress addrConnect(strAddress, nPort, fLookup);
@@ -197,21 +211,7 @@ namespace LLP
                 {
                     /* We want to add failures up to a specified limit. */
                     if(pAddressManager->Has(addrConnect))
-                    {
-                        /* Grab our trust address if valid. */
-                        const TrustAddress& addrInfo = pAddressManager->Get(addrConnect);
-
-                        /* Kill address if we haven't found any valid connections. */
-                        const uint32_t nLimit = config::GetArg("-prunefailed", 0);
-                        if(nLimit > 0 && addrInfo.nFailed > nLimit  && addrInfo.nConnected == 0)
-                        {
-                            /* Remove from database */
-                            pAddressManager->RemoveAddress(addrConnect);
-                            debug::log(3, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "CLEAN: ", ANSI_COLOR_RESET, "address has reached failure limit: ", addrInfo.nFailed);
-                        }
-                        else
-                            pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
-                    }
+                        pAddressManager->AddAddress(addrConnect, ConnectState::FAILED);
 
                 }
 
@@ -315,6 +315,25 @@ namespace LLP
         *
         **/
         void DisconnectAll();
+
+
+        /** Disconnect
+         *
+         *  Force a connection disconnect and cleanup server connections.
+         *
+         *  @param[in] nDataThread The data thread index.
+         *  @param[in] nDataIndex The index to remove for.
+         *
+         **/
+        void Disconnect(const uint32_t nDataThread, const uint32_t nDataIndex);
+
+
+        /** NotifyTriggers
+         *
+         *  Release all pending triggers from BlockingMessages
+         *
+         **/
+        void NotifyTriggers();
 
 
         /** NotifyEvent

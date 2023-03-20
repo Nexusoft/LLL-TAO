@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/templates/server.h>
 
 #include <LLP/types/apinode.h>
+#include <LLP/types/lookup.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 
@@ -32,6 +33,7 @@ namespace LLP
 
     /** List of LLP Server Instances. **/
     extern Server<TritiumNode>*  TRITIUM_SERVER;
+    extern Server<LookupNode>*   LOOKUP_SERVER;
     extern Server<TimeNode>*     TIME_SERVER;
     extern Server<APINode>*      API_SERVER;
     extern Server<RPCNode>*      RPC_SERVER;
@@ -48,6 +50,30 @@ namespace LLP
      *
      **/
     bool Initialize();
+
+
+    /** CloseListening
+     *
+     *  Closes the listening sockets on all running servers.
+     *
+     **/
+    void CloseListening();
+
+
+    /** OpenListening
+     *
+     *  Restarts the listening sockets on all running servers.
+     *
+     **/
+    void OpenListening();
+
+
+    /** Release
+     *
+     *  Release the LLP active triggers.
+     *
+     **/
+    void Release();
 
 
     /** Shutdown
@@ -69,31 +95,83 @@ namespace LLP
     void MakeConnections(Server<ProtocolType> *pServer)
     {
         /* -connect means try to establish a connection first. */
-        if(config::mapMultiArgs["-connect"].size() > 0)
+        if(config::HasArg("-connect"))
         {
+            RECURSIVE(config::ARGS_MUTEX);
+
             /* Add connections and resolve potential DNS lookups. */
-            for(const auto& address : config::mapMultiArgs["-connect"])
+            for(const auto& rAddress : config::mapMultiArgs["-connect"])
             {
                 /* Flag indicating connection was successful */
                 bool fConnected = false;
 
                 /* First attempt SSL if configured */
                 if(pServer->SSLEnabled())
-                   fConnected = pServer->AddConnection(address, pServer->GetPort(true), true, true);
+                   fConnected = pServer->AddConnection(rAddress, pServer->GetPort(true), true, true);
 
                 /* If SSL connection failed or was not attempted and SSL is not required, attempt on the non-SSL port */
                 if(!fConnected && !pServer->SSLRequired())
-                    fConnected = pServer->AddConnection(address, pServer->GetPort(false), false, true);
+                    fConnected = pServer->AddConnection(rAddress, pServer->GetPort(false), false, true);
             }
         }
 
         /* -addnode means add to address manager and let it make connections. */
-        if(config::mapMultiArgs["-addnode"].size() > 0)
+        if(config::HasArg("-addnode"))
         {
+            RECURSIVE(config::ARGS_MUTEX);
+
             /* Add nodes and resolve potential DNS lookups. */
-            for(const auto& node : config::mapMultiArgs["-addnode"])
-                pServer->AddNode(node, true);
+            for(const auto& rNode : config::mapMultiArgs["-addnode"])
+                pServer->AddNode(rNode, true);
         }
+    }
+
+
+    /** CloseListening
+     *
+     *  Closes our listening sockets.
+     *
+     *  pServer The potential server.
+     *
+     **/
+    template <class ProtocolType>
+    void CloseListening(Server<ProtocolType> *pServer)
+    {
+        /* Check if we need to release triggers first. */
+        if(pServer)
+            pServer->CloseListening();
+    }
+
+
+    /** OpenListening
+     *
+     *  Opens up our listening sockets.
+     *
+     *  pServer The potential server.
+     *
+     **/
+    template <class ProtocolType>
+    void OpenListening(Server<ProtocolType> *pServer)
+    {
+        /* Check if we need to release triggers first. */
+        if(pServer)
+            pServer->OpenListening();
+    }
+
+
+    /** Shutdown
+     *
+     *  Performs a shutdown and cleanup of resources on a server if it exists.
+     *
+     *  pServer The potential server.
+     *
+     **/
+    template <class ProtocolType>
+    void Release(Server<ProtocolType> *pServer)
+    {
+        /* Check if we need to release triggers first. */
+        if(pServer)
+            pServer->NotifyTriggers();
     }
 
 
@@ -107,6 +185,7 @@ namespace LLP
     template <class ProtocolType>
     void Shutdown(Server<ProtocolType> *pServer)
     {
+        /* Next we need to delete our server. */
         if(pServer)
             delete pServer;
     }

@@ -31,6 +31,7 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+
     /** TritiumNode
      *
      *  A Node that processes packets and messages for the Tritium Server
@@ -38,11 +39,98 @@ namespace LLP
      **/
     class TritiumNode : public BaseConnection<MessagePacket>
     {
+        /** @class Inventory class
+         *
+         *  Track inventory with expiring cache.
+         *
+         **/
+        class Inventory
+        {
+            /** Inventory set with expiring cache. **/
+            std::map<uint512_t, uint64_t> mapInventory;
+
+
+            /** Mutex to lock internal map inventory. **/
+            std::recursive_mutex MUTEX;
+
+        public:
+
+            /** Default Constructor. **/
+            Inventory ( )
+            : mapInventory ( )
+            , MUTEX        ( )
+            {
+            }
+
+
+            /** Expired
+             *
+             *  Check if given txid cache is expired to be requested from peer.
+             *
+             *  @param[in] hashTx The txid that we want to filter out.
+             *  @param[in] nTimeout The time to wait for cache timeout.
+             *
+             *  @return true if the txid is availble for request.
+             *
+             **/
+            bool Expired(const uint512_t& hashTx, const uint32_t nTimeout = 15)
+            {
+                RECURSIVE(MUTEX);
+
+                /* Check if we don't have it in our map. */
+                if(!mapInventory.count(hashTx))
+                    return true;
+
+                /* Check our timeout here. */
+                if(mapInventory[hashTx] + nTimeout < runtime::unifiedtimestamp())
+                {
+                    /* Cleanup our memory records. */
+                    mapInventory.erase(hashTx);
+                    return true;
+                }
+
+                return false; //otherwise don't request it
+            }
+
+
+            /** Cache
+             *
+             *  Caches current txid to be filtered for given timestamp.
+             *
+             *  @param[in] hashTx The txid that we want to filter out.
+             *
+             **/
+            void Cache(const uint512_t& hashTx)
+            {
+                RECURSIVE(MUTEX);
+
+                /* Set our inventory value to our current time. */
+                mapInventory[hashTx] = runtime::unifiedtimestamp();
+            }
+        };
+
     public: //encapsulate protocol messages inside node class
 
         /** Actions invoke behavior in remote node. **/
         struct ACTION
         {
+            /** Limit for maximum items that can be requested per packet. **/
+            static const uint32_t GET_MAX_ITEMS = 100;
+
+
+            /** Limit for maximum notifications that can be broadcast per packet. **/
+            static const uint32_t NOTIFY_MAX_ITEMS = 100;
+
+
+            /** Limit for maximum event notifications that can be broadcast per packet. **/
+            static const uint32_t LIST_NOTIFICATIONS_MAX_ITEMS = 100;
+
+
+            /** Limit for maximum subscriptions that can be requested per packet. **/
+            static const uint32_t SUBSCRIBE_MAX_ITEMS = 100;
+
+
+            /* Message enumeration values. */
             enum : MessagePacket::message_t
             {
                 RESERVED     = 0,
@@ -56,7 +144,6 @@ namespace LLP
                 VERSION      = 0x15,
                 SUBSCRIBE    = 0x16,
                 UNSUBSCRIBE  = 0x17,
-                VALIDATE     = 0x18,
 
                 /* Protocol. */
                 PING         = 0x1a,
@@ -73,6 +160,7 @@ namespace LLP
             {
                 /* Key Types. */
                 UINT256_T     = 0x20,
+
                 UINT512_T     = 0x21,
                 UINT1024_T    = 0x22,
                 STRING        = 0x23,
@@ -95,7 +183,6 @@ namespace LLP
                 NOTIFICATION  = 0x3b,
                 TRIGGER       = 0x3c,
                 REGISTER      = 0x3d,
-                P2PCONNECTION = 0x3e,
             };
         };
 
@@ -111,6 +198,8 @@ namespace LLP
                 SYNC         = 0x42, //specify a sync block type
                 TRANSACTIONS = 0x43, //specify to send memory transactions first
                 CLIENT       = 0x44, //specify for blocks to be sent and received for clients
+                REGISTER     = 0x45, //specify that a register is being received and should only keep memory of it.
+                DEPENDANT    = 0x46, //specify that a transaction is a dependant and therfore only process the ledger layer.
             };
         };
 
@@ -126,7 +215,6 @@ namespace LLP
                 UNSUBSCRIBED = 0x53, //let node know it was unsubscribed successfully
                 AUTHORIZED   = 0x54,
                 COMPLETED    = 0x55, //let node know an event was completed
-                VALIDATED    = 0x56,
             };
         };
 
@@ -145,7 +233,7 @@ namespace LLP
                 LASTINDEX       = (1 << 7),
                 BESTCHAIN       = (1 << 8),
                 SIGCHAIN        = (1 << 9),
-                NOTIFICATION    = (1 << 10),
+                REGISTER        = (1 << 10),
             };
         };
 
@@ -174,7 +262,11 @@ namespace LLP
 
 
         /** Sig chain genesis hashes / register addresses that the peer has subscribed to notifications for **/
-        std::vector<uint256_t> vNotifications;
+        std::set<uint256_t> setSubscriptions;
+
+
+        /** Inventory class to track caches. **/
+        static Inventory tInventory;
 
 
     public:
@@ -189,14 +281,6 @@ namespace LLP
 
         /** Set for connected session. **/
         static std::map<uint64_t, std::pair<uint32_t, uint32_t>> mapSessions;
-
-
-        /** Mutex for controlling access to the p2p requests map. **/
-        static std::mutex P2P_REQUESTS_MUTEX;
-
-
-        /** map of P2P request timestamps by source genesis hash. **/
-        static std::map<uint256_t, uint64_t> mapP2PRequests;
 
 
         /** Name
@@ -508,9 +592,6 @@ namespace LLP
         /** BlockingMessage
          *
          *  Adds a tritium packet to the queue and waits for the peer to send a COMPLETED message.
-         *  NOTE: this is a static method taking the node reference as a parameter to avoid locking access to the connection
-         *  in the atomic_ptr.  If we did not do this, the data threads could not access the atomic_ptr to process the incoming
-         *  messages until trigger timed out and this method returned
          *
          *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
          *  @param[in] nMsg The message type.
@@ -519,6 +600,10 @@ namespace LLP
         template<typename... Args>
         static void BlockingMessage(const uint32_t nTimeout, LLP::TritiumNode* pNode, const uint16_t nMsg, Args&&... args)
         {
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                return;
+
             /* Create our trigger nonce. */
             uint64_t nNonce = LLC::GetRand();
             pNode->PushMessage(LLP::TritiumNode::TYPES::TRIGGER, nNonce);
@@ -531,11 +616,44 @@ namespace LLP
             pNode->AddTrigger(LLP::TritiumNode::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
 
             /* Process the event. */
-            REQUEST_TRIGGER.wait_for_nonce(nNonce, nTimeout);
+            REQUEST_TRIGGER.wait_for_timeout(nNonce, nTimeout);
 
             /* Cleanup our event trigger. */
             pNode->Release(LLP::TritiumNode::RESPONSE::COMPLETED);
+        }
 
+
+        /** BlockingMessage
+         *
+         *  Adds a tritium packet to the queue and waits for the peer to send a COMPLETED message.
+         *
+         *  @param[in] pNode Pointer to the TritiumNode connection instance to push the message to.
+         *  @param[in] nMsg The message type.
+         *  @param[in] args variable args to be sent in the message.
+         **/
+        template<typename... Args>
+        static void BlockingMessage(LLP::TritiumNode* pNode, const uint16_t nMsg, Args&&... args)
+        {
+            /* Check for shutdown. */
+            if(config::fShutdown.load())
+                return;
+
+            /* Create our trigger nonce. */
+            uint64_t nNonce = LLC::GetRand();
+            pNode->PushMessage(LLP::TritiumNode::TYPES::TRIGGER, nNonce);
+
+            /* Request the inventory message. */
+            pNode->PushMessage(nMsg, std::forward<Args>(args)...);
+
+            /* Create the condition variable trigger. */
+            LLP::Trigger REQUEST_TRIGGER;
+            pNode->AddTrigger(LLP::TritiumNode::RESPONSE::COMPLETED, &REQUEST_TRIGGER);
+
+            /* Process the event. */
+            REQUEST_TRIGGER.wait_for_nonce(nNonce);
+
+            /* Cleanup our event trigger. */
+            pNode->Release(LLP::TritiumNode::RESPONSE::COMPLETED);
         }
 
 

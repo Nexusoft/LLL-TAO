@@ -15,6 +15,8 @@ ________________________________________________________________________________
 #include <TAO/API/types/operators/array.h>
 #include <TAO/API/types/operators/max.h>
 
+#include <Util/types/precision.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -61,12 +63,12 @@ namespace TAO::API
             if(jArray[n].is_number_float())
             {
                 /* Grab our values. */
-                const double dValue =
-                    jArray[n].get<double>();
+                const precision_t dValue =
+                    precision_t(jArray[n].dump());
 
                 /* Check if above maximum value. */
-                if(dValue > jRet["max"].get<double>())
-                    jRet["max"] = dValue;
+                if(dValue > precision_t(jRet["max"].dump()))
+                    jRet["max"] = dValue.double_t();
             }
         }
 

@@ -32,7 +32,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/json.h>
 
 #include <TAO/Ledger/include/constants.h>
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 
 #include <TAO/Register/types/object.h>
 
@@ -79,10 +79,6 @@ namespace TAO::API
 
             /* Check that this is an account */
             if(object.Base() != TAO::Register::OBJECTS::ACCOUNT)
-                continue;
-
-            /* Check the accounts match the where filter. */
-            if(!FilterObject(jParams, object))
                 continue;
 
             /* Get the token */

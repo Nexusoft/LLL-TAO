@@ -41,7 +41,7 @@ namespace TAO::API
     class Indexing
     {
         /** Queue to handle dispatch requests. **/
-        static util::atomic::lock_unique_ptr<std::queue<uint1024_t>> DISPATCH;
+        static util::atomic::lock_unique_ptr<std::queue<uint512_t>> DISPATCH;
 
 
         /** Thread for running dispatch. **/
@@ -100,14 +100,14 @@ namespace TAO::API
         static void RefreshEvents();
 
 
-        /** PushBlock
+        /** PushTransaction
          *
          *  Index a new block to relay thread.
          *
-         *  @param[in] hashBlock The txid to dispatch indexing for.
+         *  @param[in] hashTx The txid to dispatch indexing for.
          *
          **/
-        static void PushBlock(const uint1024_t& hashBlock);
+        static void PushTransaction(const uint512_t& hashTx);
 
 
         /** Register
@@ -121,7 +121,7 @@ namespace TAO::API
             /* Grab a copy of our name. */
             const std::string strCommands = Type::Name();
             if(!Commands::Has(strCommands))
-                return; //we just exit if already registered
+                return; //we just exit if there are no commands registered
 
             LOCK(REGISTERED_MUTEX);
             REGISTERED.insert(strCommands);
@@ -138,12 +138,44 @@ namespace TAO::API
         static void Manager();
 
 
+        /** IndexSigchain
+         *
+         *  Index tritium transaction level events for logged in sessions.
+         *
+         *  @param[in] hash The txid of the transactioun
+         *
+         **/
+        static void IndexSigchain(const uint512_t& hash);
+
+
         /** Initialize Thread
          *
          *  Handle indexing of all events for API.
          *
          **/
         static void InitializeThread();
+
+
+        /** IndexDependant
+         *
+         *  Index legacy transaction level events for logged in sessions.
+         *
+         *  @param[in] hash The txid of the transactioun
+         *  @param[in] tx The transaction to index events for.
+         *
+         **/
+        static void IndexDependant(const uint512_t& hashTx, const Legacy::Transaction& tx);
+
+
+        /** IndexDependant
+         *
+         *  Index tritium transaction level events for logged in sessions.
+         *
+         *  @param[in] hash The txid of the transactioun
+         *  @param[in] tx The transaction to index events for.
+         *
+         **/
+        static void IndexDependant(const uint512_t& hash, const TAO::Ledger::Transaction& tx);
 
 
         /** Shutdown

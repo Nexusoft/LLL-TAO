@@ -418,16 +418,12 @@ namespace TAO::API
         if(!CheckStandard(jParams, tObject))
             throw Exception(-18, "Invalid format for standard [", jParams["request"]["type"].get<std::string>(), "]");
 
-        /* Add optional name if specified. */
-        if(tObject.nType == TAO::Register::REGISTER::OBJECT)
-        {
-            /* Grab our standard. */
-            const uint8_t nStandard = tObject.Standard();
+        /* Grab our standard. */
+        const uint8_t nStandard = tObject.Standard();
 
-            /* Add name record for all non TNS related standards if specified in parameters. */
-            if(nStandard != TAO::Register::OBJECTS::NAME && nStandard != TAO::Register::OBJECTS::NAMESPACE)
-                BuildName(jParams, hashRegister, vContracts);
-        }
+        /* Add name record for all non TNS related standards if specified in parameters. */
+        if(nStandard != TAO::Register::OBJECTS::NAME && nStandard != TAO::Register::OBJECTS::NAMESPACE)
+            BuildName(jParams, hashRegister, vContracts);
 
         return BuildResponse(jParams, hashRegister, vContracts);
     }

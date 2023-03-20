@@ -72,7 +72,7 @@ namespace TAO
             debug::log(3, "END ACCEPT -----------------------------------");
 
             /* Check transaction for errors. */
-            if(!tx.CheckTransaction())
+            if(!tx.Check())
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " failed");
 
             /* Coinbase is only valid in a block, not as a loose transaction */

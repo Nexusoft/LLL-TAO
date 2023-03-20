@@ -203,6 +203,18 @@ namespace TAO::Operation
         const uint32_t& Version() const;
 
 
+        /** Spent
+         *
+         *  Check if a given contract has been spent yet
+         *
+         *  @param[out] nContract The contract-id to check spent flags for
+         *
+         *  @return True if there is value in the contract.
+         *
+         **/
+        bool Spent(const uint32_t nContract) const;
+
+
         /** Value
          *
          *  Get the value of the contract if valid

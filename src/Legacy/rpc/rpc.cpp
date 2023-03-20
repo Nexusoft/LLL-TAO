@@ -60,7 +60,6 @@ namespace Legacy
         mapFunctions["makekeypair"] = TAO::API::Function(std::bind(&RPC::MakeKeyPair, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["unspentbalance"] = TAO::API::Function(std::bind(&RPC::UnspentBalance, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["listunspent"] = TAO::API::Function(std::bind(&RPC::ListUnspent, this, std::placeholders::_1, std::placeholders::_2));
-        mapFunctions["reset"] = TAO::API::Function(std::bind(&RPC::Reset, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getpeerinfo"] = TAO::API::Function(std::bind(&RPC::GetPeerInfo, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getnetworkhashps"] = TAO::API::Function(std::bind(&RPC::GetNetworkHashps, this, std::placeholders::_1, std::placeholders::_2));
         mapFunctions["getnetworkpps"] = TAO::API::Function(std::bind(&RPC::GetNetworkPps, this, std::placeholders::_1, std::placeholders::_2));

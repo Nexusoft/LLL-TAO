@@ -17,6 +17,7 @@ ________________________________________________________________________________
 
 #include <LLP/types/apinode.h>
 #include <LLP/include/base_address.h>
+#include <LLP/include/network.h>
 #include <LLP/include/port.h>
 #include <LLP/types/rpcnode.h>
 
@@ -90,13 +91,21 @@ namespace TAO
         /* Executes an API call from the commandline */
         int CommandLineAPI(int argc, char** argv, int nArgBegin)
         {
+            /* Make a local cache of our authorization header. */
+            const static std::string strUserPass =
+                (config::GetArg("-apiuser", "") + ":" + config::GetArg("-apipassword", ""));
+
+            /* Initialize the underlying network resources such as sockets, etc */
+            if(!LLP::NetworkInitialize())
+                return debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
+
             /* Check the parameters. */
             if(argc < nArgBegin + 1)
                 return debug::error("Missing endpoint parameter");
 
             /* HTTP basic authentication for API */
             const std::string strUserPass64 =
-                encoding::EncodeBase64(config::mapArgs["-apiuser"] + ":" + config::mapArgs["-apipassword"]);
+                encoding::EncodeBase64(strUserPass);
 
             /* Parse out the endpoints. */
             const std::string strEndpoint = std::string(argv[nArgBegin]);
@@ -185,6 +194,14 @@ namespace TAO
         /* Executes an API call from the commandline */
         int CommandLineRPC(int argc, char** argv, int nArgBegin)
         {
+            /* Make a local cache of our authorization header. */
+            const static std::string strUserPass =
+                (config::GetArg("-rpcuser", "") + ":" + config::GetArg("-rpcpassword", ""));
+
+            /* Initialize the underlying network resources such as sockets, etc */
+            if(!LLP::NetworkInitialize())
+                return debug::error(FUNCTION, "NetworkInitialize: Failed initializing network resources.");
+
             /* Check the parameters. */
             if(argc < nArgBegin + 1)
             {
@@ -193,15 +210,9 @@ namespace TAO
                 return 0;
             }
 
-            /* Check RPC user/pass are set */
-            if(config::mapArgs["-rpcuser"] == "" || config::mapArgs["-rpcpassword"] == "")
-                throw std::runtime_error(debug::safe_printstr(
-                    "You must set rpcpassword=<password> in the configuration file: ",
-                    config::GetConfigFile(), "\n",
-                    "If the file does not exist, create it with owner-readable-only file permissions.\n"));
-
              /* HTTP basic authentication for RPC */
-            std::string strUserPass64 = encoding::EncodeBase64(config::mapArgs["-rpcuser"] + ":" + config::mapArgs["-rpcpassword"]);
+            const std::string strUserPass64 =
+                encoding::EncodeBase64(strUserPass);
 
             /* Build the JSON request object. */
             encoding::json jParameters = encoding::json::array();

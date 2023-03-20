@@ -15,7 +15,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <TAO/Ledger/types/sigchain.h>
+#include <TAO/Ledger/types/credentials.h>
 #include <TAO/Ledger/types/pinunlock.h>
 
 #include <Util/include/json.h>
@@ -37,8 +37,9 @@ namespace TAO::API
         /* Enum to track default session indexes. */
         enum SESSION : uint8_t
         {
-            DEFAULT  = 0,
-            MINER    = 1,
+            DEFAULT  = 1,
+            MINER    = 2,
+            INVALID  = 255,
         };
 
 
@@ -50,7 +51,7 @@ namespace TAO::API
         class Session
         {
             /** Our active sigchain object. **/
-            memory::encrypted_ptr<TAO::Ledger::SignatureChain> pCredentials;
+            memory::encrypted_ptr<TAO::Ledger::Credentials> pCredentials;
 
 
             /** Our active pin unlock object. **/
@@ -74,7 +75,6 @@ namespace TAO::API
                 EMPTY   = 0,
                 LOCAL   = 1,
                 REMOTE  = 2,
-                NETWORK = 3,
             };
 
 
@@ -148,7 +148,7 @@ namespace TAO::API
 
             /** Constructor based on geneis. **/
             Session(const SecureString& strUsername, const SecureString& strPassword, const uint8_t nTypeIn = LOCAL)
-            : pCredentials  (new TAO::Ledger::SignatureChain(strUsername, strPassword))
+            : pCredentials  (new TAO::Ledger::Credentials(strUsername, strPassword))
             , pUnlock       (new TAO::Ledger::PinUnlock())
             , hashGenesis   (pCredentials->Genesis())
             , nType         (nTypeIn)
@@ -179,7 +179,7 @@ namespace TAO::API
              *  @return The signature chain credentials.
              *
              **/
-            const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials() const
+            const memory::encrypted_ptr<TAO::Ledger::Credentials>& Credentials() const
             {
                 return pCredentials;
             }
@@ -344,10 +344,10 @@ namespace TAO::API
          *
          *  Lets everything know that session is ready to be used.
          *
-         *  @param[in] hashGenesis The genesis identifier to add by index.
+         *  @param[in] hashSession The session identifier to add by index.
          *
          **/
-        static void Ready(const uint256_t& hashGenesis);
+        static void SetReady(const uint256_t& hashSession);
 
 
         /** Active
@@ -379,12 +379,24 @@ namespace TAO::API
          *
          *  Get the last time that session was accessed
          *
-         *  @param[in] jParams The parameters to check against.
+         *  @param[in] hashSession The session identifier to check accessed with.
          *
          *  @return the timestamp of last session access
          *
          **/
         static uint64_t Accessed(const encoding::json& jParams);
+
+
+        /** Accessed
+         *
+         *  Get the last time that session was accessed
+         *
+         *  @param[in] jParams The parameters to check against.
+         *
+         *  @return the timestamp of last session access
+         *
+         **/
+        static uint64_t Accessed(const uint256_t& hashSession);
 
 
         /** Indexing
@@ -433,7 +445,20 @@ namespace TAO::API
          *  @return true if the PIN is unlocked for given actions.
          *
          **/
-        static bool Unlocked(const encoding::json& jParams, uint8_t &nRequestedActions);
+        static bool UnlockStatus(const encoding::json& jParams, uint8_t &nRequestedActions);
+
+
+        /** Unloacked
+         *
+         *  Determine if a sigchain is unlocked for given actions.
+         *
+         *  @param[in] jParams The incoming paramters to parse
+         *  @param[in] nRequestedActions The actions requested for PIN unlock.
+         *
+         *  @return true if the PIN is unlocked for given actions.
+         *
+         **/
+        static bool Unlocked(const uint8_t nRequestedActions, const encoding::json& jParams);
 
 
         /** Unloacked
@@ -466,11 +491,12 @@ namespace TAO::API
          *  Get the genesis-id of the given caller using session. Throws exception if not found.
          *
          *  @param[in] hashSession The session-id to extract genesis from.
+         *  @param[in] fThrow Flag to tell if we want to throw on error.
          *
          *  @return the caller if found
          *
          **/
-        static uint256_t Caller(const uint256_t& hashSession = default_session());
+        static uint256_t Caller(const uint256_t& hashSession = default_session(), const bool fThrow = true);
 
 
         /** Credentials
@@ -483,7 +509,7 @@ namespace TAO::API
          *  @return The active session.
          *
          **/
-        static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const encoding::json& jParams);
+        static const memory::encrypted_ptr<TAO::Ledger::Credentials>& Credentials(const encoding::json& jParams);
 
 
         /** Credentials
@@ -496,7 +522,7 @@ namespace TAO::API
          *  @return The active session.
          *
          **/
-        static const memory::encrypted_ptr<TAO::Ledger::SignatureChain>& Credentials(const uint256_t& hashSession = default_session());
+        static const memory::encrypted_ptr<TAO::Ledger::Credentials>& Credentials(const uint256_t& hashSession = default_session());
 
 
         /** Sessions

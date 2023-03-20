@@ -62,6 +62,19 @@ namespace TAO::API
         void Index(const TAO::Operation::Contract& rContract, const uint32_t nContract) override;
 
 
+        /** Lookup
+         *
+         *  Lookup any record using our internal names indexing system.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json Lookup(const encoding::json& jParams, const bool fHelp);
+
+
         /** CreateName
          *
          *  Creates a new Name Object register for the given name and register address adds the register
@@ -95,21 +108,6 @@ namespace TAO::API
                                              const std::string& strObjectName,
                                              TAO::Register::Address& hashRegister,
                                              const bool fThrow = true);
-
-
-        /** GetName
-         *
-         *  Retrieves a Name object by the register address, for a particular sig chain.
-         *
-         *  @param[in] hashGenesis The sig chain genesis hash
-         *  @param[in] hashObject register address of the object to look up
-         *  @param[out] hashNameObject The register address of the Name object, if found
-         *
-         *  @return The Name object .
-         **/
-        static TAO::Register::Object GetName(const uint256_t& hashGenesis,
-                                             const TAO::Register::Address& hashObject,
-                                             TAO::Register::Address& hashNameObject);
 
 
 
@@ -160,6 +158,33 @@ namespace TAO::API
          *
          **/
         static bool ReverseLookup(const uint256_t& hashAddress, std::string &strName);
+
+
+        /** ReverseLookup
+         *
+         *  Does a reverse name look-up by PTR records from names API logical indexes.
+         *
+         *  @param[in] hashAddress The address we are performing reverse lookup on.
+         *  @param[out] jRet The returned JSON to add our name keys to.
+         *
+         *  @return true if the lookup succeeded with valid ptr records.
+         *
+         **/
+        static bool ReverseLookup(const uint256_t& hashAddress, encoding::json &jRet);
+
+
+
+        /** NameToJSON
+         *
+         *  Output all the name related json data to a json object.
+         *
+         *  @param[in] rName The name object to build JSON data about.
+         *  @param[out] jRet The returned JSON to add our name keys to.
+         *
+         *  @return true if the lookup succeeded with valid ptr records.
+         *
+         **/
+        static void NameToJSON(const TAO::Register::Object& rName, encoding::json &jRet);
 
     };
 }

@@ -33,8 +33,10 @@ namespace TAO::API
 
 
         /* Handle for our market fees. */
-        if(config::mapMultiArgs["-marketfee"].size() > 0)
+        if(config::HasArg("-marketfee"))
         {
+            RECURSIVE(config::ARGS_MUTEX);
+
             /* Add connections and resolve potential DNS lookups. */
             for(const std::string& strFee : config::mapMultiArgs["-marketfee"])
             {
@@ -123,7 +125,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , "bid, ask"
+            , "bid, ask, order"
         );
 
         /* Standard contract to execute an order. */
@@ -136,7 +138,7 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
-            , "bid, ask"
+            , "bid, ask, order"
         );
 
         /* Standard contract to create new order. */

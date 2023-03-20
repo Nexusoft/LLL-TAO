@@ -24,12 +24,10 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-
     /* Register Layer namespace. */
     namespace Register
     {
-
-        /* Verify the pre-states of a register to current network state. */
+        /* Rollback to the pre-states of a register to reset current network state. */
         bool Rollback(const TAO::Operation::Contract& contract, const uint8_t nFlags)
         {
             /* Reset the contract streams. */
@@ -71,6 +69,10 @@ namespace TAO
                         /* Erase the contract validation record. */
                         if(!LLD::Contract->EraseContract(std::make_pair(hashTx, nContract), nFlags))
                             return debug::error(FUNCTION, "failed to erase validation contract");
+
+                        /* Check for disk write to erase indexes. */
+                        if(nFlags == TAO::Ledger::FLAGS::BLOCK && config::fIndexProofs.load())
+                            LLD::Ledger->EraseContract(hashTx, nContract); //we don't care if it fails here, we just want to make sure index is clean
 
                         /* Condition has no parameters. */
                         contract >> nOP;

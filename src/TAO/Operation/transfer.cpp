@@ -34,12 +34,16 @@ namespace TAO
         bool Transfer::Commit(const TAO::Register::State& state, const uint512_t& hashTx,
                               const uint256_t& hashAddress, const uint256_t& hashTransfer, const uint8_t nFlags)
         {
-            /* Only commit events on new block. */
-            if((nFlags == TAO::Ledger::FLAGS::BLOCK) && hashTransfer != TAO::Register::WILDCARD_ADDRESS)
+            /* EVENTS DISABLED for -client mode. */
+            if(!config::fClient.load())
             {
-                /* Write the transfer event. */
-                if(!LLD::Ledger->WriteEvent(hashTransfer, hashTx))
-                    return debug::error(FUNCTION, "failed to write event for ", hashTransfer.SubString());
+                /* Only commit events on new block. */
+                if((nFlags == TAO::Ledger::FLAGS::BLOCK) && hashTransfer != TAO::Register::WILDCARD_ADDRESS)
+                {
+                    /* Write the transfer event. */
+                    if(!LLD::Ledger->WriteEvent(hashTransfer, hashTx))
+                        return debug::error(FUNCTION, "failed to write event for ", hashTransfer.SubString());
+                }
             }
 
             /* Attempt to write the new state. */

@@ -27,13 +27,12 @@ namespace TAO::API
     /* Unlock an account for any given action. */
     encoding::json Sessions::Unlock(const encoding::json& jParams, const bool fHelp)
     {
-        /* Check for unlock actions */
-        uint8_t nUnlockedActions =
-            TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
-
         /* Get our current unlocked status. */
         uint8_t nCurrentActions = TAO::Ledger::PinUnlock::UnlockActions::NONE; // default to NO actions
-        Authentication::Unlocked(jParams, nCurrentActions);
+        Authentication::UnlockStatus(jParams, nCurrentActions);
+
+        /* Check for unlock actions */
+        uint8_t nUnlockedActions = nCurrentActions;
 
         /* Check for mining flag. */
         if(ExtractBoolean(jParams, "mining"))
@@ -41,10 +40,6 @@ namespace TAO::API
             /* Can't unlock for mining in multiuser mode */
             if(config::fMultiuser.load())
                 throw Exception(-288, "Cannot unlock for mining in multiuser mode");
-
-             /* Check if already unlocked. */
-            if(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::MINING)
-                throw Exception(-146, "Account already unlocked for mining");
 
             /* Adjust the unlocked flags. */
             nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::MINING;
@@ -57,76 +52,43 @@ namespace TAO::API
             if(config::fMultiuser.load())
                 throw Exception(-289, "Cannot unlock for staking in multiuser mode");
 
-             /* Check if already unlocked. */
-            if(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)
-                throw Exception(-195, "Account already unlocked for staking");
-
             /* Adjust the unlocked flags. */
             nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::STAKING;
         }
 
         /* Check transactions flag. */
         if(ExtractBoolean(jParams, "transactions"))
-        {
-             /* Check if already unlocked. */
-            if(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS)
-                throw Exception(-147, "Account already unlocked for transactions");
-
-            /* Adjust the unlocked flags. */
             nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::TRANSACTIONS;
-        }
 
         /* Check for notifications. */
         if(ExtractBoolean(jParams, "notifications"))
-        {
-             /* Check if already unlocked. */
-            if(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS)
-                throw Exception(-194, "Account already unlocked for notifications");
-
-            /* Adjust the unlocked flags. */
             nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS;
-        }
 
         /* If no unlock actions have been specifically set then default it to all */
         if(ExtractBoolean(jParams, "all"))
-        {
-            /* Check if already unlocked. */
-            if(nCurrentActions & TAO::Ledger::PinUnlock::UnlockActions::ALL)
-                throw Exception(-148, "Account already unlocked");
-
-            /* Adjust the unlocked flags. */
             nUnlockedActions |= TAO::Ledger::PinUnlock::UnlockActions::ALL;
-        }
 
         /* Check for no actions. */
-        if(nUnlockedActions == nCurrentActions)
-            throw Exception(-259, "You must specify at least one unlock action");
-
-        /* Check for authenticated sigchain. */
-        if(!Authentication::Authenticate(jParams))
-            throw Exception(-333, "Account failed to authenticate");
-
-        /* Update our session with new pin. */
-        Authentication::Update(jParams, nUnlockedActions);
-
-        /* Get the genesis ID. */
-        //const uint256_t hashGenesis =
-        //    Authentication::Caller(jParams);
-
-        /* Update the saved session if there is one */
-        //if(LLD::Local->HasSession(hashGenesis))
-        //    rSession.Save(strPin);
-
-        /* After unlock complete, attempt to start stake minter if unlocked for staking */
-        if(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)
+        if(nUnlockedActions != nCurrentActions)
         {
-            /* Grab a reference of our stake minter. */
-            TAO::Ledger::StakeMinter& rStakeMinter =
-                TAO::Ledger::StakeMinter::GetInstance();
+            /* Check for authenticated sigchain. */
+            if(!Authentication::Authenticate(jParams))
+                throw Exception(-333, "Account failed to authenticate");
 
-            /* Start it if not started. */
-            if(!rStakeMinter.IsStarted())
-                rStakeMinter.Start();
+            /* Update our session with new pin. */
+            Authentication::Update(jParams, nUnlockedActions);
+
+            /* After unlock complete, attempt to start stake minter if unlocked for staking */
+            if(nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::STAKING)
+            {
+                /* Grab a reference of our stake minter. */
+                TAO::Ledger::StakeMinter& rStakeMinter =
+                    TAO::Ledger::StakeMinter::GetInstance();
+
+                /* Start it if not started. */
+                if(!rStakeMinter.IsStarted())
+                    rStakeMinter.Start();
+            }
         }
 
         /* Populate unlocked status */

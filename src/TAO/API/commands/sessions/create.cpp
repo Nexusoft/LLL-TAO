@@ -17,9 +17,9 @@ ________________________________________________________________________________
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>
 
+#include <TAO/API/types/commands/sessions.h>
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/indexing.h>
-#include <TAO/API/types/commands/sessions.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -51,29 +51,8 @@ namespace TAO::API
         Authentication::Session tSession =
             Authentication::Session(strUsername, strPassword, Authentication::Session::LOCAL);
 
-        /* Check for crypto object register. */
-        const TAO::Register::Address hashCrypto =
-            TAO::Register::Address(std::string("crypto"), tSession.Genesis(), TAO::Register::Address::CRYPTO);
-
-        /* Read the crypto object register. */
-        TAO::Register::Object oCrypto;
-        if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::LOOKUP))
-            throw Exception(-139, "Invalid credentials");
-
-        /* Read the key type from crypto object register. */
-        const uint256_t hashAuth =
-            oCrypto.get<uint256_t>("auth");
-
-        /* Check if the auth has is deactivated. */
-        if(hashAuth == 0)
-            throw Exception(-130, "Auth hash deactivated, please call crypto/create/auth");
-
-        /* Generate a key to check credentials against. */
-        const uint256_t hashCheck =
-            tSession.Credentials()->KeyHash("auth", 0, strPIN, hashAuth.GetType());
-
-        /* Check for invalid authorization hash. */
-        if(hashAuth != hashCheck)
+        /* Check our session's credentials. */
+        if(!validate_session(tSession, strPIN))
             throw Exception(-139, "Invalid credentials");
 
         /* Check if already logged in. */
@@ -109,7 +88,7 @@ namespace TAO::API
         };
 
         /* Initialize our indexing session. */
-        Indexing::Initialize(tSession.Genesis());
+        Indexing::Initialize(hashSession);
 
         /* Check for single user mode. */
         if(!config::fMultiuser.load())

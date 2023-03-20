@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/types/apinode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
+#include <LLP/types/lookup.h>
 
 #include <Util/include/hex.h>
 
@@ -70,6 +71,66 @@ namespace LLP
     }
 
 
+    /* Establishes a new connection and adds it to current Data Thread and returns the active connection pointer. */
+    template <class ProtocolType>
+    bool DataThread<ProtocolType>::NewConnection(const BaseAddress &addr, DDOS_Filter* DDOS, const bool& fSSL, std::shared_ptr<ProtocolType> &pNodeRet)
+    {
+        try
+        {
+            /* Create a new pointer on the heap. */
+            ProtocolType* pnode = new ProtocolType(nullptr, false); //turn off DDOS for outgoing connections
+
+            /* Set the SSL flag */
+            pnode->SetSSL(fSSL);
+
+            /* Attempt to make the connection. */
+            if(!pnode->Connect(addr))
+            {
+                delete pnode;
+                return false;
+            }
+
+            /* Find an available slot. */
+            uint32_t nSlot = find_slot();
+
+            /* Update the indexes. */
+            pnode->nDataThread     = ID;
+            pnode->nDataIndex      = nSlot;
+            pnode->FLUSH_CONDITION = &FLUSH_CONDITION;
+
+            /* Set our return connection pointer. */
+            pNodeRet = std::shared_ptr<ProtocolType>(pnode);
+
+            /* Find a slot that is empty. */
+            if(nSlot == CONNECTIONS->size())
+                CONNECTIONS->push_back(pNodeRet);
+            else
+                CONNECTIONS->at(nSlot) = pNodeRet;
+
+            /* Check for inbound socket. */
+            if(pnode->Incoming())
+                ++nIncoming;
+            else
+                ++nOutbound;
+
+            /* Fire the connected event. */
+            pnode->Event(EVENTS::CONNECT);
+
+            /* Notify data thread to wake up. */
+            CONDITION.notify_all();
+
+        }
+        catch(const std::runtime_error& e)
+        {
+            debug::error(FUNCTION, e.what()); //catch any atomic_ptr exceptions
+
+            return false;
+        }
+
+        return true;
+    }
+
+
     /*  Disconnects all connections by issuing a DISCONNECT::FORCE event message
      *  and then removes the connection from this data thread. */
     template <class ProtocolType>
@@ -86,6 +147,23 @@ namespace LLP
             /* Otherwise, remove with events to inform the address manager so it knows to re-attempt this connection. */
             else
                 remove_connection_with_event(nIndex, DISCONNECT::FORCE);
+        }
+    }
+
+    /* Release all pending triggers from BlockingMessages */
+    template <class ProtocolType>
+    void DataThread<ProtocolType>::NotifyTriggers()
+    {
+        /* Iterate through connections to remove.*/
+        uint32_t nSize = CONNECTIONS->size();
+        for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+        {
+            /* Skip over inactive connections. */
+            if(!CONNECTIONS->at(nIndex))
+                continue;
+
+            /* Notify connection triggers. */
+            CONNECTIONS->at(nIndex)->NotifyTriggers();
         }
     }
 
@@ -434,6 +512,22 @@ namespace LLP
     }
 
 
+    /* Disconnects given connection from current Data Thread. */
+    template<class ProtocolType>
+    void DataThread<ProtocolType>::Disconnect(const uint32_t nIndex)
+    {
+        /* Make sure connection is active. */
+        if(CONNECTIONS->at(nIndex))
+        {
+            /* First disconnect our sockets. */
+            CONNECTIONS->at(nIndex)->Disconnect();
+
+            /* Now remove it from our connections vector. */
+            remove_connection_with_event(nIndex, DISCONNECT::FORCE);
+        }
+    }
+
+
     /* Get the number of active connection pointers from data threads. */
     template <class ProtocolType>
     uint32_t DataThread<ProtocolType>::GetConnectionCount(const uint8_t nFlags)
@@ -494,6 +588,7 @@ namespace LLP
 
     /* Explicity instantiate all template instances needed for compiler. */
     template class DataThread<TritiumNode>;
+    template class DataThread<LookupNode>;
     template class DataThread<TimeNode>;
     template class DataThread<APINode>;
     template class DataThread<RPCNode>;

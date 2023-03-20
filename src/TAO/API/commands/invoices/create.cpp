@@ -38,7 +38,7 @@ namespace TAO::API
     encoding::json Invoices::Create(const encoding::json& jParams, const bool fHelp)
     {
         /* Grab our address we want to be paid to. */
-        const TAO::Register::Address hashAccount = ExtractAddress(jParams);
+        const TAO::Register::Address hashAccount = ExtractAddress(jParams, "to");
 
         /* Validate the payment account */
         TAO::Register::Object rObject;
@@ -125,9 +125,26 @@ namespace TAO::API
                 { "units",       nUnits }
             };
 
-            /* Check for description key. */
-            if(CheckParameter(jItem, "description", "string"))
-                jNew["description"] = jItem["description"].get<std::string>();
+            /* Only search if there are more than the 2 required keys */
+            if (jItem.size() > 1) {
+
+                /* Add all other non-mandatory fields that the caller has provided for each item */
+                for(auto it = jItem.begin(); it != jItem.end(); ++it)
+                {
+                    /* Get our keyname. */
+                    const std::string strKey = ToLower(it.key());
+
+                    /* Skip any incoming parameters that are keywords used by this API method*/
+                    if(strKey == "amount"
+                    || strKey == "units")
+                    {
+                        continue;
+                    }
+
+                    /* add the field to the item */
+                    jNew[strKey] = it.value();
+                }
+            }
 
             /* Now add to our new items list. */
             jInvoice["items"].push_back(jNew);

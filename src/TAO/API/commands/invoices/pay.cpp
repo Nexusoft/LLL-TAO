@@ -113,6 +113,11 @@ namespace TAO::API
         vContracts[0] << uint8_t(TAO::Operation::OP::VALIDATE) << hashTx   << nContract;
         vContracts[0] << uint8_t(TAO::Operation::OP::DEBIT)    << hashFrom << hashTo << nAmount << uint64_t(0);
 
+        /* Make this contract spendable only by recipient. */
+        vContracts[0] <= uint8_t(TAO::Operation::OP::CALLER::GENESIS);
+        vContracts[0] <= uint8_t(TAO::Operation::OP::NOTEQUALS);
+        vContracts[0] <= uint8_t(TAO::Operation::OP::CONTRACT::GENESIS);
+
         /* Add the CLAIM contract to claim the invoice */
         vContracts[1] << uint8_t(TAO::Operation::OP::CLAIM) << hashTx << nContract << hashRegister;
 

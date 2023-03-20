@@ -111,6 +111,19 @@ namespace LLP
     template <class PacketType>
     BaseConnection<PacketType>::~BaseConnection()
     {
+        {
+            LOCK(TRIGGER_MUTEX);
+
+            /* Release all of our triggers before disconnect. */
+            for(auto& rTrigger : TRIGGERS)
+            {
+                /* Check that the trigger was active. */
+                if(rTrigger.second)
+                    rTrigger.second->notify_all();
+            }
+        }
+
+        /* Standard shutdown sequence. */
         Disconnect();
         SetNull();
     }
@@ -133,6 +146,22 @@ namespace LLP
         LOCK(TRIGGER_MUTEX);
 
         TRIGGERS.erase(nMsg);
+    }
+
+
+    /* Release an event listener from tirggers. */
+    template <class PacketType>
+    void BaseConnection<PacketType>::NotifyTriggers()
+    {
+        LOCK(TRIGGER_MUTEX);
+
+        /* Release all of our triggers before disconnect. */
+        for(auto& rTrigger : TRIGGERS)
+        {
+            /* Check that the trigger was active. */
+            if(rTrigger.second)
+                rTrigger.second->notify_all();
+        }
     }
 
 
@@ -191,11 +220,14 @@ namespace LLP
     template <class PacketType>
     void BaseConnection<PacketType>::WritePacket(const PacketType& PACKET)
     {
+        /* Only get this value one time. */
+        static const uint64_t nMaxSendBuffer =
+            config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
+
         /* Get the bytes of the packet. */
         const std::vector<uint8_t> vBytes = PACKET.GetBytes();
 
         /* Stop sending packets if send buffer is full. */
-        uint64_t nMaxSendBuffer = config::GetArg("-maxsendbuffer", MAX_SEND_BUFFER);
         if(Buffered() + vBytes.size() + 1024 < nMaxSendBuffer //reserve 1Kb of buffer for critical messages
         || (fBufferFull.load() && Buffered() + vBytes.size() < nMaxSendBuffer)) //catch for critical messages (< 1 Kb)
         {

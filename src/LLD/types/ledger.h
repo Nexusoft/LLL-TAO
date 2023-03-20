@@ -40,6 +40,8 @@ namespace TAO
         class BlockState;
         class Transaction;
     }
+
+    namespace API { class Transaction; }
 }
 
 
@@ -220,6 +222,20 @@ namespace LLD
 
         /** ReadTx
          *
+         *  Reads a transaction from the ledger DB and casts it to an API::Transaction type.
+         *
+         *  @param[in] hashTx The txid of transaction to read.
+         *  @param[out] tx The transaction object to read.
+         *  @param[in] nFlags The flags to determine memory pool or disk
+         *
+         *  @return True if the transaction was successfully read, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint512_t& hashTx, TAO::API::Transaction &tx, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** ReadTx
+         *
          *  Reads a transaction from the ledger DB including checking conflicted memory.
          *
          *  @param[in] hashTx The txid of transaction to read.
@@ -231,6 +247,35 @@ namespace LLD
          *
          **/
         bool ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** ReadTx
+         *
+         *  Reads a proof spending tx. Proofs are used to keep track of spent temporal proofs.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
+         *  @param[out] tx The transaction object to read.
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract, TAO::Ledger::Transaction &tx);
+
+
+        /** ReadTx
+         *
+         *  Reads a contract spending tx. Contracts are used to keep track of contract validators.
+         *
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
+         *  @param[out] tx The transaction object to read.
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool ReadTx(const uint512_t& hashTx, const uint32_t nContract, TAO::Ledger::Transaction &tx);
 
 
         /** EraseTx
@@ -465,6 +510,19 @@ namespace LLD
         bool EraseEvent(const uint256_t& hashAddress);
 
 
+        /** HasEvent
+         *
+         *  Checks an event in the ledger database of foreign index.
+         *
+         *  @param[in] hashAddress The event address to write.
+         *  @param[in] nSequence The sequence number to read from event.
+         *
+         *  @return True if the event exists.
+         *
+         **/
+        bool HasEvent(const uint256_t& hashAddress, const uint32_t nSequence);
+
+
         /** ReadEvent
          *
          *  Reads a new event to the ledger database of foreign index.
@@ -587,6 +645,23 @@ namespace LLD
                         const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
+        /** IndexProof
+         *
+         *  Indexes a proof to disk tied to spending transactions. Proofs are used to keep track of spent temporal proofs.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is spending.
+         *  @param[in] nContract The contract that proof is for
+         *  @param[in] hashIndex The transaction hash that spent this proof.
+         *  @param[in] nFlags Flags to detect if in memory mode (MEMPOOL) or disk mode (WRITE).
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool IndexProof(const uint256_t& hashProof, const uint512_t& hashTx,
+                        const uint32_t nContract, const uint512_t& hashIndex, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
         /** HasProof
          *
          *  Checks if a proof exists. Proofs are used to keep track of spent temporal proofs.
@@ -617,6 +692,42 @@ namespace LLD
          **/
         bool EraseProof(const uint256_t& hashProof, const uint512_t& hashTx,
                         const uint32_t nContract, const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
+
+
+        /** IndexContract
+         *
+         *  Indexes a contract to disk tied to validating transactions
+         *
+         *  @param[in] hashTx The transaction hash that proof is spending.
+         *  @param[in] nContract The contract that proof is for
+         *  @param[in] hashIndex The transaction hash that spent this proof.
+         *
+         *  @return True if the last was successfully written, false otherwise.
+         *
+         **/
+        bool IndexContract(const uint512_t& hashTx, const uint32_t nContract, const uint512_t& hashIndex);
+
+
+        /** EraseContract
+         *
+         *  Remove a contract index from the database.
+         *
+         *  @param[in] hashProof The proof that is being spent.
+         *  @param[in] hashTx The transaction hash that proof is being spent for.
+         *  @param[in] nContract The contract that proof is for
+         *
+         *  @return True if the last was successfully read, false otherwise.
+         *
+         **/
+        bool EraseContract(const uint512_t& hashTx, const uint32_t nContract);
+
+
+        /** IndexProofs
+         *
+         *  Index our proofs as keychain entries to add support to read spending transaction from the proof itself
+         *
+         **/
+        void IndexProofs();
 
 
         /** WriteBlock

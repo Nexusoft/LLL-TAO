@@ -106,6 +106,19 @@ namespace LLD
         bool ReadLast(const uint256_t& hashGenesis, uint512_t &hashTx);
 
 
+        /** ReadLastConfirmed
+         *
+         *  Reads the last txid that was confirmed.
+         *
+         *  @param[in] hashGenesis The genesis-id we are reading last index for.
+         *  @param[out] hashTx The txid of the last indexed transaction.
+         *
+         *  @return true if read successfully
+         *
+         **/
+        bool ReadLastConfirmed(const uint256_t& hashGenesis, uint512_t &hashTx);
+
+
         /** WriteLast
          *
          *  Writes the last txid that was indexed.
@@ -155,6 +168,19 @@ namespace LLD
          *
          **/
         bool ReadFirst(const uint256_t& hashGenesis, uint512_t& hashTx);
+
+
+        /** ReadFirst
+         *
+         *  Reads the first transaction-id from disk.
+         *
+         *  @param[in] hashGenesis The genesis ID to read for.
+         *  @param[out] tx The transaction object to read.
+         *
+         *  @return True if the genesis was read, false otherwise.
+         *
+         **/
+        bool ReadFirst(const uint256_t& hashGenesis, TAO::API::Transaction &tx);
 
 
         /** EraseLast
@@ -260,6 +286,48 @@ namespace LLD
         bool ListTransactions(const uint256_t& hashRegister, std::vector<uint512_t> &vTransactions);
 
 
+        /** PushRegisterTx
+         *
+         *   Push an register transaction to process for given register address.
+         *
+         *  @param[in] hashRegister The address of register to list for
+         *  @param[in] hashTx The txid we are pushing register for.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool PushRegisterTx(const uint256_t& hashRegister, const uint512_t& hashTx);
+
+
+        /** EraseRegisterTx
+         *
+         *  Erase the last txide that modified a register state.
+         *
+         *  @param[in] hashRegister The address of register to list for
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool EraseRegisterTx(const uint256_t& hashRegister);
+
+
+        /** LastRegisterTx
+         *
+         *  Get an register transaction for given register address.
+         *
+         *  @param[in] hashRegister The address of register to list for
+         *  @param[in] hashTx The list of events extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool LastRegisterTx(const uint256_t& hashRegister, uint512_t &hashTx);
+
+
+        /** Build indexes for transactions over a rolling modulus. For -indexregister flag. **/
+        void IndexRegisters();
+
+
         /** PushRegister
          *
          *  Push an register to process for given genesis-id.
@@ -297,6 +365,19 @@ namespace LLD
          *
          **/
         bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
+
+
+        /** ListTransfers
+         *
+         *  List the current active transfers for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to list registers for.
+         *  @param[in] vRegisters The list of events extracted.
+         *
+         *  @return true if written successfully
+         *
+         **/
+        bool ListTransfers(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
 
 
         /** PushTokenized
@@ -482,7 +563,7 @@ namespace LLD
         bool ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents);
 
 
-        /** ReadLastEvent
+        /** ReadTritiumSequence
          *
          *  Read the last event that was processed for given sigchain.
          *
@@ -492,10 +573,10 @@ namespace LLD
          *  @return if the record was read successfully.
          *
          **/
-        bool ReadLastEvent(const uint256_t& hashGenesis, uint32_t &nSequence);
+        bool ReadTritiumSequence(const uint256_t& hashGenesis, uint32_t &nSequence);
 
 
-        /** IncrementLastEvent
+        /** IncrementTritiumSequence
          *
          *  Write the last event that was processed for given sigchain.
          *
@@ -504,7 +585,32 @@ namespace LLD
          *  @return if the record was written successfully.
          *
          **/
-        bool IncrementLastEvent(const uint256_t& hashGenesis);
+        bool IncrementTritiumSequence(const uint256_t& hashGenesis);
+
+
+        /** ReadLegacySequence
+         *
+         *  Read the last event that was processed for given sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *  @param[out] nSequence The last sequence that was written.
+         *
+         *  @return if the record was read successfully.
+         *
+         **/
+        bool ReadLegacySequence(const uint256_t& hashGenesis, uint32_t &nSequence);
+
+
+        /** IncrementLegacySequence
+         *
+         *  Write the last event that was processed for given sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *
+         *  @return if the record was written successfully.
+         *
+         **/
+        bool IncrementLegacySequence(const uint256_t& hashGenesis);
 
 
         /** HasEvent
