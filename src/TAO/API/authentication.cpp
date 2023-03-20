@@ -274,7 +274,6 @@ namespace TAO::API
             return uint256_t(0);
         }
 
-
         /* Get a copy of our current active session. */
         const Session& rSession =
             mapSessions[hashSession];

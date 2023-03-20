@@ -148,6 +148,17 @@ namespace TAO::API
         static void IndexSigchain(const uint512_t& hash);
 
 
+
+        /** RefershSigchain
+         *
+         *  Refresh our events and transactions for a given sigchain.
+         *
+         *  @param[in] hashGenesis The sigchain genesis that we are refershing.
+         *
+         **/
+        static void RefreshSigchain(const uint256_t& hashGenesis);
+
+
         /** Initialize Thread
          *
          *  Handle indexing of all events for API.

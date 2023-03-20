@@ -3779,6 +3779,8 @@ namespace LLP
     /* Initiates a chain synchronization from the peer. */
     void TritiumNode::Sync()
     {
+        debug::log(0, NODE, "New sync address set ", std::hex, nCurrentSession, ", syncing from ", TAO::Ledger::ChainState::hashBestChain.load().SubString());
+
         /* Set the sync session-id. */
         TAO::Ledger::nSyncSession.store(nCurrentSession);
 
@@ -3802,7 +3804,5 @@ namespace LLP
             TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
             uint1024_t(0)
         );
-
-        debug::log(0, NODE, "New sync address set, syncing from ", TAO::Ledger::ChainState::hashBestChain.load().SubString());
     }
 }

@@ -311,6 +311,112 @@ namespace TAO::API
     }
 
 
+    /*  Refresh our events and transactions for a given sigchain. */
+    void Indexing::RefreshSigchain(const uint256_t& hashGenesis)
+    {
+        /* Check for genesis. */
+        if(LLP::TRITIUM_SERVER)
+        {
+            /* Find an active connection to sync from. */
+            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+            if(pNode != nullptr)
+            {
+                debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing client");
+
+                /* Get our current tritium events sequence now. */
+                uint32_t nTritiumSequence = 0;
+                LLD::Logical->ReadTritiumSequence(hashGenesis, nTritiumSequence);
+
+                /* Loop until we have received all of our events. */
+                do
+                {
+                    /* Request the sig chain. */
+                    debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION from ", nTritiumSequence, " for ", hashGenesis.SubString());
+                    LLP::TritiumNode::BlockingMessage
+                    (
+                        30000,
+                        pNode.get(), LLP::TritiumNode::ACTION::LIST,
+                        uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, nTritiumSequence
+                    );
+                    debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashGenesis.SubString());
+
+                    /* Cache our current sequence to see if we got any new events while waiting. */
+                    uint32_t nCurrentSequence = 0;
+                    LLD::Logical->ReadTritiumSequence(hashGenesis, nCurrentSequence);
+
+                    /* Check that are starting and current sequences match. */
+                    if(nCurrentSequence == nTritiumSequence)
+                    {
+                        debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION completed for ", hashGenesis.SubString());
+                        break;
+                    }
+                }
+                while(LLD::Logical->ReadTritiumSequence(hashGenesis, nTritiumSequence));
+
+                /* Get our current legacy events sequence now. */
+                uint32_t nLegacySequence = 0;
+                LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence);
+
+                /* Loop until we have received all of our events. */
+                do
+                {
+                    /* Request the sig chain. */
+                    debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION from ", nLegacySequence, " for ", hashGenesis.SubString());
+                    LLP::TritiumNode::BlockingMessage
+                    (
+                        30000,
+                        pNode.get(), LLP::TritiumNode::ACTION::LIST,
+                        uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
+                        hashGenesis, nLegacySequence
+                    );
+                    debug::log(0, FUNCTION, "CLIENT MODE: LIST::LEGACY::NOTIFICATION received for ", hashGenesis.SubString());
+
+                    /* Cache our current sequence to see if we got any new events while waiting. */
+                    uint32_t nCurrentSequence = 0;
+                    LLD::Logical->ReadLegacySequence(hashGenesis, nCurrentSequence);
+
+                    /* Check that are starting and current sequences match. */
+                    if(nCurrentSequence == nLegacySequence)
+                    {
+                        debug::log(0, FUNCTION, "CLIENT MODE: LIST::LEGACY::NOTIFICATION completed for ", hashGenesis.SubString());
+                        break;
+                    }
+                }
+                while(LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence));
+
+                /* Get the last txid in sigchain. */
+                uint512_t hashLast;
+                LLD::Logical->ReadLastConfirmed(hashGenesis, hashLast);
+
+                do
+                {
+                    /* Request the sig chain. */
+                    debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+                    LLP::TritiumNode::BlockingMessage
+                    (
+                        30000,
+                        pNode.get(), LLP::TritiumNode::ACTION::LIST,
+                        uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
+                    );
+                    debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
+
+                    uint512_t hashCurrent;
+                    LLD::Logical->ReadLastConfirmed(hashGenesis, hashCurrent);
+
+                    if(hashCurrent == hashLast)
+                    {
+                        debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN completed for ", hashGenesis.SubString());
+                        break;
+                    }
+                }
+                while(LLD::Logical->ReadLast(hashGenesis, hashLast));
+            }
+            else
+                debug::error(FUNCTION, "no connections available...");
+        }
+    }
+
+
     /* Default destructor. */
     void Indexing::InitializeThread()
     {
@@ -401,106 +507,8 @@ namespace TAO::API
                 /* Sync the sigchain if an active client before building our indexes. */
                 if(config::fClient.load())
                 {
-                    /* Check for genesis. */
-                    if(LLP::TRITIUM_SERVER)
-                    {
-                        /* Find an active connection to sync from. */
-                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                        if(pNode != nullptr)
-                        {
-                            debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing client");
-
-                            /* Get our current tritium events sequence now. */
-                            uint32_t nTritiumSequence = 0;
-                            LLD::Logical->ReadTritiumSequence(hashGenesis, nTritiumSequence);
-
-                            /* Loop until we have received all of our events. */
-                            do
-                            {
-                                /* Request the sig chain. */
-                                debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::NOTIFICATION from ", nTritiumSequence, " for ", hashGenesis.SubString());
-                                LLP::TritiumNode::BlockingMessage
-                                (
-                                    30000,
-                                    pNode.get(), LLP::TritiumNode::ACTION::LIST,
-                                    uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION), hashGenesis, nTritiumSequence
-                                );
-                                debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashGenesis.SubString());
-
-                                /* Cache our current sequence to see if we got any new events while waiting. */
-                                uint32_t nCurrentSequence = 0;
-                                LLD::Logical->ReadTritiumSequence(hashGenesis, nCurrentSequence);
-
-                                /* Check that are starting and current sequences match. */
-                                if(nCurrentSequence == nTritiumSequence)
-                                {
-                                    debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION completed for ", hashGenesis.SubString());
-                                    break;
-                                }
-                            }
-                            while(LLD::Logical->ReadTritiumSequence(hashGenesis, nTritiumSequence));
-
-                            /* Get our current legacy events sequence now. */
-                            uint32_t nLegacySequence = 0;
-                            LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence);
-
-                            /* Loop until we have received all of our events. */
-                            do
-                            {
-                                /* Request the sig chain. */
-                                debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::LEGACY::NOTIFICATION from ", nLegacySequence, " for ", hashGenesis.SubString());
-                                LLP::TritiumNode::BlockingMessage
-                                (
-                                    30000,
-                                    pNode.get(), LLP::TritiumNode::ACTION::LIST,
-                                    uint8_t(LLP::TritiumNode::SPECIFIER::LEGACY), uint8_t(LLP::TritiumNode::TYPES::NOTIFICATION),
-                                    hashGenesis, nLegacySequence
-                                );
-                                debug::log(0, FUNCTION, "CLIENT MODE: LIST::LEGACY::NOTIFICATION received for ", hashGenesis.SubString());
-
-                                /* Cache our current sequence to see if we got any new events while waiting. */
-                                uint32_t nCurrentSequence = 0;
-                                LLD::Logical->ReadLegacySequence(hashGenesis, nCurrentSequence);
-
-                                /* Check that are starting and current sequences match. */
-                                if(nCurrentSequence == nLegacySequence)
-                                {
-                                    debug::log(0, FUNCTION, "CLIENT MODE: LIST::LEGACY::NOTIFICATION completed for ", hashGenesis.SubString());
-                                    break;
-                                }
-                            }
-                            while(LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence));
-
-                            /* Get the last txid in sigchain. */
-                            uint512_t hashLast;
-                            LLD::Logical->ReadLastConfirmed(hashGenesis, hashLast);
-
-                            do
-                            {
-                                /* Request the sig chain. */
-                                debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
-                                LLP::TritiumNode::BlockingMessage
-                                (
-                                    30000,
-                                    pNode.get(), LLP::TritiumNode::ACTION::LIST,
-                                    uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
-                                );
-                                debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
-
-                                uint512_t hashCurrent;
-                                LLD::Logical->ReadLastConfirmed(hashGenesis, hashCurrent);
-
-                                if(hashCurrent == hashLast)
-                                {
-                                    debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN completed for ", hashGenesis.SubString());
-                                    break;
-                                }
-                            }
-                            while(LLD::Logical->ReadLast(hashGenesis, hashLast));
-                        }
-                        else
-                            debug::error(FUNCTION, "no connections available...");
-                    }
+                    /* Process our sigchain events now. */
+                    RefreshSigchain(hashGenesis);
 
                     /* Exit out of this thread if we are shutting down. */
                     if(config::fShutdown.load())

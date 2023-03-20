@@ -18,6 +18,13 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
+#include <TAO/API/types/authentication.h>
+#include <TAO/API/types/indexing.h>
+
+#include <TAO/Ledger/include/process.h>
+
+
+
 namespace LLP
 {
     /* Track our hostname so we don't have to call system every request. */
@@ -295,14 +302,33 @@ namespace LLP
         MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
 
         /* Special method to sync up sigchain and events when opening app for iPhone. */
-        #if defined(REFRESH_BACKGROUND)
+        std::shared_ptr<LLP::TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
+        if(pnode != nullptr)
+        {
+            /* Sync the chain first. */
+            pnode->Sync();
 
-        /* Get our current logged in user. */
+            /* Do a simple spin-lock here until synced. */
+            while(TAO::Ledger::nSyncSession.load() != 0)
+                runtime::sleep(100);
 
-        debug::log(0, FUNCTION, "Refreshing sigchain events");
+            /* Get a current list of our active sessions. */
+            const auto vSessions =
+                TAO::API::Authentication::Sessions();
 
+            /* Check if we are an active thread. */
+            for(const auto& rSession : vSessions)
+            {
+                /* Get our genesis. */
+                const uint256_t& hashGenesis = rSession.second;
 
-        #endif
+                /* Get our current logged in user. */
+                debug::log(0, FUNCTION, "Refreshing sigchain events for ", hashGenesis.SubString());
+
+                /* Run our sigchain sync code now. */
+                TAO::API::Indexing::RefreshSigchain(hashGenesis);
+            }
+        }
     }
 
 
