@@ -340,6 +340,10 @@ namespace TAO::API
                     );
                     debug::log(0, FUNCTION, "CLIENT MODE: LIST::NOTIFICATION received for ", hashGenesis.SubString());
 
+                    /* Check for shutdown. */
+                    if(config::fShutdown.load())
+                        break;
+
                     /* Cache our current sequence to see if we got any new events while waiting. */
                     uint32_t nCurrentSequence = 0;
                     LLD::Logical->ReadTritiumSequence(hashGenesis, nCurrentSequence);
@@ -371,6 +375,10 @@ namespace TAO::API
                     );
                     debug::log(0, FUNCTION, "CLIENT MODE: LIST::LEGACY::NOTIFICATION received for ", hashGenesis.SubString());
 
+                    /* Check for shutdown. */
+                    if(config::fShutdown.load())
+                        break;
+
                     /* Cache our current sequence to see if we got any new events while waiting. */
                     uint32_t nCurrentSequence = 0;
                     LLD::Logical->ReadLegacySequence(hashGenesis, nCurrentSequence);
@@ -399,6 +407,10 @@ namespace TAO::API
                         uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
                     );
                     debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
+
+                    /* Check for shutdown. */
+                    if(config::fShutdown.load())
+                        break;
 
                     uint512_t hashCurrent;
                     LLD::Logical->ReadLastConfirmed(hashGenesis, hashCurrent);
