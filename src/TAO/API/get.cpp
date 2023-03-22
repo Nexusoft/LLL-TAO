@@ -268,6 +268,10 @@ namespace TAO::API
                             TAO::Register::Object oAccount =
                                 rContract.PreState();
 
+                            /* Check for null value. */
+                            if(oAccount.IsNull())
+                                continue;
+
                             /* Parse account now. */
                             oAccount.Parse();
 
