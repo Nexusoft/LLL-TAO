@@ -835,7 +835,7 @@ namespace LLD
             std::make_tuple(hashProof, hashTx, nContract);
 
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
@@ -872,7 +872,7 @@ namespace LLD
         std::tuple<uint256_t, uint512_t, uint32_t> tuple = std::make_tuple(hashProof, hashTx, nContract);
 
         /* Check for memory transaction. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 
