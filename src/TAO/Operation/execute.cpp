@@ -817,7 +817,7 @@ namespace TAO::Operation
                     Contract debit = LLD::Ledger->ReadContract(hashTx, 0);
 
                     /* Add migrate data from Legacy tx to debit (base ReadContract returns generic Legacy send to register) */
-                    if(!::Legacy::BuildMigrateDebit(debit, hashTx))
+                    if(!config::fClient.load() && !::Legacy::BuildMigrateDebit(debit, hashTx))
                         return false;
 
                     /* Verify the operation rules. */
