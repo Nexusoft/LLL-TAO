@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
 
+#include <TAO/API/types/authentication.h>
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/transaction.h>
 
@@ -180,6 +181,10 @@ namespace TAO::API
     /* Get the sum of all debit notifications for the the specified token */
     uint64_t GetPending(const uint256_t& hashGenesis, const uint256_t& hashToken, const uint256_t& hashAccount)
     {
+        /* Check if we are available to generate our balances. */
+        if(!Authentication::Available(hashGenesis))
+            return 0;
+
         /* Th return value */
         uint64_t nPending = 0;
 
@@ -307,6 +312,10 @@ namespace TAO::API
     /* Get the sum of all debit transactions in the mempool for the the specified token */
     uint64_t GetUnconfirmed(const uint256_t& hashGenesis, const uint256_t& hashToken, bool fOutgoing, const uint256_t& hashAccount)
     {
+        /* Check if we are available to generate our balances. */
+        if(!Authentication::Available(hashGenesis))
+            return 0;
+
         /* The return value */
         uint64_t nUnconfirmed = 0;
 
@@ -509,6 +518,10 @@ namespace TAO::API
     /*  Get the outstanding coinbases. */
     uint64_t GetImmature(const uint256_t& hashGenesis)
     {
+        /* Check if we are available to generate our balances. */
+        if(!Authentication::Available(hashGenesis))
+            return 0;
+
         /* Return amount */
         uint64_t nImmature = 0;
 
@@ -606,6 +619,10 @@ namespace TAO::API
     bool GetUnclaimed(const uint256_t& hashGenesis,
             std::vector<std::tuple<TAO::Operation::Contract, uint32_t, uint256_t>> &vContracts)
     {
+        /* Check if we are available to generate our balances. */
+        if(!Authentication::Available(hashGenesis))
+            return false;
+
         /* Get a list of our active events. */
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
         LLD::Logical->ListEvents(hashGenesis, vEvents);

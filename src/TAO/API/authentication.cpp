@@ -118,6 +118,23 @@ namespace TAO::API
     }
 
 
+    /* Check if user is authenticated and available to take commands by genesis-id. */
+    bool Authentication::Available(const uint256_t& hashGenesis)
+    {
+        RECURSIVE(MUTEX);
+
+        /* Loop through sessions map. */
+        for(const auto& rSession : mapSessions)
+        {
+            /* Check genesis to session. */
+            if(rSession.second.Genesis() == hashGenesis)
+                return !rSession.second.fInitializing.load();
+        }
+
+        return false;
+    }
+
+
     /* Get the last time that session was accessed */
     uint64_t Authentication::Accessed(const encoding::json& jParams)
     {
@@ -149,11 +166,18 @@ namespace TAO::API
     /* Checks if a session is ready to be used. */
     bool Authentication::Indexing(const encoding::json& jParams)
     {
-        RECURSIVE(MUTEX);
-
         /* Get the current session-id. */
         const uint256_t hashSession =
             ExtractHash(jParams, "session", default_session());
+
+        return Indexing(hashSession);
+    }
+
+
+    /* Checks if a session is ready to be used. */
+    bool Authentication::Indexing(const uint256_t& hashSession)
+    {
+        RECURSIVE(MUTEX);
 
         /* Check for active session. */
         if(!mapSessions.count(hashSession))

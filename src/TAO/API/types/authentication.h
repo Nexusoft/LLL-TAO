@@ -375,6 +375,18 @@ namespace TAO::API
         static bool Active(const uint256_t& hashGenesis);
 
 
+        /** Available
+         *
+         *  Check if user is authenticated and available to take commands by genesis-id.
+         *
+         *  @param[in] hashGenesis The current genesis-id to lookup for.
+         *
+         *  @return true if session is authenticated.
+         *
+         **/
+        static bool Available(const uint256_t& hashGenesis);
+
+
         /** Accessed
          *
          *  Get the last time that session was accessed
@@ -407,6 +419,16 @@ namespace TAO::API
          *
          **/
         static bool Indexing(const encoding::json& jParams);
+
+
+        /** Indexing
+         *
+         *  Checks if a session is ready to be used and not indexing
+         *
+         *  @param[in] hashSession The session identifier to add by index.
+         *
+         **/
+        static bool Indexing(const uint256_t& hashSession);
 
 
         /** Authenticate

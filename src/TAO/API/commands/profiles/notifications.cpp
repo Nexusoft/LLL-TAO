@@ -34,6 +34,10 @@ namespace TAO::API
         const uint256_t hashGenesis =
             Authentication::Caller(jParams);
 
+        /* Check if we are available to take command. */
+        if(!Authentication::Available(hashGenesis))
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
+
         /* Extract our verbose parameter. */
         const uint32_t  nVerbose =
             ExtractVerbose(jParams);
