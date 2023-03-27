@@ -207,7 +207,7 @@ namespace LLD
     bool ContractDB::HasContract(const std::pair<uint512_t, uint32_t>& pairContract, const uint8_t nFlags)
     {
         /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
         {
             LOCK(MEMORY_MUTEX);
 

@@ -907,24 +907,27 @@ namespace TAO::API
                         jRet["ticker"] = strName;
 
                     /* Add our total funds claimed. */
-                    jRet["claimed"]   = FormatBalance(0, hashToken);
-
-                    /* Otherwise check our partial balance. */
-                    if(hashTo.IsObject())
+                    if(!config::fClient.load())
                     {
-                        /* Get the partial amount already claimed. */
-                        uint64_t nClaimed = 0;
-                        if(!LLD::Ledger->ReadClaimed(contract.Hash(), nContract, nClaimed))
-                            nClaimed = 0; //reset value to double check here and continue
+                        /* Create our claimed balance to zero before checking proofs. */
+                        jRet["claimed"]   = FormatBalance(0, hashToken);
 
-                        /* Track how much has been claimed. */
-                        jRet["claimed"] = FormatBalance(nClaimed, hashToken);
+                        /* Otherwise check our partial balance. */
+                        if(hashTo.IsObject())
+                        {
+                            /* Get the partial amount already claimed. */
+                            uint64_t nClaimed = 0;
+                            if(!LLD::Ledger->ReadClaimed(contract.Hash(), nContract, nClaimed))
+                                nClaimed = 0; //reset value to double check here and continue
+
+                            /* Track how much has been claimed. */
+                            jRet["claimed"] = FormatBalance(nClaimed, hashToken);
+                        }
+
+                        /* Check if this debit has been credited. */
+                        else if(LLD::Ledger->HasProof(hashFrom, contract.Hash(), nContract, TAO::Ledger::FLAGS::LOOKUP))
+                            jRet["claimed"] = FormatBalance(nAmount, hashToken);
                     }
-
-                    /* Check if this debit has been credited. */
-                    else if(LLD::Ledger->HasProof(hashFrom, contract.Hash(), nContract, TAO::Ledger::FLAGS::LOOKUP))
-                        jRet["claimed"] = FormatBalance(nAmount, hashToken);
-
 
                     /* Add the reference to the response */
                     jRet["reference"] = nReference;

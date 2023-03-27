@@ -18,6 +18,13 @@ ________________________________________________________________________________
 
 #include <TAO/API/include/global.h>
 
+#include <TAO/API/types/authentication.h>
+#include <TAO/API/types/indexing.h>
+
+#include <TAO/Ledger/include/process.h>
+
+
+
 namespace LLP
 {
     /* Track our hostname so we don't have to call system every request. */
@@ -51,6 +58,36 @@ namespace LLP
 
         /* Initialize API Pointers. */
         TAO::API::Initialize();
+
+
+        /* TIME_SERVER instance */
+        {
+            /* Check if we need to enable listeners. */
+            const bool fServer =
+                (config::GetBoolArg(std::string("-unified"), false) && !config::fClient.load());
+
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(GetTimePort());
+            CONFIG.ENABLE_LISTEN   = fServer;
+            CONFIG.ENABLE_METERS   = false;
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = true;
+            CONFIG.ENABLE_SSL      = false;
+            CONFIG.ENABLE_REMOTE   = fServer;
+            CONFIG.REQUIRE_SSL     = false;
+            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
+            CONFIG.MAX_INCOMING    = fServer ? static_cast<uint32_t>(config::GetArg(std::string("-maxincoming"), 84)) : 0;
+            CONFIG.MAX_CONNECTIONS = fServer ? static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100)) : 8;
+            CONFIG.MAX_THREADS     = fServer ? 8 : 1;
+            CONFIG.DDOS_CSCORE     = 1;
+            CONFIG.DDOS_RSCORE     = 10;
+            CONFIG.DDOS_TIMESPAN   = 10;
+            CONFIG.MANAGER_SLEEP   = 60000; //default: 60 second connection attempts
+            CONFIG.SOCKET_TIMEOUT  = 10;
+
+            /* Create the server instance. */
+            TIME_SERVER = new Server<TimeNode>(CONFIG);
+        }
 
 
         /* LOOKUP_SERVER instance */
@@ -105,36 +142,6 @@ namespace LLP
 
             /* Create the server instance. */
             TRITIUM_SERVER = new Server<TritiumNode>(CONFIG);
-
-            /* Add our connections from commandline. */
-            MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
-        }
-
-
-        /* TIME_SERVER instance */
-        if(config::GetBoolArg(std::string("-unified"), false))
-        {
-            /* Generate our config object and use correct settings. */
-            LLP::Config CONFIG     = LLP::Config(GetTimePort());
-            CONFIG.ENABLE_LISTEN   = true;
-            CONFIG.ENABLE_METERS   = false;
-            CONFIG.ENABLE_DDOS     = true;
-            CONFIG.ENABLE_MANAGER  = true;
-            CONFIG.ENABLE_SSL      = false;
-            CONFIG.ENABLE_REMOTE   = true;
-            CONFIG.REQUIRE_SSL     = false;
-            CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
-            CONFIG.MAX_INCOMING    = static_cast<uint32_t>(config::GetArg(std::string("-maxincoming"), 84));
-            CONFIG.MAX_CONNECTIONS = static_cast<uint32_t>(config::GetArg(std::string("-maxconnections"), 100));
-            CONFIG.MAX_THREADS     = 8;
-            CONFIG.DDOS_CSCORE     = 1;
-            CONFIG.DDOS_RSCORE     = 10;
-            CONFIG.DDOS_TIMESPAN   = 10;
-            CONFIG.MANAGER_SLEEP   = 60000; //default: 60 second connection attempts
-            CONFIG.SOCKET_TIMEOUT  = 10;
-
-            /* Create the server instance. */
-            TIME_SERVER = new Server<TimeNode>(CONFIG);
         }
 
 
@@ -166,9 +173,9 @@ namespace LLP
         else
         {
             /* Output our new warning message if the API was disabled. */
-            debug::log(0, ANSI_COLOR_BRIGHT_RED, "API SERVER DISABLED", ANSI_COLOR_RESET);
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
-            debug::log(0, ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
+            debug::notice(ANSI_COLOR_BRIGHT_RED, "API SERVER DISABLED", ANSI_COLOR_RESET);
+            debug::notice(ANSI_COLOR_BRIGHT_YELLOW, "You must set apiuser=<user> and apipassword=<password> configuration.", ANSI_COLOR_RESET);
+            debug::notice(ANSI_COLOR_BRIGHT_YELLOW, "If you intend to run the API server without authenticating, set apiauth=0", ANSI_COLOR_RESET);
         }
 
 
@@ -234,6 +241,10 @@ namespace LLP
         }
 
 
+        /* Add our connections from commandline. */
+        MakeConnections<LLP::TimeNode>   (TIME_SERVER);
+        MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
+
         return true;
     }
 
@@ -276,7 +287,7 @@ namespace LLP
         OpenListening<LookupNode>(LOOKUP_SERVER);
 
         /* Open sockets for the tritium server and its subsystems. */
-        OpenListening<TritiumNode>(TRITIUM_SERVER);
+        OpenListening  <TritiumNode> (TRITIUM_SERVER);
 
         /* Open sockets for the time server and its subsystems. */
         OpenListening<TimeNode>(TIME_SERVER);
@@ -287,15 +298,37 @@ namespace LLP
         /* Open sockets for the mining server and its subsystems. */
         OpenListening<Miner>(MINING_SERVER);
 
+        /* Add our connections from commandline. */
+        MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
+
         /* Special method to sync up sigchain and events when opening app for iPhone. */
-        #if defined(REFRESH_BACKGROUND)
+        std::shared_ptr<LLP::TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
+        if(pnode != nullptr)
+        {
+            /* Sync the chain first. */
+            pnode->Sync();
 
-        /* Get our current logged in user. */
+            /* Do a simple spin-lock here until synced. */
+            while(TAO::Ledger::nSyncSession.load() != 0)
+                runtime::sleep(100);
 
-        debug::log(0, FUNCTION, "Refreshing sigchain events");
+            /* Get a current list of our active sessions. */
+            const auto vSessions =
+                TAO::API::Authentication::Sessions();
 
+            /* Check if we are an active thread. */
+            for(const auto& rSession : vSessions)
+            {
+                /* Get our genesis. */
+                const uint256_t& hashGenesis = rSession.second;
 
-        #endif
+                /* Get our current logged in user. */
+                debug::log(0, FUNCTION, "Refreshing sigchain events for ", hashGenesis.SubString());
+
+                /* Run our sigchain sync code now. */
+                TAO::API::Indexing::RefreshSigchain(hashGenesis);
+            }
+        }
     }
 
 

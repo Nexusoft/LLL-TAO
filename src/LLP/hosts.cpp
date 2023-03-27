@@ -18,12 +18,7 @@ ________________________________________________________________________________
 
 #include <vector>
 #include <mutex>
-
-/* The lookup mutex for thread safe calls to getaddrinfo and freeaddrinfo. */
-namespace
-{
-    std::mutex LOOKUP_MUTEX;
-}
+#include <map>
 
 namespace LLP
 {
@@ -56,6 +51,12 @@ namespace LLP
     /* Standard Wrapper Function to Interact with cstdlib DNS functions. */
     bool LookupIntern(const std::string &strName, std::vector<BaseAddress> &vAddr, uint32_t nMaxSolutions, bool fAllowLookup)
     {
+        /* Mutex to handle internal locking of lookup. */
+        static std::mutex LOOKUP_MUTEX;
+
+        /* Internal static map to track resolved DNS entries. */
+        static std::map<std::string, std::vector<BaseAddress>> mapResolved;
+
         /* Do a bounds check on the lookup name. */
         size_t s = strName.size();
         if(s == 0 || s > 255)
@@ -79,51 +80,66 @@ namespace LLP
         struct addrinfo *aiRes = nullptr;
 
         /* Lock the lookup mutex. */
-        std::unique_lock<std::mutex> lk(::LOOKUP_MUTEX);
-
-        /* Attempt to obtain address info for the lookup address. */
-        if(getaddrinfo(strName.c_str(), nullptr, &aiHint, &aiRes) != 0)
-            return false;
-
-        /* Loop through the list of address info */
-        struct addrinfo *aiNext = aiRes;
-        while(aiNext != nullptr && (nMaxSolutions == 0 || vAddr.size() < nMaxSolutions))
         {
-            /* Check if it is a IPv4 address. */
-            if(aiNext->ai_family == AF_INET)
-            {
-                /* Check for address length consistency. */
-                if(aiNext->ai_addrlen < sizeof(sockaddr_in))
-                {
-                    debug::error(FUNCTION, "invalid ai_addrlen: < sizeof(sockaddr_in)");
-                    aiNext = aiNext->ai_next;
-                    continue;
-                }
+            LOCK(LOOKUP_MUTEX);
 
-                /* Add the address to the list of addresses. */
-                vAddr.push_back(BaseAddress(((struct sockaddr_in*)(aiNext->ai_addr))->sin_addr));
-            }
-            /* Check if it is a IPv6 address. */
-            else if(aiNext->ai_family == AF_INET6)
+            /* Check our map of resolved values first. */
+            if(mapResolved.count(strName))
             {
-                /* Check for address length consistency. */
-                if(aiNext->ai_addrlen < sizeof(sockaddr_in6))
-                {
-                    debug::error(FUNCTION, "invalid ai_addrlen: < sizeof(sockaddr_in6)");
-                    aiNext = aiNext->ai_next;
-                    continue;
-                }
+                /* Copy over our cached value. */
+                vAddr = mapResolved[strName];
 
-                /* Add the address to the list of addresses. */
-                vAddr.push_back(BaseAddress(((struct sockaddr_in6*)(aiNext->ai_addr))->sin6_addr));
+                return true;
             }
 
-            /* Set the next pointer. */
-            aiNext = aiNext->ai_next;
+            /* Attempt to obtain address info for the lookup address. */
+            if(getaddrinfo(strName.c_str(), nullptr, &aiHint, &aiRes) != 0)
+                return false;
+
+            /* Loop through the list of address info */
+            struct addrinfo *aiNext = aiRes;
+            while(aiNext != nullptr && (nMaxSolutions == 0 || vAddr.size() < nMaxSolutions))
+            {
+                /* Check if it is a IPv4 address. */
+                if(aiNext->ai_family == AF_INET)
+                {
+                    /* Check for address length consistency. */
+                    if(aiNext->ai_addrlen < sizeof(sockaddr_in))
+                    {
+                        debug::error(FUNCTION, "invalid ai_addrlen: < sizeof(sockaddr_in)");
+                        aiNext = aiNext->ai_next;
+                        continue;
+                    }
+
+                    /* Add the address to the list of addresses. */
+                    vAddr.push_back(BaseAddress(((struct sockaddr_in*)(aiNext->ai_addr))->sin_addr));
+                }
+                /* Check if it is a IPv6 address. */
+                else if(aiNext->ai_family == AF_INET6)
+                {
+                    /* Check for address length consistency. */
+                    if(aiNext->ai_addrlen < sizeof(sockaddr_in6))
+                    {
+                        debug::error(FUNCTION, "invalid ai_addrlen: < sizeof(sockaddr_in6)");
+                        aiNext = aiNext->ai_next;
+                        continue;
+                    }
+
+                    /* Add the address to the list of addresses. */
+                    vAddr.push_back(BaseAddress(((struct sockaddr_in6*)(aiNext->ai_addr))->sin6_addr));
+                }
+
+                /* Set the next pointer. */
+                aiNext = aiNext->ai_next;
+            }
+
+            /* Free the memory associated with the address info. */
+            freeaddrinfo(aiRes);
+
+            /* Check if we need to cache this. */
+            if(vAddr.size() > 0)
+                mapResolved[strName] = vAddr;
         }
-
-        /* Free the memory associated with the address info. */
-        freeaddrinfo(aiRes);
 
         /* If there are any addresses added, return true. */
         return (vAddr.size() > 0);
