@@ -22,13 +22,15 @@ ________________________________________________________________________________
 
 namespace LLP
 {
+    /* Map to track external RTR's that are servicing each user-id. */
+    util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<LLP::BaseAddress>>> RelayNode::mapExternalRoutes =
+        new std::map<uint256_t, std::vector<LLP::BaseAddress>>();
 
     /** Constructor **/
     RelayNode::RelayNode()
     : BaseConnection<MessagePacket> ( )
     , pqSSL   (new LLC::PQSSL_CTX())
     , oCrypto ( )
-    , mapRoutingTable (new std::multimap<uint256_t, LLP::BaseAddress>())
     {
     }
 
@@ -38,7 +40,6 @@ namespace LLP
     : BaseConnection<MessagePacket> (SOCKET_IN, DDOS_IN, fDDOSIn)
     , pqSSL (new LLC::PQSSL_CTX())
     , oCrypto ( )
-    , mapRoutingTable (new std::multimap<uint256_t, LLP::BaseAddress>())
     {
     }
 
@@ -48,7 +49,6 @@ namespace LLP
     : BaseConnection<MessagePacket> (DDOS_IN, fDDOSIn)
     , pqSSL (new LLC::PQSSL_CTX())
     , oCrypto ( )
-    , mapRoutingTable (new std::multimap<uint256_t, LLP::BaseAddress>())
     {
     }
 
@@ -137,6 +137,35 @@ namespace LLP
         DataStream ssPacket(vPlainText, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
         {
+            /* This message requests a list of available nodes that service given genesis-id. */
+            case REQUEST::AVAILABLE:
+            {
+                /* Deserialize our user-id. */
+                uint256_t hashGenesis;
+                ssPacket >> hashGenesis;
+
+                /* Check if we have any available nodes. */
+                std::vector<LLP::BaseAddress> vAvailable;
+                if(mapExternalRoutes->count(hashGenesis))
+                    vAvailable = mapExternalRoutes->at(hashGenesis);
+
+                /* Push our response of available nodes. */
+                PushMessage(RESPONSE::AVAILABLE, vAvailable);
+
+                break;
+            }
+
+
+            case REQUEST::COMMAND:
+            {
+                std::string strMessage;
+                ssPacket >> strMessage;
+
+                debug::log(0, NODE, strMessage);
+
+                break;
+            }
+
             /* This message is generated in response to an outgoing handshake. */
             case REQUEST::HANDSHAKE:
             {
@@ -268,18 +297,13 @@ namespace LLP
                 }
 
                 /* Add this to our routing table. */
-                mapRoutingTable->insert(std::make_pair(hashGenesis, addrRouter));
+                if(!mapExternalRoutes->count(hashGenesis))
+                    mapExternalRoutes->insert(std::make_pair(hashGenesis, std::vector<LLP::BaseAddress>()));
 
-                break;
-            }
-
-
-            case REQUEST::COMMAND:
-            {
-                std::string strMessage;
-                ssPacket >> strMessage;
-
-                debug::log(0, NODE, strMessage);
+                /* Insert as a record now. */
+                const std::vector<LLP::BaseAddress> vAvailable = mapExternalRoutes->at(hashGenesis);
+                if(std::find(vAvailable.begin(), vAvailable.end(), addrRouter) != vAvailable.end())
+                    mapExternalRoutes->at(hashGenesis).push_back(addrRouter);
 
                 break;
             }

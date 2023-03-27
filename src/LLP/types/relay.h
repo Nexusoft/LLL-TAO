@@ -35,7 +35,7 @@ namespace LLP
 
 
         /** Internal map to track RTR's that are servicing each user-id. **/
-        util::atomic::lock_unique_ptr<std::multimap<uint256_t, LLP::BaseAddress>> mapRoutingTable;
+        static util::atomic::lock_unique_ptr<std::map<uint256_t, std::vector<LLP::BaseAddress>>> mapExternalRoutes;
 
 
     public:
@@ -54,6 +54,7 @@ namespace LLP
                 LIST          = 0x04, //list active datatypes
                 PING          = 0x05,
                 COMMAND       = 0x06,
+                AVAILABLE     = 0x07,
 
                 RESERVED2     = 0x08,
             };
@@ -80,6 +81,7 @@ namespace LLP
                 HANDSHAKE       = 0x11, //respond with response data for handshake to exchange keys
                 PONG            = 0x12, //pong messages give us latency and keep connection alive
                 COMMAND         = 0x13, //command response passes command information back to remote host
+                AVAILABLE       = 0x14,
             };
         };
 
