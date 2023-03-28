@@ -612,6 +612,9 @@ namespace TAO::API
                 /* Sync the sigchain if an active client before building our indexes. */
                 if(config::fClient.load())
                 {
+                    /* Broadcast our unconfirmed transactions first. */
+                    BroadcastUnconfirmed(hashGenesis);
+
                     /* Process our sigchain events now. */
                     DownloadNotifications(hashGenesis);
                     DownloadSigchain(hashGenesis);
@@ -619,8 +622,6 @@ namespace TAO::API
                     /* Exit out of this thread if we are shutting down. */
                     if(config::fShutdown.load())
                         return;
-
-
                 }
 
                 /* EVENTS INDEXING DISABLED for -client mode since we build them when downloading. */
