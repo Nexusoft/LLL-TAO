@@ -42,6 +42,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/types/transaction.h>
 
 #include <Util/include/convert.h>
 #include <Util/include/debug.h>
@@ -70,7 +71,7 @@ namespace TAO::Ledger
         uint512_t hashLast = 0;
 
         /* Check mempool for other transactions. */
-        TAO::Ledger::Transaction txPrev;
+        TAO::API::Transaction txPrev;
         if(mempool.Get(hashGenesis, txPrev))
         {
             /* Build new transaction object. */
@@ -83,11 +84,11 @@ namespace TAO::Ledger
         }
 
         /* Get the last transaction. */
-        else if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
+        else if(LLD::Logical->ReadLast(hashGenesis, hashLast))
         {
             /* Get previous transaction */
-            if(!LLD::Ledger->ReadTx(hashLast, txPrev))
-                return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in ledger db");
+            if(!LLD::Logical->ReadTx(hashLast, txPrev))
+                return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in logical db");
 
             /* Build new transaction object. */
             tx.nSequence   = txPrev.nSequence + 1;

@@ -190,7 +190,10 @@ namespace TAO::API
 
             /* Make sure our sigchain is in sync with our history. */
             if(config::fClient.load())
-                Indexing::DownloadSigchain(hashGenesis); //sanity check to make sure we don't orphan another branch
+            {
+                Indexing::DownloadSigchain(hashGenesis); //sanity check to make sure we don't orphan another sigchain branch
+                Indexing::BroadcastUnconfirmed(hashGenesis); //if we still have queud transactions, re-broadcast before creating
+            }
         }
 
         /* The new key scheme */

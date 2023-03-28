@@ -148,6 +148,16 @@ namespace TAO::API
         static void IndexSigchain(const uint512_t& hash);
 
 
+        /** BroadcastUnconfirmed
+         *
+         *  Broadcast our unconfirmed transactions if there are any.
+         *
+         *  @param[in] hashGenesis The sigchain genesis that we are downloading for.
+         *
+         **/
+        static void BroadcastUnconfirmed(const uint256_t& hashGenesis);
+
+
 
         /** DownloadSigchain
          *
@@ -167,6 +177,7 @@ namespace TAO::API
          *
          **/
         static void DownloadNotifications(const uint256_t& hashGenesis);
+
 
 
         /** Initialize Thread
