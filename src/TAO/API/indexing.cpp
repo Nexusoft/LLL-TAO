@@ -312,7 +312,7 @@ namespace TAO::API
 
 
     /*  Refresh our events and transactions for a given sigchain. */
-    void Indexing::RefreshSigchain(const uint256_t& hashGenesis)
+    void Indexing::DownloadSigchain(const uint256_t& hashGenesis)
     {
         /* Check for genesis. */
         if(LLP::TRITIUM_SERVER)
@@ -321,7 +321,56 @@ namespace TAO::API
             std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
             if(pNode != nullptr)
             {
-                debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing client");
+                debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing Sigchain");
+
+                /* Get the last txid in sigchain. */
+                uint512_t hashLast;
+                LLD::Logical->ReadLastConfirmed(hashGenesis, hashLast);
+
+                do
+                {
+                    /* Request the sig chain. */
+                    debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
+                    LLP::TritiumNode::BlockingMessage
+                    (
+                        30000,
+                        pNode.get(), LLP::TritiumNode::ACTION::LIST,
+                        uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
+                    );
+                    debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
+
+                    /* Check for shutdown. */
+                    if(config::fShutdown.load())
+                        break;
+
+                    uint512_t hashCurrent;
+                    LLD::Logical->ReadLastConfirmed(hashGenesis, hashCurrent);
+
+                    if(hashCurrent == hashLast)
+                    {
+                        debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN completed for ", hashGenesis.SubString());
+                        break;
+                    }
+                }
+                while(LLD::Logical->ReadLast(hashGenesis, hashLast));
+            }
+            else
+                debug::error(FUNCTION, "no connections available...");
+        }
+    }
+
+
+    /* Refresh our notifications for a given sigchain. */
+    void Indexing::DownloadNotifications(const uint256_t& hashGenesis)
+    {
+        /* Check for genesis. */
+        if(LLP::TRITIUM_SERVER)
+        {
+            /* Find an active connection to sync from. */
+            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+            if(pNode != nullptr)
+            {
+                debug::log(0, FUNCTION, "CLIENT MODE: Synchronizing Notifications");
 
                 /* Get our current tritium events sequence now. */
                 uint32_t nTritiumSequence = 0;
@@ -391,37 +440,6 @@ namespace TAO::API
                     }
                 }
                 while(LLD::Logical->ReadLegacySequence(hashGenesis, nLegacySequence));
-
-                /* Get the last txid in sigchain. */
-                uint512_t hashLast;
-                LLD::Logical->ReadLastConfirmed(hashGenesis, hashLast);
-
-                do
-                {
-                    /* Request the sig chain. */
-                    debug::log(0, FUNCTION, "CLIENT MODE: Requesting LIST::SIGCHAIN for ", hashGenesis.SubString());
-                    LLP::TritiumNode::BlockingMessage
-                    (
-                        30000,
-                        pNode.get(), LLP::TritiumNode::ACTION::LIST,
-                        uint8_t(LLP::TritiumNode::TYPES::SIGCHAIN), hashGenesis, hashLast
-                    );
-                    debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN received for ", hashGenesis.SubString());
-
-                    /* Check for shutdown. */
-                    if(config::fShutdown.load())
-                        break;
-
-                    uint512_t hashCurrent;
-                    LLD::Logical->ReadLastConfirmed(hashGenesis, hashCurrent);
-
-                    if(hashCurrent == hashLast)
-                    {
-                        debug::log(0, FUNCTION, "CLIENT MODE: LIST::SIGCHAIN completed for ", hashGenesis.SubString());
-                        break;
-                    }
-                }
-                while(LLD::Logical->ReadLast(hashGenesis, hashLast));
             }
             else
                 debug::error(FUNCTION, "no connections available...");
@@ -520,14 +538,15 @@ namespace TAO::API
                 if(config::fClient.load())
                 {
                     /* Process our sigchain events now. */
-                    RefreshSigchain(hashGenesis);
+                    DownloadNotifications(hashGenesis);
+                    DownloadSigchain(hashGenesis);
 
                     /* Exit out of this thread if we are shutting down. */
                     if(config::fShutdown.load())
                         return;
                 }
 
-                /* EVENTS DISABLED for -client mode. */
+                /* EVENTS INDEXING DISABLED for -client mode since we build them when downloading. */
                 else
                 {
                     /* Read our last sequence. */

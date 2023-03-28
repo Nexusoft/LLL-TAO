@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/names.h>
+#include <TAO/API/types/indexing.h>
 #include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -186,6 +187,10 @@ namespace TAO::API
             /* Check if sigchain is mature. */
             if(!CheckMature(hashGenesis))
                 throw Exception(-202, "Signature chain not mature. Please wait for coinbase/coinstake maturity");
+
+            /* Make sure our sigchain is in sync with our history. */
+            if(config::fClient.load())
+                Indexing::DownloadSigchain(hashGenesis); //sanity check to make sure we don't orphan another branch
         }
 
         /* The new key scheme */

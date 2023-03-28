@@ -149,14 +149,24 @@ namespace TAO::API
 
 
 
-        /** RefershSigchain
+        /** DownloadSigchain
          *
-         *  Refresh our events and transactions for a given sigchain.
+         *  Refresh our transactions for a given sigchain.
          *
-         *  @param[in] hashGenesis The sigchain genesis that we are refershing.
+         *  @param[in] hashGenesis The sigchain genesis that we are downloading for.
          *
          **/
-        static void RefreshSigchain(const uint256_t& hashGenesis);
+        static void DownloadSigchain(const uint256_t& hashGenesis);
+
+
+        /** DownloadNotifications
+         *
+         *  Refresh our notifications for a given sigchain.
+         *
+         *  @param[in] hashGenesis The sigchain genesis that we are downloading for.
+         *
+         **/
+        static void DownloadNotifications(const uint256_t& hashGenesis);
 
 
         /** Initialize Thread
