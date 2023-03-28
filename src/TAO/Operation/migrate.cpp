@@ -39,12 +39,15 @@ namespace TAO
              * so the hashProof is always the wildcard address. Also only one output UTXO sending to trust account
              * and thus the contract number is always zero.
              */
-            if(LLD::Ledger->HasProof(TAO::Register::WILDCARD_ADDRESS, hashTx, 0, nFlags))
-                return debug::error(FUNCTION, "migrate credit is already claimed");
+            if(!config::fClient.load())
+            {
+                if(LLD::Ledger->HasProof(TAO::Register::WILDCARD_ADDRESS, hashTx, 0, nFlags))
+                    return debug::error(FUNCTION, "migrate credit is already claimed");
 
-            /* Write the claimed proof. */
-            if(!LLD::Ledger->WriteProof(TAO::Register::WILDCARD_ADDRESS, hashTx, 0, nFlags))
-                return debug::error(FUNCTION, "failed to write migrate credit proof");
+                /* Write the claimed proof. */
+                if(!LLD::Ledger->WriteProof(TAO::Register::WILDCARD_ADDRESS, hashTx, 0, nFlags))
+                    return debug::error(FUNCTION, "failed to write migrate credit proof");
+            }
 
             /* Write the new register's state. */
             if(!LLD::Register->WriteState(hashAddress, trust, nFlags))
