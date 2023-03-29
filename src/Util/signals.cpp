@@ -48,9 +48,11 @@ void HandleSIGTERM(int signum)
             strSignal = "SIGTERM";
             break;
 
+        #ifndef WIN32
         case SIGPIPE:
             strSignal = "SIGPIPE";
             break;
+        #endif
 
         default:
             strSignal = "UNKNOWN";
