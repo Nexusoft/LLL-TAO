@@ -458,10 +458,10 @@ namespace TAO
                 return state;
 
             /* Read the previous block from ledger. */
-            if(!LLD::Ledger->ReadBlock(hashPrevBlock, state))
-                throw debug::exception(FUNCTION, "failed to read previous block state ", hashPrevBlock.SubString(), " at height ", nHeight);
+            if(LLD::Ledger->ReadBlock(hashPrevBlock, state))
+                return state;
 
-            return state;
+            return BlockState();
         }
 
 
@@ -474,10 +474,10 @@ namespace TAO
                 return state;
 
             /* Read next block from the ledger. */
-            if(!LLD::Ledger->ReadBlock(hashNextBlock, state))
-                throw debug::exception(FUNCTION, "failed to read next block state ", hashNextBlock.SubString());
+            if(LLD::Ledger->ReadBlock(hashNextBlock, state))
+                return state;
 
-            return state;
+            return BlockState();
         }
 
 
