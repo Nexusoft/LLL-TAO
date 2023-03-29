@@ -224,28 +224,6 @@ namespace LLP
                 /* Respond with version message if incoming connection. */
                 if(fOUTGOING)
                 {
-                    /* Special check for -client modes. */
-                    if(config::fClient.load() && LLP::LOOKUP_SERVER)
-                    {
-                        /* Get a copy of our current address. */
-                        const std::string strAddress =
-                            GetAddress().ToStringIP();
-
-                        /* Check that this node has a valid lookup server active. */
-                        std::shared_ptr<LLP::LookupNode> pConnection;
-                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                        {
-                            /* Delete this from manager. */
-                            if(LLP::TRITIUM_SERVER->GetAddressManager())
-                                LLP::TRITIUM_SERVER->GetAddressManager()->Ban(GetAddress());
-
-                            /* Remove it from our data threads. */
-                            LLP::TRITIUM_SERVER->Disconnect(nDataThread, nDataIndex);
-
-                            break;
-                        }
-                    }
-
                     /* If we are on version 3.1, we want to send their address on connect. */
                     if(MinorVersion(LLP::PROTOCOL_VERSION, 3) >= 1) //3 is major version, 1 is minor (3.1)
                     {
@@ -623,6 +601,25 @@ namespace LLP
                             version::CLIENT_VERSION_BUILD_STRING,
                             BaseAddress(GetAddress())
                         );
+                    }
+
+                    /* Special check for -client modes. */
+                    else if(config::fClient.load() && LLP::LOOKUP_SERVER)
+                    {
+                        /* Get a copy of our current address. */
+                        const std::string strAddress =
+                            GetAddress().ToStringIP();
+
+                        /* Check that this node has a valid lookup server active. */
+                        std::shared_ptr<LLP::LookupNode> pConnection;
+                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                        {
+                            /* Delete this from manager. */
+                            if(LLP::TRITIUM_SERVER->GetAddressManager())
+                                LLP::TRITIUM_SERVER->GetAddressManager()->Ban(GetAddress());
+
+                            return false;
+                        }
                     }
                 }
                 else

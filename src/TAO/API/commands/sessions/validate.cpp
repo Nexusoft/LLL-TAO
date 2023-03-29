@@ -38,7 +38,7 @@ namespace TAO::API
         /* Read the crypto object register. */
         TAO::Register::Object oCrypto;
         if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::FORCED))
-            return false;
+            throw Exception(-130, "Account doesn't exist or connection failed.");
 
         /* Read the key type from crypto object register. */
         const uint256_t hashAuth =
