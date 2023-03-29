@@ -277,8 +277,11 @@ namespace TAO::API
             return;
 
         /* Check our re-broadcast time. */
-        if(nModified + 10 > runtime::unifiedtimestamp())
+        if(nModified + 60 < runtime::unifiedtimestamp())
         {
+            /* Get a copy of our hash. */
+            const uint512_t hashTx = GetHash();
+
             /* Adjust our modified timestamp. */
             nModified = runtime::unifiedtimestamp();
 
@@ -290,9 +293,16 @@ namespace TAO::API
                 (
                     LLP::TritiumNode::ACTION::NOTIFY,
                     uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
-                    GetHash() //TODO: we need to cache this hash internally (viz branch)
+                    hashTx
                 );
+
+                /* Log that tx was rebroadcast. */
+                debug::log(1, FUNCTION, "Re-Broadcasted ", hashTx.SubString(), " to network");
             }
+
+            /* Write our transaction update to disk. */
+            if(!LLD::Logical->WriteTx(hashTx, *this))
+                debug::error(FUNCTION, "failed to write ", VARIABLE(hashTx.SubString()));
         }
     }
 
@@ -301,7 +311,13 @@ namespace TAO::API
     {
         /* Set our status to acceoted if transaction has been connected to a block. */
         if(LLD::Ledger->HasIndex(hash))
+        {
+            /* Refresh this transaction from disk if it exists. */
+            LLD::Logical->ReadTx(hash, *this); //only after it has been accepted to disk
+
+            /* Set status to accepted. */
             nStatus = ACCEPTED;
+        }
 
         /* Read our previous transaction. */
         if(!IsFirst())
@@ -330,7 +346,7 @@ namespace TAO::API
             return debug::error(FUNCTION, "failed to write ", VARIABLE(hash.SubString()));
 
         /* Write our last index to the database. */
-        if(!LLD::Logical->WriteLast(hashGenesis, hash))
+        if(hashNextTx == 0 && !LLD::Logical->WriteLast(hashGenesis, hash))
             return debug::error(FUNCTION, "failed to write last index for ", VARIABLE(hashGenesis.SubString()));
 
         /* Index our transaction level data now. */

@@ -180,6 +180,8 @@ namespace LLP
 
                                     /* Commit our ACID transaction across LLD instances. */
                                     LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+
+                                    debug::log(3, "FLAGS::LOOKUP::TRITIUM: ", hashTx.SubString(), " ACCEPTED");
                                 }
 
                                 /* Connect transaction in memory if register specifier. */
@@ -192,9 +194,9 @@ namespace LLP
                                     /* Commit our register to disk now. */
                                     if(!tx.CommitLookup(hashRegister))
                                         return debug::drop(NODE, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
-                                }
 
-                                debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+                                    debug::log(3, "FLAGS::LOOKUP::REGISTER: ", hashTx.SubString(), " ACCEPTED");
+                                }
                             }
 
                             break;
@@ -240,7 +242,7 @@ namespace LLP
                                 }
 
                                 /* Write Success to log. */
-                                debug::log(3, "FLAGS::LOOKUP: ", hashTx.SubString(), " ACCEPTED");
+                                debug::log(3, "FLAGS::LOOKUP::LEGACY: ", hashTx.SubString(), " ACCEPTED");
                             }
 
                             break;
@@ -252,10 +254,6 @@ namespace LLP
                             /* Get the specifier for dependant. */
                             uint8_t nType;
                             ssPacket >> nType;
-
-                            /* Get the genesis-id of sigchain requesting proof. */
-                            uint256_t hashGenesis;
-                            ssPacket >> hashGenesis;
 
                             /* Switch type based on our specifier. */
                             switch(nType)
@@ -426,10 +424,6 @@ namespace LLP
                     /* Handle for a raw tritium transaction. */
                     case SPECIFIER::TRITIUM:
                     {
-                        /* Get the calling genesis. */
-                        uint256_t hashGenesis;
-                        ssPacket >> hashGenesis;
-
                         /* Check for proof uint. */
                         uint256_t hashProof;
                         ssPacket >> hashProof;
@@ -453,7 +447,7 @@ namespace LLP
                             tMerkle.BuildMerkleBranch();
 
                             /* Send off the transaction to remote node. */
-                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::TRITIUM), hashGenesis, tMerkle);
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::TRITIUM), tMerkle);
 
                             /* Debug output. */
                             return debug::success(3, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");
@@ -491,7 +485,7 @@ namespace LLP
                             tMerkle.BuildMerkleBranch();
 
                             /* Send off the transaction to remote node. */
-                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::CONTRACT), hashGenesis, tMerkle);
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::CONTRACT), tMerkle);
 
                             /* Debug output. */
                             return debug::success(3, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");
@@ -506,10 +500,6 @@ namespace LLP
                     /* Handle for a raw legacy transaction. */
                     case SPECIFIER::LEGACY:
                     {
-                        /* Get the calling genesis. */
-                        uint256_t hashGenesis;
-                        ssPacket >> hashGenesis;
-
                         /* Get the index of transaction. */
                         uint512_t hashTx;
                         ssPacket >> hashTx;
@@ -529,7 +519,7 @@ namespace LLP
                             tMerkle.BuildMerkleBranch();
 
                             /* Send off the transaction to remote node. */
-                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::LEGACY), hashGenesis, tMerkle);
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::LEGACY), tMerkle);
 
                             /* Debug output. */
                             return debug::success(3, NODE, "REQUEST::PROOF::LEGACY TRANSACTION");

@@ -182,15 +182,15 @@ namespace LLD
                 }
 
                 /* Debug output to console. */
-                debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
+                //debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
                 pConnection->BlockingLookup
                 (
                     5000,
                     LLP::LookupNode::REQUEST::PROOF,
                     uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM),
-                    hashGenesis, hashProof, hashTx, nContract
+                    hashProof, hashTx, nContract
                 );
-                debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
+                //debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
             }
 
             return Exists(tIndex);
@@ -339,15 +339,15 @@ namespace LLD
                 }
 
                 /* Debug output to console. */
-                debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
+                //debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
                 pConnection->BlockingLookup
                 (
                     5000,
                     LLP::LookupNode::REQUEST::PROOF,
                     uint8_t(LLP::LookupNode::SPECIFIER::LEGACY),
-                    hashGenesis, hashTx, nOutput
+                    hashTx, nOutput
                 );
-                debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
+                //debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
             }
 
             return Exists(tIndex);

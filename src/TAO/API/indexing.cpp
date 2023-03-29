@@ -314,8 +314,6 @@ namespace TAO::API
     /* Broadcast our unconfirmed transactions if there are any. */
     void Indexing::BroadcastUnconfirmed(const uint256_t& hashGenesis)
     {
-        debug::log(1, FUNCTION, "Rebroadcasting indexes for genesis=", hashGenesis.SubString());
-
         /* Build list of transaction hashes. */
         std::vector<uint512_t> vHashes;
 
@@ -364,20 +362,8 @@ namespace TAO::API
             /* Execute the operations layer. */
             if(TAO::Ledger::mempool.Has(*hash))
             {
-                /* Relay tx if creating ourselves. */
-                if(LLP::TRITIUM_SERVER)
-                {
-                    /* Relay the transaction notification. */
-                    LLP::TRITIUM_SERVER->Relay
-                    (
-                        LLP::TritiumNode::ACTION::NOTIFY,
-                        uint8_t(LLP::TritiumNode::TYPES::TRANSACTION),
-                        *hash
-                    );
-
-                    /* Log that tx was rebroadcast. */
-                    debug::log(1, FUNCTION, "Re-Broadcasted ", hash->SubString(), " to network");
-                }
+                /* Broadcast our transaction now. */
+                tx.Broadcast();
             }
 
             /* Otherwise accept and execute this transaction. */
@@ -431,7 +417,7 @@ namespace TAO::API
                         break;
                     }
                 }
-                while(LLD::Logical->ReadLast(hashGenesis, hashLast));
+                while(LLD::Logical->ReadLastConfirmed(hashGenesis, hashLast));
             }
             else
                 debug::error(FUNCTION, "no connections available...");

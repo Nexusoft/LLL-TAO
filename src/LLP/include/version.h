@@ -45,7 +45,7 @@ namespace LLP
 
 
     /* Used to define the baseline of -client mode Version. */
-    const uint32_t MIN_TRITIUM_CLIENT_VERSION = 3050000;
+    const uint32_t MIN_TRITIUM_CLIENT_VERSION = 3040000;
 
 
     /* The name that will be shared with other nodes. */

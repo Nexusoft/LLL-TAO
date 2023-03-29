@@ -86,6 +86,9 @@ namespace TAO::API
                     if(!CheckMature(hashGenesis))
                         continue;
 
+                    /* Broadcast our unconfirmed transactions first. */
+                    Indexing::BroadcastUnconfirmed(hashGenesis);
+
                     /* Build a json object. */
                     const encoding::json jSession =
                     {
