@@ -335,11 +335,15 @@ namespace TAO::API
                 break;
             }
 
+            /* Check we have index to break. */
+            if(LLD::Ledger->HasIndex(hash))
+                break;
+
             /* Push transaction to list. */
             vHashes.push_back(hash); //this will warm up the LLD cache if available, or remain low footprint if not
 
             /* Check for first. */
-            if(tx.IsFirst() || LLD::Ledger->HasIndex(tx.hashPrevTx))
+            if(tx.IsFirst())
                 break;
 
             /* Set hash to previous hash. */

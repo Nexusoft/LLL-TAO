@@ -253,6 +253,10 @@ namespace LLP
                             uint8_t nType;
                             ssPacket >> nType;
 
+                            /* Get the genesis-id of sigchain requesting proof. */
+                            uint256_t hashGenesis;
+                            ssPacket >> hashGenesis;
+
                             /* Switch type based on our specifier. */
                             switch(nType)
                             {
@@ -422,6 +426,10 @@ namespace LLP
                     /* Handle for a raw tritium transaction. */
                     case SPECIFIER::TRITIUM:
                     {
+                        /* Get the calling genesis. */
+                        uint256_t hashGenesis;
+                        ssPacket >> hashGenesis;
+
                         /* Check for proof uint. */
                         uint256_t hashProof;
                         ssPacket >> hashProof;
@@ -445,7 +453,7 @@ namespace LLP
                             tMerkle.BuildMerkleBranch();
 
                             /* Send off the transaction to remote node. */
-                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::TRITIUM), tMerkle);
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::TRITIUM), hashGenesis, tMerkle);
 
                             /* Debug output. */
                             return debug::success(3, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");
@@ -460,6 +468,10 @@ namespace LLP
                     /* Handle for a raw tritium transaction. */
                     case SPECIFIER::CONTRACT:
                     {
+                        /* Get the calling genesis. */
+                        uint256_t hashGenesis;
+                        ssPacket >> hashGenesis;
+
                         /* Get the index of transaction. */
                         uint512_t hashTx;
                         ssPacket >> hashTx;
@@ -479,7 +491,7 @@ namespace LLP
                             tMerkle.BuildMerkleBranch();
 
                             /* Send off the transaction to remote node. */
-                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::CONTRACT), tMerkle);
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::CONTRACT), hashGenesis, tMerkle);
 
                             /* Debug output. */
                             return debug::success(3, NODE, "REQUEST::PROOF::TRITIUM TRANSACTION");
@@ -494,6 +506,10 @@ namespace LLP
                     /* Handle for a raw legacy transaction. */
                     case SPECIFIER::LEGACY:
                     {
+                        /* Get the calling genesis. */
+                        uint256_t hashGenesis;
+                        ssPacket >> hashGenesis;
+
                         /* Get the index of transaction. */
                         uint512_t hashTx;
                         ssPacket >> hashTx;
@@ -513,7 +529,7 @@ namespace LLP
                             tMerkle.BuildMerkleBranch();
 
                             /* Send off the transaction to remote node. */
-                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::LEGACY), tMerkle);
+                            PushMessage(RESPONSE::MERKLE, nRequestID, uint8_t(SPECIFIER::PROOF), uint8_t(SPECIFIER::LEGACY), hashGenesis, tMerkle);
 
                             /* Debug output. */
                             return debug::success(3, NODE, "REQUEST::PROOF::LEGACY TRANSACTION");
