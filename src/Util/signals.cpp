@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <Util/include/signals.h>
 #include <signal.h>
 #include <Util/include/args.h>
+#include <Util/include/debug.h>
 
 std::condition_variable SHUTDOWN;
 
@@ -28,9 +29,41 @@ void Shutdown()
 /** Catch Signal Handler function **/
 void HandleSIGTERM(int signum)
 {
+    std::string strSignal = "";
+    switch(signum)
+    {
+        case SIGABRT:
+            strSignal = "SIGABRT";
+            break;
+
+        case SIGILL:
+            strSignal = "SIGILL";
+            break;
+
+        case SIGINT:
+            strSignal = "SIGINT";
+            break;
+
+        case SIGTERM:
+            strSignal = "SIGTERM";
+            break;
+
+        case SIGPIPE:
+            strSignal = "SIGPIPE";
+            break;
+
+        default:
+            strSignal = "UNKNOWN";
+            break;
+    }
+
+    debug::notice("Signal received ", strSignal);
+
 #ifndef WIN32
+
     if(signum != SIGPIPE)
         Shutdown();
+
 #else
     Shutdown();
 #endif
