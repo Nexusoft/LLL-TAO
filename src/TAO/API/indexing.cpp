@@ -379,6 +379,10 @@ namespace TAO::API
     /*  Refresh our events and transactions for a given sigchain. */
     void Indexing::DownloadSigchain(const uint256_t& hashGenesis)
     {
+        /* Check for client mode. */
+        if(!config::fClient.load())
+            return;
+
         /* Check for genesis. */
         if(LLP::TRITIUM_SERVER)
         {
@@ -428,6 +432,10 @@ namespace TAO::API
     /* Refresh our notifications for a given sigchain. */
     void Indexing::DownloadNotifications(const uint256_t& hashGenesis)
     {
+        /* Check for client mode. */
+        if(!config::fClient.load())
+            return;
+
         /* Check for genesis. */
         if(LLP::TRITIUM_SERVER)
         {
