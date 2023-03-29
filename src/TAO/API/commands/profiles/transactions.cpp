@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/json.h>
 #include <TAO/API/types/commands/profiles.h>
 #include <TAO/API/types/authentication.h>
+#include <TAO/API/types/indexing.h>
 #include <TAO/API/types/transaction.h>
 
 #include <TAO/Ledger/types/state.h>
@@ -32,6 +33,9 @@ namespace TAO::API
         /* Extract input parameters. */
         const uint256_t hashGenesis =
             Authentication::Caller(jParams);
+
+        /* Make sure our sigchain is up to date. */
+        Indexing::DownloadSigchain(hashGenesis);
 
         /* Extract our verbose parameter. */
         const uint32_t  nVerbose =
