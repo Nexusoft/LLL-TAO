@@ -2948,6 +2948,10 @@ namespace LLP
                         /* Check for empty merkle tx. */
                         if(tx.hashBlock != 0)
                         {
+                            /* Verbose=3 dumps transaction data. */
+                            if(config::nVerbose >= 3)
+                                tx.print();
+
                             /* Run basic merkle tx checks */
                             if(!tx.Verify())
                                 return debug::error(FUNCTION, hashTx.SubString(), " REJECTED: ", debug::GetLastError());
@@ -2985,10 +2989,6 @@ namespace LLP
                                 /* Commit our ACID transaction across LLD instances. */
                                 LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
                             }
-
-                            /* Verbose=3 dumps transaction data. */
-                            if(config::nVerbose >= 3)
-                                tx.print();
 
                             /* Write Success to log. */
                             debug::log(3, "MERKLE::TRITIUM: ", hashTx.SubString(), " ACCEPTED");

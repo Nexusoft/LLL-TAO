@@ -204,20 +204,8 @@ namespace TAO
             uint64_t nDebit;
             debit >> nDebit;
 
-            /* Skip placeholder */
+            /* Skip reference number placeholder */
             debit.Seek(8);
-
-            /* Get the debit trust score */
-            uint32_t nScoreDebit;
-            debit >> nScoreDebit;
-
-            /* Get the debit last stake hash */
-            uint512_t hashLastDebit;
-            debit >> hashLastDebit;
-
-            /* Get the trust key hash */
-            uint576_t hashTrustDebit;
-            debit >> hashTrustDebit;
 
             /* Check for reserved values. */
             if(TAO::Register::Reserved(hashTo))
@@ -227,10 +215,6 @@ namespace TAO
             if(hashFrom != TAO::Register::WILDCARD_ADDRESS)
                 return debug::error(FUNCTION, "migrate debit register must be from UTXO");
 
-            /* Check whether the legacy trust key has already completed migration. */
-            if(!config::fClient.load() && LLD::Legacy->HasTrustConversion(hashTrust))
-                return debug::error(FUNCTION, "trust key is already converted");
-
             /* Validate migrate is to address in UTXO output */
             if(hashTo != hashAccount)
                 return debug::error(FUNCTION, "trust account register address must match debit");
@@ -239,17 +223,37 @@ namespace TAO
             if(nDebit != nAmount)
                 return debug::error(FUNCTION, "debit and credit value mismatch");
 
-            /* Verify the trust score */
-            if(nScoreDebit != nScore)
-                return debug::error(FUNCTION, "debit and credit trust score mismatch");
+            /* This data is generated in BuildMigrateDebit which is disabled for -client mode. */
+            if(!config::fClient.load())
+            {
+                /* Get the debit trust score */
+                uint32_t nScoreDebit;
+                debit >> nScoreDebit;
 
-            /* Verify the hash last stake */
-            if(hashLastDebit != hashLast)
-                return debug::error(FUNCTION, "debit and credit hash last stake mismatch");
+                /* Get the debit last stake hash */
+                uint512_t hashLastDebit;
+                debit >> hashLastDebit;
 
-            /* Verify the trust key hash */
-            if(hashTrustDebit != hashTrust)
-                return debug::error(FUNCTION, "debit and credit trust key mismatch");
+                /* Get the trust key hash */
+                uint576_t hashTrustDebit;
+                debit >> hashTrustDebit;
+
+                /* Verify the trust score */
+                if(nScoreDebit != nScore)
+                    return debug::error(FUNCTION, "debit and credit trust score mismatch");
+
+                /* Verify the hash last stake */
+                if(hashLastDebit != hashLast)
+                    return debug::error(FUNCTION, "debit and credit hash last stake mismatch");
+
+                /* Verify the trust key hash */
+                if(hashTrustDebit != hashTrust)
+                    return debug::error(FUNCTION, "debit and credit trust key mismatch");
+
+                /* Check whether the legacy trust key has already completed migration. */
+                if(LLD::Legacy->HasTrustConversion(hashTrust))
+                    return debug::error(FUNCTION, "trust key is already converted");
+            }
 
             return true;
         }
