@@ -34,10 +34,10 @@ namespace LLP
         CONNECTED  = (1 << 3)
     };
 
-    #define CONNECT_FLAGS_ALL ConnectState::NEW       | \
-                              ConnectState::FAILED    | \
-                              ConnectState::DROPPED   | \
-                              ConnectState::CONNECTED
+    #define CONNECT_FLAGS_ALL LLP::ConnectState::NEW       | \
+                              LLP::ConnectState::FAILED    | \
+                              LLP::ConnectState::DROPPED   | \
+                              LLP::ConnectState::CONNECTED
 
     /** TrustAddress
      *
@@ -109,7 +109,7 @@ namespace LLP
             TrustAddress *pthis = const_cast<TrustAddress *>(this);
             BaseAddress *pAddr =  static_cast<BaseAddress *>(pthis);
 
-            READWRITE(nSession);
+            READWRITE(nLastSeen);
             READWRITE(nConnected);
             READWRITE(nDropped);
             READWRITE(nFailed);

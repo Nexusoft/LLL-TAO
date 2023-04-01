@@ -454,6 +454,9 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_market_json.o \
 		build/API_commands_market_list.o \
 		build/API_commands_market_user.o \
+		build/API_commands_network_initialize.o \
+		build/API_commands_network_count.o \
+		build/API_commands_network_list.o \
 		build/API_commands_names_initialize.o \
 		build/API_commands_names_index.o \
 		build/API_commands_names_lookup.o \
@@ -768,6 +771,9 @@ build/API_commands_ledger_%.o: ./src/TAO/API/commands/ledger/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_names_%.o: ./src/TAO/API/commands/names/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
+
+build/API_commands_network_%.o: ./src/TAO/API/commands/network/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 build/API_commands_profiles_%.o: ./src/TAO/API/commands/profiles/%.cpp $(HEADERS)
@@ -1347,6 +1353,20 @@ build/API_commands_market_%.o: src/TAO/API/commands/market/%.cpp $(HEADERS)
 	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	rm -f $(@:%.o=%.d)
 
+build/API_commands_names_%.o: src/TAO/API/commands/names/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
+build/API_commands_network_%.o: src/TAO/API/commands/network/%.cpp $(HEADERS)
+	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	rm -f $(@:%.o=%.d)
+
 build/API_commands_finance_%.o: src/TAO/API/commands/finance/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
@@ -1362,13 +1382,6 @@ build/API_commands_invoices_%.o: src/TAO/API/commands/invoices/%.cpp $(HEADERS)
 	rm -f $(@:%.o=%.d)
 
 build/API_commands_ledger_%.o: src/TAO/API/commands/ledger/%.cpp $(HEADERS)
-	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
-	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
-	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-	-e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-	rm -f $(@:%.o=%.d)
-
-build/API_commands_names_%.o: src/TAO/API/commands/names/%.cpp $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) -MMD -o $@ $<
 	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \

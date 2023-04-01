@@ -2375,10 +2375,14 @@ namespace LLP
                             {
                                 /* Add addresses to manager.. */
                                 if(TRITIUM_SERVER->GetAddressManager())
-                                    TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
+                                {
+                                    /* Only output debug info if new address. */
+                                    if(!TRITIUM_SERVER->GetAddressManager()->Has(addr))
+                                        debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
 
-                                /* Debug output. */
-                                debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
+                                    /* Add address to manager now. */
+                                    TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
+                                }
                             }
 
                             break;
