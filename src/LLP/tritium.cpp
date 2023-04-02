@@ -2380,8 +2380,18 @@ namespace LLP
                                     if(TRITIUM_SERVER->GetAddressManager()->Has(addr))
                                     {
                                         /* Only notify address logs if more than ten minutes since last connection. */
-                                        if(TRITIUM_SERVER->GetAddressManager()->Get(addr).nLastSeen + 600 < runtime::unifiedtimestamp())
-                                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
+                                        const LLP::TrustAddress addrInfo =
+                                            TRITIUM_SERVER->GetAddressManager()->Get(addr);
+
+                                        /* Calculate how long it has been since last connection. */
+                                        const uint64_t nTimeAway =
+                                            (runtime::unifiedtimestamp() - addrInfo.nLastSeen);
+
+                                        /* Special debug output for new address recurring time. */
+                                        if(addrInfo.nLastSeen > runtime::unifiedtimestamp() || addrInfo.nLastSeen == 0)
+                                            debug::log(0, NODE, "ACTION::NOTIFY: UPDATE ADDRESS ", addr.ToStringIP());
+                                        else if(nTimeAway > 600)
+                                            debug::log(0, NODE, "ACTION::NOTIFY: ONLINE ADDRESS ", addr.ToStringIP(), " AWAY FOR ", (nTimeAway / 60), " MINUTES");
                                     }
                                     else
                                         debug::log(0, NODE, "ACTION::NOTIFY: NEW ADDRESS ", addr.ToStringIP());
