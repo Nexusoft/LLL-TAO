@@ -2377,8 +2377,14 @@ namespace LLP
                                 if(TRITIUM_SERVER->GetAddressManager())
                                 {
                                     /* Only output debug info if new address. */
-                                    if(!TRITIUM_SERVER->GetAddressManager()->Has(addr))
-                                        debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
+                                    if(TRITIUM_SERVER->GetAddressManager()->Has(addr))
+                                    {
+                                        /* Only notify address logs if more than ten minutes since last connection. */
+                                        if(TRITIUM_SERVER->GetAddressManager()->Get(addr).nLastSeen + 600 < runtime::unifiedtimestamp())
+                                            debug::log(0, NODE, "ACTION::NOTIFY: ADDRESS ", addr.ToStringIP());
+                                    }
+                                    else
+                                        debug::log(0, NODE, "ACTION::NOTIFY: NEW ADDRESS ", addr.ToStringIP());
 
                                     /* Add address to manager now. */
                                     TRITIUM_SERVER->GetAddressManager()->AddAddress(addr);
