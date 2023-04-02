@@ -1325,114 +1325,129 @@ namespace LLP
                         if(!LLD::Ledger->ReadBlock(hashStart, stateLast))
                             return debug::drop(NODE, "failed to read starting block");
 
-                        /* Loop until we have read all the blocks up to limits. */
-                        while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop)
+                        /* Do a sequential read to obtain the list.
+                           3000 seems to be the optimal amount to overcome higher-latency connections during sync */
+                        std::vector<TAO::Ledger::BlockState> vStates;
+                        while(!fBufferFull.load() && --nLimits >= 0 && hashStart != hashStop && LLD::Ledger->BatchRead(hashStart, "block", vStates, 3000, true))
                         {
-                            /* Check for shutdown. */
-                            if(config::fShutdown.load())
-                                return debug::drop(NODE, "shutdown requested, ACTION::LIST::BLOCK terminated");
-
-                            /* Break if we fail to read our block. */
-                            TAO::Ledger::BlockState state;
-                            if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                            /* Loop through all available states. */
+                            for(auto& state : vStates)
                             {
-                                nLimits = 0;
-                                break;
-                            }
+                                /* Update start every iteration. */
+                                hashStart = state.GetHash();
 
-                            /* Update start every iteration. */
-                            hashStart = state.GetHash();
+                                /* Skip if not in main chain. */
+                                if(!state.IsInMainChain())
+                                    continue;
 
-                            /* Cache the block hash. */
-                            stateLast = state;
-
-                            /* Handle for special sync block type specifier. */
-                            if(fSyncBlock)
-                            {
-                                /* Build the sync block from state. */
-                                TAO::Ledger::SyncBlock block(state);
-
-                                /* Push message in response. */
-                                PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
-                            }
-
-                            /* Handle for a client block header. */
-                            else if(fClientBlock)
-                            {
-                                /* Build the client block from state. */
-                                TAO::Ledger::ClientBlock block(state);
-
-                                /* Push message in response. */
-                                PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
-                            }
-                            else
-                            {
-                                /* Check for version to send correct type */
-                                if(state.nVersion < 7)
+                                /* Check for matching hashes. */
+                                if(state.hashPrevBlock != stateLast.GetHash())
                                 {
-                                    /* Build the legacy block from state. */
-                                    Legacy::LegacyBlock block(state);
+                                    if(config::nVerbose >= 3)
+                                        debug::log(3, FUNCTION, "Reading block ", stateLast.hashNextBlock.SubString());
+
+                                    /* Read the correct block from next index. */
+                                    if(!LLD::Ledger->ReadBlock(stateLast.hashNextBlock, state))
+                                    {
+                                        nLimits = 0;
+                                        break;
+                                    }
+
+                                    /* Update hashStart. */
+                                    hashStart = state.GetHash();
+                                }
+
+                                /* Cache the block hash. */
+                                stateLast = state;
+
+                                /* Handle for special sync block type specifier. */
+                                if(fSyncBlock)
+                                {
+                                    /* Build the sync block from state. */
+                                    TAO::Ledger::SyncBlock block(state);
 
                                     /* Push message in response. */
-                                    PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::LEGACY), block);
+                                    PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::SYNC), block);
+                                }
+
+                                /* Handle for a client block header. */
+                                else if(fClientBlock)
+                                {
+                                    /* Build the client block from state. */
+                                    TAO::Ledger::ClientBlock block(state);
+
+                                    /* Push message in response. */
+                                    PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::CLIENT), block);
                                 }
                                 else
                                 {
-                                    /* Build the legacy block from state. */
-                                    TAO::Ledger::TritiumBlock block(state);
-
-                                    /* Check for transactions. */
-                                    if(fTransactions)
+                                    /* Check for version to send correct type */
+                                    if(state.nVersion < 7)
                                     {
-                                        /* Loop through transactions. */
-                                        for(const auto& proof : block.vtx)
+                                        /* Build the legacy block from state. */
+                                        Legacy::LegacyBlock block(state);
+
+                                        /* Push message in response. */
+                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::LEGACY), block);
+                                    }
+                                    else
+                                    {
+                                        /* Build the legacy block from state. */
+                                        TAO::Ledger::TritiumBlock block(state);
+
+                                        /* Check for transactions. */
+                                        if(fTransactions)
                                         {
-                                            /* Basic checks for legacy transactions. */
-                                            if(proof.first == TAO::Ledger::TRANSACTION::LEGACY)
+                                            /* Loop through transactions. */
+                                            for(const auto& proof : block.vtx)
                                             {
-                                                /* Check the memory pool. */
-                                                Legacy::Transaction tx;
-                                                if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                                    continue;
+                                                /* Basic checks for legacy transactions. */
+                                                if(proof.first == TAO::Ledger::TRANSACTION::LEGACY)
+                                                {
+                                                    /* Check the memory pool. */
+                                                    Legacy::Transaction tx;
+                                                    if(!LLD::Legacy->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                                        continue;
 
-                                                /* Push message of transaction. */
-                                                PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
-                                            }
+                                                    /* Push message of transaction. */
+                                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
+                                                }
 
-                                            /* Basic checks for tritium transactions. */
-                                            else if(proof.first == TAO::Ledger::TRANSACTION::TRITIUM)
-                                            {
-                                                /* Check the memory pool. */
-                                                TAO::Ledger::Transaction tx;
-                                                if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
-                                                    continue;
+                                                /* Basic checks for tritium transactions. */
+                                                else if(proof.first == TAO::Ledger::TRANSACTION::TRITIUM)
+                                                {
+                                                    /* Check the memory pool. */
+                                                    TAO::Ledger::Transaction tx;
+                                                    if(!LLD::Ledger->ReadTx(proof.second, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                                        continue;
 
 
-                                                /* Push message of transaction. */
-                                                PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+                                                    /* Push message of transaction. */
+                                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
+                                                }
                                             }
                                         }
+
+                                        /* Push message in response. */
+                                        PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
+                                    }
+                                }
+
+                                /* Check for stop hash. */
+                                if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
+                                {
+                                    /* Regular debug for normal limits */
+                                    if(config::nVerbose >= 3)
+                                    {
+                                        /* Special message for full write buffers. */
+                                        if(fBufferFull.load())
+                                            debug::log(3, FUNCTION, "Buffer is FULL ", Buffered(), " bytes");
+
+                                        debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
                                     }
 
-                                    /* Push message in response. */
-                                    PushMessage(TYPES::BLOCK, uint8_t(SPECIFIER::TRITIUM), block);
+                                    break;
                                 }
-                            }
-
-                            /* Check for stop hash. */
-                            if(--nLimits <= 0 || hashStart == hashStop || fBufferFull.load()) //1MB limit
-                            {
-                                /* Regular debug for normal limits */
-                                if(config::nVerbose >= 3)
-                                {
-                                    /* Special message for full write buffers. */
-                                    if(fBufferFull.load())
-                                        debug::log(3, FUNCTION, "Buffer is FULL ", Buffered(), " bytes");
-
-                                    debug::log(3, FUNCTION, "Limits ", nLimits, " Reached ", hashStart.SubString(), " == ", hashStop.SubString());
-                                }
-
-                                break;
                             }
                         }
 
@@ -1639,7 +1654,7 @@ namespace LLP
                         std::vector<uint512_t> vHashes;
                         while(!config::fShutdown.load())
                         {
-                            /* Read from disk. */
+                            /* Read from disk. */return debug::drop(NODE, "ACTION::GET_MAX_ITEMS reached ", VARIABLE(nLimits));
                             TAO::Ledger::Transaction tx;
                             if(!LLD::Ledger->ReadTx(hashThis, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 break;
@@ -1990,7 +2005,7 @@ namespace LLP
 
                         /* Catch malformed notify binary streams. */
                         default:
-                            return debug::drop(NODE, "ACTION::GET malformed binary stream");
+                            break;
                     }
                 }
 
