@@ -2390,8 +2390,23 @@ namespace LLP
                                         /* Special debug output for new address recurring time. */
                                         if(addrInfo.nLastSeen > runtime::unifiedtimestamp() || addrInfo.nLastSeen == 0)
                                             debug::log(0, NODE, "ACTION::NOTIFY: UPDATE ADDRESS ", addr.ToStringIP());
-                                        else if(nTimeAway > 600)
-                                            debug::log(0, NODE, "ACTION::NOTIFY: ONLINE ADDRESS ", addr.ToStringIP(), " AWAY FOR ", (nTimeAway / 60), " MINUTES");
+                                        else if(nTimeAway > 1800)
+                                        {
+                                            /* Default time seen in minutes. */
+                                            std::string strLastSeen =
+                                                debug::safe_printstr((nTimeAway / 60), " MINUTES AGO");
+
+                                            /* Handle if time seen is in hours. */
+                                            if(nTimeAway > (60 * 60))
+                                                strLastSeen = debug::safe_printstr((nTimeAway / (60 * 60)), " HOURS AGO");
+
+                                            /* Handle if time seen is in days. */
+                                            if(nTimeAway > (60 * 60 * 24))
+                                                strLastSeen = debug::safe_printstr((nTimeAway / (60 * 60 * 24)), " DAYS AGO");
+
+                                            debug::log(0, NODE, "ACTION::NOTIFY: ONLINE ADDRESS ", addr.ToStringIP(), " LAST SEEN ", strLastSeen);
+                                        }
+
                                     }
                                     else
                                         debug::log(0, NODE, "ACTION::NOTIFY: NEW ADDRESS ", addr.ToStringIP());
