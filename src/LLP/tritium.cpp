@@ -1654,7 +1654,7 @@ namespace LLP
                         std::vector<uint512_t> vHashes;
                         while(!config::fShutdown.load())
                         {
-                            /* Read from disk. */return debug::drop(NODE, "ACTION::GET_MAX_ITEMS reached ", VARIABLE(nLimits));
+                            /* Read from disk. */
                             TAO::Ledger::Transaction tx;
                             if(!LLD::Ledger->ReadTx(hashThis, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 break;
@@ -2005,7 +2005,7 @@ namespace LLP
 
                         /* Catch malformed notify binary streams. */
                         default:
-                            break;
+                            return debug::drop(NODE, "ACTION::GET malformed binary stream");
                     }
                 }
 
