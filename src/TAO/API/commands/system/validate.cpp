@@ -73,27 +73,21 @@ namespace TAO::API
 
         /* Get the tObject. We only consider an address valid if the tObject exists in the register database*/
         TAO::Register::Object tObject;
-        if(!LLD::Register->ReadObject(hashAddress, tObject, TAO::Ledger::FLAGS::MEMPOOL))
+        if(!LLD::Register->ReadObject(hashAddress, tObject, TAO::Ledger::FLAGS::LOOKUP))
             return jRet;
 
         /* Set our response values. */
         jRet["valid"] = true;
         jRet["type"]  = GetRegisterName(tObject.nType);
+        jRet["mine"]  = false;
 
         /* Check for caller's genesis. */
         const uint256_t hashCaller =
             Authentication::Caller(jParams);
 
         /* Make sure we were able to get the caller. */
-        if(hashCaller != 0)
-        {
-            /* Set false for fall through. */
-            jRet["mine"]  = false;
-
-            /* Check if address is owned by current user */
-            if(tObject.hashOwner == hashCaller)
-                jRet["mine"] = true;
-        }
+        if(tObject.hashOwner == hashCaller)
+            jRet["mine"] = true;
 
         /* Add our standard for objects. */
         if(tObject.nType == TAO::Register::REGISTER::OBJECT)
