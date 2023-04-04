@@ -110,9 +110,13 @@ namespace TAO::API
             const uint256_t hashToken = ExtractToken(jParams);
 
             /* Get the token / account object. */
-            TAO::Register::Object objToken;
-            if(!LLD::Register->ReadObject(hashToken, objToken))
-                throw Exception(-48, "Token not found");
+            if(hashToken != TOKEN::NXS)
+            {
+                /* Check for correct token type if not for NXS. */
+                TAO::Register::Object objToken;
+                if(!LLD::Register->ReadObject(hashToken, objToken))
+                    throw Exception(-48, "Token not found");
+            }
 
             /* Let's now push our account to vector. */
             std::vector<TAO::Register::Address> vAccounts;
@@ -151,8 +155,8 @@ namespace TAO::API
         else if(hashFrom == TAO::API::ADDRESS_ANY)
         {
             /* To send to ANY we need to have more than one recipient. */
-            if(vRecipients.size() <= 1)
-                throw Exception(-55, "Must have at least two recipients to debit from any");
+            if(vRecipients.size() < 1)
+                throw Exception(-55, "Must have at least one recipient to debit from any");
 
             /* Loop through our recipients to get the tokens that we are sending to. */
             for(const auto& jRecipient : vRecipients)
