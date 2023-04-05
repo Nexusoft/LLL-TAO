@@ -731,6 +731,7 @@ namespace TAO::API
             }
         }
     }
+    
 
     /* Index transaction level events for logged in sessions. */
     void Indexing::IndexDependant(const uint512_t& hashTx, const Legacy::Transaction& tx)
@@ -760,6 +761,9 @@ namespace TAO::API
                     /* Increment our sequence. */
                     if(!LLD::Logical->IncrementLegacySequence(state.hashOwner))
                         continue;
+
+                    debug::log(2, FUNCTION, "LEGACY: ",
+                        "for genesis ", state.hashOwner.SubString(), " | ", VARIABLE(hashTx.SubString()), ", ", VARIABLE(nContract));
                 }
             }
         }

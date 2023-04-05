@@ -496,13 +496,9 @@ namespace TAO::API
             /* Check for a legacy output debit. */
             if(addrSource == TAO::Register::WILDCARD_ADDRESS)
             {
-                /* Enforce address resolution for wildcard claim. */
-                if(addrCredit == TAO::API::ADDRESS_NONE)
-                    throw Exception(-35, "Invalid parameter [name], expecting [exists]");
-
                 /* Read our crediting account. */
                 TAO::Register::Object oCredit;
-                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::LOOKUP))
+                if(!LLD::Register->ReadObject(addrRecipient, oCredit, TAO::Ledger::FLAGS::LOOKUP))
                     return false;
 
                 /* Let's check our credit account is correct token. */
@@ -516,7 +512,7 @@ namespace TAO::API
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract tContract;
                 tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                tContract << addrCredit << addrSource << nAmount;
+                tContract << addrRecipient << addrSource << nAmount;
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);
