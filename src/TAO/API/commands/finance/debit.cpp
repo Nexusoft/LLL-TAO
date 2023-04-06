@@ -127,7 +127,7 @@ namespace TAO::API
             {
                 /* Get the token / account object. */
                 TAO::Register::Object objFrom;
-                if(!LLD::Register->ReadObject(hashRegister, objFrom))
+                if(!LLD::Register->ReadObject(hashRegister, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
                      continue;
 
                 /* Check for a valid token, otherwise skip it. */
@@ -161,6 +161,17 @@ namespace TAO::API
             /* Loop through our recipients to get the tokens that we are sending to. */
             for(const auto& jRecipient : vRecipients)
             {
+                /* Handle for legacy output. */
+                Legacy::NexusAddress addrLegacy;
+                if(ExtractLegacy(jRecipient, addrLegacy, "to"))
+                {
+                    /* Add our NXS token accounts here. */
+                    if(!mapAccounts.count(TOKEN::NXS))
+                        mapAccounts[TOKEN::NXS] = Accounts(TAO::Ledger::NXS_DIGITS);
+
+                    continue;
+                }
+
                 /* The register address of the recipient acccount. */
                 const TAO::Register::Address hashTo =
                     ExtractAddress(jRecipient, "to"); //we use suffix 'to' here
@@ -185,7 +196,7 @@ namespace TAO::API
             {
                 /* Get the token / account object. */
                 TAO::Register::Object objFrom;
-                if(!LLD::Register->ReadObject(hashRegister, objFrom))
+                if(!LLD::Register->ReadObject(hashRegister, objFrom, TAO::Ledger::FLAGS::MEMPOOL))
                     continue;
 
                 /* Ensure we have balance, since any is for DEBIT. */
