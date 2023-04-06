@@ -1806,10 +1806,6 @@ namespace LLP
                             /* Check for legacy. */
                             if(fLegacy)
                             {
-                                /* Check for client mode since this method should never be except by a client. */
-                                if(config::fClient.load())
-                                    return debug::drop(NODE, "ACTION::GET::LEGACY::TRANSACTION disabled in -client mode");
-
                                 /* Check legacy database. */
                                 Legacy::Transaction tx;
                                 if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
@@ -1817,10 +1813,6 @@ namespace LLP
                             }
                             else
                             {
-                                /* Check for client mode since this method should never be except by a client. */
-                                if(config::fClient.load())
-                                    return debug::drop(NODE, "ACTION::GET::TRANSACTION disabled in -client mode");
-
                                 /* Check ledger database. */
                                 TAO::Ledger::Transaction tx;
                                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
