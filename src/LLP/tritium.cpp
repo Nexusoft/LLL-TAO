@@ -1458,127 +1458,6 @@ namespace LLP
                         break;
                     }
 
-                    /* Standard type for a block. */
-                    case TYPES::TRANSACTION:
-                    {
-                        /* Get the index of block. */
-                        uint512_t hashStart;
-                        ssPacket >> hashStart;
-
-                        /* Get the ending hash. */
-                        uint512_t hashStop;
-                        ssPacket >> hashStop;
-
-                        /* Check for invalid specifiers. */
-                        if(fTransactions)
-                            return debug::drop(NODE, "cannot use SPECIFIER::TRANSACTIONS for transaction lists");
-
-                        /* Check for invalid specifiers. */
-                        if(fSyncBlock)
-                            return debug::drop(NODE, "cannot use SPECIFIER::SYNC for transaction lists");
-
-                        /* Check for legacy. */
-                        if(fLegacy)
-                        {
-                            /* Do a sequential read to obtain the list. */
-                            std::vector<Legacy::Transaction> vtx;
-                            while(LLD::Legacy->BatchRead(hashStart, "tx", vtx, 100))
-                            {
-                                /* Loop through all available states. */
-                                for(const auto& tx : vtx)
-                                {
-                                    /* Get a copy of the hash. */
-                                    uint512_t hash = tx.GetHash();
-
-                                    /* Check if indexed. */
-                                    if(!LLD::Ledger->HasIndex(hash))
-                                        continue;
-
-                                    /* Cache the block hash. */
-                                    hashStart = hash;
-
-                                    /* Push the transaction. */
-                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::LEGACY), tx);
-
-                                    /* Check for stop hash. */
-                                    if(--nLimits == 0 || hashStart == hashStop || fBufferFull.load())
-                                        break;
-                                }
-
-                                /* Check for stop or limits. */
-                                if(nLimits == 0 || hashStart == hashStop || fBufferFull.load())
-                                    break;
-                            }
-                        }
-                        else
-                        {
-
-                            /* Do a sequential read to obtain the list. */
-                            std::vector<TAO::Ledger::Transaction> vtx;
-                            while(LLD::Ledger->BatchRead(hashStart, "tx", vtx, 100))
-                            {
-                                /* Loop through all available states. */
-                                for(const auto& tx : vtx)
-                                {
-                                    /* Get a copy of the hash. */
-                                    uint512_t hash = tx.GetHash();
-
-                                    /* Check if indexed. */
-                                    if(!LLD::Ledger->HasIndex(hash))
-                                        continue;
-
-                                    /* Cache the block hash. */
-                                    hashStart = hash;
-
-                                    /* Push the transaction. */
-                                    PushMessage(TYPES::TRANSACTION, uint8_t(SPECIFIER::TRITIUM), tx);
-
-                                    /* Check for stop hash. */
-                                    if(--nLimits == 0 || hashStart == hashStop || fBufferFull.load())
-                                        break;
-                                }
-
-                                /* Check for stop or limits. */
-                                if(nLimits == 0 || hashStart == hashStop || fBufferFull.load())
-                                    break;
-                            }
-                        }
-
-                        break;
-                    }
-
-
-                    /* Standard type for a block. */
-                    case TYPES::ADDRESS:
-                    {
-                        /* Get the total list amount. */
-                        uint32_t nTotal;
-                        ssPacket >> nTotal;
-
-                        /* Check for size constraints. */
-                        if(nTotal > 10000)
-                        {
-                            /* Give penalties for size violation. */
-                            if(fDDOS.load())
-                                DDOS->rSCORE += 20;
-
-                            /* Set value to max range. */
-                            nTotal = 10000;
-                        }
-
-                        /* Get addresses from manager. */
-                        std::vector<BaseAddress> vAddr;
-                        if(TRITIUM_SERVER->GetAddressManager())
-                            TRITIUM_SERVER->GetAddressManager()->GetAddresses(vAddr);
-
-                        /* Add the best 1000 (or less) addresses. */
-                        const uint32_t nCount = std::min((uint32_t)vAddr.size(), nTotal);
-                        for(uint32_t n = 0; n < nCount; ++n)
-                            PushMessage(TYPES::ADDRESS, vAddr[n]);
-
-                        break;
-                    }
-
 
                     /* Standard type for a block. */
                     case TYPES::MEMPOOL:
@@ -1938,6 +1817,10 @@ namespace LLP
                             }
                             else
                             {
+                                /* Check for client mode since this method should never be except by a client. */
+                                if(config::fClient.load())
+                                    return debug::drop(NODE, "ACTION::GET::TRANSACTION disabled in -client mode");
+
                                 /* Check ledger database. */
                                 TAO::Ledger::Transaction tx;
                                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
@@ -1975,30 +1858,54 @@ namespace LLP
                                 return true;
 
                             /* Check for valid specifier. */
-                            if(fTransactions || fClient || fLegacy)
+                            if(fTransactions || fClient)
                                 return debug::drop(NODE, "ACTION::GET::MERKLE: invalid specifier for TYPES::MERKLE");
 
                             /* Get the index of transaction. */
                             uint512_t hashTx;
                             ssPacket >> hashTx;
 
-                            /* Check ledger database. */
-                            TAO::Ledger::Transaction tx;
-                            if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                            /* Check for legacy. */
+                            if(fLegacy)
                             {
-                                /* Build a markle transaction. */
-                                TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
+                                /* Check legacy database. */
+                                Legacy::Transaction tx;
+                                if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                {
+                                    /* Build a markle transaction. */
+                                    Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
 
-                                /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
-                                if(!TAO::Ledger::mempool.Has(hashTx))
-                                    merkle.BuildMerkleBranch();
+                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                    if(LLD::Ledger->HasIndex(hashTx))
+                                        merkle.BuildMerkleBranch();
 
-                                /* Check for dependant specifier. */
-                                PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                                    /* Check for dependant specifier. */
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::LEGACY), merkle);
+
+                                    /* Debug output. */
+                                    debug::log(3, NODE, "ACTION::GET::LEGACY: MERKLE TRANSACTION ", hashTx.SubString());
+                                }
                             }
+                            else
+                            {
+                                /* Check ledger database. */
+                                TAO::Ledger::Transaction tx;
+                                if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                                {
+                                    /* Build a markle transaction. */
+                                    TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
 
-                            /* Debug output. */
-                            debug::log(3, NODE, "ACTION::GET: MERKLE TRANSACTION ", hashTx.SubString());
+                                    /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
+                                    if(LLD::Ledger->HasIndex(hashTx))
+                                        merkle.BuildMerkleBranch();
+
+                                    /* Check for dependant specifier. */
+                                    PushMessage(TYPES::MERKLE, uint8_t(SPECIFIER::TRITIUM), merkle);
+                                }
+
+                                /* Debug output. */
+                                debug::log(3, NODE, "ACTION::GET: MERKLE TRANSACTION ", hashTx.SubString());
+                            }
 
                             break;
                         }
@@ -2110,10 +2017,6 @@ namespace LLP
                                 if(!(nSubscriptions & SUBSCRIPTION::SIGCHAIN))
                                     return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: unsolicited notification");
 
-                                /* Check for legacy. */
-                                if(fLegacy)
-                                    return debug::drop(NODE, "ACTION::NOTIFY::SIGCHAIN: cannot include legacy specifier");
-
                                 /* Get the sigchain genesis. */
                                 uint256_t hashSigchain;
                                 ssPacket >> hashSigchain;
@@ -2159,7 +2062,7 @@ namespace LLP
                             if(nType == TYPES::SIGCHAIN && config::fClient.load())
                             {
                                 /* Check ledger database. */
-                                if(tInventory.Expired(hashTx, 10)) //10 second exipring cache
+                                if(tInventory.Expired(hashTx, 60)) //60 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: MERKLE TRANSACTION ", hashTx.SubString());
@@ -2184,7 +2087,7 @@ namespace LLP
                             if(fLegacy)
                             {
                                 /* Check legacy database. */
-                                if(tInventory.Expired(hashTx, 10)) //10 second exipring cache
+                                if(tInventory.Expired(hashTx, 60)) //60 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString());
@@ -2201,7 +2104,7 @@ namespace LLP
                             else
                             {
                                 /* Check ledger database. */
-                                if(tInventory.Expired(hashTx, 10)) //10 second exipring cache
+                                if(tInventory.Expired(hashTx, 60)) //60 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: TRITIUM TRANSACTION ", hashTx.SubString());
