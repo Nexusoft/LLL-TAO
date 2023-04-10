@@ -326,7 +326,8 @@ namespace LLP
                 debug::log(0, FUNCTION, "Refreshing sigchain events for ", hashGenesis.SubString());
 
                 /* Run our sigchain sync code now. */
-                TAO::API::Indexing::RefreshSigchain(hashGenesis);
+                TAO::API::Indexing::DownloadNotifications(hashGenesis);
+                TAO::API::Indexing::DownloadSigchain(hashGenesis);
             }
         }
     }

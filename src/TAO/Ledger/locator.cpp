@@ -140,6 +140,10 @@ namespace TAO
                 for(int i = 0; !statePrev.IsNull() && i < nStep; ++i)
                     statePrev = statePrev.Prev();
 
+                /* Check for null before we push to our list. */
+                if(statePrev.IsNull())
+                    break;
+
                 /* After 10 blocks, start taking exponential steps back. */
                 if(vHave.size() > 10)
                     nStep = nStep * 2;

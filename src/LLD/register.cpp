@@ -722,14 +722,14 @@ namespace LLD
                         debug::warning(FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
 
                     /* Debug output to console. */
-                    debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
+                    //debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
                     pConnection->BlockingLookup
                     (
                         10000,
                         LLP::LookupNode::REQUEST::DEPENDANT,
                         uint8_t(LLP::LookupNode::SPECIFIER::REGISTER), hashRegister
                     );
-                    debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
+                    //debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
                 }
             }
 

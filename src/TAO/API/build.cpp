@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 #include <TAO/API/types/commands.h>
 #include <TAO/API/types/commands/names.h>
+#include <TAO/API/types/indexing.h>
 #include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -186,6 +187,13 @@ namespace TAO::API
             /* Check if sigchain is mature. */
             if(!CheckMature(hashGenesis))
                 throw Exception(-202, "Signature chain not mature. Please wait for coinbase/coinstake maturity");
+
+            /* Make sure our sigchain is in sync with our history. */
+            if(config::fClient.load())
+            {
+                Indexing::BroadcastUnconfirmed(hashGenesis); //if we still have queud transactions, re-broadcast before creating
+                Indexing::DownloadSigchain(hashGenesis); //sanity check to make sure we don't orphan another sigchain branch
+            }
         }
 
         /* The new key scheme */
@@ -488,13 +496,9 @@ namespace TAO::API
             /* Check for a legacy output debit. */
             if(addrSource == TAO::Register::WILDCARD_ADDRESS)
             {
-                /* Enforce address resolution for wildcard claim. */
-                if(addrCredit == TAO::API::ADDRESS_NONE)
-                    throw Exception(-35, "Invalid parameter [name], expecting [exists]");
-
                 /* Read our crediting account. */
                 TAO::Register::Object oCredit;
-                if(!LLD::Register->ReadObject(addrCredit, oCredit, TAO::Ledger::FLAGS::LOOKUP))
+                if(!LLD::Register->ReadObject(addrRecipient, oCredit, TAO::Ledger::FLAGS::LOOKUP))
                     return false;
 
                 /* Let's check our credit account is correct token. */
@@ -508,7 +512,7 @@ namespace TAO::API
                 /* If we passed these checks then insert the credit contract into the tx */
                 TAO::Operation::Contract tContract;
                 tContract << uint8_t(TAO::Operation::OP::CREDIT) << hashTx << uint32_t(nContract);
-                tContract << addrCredit << addrSource << nAmount;
+                tContract << addrRecipient << addrSource << nAmount;
 
                 /* Push to our contract queue. */
                 vContracts.push_back(tContract);

@@ -370,7 +370,7 @@ namespace TAO::API
 
                             /* Retrieve the account. */
                             TAO::Register::Object account;
-                            if(!LLD::Register->ReadState(hashFrom, account))
+                            if(!LLD::Register->ReadState(hashFrom, account, TAO::Ledger::FLAGS::MEMPOOL))
                                 continue;
 
                             /* Parse the object register. */
@@ -396,7 +396,7 @@ namespace TAO::API
 
                             /* Retrieve the account. */
                             TAO::Register::Object account;
-                            if(!LLD::Register->ReadState(hashTo, account))
+                            if(!LLD::Register->ReadState(hashTo, account, TAO::Ledger::FLAGS::MEMPOOL))
                                 continue;
 
                             /* Parse the object register. */
@@ -423,6 +423,7 @@ namespace TAO::API
                         nUnconfirmed += nAmount;
 
                     }
+                    
                     /* Check for that the credits we made . */
                     else if(!fOutgoing && nOp == TAO::Operation::OP::CREDIT)
                     {

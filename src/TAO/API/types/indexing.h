@@ -148,15 +148,36 @@ namespace TAO::API
         static void IndexSigchain(const uint512_t& hash);
 
 
-
-        /** RefershSigchain
+        /** BroadcastUnconfirmed
          *
-         *  Refresh our events and transactions for a given sigchain.
+         *  Broadcast our unconfirmed transactions if there are any.
          *
-         *  @param[in] hashGenesis The sigchain genesis that we are refershing.
+         *  @param[in] hashGenesis The sigchain genesis that we are downloading for.
          *
          **/
-        static void RefreshSigchain(const uint256_t& hashGenesis);
+        static void BroadcastUnconfirmed(const uint256_t& hashGenesis);
+
+
+
+        /** DownloadSigchain
+         *
+         *  Refresh our transactions for a given sigchain.
+         *
+         *  @param[in] hashGenesis The sigchain genesis that we are downloading for.
+         *
+         **/
+        static void DownloadSigchain(const uint256_t& hashGenesis);
+
+
+        /** DownloadNotifications
+         *
+         *  Refresh our notifications for a given sigchain.
+         *
+         *  @param[in] hashGenesis The sigchain genesis that we are downloading for.
+         *
+         **/
+        static void DownloadNotifications(const uint256_t& hashGenesis);
+
 
 
         /** Initialize Thread

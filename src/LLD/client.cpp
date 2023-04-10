@@ -15,6 +15,8 @@ ________________________________________________________________________________
 
 #include <LLP/include/global.h>
 
+#include <TAO/API/types/authentication.h>
+
 #include <TAO/Ledger/types/merkle.h>
 #include <TAO/Ledger/types/client.h>
 
@@ -103,86 +105,156 @@ namespace LLD
     /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
     bool ClientDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract)
     {
+        /* Handle for single user -client mode. */
+        if(config::fClient.load())
+        {
+            /* Get our caller to check proof under. */
+            const uint256_t hashGenesis =
+                TAO::API::Authentication::Caller();
+
+            /* Check that we have active session. */
+            if(hashGenesis == 0)
+                throw debug::exception(FUNCTION, "no session available...");
+
+            /* Get the key typle. */
+            const std::tuple<uint256_t, uint256_t, uint512_t, uint32_t> tIndex =
+                std::make_tuple(hashGenesis, hashProof, hashTx, nContract);
+
+            return Write(tIndex);
+        }
+
         /* Get the key typle. */
-        const std::tuple<uint256_t, uint512_t, uint32_t> tuple =
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
             std::make_tuple(hashProof, hashTx, nContract);
 
-        return Write(tuple);
+        return Write(tIndex);
     }
 
 
     /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
     bool ClientDB::HasProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract, const uint8_t nFlags)
     {
-        /* Get the key typle. */
-        const std::tuple<uint256_t, uint512_t, uint32_t> tuple =
-            std::make_tuple(hashProof, hashTx, nContract);
-
-        /* If the proof doesn't exist, let's check our lookup protocol. */
-        if(Exists(tuple))
-            return true;
-
         /* Additional routine if the proof doesn't exist. */
-        if(config::fClient.load() && nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        if(config::fClient.load())
         {
-            /* Check for -client mode or active server object. */
-            if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
-                throw debug::exception(FUNCTION, "no connections available...");
+            /* Get our caller to check proof under. */
+            const uint256_t hashGenesis =
+                TAO::API::Authentication::Caller();
 
-            /* Try to find a connection first. */
-            std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
-            if(pConnection == nullptr)
+            /* Check that we have active session. */
+            if(hashGenesis == 0)
+                throw debug::exception(FUNCTION, "no session available...");
+
+            /* Get the key typle. */
+            const std::tuple<uint256_t, uint256_t, uint512_t, uint32_t> tIndex =
+                std::make_tuple(hashGenesis, hashProof, hashTx, nContract);
+
+            /* Check our proof based on active tuple. */
+            if(Exists(tIndex))
+                return true;
+
+            /* Handle if we are performing a lookup. */
+            if(nFlags == TAO::Ledger::FLAGS::LOOKUP)
             {
-                /* Check for genesis. */
-                if(LLP::TRITIUM_SERVER)
-                {
-                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                    if(pNode != nullptr)
-                    {
-                        /* Get our lookup address now. */
-                        const std::string strAddress =
-                            pNode->GetAddress().ToStringIP();
+                /* Check for -client mode or active server object. */
+                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER)
+                    throw debug::exception(FUNCTION, "no connections available...");
 
-                        /* Make our new connection now. */
-                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                            throw debug::exception(FUNCTION, "no connections available...");
+                /* Try to find a connection first. */
+                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
+                if(pConnection == nullptr)
+                {
+                    /* Check for genesis. */
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                        if(pNode != nullptr)
+                        {
+                            /* Get our lookup address now. */
+                            const std::string strAddress =
+                                pNode->GetAddress().ToStringIP();
+
+                            /* Make our new connection now. */
+                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                                throw debug::exception(FUNCTION, "no connections available...");
+                        }
                     }
                 }
+
+                /* Debug output to console. */
+                //debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
+                pConnection->BlockingLookup
+                (
+                    5000,
+                    LLP::LookupNode::REQUEST::PROOF,
+                    uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM),
+                    hashProof, hashTx, nContract
+                );
+                //debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
             }
 
-            /* Debug output to console. */
-            debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
-            pConnection->BlockingLookup
-            (
-                5000,
-                LLP::LookupNode::REQUEST::PROOF,
-                uint8_t(LLP::LookupNode::SPECIFIER::TRITIUM),
-                hashProof, hashTx, nContract
-            );
-            debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
-
-            /* Return if the proof exists or not now. */
-            return Exists(tuple);
+            return Exists(tIndex);
         }
 
-        return false;
+        /* Get the key typle. */
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+            std::make_tuple(hashProof, hashTx, nContract);
+
+        /* Once we have reached this far we will know if proof exists or not. */
+        return Exists(tIndex);
     }
 
 
     /* Writes a proof to disk. Proofs are used to keep track of spent temporal proofs. */
     bool ClientDB::EraseProof(const uint256_t& hashProof, const uint512_t& hashTx, const uint32_t nContract)
     {
+        /* Handle for single user -client mode. */
+        if(config::fClient.load())
+        {
+            /* Get our caller to check proof under. */
+            const uint256_t hashGenesis =
+                TAO::API::Authentication::Caller();
+
+            /* Check that we have active session. */
+            if(hashGenesis == 0)
+                throw debug::exception(FUNCTION, "no session available...");
+
+            /* Get the key typle. */
+            const std::tuple<uint256_t, uint256_t, uint512_t, uint32_t> tIndex =
+                std::make_tuple(hashGenesis, hashProof, hashTx, nContract);
+
+            return Erase(tIndex);
+        }
+
         /* Get the key typle. */
-        const std::tuple<uint256_t, uint512_t, uint32_t> tuple =
+        const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
             std::make_tuple(hashProof, hashTx, nContract);
 
-        return Erase(tuple);
+        return Erase(tIndex);
     }
 
 
     /* Writes an output as spent. */
     bool ClientDB::WriteSpend(const uint512_t& hashTx, const uint32_t nOutput)
     {
+        /* Handle for single user -client mode. */
+        if(config::fClient.load())
+        {
+            /* Get our caller to check proof under. */
+            const uint256_t hashGenesis =
+                TAO::API::Authentication::Caller();
+
+            /* Check that we have active session. */
+            if(hashGenesis == 0)
+                throw debug::exception(FUNCTION, "no session available...");
+
+            /* Get the key typle. */
+            const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+                std::make_tuple(hashGenesis, hashTx, nOutput);
+
+            return Write(tIndex);
+        }
+
         return Write(std::make_pair(hashTx, nOutput));
     }
 
@@ -190,6 +262,24 @@ namespace LLD
     /* Removes a spend flag on an output. */
     bool ClientDB::EraseSpend(const uint512_t& hashTx, const uint32_t nOutput)
     {
+        /* Handle for single user -client mode. */
+        if(config::fClient.load())
+        {
+            /* Get our caller to check proof under. */
+            const uint256_t hashGenesis =
+                TAO::API::Authentication::Caller();
+
+            /* Check that we have active session. */
+            if(hashGenesis == 0)
+                throw debug::exception(FUNCTION, "no session available...");
+
+            /* Get the key typle. */
+            const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+                std::make_tuple(hashGenesis, hashTx, nOutput);
+
+            return Erase(tIndex);
+        }
+
         return Erase(std::make_pair(hashTx, nOutput));
     }
 
@@ -202,46 +292,65 @@ namespace LLD
             return true;
 
         /* Additional routine if the proof doesn't exist. */
-        if(config::fClient.load() && nFlags == TAO::Ledger::FLAGS::LOOKUP)
+        if(config::fClient.load())
         {
-            /* Check for -client mode or active server object. */
-            if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER || !config::fClient.load())
-                throw debug::exception(FUNCTION, "no connections available...");
+            /* Get our caller to check proof under. */
+            const uint256_t hashGenesis =
+                TAO::API::Authentication::Caller();
 
-            /* Try to find a connection first. */
-            std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
-            if(pConnection == nullptr)
-            {
-                /* Check for genesis. */
-                if(LLP::TRITIUM_SERVER)
-                {
-                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                    if(pNode != nullptr)
-                    {
-                        /* Get our lookup address now. */
-                        const std::string strAddress =
-                            pNode->GetAddress().ToStringIP();
+            /* Check that we have active session. */
+            if(hashGenesis == 0)
+                throw debug::exception(FUNCTION, "no session available...");
 
-                        /* Make our new connection now. */
-                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                            throw debug::exception(FUNCTION, "no connections available...");
-                    }
-                }
-            }
-
-            /* Debug output to console. */
-            debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
-            pConnection->BlockingLookup
-            (
-                5000,
-                LLP::LookupNode::REQUEST::PROOF,
-                uint8_t(LLP::LookupNode::SPECIFIER::LEGACY),
-                hashTx, nOutput
-            );
-            debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
+            /* Get the key typle. */
+            const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
+                std::make_tuple(hashGenesis, hashTx, nOutput);
 
             /* Return if the proof exists or not now. */
-            return Exists(std::make_pair(hashTx, nOutput));
+            if(Exists(tIndex))
+                return true;
+
+            /* Handle if we are performing a lookup. */
+            if(nFlags == TAO::Ledger::FLAGS::LOOKUP)
+            {
+                /* Check for -client mode or active server object. */
+                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER)
+                    throw debug::exception(FUNCTION, "no connections available...");
+
+                /* Try to find a connection first. */
+                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
+                if(pConnection == nullptr)
+                {
+                    /* Check for genesis. */
+                    if(LLP::TRITIUM_SERVER)
+                    {
+                        std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                        if(pNode != nullptr)
+                        {
+                            /* Get our lookup address now. */
+                            const std::string strAddress =
+                                pNode->GetAddress().ToStringIP();
+
+                            /* Make our new connection now. */
+                            if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                                throw debug::exception(FUNCTION, "no connections available...");
+                        }
+                    }
+                }
+
+                /* Debug output to console. */
+                //debug::log(2, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::PROOF for ", hashTx.SubString());
+                pConnection->BlockingLookup
+                (
+                    5000,
+                    LLP::LookupNode::REQUEST::PROOF,
+                    uint8_t(LLP::LookupNode::SPECIFIER::LEGACY),
+                    hashTx, nOutput
+                );
+                //debug::log(2, FUNCTION, "CLIENT MODE: TYPES::PROOF received for ", hashTx.SubString());
+            }
+
+            return Exists(tIndex);
         }
 
         return false;

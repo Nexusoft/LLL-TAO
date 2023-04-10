@@ -559,7 +559,7 @@ namespace LLP
     /*  Updates the nState of the given Trust address. */
     void AddressManager::update_state(TrustAddress *pAddr, uint8_t nState)
     {
-        uint64_t nTimestamp = runtime::unifiedtimestamp(true);
+        uint64_t nTimestamp = runtime::unifiedtimestamp();
         switch(nState)
         {
           /* New State */

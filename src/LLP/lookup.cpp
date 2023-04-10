@@ -453,6 +453,10 @@ namespace LLP
                     /* Handle for a raw tritium transaction. */
                     case SPECIFIER::CONTRACT:
                     {
+                        /* Get the calling genesis. */
+                        uint256_t hashGenesis;
+                        ssPacket >> hashGenesis;
+
                         /* Get the index of transaction. */
                         uint512_t hashTx;
                         ssPacket >> hashTx;

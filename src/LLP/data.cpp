@@ -404,38 +404,39 @@ namespace LLP
              */
             std::unique_lock<std::mutex> CONDITION_LOCK(CONDITION_MUTEX);
             FLUSH_CONDITION.wait(CONDITION_LOCK,
-                [this]{
+            [this]
+            {
 
-                    /* Break on shutdown or destructor. */
-                    if(fDestruct.load() || config::fShutdown.load())
-                        return true;
+                /* Break on shutdown or destructor. */
+                if(fDestruct.load() || config::fShutdown.load())
+                    return true;
 
-                    /* Check for data in the queue. */
-                    if(!RELAY->empty())
-                        return true;
+                /* Check for data in the queue. */
+                if(!RELAY->empty())
+                    return true;
 
-                    /* Check for buffered connection. */
-                    uint32_t nSize = CONNECTIONS->size();
-                    for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                /* Check for buffered connection. */
+                uint32_t nSize = CONNECTIONS->size();
+                for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
+                {
+                    try
                     {
-                        try
-                        {
-                            /* Get shared pointer to prevent race condition on the internal connection pointer. */
-                            std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
+                        /* Get shared pointer to prevent race condition on the internal connection pointer. */
+                        std::shared_ptr<ProtocolType> CONNECTION = CONNECTIONS->at(nIndex);
 
-                            /* Skip over Inactive Connections. */
-                            if(!CONNECTION || !CONNECTION->Connected())
-                                continue;
+                        /* Skip over Inactive Connections. */
+                        if(!CONNECTION || !CONNECTION->Connected())
+                            continue;
 
-                            /* Check for buffered connection. */
-                            if(CONNECTION->Buffered())
-                                return true;
-                        }
-                        catch(const std::exception& e) { }
+                        /* Check for buffered connection. */
+                        if(CONNECTION->Buffered())
+                            return true;
                     }
+                    catch(const std::exception& e) { }
+                }
 
-                    return false;
-                });
+                return false;
+            });
 
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())

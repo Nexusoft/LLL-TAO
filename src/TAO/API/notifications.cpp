@@ -21,6 +21,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/accounts.h>
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/exception.h>
+#include <TAO/API/types/indexing.h>
 #include <TAO/API/types/notifications.h>
 #include <TAO/API/types/transaction.h>
 
@@ -84,6 +85,9 @@ namespace TAO::API
                     /* Check if sigchain is mature. */
                     if(!CheckMature(hashGenesis))
                         continue;
+
+                    /* Broadcast our unconfirmed transactions first. */
+                    Indexing::BroadcastUnconfirmed(hashGenesis);
 
                     /* Build a json object. */
                     const encoding::json jSession =

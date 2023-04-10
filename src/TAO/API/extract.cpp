@@ -136,7 +136,7 @@ namespace TAO::API
         if(CheckParameter(jParams, "token", "string"))
             return ExtractAddress(jParams["token"].get<std::string>(), jParams);
 
-        return uint256_t(0);
+        return TOKEN::NXS;
     }
 
 
