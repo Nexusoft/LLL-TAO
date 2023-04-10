@@ -31,8 +31,6 @@ namespace TAO::API
         const uint256_t hashGenesis =
             ExtractGenesis(jParams);
 
-
-
         /* Define for our return data */
         encoding::json jRet;
 
