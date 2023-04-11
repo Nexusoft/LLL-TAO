@@ -522,6 +522,13 @@ namespace LLP
         /* Loop connections. */
         while(!config::fShutdown.load())
         {
+            /* Check if we need to loop in suspended state. */
+            if(config::fSuspended.load())
+            {
+                runtime::sleep(100);
+                continue;
+            }
+
             /* Address to select. */
             BaseAddress addr = BaseAddress();
 
@@ -624,6 +631,13 @@ namespace LLP
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
+            /* Check if we need to loop in suspended state. */
+            if(config::fSuspended.load())
+            {
+                runtime::sleep(100);
+                continue;
+            }
+
             /* Set the listing socket descriptor on the pollfd.  We do this inside the loop in case the listening socket is
                explicitly closed and reopened whilst the app is running (used for mobile) */
             fds[0].fd = get_listening_socket(fIPv4, fSSL);

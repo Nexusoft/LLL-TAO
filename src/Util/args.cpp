@@ -33,6 +33,7 @@ namespace config
     std::map<uint16_t, std::vector<std::string> > mapIPFilters;
 
     std::atomic<bool> fShutdown(false);
+    std::atomic<bool> fSuspended(false);
     std::atomic<bool> fDaemon(false);
     std::atomic<bool> fClient(false);
     std::atomic<bool> fTestNet(false);

@@ -79,6 +79,10 @@ namespace TAO::Ledger
                 if(config::fShutdown.load())
                     return true;
 
+                /* Check for suspended state. */
+                if(config::fSuspended.load())
+                    return false;
+
                 return DISPATCH_QUEUE->size() != 0;
             });
 

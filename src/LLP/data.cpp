@@ -137,7 +137,7 @@ namespace LLP
     void DataThread<ProtocolType>::DisconnectAll()
     {
         /* Iterate through connections to remove.*/
-        uint32_t nSize = CONNECTIONS->size();
+        const uint32_t nSize = CONNECTIONS->size();
         for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
         {
             /* When on destruct or shutdown, remove the connection without events. */
@@ -155,7 +155,7 @@ namespace LLP
     void DataThread<ProtocolType>::NotifyTriggers()
     {
         /* Iterate through connections to remove.*/
-        uint32_t nSize = CONNECTIONS->size();
+        const uint32_t nSize = CONNECTIONS->size();
         for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
         {
             /* Skip over inactive connections. */
@@ -200,6 +200,10 @@ namespace LLP
             CONDITION.wait(CONDITION_LOCK,
             [this]
             {
+                /* Check for suspended state. */
+                if(config::fSuspended.load())
+                    return false;
+
                 return fDestruct.load()
                 || config::fShutdown.load()
                 || nIncoming.load() > 0
@@ -211,7 +215,7 @@ namespace LLP
                 return;
 
             /* Wrapped mutex lock. */
-            uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
+            const uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
 
             /* Check the pollfd's size. */
             if(POLLFDS.size() != nSize)
@@ -406,10 +410,13 @@ namespace LLP
             FLUSH_CONDITION.wait(CONDITION_LOCK,
             [this]
             {
-
                 /* Break on shutdown or destructor. */
                 if(fDestruct.load() || config::fShutdown.load())
                     return true;
+
+                /* Check for suspended state. */
+                if(config::fSuspended.load())
+                    return false;
 
                 /* Check for data in the queue. */
                 if(!RELAY->empty())
@@ -550,6 +557,11 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::remove_connection_with_event(const uint32_t nIndex, const uint8_t nReason)
     {
+        /* Check that we have an active connection here. */
+        if(!CONNECTIONS->at(nIndex))
+            return;
+
+        /* Fire off our disconnect event now. */
         CONNECTIONS->at(nIndex)->Event(EVENTS::DISCONNECT, nReason);
         remove_connection(nIndex);
     }
@@ -559,6 +571,10 @@ namespace LLP
     template <class ProtocolType>
     void DataThread<ProtocolType>::remove_connection(const uint32_t nIndex)
     {
+        /* Check that we have an active connection here. */
+        if(!CONNECTIONS->at(nIndex))
+            return;
+
         /* Adjust our internal counters for incoming/outbound. */
         if(CONNECTIONS->at(nIndex)->Incoming())
             --nIncoming;

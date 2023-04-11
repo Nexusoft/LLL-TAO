@@ -58,6 +58,13 @@ namespace TAO::API
         /* Loop until shutdown. */
         while(!config::fShutdown.load())
         {
+            /* Check if we need to loop in suspended state. */
+            if(config::fSuspended.load())
+            {
+                runtime::sleep(100);
+                continue;
+            }
+
             /* We want to sleep while looping to not consume our cpu cycles. */
             runtime::sleep(3000);
 
@@ -73,6 +80,10 @@ namespace TAO::API
                     /* Check for shutdown. */
                     if(config::fShutdown.load())
                         return;
+
+                    /* Check for suspended state. */
+                    if(config::fSuspended.load())
+                        break;
 
                     /* Cache some local variables. */
                     const uint256_t& hashSession = rSession.first;

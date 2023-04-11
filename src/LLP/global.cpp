@@ -254,6 +254,9 @@ namespace LLP
     {
         debug::log(0, FUNCTION, "Closing LLP Listeners");
 
+        /* Set global system into suspended state. */
+        config::fSuspended.store(true);
+
         /* Close sockets for the lookup server and its subsystems. */
         CloseSockets<LookupNode>(LOOKUP_SERVER);
 
@@ -297,6 +300,9 @@ namespace LLP
 
         /* Open sockets for the mining server and its subsystems. */
         OpenListening<Miner>(MINING_SERVER);
+
+        /* Set global system out of suspended state. */
+        config::fSuspended.store(false);
 
         /* Add our connections from commandline. */
         MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);

@@ -188,15 +188,20 @@ namespace debug
         if(config::nVerbose < nLevel)
             return;
 
-        /* Lock the mutex. */
-        LOCK(DEBUG_MUTEX);
+        /* We catch execption here to prevent crashes on shutdown for iOS. */
+        try
+        {
+            /* Lock the mutex. */
+            LOCK(DEBUG_MUTEX);
 
-        /* Get the debug string and log file. */
-        std::string strDebug = safe_printstr(args...);
+            /* Get the debug string and log file. */
+            std::string strDebug = safe_printstr(args...);
 
-        /* Get the timestamp. */
-        time_t nTimestamp = std::time(nullptr);
-        _log(nTimestamp, strDebug);
+            /* Get the timestamp. */
+            time_t nTimestamp = std::time(nullptr);
+            _log(nTimestamp, strDebug);
+        }
+        catch(const std::exception& e){}
     }
 
 

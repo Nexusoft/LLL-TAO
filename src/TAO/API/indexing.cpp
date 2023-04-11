@@ -98,6 +98,10 @@ namespace TAO::API
     /* Checks current events against transaction history to ensure we are up to date. */
     void Indexing::RefreshEvents()
     {
+        /* Check to disable for -client mode. */
+        if(config::fClient.load())
+            return;
+
         /* Our list of transactions to read. */
         std::vector<TAO::Ledger::Transaction> vtx;
 
@@ -213,6 +217,10 @@ namespace TAO::API
                 /* Check for shutdown. */
                 if(config::fShutdown.load())
                     return true;
+
+                /* Check for suspended state. */
+                if(config::fSuspended.load())
+                    return false;
 
                 return Indexing::DISPATCH->size() != 0;
             });
@@ -584,6 +592,10 @@ namespace TAO::API
                     if(config::fShutdown.load())
                         return true;
 
+                    /* Check for suspended state. */
+                    if(config::fSuspended.load())
+                        return false;
+
                     /* Check for a session that needs to be wiped. */
                     if(hashSession != TAO::API::Authentication::SESSION::INVALID)
                         return true;
@@ -731,7 +743,7 @@ namespace TAO::API
             }
         }
     }
-    
+
 
     /* Index transaction level events for logged in sessions. */
     void Indexing::IndexDependant(const uint512_t& hashTx, const Legacy::Transaction& tx)
