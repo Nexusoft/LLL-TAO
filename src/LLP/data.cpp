@@ -416,7 +416,7 @@ namespace LLP
                     return true;
 
                 /* Check for buffered connection. */
-                uint32_t nSize = CONNECTIONS->size();
+                const uint32_t nSize = CONNECTIONS->size();
                 for(uint32_t nIndex = 0; nIndex < nSize; ++nIndex)
                 {
                     try

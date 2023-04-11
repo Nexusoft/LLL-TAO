@@ -255,22 +255,22 @@ namespace LLP
         debug::log(0, FUNCTION, "Closing LLP Listeners");
 
         /* Close sockets for the lookup server and its subsystems. */
-        CloseListening<LookupNode>(LOOKUP_SERVER);
+        CloseSockets<LookupNode>(LOOKUP_SERVER);
 
         /* Close sockets for the tritium server and its subsystems. */
-        CloseListening<TritiumNode>(TRITIUM_SERVER);
+        CloseSockets<TritiumNode>(TRITIUM_SERVER);
 
         /* Close sockets for the time server and its subsystems. */
-        CloseListening<TimeNode>(TIME_SERVER);
+        CloseSockets<TimeNode>(TIME_SERVER);
 
         /* Close sockets for the core API server and its subsystems. */
-        CloseListening<APINode>(API_SERVER);
+        CloseSockets<APINode>(API_SERVER);
 
         /* Close sockets for the RPC server and its subsystems. */
-        CloseListening<RPCNode>(RPC_SERVER);
+        CloseSockets<RPCNode>(RPC_SERVER);
 
         /* Close sockets for the mining server and its subsystems. */
-        CloseListening<Miner>(MINING_SERVER);
+        CloseSockets<Miner>(MINING_SERVER);
 
     }
 
