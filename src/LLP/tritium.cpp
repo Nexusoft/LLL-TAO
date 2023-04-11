@@ -2702,11 +2702,20 @@ namespace LLP
                 if(nConsecutiveFails >= 1000)
                 {
                     /* Switch to another available node. */
-                    if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
-                        SwitchNode();
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        /* If this is our sync session, switch nodes and restart syncing. */
+                        if(TAO::Ledger::nSyncSession.load() == nCurrentSession)
+                        {
+                            SwitchNode();
+                            return true;
+                        }
+
+                        return debug::drop(NODE, "has sent ", nConsecutiveFails, " invalid consecutive transactions");
+                    }
 
                     /* Drop pesky nodes. */
-                    return debug::drop(NODE, "node reached failure limit");
+                    return debug::ban(this, NODE, "has sent ", nConsecutiveFails, " invalid consecutive blocks");
                 }
 
                 break;
@@ -2804,7 +2813,15 @@ namespace LLP
 
                 /* Check for failure limit on node. */
                 if(nConsecutiveFails >= 100)
-                    return debug::drop(NODE, "TX::node reached failure limit");
+                {
+                    /* Only drop the node when syncronizing the chain. */
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                        return debug::drop(NODE, "has sent ", nConsecutiveFails, " invalid consecutive transactions");
+
+                    /* Otherwise ban this node for consecutive failures. */
+                    return debug::ban(this, NODE, "has sent ", nConsecutiveFails, " invalid consecutive transactions");
+                }
+
 
                 /* Check for orphan limit on node. */
                 if(nConsecutiveOrphans >= 1000)

@@ -302,6 +302,31 @@ namespace debug
     }
 
 
+    /** ban
+     *
+     *  Safe constant format debugging network drror logs.
+     *
+     *  @param[in] args The variadic template arguments in.
+     *
+     *  @return Returns false always. (Assumed to return an error.)
+     *
+     **/
+    template<class Node, class... Args>
+    bool ban(Node* pNode, Args&&... args)
+    {
+        /* Build a string for message. */
+        const std::string strMessage = safe_printstr(args...);
+
+        /* Ban the node and track it's new score. */
+        if(pNode && pNode->DDOS)
+            pNode->DDOS->Ban(strMessage);
+
+        log(0, ANSI_COLOR_BRIGHT_YELLOW, "BANNED: ", ANSI_COLOR_RESET, strMessage);
+
+        return false;
+    }
+
+
     /** success
      *
      *  Safe constant format debugging success logs.
