@@ -2300,7 +2300,7 @@ namespace LLP
                                         /* Special debug output for new address recurring time. */
                                         if(addrInfo.nLastSeen > runtime::unifiedtimestamp() || addrInfo.nLastSeen == 0)
                                             debug::log(0, NODE, "ACTION::NOTIFY: UPDATE ADDRESS ", addr.ToStringIP());
-                                        else if(nTimeAway > 1800)
+                                        else if(nTimeAway > 300) //only display if more than 5 minutes since last seen
                                         {
                                             /* Default time seen in minutes. */
                                             std::string strLastSeen =
