@@ -559,52 +559,81 @@ namespace LLP
     /*  Updates the nState of the given Trust address. */
     void AddressManager::update_state(TrustAddress *pAddr, uint8_t nState)
     {
-        uint64_t nTimestamp = runtime::unifiedtimestamp();
+        /* Get current timestamp of unified clock. */
+        const uint64_t nTimestamp = runtime::unifiedtimestamp();
         switch(nState)
         {
-          /* New State */
-          case ConnectState::NEW:
-              break;
+            /* New State */
+            case ConnectState::NEW:
+            {
+                /* Set our initial values including last seen. */
+                pAddr->nSession  = 0;
+                pAddr->nFails    = 0;
+                pAddr->nLastSeen = nTimestamp;
 
-          /* Connected State */
-          case ConnectState::CONNECTED:
+                break;
+            }
 
-              /* If the address is already connected, don't update */
-              if(pAddr->nState == ConnectState::CONNECTED)
-                  break;
+            /* Connected State */
+            case ConnectState::CONNECTED:
+            {
+                pAddr->nLastSeen = nTimestamp;
 
-              ++pAddr->nConnected;
-              pAddr->nSession = 0;
-              pAddr->nFails = 0;
-              pAddr->nLastSeen = nTimestamp;
-              pAddr->nState = nState;
-              break;
+                /* If the address is already connected, don't update */
+                if(pAddr->nState == ConnectState::CONNECTED)
+                    break;
 
-          /* Dropped State */
-          case ConnectState::DROPPED:
+                /* Reset our session and state. */
+                pAddr->nSession  = 0;
+                pAddr->nFails    = 0;
+                pAddr->nState    = nState;
 
-              /* If the address is already dropped, don't update */
-              if(pAddr->nState == ConnectState::DROPPED)
-                  break;
+                /* Increment our connected count. */
+                ++pAddr->nConnected;
 
-              ++pAddr->nDropped;
-              pAddr->nSession = 0;
-              pAddr->nLastSeen = nTimestamp;
-              pAddr->nState = nState;
-              break;
+                break;
+            }
 
-          /* Failed State */
-          case ConnectState::FAILED:
-              ++pAddr->nFailed;
-              ++pAddr->nFails;
-              pAddr->nSession = 0;
-              pAddr->nState = nState;
-              break;
+            /* Dropped State */
+            case ConnectState::DROPPED:
+            {
+                /* Update our last seen values. */
+                pAddr->nLastSeen = nTimestamp;
 
-          /* Unrecognized nState */
-          default:
-              debug::log(0, FUNCTION, "Unrecognized nState");
-              break;
+                /* If the address is already dropped, don't update */
+                if(pAddr->nState == ConnectState::DROPPED)
+                    break;
+
+                /* Set our session and state. */
+                pAddr->nSession  = 0;
+                pAddr->nState    = nState;
+
+                /* Increment our dropped count. */
+                ++pAddr->nDropped;
+
+                break;
+            }
+
+            /* Failed State */
+            case ConnectState::FAILED:
+            {
+                /* Increment our failures. */
+                ++pAddr->nFailed;
+                ++pAddr->nFails;
+
+                /* Reset our session and state. */
+                pAddr->nSession = 0;
+                pAddr->nState = nState;
+
+                break;
+            }
+
+            /* Unrecognized nState */
+            default:
+            {
+                debug::log(0, FUNCTION, "Unrecognized nState");
+                break;
+            }
         }
     }
 }

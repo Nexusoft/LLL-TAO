@@ -2316,7 +2316,6 @@ namespace LLP
 
                                             debug::log(0, NODE, "ACTION::NOTIFY: ONLINE ADDRESS ", addr.ToStringIP(), " LAST SEEN ", strLastSeen);
                                         }
-
                                     }
                                     else
                                         debug::log(0, NODE, "ACTION::NOTIFY: NEW ADDRESS ", addr.ToStringIP());
