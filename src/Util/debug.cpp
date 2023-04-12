@@ -76,6 +76,8 @@ namespace debug
     /* Write startup information into the log file */
     void Initialize()
     {
+        printf("Initializing system...\n");
+
         strLogFolder = config::GetDataDir() + "log/";
 
         /* Create the debug archive folder if it doesn't exist. */

@@ -281,6 +281,10 @@ namespace LLP
     /* Restarts the listening sockets on all running servers. */
     void OpenListening()
     {
+        /* Initialize debugging when opening listeners back. */
+        debug::Initialize();
+
+        /* Log that we are opening our listeners back up. */
         debug::log(0, FUNCTION, "Opening LLP Listeners");
 
         /* Open sockets for the core API server and its subsystems. */
