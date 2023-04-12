@@ -2284,7 +2284,7 @@ namespace LLP
                             if(!config::fClient.load())
                             {
                                 /* Add addresses to manager.. */
-                                if(TRITIUM_SERVER->GetAddressManager())
+                                if(TRITIUM_SERVER->GetAddressManager() && addr.IsRoutable())
                                 {
                                     /* Only output debug info if new address. */
                                     if(TRITIUM_SERVER->GetAddressManager()->Has(addr))
