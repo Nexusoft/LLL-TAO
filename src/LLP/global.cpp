@@ -281,8 +281,9 @@ namespace LLP
     /* Restarts the listening sockets on all running servers. */
     void OpenListening()
     {
-        /* Initialize debugging when opening listeners back. */
-        debug::Initialize();
+        /* Initialize the logging file stream. */
+        if(!debug::ssFile.is_open())
+            debug::ssFile.open(debug::log_path(0), std::ios::app | std::ios::out);
 
         /* Log that we are opening our listeners back up. */
         debug::log(0, FUNCTION, "Opening LLP Listeners");
