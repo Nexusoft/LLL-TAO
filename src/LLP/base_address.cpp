@@ -277,7 +277,7 @@ namespace LLP
     /* Determines if address is a routable address. */
     bool BaseAddress::IsRoutable() const
     {
-        return IsValid() && !(IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal());
+        return IsValid() && !(IsRFC3927() || IsRFC4862() || IsRFC4193() || IsRFC4843() || IsLocal() || IsRFC1918());
     }
 
 
