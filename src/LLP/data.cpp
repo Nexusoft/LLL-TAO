@@ -303,9 +303,10 @@ namespace LLP
                         continue;
                     }
 
-                    /* Disconnect if pollin signaled with no data (This happens on Linux). */
+                    /* Disconnect if pollin signaled with no data for 1ms consistently (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Available() == 0 && !CONNECTION->IsSSL())
+                    && CONNECTION->Timeout(1, Socket::READ)
+                    && CONNECTION->Available() == 0)
                     {
                         remove_connection_with_event(nIndex, DISCONNECT::POLL_EMPTY);
                         continue;
