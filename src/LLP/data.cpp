@@ -175,7 +175,8 @@ namespace LLP
     void DataThread<ProtocolType>::Thread()
     {
         /* Cache sleep time if applicable. */
-        uint32_t nSleep = config::GetArg("-llpsleep", 0);
+        const uint32_t nSleep = config::GetArg("-llpsleep", 0);
+        const uint32_t nWait  = config::GetArg("-llpwait", 1);
 
         /* The mutex for the condition. */
         std::mutex CONDITION_MUTEX;
@@ -305,7 +306,7 @@ namespace LLP
 
                     /* Disconnect if pollin signaled with no data for 1ms consistently (This happens on Linux). */
                     if((POLLFDS.at(nIndex).revents & POLLIN)
-                    && CONNECTION->Timeout(1, Socket::READ)
+                    && CONNECTION->Timeout(nWait, Socket::READ)
                     && CONNECTION->Available() == 0)
                     {
                         remove_connection_with_event(nIndex, DISCONNECT::POLL_EMPTY);
