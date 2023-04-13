@@ -822,6 +822,25 @@ namespace LLD
         const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
             std::make_tuple(hashProof, hashTx, nContract);
 
+        /* Cleanup our proof memory if writing for block. */
+        if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Erase memory proof if they exist. */
+            if(pMemory)
+            {
+                pMemory->setEraseProofs.insert(tIndex);
+                pMemory->setProofs.erase(tIndex);
+            }
+            else
+               pCommit->setProofs.erase(tIndex);
+
+            /* Check for erase to short circuit out. */
+            if(nFlags == TAO::Ledger::FLAGS::ERASE)
+                return true;
+        }
+
         return Index(tIndex, hashIndex);
     }
 
