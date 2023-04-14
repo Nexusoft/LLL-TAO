@@ -266,6 +266,10 @@ namespace LLD
                 fileCache->Put(i, pstream);
             }
 
+            /* Check that file is open. */
+            if(!pstream->is_open())
+                pstream->open(debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i), std::ios::in | std::ios::out | std::ios::binary);
+
             /* Seek to the hashmap index in file. */
             pstream->seekg(nFilePos, std::ios::beg);
 
@@ -344,6 +348,10 @@ namespace LLD
                     fileCache->Put(i, pstream);
                 }
 
+                /* Check that file is open. */
+                if(!pstream->is_open())
+                    pstream->open(debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i), std::ios::in | std::ios::out | std::ios::binary);
+
                 /* Seek to the hashmap index in file. */
                 pstream->seekg (nFilePos, std::ios::beg);
 
@@ -378,6 +386,10 @@ namespace LLD
                         /* If file not found add to LRU cache. */
                         fileCache->Put(i, pstream);
                     }
+
+                    /* Check that file is open. */
+                    if(!pstream->is_open())
+                        pstream->open(debug::safe_printstr(strBaseLocation, "_hashmap.", std::setfill('0'), std::setw(5), i), std::ios::in | std::ios::out | std::ios::binary);
 
 
                     /* Handle the disk writing operations. */
@@ -445,10 +457,18 @@ namespace LLD
             fileCache->Put(hashmap[nBucket], pstream);
         }
 
+        /* Check that file is open. */
+        if(!pstream->is_open())
+            pstream->open(file, std::ios::in | std::ios::out | std::ios::binary);
+
         /* Flush the key file to disk. */
         pstream->seekp (nFilePos, std::ios::beg);
         pstream->write((char*)&ssKey.Bytes()[0], ssKey.size());
         pstream->flush();
+
+        /* Check index file handle is open. */
+        if(!pindex->is_open())
+            pindex->open(debug::safe_printstr(strBaseLocation, "_hashmap.index"), std::ios::in | std::ios::out | std::ios::binary);
 
         /* Seek to the index position. */
         pindex->seekp((nBucket * 2), std::ios::beg);
@@ -483,6 +503,10 @@ namespace LLD
     /* Flush all buffers to disk if using ACID transaction. */
     void BinaryHashMap::Flush()
     {
+        /* Check index file handle is open. */
+        if(!pindex->is_open())
+            pindex->open(debug::safe_printstr(strBaseLocation, "_hashmap.index"), std::ios::in | std::ios::out | std::ios::binary);
+
         /* Flush the index files. */
         pindex->flush();
 

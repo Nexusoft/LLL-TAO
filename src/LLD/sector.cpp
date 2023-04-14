@@ -180,6 +180,10 @@ namespace LLD
                     fileCache->Put(cKey.nSectorFile, pstream);
                 }
 
+                /* Check stream file is still open. */
+                if(!pstream->is_open())
+                    pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
+
                 /* Get compact size from record. */
                 uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
 
@@ -239,6 +243,10 @@ namespace LLD
                 /* If file not found add to LRU cache. */
                 fileCache->Put(cKey.nSectorFile, pstream);
             }
+
+            /* Check stream file is still open. */
+            if(!pstream->is_open())
+                pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), cKey.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
 
             /* Get compact size from record. */
             uint64_t nSize = GetSizeOfCompactSize(cKey.nSectorSize);
@@ -300,6 +308,10 @@ namespace LLD
                 /* If file not found add to LRU cache. */
                 fileCache->Put(key.nSectorFile, pstream);
             }
+
+            /* Check stream file is still open. */
+            if(!pstream->is_open())
+                pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
 
             /* If it is a New Sector, Assign a Binary Position. */
             pstream->seekp(key.nSectorStart, std::ios::beg);
@@ -368,6 +380,10 @@ namespace LLD
                     /* If file not found add to LRU cache. */
                     fileCache->Put(nCurrentFile, pstream);
                 }
+
+                /* Check stream file is still open. */
+                if(!pstream->is_open())
+                    pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nCurrentFile), std::ios::in | std::ios::out | std::ios::binary);
 
                 /* If it is a New Sector, Assign a Binary Position. */
                 pstream->seekp(nCurrentFileSize, std::ios::beg);
@@ -479,6 +495,10 @@ namespace LLD
                 /* If file not found add to LRU cache. */
                 fileCache->Put(key.nSectorFile, pstream);
             }
+
+            /* Check stream file is still open. */
+            if(!pstream->is_open())
+                pstream->open(debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), key.nSectorFile), std::ios::in | std::ios::out | std::ios::binary);
 
             /* Seek to write at specific location. */
             pstream->seekp(key.nSectorStart + GetSizeOfCompactSize(key.nSectorSize), std::ios::beg);
