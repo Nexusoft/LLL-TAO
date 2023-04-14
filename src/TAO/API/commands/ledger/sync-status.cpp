@@ -72,10 +72,12 @@ namespace TAO::API
 
         /* The percentage of the blocks downloaded */
         jRet["secondsRemaining"] = LLP::TritiumNode::nRemainingTime.load();
-        jRet["timeRemaining"]    = debug::safe_printstr(
-                                 "[", std::setw(2), std::setfill('0'), nHours, ":",
+        jRet["timeRemaining"]    = debug::safe_printstr
+                                   (
+                                      std::setw(2), std::setfill('0'), nHours,   ":",
                                       std::setw(2), std::setfill('0'), nMinutes, ":",
-                                      std::setw(2), std::setfill('0'), nSeconds, "]");
+                                      std::setw(2), std::setfill('0'), nSeconds
+                                   );
 
         /* The percentage of the current sync completed */
         jRet["percentSynchronized"] = (uint32_t)TAO::Ledger::ChainState::PercentSynchronized();
