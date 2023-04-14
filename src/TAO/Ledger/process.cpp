@@ -163,7 +163,7 @@ namespace TAO
                         try //we want to catch exceptions thrown by atomic_ptr in the case there was a free on another thread
                         {
                             /* Check for potential overflow if current height is not set. */
-                            if(pnode->nCurrentHeight > ChainState::nBestHeight.load())
+                            if(pnode && pnode->nCurrentHeight > ChainState::nBestHeight.load())
                             {
                                 /* Get the total height left to go. */
                                 uint32_t nRemaining = (pnode->nCurrentHeight - ChainState::nBestHeight.load());

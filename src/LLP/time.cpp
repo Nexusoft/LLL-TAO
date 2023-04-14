@@ -195,19 +195,19 @@ namespace LLP
 
             /* Calculate this particular sample. */
             int32_t nOffset = convert::bytes2int(PACKET.DATA);
-            nSamples.Add(nOffset);
+            nSamples.push(nOffset);
 
             /* Verbose debug output. */
             debug::log(2, NODE, "Added Sample ", nOffset, " | Seed ", GetAddress().ToStringIP());
 
             /* Close the Connection Gracefully if Received all Packets. */
-            if(nSamples.Samples() >= 5)
+            if(nSamples.samples() >= 5)
             {
                 {
                     LOCK(TIME_MUTEX);
 
                     /* Add new time data by IP to the time data map. */
-                    MAP_TIME_DATA[GetAddress().ToStringIP()] = nSamples.Majority();
+                    MAP_TIME_DATA[GetAddress().ToStringIP()] = nSamples.top();
                 }
 
                 /* Set the Unified Average to the Majority Seed. */
@@ -215,7 +215,7 @@ namespace LLP
 
                 /* Log the debug output. */
                 debug::log(0, NODE, MAP_TIME_DATA.size(),
-                    " Total Samples | ", nSamples.Majority(),
+                    " Total Samples | ", nSamples.top(),
                     " Offset | ", UNIFIED_AVERAGE_OFFSET.load(),
                     " Majority | ", runtime::unifiedtimestamp());
 
@@ -256,7 +256,7 @@ namespace LLP
     int32_t TimeNode::GetOffset()
     {
         /* Majority Object to check for consensus on time samples. */
-        CMajority<int32_t> UNIFIED_MAJORITY;
+        majority<int32_t> UNIFIED_MAJORITY;
 
         {
             LOCK(TIME_MUTEX);
@@ -265,10 +265,10 @@ namespace LLP
             for(auto it = MAP_TIME_DATA.begin(); it != MAP_TIME_DATA.end(); ++it)
             {
                 /* Update the Unified Majority. */
-                UNIFIED_MAJORITY.Add(it->second);
+                UNIFIED_MAJORITY.push(it->second);
             }
         }
 
-        return UNIFIED_MAJORITY.Majority();
+        return UNIFIED_MAJORITY.top();
     }
 }

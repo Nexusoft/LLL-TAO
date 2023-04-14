@@ -145,11 +145,8 @@ namespace TAO
             /* The timstamp of the genesis block.   */
             uint32_t nGenesis = stateGenesis.GetBlockTime();
 
-            /* Find the chain age relative to the genesis */
-
-            /* Calculate the time between the last block received and now.  NOTE we calculate this to one minute in the past,
-                to accommodate for the average block time of 50s */
-            uint32_t nChainAge = (static_cast<uint32_t>(runtime::unifiedtimestamp()) - (60 * 20) - nGenesis);
+            /* Calculate the time between the last block received and now. */
+            uint32_t nChainAge = static_cast<uint32_t>(runtime::unifiedtimestamp() - 60 - nGenesis);
             uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - nGenesis);
 
             /* Ensure that the chain age is not less than the sync age, which would happen if the
@@ -158,23 +155,6 @@ namespace TAO
 
             /* Calculate the sync percent. */
             return std::min(100.0, (100.0 * nSyncAge) / nChainAge);
-
-        }
-
-
-        /* Percentage of blocks synchronized since the node started. */
-        double ChainState::SyncProgress()
-        {
-            /* Catch if we aren't syncing yet. */
-            if(LLP::TritiumNode::nSyncStop.load() == 0)
-                return 0.0;
-
-            /* Total blocks synchronized */
-            const uint32_t nBlocks = stateBest.load().nHeight - LLP::TritiumNode::nSyncStart.load();
-            const uint32_t nTotals = LLP::TritiumNode::nSyncStop.load() - LLP::TritiumNode::nSyncStart.load();
-
-            /* Calculate the sync percent. */
-            return std::min(100.0, (100.0 * nBlocks) / nTotals);
         }
 
 
