@@ -254,23 +254,26 @@ namespace LLP
     {
         debug::log(0, FUNCTION, "Closing LLP Listeners");
 
+        /* Set global system into suspended state. */
+        config::fSuspended.store(true);
+
         /* Close sockets for the lookup server and its subsystems. */
-        CloseListening<LookupNode>(LOOKUP_SERVER);
+        CloseSockets<LookupNode>(LOOKUP_SERVER);
 
         /* Close sockets for the tritium server and its subsystems. */
-        CloseListening<TritiumNode>(TRITIUM_SERVER);
+        CloseSockets<TritiumNode>(TRITIUM_SERVER);
 
         /* Close sockets for the time server and its subsystems. */
-        CloseListening<TimeNode>(TIME_SERVER);
+        CloseSockets<TimeNode>(TIME_SERVER);
 
         /* Close sockets for the core API server and its subsystems. */
-        CloseListening<APINode>(API_SERVER);
+        CloseSockets<APINode>(API_SERVER);
 
         /* Close sockets for the RPC server and its subsystems. */
-        CloseListening<RPCNode>(RPC_SERVER);
+        CloseSockets<RPCNode>(RPC_SERVER);
 
         /* Close sockets for the mining server and its subsystems. */
-        CloseListening<Miner>(MINING_SERVER);
+        CloseSockets<Miner>(MINING_SERVER);
 
     }
 
@@ -278,6 +281,11 @@ namespace LLP
     /* Restarts the listening sockets on all running servers. */
     void OpenListening()
     {
+        /* Initialize the logging file stream. */
+        if(!debug::ssFile.is_open())
+            debug::ssFile.open(debug::log_path(0), std::ios::app | std::ios::out);
+
+        /* Log that we are opening our listeners back up. */
         debug::log(0, FUNCTION, "Opening LLP Listeners");
 
         /* Open sockets for the core API server and its subsystems. */
@@ -297,6 +305,9 @@ namespace LLP
 
         /* Open sockets for the mining server and its subsystems. */
         OpenListening<Miner>(MINING_SERVER);
+
+        /* Set global system out of suspended state. */
+        config::fSuspended.store(false);
 
         /* Add our connections from commandline. */
         MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);

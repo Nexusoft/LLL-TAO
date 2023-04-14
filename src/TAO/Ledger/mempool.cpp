@@ -198,7 +198,7 @@ namespace TAO
                 mapClaimed[tx.hashPrevTx] = hashTx;
 
             /* Debug output. */
-            debug::log(3, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, timer.ElapsedMilliseconds(), " ms");
+            debug::log(2, FUNCTION, "tx ", hashTx.SubString(), " ACCEPTED in ", std::dec, timer.ElapsedMilliseconds(), " ms");
 
             /* Process orphan queue. */
             ProcessOrphans(hashTx);

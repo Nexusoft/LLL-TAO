@@ -2276,7 +2276,7 @@ namespace LLP
                             if(!config::fClient.load())
                             {
                                 /* Add addresses to manager.. */
-                                if(TRITIUM_SERVER->GetAddressManager())
+                                if(TRITIUM_SERVER->GetAddressManager() && addr.IsRoutable())
                                 {
                                     /* Only output debug info if new address. */
                                     if(TRITIUM_SERVER->GetAddressManager()->Has(addr))
@@ -2292,7 +2292,7 @@ namespace LLP
                                         /* Special debug output for new address recurring time. */
                                         if(addrInfo.nLastSeen > runtime::unifiedtimestamp() || addrInfo.nLastSeen == 0)
                                             debug::log(0, NODE, "ACTION::NOTIFY: UPDATE ADDRESS ", addr.ToStringIP());
-                                        else if(nTimeAway > 1800)
+                                        else if(nTimeAway > 300) //only display if more than 5 minutes since last seen
                                         {
                                             /* Default time seen in minutes. */
                                             std::string strLastSeen =
@@ -2308,7 +2308,6 @@ namespace LLP
 
                                             debug::log(0, NODE, "ACTION::NOTIFY: ONLINE ADDRESS ", addr.ToStringIP(), " LAST SEEN ", strLastSeen);
                                         }
-
                                     }
                                     else
                                         debug::log(0, NODE, "ACTION::NOTIFY: NEW ADDRESS ", addr.ToStringIP());
@@ -2694,11 +2693,20 @@ namespace LLP
                 if(nConsecutiveFails >= 1000)
                 {
                     /* Switch to another available node. */
-                    if(TAO::Ledger::ChainState::Synchronizing() && TAO::Ledger::nSyncSession.load() == nCurrentSession)
-                        SwitchNode();
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                    {
+                        /* If this is our sync session, switch nodes and restart syncing. */
+                        if(TAO::Ledger::nSyncSession.load() == nCurrentSession)
+                        {
+                            SwitchNode();
+                            return true;
+                        }
+
+                        return debug::drop(NODE, "has sent ", nConsecutiveFails, " invalid consecutive transactions");
+                    }
 
                     /* Drop pesky nodes. */
-                    return debug::drop(NODE, "node reached failure limit");
+                    return debug::ban(this, NODE, "has sent ", nConsecutiveFails, " invalid consecutive blocks");
                 }
 
                 break;
@@ -2796,7 +2804,15 @@ namespace LLP
 
                 /* Check for failure limit on node. */
                 if(nConsecutiveFails >= 100)
-                    return debug::drop(NODE, "TX::node reached failure limit");
+                {
+                    /* Only drop the node when syncronizing the chain. */
+                    if(TAO::Ledger::ChainState::Synchronizing())
+                        return debug::drop(NODE, "has sent ", nConsecutiveFails, " invalid consecutive transactions");
+
+                    /* Otherwise ban this node for consecutive failures. */
+                    return debug::ban(this, NODE, "has sent ", nConsecutiveFails, " invalid consecutive transactions");
+                }
+
 
                 /* Check for orphan limit on node. */
                 if(nConsecutiveOrphans >= 1000)

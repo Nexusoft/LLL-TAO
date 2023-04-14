@@ -33,16 +33,11 @@ namespace config
     std::map<uint16_t, std::vector<std::string> > mapIPFilters;
 
     std::atomic<bool> fShutdown(false);
-    std::atomic<bool> fDebug(false);
-    std::atomic<bool> fPrintToConsole(false);
+    std::atomic<bool> fSuspended(false);
     std::atomic<bool> fDaemon(false);
     std::atomic<bool> fClient(false);
-    std::atomic<bool> fCommandLine(false);
     std::atomic<bool> fTestNet(false);
     std::atomic<bool> fListen(false);
-    std::atomic<bool> fUseProxy(false);
-    std::atomic<bool> fAllowDNS(false);
-    std::atomic<bool> fLogTimestamps(false);
     std::atomic<bool> fMultiuser(false);
     std::atomic<bool> fProcessNotifications(false);
     std::atomic<bool> fInitialized(false);
@@ -205,15 +200,11 @@ namespace config
     /* Caches some of the common arguments into global variables for quick/easy access */
     void CacheArgs()
     {
-        fDebug                  = GetBoolArg("-debug", false);
-        fPrintToConsole         = GetBoolArg("-printtoconsole", false);
         fDaemon                 = GetBoolArg("-daemon", false);
         fTestNet                = (GetArg("-testnet", 0) > 0);
         fListen                 = GetBoolArg("-listen", true);
         fClient                 = GetBoolArg("-client", false);
         //fUseProxy               = GetBoolArg("-proxy")
-        fAllowDNS               = GetBoolArg("-allowdns", true);
-        fLogTimestamps          = GetBoolArg("-logtimestamps", false);
         fMultiuser              = GetBoolArg("-multiuser", false) || GetBoolArg("-multiusername", false);
         fProcessNotifications   = GetBoolArg("-processnotifications", true);
         fPoolStaking            = GetBoolArg("-poolstaking", false);

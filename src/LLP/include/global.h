@@ -139,11 +139,19 @@ namespace LLP
      *
      **/
     template <class ProtocolType>
-    void CloseListening(Server<ProtocolType> *pServer)
+    void CloseSockets(Server<ProtocolType> *pServer)
     {
-        /* Check if we need to release triggers first. */
+        /* Release our triggers. */
+        if(pServer)
+            pServer->NotifyTriggers();
+
+        /* Close our listening socket now. */
         if(pServer)
             pServer->CloseListening();
+
+        /* Disconnect all open sockets. */
+        if(pServer)
+            pServer->DisconnectAll();
     }
 
 

@@ -103,10 +103,13 @@ namespace debug
     /*  Close the debug log file. */
     void Shutdown()
     {
-        LOCK(DEBUG_MUTEX);
-
-        if(ssFile.is_open())
-            ssFile.close();
+        try
+        {
+            /* Close our debug file on shutdown. */
+            if(ssFile.is_open())
+                ssFile.close();
+        }
+        catch(const std::exception& e){}
     }
 
 

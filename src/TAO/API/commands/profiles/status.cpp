@@ -60,7 +60,7 @@ namespace TAO::API
         }
 
         /* Add our session information if authenticated. */
-        if(fAuthenticated)
+        if(fAuthenticated && Authentication::Active(hashGenesis))
         {
             /* Add in profile username for active session with profile. */
             const encoding::json jSession =

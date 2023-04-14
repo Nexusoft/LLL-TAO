@@ -188,15 +188,20 @@ namespace debug
         if(config::nVerbose < nLevel)
             return;
 
-        /* Lock the mutex. */
-        LOCK(DEBUG_MUTEX);
+        /* We catch execption here to prevent crashes on shutdown for iOS. */
+        try
+        {
+            /* Lock the mutex. */
+            LOCK(DEBUG_MUTEX);
 
-        /* Get the debug string and log file. */
-        std::string strDebug = safe_printstr(args...);
+            /* Get the debug string and log file. */
+            std::string strDebug = safe_printstr(args...);
 
-        /* Get the timestamp. */
-        time_t nTimestamp = std::time(nullptr);
-        _log(nTimestamp, strDebug);
+            /* Get the timestamp. */
+            time_t nTimestamp = std::time(nullptr);
+            _log(nTimestamp, strDebug);
+        }
+        catch(const std::exception& e){}
     }
 
 
@@ -297,6 +302,31 @@ namespace debug
     bool drop(Args&&... args)
     {
         log(0, ANSI_COLOR_BRIGHT_YELLOW, "DROPPED: ", ANSI_COLOR_RESET, args...);
+
+        return false;
+    }
+
+
+    /** ban
+     *
+     *  Safe constant format debugging network drror logs.
+     *
+     *  @param[in] args The variadic template arguments in.
+     *
+     *  @return Returns false always. (Assumed to return an error.)
+     *
+     **/
+    template<class Node, class... Args>
+    bool ban(Node* pNode, Args&&... args)
+    {
+        /* Build a string for message. */
+        const std::string strMessage = safe_printstr(args...);
+
+        /* Ban the node and track it's new score. */
+        if(pNode && pNode->DDOS)
+            pNode->DDOS->Ban(strMessage);
+
+        log(0, ANSI_COLOR_BRIGHT_YELLOW, "BANNED: ", ANSI_COLOR_RESET, strMessage);
 
         return false;
     }
