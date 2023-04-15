@@ -73,6 +73,14 @@ namespace TAO
             double PercentSynchronized();
 
 
+            /** SyncProgress
+             *
+             *  Percentage of blocks synchronized since the node started.
+             *
+             **/
+            double SyncProgress();
+
+
             /** Initialize
              *
              *  Initialize the Chain State.

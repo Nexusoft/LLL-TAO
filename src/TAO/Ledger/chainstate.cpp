@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/checkpoints.h>
 #include <TAO/Ledger/include/constants.h>
 #include <TAO/Ledger/include/create.h>
+#include <TAO/Ledger/include/genesis_block.h>
 #include <TAO/Ledger/include/timelocks.h>
 
 /* Global TAO namespace. */
@@ -143,18 +144,31 @@ namespace TAO
         double ChainState::PercentSynchronized()
         {
             /* The timstamp of the genesis block.   */
-            uint32_t nGenesis = stateGenesis.GetBlockTime();
+            static const uint32_t nGenesis =
+                (config::fClient.load() ? TritiumGenesis().nHeight : config::fHybrid.load() ? HybridGenesis().nHeight : LegacyGenesis().nHeight);
 
             /* Calculate the time between the last block received and now. */
-            uint32_t nChainAge = static_cast<uint32_t>(runtime::unifiedtimestamp() - 60 - nGenesis);
-            uint32_t nSyncAge  = static_cast<uint32_t>(stateBest.load().GetBlockTime() - nGenesis);
-
-            /* Ensure that the chain age is not less than the sync age, which would happen if the
-                last block time was within the last minute */
-            nChainAge = std::max(nChainAge, nSyncAge);
+            const uint32_t nBlocks = stateBest.load().nHeight - nGenesis;
+            const uint32_t nTotals = (LLP::TritiumNode::nSyncStop.load() - nGenesis);
 
             /* Calculate the sync percent. */
-            return std::min(100.0, (100.0 * nSyncAge) / nChainAge);
+            return std::min(100.0, (100.0 * nBlocks) / nTotals);
+        }
+
+
+        /* Percentage of blocks synchronized since the node started. */
+        double ChainState::SyncProgress()
+        {
+            /* Catch if we aren't syncing yet. */
+            if(LLP::TritiumNode::nSyncStop.load() == 0)
+                return 0.0;
+
+            /* Total blocks synchronized */
+            const uint32_t nBlocks = stateBest.load().nHeight - LLP::TritiumNode::nSyncStart.load();
+            const uint32_t nTotals = LLP::TritiumNode::nSyncStop.load() - LLP::TritiumNode::nSyncStart.load();
+
+            /* Calculate the sync percent. */
+            return std::min(100.0, (100.0 * nBlocks) / nTotals);
         }
 
 
