@@ -79,8 +79,6 @@ namespace Legacy
         obj["connections"] = GetTotalConnectionCount();
         obj["synccomplete"] = (int32_t)TAO::Ledger::ChainState::PercentSynchronized();
 
-        obj["proxy"] = (config::fUseProxy.load() ? LLP::addrProxy.ToString() : std::string());
-
         // get the EID's if using LISP
         std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
         if(mapEIDs.size() > 0)
