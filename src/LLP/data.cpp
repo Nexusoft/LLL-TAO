@@ -201,6 +201,10 @@ namespace LLP
             CONDITION.wait(CONDITION_LOCK,
             [this]
             {
+                /* Check for suspended state. */
+                if(config::fSuspendProtocol.load())
+                    return false;
+
                 return fDestruct.load()
                 || config::fShutdown.load()
                 || nIncoming.load() > 0
@@ -210,6 +214,13 @@ namespace LLP
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
                 return;
+
+            /* Check if we are suspended. */
+            if(config::fSuspendProtocol.load())
+            {
+                runtime::sleep(100);
+                continue;
+            }
 
             /* Wrapped mutex lock. */
             const uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
@@ -412,6 +423,10 @@ namespace LLP
                 if(fDestruct.load() || config::fShutdown.load())
                     return true;
 
+                /* Check for suspended state. */
+                if(config::fSuspendProtocol.load())
+                    return false;
+
                 /* Check for data in the queue. */
                 if(!RELAY->empty())
                     return true;
@@ -442,6 +457,13 @@ namespace LLP
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
                 return;
+
+            /* Check if we are suspended. */
+            if(config::fSuspendProtocol.load())
+            {
+                runtime::sleep(100);
+                continue;
+            }
 
             /* Pair to store the relay from the queue. */
             std::pair<typename ProtocolType::message_t, DataStream> qRelay =

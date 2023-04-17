@@ -624,6 +624,13 @@ namespace LLP
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
+            /* Check if we are suspended. */
+            if(config::fSuspendProtocol.load())
+            {
+                runtime::sleep(100);
+                continue;
+            }
+
             /* Set the listing socket descriptor on the pollfd.  We do this inside the loop in case the listening socket is
                explicitly closed and reopened whilst the app is running (used for mobile) */
             fds[0].fd = get_listening_socket(fIPv4, fSSL);
@@ -664,7 +671,7 @@ namespace LLP
                     /* Catch our socket errors and sleep while waiting for listener to be activated. */
                     if(WSAGetLastError() != WSAEWOULDBLOCK)
                     {
-                        runtime::sleep(1000);
+                        debug::error(FUNCTION, "failed to accept ", WSAGetLastError());
                         continue;
                     }
                 }

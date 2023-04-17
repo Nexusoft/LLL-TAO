@@ -34,6 +34,7 @@ namespace config
 
     std::atomic<bool> fShutdown(false);
     std::atomic<bool> fSuspended(false);
+    std::atomic<bool> fSuspendProtocol(false);
     std::atomic<bool> fDaemon(false);
     std::atomic<bool> fClient(false);
     std::atomic<bool> fTestNet(false);
