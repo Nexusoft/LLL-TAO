@@ -201,10 +201,6 @@ namespace LLP
             CONDITION.wait(CONDITION_LOCK,
             [this]
             {
-                /* Check for suspended state. */
-                if(config::fSuspended.load())
-                    return false;
-
                 return fDestruct.load()
                 || config::fShutdown.load()
                 || nIncoming.load() > 0
@@ -415,10 +411,6 @@ namespace LLP
                 /* Break on shutdown or destructor. */
                 if(fDestruct.load() || config::fShutdown.load())
                     return true;
-
-                /* Check for suspended state. */
-                if(config::fSuspended.load())
-                    return false;
 
                 /* Check for data in the queue. */
                 if(!RELAY->empty())

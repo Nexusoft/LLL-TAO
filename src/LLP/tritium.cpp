@@ -3709,8 +3709,12 @@ namespace LLP
             try
             {
                 /* Get the current sync node. */
-                std::shared_ptr<TritiumNode> pcurrent = TRITIUM_SERVER->GetConnection(pairSession.first, pairSession.second);
-                pcurrent->Unsubscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
+                std::shared_ptr<TritiumNode> pcurrent =
+                    TRITIUM_SERVER->GetConnection(pairSession.first, pairSession.second);
+
+                /* Make sure this is an active connection. */
+                if(pcurrent)
+                    pcurrent->Unsubscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
 
                 /* Initiate the sync */
                 pnode->Sync();

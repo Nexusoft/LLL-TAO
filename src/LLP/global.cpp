@@ -306,9 +306,6 @@ namespace LLP
         /* Open sockets for the mining server and its subsystems. */
         OpenListening<Miner>(MINING_SERVER);
 
-        /* Set global system out of suspended state. */
-        config::fSuspended.store(false);
-
         /* Add our connections from commandline. */
         MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
 
@@ -341,6 +338,9 @@ namespace LLP
                 TAO::API::Indexing::DownloadSigchain(hashGenesis);
             }
         }
+
+        /* Set global system out of suspended state. */
+        config::fSuspended.store(false);
     }
 
 

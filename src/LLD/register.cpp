@@ -670,48 +670,45 @@ namespace LLD
             /* Check for expired or missing. */
             if(fExpired || !fCached)
             {
-                /* Only perform lookup when we have active servers. */
-                if(LLP::LOOKUP_SERVER)
+                /* Check for -client mode or active server object. */
+                if(!LLP::TRITIUM_SERVER || !LLP::LOOKUP_SERVER)
+                    throw debug::exception(FUNCTION, "tritium or lookup servers inactive");
+
+                /* Try to find a connection first. */
+                std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
+                if(pConnection == nullptr)
                 {
-                    /* Try to find a connection first. */
-                    std::shared_ptr<LLP::LookupNode> pConnection = LLP::LOOKUP_SERVER->GetConnection();
-                    if(pConnection == nullptr)
+                    /* Attempt to get an active tritium connection for lookup. */
+                    std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
+                    if(pNode != nullptr)
                     {
-                        /* Check for genesis. */
-                        if(LLP::TRITIUM_SERVER)
-                        {
-                            std::shared_ptr<LLP::TritiumNode> pNode = LLP::TRITIUM_SERVER->GetConnection();
-                            if(pNode != nullptr)
-                            {
-                                /* Get our lookup address now. */
-                                const std::string strAddress =
-                                    pNode->GetAddress().ToStringIP();
+                        /* Get our lookup address now. */
+                        const std::string strAddress =
+                            pNode->GetAddress().ToStringIP();
 
-                                /* Make our new connection now. */
-                                if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
-                                    return debug::error(FUNCTION, "couldn't connect to ", strAddress);;
-                            }
-                        }
+                        /* Make our new connection now. */
+                        if(!LLP::LOOKUP_SERVER->ConnectNode(strAddress, pConnection))
+                            throw debug::exception(FUNCTION, "failed to connect to node");
                     }
-
-                    /* Check that we have active connections. */
-                    if(pConnection == nullptr)
-                        throw TAO::API::Exception(-11, "No Connections Available");
-
-                    /* Handle expired. */
-                    if(fExpired)
-                        debug::warning(FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
-
-                    /* Debug output to console. */
-                    //debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
-                    pConnection->BlockingLookup
-                    (
-                        10000,
-                        LLP::LookupNode::REQUEST::DEPENDANT,
-                        uint8_t(LLP::LookupNode::SPECIFIER::REGISTER), hashRegister
-                    );
-                    //debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
                 }
+
+                /* Check that we were able to make a connection. */
+                if(!pConnection)
+                    throw debug::exception(FUNCTION, "no connections found");
+
+                /* Handle expired. */
+                if(fExpired)
+                    debug::warning(FUNCTION, "EXPIRED: Cache is out of date by ", (nTimestamp - pLookup->at(hashRegister).second), " seconds");
+
+                /* Debug output to console. */
+                //debug::log(1, FUNCTION, "CLIENT MODE: Requesting ACTION::GET::REGISTER for ", hashRegister.SubString());
+                pConnection->BlockingLookup
+                (
+                    10000,
+                    LLP::LookupNode::REQUEST::DEPENDANT,
+                    uint8_t(LLP::LookupNode::SPECIFIER::REGISTER), hashRegister
+                );
+                //debug::log(1, FUNCTION, "CLIENT MODE: TYPES::REGISTER received for ", hashRegister.SubString());
             }
 
             /* Check for state in lookup map. */

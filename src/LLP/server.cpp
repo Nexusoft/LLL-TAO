@@ -354,9 +354,8 @@ namespace LLP
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude)
     {
-        /* Set our initial return values. */
-        int16_t nRetThread = -1;
-        int16_t nRetIndex  = -1;
+        /* Set our internal return pointer. */
+        std::shared_ptr<ProtocolType> pRet;
 
         /* List of connections to return. */
         uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
@@ -380,10 +379,9 @@ namespace LLP
                     /* Push the active connection. */
                     if(CONNECTION->nLatency < nLatency && CONNECTION->fOUTGOING)
                     {
+                        /* Set our return pointer here now. */
                         nLatency = CONNECTION->nLatency;
-
-                        nRetThread = nThread;
-                        nRetIndex  = nIndex;
+                        pRet     = CONNECTION;
                     }
                 }
                 catch(const std::exception& e)
@@ -393,12 +391,7 @@ namespace LLP
             }
         }
 
-        /* Handle if no connections were found. */
-        static std::shared_ptr<ProtocolType> pNULL;
-        if(nRetThread == -1 || nRetIndex == -1)
-            return pNULL;
-
-        return THREADS_DATA[nRetThread]->CONNECTIONS->at(nRetIndex);
+        return pRet;
     }
 
 
@@ -631,13 +624,6 @@ namespace LLP
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
-            /* Check if we need to loop in suspended state. */
-            if(config::fSuspended.load())
-            {
-                runtime::sleep(100);
-                continue;
-            }
-
             /* Set the listing socket descriptor on the pollfd.  We do this inside the loop in case the listening socket is
                explicitly closed and reopened whilst the app is running (used for mobile) */
             fds[0].fd = get_listening_socket(fIPv4, fSSL);
@@ -675,8 +661,12 @@ namespace LLP
 
                 if(hSocket == INVALID_SOCKET)
                 {
+                    /* Catch our socket errors and sleep while waiting for listener to be activated. */
                     if(WSAGetLastError() != WSAEWOULDBLOCK)
-                        debug::error(FUNCTION, "Socket error accept failed: ", WSAGetLastError());
+                    {
+                        runtime::sleep(1000);
+                        continue;
+                    }
                 }
                 else
                 {
