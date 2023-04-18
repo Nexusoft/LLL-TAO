@@ -2441,8 +2441,8 @@ namespace LLP
             case TYPES::BLOCK:
             {
                 /* Check for subscription. */
-                if(!(nSubscriptions & SUBSCRIPTION::BLOCK) && TAO::Ledger::nSyncSession.load() != nCurrentSession)
-                    return debug::drop(NODE, "TYPES::BLOCK: unsolicited data");
+                //if(!(nSubscriptions & SUBSCRIPTION::BLOCK) && TAO::Ledger::nSyncSession.load() != nCurrentSession)
+                //    return debug::drop(NODE, "TYPES::BLOCK: unsolicited data");
 
                 /* Star the sync timer if this is the first sync block */
                 if(!SYNCTIMER.Running())
@@ -2698,7 +2698,7 @@ namespace LLP
 
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
+                if(nConsecutiveFails >= 10000)
                 {
                     /* Switch to another available node. */
                     if(TAO::Ledger::ChainState::Synchronizing())
@@ -2710,7 +2710,7 @@ namespace LLP
                             return true;
                         }
 
-                        return debug::drop(NODE, "has sent ", nConsecutiveFails, " invalid consecutive transactions");
+                        return debug::drop(NODE, "has sent ", nConsecutiveFails, " invalid consecutive blocks");
                     }
 
                     /* Drop pesky nodes. */
