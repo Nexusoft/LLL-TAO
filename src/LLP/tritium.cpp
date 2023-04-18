@@ -2078,6 +2078,10 @@ namespace LLP
                             /* Check for legacy. */
                             if(fLegacy)
                             {
+                                /* Reset our cache if we have on disk. */
+                                if(tInventory.Expired(hashTx, 60) && LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    tInventory.Cache(hashTx);
+
                                 /* Check legacy database. */
                                 if(tInventory.Expired(hashTx, 60)) //60 second exipring cache
                                 {
@@ -2090,11 +2094,13 @@ namespace LLP
                                     /* Add to our cache inventory. */
                                     tInventory.Cache(hashTx);
                                 }
-                                else
-                                    debug::log(3, NODE, "ACTION::NOTIFY: [CACHED] LEGACY TRANSACTION ", hashTx.SubString());
                             }
                             else
                             {
+                                /* Reset our cache if we have on disk. */
+                                if(tInventory.Expired(hashTx, 60) && LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                                    tInventory.Cache(hashTx);
+
                                 /* Check ledger database. */
                                 if(tInventory.Expired(hashTx, 60)) //60 second exipring cache
                                 {
@@ -2107,8 +2113,6 @@ namespace LLP
                                     /* Add to our cache inventory. */
                                     tInventory.Cache(hashTx);
                                 }
-                                else
-                                    debug::log(3, NODE, "ACTION::NOTIFY: [CACHED] TRITIUM TRANSACTION ", hashTx.SubString());
                             }
 
                             break;
