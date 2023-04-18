@@ -91,10 +91,9 @@ namespace TAO
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
                 return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
-            debug::log(3, "ACCEPT --------------------------------------");
+            /* Print the transaction here. */
             if(config::nVerbose >= 3)
                 tx.print();
-            debug::log(3, "END ACCEPT -----------------------------------");
 
             /* Runtime calculations. */
             runtime::timer timer;

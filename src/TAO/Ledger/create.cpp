@@ -145,8 +145,6 @@ namespace TAO::Ledger
         /* Start a ACID transaction (to be disposed). */
         LLD::TxnBegin(FLAGS::MINER);
 
-        debug::log(3, "BEGIN-------------------------------------");
-
         /* Loop through the list of transactions. */
         std::set<uint512_t> setDependents;
         for(const auto& hash : vMempool)
@@ -219,15 +217,9 @@ namespace TAO::Ledger
                 continue;
             }
 
-            /* Dump sequence on verbose 3 levels. */
-            if(config::nVerbose >= 3)
-                tx.print();
-
             /* Add the transaction to the block. */
             block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
         }
-
-        debug::log(3, "END-------------------------------------");
 
         /* Abort the temporary ACID transaction. */
         LLD::TxnAbort(FLAGS::MINER);
