@@ -780,8 +780,6 @@ namespace LLP
             /* Set our atomic with size of vector. */
             nBufferSize.store(vBuffer.size());
 
-            debug::log(3, FUNCTION, "vBuffer ", vBuffer.size(), " bytes");
-
             return static_cast<int32_t>(nBytes);
         }
 
