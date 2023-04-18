@@ -42,6 +42,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/types/authentication.h>
+#include <TAO/API/types/indexing.h>
 #include <TAO/API/types/transaction.h>
 
 #include <Util/include/convert.h>
@@ -70,33 +72,29 @@ namespace TAO::Ledger
         /* Last sigchain transaction. */
         uint512_t hashLast = 0;
 
-        /* Check mempool for other transactions. */
-        TAO::API::Transaction txPrev;
-        if(mempool.Get(hashGenesis, txPrev))
-        {
-            /* Build new transaction object. */
-            tx.nSequence   = txPrev.nSequence + 1;
-            tx.hashGenesis = txPrev.hashGenesis;
-            tx.hashPrevTx  = txPrev.GetHash();
-            tx.nKeyType    = txPrev.nNextType;
-            tx.hashRecovery = txPrev.hashRecovery;
-            tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
-        }
-
         /* Get the last transaction. */
-        else if(LLD::Logical->ReadLast(hashGenesis, hashLast))
+        TAO::API::Transaction txPrev;
+        if(LLD::Logical->ReadLast(hashGenesis, hashLast))
         {
             /* Get previous transaction */
             if(!LLD::Logical->ReadTx(hashLast, txPrev))
                 return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in logical db");
 
             /* Build new transaction object. */
-            tx.nSequence   = txPrev.nSequence + 1;
-            tx.hashGenesis = txPrev.hashGenesis;
-            tx.hashPrevTx  = hashLast;
-            tx.nKeyType    = txPrev.nNextType;
+            tx.nSequence    = txPrev.nSequence + 1;
+            tx.hashGenesis  = txPrev.hashGenesis;
+            tx.hashPrevTx   = hashLast;
+            tx.nKeyType     = txPrev.nNextType;
             tx.hashRecovery = txPrev.hashRecovery;
-            tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
+            tx.nTimestamp   = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
+
+            /* Check if we need to adjust our key type. */
+            if(nScheme != txPrev.nNextType)
+                tx.nNextType = nScheme;
+
+            /* Set our next type from previous transaction type. */
+            else
+                tx.nNextType = txPrev.nNextType;
         }
 
         /* Set the initial and next key type for genesis transactions */
@@ -106,6 +104,7 @@ namespace TAO::Ledger
             tx.nKeyType    = nScheme; //this should use a default value
             tx.nNextType   = tx.nKeyType;
             tx.hashGenesis = hashGenesis;
+            tx.nTimestamp  = runtime::unifiedtimestamp();
 
             /* Add our network-id if applicable.*/
             if(config::fHybrid.load())
@@ -115,14 +114,6 @@ namespace TAO::Ledger
                 tx.hashPrevTx = LLC::SK512(strHybrid.begin(), strHybrid.end());
             }
         }
-
-        /* Check if we need to adjust our key type. */
-        else if(nScheme != txPrev.nNextType)
-            tx.nNextType = nScheme;
-
-        /* Set our next type from previous transaction type. */
-        else
-            tx.nNextType = txPrev.nNextType;
 
         /* Set the transaction version based on the timestamp. */
         const uint32_t nCurrent =
@@ -725,15 +716,16 @@ namespace TAO::Ledger
     /* Handles the creation of a private block chain. */
     void ThreadGenerator()
     {
+        /* Check for our generation credentials. */
         if(!config::fHybrid.load() || !config::HasArg("-generate"))
             return;
 
-        /* Get the account. */
-        memory::encrypted_ptr<TAO::Ledger::Credentials> user =
-            new TAO::Ledger::Credentials("generate", config::GetArg("-generate", "").c_str());
+        /* Build new session object. */
+        TAO::API::Authentication::Session tSession =
+            TAO::API::Authentication::Session("generate", config::GetArg("-generate", "").c_str(), TAO::API::Authentication::Session::LOCAL);
 
-        /* Get the genesis ID. */
-        const uint256_t hashGenesis = user->Genesis();
+        /* Get the current genesis-id of session. */
+        const uint256_t hashGenesis = tSession.Genesis();
 
         /* Check for duplicates in ledger db. */
         TAO::Ledger::Transaction txPrev;
@@ -743,32 +735,32 @@ namespace TAO::Ledger
             uint512_t hashLast;
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
             {
-                debug::error(FUNCTION, "No previous transaction found... closing");
-
+                debug::notice(FUNCTION, "No previous transaction found... closing");
                 return;
             }
 
             /* Get previous transaction */
             if(!LLD::Ledger->ReadTx(hashLast, txPrev))
             {
-                debug::error(FUNCTION, "No previous transaction found... closing");
-
+                debug::notice(FUNCTION, "No previous transaction found... closing");
                 return;
             }
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
             tx.nNextType = txPrev.nNextType;
-            tx.NextHash(user->Generate(txPrev.nSequence + 1, "1234"));
+            tx.NextHash(tSession.Credentials()->Generate(txPrev.nSequence + 1, "1234"));
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
             {
-                debug::error(FUNCTION, "Invalid credentials... closing");
-
+                debug::notice(FUNCTION, "Invalid credentials... closing");
                 return;
             }
         }
+
+        /* Push the new session to auth. */
+        TAO::API::Authentication::Insert(TAO::API::Authentication::SESSION::PRIVATE, tSession);
 
         /* Extract our latency parameter. */
         const uint64_t nLatency =
@@ -776,6 +768,9 @@ namespace TAO::Ledger
 
         /* Startup Debug. */
         debug::log(0, FUNCTION, "Generator Thread Started at latency ", nLatency, "ms");
+
+        /* Initialize our indexing session. */
+        TAO::API::Indexing::Initialize(TAO::API::Authentication::SESSION::PRIVATE);
 
         std::mutex MUTEX;
         while(!config::fShutdown.load())
@@ -794,12 +789,17 @@ namespace TAO::Ledger
             runtime::timer TIMER;
             TIMER.Start();
 
+            /* Get our credentials object. */
+            const auto& pCredentials =
+                TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::PRIVATE));
+
+            /* Build our block object now. */
             TAO::Ledger::TritiumBlock block;
-            if(!TAO::Ledger::CreateBlock(user, "1234", 3, block))
+            if(!TAO::Ledger::CreateBlock(pCredentials, "1234", 3, block))
                 continue;
 
             /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, "1234").GetBytes();
+            std::vector<uint8_t> vBytes = pCredentials->Generate(block.producer.nSequence, "1234").GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Switch based on signature type. */
@@ -851,9 +851,6 @@ namespace TAO::Ledger
             if(!(nStatus & PROCESS::ACCEPTED))
                 continue;
         }
-
-        /* Cleanup pointer. */
-        user.free();
     }
 
 
