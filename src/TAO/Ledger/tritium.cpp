@@ -615,10 +615,6 @@ namespace TAO
                 return debug::error(FUNCTION, "not descendant of last checkpoint");
             #endif
 
-            /* Validate proof of stake. */
-            if(IsProofOfStake() && !CheckStake())
-                return debug::error(FUNCTION, "invalid proof of stake");
-
             /* Check that producer isn't before previous block time. */
             if(producer.nTimestamp <= statePrev.GetBlockTime())
                 return debug::error(FUNCTION, "producer can't be before previous block");
