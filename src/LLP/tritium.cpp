@@ -2767,11 +2767,13 @@ namespace LLP
                         TAO::Ledger::Transaction tx;
                         ssPacket >> tx;
 
+                        /* Cache our txid. */
+                        const uint512_t hashTx = tx.GetHash();
+
                         /* Accept into memory pool. */
                         if(TAO::Ledger::mempool.Accept(tx, this))
                         {
                             /* Relay the transaction notification. */
-                            uint512_t hashTx = tx.GetHash();
                             TRITIUM_SERVER->Relay
                             (
                                 /* Standard transaction relay. */
@@ -2789,7 +2791,9 @@ namespace LLP
                             nConsecutiveFails   = 0;
                             nConsecutiveOrphans = 0;
                         }
-                        else
+
+                        /* Only mark fails that aren't related to being on disk. */
+                        else if(!LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
                             /* Check for obsolete transaction version and ban accordingly. */
                             if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
