@@ -68,10 +68,11 @@ namespace LLP
             for(const auto& rAddress : config::mapMultiArgs["-banned"])
             {
                 /* Add banned address to DDOS map. */
-                DDOS_MAP->insert(std::make_pair(rAddress, new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
+                DDOS_MAP->insert(std::make_pair(BaseAddress(rAddress), new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
                 DDOS_MAP->at(rAddress)->Ban();
-            }
 
+                debug::notice(FUNCTION, "-banned commandline set for ", rAddress);
+            }
         }
 
         /* Add the individual data threads to the vector that will be holding their state. */
