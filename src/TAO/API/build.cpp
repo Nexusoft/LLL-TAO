@@ -431,7 +431,7 @@ namespace TAO::API
     {
         /* Extract some parameters from input data. */
         const TAO::Register::Address addrCredit =
-            ExtractAddress(jParams, "", "default");
+            ExtractAddress(jParams, "", config::GetArg("-creditacct", "default"));
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =
