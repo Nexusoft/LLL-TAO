@@ -59,6 +59,21 @@ namespace LLP
     , THREAD_METER      ( )
     , THREAD_MANAGER    ( )
     {
+        /* -banned means do not let node connect */
+        if(config::HasArg("-banned"))
+        {
+            RECURSIVE(config::ARGS_MUTEX);
+
+            /* Add connections and resolve potential DNS lookups. */
+            for(const auto& rAddress : config::mapMultiArgs["-banned"])
+            {
+                /* Add banned address to DDOS map. */
+                DDOS_MAP->insert(std::make_pair(rAddress, new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
+                DDOS_MAP->at(rAddress)->Ban();
+            }
+
+        }
+
         /* Add the individual data threads to the vector that will be holding their state. */
         for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
         {
@@ -616,7 +631,6 @@ namespace LLP
         socklen_t len_v4 = sizeof(struct sockaddr_in);
         socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
-
         /* Setup poll objects. */
         pollfd fds[1];
         fds[0].events = POLLIN;
@@ -688,13 +702,21 @@ namespace LLP
                         continue;
                     }
 
-
                     /* Create new DDOS Filter if Needed. */
                     if(CONFIG.ENABLE_DDOS && !DDOS_MAP->count(addr))
                         DDOS_MAP->insert(std::make_pair(addr, new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
 
                     /* Establish a new socket with SSL on or off according to server. */
                     Socket sockNew(hSocket, addr, fSSL);
+
+                    /* Check that an address is banned. */
+                    if(DDOS_MAP->count(addr) && DDOS_MAP->at(addr)->Banned())
+                    {
+                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                        sockNew.Close();
+
+                        continue;
+                    }
 
                     /* Check for errors accepting the connection */
                     if(sockNew.Errors())
@@ -706,14 +728,7 @@ namespace LLP
                     }
 
                     /* DDOS Operations: Only executed when DDOS is enabled. */
-                    if((CONFIG.ENABLE_DDOS && DDOS_MAP->at(addr)->Banned()))
-                    {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
-                        sockNew.Close();
-
-                        continue;
-                    }
-                    else if(!CheckPermissions(addr.ToStringIP(), fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE))
+                    if(!CheckPermissions(addr.ToStringIP(), fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE))
                     {
                         debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 

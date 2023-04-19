@@ -104,6 +104,10 @@ namespace TAO::API
                     /* Broadcast our unconfirmed transactions first. */
                     Indexing::BroadcastUnconfirmed(hashGenesis);
 
+                    /* Check that our last transaction was more than 10 seconds ago. */
+                    if(!CheckTimespan(hashGenesis, 12))
+                        continue;
+
                     /* Build a json object. */
                     const encoding::json jSession =
                     {
@@ -133,6 +137,10 @@ namespace TAO::API
                         /* Check for unique events. */
                         if(setUnique.count(rEvent))
                             continue;
+
+                        /* Break when we have processed over 111 contracts. */
+                        if(vContracts.size() >= 111)
+                            break;
 
                         /* Add our event to our unique set. */
                         setUnique.insert(rEvent);
@@ -405,17 +413,19 @@ namespace TAO::API
                         /* Sanitize the contract. */
                         if(SanitizeContract(rContract, mapStates))
                             vSanitized.emplace_back(std::move(rContract));
+
+                        /* Build once we reach threshold. */
+                        if(vSanitized.size() == 99)
+                        {
+                            /* Now build our official transaction. */
+                            const std::vector<uint512_t> vHashes =
+                                BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
+
+                            debug::log(0, FUNCTION, "Built ", vHashes.size(), " transactions for ", vSanitized.size(), " contracts");
+
+                            break;
+                        }
                     }
-
-                    /* Check for available contracts. */
-                    if(vSanitized.empty())
-                        continue;
-
-                    /* Now build our official transaction. */
-                    const std::vector<uint512_t> vHashes =
-                        BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
-
-                    debug::log(0, FUNCTION, "Built ", vHashes.size(), " transactions for ", vSanitized.size(), " contracts");
                 }
                 catch(const Exception& e) { debug::warning("EXCEPTION: ", FUNCTION, e.what()); }
             }

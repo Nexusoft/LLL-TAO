@@ -80,6 +80,19 @@ namespace TAO::API
     bool CheckMature(const uint256_t& hashGenesis);
 
 
+    /** CheckTimespan
+     *
+     *  Utilty method that checks that the last transaction was within a given amount of seconds.
+     *
+     *  @param[in] hashGenesis The genesis hash of the signature chain to check
+     *  @param[in] nSeconds The total number of seconds required for frequency.
+     *
+     *  @return true if the sigchain is mature and ready to process transactions.
+     *
+     **/
+    bool CheckTimespan(const uint256_t& hashGenesis, const uint32_t nSeconds = 10);
+
+
     /** CheckContract
      *
      *  Checks if a contract will execute correctly once built.
