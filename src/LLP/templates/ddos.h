@@ -138,12 +138,11 @@ namespace LLP
         /** Keep track of the total times banned. **/
         std::atomic<uint32_t> nTotalBans;
 
+    public:
 
         /** Timestamp in the future when ban is over. **/
         std::atomic<uint64_t> nBanTimestamp;
-
-
-    public:
+        
 
         /** R-Score or Request Score regulating packet flow. **/
         DDOS_Score rSCORE;

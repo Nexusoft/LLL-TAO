@@ -69,7 +69,7 @@ namespace LLP
             {
                 /* Add banned address to DDOS map. */
                 DDOS_MAP->insert(std::make_pair(BaseAddress(rAddress), new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
-                DDOS_MAP->at(rAddress)->Ban();
+                DDOS_MAP->at(rAddress)->nBanTimestamp.store(std::numeric_limits<uint64_t>::max());
 
                 debug::notice(FUNCTION, "-banned commandline set for ", rAddress);
             }
