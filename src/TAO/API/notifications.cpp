@@ -104,10 +104,6 @@ namespace TAO::API
                     /* Broadcast our unconfirmed transactions first. */
                     Indexing::BroadcastUnconfirmed(hashGenesis);
 
-                    /* Check that our last transaction was more than 10 seconds ago. */
-                    if(!CheckTimespan(hashGenesis, 12))
-                        continue;
-
                     /* Build a json object. */
                     const encoding::json jSession =
                     {
@@ -118,9 +114,7 @@ namespace TAO::API
                     std::vector<std::pair<uint512_t, uint32_t>> vEvents;
 
                     /* Get our list of active events we need to respond to. */
-                    LLD::Logical->ListEvents(hashGenesis, vEvents);
-
-                    /* Get our list of active contracts we have issued. */
+                    LLD::Logical->ListEvents    (hashGenesis, vEvents);
                     LLD::Logical->ListContracts(hashGenesis, vEvents);
 
                     /* Track our unique events as we progress forward. */
@@ -138,11 +132,7 @@ namespace TAO::API
                         if(setUnique.count(rEvent))
                             continue;
 
-                        /* Break when we have processed over 100 contracts. */
-                        if(vContracts.size() >= 100)
-                            break;
-
-                        /* Add our event to our unique set. */
+                        /* Insert our event into unique set. */
                         setUnique.insert(rEvent);
 
                         /* Grab a reference of our hash. */
