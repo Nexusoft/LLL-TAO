@@ -252,10 +252,13 @@ namespace LLP
     /* Closes the listening sockets on all running servers. */
     void CloseListening()
     {
-        debug::log(0, FUNCTION, "Closing LLP Listeners");
+        /* Release any triggers we have waiting. */
+        Release();
 
         /* Set global system into suspended state. */
         config::fSuspended.store(true);
+
+        debug::log(0, FUNCTION, "Closing LLP Listeners");
 
         /* Set our protocol into suspended state. */
         config::fSuspendProtocol.store(true);
@@ -314,36 +317,6 @@ namespace LLP
 
         /* Add our connections from commandline. */
         MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
-
-        /* Special method to sync up sigchain and events when opening app for iPhone. */
-        std::shared_ptr<LLP::TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
-        if(pnode != nullptr)
-        {
-            /* Sync the chain first. */
-            pnode->Sync();
-
-            /* Do a simple spin-lock here until synced. */
-            while(TAO::Ledger::nSyncSession.load() != 0)
-                runtime::sleep(100);
-
-            /* Get a current list of our active sessions. */
-            const auto vSessions =
-                TAO::API::Authentication::Sessions();
-
-            /* Check if we are an active thread. */
-            for(const auto& rSession : vSessions)
-            {
-                /* Get our genesis. */
-                const uint256_t& hashGenesis = rSession.second;
-
-                /* Get our current logged in user. */
-                debug::log(0, FUNCTION, "Refreshing sigchain events for ", hashGenesis.SubString());
-
-                /* Run our sigchain sync code now. */
-                TAO::API::Indexing::DownloadNotifications(hashGenesis);
-                TAO::API::Indexing::DownloadSigchain(hashGenesis);
-            }
-        }
 
         /* Set global system out of suspended state. */
         config::fSuspended.store(false);
