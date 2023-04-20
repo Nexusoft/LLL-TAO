@@ -23,12 +23,11 @@ ________________________________________________________________________________
 #include <TAO/API/include/execute.h>
 #include <TAO/API/include/filter.h>
 #include <TAO/API/include/json.h>
+#include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/Register/include/unpack.h>
-
-#include <TAO/Ledger/types/transaction.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -68,8 +67,8 @@ namespace TAO::API
             for(const auto& hashLast : vTransactions)
             {
                 /* Get the transaction from disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashLast, tx, TAO::Ledger::FLAGS::MEMPOOL))
+                TAO::API::Transaction tx;
+                if(!LLD::Logical->ReadTx(hashLast, tx))
                     throw Exception(-108, "Failed to read transaction");
 
                 /* Loop through our contracts to check if they match our address. */

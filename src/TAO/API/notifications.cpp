@@ -114,7 +114,7 @@ namespace TAO::API
                     std::vector<std::pair<uint512_t, uint32_t>> vEvents;
 
                     /* Get our list of active events we need to respond to. */
-                    LLD::Logical->ListEvents    (hashGenesis, vEvents);
+                    LLD::Logical->ListEvents   (hashGenesis, vEvents);
                     LLD::Logical->ListContracts(hashGenesis, vEvents);
 
                     /* Track our unique events as we progress forward. */
