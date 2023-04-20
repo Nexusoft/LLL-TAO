@@ -45,7 +45,7 @@ namespace TAO::API
         for(const auto& rAddr : vAddr)
         {
             /* Check for invalid addresses. */
-            if(rAddr.nLatency == std::numeric_limits<uint32_t>::max() || rAddr.nLastSeen == 0)
+            if(rAddr.nLastSeen == 0)
                 continue;
 
             /* Build our JSON object. */
