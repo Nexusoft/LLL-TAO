@@ -403,10 +403,6 @@ namespace TAO::API
                         /* Sanitize the contract. */
                         if(SanitizeContract(rContract, mapStates))
                             vSanitized.emplace_back(std::move(rContract));
-
-                        /* Break once we have reached our limits. */
-                        if(vSanitized.size() >= 99)
-                            break;
                     }
 
                     /* Build once we reach threshold. */
