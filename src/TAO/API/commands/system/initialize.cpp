@@ -25,6 +25,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/commands/system.h>
 #include <TAO/API/types/commands/ledger.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/debug.h>
@@ -153,9 +154,11 @@ namespace TAO
 
             /* The percentage of the current sync completed */
             jRet["syncprogress"] = (int)TAO::Ledger::ChainState::SyncProgress();
+            jRet["sync"]         = false; // default sync value
 
             /* Populate our sync related data. */
-            jRet["sync"] = TAO::API::Ledger::SyncStatus(params, false);
+            if(TAO::Ledger::nSyncSession.load() != 0)
+                jRet["sync"] = TAO::API::Ledger::SyncStatus(params, false);
 
             /* Number of transactions in the node's mempool*/
             jRet["txtotal"] = TAO::Ledger::mempool.Size();
