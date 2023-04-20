@@ -96,16 +96,16 @@ namespace TAO::API
             if(jItem.is_number_float())
             {
                 /* Grab our current value. */
-                precision_t dCurrent = 0;
+                double dCurrent = 0;
                 if(jRet.find(strField) != jRet.end())
-                    dCurrent = precision_t(jRet[strField].dump());
+                    dCurrent = jRet[strField].get<double>();//precision_t(jRet[strField].dump());
 
                 /* Grab our values. */
-                const precision_t dSum =
-                    precision_t(jItem.dump()) + dCurrent;
+                const double dSum =
+                    jItem.get<double>() + dCurrent;
 
                 /* Add to our output value. */
-                jRet[strField] = dSum.double_t();
+                jRet[strField] = dSum;
 
                 continue;
             }

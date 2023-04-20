@@ -92,7 +92,7 @@ namespace TAO::API
 
                 /* Check that we have at least the base type we are recursing. */
                 if(a.find(strNext) == a.end() || b.find(strNext) == b.end())
-                    return fDesc;
+                    return true;
 
                 /* Create a new function object to recursively evaluate. */
                 const CompareResults tEvaluate = CompareResults(fDesc, strColumn.substr(nFind + 1));
@@ -101,7 +101,7 @@ namespace TAO::API
 
             /* Check for sort by invalid parameter. */
             if(a.find(strColumn) == a.end() || b.find(strColumn) == b.end())
-                return fDesc;
+                return true;
 
             /* Handle based on unsigned integer type. */
             if(a[strColumn].is_number_unsigned())
@@ -112,7 +112,7 @@ namespace TAO::API
 
                 /* Check if they are equal. */
                 if(nA == nB)
-                    return fDesc;
+                    return true;
 
                 /* Regular descending sort. */
                 if(fDesc)
@@ -131,7 +131,7 @@ namespace TAO::API
 
                 /* Check if they are equal. */
                 if(nA == nB)
-                    return fDesc;
+                    return true;
 
                 /* Regular descending sort. */
                 if(fDesc)
@@ -145,12 +145,12 @@ namespace TAO::API
             else if(a[strColumn].is_number_float())
             {
                 /* Grab a copy of our doubles here casting to ints at given figures for efficiency. */
-                const precision_t nA = precision_t(a[strColumn].dump());
-                const precision_t nB = precision_t(b[strColumn].dump());
+                const double nA = a[strColumn].get<double>();
+                const double nB = b[strColumn].get<double>();
 
                 /* Check if they are equal. */
                 if(nA == nB)
-                    return fDesc;
+                    return true;
 
                 /* Regular descending sort. */
                 if(fDesc)
@@ -169,7 +169,7 @@ namespace TAO::API
 
                 /* Check if they are equal. */
                 if(strA == strB)
-                    return fDesc;
+                    return true;
 
                 /* Regular descending sort. */
                 if(fDesc)

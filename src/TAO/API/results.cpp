@@ -16,6 +16,7 @@ ________________________________________________________________________________
 #include <TAO/API/types/exception.h>
 
 #include <Util/include/string.h>
+#include <Util/types/precision.h>
 
 namespace TAO::API
 {
@@ -112,7 +113,7 @@ namespace TAO::API
 
             /* Check for floating point. */
             else if(jField.is_number_float())
-                jArray.push_back(jField.get<double>());
+                jArray.push_back(precision_t(jField.dump()).double_t());
 
             /* Check for invalid object. */
             else if(jField.is_object())
