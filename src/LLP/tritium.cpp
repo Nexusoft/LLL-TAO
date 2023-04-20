@@ -2738,6 +2738,9 @@ namespace LLP
                         Legacy::Transaction tx;
                         ssPacket >> tx;
 
+                        /* Cache our txid. */
+                        const uint512_t hashTx = tx.GetHash();
+
                         /* Accept into memory pool. */
                         if(TAO::Ledger::mempool.Accept(tx, this))
                         {
@@ -2747,15 +2750,23 @@ namespace LLP
                                 ACTION::NOTIFY,
                                 uint8_t(SPECIFIER::LEGACY),
                                 uint8_t(TYPES::TRANSACTION),
-                                tx.GetHash()
+                                hashTx
                             );
 
                             /* Reset consecutive failures. */
                             nConsecutiveFails   = 0;
                             nConsecutiveOrphans = 0;
                         }
-                        else
+
+                        /* Only mark fails that aren't related to being on disk. */
+                        else if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Check for obsolete transaction version and ban accordingly. */
+                            if(!TAO::Ledger::TransactionVersionActive(tx.nTime, tx.nVersion))
+                                return debug::drop(NODE, "invalid transaction version, dropping node");
+
                             ++nConsecutiveFails;
+                        }
 
                         break;
                     }
