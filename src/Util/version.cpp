@@ -29,6 +29,9 @@ namespace version
     /* Build version determines release candidate. */
     const uint32_t CLIENT_REVISION = 18;
 
+    /* This tells us minor build tweaks rather than release candidate. */
+    const uint32_t CLIENT_BUILD    = 1;
+
 
     /* The version of the actual wallet client. */
     const uint32_t CLIENT_VERSION =
@@ -41,7 +44,7 @@ namespace version
 
     /* The version number */
     const std::string CLIENT_VERSION_STRING =
-        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, "-rc", CLIENT_REVISION);
+        debug::safe_printstr(CLIENT_MAJOR, ".", CLIENT_MINOR, ".", CLIENT_PATCH, "-rc", CLIENT_REVISION, ".", CLIENT_BUILD);
 
 
     /* The interface used Qt, CLI, or Tritium) */
