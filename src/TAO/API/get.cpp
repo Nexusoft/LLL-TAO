@@ -16,6 +16,7 @@ ________________________________________________________________________________
 
 #include <TAO/API/types/authentication.h>
 #include <TAO/API/types/exception.h>
+#include <TAO/API/types/notifications.h>
 #include <TAO/API/types/transaction.h>
 
 #include <TAO/Operation/include/enum.h>
@@ -192,27 +193,12 @@ namespace TAO::API
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
 
         /* Get our list of active contracts we have issued. */
-        //LLD::Logical->ListContracts(hashGenesis, vEvents);
+        LLD::Logical->ListEvents(hashGenesis,    vEvents);
 
-        /* Get our list of active events we need to respond to. */
-        LLD::Logical->ListEvents(hashGenesis, vEvents);
-
-        //we need to list our active legacy transaction events
-
-        /* Track our unique events as we progress forward. */
-        std::set<std::pair<uint512_t, uint32_t>> setUnique;
-
-        /* Build our list of contracts. */
-        std::vector<TAO::Operation::Contract> vContracts;
+        /* For sanitizing our contracts. */
+        std::map<uint256_t, TAO::Register::State> mapStates;
         for(const auto& rEvent : vEvents)
         {
-            /* Check for unique events. */
-            if(setUnique.count(rEvent))
-                continue;
-
-            /* Add our event to our unique set. */
-            setUnique.insert(rEvent);
-
             /* Grab a reference of our hash. */
             const uint512_t& hashEvent = rEvent.first;
 
@@ -247,6 +233,9 @@ namespace TAO::API
             /* Get a copy of our primitive. */
             uint8_t nOP = 0;
             rContract >> nOP;
+
+            /* Bind our contract now to a timestamp and caller. */
+            rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
 
             /* Switch for valid primitives. */
             switch(nOP)

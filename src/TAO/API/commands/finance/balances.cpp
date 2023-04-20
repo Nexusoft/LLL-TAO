@@ -74,7 +74,7 @@ namespace TAO::API
 
             /* Get the register from the register DB */
             TAO::Register::Object object;
-            if(!LLD::Register->ReadObject(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadObject(hashRegister, object))
                 continue;
 
             /* Check that this is an account */

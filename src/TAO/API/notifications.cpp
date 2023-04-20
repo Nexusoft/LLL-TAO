@@ -138,8 +138,8 @@ namespace TAO::API
                         if(setUnique.count(rEvent))
                             continue;
 
-                        /* Break when we have processed over 111 contracts. */
-                        if(vContracts.size() >= 111)
+                        /* Break when we have processed over 100 contracts. */
+                        if(vContracts.size() >= 100)
                             break;
 
                         /* Add our event to our unique set. */
@@ -414,18 +414,20 @@ namespace TAO::API
                         if(SanitizeContract(rContract, mapStates))
                             vSanitized.emplace_back(std::move(rContract));
 
-                        /* Build once we reach threshold. */
-                        if(vSanitized.size() == 99)
-                        {
-                            /* Now build our official transaction. */
-                            const std::vector<uint512_t> vHashes =
-                                BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
-
-                            debug::log(0, FUNCTION, "Built ", vHashes.size(), " transactions for ", vSanitized.size(), " contracts");
-
+                        /* Break once we have reached our limits. */
+                        if(vSanitized.size() >= 99)
                             break;
-                        }
                     }
+
+                    /* Build once we reach threshold. */
+                    if(vSanitized.empty())
+                        continue;
+
+                    /* Now build our official transaction. */
+                    const std::vector<uint512_t> vHashes =
+                        BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
+
+                    debug::log(0, FUNCTION, "Built ", vHashes.size(), " transactions for ", vSanitized.size(), " contracts");
                 }
                 catch(const Exception& e) { debug::warning("EXCEPTION: ", FUNCTION, e.what()); }
             }
