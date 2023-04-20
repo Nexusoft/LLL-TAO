@@ -888,17 +888,26 @@ namespace TAO::API
                     else
                         jRet["exchange"] = true;
 
-                    /* Get the token/account we are debiting from so that we can output the token address / name. */
-                    TAO::Register::Object object = contract.PreState();
-                    if(!object.Parse())
-                        throw Exception(-15, "Object is not an account or token");
+                    /* Find our token type. */
+                    TAO::Register::Address hashToken = TOKEN::NXS;
 
-                    /* Get the current token's address.  */
-                    const TAO::Register::Address hashToken =
-                        object.get<uint256_t>("token");
+                    /* Get the token/account we are debiting from so that we can output the token address / name. */
+                    if(hashFrom != TAO::Register::WILDCARD_ADDRESS)
+                    {
+                        /* Get our pre-state if not a legacy conversion. */
+                        TAO::Register::Object rObject = contract.PreState();
+                        if(!rObject.Parse())
+                            throw Exception(-15, "Object is not an account or token");
+
+                        /* Get the current token's address.  */
+                        hashToken =
+                            rObject.get<uint256_t>("token");
+                    }
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount, hashToken);
+
+                    /* Get our token type here. */
                     jRet["token"]   = hashToken.ToString();
 
                     /* Add a ticker if found. */
