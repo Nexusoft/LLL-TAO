@@ -30,20 +30,6 @@ namespace TAO::API
         Operators::Initialize(mapOperators);
 
 
-        /* Handle for all COUNT operations. */
-        mapFunctions["count"] = Function
-        (
-            std::bind
-            (
-                &Network::Count,
-                this,
-                std::placeholders::_1,
-                std::placeholders::_2
-            )
-            , "nodes"
-        );
-
-
         /* Handle for all LIST operations. */
         mapFunctions["list"] = Function
         (
