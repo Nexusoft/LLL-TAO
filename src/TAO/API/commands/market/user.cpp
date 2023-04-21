@@ -211,9 +211,6 @@ namespace TAO::API
                 jRet["executed"] = encoding::json::array();
         }
 
-        /* Filter out our expected fieldnames if specified. */
-        FilterFieldname(jParams, jRet);
-
         return jRet;
     }
 }

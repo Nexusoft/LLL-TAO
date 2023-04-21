@@ -62,6 +62,13 @@ namespace TAO::API
         /* Check for our bids type. */
         if(setTypes.find("bid") != setTypes.end() || fAll)
         {
+            /* Set our default sort by price for non executed. */
+            if(!fExecuted)
+            {
+                strColumn = "price";
+                strOrder  = "desc";
+            }
+
             /* Get a list of our active orders. */
             std::vector<std::pair<uint512_t, uint32_t>> vBids;
             if(LLD::Logical->ListAllOrders(pairMarket, vBids))
@@ -133,6 +140,13 @@ namespace TAO::API
         /* Check for our bids type. */
         if(setTypes.find("ask") != setTypes.end() || fAll)
         {
+            /* Set our default sort by price for non executed. */
+            if(!fExecuted)
+            {
+                strColumn = "price";
+                strOrder  = "asc";
+            }
+
             /* Get a list of our active orders. */
             std::vector<std::pair<uint512_t, uint32_t>> vAsks;
             if(LLD::Logical->ListAllOrders(pairReverse, vAsks))
@@ -200,9 +214,6 @@ namespace TAO::API
             else
                 jRet["asks"] = encoding::json::array();
         }
-
-        /* Filter out our expected fieldnames if specified. */
-        FilterFieldname(jParams, jRet);
 
         return jRet;
     }
