@@ -922,6 +922,52 @@ namespace LLD
     }
 
 
+    /* Pushes an order to the orderbook stack for a given asset. */
+    bool LogicalDB::PushOrder(const uint256_t& hashRegister, const TAO::Operation::Contract& rContract, const uint32_t nContract)
+    {
+        /* Grab a refernece of our txid. */
+        const uint512_t& hashTx =
+            rContract.Hash();
+
+        /* Grab a reference of our caller. */
+        const uint256_t& hashOwner =
+            rContract.Caller();
+
+        /* Check for already existing order. */
+        if(HasOrder(hashTx, nContract))
+            return false;
+
+        /* Get our current sequence number. */
+        uint32_t nMarketSequence = 0, nOwnerSequence = 0;
+
+        /* Read our sequences from disk. */
+        Read(std::make_pair(std::string("market.sequence"), hashRegister), nMarketSequence);
+        Read(std::make_pair(std::string("owner.sequence"),  hashOwner),   nOwnerSequence);
+
+        /* Write our order by sequence number. */
+        if(!Write(std::make_pair(nMarketSequence, hashRegister), std::make_pair(hashTx, nContract)))
+            return false;
+
+        /* Add an additional indexing entry for owner level orders. */
+        if(!Index(std::make_pair(nOwnerSequence, hashOwner), std::make_pair(nMarketSequence, hashRegister)))
+            return false;
+
+        /* Write our new market sequence to disk. */
+        if(!Write(std::make_pair(std::string("market.sequence"), hashRegister), ++nMarketSequence))
+            return false;
+
+        /* Write our new owner sequence to disk. */
+        if(!Write(std::make_pair(std::string("owner.sequence"), hashOwner), ++nOwnerSequence))
+            return false;
+
+        /* Write our order proof. */
+        if(!Write(std::make_pair(hashTx, nContract)))
+            return false;
+
+        return true;
+    }
+
+
     /* Pulls a list of orders from the orderbook stack. */
     bool LogicalDB::ListOrders(const std::pair<uint256_t, uint256_t>& pairMarket, std::vector<std::pair<uint512_t, uint32_t>> &vOrders)
     {

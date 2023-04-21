@@ -50,6 +50,10 @@ namespace TAO::API
                 {
                     try //in case de-serialization fails from non-standard contracts
                     {
+                        /* Get our primitive order type. */
+                        uint8_t nPrimitive;
+                        rContract >> nPrimitive;
+
                         /* Get the next OP. */
                         rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
 
@@ -57,44 +61,73 @@ namespace TAO::API
                         TAO::Operation::Stream ssBytes;
                         rContract >= ssBytes;
 
-                        /* Get our opcode. */
-                        uint8_t nOP = 0;
-                        ssBytes >> nOP;
-
-                        /* Handle for a regular DEBIT. */
-                        if(nOP == TAO::Operation::OP::DEBIT)
+                        /* Handle for a DEBIT to. */
+                        if(nPrimitive == TAO::Operation::OP::DEBIT)
                         {
-                            /* Skip ahead to our token-id. */
-                            ssBytes.seek(32, STREAM::BEGIN);
+                            /* Get our opcode. */
+                            uint8_t nOP = 0;
+                            ssBytes >> nOP;
 
-                            /* Grab our deposit token-id now. */
-                            uint256_t hashDeposit;
-                            ssBytes >> hashDeposit;
+                            /* Handle for a regular DEBIT. */
+                            if(nOP == TAO::Operation::OP::DEBIT)
+                            {
+                                /* Skip ahead to our token-id. */
+                                ssBytes.seek(32, STREAM::BEGIN);
 
-                            /* Read the object to get token-id. */
-                            TAO::Register::Object oDeposit;
-                            if(!LLD::Register->ReadObject(hashDeposit, oDeposit))
-                                return;
+                                /* Grab our deposit token-id now. */
+                                uint256_t hashDeposit;
+                                ssBytes >> hashDeposit;
 
-                            /* Grab our other withdraw token-id from pre-state. */
-                            TAO::Register::Object oWithdraw =
-                                rContract.PreState();
+                                /* Read the object to get token-id. */
+                                TAO::Register::Object oDeposit;
+                                if(!LLD::Register->ReadObject(hashDeposit, oDeposit))
+                                    return;
 
-                            /* Skip over non objects for now. */
-                            if(oWithdraw.nType != TAO::Register::REGISTER::OBJECT)
-                                return;
+                                /* Grab our other withdraw token-id from pre-state. */
+                                TAO::Register::Object oWithdraw =
+                                    rContract.PreState();
 
-                            /* Parse pre-state if needed. */
-                            oWithdraw.Parse();
+                                /* Skip over non objects for now. */
+                                if(oWithdraw.nType != TAO::Register::REGISTER::OBJECT)
+                                    return;
 
-                            /* Create our market-pair. */
-                            const std::pair<uint256_t, uint256_t> pairMarket =
-                                std::make_pair(oDeposit.get<uint256_t>("token"), oWithdraw.get<uint256_t>("token"));
+                                /* Parse pre-state if needed. */
+                                oWithdraw.Parse();
+
+                                /* Create our market-pair. */
+                                const std::pair<uint256_t, uint256_t> pairMarket =
+                                    std::make_pair(oDeposit.get<uint256_t>("token"), oWithdraw.get<uint256_t>("token"));
+
+                                /* Write the order to logical database. */
+                                if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
+                                    debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
+                            }
+
+                            /* Handle for a regular TRANSFER. */
+                            if(nOP == TAO::Operation::OP::TRANSFER) //a transfer here means someone wants to buy the Asset
+                            {
+                                /* Get the address of the asset. */
+                                uint256_t hashAsset;
+                                ssBytes >> hashAsset;
+
+                                /* Write the order to logical database. */
+                                if(!LLD::Logical->PushOrder(hashAsset, rContract, nContract))
+                                    debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
+                            }
+                        }
+
+                        /* Handle for a TRANSFER to. */
+                        if(nPrimitive == TAO::Operation::OP::TRANSFER)
+                        {
+                            /* Get the address of the asset. */
+                            uint256_t hashAsset;
+                            rContract >> hashAsset;
 
                             /* Write the order to logical database. */
-                            if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
+                            if(!LLD::Logical->PushOrder(hashAsset, rContract, nContract))
                                 debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
                         }
+
                     }
                     catch(const std::exception& e)
                     {

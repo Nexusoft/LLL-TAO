@@ -681,6 +681,20 @@ namespace LLD
                        const TAO::Operation::Contract& rContract, const uint32_t nContract);
 
 
+       /** PushOrder
+        *
+        *  Pushes an order to the orderbook stack for a given asset.
+        *
+        *  @param[in] hashRegister The asset's register address.
+        *  @param[in] rContract The contract that contains the existing order.
+        *  @param[in] nContract The contract-id that contains the order
+        *
+        *  @return true if written successfully
+        *
+        **/
+       bool PushOrder(const uint256_t& hashRegister, const TAO::Operation::Contract& rContract, const uint32_t nContract);
+
+
         /** ListOrders
          *
          *  List the current active orders for given market pair.
