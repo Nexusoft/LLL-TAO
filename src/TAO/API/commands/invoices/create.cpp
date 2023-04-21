@@ -29,7 +29,9 @@ ________________________________________________________________________________
 
 #include <TAO/Register/include/constants.h>
 
+#include <Util/include/math.h>
 #include <Util/include/string.h>
+#include <Util/types/precision.h>
 
 /* Global TAO namespace. */
 namespace TAO::API
@@ -104,15 +106,15 @@ namespace TAO::API
             GetDecimals(rObject);
 
         /* Iterate the items to validate them */
-        uint64_t nTotal = 0;
+        precision_t dTotal = precision_t(nDigits);
         for(auto it = jItems.begin(); it != jItems.end(); ++it)
         {
             /* Get a copy of our parameters. */
             const encoding::json jItem = (*it);
 
             /* The item Unit Amount */
-            const uint64_t nUnitAmount =
-                ExtractAmount(jItem, nDigits);
+            const precision_t dUnitAmount =
+                ExtractPrecision(jItem, nDigits);
 
             /* The item number of units */
             const uint64_t nUnits =
@@ -121,13 +123,13 @@ namespace TAO::API
             /* Rebuild our JSON to use correct formatting. */
             encoding::json jNew =
             {
-                { "amount",      FormatBalance(nUnitAmount, nDigits) },
+                { "amount",      dUnitAmount.double_t() },
                 { "units",       nUnits }
             };
 
             /* Only search if there are more than the 2 required keys */
-            if (jItem.size() > 1) {
-
+            if (jItem.size() > 1)
+            {
                 /* Add all other non-mandatory fields that the caller has provided for each item */
                 for(auto it = jItem.begin(); it != jItem.end(); ++it)
                 {
@@ -150,7 +152,7 @@ namespace TAO::API
             jInvoice["items"].push_back(jNew);
 
             /* Aggregate our total balance now. */
-            nTotal += (nUnitAmount * nUnits);
+            dTotal += (dUnitAmount * nUnits);
         }
 
         /* The token that this invoice should be transacted in */
@@ -158,7 +160,7 @@ namespace TAO::API
             rObject.get<uint256_t>("token");
 
         /* Add the invoice amount and token */
-        jInvoice["amount"] = FormatBalance(nTotal, nDigits);
+        jInvoice["amount"] = dTotal.double_t();
         jInvoice["token"]  = hashToken.ToString();
 
         /* DataStream to help us serialize the data. */
@@ -187,7 +189,7 @@ namespace TAO::API
 
         /* Create conditional binary stream to compare and use with the VALIDATE operation. */
         TAO::Operation::Stream ssCondition;
-        ssCondition << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashAccount << nTotal << uint64_t(0);
+        ssCondition << uint8_t(TAO::Operation::OP::DEBIT) << uint256_t(0) << hashAccount << dTotal.nValue << uint64_t(0);
 
         /* The asset transfer condition requiring pay from specified token and value. */
         vContracts[1] <= uint8_t(TAO::Operation::OP::GROUP);
