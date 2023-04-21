@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
+#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/object.h>
 
@@ -110,6 +111,14 @@ namespace TAO::API
                                 uint256_t hashAsset;
                                 ssBytes >> hashAsset;
 
+                                /* Extract our recipient now too. */
+                                uint256_t hashRecipient;
+                                ssBytes >> hashRecipient;
+
+                                /* Only index when our recipient is wildcard. */
+                                if(hashRecipient != TAO::Register::WILDCARD_ADDRESS)
+                                    return;
+
                                 /* Write the order to logical database. */
                                 if(!LLD::Logical->PushOrder(hashAsset, rContract, nContract))
                                     debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
@@ -122,6 +131,14 @@ namespace TAO::API
                             /* Get the address of the asset. */
                             uint256_t hashAsset;
                             rContract >> hashAsset;
+
+                            /* Extract our recipient now too. */
+                            uint256_t hashRecipient;
+                            ssBytes >> hashRecipient;
+
+                            /* Only index when our recipient is wildcard. */
+                            if(hashRecipient != TAO::Register::WILDCARD_ADDRESS)
+                                return;
 
                             /* Write the order to logical database. */
                             if(!LLD::Logical->PushOrder(hashAsset, rContract, nContract))
