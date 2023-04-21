@@ -144,21 +144,15 @@ namespace TAO
             #endif
 
             /* The current block height of this node */
-            jRet["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
+            jRet["blocks"]          = TAO::Ledger::ChainState::nBestHeight.load();
 
             /* Flag indicating whether this node is currently syncrhonizing */
-            jRet["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
-
-            /* The percentage of the blocks downloaded */
-            jRet["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
-
-            /* The percentage of the current sync completed */
-            jRet["syncprogress"] = (int)TAO::Ledger::ChainState::SyncProgress();
-            jRet["sync"]         = false; // default sync value
+            jRet["synchronized"]    = !TAO::Ledger::ChainState::Synchronizing();
+            jRet["syncing"]         = false; // default sync value
 
             /* Populate our sync related data. */
             if(TAO::Ledger::nSyncSession.load() != 0)
-                jRet["sync"] = TAO::API::Ledger::SyncStatus(params, false);
+                jRet["syncing"] = TAO::API::Ledger::SyncStatus(params, false);
 
             /* Number of transactions in the node's mempool*/
             jRet["txtotal"] = TAO::Ledger::mempool.Size();

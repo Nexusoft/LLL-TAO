@@ -3761,7 +3761,8 @@ namespace LLP
         nLastTimeReceived.store(runtime::unifiedtimestamp());
 
         /* Cache the height at the start of the sync */
-        nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);
+        if(nSyncStart.load() == 0)
+            nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);
 
         /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
         SYNCTIMER.Stop();
