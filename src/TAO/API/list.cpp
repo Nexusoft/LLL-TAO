@@ -35,12 +35,12 @@ namespace TAO::API
     bool ListObjects(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vObjects)
     {
         /* Get all registers owned by the sig chain */
-        std::vector<TAO::Register::Address> vRegisters;
-        if(!LLD::Logical->ListRegisters(hashGenesis, vRegisters))
+        std::set<TAO::Register::Address> setAddresses;
+        if(!LLD::Logical->ListRegisters(hashGenesis, setAddresses))
             return false;
 
         /* Filter out only those that are objects */
-        for(const auto& rAddress : vRegisters)
+        for(const auto& rAddress : setAddresses)
         {
             /* Check that the address is for an object */
             if(rAddress.IsObject())
@@ -55,12 +55,12 @@ namespace TAO::API
     bool ListAccounts(const uint256_t& hashGenesis, std::vector<TAO::Register::Address>& vAccounts, bool fTokens, bool fTrust)
     {
         /* Get all registers owned by the sig chain */
-        std::vector<TAO::Register::Address> vRegisters;
-        if(!LLD::Logical->ListRegisters(hashGenesis, vRegisters))
+        std::set<TAO::Register::Address> setAddresses;
+        if(!LLD::Logical->ListRegisters(hashGenesis, setAddresses))
             return false;
 
         /* Filter out only those that are accounts */
-        for(const auto& rAddress : vRegisters)
+        for(const auto& rAddress : setAddresses)
         {
             /* Check that the address is for an account or token */
             if(rAddress.IsAccount() || (fTokens && rAddress.IsToken()) || (fTrust && rAddress.IsTrust()))

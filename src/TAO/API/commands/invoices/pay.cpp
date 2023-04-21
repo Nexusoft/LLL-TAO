@@ -25,6 +25,8 @@ ________________________________________________________________________________
 
 #include <TAO/Ledger/types/transaction.h>
 
+#include <Util/types/precision.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -49,7 +51,7 @@ namespace TAO::API
 
         /* The recipient genesis hash */
         const uint256_t hashRecipient =
-            uint256_t(jInvoice["recipient"].get<std::string>());
+            uint256_t(jInvoice["json"]["recipient"].get<std::string>());
 
         /* Get the invoice status so that we can validate that we are allowed to cancel it */
         const std::string strStatus = get_status(tInvoice, hashRecipient);
@@ -64,11 +66,11 @@ namespace TAO::API
 
         /* The token type to pay. */
         const uint256_t hashToken =
-            uint256_t(jInvoice["token"].get<std::string>());
+            TAO::Register::Address(jInvoice["json"]["token"].get<std::string>());
 
         /* The recipient address. */
         const uint256_t hashTo =
-            uint256_t(jInvoice["account"].get<std::string>());
+            TAO::Register::Address(jInvoice["json"]["account"].get<std::string>());
 
         /* Get the Register ID. */
         const TAO::Register::Address hashFrom =
@@ -89,7 +91,7 @@ namespace TAO::API
 
         /* The amount to pay in token units */
         const uint64_t nAmount =
-            jInvoice["amount"].get<double>() * GetFigures(tAccount);
+            jInvoice["json"]["amount"].get<double>() * GetFigures(tAccount);
 
         /* The transaction ID to cancel */
         uint512_t hashTx;

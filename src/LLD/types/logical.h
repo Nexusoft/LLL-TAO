@@ -359,12 +359,12 @@ namespace LLD
          *  List the current active registers for given genesis-id.
          *
          *  @param[in] hashGenesis The genesis-id to list registers for.
-         *  @param[in] vRegisters The list of events extracted.
+         *  @param[in] setAddresses The list of events extracted.
          *
          *  @return true if written successfully
          *
          **/
-        bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
+        bool ListRegisters(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses);
 
 
         /** ListTransfers
@@ -372,12 +372,12 @@ namespace LLD
          *  List the current active transfers for given genesis-id.
          *
          *  @param[in] hashGenesis The genesis-id to list registers for.
-         *  @param[in] vRegisters The list of events extracted.
+         *  @param[in] setAddresses The list of events extracted.
          *
          *  @return true if written successfully
          *
          **/
-        bool ListTransfers(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
+        bool ListTransfers(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses);
 
 
         /** PushTokenized
@@ -437,12 +437,12 @@ namespace LLD
          *  List the current unclaimed registers for given genesis-id.
          *
          *  @param[in] hashGenesis The genesis-id to list registers for.
-         *  @param[in] vRegisters The list of events extracted.
+         *  @param[in] setAddresses The list of events extracted.
          *
          *  @return true if written successfully
          *
          **/
-        bool ListUnclaimed(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
+        bool ListUnclaimed(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses);
 
 
         /** HasRegister

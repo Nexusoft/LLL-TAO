@@ -477,7 +477,7 @@ namespace LLD
 
 
     /* List the current active registers for given genesis-id. */
-    bool LogicalDB::ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters)
+    bool LogicalDB::ListRegisters(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses)
     {
         /* Cache our txid and contract as a pair. */
         uint256_t hashRegister;
@@ -499,15 +499,15 @@ namespace LLD
                 continue; //NOTE: we skip over deindexed keys
 
             /* Check for already executed contracts to omit. */
-            vRegisters.push_back(hashRegister);
+            setAddresses.insert(hashRegister);
         }
 
-        return !vRegisters.empty();
+        return !setAddresses.empty();
     }
 
 
     /* List the current active transfers for given genesis-id. */
-    bool LogicalDB::ListTransfers(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters)
+    bool LogicalDB::ListTransfers(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses)
     {
         /* Cache our txid and contract as a pair. */
         uint256_t hashRegister;
@@ -529,10 +529,10 @@ namespace LLD
                 continue; //NOTE: we skip over transfer keys
 
             /* Check for already executed contracts to omit. */
-            vRegisters.push_back(hashRegister);
+            setAddresses.insert(hashRegister);
         }
 
-        return !vRegisters.empty();
+        return !setAddresses.empty();
     }
 
 
@@ -628,7 +628,7 @@ namespace LLD
 
 
     /* List the current unclaimed registers for given genesis-id. */
-    bool LogicalDB::ListUnclaimed(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters)
+    bool LogicalDB::ListUnclaimed(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses)
     {
         /* Cache our txid and contract as a pair. */
         uint256_t hashRegister;
@@ -650,13 +650,13 @@ namespace LLD
                 continue; //NOTE: we skip over deindexed keys
 
             /* Check for already executed contracts to omit. */
-            vRegisters.push_back(hashRegister);
+            setAddresses.insert(hashRegister);
 
             /* Increment our sequence number. */
             //++nSequence;
         }
 
-        return !vRegisters.empty();
+        return !setAddresses.empty();
     }
 
 

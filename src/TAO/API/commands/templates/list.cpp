@@ -41,20 +41,20 @@ namespace TAO::API
         ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
         /* Get the list of registers owned by this sig chain */
-        std::vector<TAO::Register::Address> vAddresses;
-        LLD::Logical->ListRegisters(hashGenesis, vAddresses);
-        LLD::Logical->ListTransfers(hashGenesis, vAddresses);
-        LLD::Logical->ListUnclaimed(hashGenesis, vAddresses);
+        std::set<TAO::Register::Address> setAddresses;
+        LLD::Logical->ListRegisters(hashGenesis, setAddresses);
+        LLD::Logical->ListTransfers(hashGenesis, setAddresses);
+        LLD::Logical->ListUnclaimed(hashGenesis, setAddresses);
 
         /* Check for empty return. */
-        if(vAddresses.size() == 0)
+        if(setAddresses.empty())
             throw Exception(-74, "No registers found");
 
         /* Build our object list and sort on insert. */
         std::set<encoding::json, CompareResults> setRegisters({}, CompareResults(strOrder, strColumn));
 
         /* Add the register data to the response */
-        for(const auto& hashRegister : vAddresses)
+        for(const auto& hashRegister : setAddresses)
         {
             /* Grab our object from disk. */
             TAO::Register::Object tObject;

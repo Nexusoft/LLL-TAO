@@ -58,15 +58,15 @@ namespace TAO::API
         ExtractList(jParams, strOrder, nLimit, nOffset);
 
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
-        std::vector<TAO::Register::Address> vRegisters;
-        if(!LLD::Logical->ListRegisters(hashGenesis, vRegisters))
+        std::set<TAO::Register::Address> setAddresses;
+        if(!LLD::Logical->ListRegisters(hashGenesis, setAddresses))
             throw Exception(-74, "No registers found");
 
         /* Keep a map to track our aggregated balance, we use a second map for better readability. */
         std::map<uint256_t, std::map<std::string, uint64_t>> mapBalances;
 
         /* Iterate through each register we own */
-        for(const auto& hashRegister : vRegisters)
+        for(const auto& hashRegister : setAddresses)
         {
             /* Initial check that it is an account/trust/token, before we hit the DB to get the nBalances */
             if(!hashRegister.IsAccount() && !hashRegister.IsTrust() && !hashRegister.IsToken())
