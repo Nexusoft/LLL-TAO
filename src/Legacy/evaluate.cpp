@@ -1265,7 +1265,7 @@ namespace Legacy
 
         /* Ensure the data size is 32 */
         if(nSize != 32)
-            return false;    
+            return false;
 
         std::vector<uint8_t> vBytes;
         vBytes.assign(scriptPubKey.begin()+1, scriptPubKey.begin()+1 + nSize);
@@ -1279,6 +1279,33 @@ namespace Legacy
 
         /* Set the register address hash to return */
         hashRegister = uint256_t(vBytes);
+
+        return true;
+
+    }
+
+
+    /* Verifies if a Sig chain register address can be extracted from a public key script. */
+    bool VerifyRegister(const Script& scriptPubKey)
+    {
+        /* Ensure the script is 34 bytes = 1 byte for size, the 256-bit hash, and the OP_RETURN */
+        if(scriptPubKey.size() != 34)
+            return false;
+
+        /* Get the size from our script. */
+        const uint8_t nSize = scriptPubKey.at(0);
+
+        /* Ensure the data size is 32 */
+        if(nSize != 32)
+            return false;
+
+        /* The last OP code which must always be OP_RETURN for a script containing a register address */
+        const uint8_t nOP =
+            scriptPubKey.at(nSize +1);
+
+        /* Ensure that it is OP_RETURN */
+        if(nOP != Legacy::OP_RETURN)
+            return false;
 
         return true;
 

@@ -417,6 +417,10 @@ namespace TAO::API
             /* Iterate through all TxOut's in the legacy transaction to see which are sends to a sig chain  */
             for(uint32_t nContract = 0; nContract < tx.vout.size(); ++nContract)
             {
+                /* Check that this output is a valid register script. */
+                if(!Legacy::VerifyRegister(tx.vout[nContract].scriptPubKey))
+                    continue;
+
                 /* Build our contract we will operate on from the legacy output. */
                 const TAO::Operation::Contract tContract = TAO::Operation::Contract(tx, nContract);
 

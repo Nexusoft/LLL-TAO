@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/rpc/types/rpc.h>
 
 #include <TAO/API/include/cmd.h>
 #include <TAO/API/include/json.h>
@@ -230,7 +231,7 @@ namespace TAO
             encoding::json jBody =
             {
                 {"method", argv[nArgBegin]},
-                {"params", jParameters},
+                {"params", Legacy::RPC::SanitizeParams(argv[nArgBegin], jParameters) },
                 {"id", 1}
             };
 

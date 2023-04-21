@@ -879,21 +879,15 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]       = "DEBIT";
 
-                    /* Add the from key address and name. */
-                    jRet["from"]     = AddressToJSON(hashFrom, contract);
-
-                    /* Check for wildcard address before adding key. */
-                    if(hashTo != TAO::Register::WILDCARD_ADDRESS)
-                        jRet["to"] = AddressToJSON(hashTo);
-                    else
-                        jRet["exchange"] = true;
-
                     /* Find our token type. */
                     TAO::Register::Address hashToken = TOKEN::NXS;
 
                     /* Get the token/account we are debiting from so that we can output the token address / name. */
                     if(hashFrom != TAO::Register::WILDCARD_ADDRESS)
                     {
+                        /* Add the from key address and name. */
+                        jRet["from"]     = AddressToJSON(hashFrom, contract);
+
                         /* Get our pre-state if not a legacy conversion. */
                         TAO::Register::Object rObject = contract.PreState();
                         if(!rObject.Parse())
@@ -903,6 +897,12 @@ namespace TAO::API
                         hashToken =
                             rObject.get<uint256_t>("token");
                     }
+
+                    /* Check for wildcard address before adding key. */
+                    if(hashTo != TAO::Register::WILDCARD_ADDRESS)
+                        jRet["to"] = AddressToJSON(hashTo);
+                    else
+                        jRet["exchange"] = true;
 
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount, hashToken);
