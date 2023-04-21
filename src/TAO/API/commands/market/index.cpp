@@ -45,7 +45,8 @@ namespace TAO::API
             case TAO::Operation::OP::CONDITION:
             {
                 /* Check for valid exchange contract. */
-                if(Contracts::Verify(Contracts::Exchange::Token[0], rContract)) //checking for version 1
+                if(Contracts::Verify(Contracts::Exchange::Token[0], rContract)  //checking for version 1
+                || Contracts::Verify(Contracts::Exchange::Token[1], rContract)) //checking for version 2
                 {
                     try //in case de-serialization fails from non-standard contracts
                     {
