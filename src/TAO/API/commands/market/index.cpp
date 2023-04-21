@@ -57,36 +57,44 @@ namespace TAO::API
                         TAO::Operation::Stream ssBytes;
                         rContract >= ssBytes;
 
-                        /* Skip ahead to our token-id. */
-                        ssBytes.seek(33, STREAM::BEGIN);
+                        /* Get our opcode. */
+                        uint8_t nOP = 0;
+                        ssBytes >> nOP;
 
-                        /* Grab our deposit token-id now. */
-                        uint256_t hashDeposit;
-                        ssBytes >> hashDeposit;
+                        /* Handle for a regular DEBIT. */
+                        if(nOP == TAO::Operation::OP::DEBIT)
+                        {
+                            /* Skip ahead to our token-id. */
+                            ssBytes.seek(32, STREAM::BEGIN);
 
-                        /* Read the object to get token-id. */
-                        TAO::Register::Object oDeposit;
-                        if(!LLD::Register->ReadObject(hashDeposit, oDeposit))
-                            return;
+                            /* Grab our deposit token-id now. */
+                            uint256_t hashDeposit;
+                            ssBytes >> hashDeposit;
 
-                        /* Grab our other withdraw token-id from pre-state. */
-                        TAO::Register::Object oWithdraw =
-                            rContract.PreState();
+                            /* Read the object to get token-id. */
+                            TAO::Register::Object oDeposit;
+                            if(!LLD::Register->ReadObject(hashDeposit, oDeposit))
+                                return;
 
-                        /* Skip over non objects for now. */
-                        if(oWithdraw.nType != TAO::Register::REGISTER::OBJECT)
-                            return;
+                            /* Grab our other withdraw token-id from pre-state. */
+                            TAO::Register::Object oWithdraw =
+                                rContract.PreState();
 
-                        /* Parse pre-state if needed. */
-                        oWithdraw.Parse();
+                            /* Skip over non objects for now. */
+                            if(oWithdraw.nType != TAO::Register::REGISTER::OBJECT)
+                                return;
 
-                        /* Create our market-pair. */
-                        const std::pair<uint256_t, uint256_t> pairMarket =
-                            std::make_pair(oDeposit.get<uint256_t>("token"), oWithdraw.get<uint256_t>("token"));
+                            /* Parse pre-state if needed. */
+                            oWithdraw.Parse();
 
-                        /* Write the order to logical database. */
-                        if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
-                            debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
+                            /* Create our market-pair. */
+                            const std::pair<uint256_t, uint256_t> pairMarket =
+                                std::make_pair(oDeposit.get<uint256_t>("token"), oWithdraw.get<uint256_t>("token"));
+
+                            /* Write the order to logical database. */
+                            if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
+                                debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
+                        }
                     }
                     catch(const std::exception& e)
                     {
