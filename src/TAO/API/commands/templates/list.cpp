@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/compare.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/filter.h>
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
 #include <TAO/API/include/json.h>
 
@@ -62,7 +63,8 @@ namespace TAO::API
                 continue;
 
             /* Check for active transfers. */
-            if(tObject.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
+            if(GetStandardType(tObject) != USER_TYPES::INVOICE && tObject.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM
+            && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
                 continue;
 
             /* Check our object standards. */
