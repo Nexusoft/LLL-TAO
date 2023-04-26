@@ -94,7 +94,8 @@ namespace TAO
 
             /* Legacy wallet version*/
             #ifndef NO_WALLET
-            jRet["walletversion"] = Legacy::Wallet::Instance().GetVersion();
+            if(!config::fClient.load())
+                jRet["walletversion"] = Legacy::Wallet::Instance().GetVersion();
             #endif
 
             /* Current unified time as reported by this node*/
