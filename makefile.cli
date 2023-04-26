@@ -384,11 +384,10 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLD_binary_key.o \
 		build/LLD_binary_lru.o \
 		build/LLD_binary_lfu.o \
-		build/LLD_filemap.o \
 		build/LLD_global.o \
 		build/LLD_hashmap.o \
 		build/LLD_key.o \
-		build/LLD_sector.o \
+		build/LLD_static.o \
 		build/LLD_transaction.o \
 		build/LLD_xxhash.o \
 		build/LLP_base_address.o \

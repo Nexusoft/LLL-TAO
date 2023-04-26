@@ -15,7 +15,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_INCLUDE_ADDRESS_H
 #define NEXUS_LLD_INCLUDE_ADDRESS_H
 
-#include <LLD/templates/sector.h>
+#include <LLD/templates/static.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
@@ -29,14 +29,13 @@ namespace LLD
      *  The database class for peer addresses to determine trust relationships.
      *
      **/
-    class AddressDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class AddressDB : public Templates::StaticDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
     public:
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        AddressDB(const uint16_t nPort, const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
-            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
+        AddressDB(const Config::Static& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

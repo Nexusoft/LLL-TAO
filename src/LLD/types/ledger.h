@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/templates/sector.h>
+#include <LLD/templates/static.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
@@ -74,7 +74,7 @@ namespace LLD
      *  The database class for the Ledger Layer.
      *
      **/
-    class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class LedgerDB : public Templates::StaticDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
 
         /** Mutex to lock internall when accessing memory mode. **/
@@ -97,8 +97,7 @@ namespace LLD
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LedgerDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
-            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
+        LedgerDB(const Config::Static& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

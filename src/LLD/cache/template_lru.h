@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -14,7 +14,7 @@ ________________________________________________________________________________
 #ifndef NEXUS_LLD_CACHE_TEMPLATE_LRU_H
 #define NEXUS_LLD_CACHE_TEMPLATE_LRU_H
 
-#include <LLD/hash/xxh3.h>
+#include <LLD/hash/xxhash.h>
 
 #include <Util/include/mutex.h>
 
@@ -122,28 +122,11 @@ namespace LLD
 
 
         /** Copy Constructor. **/
-        TemplateLRU(const TemplateLRU& cacheIn)
-        : MAX_CACHE_ELEMENTS (cacheIn.MAX_CACHE_ELEMENTS)
-        , MUTEX              ( )
-        , cache              ()
-        , pfirst             ()
-        , plast              ()
-        {
-            /* Loop through the incoming cache and add the data items. */
-            for(auto & item : cacheIn.cache)
-                Put(item.second->Key, item.second->Data);
-        }
+        TemplateLRU(const TemplateLRU& cache)            = delete;
 
 
         /** Move Constructor. **/
-        TemplateLRU(TemplateLRU&& cacheIn)
-        : MAX_CACHE_ELEMENTS (std::move(cacheIn.MAX_CACHE_ELEMENTS))
-        , MUTEX              ( )
-        , cache              (std::move(cacheIn.cache))
-        , pfirst             (std::move(cacheIn.pfirst))
-        , plast              (std::move(cacheIn.plast))
-        {
-        }
+        TemplateLRU(TemplateLRU&& cache)                 = delete;
 
 
         /** Copy assignment. **/
@@ -220,9 +203,6 @@ namespace LLD
 
             /* Get the data. */
             TemplateNode<KeyType, DataType> *pthis = cache[Key];
-            if(!pthis)
-                return false;
-
             Data = pthis->Data;
 
             /* Move to front of double linked list. */
@@ -249,17 +229,15 @@ namespace LLD
             {
                 /* Get the node we are working on. */
                 TemplateNode<KeyType, DataType>* pthis = cache[Key];
-                if(pthis)
-                {
-                    /* Remove the node from the linked list. */
-                    remove_node(pthis);
 
-                    /* Free the memory. */
-                    delete pthis;
-                }
+                /* Remove the node from the linked list. */
+                remove_node(pthis);
 
                 /* Clear the pointer data. */
                 cache.erase(Key);
+
+                /* Free the memory. */
+                delete pthis;
             }
 
             /* Create a new cache node. */
@@ -312,20 +290,17 @@ namespace LLD
 
             /* Get the node we are working on. */
             TemplateNode<KeyType, DataType>* pthis = cache[Key];
-            if(pthis)
-            {
-                /* Remove the node from the linked list. */
-                remove_node(pthis);
 
-                pthis->pprev     = nullptr;
-                pthis->pnext     = nullptr;
-
-                /* Free the memory. */
-                delete pthis;
-            }
+            /* Remove the node from the linked list. */
+            remove_node(pthis);
 
             /* Clear the pointer data. */
             cache.erase(Key);
+            pthis->pprev     = nullptr;
+            pthis->pnext     = nullptr;
+
+            /* Free the memory. */
+            delete pthis;
 
             return true;
         }

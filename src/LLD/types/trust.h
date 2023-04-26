@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/templates/sector.h>
+#include <LLD/templates/static.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
@@ -32,14 +32,13 @@ namespace LLD
      *  The database class for trust keys for both Legacy and Tritium.
      *
      **/
-    class TrustDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class TrustDB : public Templates::StaticDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
 
     public:
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        TrustDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
-            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
+        TrustDB(const Config::Static& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

@@ -18,7 +18,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
-#include <LLD/templates/sector.h>
+#include <LLD/templates/static.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/base64.h>

@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -57,26 +57,6 @@ namespace LLD
          *
          **/
         virtual bool Put(const SectorKey& cKey) = 0;
-
-
-        /** Flush
-         *
-         *  Flush all buffers to disk if using ACID transaction.
-         *
-         **/
-        virtual void Flush() = 0;
-
-
-        /** Restore
-         *
-         *  Restore an erased key from keychain.
-         *
-         *  @param[in] vKey the key to restore.
-         *
-         *  @return True if the key was restored.
-         *
-         **/
-        virtual bool Restore(const std::vector<uint8_t>& vKey) = 0;
 
 
         /** Erase

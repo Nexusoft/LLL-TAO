@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -18,15 +18,18 @@ ________________________________________________________________________________
 
 #include <LLD/include/enum.h>
 #include <LLD/include/version.h>
+
+#include <LLD/config/static.h>
+
 #include <LLD/templates/key.h>
 #include <LLD/templates/transaction.h>
 
 #include <LLD/cache/template_lru.h>
 
 #include <Util/templates/datastream.h>
+#include <Util/include/filesystem.h>
 #include <Util/include/runtime.h>
 #include <Util/include/debug.h>
-#include <Util/include/filesystem.h>
 
 #include <string>
 #include <cstdint>
@@ -35,22 +38,9 @@ ________________________________________________________________________________
 #include <mutex>
 #include <condition_variable>
 
-namespace LLD
+namespace LLD::Templates
 {
-
-    /* Maximum size a file can be in the keychain. */
-    const uint32_t MAX_SECTOR_FILE_SIZE = 1024 * 1024 * 512; //512 MB per File
-
-
-    /* Maximum cache buckets for sectors. */
-    const uint32_t MAX_SECTOR_CACHE_SIZE = 1024 * 1024 * 4; //256 MB Max Cache
-
-
-    /* The maximum amount of bytes allowed in the memory buffer for disk flushes. **/
-    const uint32_t MAX_SECTOR_BUFFER_SIZE = 1024 * 1024 * 4; //32 MB Max Disk Buffer
-
-
-    /** SectorDatabase
+    /** StaticDatabase
      *
      *  Base Template Class for a Sector Database.
      *  Processes main Lower Level Disk Communications.
@@ -78,8 +68,8 @@ namespace LLD
      *  attempts will trigger an error code.
      *
      **/
-    template<class KeychainType, class CacheType>
-    class SectorDatabase
+    template<class KeychainType, class CacheType, class ConfigType>
+    class StaticDatabase
     {
         /* The mutex for the condition. */
         std::mutex CONDITION_MUTEX;
@@ -96,9 +86,8 @@ namespace LLD
         std::mutex TRANSACTION_MUTEX;
 
 
-        /* The String to hold the Disk Location of Database File. */
-        std::string strBaseLocation;
-        std::string strName;
+        /* Configuration Object. */
+        const LLD::Config::Static CONFIG;
 
 
         /* timer for Runtime Calculations. */
@@ -120,10 +109,8 @@ namespace LLD
         /* File stream object. */
         mutable TemplateLRU<uint32_t, std::fstream*>* fileCache;
 
-
-        /* The current File Position. */
-        mutable uint32_t nCurrentFile;
-        mutable uint32_t nCurrentFileSize;
+        mutable std::atomic<uint32_t> nCurrentFile;
+        mutable std::atomic<uint32_t> nCurrentFileSize;
 
 
         /* Cache Writer Thread. */
@@ -135,7 +122,7 @@ namespace LLD
 
 
         /* Disk Buffer Vector. */
-        std::vector< std::pair< std::vector<uint8_t>, std::vector<uint8_t> > > vDiskBuffer;
+        std::map< std::vector<uint8_t>, std::vector<uint8_t> > mapDiskBuffer;
 
 
         /* Disk Buffer Memory Size. */
@@ -154,20 +141,15 @@ namespace LLD
         std::atomic<bool> fInitialized;
 
 
-        /** Database Flags. **/
-        uint8_t nFlags;
-
-
     public:
 
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        SectorDatabase(const std::string& strNameIn, const uint8_t nFlagsIn,
-                       const uint64_t nBucketsIn = 256 * 256 * 64, const uint32_t nCacheIn = 1024 * 1024);
+        StaticDatabase(const LLD::Config::Static& sectorIn, const ConfigType& keychainIn);
 
 
         /** Default Destructor **/
-        virtual ~SectorDatabase();
+        virtual ~StaticDatabase();
 
 
         /** Initialize
@@ -225,6 +207,12 @@ namespace LLD
             if(cachePool->Has(vKey))
                 return true;
 
+            {
+                LOCK(BUFFER_MUTEX);
+                if(mapDiskBuffer.count(vKey))
+                    return true;
+            }
+
             /* Return the Key existance in the Keychain Database. */
             SectorKey cKey;
             return pSectorKeys->Get(vKey, cKey);
@@ -243,9 +231,6 @@ namespace LLD
         template<typename Key>
         bool Erase(const Key& key, bool fKeychainOnly = false)
         {
-            if(nFlags & FLAGS::READONLY)
-                return debug::error("Erase called on database in read-only mode");
-
             /* Serialize Key into Bytes. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
@@ -347,7 +332,7 @@ namespace LLD
             {
                 /* Get our path to use. */
                 const std::string strPath =
-                    debug::safe_printstr(strBaseLocation, "_block.", std::setfill('0'), std::setw(5), nFile);
+                    debug::safe_printstr(CONFIG.DIRECTORY, "datachain/_block.", std::setfill('0'), std::setw(5), nFile);
 
                 /* Check filesize. */
                 const int64_t nFileSize =
@@ -593,7 +578,7 @@ namespace LLD
         template<typename Key>
         bool Write(const Key& key)
         {
-            if(nFlags & FLAGS::READONLY)
+            if(CONFIG.FLAGS & FLAGS::READONLY)
                 return debug::error(FUNCTION, "Write called on database in read-only mode");
 
             /* Serialize Key into Bytes. */
@@ -641,7 +626,7 @@ namespace LLD
         template<typename Key, typename Type>
         bool Write(const Key& key, const Type& value, const std::string& strType = "NONE")
         {
-            if(nFlags & FLAGS::READONLY)
+            if(CONFIG.FLAGS & FLAGS::READONLY)
                 return debug::error(FUNCTION, "Write called on database in read-only mode");
 
             /* Serialize the Key. */

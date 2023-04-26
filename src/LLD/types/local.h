@@ -17,7 +17,7 @@ ________________________________________________________________________________
 
 #include <LLC/types/uint1024.h>
 
-#include <LLD/templates/sector.h>
+#include <LLD/templates/static.h>
 #include <LLD/cache/binary_lru.h>
 #include <LLD/keychain/hashmap.h>
 
@@ -42,14 +42,13 @@ namespace LLD
    *  Database class for storing local wallet transactions.
    *
    **/
-    class LocalDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
+    class LocalDB : public Templates::StaticDatabase<BinaryHashMap, BinaryLRU, Config::Hashmap>
     {
 
     public:
 
         /** The Database Constructor. To determine file location and the Bytes per Record. **/
-        LocalDB(const uint8_t nFlagsIn = FLAGS::CREATE | FLAGS::WRITE,
-            const uint32_t nBucketsIn = 77773, const uint32_t nCacheIn = 1024 * 1024);
+        LocalDB(const Config::Static& sector, const Config::Hashmap& keychain);
 
 
         /** Default Destructor **/

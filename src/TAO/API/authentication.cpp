@@ -14,7 +14,6 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 
 #include <LLD/include/global.h>
-#include <LLD/hash/xxh3.h>
 
 #include <TAO/API/include/check.h>
 #include <TAO/API/include/extract.h>

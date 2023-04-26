@@ -26,11 +26,8 @@ namespace LLD
 {
 
     /** The Database Constructor. To determine file location and the Bytes per Record. **/
-    RegisterDB::RegisterDB(const uint8_t nFlagsIn, const uint32_t nBucketsIn, const uint32_t nCacheIn)
-    : SectorDatabase(std::string("_REGISTER")
-    , nFlagsIn
-    , nBucketsIn
-    , nCacheIn)
+    RegisterDB::RegisterDB(const Config::Static& sector, const Config::Hashmap& keychain)
+    : StaticDatabase(sector, keychain)
 
     , MEMORY  ( )
     , pMemory (nullptr)
@@ -351,43 +348,6 @@ namespace LLD
         /* Get trust account address for contract caller */
         const uint256_t hashRegister =
             TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
-
-        /* Memory mode for pre-database commits. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL)
-        {
-            LOCK(MEMORY);
-
-            /* Check for a memory transaction first */
-            if(pMemory && pMemory->mapStates.count(hashRegister))
-            {
-                /* Get the state from temporary transaction. */
-                state = pMemory->mapStates[hashRegister];
-
-                return true;
-            }
-
-            /* Check for state in memory map. */
-            if(pCommit->mapStates.count(hashRegister))
-            {
-                /* Get the state from commited memory. */
-                state = pCommit->mapStates[hashRegister];
-
-                return true;
-            }
-        }
-        else if(nFlags == TAO::Ledger::FLAGS::MINER)
-        {
-            LOCK(MEMORY);
-
-            /* Check for a memory transaction first */
-            if(pMiner && pMiner->mapStates.count(hashRegister))
-            {
-                /* Get the state from temporary transaction. */
-                state = pMiner->mapStates[hashRegister];
-
-                return true;
-            }
-        }
 
         return ReadState(hashRegister, state);
     }

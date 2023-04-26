@@ -73,6 +73,10 @@ ________________________________________________________________________________
 #define VAR_NAME(a) \
     debug::safe_printstr(#a)
 
+//this macro is used for the check_limits function
+#define PARAMS(a) \
+    VAR_NAME(a), a
+
 //this macro is used for dumping data structures
 #define VARIABLE(a) \
     ANSI_COLOR_FUNCTION, VAR_NAME(a), ANSI_COLOR_RESET, " = ", a

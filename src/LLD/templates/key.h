@@ -2,7 +2,7 @@
 
             (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2019
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -56,10 +56,6 @@ namespace LLD
 
         /** The binary data of the Sector key. **/
         std::vector<uint8_t> vKey;
-
-
-        /** MEMORY ONLY: The timestamp for timestamped hash tables. **/
-        mutable uint64_t nTimestamp;
 
 
         /* Serialization Macro. */

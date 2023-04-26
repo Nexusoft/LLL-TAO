@@ -25,8 +25,69 @@ ________________________________________________________________________________
 #endif
 #endif
 
+#ifdef _WIN32
+typedef HANDLE file_t;
+#else
+typedef int file_t;
+#endif
+
+#ifdef _WIN32
+# ifndef WIN32_LEAN_AND_MEAN
+#  define WIN32_LEAN_AND_MEAN
+# endif // WIN32_LEAN_AND_MEAN
+# include <windows.h>
+#else // ifdef _WIN32
+# define INVALID_HANDLE_VALUE -1
+#endif // ifdef _WIN32
+
 namespace filesystem
 {
+
+    /** open_file
+     *
+     *  Open a file handle by current path.
+     *
+     *  @param[in] strPath The path of file handle to open.
+     *
+     *  @return the file handle on success.
+     *
+     **/
+    file_t open_file(const std::string& strPath);
+
+
+    /**
+     * Determines the operating system's page allocation granularity.
+     *
+     * On the first call to this function, it invokes the operating system specific syscall
+     * to determine the page size, caches the value, and returns it. Any subsequent call to
+     * this function serves the cached value, so no further syscalls are made.
+     */
+    size_t page_size();
+
+
+    /** make_offset_page_aligned
+     *
+     * Alligns `nOffset` to the operating's system page size such that it subtracts the
+     * difference until the nearest page boundary before `offset`, or does nothing if
+     * `nOffset` is already page aligned.
+     *
+     *  @param[in] nOffset The offset value to align.
+     *
+     *  @return the aligned offset value
+     */
+    size_t make_offset_page_aligned(const size_t nOffset) noexcept;
+
+
+    /** query_file_size
+     *
+     *  Get the filesize from the OS level API.
+     *
+     *  @param[in] hFile The file handle to query for.
+     *
+     *  @return the size of file.
+     *
+     **/
+    int64_t query_file_size(const file_t hFile);
 
     /** size
      *
