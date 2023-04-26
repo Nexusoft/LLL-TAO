@@ -519,21 +519,9 @@ namespace TAO::API
         std::vector<std::pair<uint512_t, uint32_t>> vEvents;
         LLD::Logical->ListEvents(hashGenesis, vEvents);
 
-        //we need to list our active legacy transaction events
-
-        /* Track our unique events as we progress forward. */
-        std::set<std::pair<uint512_t, uint32_t>> setUnique;
-
         /* Build our list of contracts. */
         for(const auto& rEvent : vEvents)
         {
-            /* Check for unique events. */
-            if(setUnique.count(rEvent))
-                continue;
-
-            /* Add our event to our unique set. */
-            setUnique.insert(rEvent);
-
             /* Grab a reference of our hash. */
             const uint512_t& hashEvent = rEvent.first;
 
@@ -550,7 +538,7 @@ namespace TAO::API
                     continue;
 
                 /* Check if the transaction is mature. */
-                if(!tx.Mature(hashEvent))
+                if(tx.Mature(hashEvent))
                     continue;
             }
 
