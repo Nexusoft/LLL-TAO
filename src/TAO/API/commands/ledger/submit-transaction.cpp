@@ -82,8 +82,8 @@ namespace TAO::API
 
             /* Add tx to legacy wallet */
             TAO::Ledger::BlockState tDummy;
-            Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, tDummy, true);
-
+            if(!config::fClient.load())
+                Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, tDummy, true);
 #endif
 
             /* If accepted add txid to returned json. */

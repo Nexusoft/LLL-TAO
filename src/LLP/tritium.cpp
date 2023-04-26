@@ -323,7 +323,8 @@ namespace LLP
                     if(!TAO::Ledger::ChainState::Synchronizing())
                     {
                         #ifndef NO_WALLET
-                        Legacy::Wallet::Instance().ResendWalletTransactions();
+                        if(!config::fClient.load())
+                            Legacy::Wallet::Instance().ResendWalletTransactions();
                         #endif
                     }
                 }
