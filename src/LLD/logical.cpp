@@ -315,127 +315,6 @@ namespace LLD
     }
 
 
-    /* Build indexes for transactions over a rolling modulus. For -indexregister flag. */
-    void LogicalDB::IndexRegisters()
-    {
-        /* Not allowed in -client mode. */
-        if(config::fClient.load())
-            return;
-
-        /* Check for address indexing flag. */
-        if(Exists(std::string("register.indexed")))
-        {
-            /* Check there is no argument supplied. */
-            if(!config::HasArg("-indexregister"))
-            {
-                /* Warn that -indexheight is persistent. */
-                debug::notice(FUNCTION, "-indexregister enabled from valid indexes");
-
-                /* Set indexing argument now. */
-                RECURSIVE(config::ARGS_MUTEX);
-                config::mapArgs["-indexregister"] = "1";
-
-                /* Set our internal configuration. */
-                config::fIndexRegister.store(true);
-            }
-
-            return;
-        }
-
-        /* Check there is no argument supplied. */
-        if(!config::fIndexRegister.load())
-            return;
-
-        /* Start a timer to track. */
-        runtime::timer timer;
-        timer.Start();
-
-        /* Get our starting hash. */
-        const uint1024_t hashBegin =
-             TAO::Ledger::hashTritium;
-
-        /* Read the first tritium block. */
-        TAO::Ledger::BlockState state;
-        if(!LLD::Ledger->ReadBlock(hashBegin, state))
-        {
-            debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
-            return;
-        }
-
-        /* Keep track of our total count. */
-        uint32_t nScannedCount = 0;
-
-        /* Start our scan. */
-        debug::notice(FUNCTION, "Building register indexes from block ", state.GetHash().SubString());
-        while(!config::fShutdown.load())
-        {
-            /* Loop through found transactions. */
-            for(uint32_t nIndex = 0; nIndex < state.vtx.size(); ++nIndex)
-            {
-                /* We only care about tritium transactions. */
-                if(state.vtx[nIndex].first != TAO::Ledger::TRANSACTION::TRITIUM)
-                    continue;
-
-                /* Get a reference of our txid. */
-                const uint512_t& hashTx =
-                    state.vtx[nIndex].second;
-
-                /* Read the transaction from disk. */
-                TAO::Ledger::Transaction tx;
-                if(!LLD::Ledger->ReadTx(hashTx, tx))
-                    continue;
-
-                /* Iterate the transaction contracts. */
-                std::set<uint256_t> setAddresses;
-                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
-                {
-                    /* Grab contract reference. */
-                    const TAO::Operation::Contract& rContract = tx[nContract];
-
-                    /* Unpack the address we will be working on. */
-                    uint256_t hashAddress;
-                    if(!TAO::Register::Unpack(rContract, hashAddress))
-                        continue;
-
-                    /* Check for duplicate entries. */
-                    if(setAddresses.count(hashAddress))
-                        continue;
-
-                    /* Check fo register in database. */
-                    PushRegisterTx(hashAddress, hashTx);
-
-                    /* Push the address now. */
-                    setAddresses.insert(hashAddress);
-                }
-
-                /* Update the scanned count for meters. */
-                ++nScannedCount;
-
-                /* Meter for output. */
-                if(nScannedCount % 100000 == 0)
-                {
-                    /* Get the time it took to rescan. */
-                    uint32_t nElapsedSeconds = timer.Elapsed();
-                    debug::log(0, FUNCTION, "Built ", nScannedCount, " register indexes in ", nElapsedSeconds, " seconds (",
-                        std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
-                }
-            }
-
-            /* Iterate to the next block in the queue. */
-            state = state.Next();
-            if(!state)
-            {
-                /* Write our last index now. */
-                Write(std::string("register.indexed"));
-
-                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " in ", timer.Elapsed(), " seconds");
-
-                break;
-            }
-        }
-    }
-
-
     /* Push an register to process for given genesis-id. */
     bool LogicalDB::PushRegister(const uint256_t& hashGenesis, const uint256_t& hashRegister)
     {
@@ -709,18 +588,39 @@ namespace LLD
 
 
     /* List the current active events for given genesis-id. */
-    bool LogicalDB::ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents)
+    bool LogicalDB::ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents, const int32_t nLimit)
     {
+        /* Let's just keep this as a local static. */
+        const static bool fForced =
+            config::GetBoolArg("-forcesequence", false);
+
         /* Track our return success. */
         bool fSuccess = false;
 
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairEvent;
 
-        /* Loop until we have failed. */
+        /* Get our current events sequence. */
         uint32_t nSequence = 0;
+
+        /* In case we want to force full check here. */
+        if(!fForced)
+            Read(std::make_pair(std::string("events.list.sequence"), hashGenesis), nSequence);
+
+        /* Loop until we have failed. */
+        uint32_t nTotal = 0;
         while(!config::fShutdown.load()) //we want to early terminate on shutdown
         {
+            /* Check our limits. */
+            if(nTotal >= nLimit && nLimit != -1 && !fForced)
+            {
+                /* Check for our verbose setting. */
+                if(config::nVerbose >= 2)
+                    debug::log(2, FUNCTION, "Listing ", VARIABLE(nTotal), " event contracts from ", VARIABLE(nSequence - nTotal));
+
+                return fSuccess;
+            }
+
             /* Read our current record. */
             if(!Read(std::make_tuple(std::string("events.index"), nSequence, hashGenesis), pairEvent))
                 break;
@@ -730,8 +630,15 @@ namespace LLD
 
             /* Set our new sequence. */
             ++nSequence;
+            ++nTotal;
+
+            /* Set our success flag. */
             fSuccess = true;
         }
+
+        /* Check for our verbose setting. */
+        if(config::nVerbose >= 2)
+            debug::log(2, FUNCTION, "Listing ", VARIABLE(nTotal), " event contracts from ", VARIABLE(nSequence - nTotal));
 
         return fSuccess;
     }
@@ -809,19 +716,78 @@ namespace LLD
     }
 
 
-    /* List the current active contracts for given genesis-id. */
-    bool LogicalDB::ListContracts(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vContracts)
+    /* Increment the last contract that was fully processed. */
+    bool LogicalDB::IncrementEventSequence(const uint256_t& hashGenesis)
     {
+        /* Let's just keep this as a local static. */
+        const static bool fForced =
+            config::GetBoolArg("-forcesequence", false);
+
+        /* We don't need to increment events when in forced mode. */
+        if(fForced)
+            return true;
+
+        /* Read our current sequence. */
+        uint32_t nSequence = 0;
+        Read(std::make_pair(std::string("events.list.sequence"), hashGenesis), nSequence);
+
+        return Write(std::make_pair(std::string("events.list.sequence"), hashGenesis), ++nSequence);
+    }
+
+
+    /* Increment the last contract that was fully processed. */
+    bool LogicalDB::IncrementContractSequence(const uint256_t& hashGenesis)
+    {
+        /* Let's just keep this as a local static. */
+        const static bool fForced =
+            config::GetBoolArg("-forcesequence", false);
+
+        /* We don't need to increment events when in forced mode. */
+        if(fForced)
+            return true;
+
+        /* Read our current sequence. */
+        uint32_t nSequence = 0;
+        Read(std::make_pair(std::string("contracts.list.sequence"), hashGenesis), nSequence);
+
+        return Write(std::make_pair(std::string("contracts.list.sequence"), hashGenesis), ++nSequence);
+    }
+
+
+    /* List the current active contracts for given genesis-id. */
+    bool LogicalDB::ListContracts(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vContracts, const int32_t nLimit)
+    {
+        /* Let's just keep this as a local static. */
+        const static bool fForced =
+            config::GetBoolArg("-forcesequence", false);
+
         /* Track our return success. */
         bool fSuccess = false;
 
         /* Cache our txid and contract as a pair. */
         std::pair<uint512_t, uint32_t> pairContract;
 
-        /* Loop until we have failed. */
+        /* Get our current events sequence. */
         uint32_t nSequence = 0;
+
+        /* In case we want to force full check here. */
+        if(!fForced)
+            Read(std::make_pair(std::string("contracts.list.sequence"), hashGenesis), nSequence);
+
+        /* Loop until we have failed. */
+        uint32_t nTotal = 0;
         while(!config::fShutdown.load()) //we want to early terminate on shutdown
         {
+            /* Check our limits. */
+            if(nTotal >= nLimit && nLimit != -1 && !fForced)
+            {
+                /* Check for our verbose setting. */
+                if(config::nVerbose >= 2)
+                    debug::log(2, FUNCTION, "Listing ", VARIABLE(nTotal), " expiring contracts from ", VARIABLE(nSequence - nTotal));
+
+                return fSuccess;
+            }
+
             /* Read our current record. */
             if(!Read(std::make_tuple(std::string("contracts.index"), nSequence, hashGenesis), pairContract))
                 break;
@@ -831,8 +797,15 @@ namespace LLD
 
             /* Set our new sequence. */
             ++nSequence;
+            ++nTotal;
+
+            /* Set our success flag. */
             fSuccess = true;
         }
+
+        /* Check for our verbose setting. */
+        if(config::nVerbose >= 2)
+            debug::log(2, FUNCTION, "Listing ", VARIABLE(nTotal), " expiring contracts from ", VARIABLE(nSequence - nTotal));
 
         return fSuccess;
     }
@@ -1150,9 +1123,131 @@ namespace LLD
         return Erase(std::make_pair(std::string("ptr"), hashAddress));
     }
 
+
     /* Checks if a register address has a PTR mapping */
     bool LogicalDB::HasPTR(const uint256_t& hashAddress)
     {
         return Exists(std::make_pair(std::string("ptr"), hashAddress));
+    }
+
+
+    /* Build indexes for transactions over a rolling modulus. For -indexregister flag. */
+    void LogicalDB::IndexRegisters()
+    {
+        /* Not allowed in -client mode. */
+        if(config::fClient.load())
+            return;
+
+        /* Check for address indexing flag. */
+        if(Exists(std::string("register.indexed")))
+        {
+            /* Check there is no argument supplied. */
+            if(!config::HasArg("-indexregister"))
+            {
+                /* Warn that -indexheight is persistent. */
+                debug::notice(FUNCTION, "-indexregister enabled from valid indexes");
+
+                /* Set indexing argument now. */
+                RECURSIVE(config::ARGS_MUTEX);
+                config::mapArgs["-indexregister"] = "1";
+
+                /* Set our internal configuration. */
+                config::fIndexRegister.store(true);
+            }
+
+            return;
+        }
+
+        /* Check there is no argument supplied. */
+        if(!config::fIndexRegister.load())
+            return;
+
+        /* Start a timer to track. */
+        runtime::timer timer;
+        timer.Start();
+
+        /* Get our starting hash. */
+        const uint1024_t hashBegin =
+             TAO::Ledger::hashTritium;
+
+        /* Read the first tritium block. */
+        TAO::Ledger::BlockState state;
+        if(!LLD::Ledger->ReadBlock(hashBegin, state))
+        {
+            debug::warning(FUNCTION, "No tritium blocks available ", hashBegin.SubString());
+            return;
+        }
+
+        /* Keep track of our total count. */
+        uint32_t nScannedCount = 0;
+
+        /* Start our scan. */
+        debug::notice(FUNCTION, "Building register indexes from block ", state.GetHash().SubString());
+        while(!config::fShutdown.load())
+        {
+            /* Loop through found transactions. */
+            for(uint32_t nIndex = 0; nIndex < state.vtx.size(); ++nIndex)
+            {
+                /* We only care about tritium transactions. */
+                if(state.vtx[nIndex].first != TAO::Ledger::TRANSACTION::TRITIUM)
+                    continue;
+
+                /* Get a reference of our txid. */
+                const uint512_t& hashTx =
+                    state.vtx[nIndex].second;
+
+                /* Read the transaction from disk. */
+                TAO::Ledger::Transaction tx;
+                if(!LLD::Ledger->ReadTx(hashTx, tx))
+                    continue;
+
+                /* Iterate the transaction contracts. */
+                std::set<uint256_t> setAddresses;
+                for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
+                {
+                    /* Grab contract reference. */
+                    const TAO::Operation::Contract& rContract = tx[nContract];
+
+                    /* Unpack the address we will be working on. */
+                    uint256_t hashAddress;
+                    if(!TAO::Register::Unpack(rContract, hashAddress))
+                        continue;
+
+                    /* Check for duplicate entries. */
+                    if(setAddresses.count(hashAddress))
+                        continue;
+
+                    /* Check fo register in database. */
+                    PushRegisterTx(hashAddress, hashTx);
+
+                    /* Push the address now. */
+                    setAddresses.insert(hashAddress);
+                }
+
+                /* Update the scanned count for meters. */
+                ++nScannedCount;
+
+                /* Meter for output. */
+                if(nScannedCount % 100000 == 0)
+                {
+                    /* Get the time it took to rescan. */
+                    uint32_t nElapsedSeconds = timer.Elapsed();
+                    debug::log(0, FUNCTION, "Built ", nScannedCount, " register indexes in ", nElapsedSeconds, " seconds (",
+                        std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
+                }
+            }
+
+            /* Iterate to the next block in the queue. */
+            state = state.Next();
+            if(!state)
+            {
+                /* Write our last index now. */
+                Write(std::string("register.indexed"));
+
+                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " in ", timer.Elapsed(), " seconds");
+
+                break;
+            }
+        }
     }
 }

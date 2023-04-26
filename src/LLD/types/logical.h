@@ -324,10 +324,6 @@ namespace LLD
         bool LastRegisterTx(const uint256_t& hashRegister, uint512_t &hashTx);
 
 
-        /** Build indexes for transactions over a rolling modulus. For -indexregister flag. **/
-        void IndexRegisters();
-
-
         /** PushRegister
          *
          *  Push an register to process for given genesis-id.
@@ -543,11 +539,12 @@ namespace LLD
          *
          *  @param[in] hashGenesis The genesis-id to list events for.
          *  @param[in] vEvents The list of events extracted.
+         *  @param[in] nLimit The maximum number of events to get.
          *
          *  @return true if written successfully
          *
          **/
-        bool ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents);
+        bool ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents, const int32_t nLimit = -1);
 
 
         /** ReadTritiumSequence
@@ -627,17 +624,43 @@ namespace LLD
         bool PushContract(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract);
 
 
-        /** ListEvents
+        /** IncrementEventSequence
+         *
+         *  Increment the last event that was fully processed.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *
+         *  @return if the record was written successfully.
+         *
+         **/
+        bool IncrementEventSequence(const uint256_t& hashGenesis);
+
+
+        /** IncrementContractSequence
+         *
+         *  Increment the last contract that was fully processed.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *
+         *  @return if the record was written successfully.
+         *
+         **/
+        bool IncrementContractSequence(const uint256_t& hashGenesis);
+
+
+
+        /** ListContracts
          *
          *  List the current active contracts for given genesis-id.
          *
          *  @param[in] hashGenesis The genesis-id to list events for.
          *  @param[in] vEvents The list of events extracted.
+         *  @param[in] nLimit The maximum number of contracts to get.
          *
          *  @return true if written successfully
          *
          **/
-        bool ListContracts(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vContracts);
+        bool ListContracts(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vContracts, const int32_t nLimit = -1);
 
 
         /** HasEvent
@@ -820,6 +843,10 @@ namespace LLD
          *
          **/
         bool HasPTR(const uint256_t& hashAddress);
+
+
+        /** Build indexes for transactions over a rolling modulus. For -indexregister flag. **/
+        void IndexRegisters();
 
     };
 }

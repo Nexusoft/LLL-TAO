@@ -110,115 +110,37 @@ namespace TAO::API
                         { "session", hashSession.ToString() },
                     };
 
-                    /* Get a list of our active events. */
-                    std::vector<std::pair<uint512_t, uint32_t>> vEvents;
+                    /* Build our list of contracts. */
+                    std::vector<TAO::Operation::Contract> vContracts;
 
-                    /* Get our list of active events we need to respond to. */
-                    LLD::Logical->ListEvents   (hashGenesis, vEvents);
-                    LLD::Logical->ListContracts(hashGenesis, vEvents);
+                    /* Get a list of our active events. */
+                    std::vector<std::pair<uint512_t, uint32_t>> vNotifications;
+                    LLD::Logical->ListEvents(hashGenesis, vNotifications, 500); //maximum of 500 per iteration
+
+                    /* Loop through our active notifications. */
+                    bool fEventStop = false;
+                    for(const auto& rEvent : vNotifications)
+                    {
+                        /* Build our contracts now. */
+                        if(build_notification(hashGenesis, jSession, rEvent, false, fEventStop, vContracts))
+                            fEventStop = true;
+                    }
+
+                    /* Get a list of our active events. */
+                    std::vector<std::pair<uint512_t, uint32_t>> vContractSent;
+                    LLD::Logical->ListContracts(hashGenesis, vContractSent, 100); //maximum of 100 per iteration
+
+                    /* Loop through our active notifications. */
+                    bool fContractStop = false;
+                    for(const auto& rEvent : vContractSent)
+                    {
+                        /* Build our contracts now. */
+                        if(build_notification(hashGenesis, jSession, rEvent, true, fContractStop, vContracts))
+                            fContractStop = true;
+                    }
 
                     /* Track our unique events as we progress forward. */
                     std::set<std::pair<uint512_t, uint32_t>> setUnique;
-
-                    /* Build our list of contracts. */
-                    std::vector<TAO::Operation::Contract> vContracts;
-                    for(const auto& rEvent : vEvents)
-                    {
-                        /* Check for shutdown. */
-                        if(config::fShutdown.load())
-                            break;
-
-                        /* Check for unique events. */
-                        if(setUnique.count(rEvent))
-                            continue;
-
-                        /* Insert our event into unique set. */
-                        setUnique.insert(rEvent);
-
-                        /* Grab a reference of our hash. */
-                        const uint512_t& hashEvent = rEvent.first;
-
-                        /* Check for Tritium transaction. */
-                        if(hashEvent.GetType() == TAO::Ledger::TRITIUM)
-                        {
-                            /* Get the transaction from disk. */
-                            TAO::API::Transaction tx;
-                            if(!LLD::Ledger->ReadTx(hashEvent, tx))
-                                continue;
-
-                            /* Check if contract has been burned. */
-                            if(tx.Burned(hashEvent, rEvent.second))
-                                continue;
-
-                            /* Check if the transaction is mature. */
-                            if(!tx.Mature(hashEvent))
-                                continue;
-                        }
-
-                        /* Get a referecne of our contract. */
-                        const TAO::Operation::Contract& rContract =
-                            LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
-
-                        /* Check if the given contract is spent already. */
-                        if(rContract.Spent(rEvent.second))
-                            continue;
-
-                        /* Seek our contract to primitive OP. */
-                        rContract.SeekToPrimitive();
-
-                        /* Get a copy of our primitive. */
-                        uint8_t nOP = 0;
-                        rContract >> nOP;
-
-                        /* Switch for valid primitives. */
-                        switch(nOP)
-                        {
-                            /* Handle for if we need to credit. */
-                            case TAO::Operation::OP::LEGACY:
-                            case TAO::Operation::OP::DEBIT:
-                            case TAO::Operation::OP::COINBASE:
-                            {
-                                try
-                                {
-                                    /* Build our credit contract now. */
-                                    if(!BuildCredit(jSession, rEvent.second, rContract, vContracts))
-                                        continue;
-                                }
-                                catch(const Exception& e)
-                                {
-                                    debug::warning(FUNCTION, "failed to build crecit for ", hashEvent.SubString(), ": ", e.what());
-                                    continue;
-                                }
-
-                                break;
-                            }
-
-                            /* Handle for if we need to claim. */
-                            case TAO::Operation::OP::TRANSFER:
-                            {
-                                try
-                                {
-                                    /* Build our credit contract now. */
-                                    if(!BuildClaim(jSession, rEvent.second, rContract, vContracts))
-                                        continue;
-                                }
-                                catch(const Exception& e)
-                                {
-                                    debug::warning(FUNCTION, "failed to build claim for ", hashEvent.SubString(), ": ", e.what());
-                                    continue;
-                                }
-
-                                break;
-                            }
-
-                            /* Unknown ops we want to continue looping. */
-                            default:
-                            {
-                                debug::warning(FUNCTION, "unknown OP: ", std::hex, uint32_t(nOP));
-                                continue;
-                            }
-                        }
-                    }
 
                     /* Get the list of registers owned by this sig chain */
                     std::map<uint256_t, std::pair<Accounts, uint256_t>> mapAssets;
@@ -359,6 +281,20 @@ namespace TAO::API
 
                                                         continue;
                                                     }
+
+                                                    /* Sanitize our contract now. */
+                                                    TAO::Operation::Contract tContract = vContracts.back();
+                                                    if(!SanitizeContract(hashGenesis, tContract))
+                                                    {
+                                                        /* Check if we have a next account. */
+                                                        if(!rAccounts.HasNext())
+                                                            break;
+
+                                                        /* Iterate to our next account now. */
+                                                        rAccounts++;
+
+                                                        continue;
+                                                    }
                                                 }
                                                 catch(const Exception& e)
                                                 {
@@ -466,5 +402,170 @@ namespace TAO::API
         LLD::TxnAbort(TAO::Ledger::FLAGS::MINER);
 
         return fSanitized;
+    }
+
+
+    /* Checks that the contract passes both Build() and Execute() */
+    bool Notifications::SanitizeContract(const uint256_t& hashGenesis, TAO::Operation::Contract &rContract)
+    {
+        /* Bind our contract now to a timestamp and caller. */
+        rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
+
+        /* We are just wrapping around other overload here. */
+        std::map<uint256_t, TAO::Register::State> mapStates;
+        return SanitizeContract(rContract, mapStates);
+    }
+
+
+    /* Build an contract response to given notificaion. */
+    bool Notifications::build_notification(const uint256_t& hashGenesis, const encoding::json& jSession, const std::pair<uint512_t, uint32_t>& rEvent,
+        const bool fMine, const bool fStop, std::vector<TAO::Operation::Contract> &vContracts)
+    {
+        /* Grab a reference of our hash. */
+        const uint512_t& hashEvent = rEvent.first;
+
+        /* Check for Tritium transaction. */
+        if(hashEvent.GetType() == TAO::Ledger::TRITIUM)
+        {
+            /* Get the transaction from disk. */
+            TAO::API::Transaction tx;
+            if(!LLD::Ledger->ReadTx(hashEvent, tx))
+                return true;
+
+            /* Check if contract has been burned. */
+            if(tx.Burned(hashEvent, rEvent.second))
+            {
+                /* Check for our stop. */
+                if(fStop)
+                    return true;
+
+                /* For a burn we increment so we don't process same event again. */
+                if(fMine)
+                {
+                    /* Increment our contract sequence. */
+                    LLD::Logical->IncrementContractSequence(hashGenesis);
+                    return false;
+                }
+
+                /* Increment our notifications sequence. */
+                LLD::Logical->IncrementEventSequence(hashGenesis);
+                return false;
+            }
+
+            /* Check if the transaction is mature. */
+            if(!tx.Mature(hashEvent))
+                return true;
+        }
+
+        /* Get a referecne of our contract. */
+        const TAO::Operation::Contract& rContract =
+            LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
+
+        /* Check if the given contract is spent already. */
+        if(rContract.Spent(rEvent.second))
+        {
+            /* Check for our stop. */
+            if(fStop)
+                return true;
+
+            /* For a burn we increment so we don't process same event again. */
+            if(fMine)
+            {
+                /* Increment our contract sequence. */
+                LLD::Logical->IncrementContractSequence(hashGenesis);
+                return false;
+            }
+
+            /* Increment our notifications sequence. */
+            LLD::Logical->IncrementEventSequence(hashGenesis);
+            return false;
+        }
+
+        /* Seek our contract to primitive OP. */
+        rContract.SeekToPrimitive();
+
+        /* Get a copy of our primitive. */
+        uint8_t nOP = 0;
+        rContract >> nOP;
+
+        /* Switch for valid primitives. */
+        switch(nOP)
+        {
+            /* Handle for if we need to credit. */
+            case TAO::Operation::OP::LEGACY:
+            case TAO::Operation::OP::DEBIT:
+            case TAO::Operation::OP::COINBASE:
+            {
+                try
+                {
+                    /* Build our credit contract now. */
+                    if(!BuildCredit(jSession, rEvent.second, rContract, vContracts))
+                        return true;
+
+                    /* Sanitize our contract now. */
+                    TAO::Operation::Contract tContract = vContracts.back();
+                    if(!SanitizeContract(hashGenesis, tContract))
+                    {
+                        /* Check for our stop. */
+                        if(fStop || fMine)
+                            return true;
+
+                        /* Log some info about this. */
+                        debug::log(2, FUNCTION, "OP::CREDIT: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
+
+                        /* Push this to our contracts queue so we can process again later. */
+                        LLD::Logical->PushContract(hashGenesis, rEvent.first, rEvent.second);
+
+                        /* Increment our notifications sequence. */
+                        LLD::Logical->IncrementEventSequence(hashGenesis);
+                        return false;
+                    }
+                }
+                catch(const Exception& e)
+                {
+                    debug::warning(FUNCTION, "OP::CREDIT: failed to build for ", hashEvent.SubString(), ": ", e.what());
+                }
+
+                break;
+            }
+
+            /* Handle for if we need to claim. */
+            case TAO::Operation::OP::TRANSFER:
+            {
+                try
+                {
+                    /* Build our credit contract now. */
+                    if(!BuildClaim(jSession, rEvent.second, rContract, vContracts))
+                        return true;
+
+                    /* Sanitize our contract now. */
+                    TAO::Operation::Contract tContract = vContracts.back();
+                    if(!SanitizeContract(hashGenesis, tContract))
+                    {
+                        /* Check for our stop. */
+                        if(fStop || fMine)
+                            return true;
+
+                        /* Log some info about this. */
+                        debug::log(2, FUNCTION, "OP::CLAIM: sanitize failed for ", rEvent.first.SubString(), ", adding to work queue");
+
+                        /* Push this to our contracts queue so we can process again later. */
+                        LLD::Logical->PushContract(hashGenesis, rEvent.first, rEvent.second);
+
+                        /* Increment our notifications sequence. */
+                        LLD::Logical->IncrementEventSequence(hashGenesis);
+                        return false;
+                    }
+                }
+                catch(const Exception& e)
+                {
+                    debug::warning(FUNCTION, "OP::CLAIM: failed to build for ", hashEvent.SubString(), ": ", e.what());
+                }
+
+                break;
+            }
+        }
+
+        return true;
     }
 }

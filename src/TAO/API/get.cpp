@@ -243,6 +243,7 @@ namespace TAO::API
                 /* Handle for if we need to credit. */
                 case TAO::Operation::OP::LEGACY:
                 case TAO::Operation::OP::DEBIT:
+                case TAO::Operation::OP::COINBASE:
                 {
                     try
                     {
@@ -258,19 +259,25 @@ namespace TAO::API
                         uint64_t nAmount = 0;
                         if(TAO::Register::Unpack(rContract, nAmount))
                         {
-                            /* Check our pre-state for token types. */
-                            TAO::Register::Object oAccount =
-                                rContract.PreState();
+                            /* Regular check for non coinbase. */
+                            if(nOP != TAO::Operation::OP::COINBASE)
+                            {
+                                /* Check our pre-state for token types. */
+                                TAO::Register::Object oAccount =
+                                    rContract.PreState();
 
-                            /* Check for null value. */
-                            if(oAccount.IsNull())
-                                continue;
+                                /* Check for null value. */
+                                if(oAccount.IsNull())
+                                    continue;
 
-                            /* Parse account now. */
-                            oAccount.Parse();
+                                /* Parse account now. */
+                                oAccount.Parse();
 
-                            /* Check for valid token types. */
-                            if(oAccount.get<uint256_t>("token") != hashToken)
+                                /* Check for valid token types. */
+                                if(oAccount.get<uint256_t>("token") != hashToken)
+                                    continue;
+                            }
+                            else if(hashToken != TOKEN::NXS)
                                 continue;
 
                             /* Increment our pending balance now. */
