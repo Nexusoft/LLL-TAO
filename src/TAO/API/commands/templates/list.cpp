@@ -28,7 +28,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Generic method to list object registers by sig chain*/
-    encoding::json Templates::List(const encoding::json& jParams, const bool fHelp)
+    encoding::json Templates::List(const encoding::json& jParams, const bool fTransferred)
     {
         /* Get the Genesis ID. */
         const uint256_t hashGenesis =
@@ -43,8 +43,7 @@ namespace TAO::API
 
         /* Get the list of registers owned by this sig chain */
         std::set<TAO::Register::Address> setAddresses;
-        LLD::Logical->ListRegisters(hashGenesis, setAddresses);
-        LLD::Logical->ListTransfers(hashGenesis, setAddresses);
+        LLD::Logical->ListRegisters(hashGenesis, setAddresses, fTransferred);
         LLD::Logical->ListUnclaimed(hashGenesis, setAddresses);
 
         /* Check for empty return. */
@@ -63,7 +62,7 @@ namespace TAO::API
                 continue;
 
             /* Check for active transfers. */
-            if(GetStandardType(tObject) != USER_TYPES::INVOICE && tObject.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM
+            if(!fTransferred && tObject.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM
             && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
                 continue;
 

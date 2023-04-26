@@ -477,7 +477,7 @@ namespace LLD
 
 
     /* List the current active registers for given genesis-id. */
-    bool LogicalDB::ListRegisters(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses)
+    bool LogicalDB::ListRegisters(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses, bool fTransferred)
     {
         /* Cache our txid and contract as a pair. */
         uint256_t hashRegister;
@@ -491,42 +491,12 @@ namespace LLD
                 break;
 
             /* Check for transfer keys. */
-            if(HasTransfer(hashGenesis, hashRegister))
+            if(!fTransferred && HasTransfer(hashGenesis, hashRegister))
                 continue; //NOTE: we skip over transfer keys
 
             /* Check for de-indexed keys. */
             if(HasDeindex(hashGenesis, hashRegister))
                 continue; //NOTE: we skip over deindexed keys
-
-            /* Check for already executed contracts to omit. */
-            setAddresses.insert(hashRegister);
-        }
-
-        return !setAddresses.empty();
-    }
-
-
-    /* List the current active transfers for given genesis-id. */
-    bool LogicalDB::ListTransfers(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses)
-    {
-        /* Cache our txid and contract as a pair. */
-        uint256_t hashRegister;
-
-        /* Loop until we have failed. */
-        uint32_t nSequence = 0;
-        while(!config::fShutdown.load()) //we want to early terminate on shutdown
-        {
-            /* Read our current record. */
-            if(!Read(std::make_tuple(std::string("registers.index"), nSequence++, hashGenesis), hashRegister))
-                break;
-
-            /* Check for de-indexed keys. */
-            if(HasDeindex(hashGenesis, hashRegister))
-                continue; //NOTE: we skip over deindexed keys
-
-            /* Check for transfer keys. */
-            if(!HasTransfer(hashGenesis, hashRegister))
-                continue; //NOTE: we skip over transfer keys
 
             /* Check for already executed contracts to omit. */
             setAddresses.insert(hashRegister);

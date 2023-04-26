@@ -74,11 +74,12 @@ namespace TAO::API
          *
          *  @param[in] jParams The input parameters to the command.
          *  @param[in] fHelp Flag to determine if help was requested for command.
+         *  @param[in] fTransferred Flag to show values that have been transferred or not.
          *
          *  @return the json list of given object(s).
          *
          **/
-        static encoding::json List(const encoding::json& jParams, const bool fHelp);
+        static encoding::json List(const encoding::json& jParams, const bool fTransferred = false);
 
 
         /** History
