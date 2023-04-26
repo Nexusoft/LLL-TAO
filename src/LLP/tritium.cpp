@@ -2876,18 +2876,18 @@ namespace LLP
                         /* Start our ACID transaction in case we have any failures here. */
                         { LOCK(CLIENT_MUTEX);
 
-                            LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                            LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
 
                             /* Build indexes if we don't have them. */
                             if(!LLD::Client->HasIndex(hashTx))
                             {
                                 /* Commit transaction to disk. */
                                 if(!LLD::Client->WriteTx(hashTx, tx))
-                                    return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write transaction");
+                                    return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, FUNCTION, "failed to write transaction");
 
                                 /* Index the transaction to it's block. */
                                 if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                    return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write block indexing entry");
+                                    return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, FUNCTION, "failed to write block indexing entry");
                             }
 
                             /* Add an indexing event. */
@@ -2932,18 +2932,18 @@ namespace LLP
                             /* Start our ACID transaction in case we have any failures here. */
                             { LOCK(CLIENT_MUTEX);
 
-                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
 
                                 /* Only write to disk and index if not completed already. */
                                 if(!LLD::Client->HasIndex(hashTx))
                                 {
                                     /* Commit transaction to disk. */
                                     if(!LLD::Client->WriteTx(hashTx, tx))
-                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write transaction");
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, FUNCTION, "failed to write transaction");
 
                                     /* Index the transaction to it's block. */
                                     if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write block indexing entry");
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, FUNCTION, "failed to write block indexing entry");
                                 }
 
                                 /* Dependant specifier only needs to index dependant. */
@@ -2953,7 +2953,7 @@ namespace LLP
                                 {
                                     /* Connect transaction in memory. */
                                     if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
-                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, FUNCTION, hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
                                     /* Add an indexing event. */
                                     TAO::API::Indexing::IndexSigchain(hashTx);

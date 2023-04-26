@@ -11,6 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLD/include/global.h>
+
 #include <Util/include/debug.h>
 
 #include <Util/include/args.h>
@@ -279,6 +281,12 @@ namespace debug
         check_log_archive(ssFile);
 
         //#endif
+    }
+
+    /* We need this so we can declare in source file and not need forward declaration of LLD::TxnAbort. */
+    void acid_handler(const uint8_t nFlags, const uint8_t nInstances)
+    {
+        LLD::TxnAbort(nFlags, nInstances);
     }
 
 
