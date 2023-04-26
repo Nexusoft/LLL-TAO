@@ -1056,10 +1056,6 @@ namespace TAO
         /** Connect a block state into chain. **/
         bool BlockState::Connect()
         {
-            /* Validate proof of stake. */
-            if(IsProofOfStake() && !TritiumBlock(*this).CheckStake())
-                return debug::error(FUNCTION, "invalid proof of stake");
-
             /* Get a copy of our block hash. */
             const uint1024_t hashBlock = GetHash();
 
