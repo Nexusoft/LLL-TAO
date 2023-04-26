@@ -3776,7 +3776,7 @@ namespace LLP
             config::fClient.load() ? uint8_t(SPECIFIER::CLIENT) : uint8_t(SPECIFIER::SYNC),
             uint8_t(TYPES::BLOCK),
             uint8_t(TYPES::LOCATOR),
-            TAO::Ledger::Locator(TAO::Ledger::ChainState::stateBest.load().hashPrevBlock),
+            TAO::Ledger::Locator(TAO::Ledger::ChainState::hashBestChain.load()),
             uint1024_t(0)
         );
     }
