@@ -937,7 +937,7 @@ endif
 
 
 #OS Specific Compiler Flags
-CXXFLAGS+= -mmacosx-version-min=10.13 \
+CXXFLAGS+= -mmacosx-version-min=10.09 \
 	-O3 \
 	$(DEFS) \
 	$(DEBUG) \
