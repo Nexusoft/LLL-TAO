@@ -48,6 +48,7 @@ namespace TAO
         , mapConflicts       ( )
         , mapOrphans         ( )
         , mapClaimed         ( )
+        , mapRejected        ( )
         , mapInputs          ( )
         , setOrphansByIndex  ( )
         {
@@ -91,6 +92,13 @@ namespace TAO
             if(LLD::Ledger->HasTx(hashTx, FLAGS::MEMPOOL))
                 return false; //NOTE: this was true, but changed to false to prevent relay loops in tritium LLP
 
+            /* Check for rejected tx. */
+            if(mapRejected.count(tx.hashPrevTx))
+            {
+                mapRejected.insert(hashTx);
+                return false;
+            }
+
             /* Print the transaction here. */
             if(config::nVerbose >= 3)
                 tx.print();
@@ -101,15 +109,24 @@ namespace TAO
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsCoinBase())
+            {
+                mapRejected.insert(hashTx);
                 return debug::error(FUNCTION, "coinbase ", hashTx.SubString(), " not accepted in pool");
+            }
 
             /* Check for duplicate coinbase or coinstake. */
             if(tx.IsCoinStake())
+            {
+                mapRejected.insert(hashTx);
                 return debug::error(FUNCTION, "coinstake ", hashTx.SubString(), " not accepted in pool");
+            }
 
             /* Check that the transaction is in a valid state. */
             if(!tx.Check())
+            {
+                mapRejected.insert(hashTx);
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+            }
 
             /* Check for orphans and conflicts when not first transaction. */
             if(!tx.IsFirst())
@@ -165,7 +182,7 @@ namespace TAO
             else if(LLD::Ledger->HasFirst(tx.hashGenesis))
             {
                 /* Add to conflicts map. */
-                debug::error(FUNCTION, "CONFLICT: invalid genesis-id ", tx.hashGenesis.SubString());
+                debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());
                 mapConflicts[hashTx] = tx;
 
                 return false;
@@ -174,7 +191,10 @@ namespace TAO
 
             /* Begin an ACID transction for internal memory commits. */
             if(!tx.Verify(FLAGS::MEMPOOL))
+            {
+                mapRejected.insert(hashTx);
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+            }
 
             /* Connect transaction in memory. */
             LLD::TxnBegin(FLAGS::MEMPOOL);
@@ -182,6 +202,7 @@ namespace TAO
             {
                 /* Abort memory commits on failures. */
                 LLD::TxnAbort(FLAGS::MEMPOOL);
+                mapRejected.insert(hashTx);
 
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " REJECTED: ", debug::GetLastError());
             }
