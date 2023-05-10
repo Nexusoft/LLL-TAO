@@ -1453,7 +1453,7 @@ namespace TAO
                 "nextHash  = ",  hashNext.SubString(), ", ",
                 "prevHash  = ",  PrevHash().SubString(), ", ",
                 "hashPrevTx = ", hashPrevTx.SubString(), ", ",
-                "hashGenesis = ", hashGenesis.SubString(), ", ",
+                "hashGenesis = ", hashGenesis.ToString(), ", ",
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
                 "hash = ", GetHash().SubString()

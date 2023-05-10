@@ -190,7 +190,6 @@ namespace TAO
                     return false;
                 }
 
-
                 /* Begin an ACID transction for internal memory commits. */
                 if(!tx.Verify(FLAGS::MEMPOOL))
                 {
@@ -626,8 +625,6 @@ namespace TAO
         bool Mempool::List(std::vector<uint512_t> &vHashes, uint32_t nCount, bool fLegacy)
         {
             RECURSIVE(MUTEX);
-
-            //TODO: need to check dependant transactions and sequence them properly otherwise this will fail
 
             /* If legacy flag set, skip over getting tritium transactions. */
             if(!fLegacy)
