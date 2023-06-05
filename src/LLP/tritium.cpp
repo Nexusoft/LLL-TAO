@@ -1309,6 +1309,10 @@ namespace LLP
                                 if(config::nVerbose >= 3)
                                     debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
 
+                                /* Add DDOS filtering here. */
+                                if(DDOS)
+                                    DDOS->rSCORE += locator.vHave.size();
+
                                 break;
                             }
 

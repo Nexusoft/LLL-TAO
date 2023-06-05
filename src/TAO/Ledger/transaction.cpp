@@ -570,6 +570,7 @@ namespace TAO
 
             return true;
         }
+        
 
         /* Check the trust score that is claimed is correct. */
         static const uint256_t hashConsistencyCheck = uint256_t("0xa15efdcd1969a9a645eda0296b52678f1ef3d9e91ec9f54a4f82f9ab7ce65a6c");
