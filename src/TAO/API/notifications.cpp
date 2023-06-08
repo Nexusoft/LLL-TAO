@@ -85,10 +85,6 @@ namespace TAO::API
                     if(config::fSuspended.load())
                         break;
 
-                    /* Check that we have active connections. */
-                    if(LLP::TRITIUM_SERVER && LLP::TRITIUM_SERVER->GetConnectionCount() == 0)
-                        break;
-
                     /* Cache some local variables. */
                     const uint256_t& hashSession = rSession.first;
                     const uint256_t& hashGenesis = rSession.second;
