@@ -109,6 +109,9 @@ namespace TAO::API
                     /* Build our list of contracts. */
                     std::vector<TAO::Operation::Contract> vContracts;
 
+                    /* Track our unique events as we progress forward. */
+                    std::set<std::pair<uint512_t, uint32_t>> setUnique;
+
                     /* Get a list of our active events. */
                     std::vector<std::pair<uint512_t, uint32_t>> vNotifications;
                     LLD::Logical->ListEvents(hashGenesis, vNotifications, 500); //maximum of 500 per iteration
@@ -117,26 +120,38 @@ namespace TAO::API
                     bool fEventStop = false;
                     for(const auto& rEvent : vNotifications)
                     {
+                        /* Check for unique events. */
+                        if(setUnique.count(std::make_pair(rEvent.first, rEvent.second)))
+                            continue;
+
                         /* Build our contracts now. */
                         if(build_notification(hashGenesis, jSession, rEvent, false, fEventStop, vContracts))
+                        {
+                            setUnique.insert(std::make_pair(rEvent.first, rEvent.second));
                             fEventStop = true;
+                        }
                     }
 
                     /* Get a list of our active events. */
                     std::vector<std::pair<uint512_t, uint32_t>> vContractSent;
                     LLD::Logical->ListContracts(hashGenesis, vContractSent, 100); //maximum of 100 per iteration
 
-                    /* Loop through our active notifications. */
+                    /* Loop through our sent contracts. */
                     bool fContractStop = false;
                     for(const auto& rEvent : vContractSent)
                     {
+                        /* Check for unique events. */
+                        if(setUnique.count(std::make_pair(rEvent.first, rEvent.second)))
+                            continue;
+
                         /* Build our contracts now. */
                         if(build_notification(hashGenesis, jSession, rEvent, true, fContractStop, vContracts))
+                        {
+                            setUnique.insert(std::make_pair(rEvent.first, rEvent.second));
                             fContractStop = true;
-                    }
+                        }
 
-                    /* Track our unique events as we progress forward. */
-                    std::set<std::pair<uint512_t, uint32_t>> setUnique;
+                    }
 
                     /* Get the list of registers owned by this sig chain */
                     std::map<uint256_t, std::pair<Accounts, uint256_t>> mapAssets;

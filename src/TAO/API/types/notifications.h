@@ -60,28 +60,28 @@ namespace TAO::API
 
 
         /** SanitizeContract
-        *
-        *  Checks that the contract passes both Build() and Execute()
-        *
-        *  @param[out] rContract The contract to sanitize
-        *  @param[out] mapStates map of register states used by Build()
-        *
-        *  @return True if the contract was sanitized without errors.
-        *
-        **/
+         *
+         *  Checks that the contract passes both Build() and Execute()
+         *
+         *  @param[out] rContract The contract to sanitize
+         *  @param[out] mapStates map of register states used by Build()
+         *
+         *  @return True if the contract was sanitized without errors.
+         *
+         **/
         static bool SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates);
 
 
         /** SanitizeContract
-        *
-        *  Checks that the contract passes both Build() and Execute()
-        *
-        *  @param[in] hashGenesis The sigchain that is calling to sanitize.
-        *  @param[out] rContract The contract to sanitize
-        *
-        *  @return True if the contract was sanitized without errors.
-        *
-        **/
+         *
+         *  Checks that the contract passes both Build() and Execute()
+         *
+         *  @param[in] hashGenesis The sigchain that is calling to sanitize.
+         *  @param[out] rContract The contract to sanitize
+         *
+         *  @return True if the contract was sanitized without errors.
+         *
+         **/
         static bool SanitizeContract(const uint256_t& hashGenesis, TAO::Operation::Contract &rContract);
 
 
