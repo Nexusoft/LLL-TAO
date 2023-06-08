@@ -588,13 +588,6 @@ namespace LLP
                         debug::log(3, FUNCTION, "Connected to DNS Address: ", strDNS);
                 }
             }
-
-            /* Print the debug info every 10s */
-            if(TIMER.Elapsed() >= 10)
-            {
-                debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
-                TIMER.Reset();
-            }
         }
     }
 

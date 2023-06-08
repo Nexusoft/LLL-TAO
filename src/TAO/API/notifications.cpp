@@ -150,7 +150,6 @@ namespace TAO::API
                             setUnique.insert(std::make_pair(rEvent.first, rEvent.second));
                             fContractStop = true;
                         }
-
                     }
 
                     /* Get the list of registers owned by this sig chain */
