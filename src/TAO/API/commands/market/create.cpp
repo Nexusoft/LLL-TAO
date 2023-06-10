@@ -97,6 +97,10 @@ namespace TAO::API
             dTotal =
                 (dAmount / dPrice);
 
+            /* Check that we have a valid total. */
+            if(dTotal == 0)
+                throw Exception(-7, "Order total value is zero, make sure you are using the correct amounts");
+
             /* Set our values now. */
             nDebit  = dAmount.nValue;
             nCredit = dTotal.nValue;
@@ -128,6 +132,10 @@ namespace TAO::API
             /* Calculate our total value now. */
             dTotal =
                 (dAmount * dPrice);
+
+            /* Check that we have a valid total. */
+            if(dTotal == 0)
+                throw Exception(-7, "Order total value is zero, make sure you are using the correct amounts");
 
             /* Set our values now. */
             nDebit  = dAmount.nValue;

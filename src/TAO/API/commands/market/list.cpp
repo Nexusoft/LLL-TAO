@@ -100,6 +100,10 @@ namespace TAO::API
                     encoding::json jOrder =
                         OrderToJSON(tContract, pairMarket);
 
+                    /* Check for null value. */
+                    if(jOrder.is_null())
+                        continue;
+
                     /* Check that we match our filters. */
                     if(!FilterResults(jParams, jOrder))
                         continue;
@@ -177,6 +181,10 @@ namespace TAO::API
                     /* Get our order's json. */
                     encoding::json jOrder =
                         OrderToJSON(tContract, pairMarket);
+
+                    /* Check for null value. */
+                    if(jOrder.is_null())
+                        continue;
 
                     /* Check that we match our filters. */
                     if(!FilterResults(jParams, jOrder))
