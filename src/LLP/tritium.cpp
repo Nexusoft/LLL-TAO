@@ -2508,16 +2508,6 @@ namespace LLP
                         /* Check for missing transactions. */
                         if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         {
-                            /* Check for repeated missing loops. */
-                            if(fDDOS.load())
-                            {
-                                /* Iterate a failure for missing transactions. */
-                                nConsecutiveFails += block.vMissing.size();
-
-                                /* Bump DDOS score. */
-                                DDOS->rSCORE += (block.vMissing.size() * 10);
-                            }
-
                             /* Create response data stream. */
                             DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
@@ -2538,16 +2528,36 @@ namespace LLP
                                 /* Check if we need to create new protocol message. */
                                 if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
                                 {
-                                    debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items");
+                                    /* Let's try up to 100 times to get the transaction data each from different nodes. */
+                                    for(uint32_t n = 0; n < 100; ++n)
+                                    {
+                                        /* Normal case of asking for a getblocks inventory message. */
+                                        std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
+                                        if(pnode != nullptr)
+                                        {
+                                            /* Send out another getblocks request. */
+                                            try
+                                            {
+                                                debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
 
-                                    /* Write our packet with our total items. */
-                                    WritePacket(NewMessage(ACTION::GET, ssResponse));
+                                                /* Write our packet with our total items. */
+                                                pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
 
-                                    /* Clear our response data. */
-                                    ssResponse.clear();
+                                                /* Clear our response data. */
+                                                ssResponse.clear();
 
-                                    /* Reset our counters. */
-                                    nTotalItems = 0;
+                                                /* Reset our counters. */
+                                                nTotalItems = 0;
+
+                                                break;
+                                            }
+                                            catch(const std::exception& e)
+                                            {
+                                                /* Recurse on failure. */
+                                                debug::error(FUNCTION, e.what());
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
@@ -2680,7 +2690,7 @@ namespace LLP
                     ++nConsecutiveOrphans;
 
                 /* Detect large orphan chains and ask for new blocks from origin again. */
-                if(nConsecutiveOrphans >= 1000)
+                if(nConsecutiveOrphans >= 10000)
                 {
                     {
                         LOCK(TAO::Ledger::PROCESSING_MUTEX);
@@ -2827,7 +2837,7 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 100)
+                if(nConsecutiveFails >= 10000)
                 {
                     /* Only drop the node when syncronizing the chain. */
                     if(TAO::Ledger::ChainState::Synchronizing())
@@ -2839,7 +2849,7 @@ namespace LLP
 
 
                 /* Check for orphan limit on node. */
-                if(nConsecutiveOrphans >= 1000)
+                if(nConsecutiveOrphans >= 10000)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;
