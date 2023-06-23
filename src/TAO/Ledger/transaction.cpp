@@ -570,7 +570,7 @@ namespace TAO
 
             return true;
         }
-        
+
 
         /* Check the trust score that is claimed is correct. */
         static const uint256_t hashConsistencyCheck = uint256_t("0xa15efdcd1969a9a645eda0296b52678f1ef3d9e91ec9f54a4f82f9ab7ce65a6c");
@@ -1006,7 +1006,7 @@ namespace TAO
 
                     /* Check fo register in database. */
                     if(!LLD::Logical->PushRegisterTx(hashAddress, hash))
-                        return debug::error(FUNCTION, "failed to push register tx ", TAO::Register::Address(hashAddress).ToString());
+                        debug::warning(FUNCTION, "failed to push register tx ", TAO::Register::Address(hashAddress).ToString());
 
                     /* Push the address now. */
                     setAddresses.insert(hashAddress);
@@ -1127,7 +1127,7 @@ namespace TAO
 
                     /* Check fo register in database. */
                     if(!LLD::Logical->EraseRegisterTx(hashAddress))
-                        return debug::error(FUNCTION, "failed to erase register tx ", TAO::Register::Address(hashAddress).ToString());
+                        debug::warning(FUNCTION, "failed to erase register tx ", TAO::Register::Address(hashAddress).ToString());
 
                     /* Push the address now. */
                     setAddresses.insert(hashAddress);
