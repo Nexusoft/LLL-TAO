@@ -333,7 +333,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(Legacy::Wallet::Instance().CreateTransaction(vecSend, wtx, changeKey, nFees, 1));
 
             //get best
-            TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+            TAO::Ledger::BlockState state = TAO::Ledger::ChainState::tStateBest.load();
             state.hashNextBlock = LLC::GetRand1024();
 
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -358,11 +358,11 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         }
 
         //set best
-        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::tStateBest.load();
         ++state.nHeight;
         state.hashNextBlock = LLC::GetRand1024();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -416,7 +416,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         ++state.nHeight;
         state.hashNextBlock = LLC::GetRand1024();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -469,7 +469,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         ++state.nHeight;
         state.hashNextBlock = LLC::GetRand1024();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));

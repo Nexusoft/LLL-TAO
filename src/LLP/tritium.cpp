@@ -2200,7 +2200,7 @@ namespace LLP
                                             Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                             /* Total blocks synchronized */
-                                            uint32_t nBlocks = TAO::Ledger::ChainState::stateBest.load().nHeight - nSyncStart.load();
+                                            uint32_t nBlocks = TAO::Ledger::ChainState::tStateBest.load().nHeight - nSyncStart.load();
 
                                             /* Calculate the time to sync*/
                                             uint32_t nElapsed = SYNCTIMER.Elapsed();
@@ -3777,7 +3777,7 @@ namespace LLP
 
         /* Cache the height at the start of the sync */
         if(nSyncStart.load() == 0)
-            nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);
+            nSyncStart.store(TAO::Ledger::ChainState::tStateBest.load().nHeight);
 
         /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
         SYNCTIMER.Stop();

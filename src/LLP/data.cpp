@@ -593,7 +593,13 @@ namespace LLP
 
         /* Adjust our internal counters for incoming/outbound. */
         if(CONNECTIONS->at(nIndex)->Incoming())
+        {
             --nIncoming;
+
+            /* Handle Meters and DDOS. */
+            if(fMETER)
+                ++ProtocolType::DISCONNECTS;
+        }
         else
             --nOutbound;
 

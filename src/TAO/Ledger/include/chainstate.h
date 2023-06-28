@@ -98,7 +98,7 @@ namespace TAO
 
 
             /** The best block in the chain. **/
-            extern memory::atomic<BlockState> stateBest;
+            extern memory::atomic<BlockState> tStateBest;
 
 
             /** The best block in the chain. **/

@@ -55,11 +55,11 @@ namespace Legacy
         unsigned int nHashAverageTime = 0;
         double nHashAverageDifficulty = 0.0;
         if(TAO::Ledger::ChainState::nBestHeight.load() > 0
-        && TAO::Ledger::ChainState::stateBest != TAO::Ledger::ChainState::stateGenesis)
+        && TAO::Ledger::ChainState::tStateBest != TAO::Ledger::ChainState::stateGenesis)
         {
             uint64_t nTimeConstant = 276758250000;
 
-            TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest.load();
+            TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::tStateBest.load();
 
             bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
             for(; (nHTotal < 1440 && bLastStateFound); ++nHTotal)
@@ -106,12 +106,12 @@ namespace Legacy
         uint64_t nPrimePS = 0;
         double nPrimeAverageDifficulty = 0.0;
         uint32_t nPrimeAverageTime = 0;
-        if(TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
+        if(TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::tStateBest.load() != TAO::Ledger::ChainState::stateGenesis)
         {
 
             uint32_t nPrimeTimeConstant = 2480;
             uint32_t nTotal = 0;
-            TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest.load();
+            TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::tStateBest.load();
 
             bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
             for(; (nTotal < 1440 && bLastStateFound); ++nTotal)
@@ -177,7 +177,7 @@ namespace Legacy
                 continue;
 
             /* Ignore inactive trust keys */
-            if((trustKey.nLastBlockTime + nActiveTime) < TAO::Ledger::ChainState::stateBest.load().GetBlockTime())
+            if((trustKey.nLastBlockTime + nActiveTime) < TAO::Ledger::ChainState::tStateBest.load().GetBlockTime())
                 continue;
 
             /* Put trust keys into a map keyed by stake rate (sorts them by rate) */
@@ -236,13 +236,13 @@ namespace Legacy
             return std::string(
                 "getdifficulty - Returns difficulty as a multiple of the minimum difficulty.");
 
-        TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::tStateBest.load();
         bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
 
-        TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::tStateBest.load();
         bool fHasPrime = TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
-        TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::tStateBest.load();
         bool fHasHash = TAO::Ledger::GetLastState(lastHashBlockState, 2);
 
 
@@ -278,15 +278,15 @@ namespace Legacy
 
         encoding::json obj;
 
-        /* Read the stateBest using hashBestChain
-         * Cannot use ChainState::stateBest for this because certain fields (like money supply) are not populated
+        /* Read the tStateBest using hashBestChain
+         * Cannot use ChainState::tStateBest for this because certain fields (like money supply) are not populated
          */
-        TAO::Ledger::BlockState stateBest;
-        if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), stateBest))
+        TAO::Ledger::BlockState tStateBest;
+        if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), tStateBest))
             return std::string("Block not found");
 
-        uint32_t nMinutes = TAO::Ledger::GetChainAge(stateBest.GetBlockTime());
-        int64_t nSupply = stateBest.nMoneySupply;
+        uint32_t nMinutes = TAO::Ledger::GetChainAge(tStateBest.GetBlockTime());
+        int64_t nSupply = tStateBest.nMoneySupply;
         int64_t nTarget = TAO::Ledger::CompoundSubsidy(nMinutes);
 
         obj["chainAge"] = (int)nMinutes;
@@ -336,7 +336,7 @@ namespace Legacy
             nMinutes = TAO::Ledger::GetChainAge(timestamp);
         }
         else
-            nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+            nMinutes = TAO::Ledger::GetChainAge(TAO::Ledger::ChainState::tStateBest.load().GetBlockTime());
 
         obj["chainAge"] = (int)nMinutes;
         obj["miners"] = Legacy::SatoshisToAmount(TAO::Ledger::CompoundSubsidy(nMinutes, 0));

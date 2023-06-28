@@ -455,11 +455,11 @@ namespace LLD
 
         /* Switch for coinbase. */
         if(tx.IsCoinBase())
-            return nConfirms >= TAO::Ledger::MaturityCoinBase((pblock ? *pblock : TAO::Ledger::ChainState::stateBest.load()));
+            return nConfirms >= TAO::Ledger::MaturityCoinBase((pblock ? *pblock : TAO::Ledger::ChainState::tStateBest.load()));
 
         /* Switch for coinstake. */
         else if(tx.IsCoinStake())
-            return nConfirms >= TAO::Ledger::MaturityCoinStake((pblock ? *pblock : TAO::Ledger::ChainState::stateBest.load()));
+            return nConfirms >= TAO::Ledger::MaturityCoinStake((pblock ? *pblock : TAO::Ledger::ChainState::tStateBest.load()));
 
         else
             return true; //non-producer transactions have no maturity requirement

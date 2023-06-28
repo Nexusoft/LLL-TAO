@@ -689,7 +689,7 @@ namespace LLP
                     if(GetConnectionCount(FLAGS::INCOMING) >= CONFIG.MAX_INCOMING
                     || GetConnectionCount(FLAGS::ALL) >= CONFIG.MAX_CONNECTIONS)
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
+                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
                         closesocket(hSocket);
                         runtime::sleep(500);
 
@@ -706,7 +706,7 @@ namespace LLP
                     /* Check that an address is banned. */
                     if(DDOS_MAP->count(addr) && DDOS_MAP->at(addr)->Banned())
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
                         sockNew.Close();
 
                         continue;
@@ -715,7 +715,7 @@ namespace LLP
                     /* Check for errors accepting the connection */
                     if(sockNew.Errors())
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
+                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
                         sockNew.Close();
 
                         continue;
@@ -724,7 +724,7 @@ namespace LLP
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if(!CheckPermissions(addr.ToStringIP(), fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE))
                     {
-                        debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
+                        debug::error(FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
                         sockNew.Close();
 
@@ -747,7 +747,7 @@ namespace LLP
                     dt->AddConnection(sockNew, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addr) : nullptr);
 
                     /* Verbose output. */
-                    debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
+                    debug::log(4, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
                 }
             }
             else
@@ -892,6 +892,8 @@ namespace LLP
 
             /* Total incoming and outgoing packets. */
             uint32_t RPS = ProtocolType::REQUESTS / TIMER.Elapsed();
+            uint32_t CPS = ProtocolType::CONNECTIONS / TIMER.Elapsed();
+            uint32_t DPS = ProtocolType::DISCONNECTS / TIMER.Elapsed();
             uint32_t PPS = ProtocolType::PACKETS / TIMER.Elapsed();
 
             /* Omit meter when zero values detected. */
@@ -901,16 +903,19 @@ namespace LLP
             /* Meter output. */
             debug::log(0,
                 ANSI_COLOR_FUNCTION, Name(), " LLP : ", ANSI_COLOR_RESET,
+                CPS, " Accepts/s | ",
+                DPS, " Closing/s | ",
                 RPS, " Incoming/s | ",
                 PPS, " Outgoing/s | ",
-                RPS + PPS, " Packets/s | ",
-                nGlobalConnections, " Connections."
+                nGlobalConnections, " Connections"
             );
 
             /* Reset meter info. */
             TIMER.Reset();
             ProtocolType::REQUESTS.store(0);
             ProtocolType::PACKETS.store(0);
+            ProtocolType::CONNECTIONS.store(0);
+            ProtocolType::DISCONNECTS.store(0);
         }
     }
 

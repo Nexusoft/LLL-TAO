@@ -385,7 +385,7 @@ namespace LLP
             case SET_COINBASE:
             {
                 /* The maximum coinbase reward for a block. */
-                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
+                uint64_t nMaxValue = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::tStateBest.load(), nChannel.load(), 0);
 
                 /* Make sure there is a coinbase reward. */
                 if(nMaxValue == 0)
@@ -524,7 +524,7 @@ namespace LLP
             case GET_REWARD:
             {
                 /* Get the mining reward amount for the channel currently set. */
-                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), nChannel.load(), 0);
+                uint64_t nReward = TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::tStateBest.load(), nChannel.load(), 0);
 
                 /* Check to make sure the reward is greater than zero. */
                 if(nReward == 0)

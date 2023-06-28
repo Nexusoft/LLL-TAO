@@ -280,7 +280,7 @@ namespace TAO
         /* Update the nTime of the current block. */
         void TritiumBlock::UpdateTime()
         {
-            nTime = static_cast<uint32_t>(std::max(ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+            nTime = static_cast<uint32_t>(std::max(ChainState::tStateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
         }
 
 

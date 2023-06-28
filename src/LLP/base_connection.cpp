@@ -41,6 +41,16 @@ namespace LLP
     std::atomic<uint64_t> BaseConnection<PacketType>::PACKETS;
 
 
+    /* Total connection requests. */
+    template <class PacketType>
+    std::atomic<uint64_t> BaseConnection<PacketType>::CONNECTIONS;
+
+
+    /* Total connection requests. */
+    template <class PacketType>
+    std::atomic<uint64_t> BaseConnection<PacketType>::DISCONNECTS;
+
+
     /* Build Base Connection with no parameters */
     template <class PacketType>
     BaseConnection<PacketType>::BaseConnection()

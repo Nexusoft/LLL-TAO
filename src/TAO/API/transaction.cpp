@@ -208,11 +208,11 @@ namespace TAO::API
 
         /* Switch for coinbase. */
         if(IsCoinBase())
-            return (nConfirmations >= TAO::Ledger::MaturityCoinBase(TAO::Ledger::ChainState::stateBest.load()));
+            return (nConfirmations >= TAO::Ledger::MaturityCoinBase(TAO::Ledger::ChainState::tStateBest.load()));
 
         /* Switch for coinstake. */
         if(IsCoinStake())
-            return (nConfirmations >= TAO::Ledger::MaturityCoinStake(TAO::Ledger::ChainState::stateBest.load()));
+            return (nConfirmations >= TAO::Ledger::MaturityCoinStake(TAO::Ledger::ChainState::tStateBest.load()));
 
         return true; //we shouldn't get here, but if we do return true
     }

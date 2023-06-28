@@ -159,7 +159,7 @@ namespace LLP
                 case SSL_ERROR_SYSCALL:
                     /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we
                        need to shutdown, too. */
-                    debug::log(3, FUNCTION, "SSL handshake - Peer closed connection ");
+                    debug::error(FUNCTION, "SSL handshake - Peer closed connection ");
                     nError.store(ERR_get_error());
                     nStatus = -1;
                     break;
@@ -185,7 +185,7 @@ namespace LLP
                     }
                     else // Timeout or failure
                     {
-                        debug::log(3, FUNCTION, "SSL handshake - peer timeout or failure");
+                        debug::error(FUNCTION, "SSL handshake - peer timeout or failure");
                         nStatus = -1;
                     }
                 }
@@ -193,13 +193,13 @@ namespace LLP
             while (nStatus == 1 && !SSL_is_init_finished(pSSL));
 
             if(nStatus >= 0)
-                debug::log(3, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
+                debug::log(4, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
             else
             {
                 if(nError)
-                    debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
+                    debug::error(FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
                 else
-                    debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString());
+                    debug::error(FUNCTION, "SSL Accept failed ",  addr.ToString());
                 /* Free the SSL resources */
                 SSL_free(pSSL);
                 pSSL = nullptr;

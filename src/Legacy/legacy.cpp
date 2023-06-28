@@ -225,7 +225,7 @@ namespace Legacy
     /* Update the nTime of the current block. */
     void LegacyBlock::UpdateTime()
     {
-        nTime = static_cast<uint32_t>(std::max(TAO::Ledger::ChainState::stateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
+        nTime = static_cast<uint32_t>(std::max(TAO::Ledger::ChainState::tStateBest.load().GetBlockTime() + 1, runtime::unifiedtimestamp()));
     }
 
 
@@ -387,7 +387,6 @@ namespace Legacy
 
         /* Check for duplicate txid's. */
         if(setUniqueTx.size() != vtx.size())
-            //TODO: push this block to a chainstate worker thread.
             return debug::error(FUNCTION, "duplicate transaction");
 
         /* Check the signature operations for legacy. */

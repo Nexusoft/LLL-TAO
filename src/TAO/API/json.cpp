@@ -2052,7 +2052,7 @@ namespace TAO::API
         };
 
         /* Get our last block state. */
-        TAO::Ledger::BlockState tBlock = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState tBlock = TAO::Ledger::ChainState::tStateBest.load();
         if(TAO::Ledger::GetLastState(tBlock, nChannel))
         {
             /* Populate our heights and weights. */

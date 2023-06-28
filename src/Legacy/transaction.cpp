@@ -551,7 +551,7 @@ namespace Legacy
                     /* Current state is not connected (eg, this is a candidate block)
                      * so begin repair from best state
                      */
-                    statePrev = TAO::Ledger::ChainState::stateBest.load();
+                    statePrev = TAO::Ledger::ChainState::tStateBest.load();
                 }
                 else
                     statePrev = block;
@@ -1466,11 +1466,11 @@ namespace Legacy
                 return debug::error(FUNCTION, "version 4 block sequence number is ", nSequence);
 
             /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
-            if(trustKey.Expired(TAO::Ledger::ChainState::stateBest.load()))
+            if(trustKey.Expired(TAO::Ledger::ChainState::tStateBest.load()))
                 return debug::error("version 4 key expired");
 
             /* Score is the total age of the trust key for version 4. */
-            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::tStateBest.load().GetBlockTime());
         }
 
         /* Version 5 blocks that are trust must pass sequence checks. */

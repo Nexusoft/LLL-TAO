@@ -109,7 +109,7 @@ namespace TAO::API
             else
             {
                 /* Grab latest checkpoint from best block. */
-                tLastBlock = TAO::Ledger::ChainState::stateBest.load();
+                tLastBlock = TAO::Ledger::ChainState::tStateBest.load();
 
                 /* Set starting based on second to last checkpoint block. */
                 while(tLastBlock.nHeight + nLimit > TAO::Ledger::ChainState::nBestHeight.load())
