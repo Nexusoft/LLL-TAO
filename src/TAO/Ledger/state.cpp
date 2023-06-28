@@ -82,7 +82,7 @@ namespace TAO
             }
 
             /* If the max depth expired, return the genesis. */
-            state = ChainState::stateGenesis;
+            state = ChainState::tStateGenesis;
 
             return false;
         }
@@ -836,7 +836,7 @@ namespace TAO
             uint1024_t hash = GetHash();
 
             /* Watch for genesis. */
-            if(!ChainState::stateGenesis)
+            if(!ChainState::tStateGenesis)
             {
                 /* Write the best chain pointer. */
                 if(!LLD::Ledger->WriteBestChain(hash))
@@ -847,7 +847,7 @@ namespace TAO
                     return debug::error(FUNCTION, "block state already exists");
 
                 /* Set the genesis block. */
-                ChainState::stateGenesis = *this;
+                ChainState::tStateGenesis = *this;
             }
             else
             {
@@ -1235,7 +1235,7 @@ namespace TAO
 
                 /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
                 if(hashPrevBlock == ChainState::Genesis())
-                    ChainState::stateGenesis = prev;
+                    ChainState::tStateGenesis = prev;
             }
 
             return true;

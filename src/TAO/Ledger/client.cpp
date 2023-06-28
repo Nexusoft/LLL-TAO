@@ -78,7 +78,7 @@ namespace TAO
             }
 
             /* If the max depth expired, return the genesis. */
-            state = ChainState::stateGenesis;
+            state = ChainState::tStateGenesis;
 
             return false;
         }
@@ -674,7 +674,7 @@ namespace TAO
 
                 /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
                 if(prev.nHeight == 0)
-                    ChainState::stateGenesis = prev;
+                    ChainState::tStateGenesis = prev;
             }
 
             return true;

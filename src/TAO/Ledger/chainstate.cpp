@@ -56,7 +56,7 @@ namespace TAO
 
 
         /* The best block in the chain. */
-        BlockState ChainState::stateGenesis;
+        BlockState ChainState::tStateGenesis;
 
 
         /* Flag to tell if initial blocks are downloading. */
@@ -189,7 +189,7 @@ namespace TAO
                 debug::error(FUNCTION, "failed to read best block, attempting to recover database");
 
                 /* If hashBestChain exists, but block doesn't attempt to recover database from invalid write.  */
-                BlockState tStateBestKnown = stateGenesis;
+                BlockState tStateBestKnown = tStateGenesis;
                 while(!tStateBestKnown.IsNull() && tStateBestKnown.hashNextBlock != 0)
                 {
                     tStateBest = tStateBestKnown;
@@ -280,7 +280,7 @@ namespace TAO
             hashCheckpoint = tStateBest.load().hashCheckpoint;
 
             /* Find the last checkpoint. */
-            if(tStateBest != stateGenesis)
+            if(tStateBest != tStateGenesis)
             {
                 /* Go back 10 checkpoints on startup. */
                 for(uint32_t i = 0; i < config::GetArg("-checkpoints", 100); ++i)
@@ -291,7 +291,7 @@ namespace TAO
                         break;
 
                     /* Check we haven't reached the genesis */
-                    if(state == stateGenesis)
+                    if(state == tStateGenesis)
                         break;
 
                     /* Get the previous state. */
@@ -320,7 +320,7 @@ namespace TAO
                 if(config::GetBoolArg("-reindexheight") || !LLD::Ledger->ReadBlock(nCheckpointHeight.load(), tLastBlock))
                 {
                     /* Set our last block as genesis. */
-                    tLastBlock = stateGenesis;
+                    tLastBlock = tStateGenesis;
 
                     /* Use genesis as our hash start. */
                     uint1024_t hashStart = tLastBlock.GetHash();

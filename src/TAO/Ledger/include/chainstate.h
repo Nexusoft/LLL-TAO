@@ -102,7 +102,7 @@ namespace TAO
 
 
             /** The best block in the chain. **/
-            extern BlockState stateGenesis;
+            extern BlockState tStateGenesis;
 
         }
     }

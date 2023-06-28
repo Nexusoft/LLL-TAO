@@ -171,7 +171,7 @@ namespace Legacy
         uint64_t nPrimePS = 0;
         uint64_t nHashRate = 0;
         if(TAO::Ledger::ChainState::nBestHeight.load()
-        && TAO::Ledger::ChainState::tStateBest.load() != TAO::Ledger::ChainState::stateGenesis)
+        && TAO::Ledger::ChainState::tStateBest.load() != TAO::Ledger::ChainState::tStateGenesis)
         {
             double nPrimeAverageDifficulty = 0.0;
             uint32_t nPrimeAverageTime = 0;
@@ -199,7 +199,7 @@ namespace Legacy
             else
             {
                 /* Edge case where there are no prime blocks so use the difficulty from genesis */
-                blockState = TAO::Ledger::ChainState::stateGenesis;
+                blockState = TAO::Ledger::ChainState::tStateGenesis;
                 nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
             }
 
@@ -235,7 +235,7 @@ namespace Legacy
             else
             {
                 /* Edge case where there are no hash blocks so use the difficulty from genesis */
-                blockState = TAO::Ledger::ChainState::stateGenesis;
+                blockState = TAO::Ledger::ChainState::tStateGenesis;
                 nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 2));
             }
         }
@@ -289,7 +289,7 @@ namespace Legacy
             //obj["totalConnections"] = LLP::MINING_LLP->TotalConnections();
         }
 
-        //obj["genesisblockhash"] = TAO::Ledger::ChainState::stateGenesis.GetHash().GetHex();
+        //obj["genesisblockhash"] = TAO::Ledger::ChainState::tStateGenesis.GetHash().GetHex();
         //obj["currentblockhash"] = TAO::Ledger::ChainState::tStateBest.load().GetHash().GetHex();
 
         return obj;

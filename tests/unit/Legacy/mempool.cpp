@@ -102,7 +102,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //write index
-            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::tStateGenesis.GetHash()));
 
             //set the hash
             hashCoinbaseTx = tx.GetHash();
@@ -151,7 +151,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //write index
-            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::tStateGenesis.GetHash()));
 
         }
 
@@ -285,7 +285,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             txDependant1   = tx;
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
         }
 
 
@@ -362,7 +362,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             txDependant2   = tx;
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
         }
 
@@ -431,7 +431,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //write index
-            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::tStateGenesis.GetHash()));
 
             //remove from pool
             REQUIRE(TAO::Ledger::mempool.Remove(tx.GetHash()));

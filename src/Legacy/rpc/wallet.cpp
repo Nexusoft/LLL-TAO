@@ -303,7 +303,7 @@ namespace Legacy
         if(fHelp || params.size() != 0)
             return std::string("rescan - Rescans the database for relevant wallet transactions.");
 
-        Legacy::Wallet::Instance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+        Legacy::Wallet::Instance().ScanForWalletTransactions(TAO::Ledger::ChainState::tStateGenesis, true);
 
         return "success";
 

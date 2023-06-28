@@ -59,7 +59,7 @@ namespace Legacy
             {
                 debug::log(0, FUNCTION, "Wallet.dat was cleaned or repaired, rescanning now");
 
-                Legacy::Wallet::Instance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+                Legacy::Wallet::Instance().ScanForWalletTransactions(TAO::Ledger::ChainState::tStateGenesis, true);
             }
             else
                 return debug::error("Failed loading wallet.dat");
@@ -67,7 +67,7 @@ namespace Legacy
 
         /* Handle Rescanning. */
         if(config::GetBoolArg(std::string("-rescan")))
-            Legacy::Wallet::Instance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+            Legacy::Wallet::Instance().ScanForWalletTransactions(TAO::Ledger::ChainState::tStateGenesis, true);
 
         /* Relay transactions. */
         Legacy::Wallet::Instance().ResendWalletTransactions();

@@ -643,7 +643,7 @@ namespace TAO::Ledger
             hashGenesis = TAO::Ledger::ChainState::Genesis();
 
         /* Check for genesis from disk. */
-        if(!LLD::Ledger->ReadBlock(hashGenesis, ChainState::stateGenesis))
+        if(!LLD::Ledger->ReadBlock(hashGenesis, ChainState::tStateGenesis))
         {
             /* Check for client mode. */
             BlockState state;
@@ -692,11 +692,11 @@ namespace TAO::Ledger
                 return debug::error(FUNCTION, "genesis hash does not match");
 
             /* Set the proper chain state variables. */
-            ChainState::stateGenesis = state;
+            ChainState::tStateGenesis = state;
 
             /* Set the best block. */
             ChainState::hashBestChain = hashGenesis;
-            ChainState::tStateBest     = ChainState::stateGenesis;
+            ChainState::tStateBest     = ChainState::tStateGenesis;
         }
         else if(config::fHybrid.load())
             hashGenesisHybrid = hashGenesis; //we need to set our new genesis hash here

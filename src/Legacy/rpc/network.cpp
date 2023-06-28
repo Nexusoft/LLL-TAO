@@ -55,7 +55,7 @@ namespace Legacy
         unsigned int nHashAverageTime = 0;
         double nHashAverageDifficulty = 0.0;
         if(TAO::Ledger::ChainState::nBestHeight.load() > 0
-        && TAO::Ledger::ChainState::tStateBest != TAO::Ledger::ChainState::stateGenesis)
+        && TAO::Ledger::ChainState::tStateBest != TAO::Ledger::ChainState::tStateGenesis)
         {
             uint64_t nTimeConstant = 276758250000;
 
@@ -106,7 +106,7 @@ namespace Legacy
         uint64_t nPrimePS = 0;
         double nPrimeAverageDifficulty = 0.0;
         uint32_t nPrimeAverageTime = 0;
-        if(TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::tStateBest.load() != TAO::Ledger::ChainState::stateGenesis)
+        if(TAO::Ledger::ChainState::nBestHeight.load() > 0 && TAO::Ledger::ChainState::tStateBest.load() != TAO::Ledger::ChainState::tStateGenesis)
         {
 
             uint32_t nPrimeTimeConstant = 2480;

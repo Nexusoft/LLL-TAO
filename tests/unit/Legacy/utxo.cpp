@@ -67,12 +67,12 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
 
         //conect tx
-        REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::stateGenesis, TAO::Ledger::FLAGS::BLOCK));
+        REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::tStateGenesis, TAO::Ledger::FLAGS::BLOCK));
 
-        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
+        REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::tStateGenesis.GetHash()));
 
         //add to wallet
-        REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+        REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
         //check balance
         REQUIRE(Legacy::Wallet::Instance().GetBalance() == 1000000);
@@ -100,7 +100,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Ledger->WriteTx(tx.GetHash(), tx));
 
             //write index
-            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::stateGenesis.GetHash()));
+            REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::tStateGenesis.GetHash()));
 
             //set the hash
             hashCoinbaseTx = tx.GetHash();
@@ -198,7 +198,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE_FALSE(tx.Verify());
 
             //add to wallet
-            REQUIRE_THROWS(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE_THROWS(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
         }
 
 
@@ -248,10 +248,10 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             REQUIRE(LLD::Ledger->WriteTx(hashTx, tx));
 
             //index block
-            REQUIRE(LLD::Ledger->IndexBlock(hashTx, TAO::Ledger::ChainState::stateGenesis.GetHash()));
+            REQUIRE(LLD::Ledger->IndexBlock(hashTx, TAO::Ledger::ChainState::tStateGenesis.GetHash()));
 
             //add to wallet
-            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
             //check register values
             {

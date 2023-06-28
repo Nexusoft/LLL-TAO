@@ -186,7 +186,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
         //add to wallet
-        REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+        REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
         //check balance
         REQUIRE(wallet.GetBalance() == nBalance);
@@ -632,7 +632,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
             //add to wallet
-            REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
             //check balance
             REQUIRE(wallet.GetBalance() == nBalance);
@@ -1033,7 +1033,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
         //add to wallet
-        REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+        REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
         //check balance
         REQUIRE(wallet.GetBalance() == nBalance);
@@ -1624,7 +1624,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
             //add to wallet
-            REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
             //check balance
             REQUIRE(wallet.GetBalance() == nBalance);
