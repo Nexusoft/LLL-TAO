@@ -116,10 +116,6 @@ namespace TAO::API
                 rBalances.second.at("decimals");
 
             /* Grab unconfirmed outgoing balances. */
-            const uint64_t nIncoming =
-                GetUnconfirmed(hashGenesis, hashToken, false);
-
-            /* Grab unconfirmed outgoing balances. */
             const uint64_t nOutgoing =
                 GetUnconfirmed(hashGenesis, hashToken, true);
 
@@ -127,10 +123,10 @@ namespace TAO::API
             encoding::json jBalances;
 
             /* Populate the rest of the balances. */
-            jBalances["available"]    = FormatBalance(rBalances.second.at("balance") + nIncoming - nOutgoing, nDecimals);
+            jBalances["available"]    = FormatBalance(rBalances.second.at("balance") - nOutgoing, nDecimals);
             jBalances["confirmed"]    = FormatBalance(rBalances.second.at("balance"), nDecimals);
             jBalances["unclaimed"]    = FormatBalance(GetUnclaimed(hashGenesis, hashToken), nDecimals);
-            jBalances["unconfirmed"]  = FormatNegative(int64_t(nIncoming) - nOutgoing, nDecimals);
+            jBalances["unconfirmed"]  = FormatBalance(GetUnconfirmed(hashGenesis, hashToken, false), nDecimals);
             jBalances["decimals"]     = nDecimals;
             jBalances["token"]        = hashToken.ToString();
 
