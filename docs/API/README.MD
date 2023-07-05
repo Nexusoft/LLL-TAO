@@ -4,17 +4,17 @@ The Nexus Framework contains a powerful **RESTful Application Programming Interf
 
 | Commands   | Description |
 | :-----:| :-------- |
-| [``ASSETS``](//docs/API/COMMANDS/ASSETS.MD) | Set of commands available for creating and tokenizing `NFT's` |
-| [``FINANCE``](//docs/API/COMMANDS/FINANCE.MD) | Set of commands for creating and managing tokens and `NXS` |
-| [``INVOICES``](//docs/API/COMMANDS/INVOICES.MD) | Set of commands for issuing and paying invoices on-chain |
-| [``LEDGER``](//docs/API/COMMANDS/LEDGER.MD) | Set of low level commands for interacting directly with ledger layer |
-| [``MARKET``](//docs/API/COMMANDS/MARKET.MD) | Set of commands for creating and managing `DEFI` markets and `DEX` |
-| [``NAMES``](//docs/API/COMMANDS/NAMES.MD) | Set of commands for creating and managing name records for `TNS` |
-| [``PROFILES``](//docs/API/COMMANDS/PROFILES.MD) | Set of commands for creating and managing public profiles |
-| [``REGISTER``](//docs/API/COMMANDS/REGISTER.MD) | Set of low level commands for interacting directly with register layer |
-| [``SESSIONS``](//docs/API/COMMANDS/SESSIONS.MD) | Set of commands for creating and managing login sessions on node |
-| [``SUPPLY``](//docs/API/COMMANDS/SUPPLY.MD) | Set of commands for creating and managing supply chains |
-| [``SYSTEM``](//docs/API/COMMANDS/SYSTEM.MD) | Set of commands for getting system status and managing core system. |
+| [``ASSETS``](COMMANDS/ASSETS.MD) | Set of commands available for creating and tokenizing `NFT's` |
+| [``FINANCE``](COMMANDS/FINANCE.MD) | Set of commands for creating and managing tokens and `NXS` |
+| [``INVOICES``](COMMANDS/INVOICES.MD) | Set of commands for issuing and paying invoices on-chain |
+| [``LEDGER``](COMMANDS/LEDGER.MD) | Set of low level commands for interacting directly with ledger layer |
+| [``MARKET``](COMMANDS/MARKET.MD) | Set of commands for creating and managing `DEFI` markets and `DEX` |
+| [``NAMES``](COMMANDS/NAMES.MD) | Set of commands for creating and managing name records for `TNS` |
+| [``PROFILES``](COMMANDS/PROFILES.MD) | Set of commands for creating and managing public profiles |
+| [``REGISTER``](COMMANDS/REGISTER.MD) | Set of low level commands for interacting directly with register layer |
+| [``SESSIONS``](COMMANDS/SESSIONS.MD) | Set of commands for creating and managing login sessions on node |
+| [``SUPPLY``](COMMANDS/SUPPLY.MD) | Set of commands for creating and managing supply chains |
+| [``SYSTEM``](COMMANDS/SYSTEM.MD) | Set of commands for getting system status and managing core system. |
 
 Click any of the above links to be taken to the core documentation for that command-set, which includes supported verbs, nouns, filters, and operators. Each individual verb can support any combination of the aforementioned items, so make sure you reference the above documentation if running into unsupported object or operator.
 
