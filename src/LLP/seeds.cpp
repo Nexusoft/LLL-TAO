@@ -25,12 +25,6 @@ namespace LLP
         "node3.nexus.io",
         "node4.nexus.io",
 
-        //interactions DNS seeds
-        "lite1.nexenture.xyz",
-        "lite2.nexenture.xyz",
-        "lite3.nexenture.xyz",
-        "lite4.nexenture.xyz",
-
         //cryptowise university
         "seed1.nexusnode.cryptowiseuniversity.net",
         "seed2.nexusnode.cryptowiseuniversity.net",
