@@ -1,6 +1,6 @@
 # **Overview**
 
-The Nexus Framework contains a powerful **RESTful Application Programming Interface** or **API** that allows developers to easily develop **decentralized applications** or **Dapps** for shot. This `API` is broken into a set of commands that are logically grouped collection of functions that give access to a wide arrange of different use-cases. The current commands available are as follows:
+The Nexus Framework contains a powerful **RESTful Application Programming Interface** or **API** that allows developers to easily develop **decentralized applications** or **Dapps** for short. This `API` is broken into a set of commands that are logically grouped collection of functions that give access to a wide arrange of different use-cases. The current commands available are as follows:
 
 | Commands   | Description |
 | :-----:| :-------- |
