@@ -31,16 +31,16 @@ The following verbs are currently supported by this command-set:
 
 | Verb   | Description | Nouns |
 | :-----:  | :-------- | :---- |
-|[`create`](#create) | Generate a register of specified type | `asset`, `raw`, `readonly`, `schema` |
-|[`get`](#get) | Get register of supported type | `any`, `asset`, `raw`, `readonly`, `schema`
-|[`list`](#list) | List all registers owned by active session | `any`, `asset`, `raw`, `readonly`, `partial`, `schema` |
-|[`transfer`](#transfer) | Transfer a specified register | `any`, `asset`, `raw`, `readonly` |
-|[`claim`](#claim) | Claim ownership of a register | `any`, `asset`, `raw`, `readonly` |
-|[`tokenize`](#tokenize) | To represent ownership of an asset object with a token object | `asset` |
-|[`transactions`](#transactions) | List all transactions that modified specified object | `any`, `asset`, `raw`, `readonly`, `schema` |
-|[`history`](#history) | Generate the history of all last states | `any`, `asset`, `raw`, `readonly`, `schema` |
-|[`update`](#update) | Update a specified object | `any`, `asset`, `raw`, `readonly`, `schema` |
-|[`verify`](#verify) | Verify if a given register has been tokenized | `partial` |
+|[`create`](#-create) | Generate a register of specified type | `asset`, `raw`, `readonly`, `schema` |
+|[`get`](#-get) | Get register of supported type | `any`, `asset`, `raw`, `readonly`, `schema`
+|[`list`](#-list) | List all registers owned by active session | `any`, `asset`, `raw`, `readonly`, `partial`, `schema` |
+|[`transfer`](#-transfer) | Transfer a specified register | `any`, `asset`, `raw`, `readonly` |
+|[`claim`](#-claim) | Claim ownership of a register | `any`, `asset`, `raw`, `readonly` |
+|[`tokenize`](#-tokenize) | To represent ownership of an asset object with a token object | `asset` |
+|[`transactions`](#-transactions) | List all transactions that modified specified object | `any`, `asset`, `raw`, `readonly`, `schema` |
+|[`history`](#-history) | Generate the history of all last states | `any`, `asset`, `raw`, `readonly`, `schema` |
+|[`update`](#-update) | Update a specified object | `any`, `asset`, `raw`, `readonly`, `schema` |
+|[`verify`](#-verify) | Verify if a given register has been tokenized | `partial` |
 
 ### Example:
 
@@ -94,7 +94,7 @@ Please see the [``FORMATS``](FORMATS.MD) page to learn how to use the above form
 
 -----------------------------------
 
-# <a id="create"></a> `create`
+# <a name="create"></a> `create`
 
 Create a new object register specified by given noun.
 
