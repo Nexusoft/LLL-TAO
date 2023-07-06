@@ -1,60 +1,100 @@
-# Assets API
+# **Assets Commands**
 ----------------------------------
-An asset is a user-defined data structure that is stored in an object register, owned by a profile. Assets can hold one or more pieces of data and users can define the fields (name, data, type, mutability) that data is stored in. The Assets API supports the `readonly`, `raw`, `basic` and `JSON` formats and the user is required to specify the format.
-
-The `readonly` and `raw` formats are useful when developers wish to store arbitrary data, without incurring the overhead of defining an object. The value will be provided with the `data` parameter. The `readonly` format cannot be updated and is stored in a readonly register. The `raw` format is stored in a raw register and allows the data to be updated.
-
-The `basic` format allows callers to define an asset in terms of simple 'key=value' pairs. It assumes all values are stored using the string data type. The 'key=value' pairs can be updated.
-
-The `JSON` format allows callers to provide a detailed definition of the supply data structure, with each field defined with a specific data type and mutability. Items defined with one of the complex formats can be updated after their initial creation.  
-
-The assets API also provides a history of changes to the values, as well as the history of ownership of the item.
-
-The full supported endpoint of the finance URI is as follows:
-
-```
-assets/verb/noun/filter/operator
-```
-
-The minimum required components of the URI are:
-
-```
-assets/verb/noun
-```
-
-## `Supported Verbs`
-
-The following verbs are currently supported by this API command-set:
-
-[`create`](#create) - Generate a new object of supported type.  
-[`get`](#get) - Get object of supported type.  
-[`list`](#list) - List all objects owned by given user.  
-[`update`](#update) - Update a specified object.  
-[`transfer`](#transfer) - Transfer a specified object register.  
-[`claim`](#claim) - Claim ownership of an object register.  
-[`tokenize`](#tokenize) - To represent ownership of an asset object with a token object.  
-[`transactions`](#transactions) - List all transactions that modified specified object.  
-[`history`](#history) - Generate the history of all last states.  
+An asset is a user-defined data structure or ``NFT`` that is stored in a register, owned by a given profile. Assets can hold one or more pieces of data and users can define the fields (name, data, type, mutability) that data is stored in.
 
 ## `Supported Nouns`
 
 The following nouns are supported for this API command-set:
 
-[`asset`] - An object register containing an asset object.  
-[`raw`] - An object register containing a raw asset object.  
-[`readonly`] - An object register containing a read-only asset object.  
-[`any`] - An object selection noun allowing mixed assets.  
-[`schema`] - An object register containing a user-defined asset object. 
+| Noun   | Description |
+| :-----:  | :-------- |
+| `asset`   | An editable register *with* type safety |
+| `raw`     | An editable register *without* type safety |
+| `readonly`| A non-editable register *without* type safety |
+| `any`     | Any *asset, raw, or readonly* register |
+| `schema`  | An asset template for user-defined standards |
 
-## `Direct Endpoints`
+### Example:
 
-The following commands are direct endpoints and thus do not support the above `verb` and `noun` structure available above.
+You can include more than one noun for a command if you separate them by a comma `,`
 
-[`list/partial`](#list/partial) - List users partial ownership details for tokenized assets.      
+```
+assets/list/asset,raw,readonly
+```
+
+Will return all the assets of type `asset`, `raw`, and `readonly` that the session profile owns.
+
+
+## `Supported Verbs`
+
+The following verbs are currently supported by this command-set:
+
+| Verb   | Description | Nouns |
+| :-----:  | :-------- | :---- |
+|[`create`](#create) | Generate a register of specified type | `asset`, `raw`, `readonly`, `schema` |
+|[`get`](#get) | Get register of supported type | `any`, `asset`, `raw`, `readonly`, `schema`
+|[`list`](#list) | List all registers owned by active session | `any`, `asset`, `raw`, `readonly`, `partial`, `schema` |
+|[`transfer`](#transfer) | Transfer a specified register | `any`, `asset`, `raw`, `readonly` |
+|[`claim`](#claim) | Claim ownership of a register | `any`, `asset`, `raw`, `readonly` |
+|[`tokenize`](#tokenize) | To represent ownership of an asset object with a token object | `asset` |
+|[`transactions`](#transactions) | List all transactions that modified specified object | `any`, `asset`, `raw`, `readonly`, `schema` |
+|[`history`](#history) | Generate the history of all last states | `any`, `asset`, `raw`, `readonly`, `schema` |
+|[`update`](#update) | Update a specified object | `any`, `asset`, `raw`, `readonly`, `schema` |
+|[`verify`](#verify) | Verify if a given register has been tokenized | `partial` |
+
+### Example:
+
+The following will show you how to invoke a basic `<verb>/<noun>` URI:
+
+```
+assets/list/any
+```
+
+Will return all the assets of type `any` that the session profile owns.
+
+
+## `Supported Operators`
+
+The following verbs are currently supported by this command-set:
+
+| Operator | Description |
+| :-----:  | :-------- |
+| `array`  | Returns an array of values from the filtered data-set  |
+| `count`  | Returns the total number of occurrences of a value in the filtered data-set |
+| `floor`  | Strips the decimal off of a value or array of values  |
+| `max`    | Returns the largest value in the filtered data-set |
+| `mean`   | Returns the average value of the filtered data-set |
+| `min`    | Returns the smallest value in the filtered data-set |
+| `mode`   | Returns the most occurring value in the filtered data-set |
+| `sum`    | Returns the sum of all the values in the filtered data-set |
+
+### Example:
+
+The following will show you how to invoke a basic `<verb>/<noun>/<field>/<operator>` URI:
+
+```
+assets/list/any/modified/mean
+```
+
+The above will calculate the average value of the modified field for all assets owned by active session.
+
+## `Supported Formats`
+
+When creating or modifying a register, a format is required to encode the operations to the given register. The following formats are supported for this command-set.
+
+| Format   | Description |
+| :-----:  | :-------- |
+| `readonly` | Takes string argument `data=<data>`, creates raw state |
+| `raw`      | Takes string argument `data=<data>`, creates or updates raw state |
+| `basic`    | Takes all additional string arguments as `key=value`, updates or creates fields of object with string type |
+| `json`     | Takes string argument `json=<json>`, updates or creates fields of object for any type and mutability |
+
+Please see the [``FORMATS``](FORMATS.MD) page to learn how to use the above formats in more details.
+
 
 -----------------------------------
 
-# <a name="create"></a> `create`
+# <a id="create"></a> `create`
 
 Create a new object register specified by given noun.
 
@@ -62,56 +102,20 @@ Create a new object register specified by given noun.
 assets/create/noun
 ```
 
-This command supports the `asset`, `readonly`, `raw`,  and `any` nouns.
-
-#### create/asset
-
-Creates a new asset in an object register.  
-
-#### create/readonly
-
-Creates a new asset in an readonly register.  
-
-#### create/raw
-
-Creates a new asset in a raw register.  
-
-#### create/any
-
-Creates a new asset specified by the format parameter.  
-
 ### Parameters:
 
 `pin` : Required if **locked**. The `PIN` for this profile.
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required if **argument** `-multiuser=1` is set, used to identify the session to invoke the command under. For single-user API mode the session should not be supplied.
 
-`name` : Optional for **noun** `name` as a *UTF-8* encoded string that will generate a name object register that points to new object.
+`name` : Optional for **noun** `name` as a *UTF-8* encoded string that will generate a name object register that points to new object. This will cost an additional 1 NXS if on the mainnet.
 
 `format` : Required to **identify** the format used to define the asset. Values can be `readonly`, `raw`, `basic` and `JSON`.
 
-`data` : Required if **format** is `readonly` or `raw`, allows caller to add arbitrary data to object. `readonly` assets cannot be updated  All other preceding fields are ignored.
 
-`<fieldname>=<value>` : Optional for **format** `basic`, The caller can provide 'key=value' pairs for each piece of data to store in the asset.
-
-`json` : If **format** is `JSON`, then this field will hold the json definition of the asset as a JSON array of objects representing each field in the object. It uses the following format:
-
-- `name` : The name of the data field.
-
-- `type` : The data type to use for this field. Values can be uint8, uint16, uint32, uint64, uint256, uint512, uint1024, string, or bytes.
-
-- `value` : The default value of the field.
-
-- `mutable` : The boolean field to indicate whether the field is writable (true) or 
-read-only (false).
-
-- `maxlength`: Only applicable to string or bytes fields where mutable=true, this is the maximum number of characters (bytes) that can be stored in the field. If no maxlength parameter is provided then we will default the field size to the length of the default value rounded up to the nearest 64 bytes.
-
-**NOTE:** 
+**NOTE:**
 - There is a limit of 1KB for asset data to be saved in the register, excluding the asset name.
 - There is a fee of 1 NXS for creating and an asset and an additional 1 NXS for the optional name object.
-
-### Results:
 
 #### Return value JSON object:
 
@@ -121,16 +125,15 @@ read-only (false).
     "address": "87VmNhitFJv3WA3Yrovt9A3hts2MoXcfExyy9LiXyhK1sdThwYM",
     "txid": "01230bbc8f0d72aaaff13471e34520d17902290de9a1e5ce1f320f0883024e2d96e21b59a3e48b8d2b5ba2874e93d5d3b4f412e06dc92440c2e12682c958fe34"
 }
-[Completed in 4998.584942 ms]
 ```
 
 #### Return Values:
 
-`success` : Boolean flag indicating that the asset was saved successfully.
+`success` : Boolean flag indicating that the asset was created successfully.
 
-`address` : The register address for this account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.
+`address` : The register address for the register that was just created.
 
-`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be ommitted.
+`txid` : The hash of the transaction that was generated for this tx.
 
 -----------------------------------
 
@@ -155,7 +158,7 @@ Get asset for register type raw.
 
 ### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
 `name` : Required to **identify** the name of the asset. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
@@ -163,7 +166,7 @@ Get asset for register type raw.
 
 [`Sorting`](//docs/API/SORTING.MD).
 
-[`Filtering`](/docs/API/FILTERING.MD). 
+[`Filtering`](/docs/API/FILTERING.MD).
 
 ### Results:
 
@@ -225,7 +228,7 @@ Lists all the assets for object register type.
 
 #### list/readonly
 
-Lists all assets for readonly register type. 
+Lists all assets for readonly register type.
 
 #### list/raw
 
@@ -234,6 +237,8 @@ Lists all assets for raw register type.
 #### list/any
 
 Lists all assets for all supported register types.
+
+[`list/partial`](#list/partial) - List users partial ownership details for tokenized assets.      
 
 ### Parameters:
 
@@ -245,7 +250,7 @@ Lists all assets for all supported register types.
 
 [`Filtering`](/docs/API/FILTERING.MD).
 
-[`Operators`](//docs/API/OPERATORS.MD). 
+[`Operators`](//docs/API/OPERATORS.MD).
 
 ### Results:
 
@@ -312,13 +317,13 @@ This updates the data values for the raw item register.
 
 `pin` : Required if **locked**. The `PIN` for this profile.
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
 `name` : Required to **identify** the name of the asset. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided.
 
 `address` : Required to **identify** the register address of the asset. This is optional if the `name` is provided.
 
-`format` : Required to **specify** the format of the asset to update. Values can be `readonly`, `raw`, `basic` and `JSON`. 
+`format` : Required to **specify** the format of the asset to update. Values can be `readonly`, `raw`, `basic` and `JSON`.
 
 `data` : Required if **format** is `readonly` or `raw`, allows caller to update the data object.  
 
@@ -371,7 +376,7 @@ This initiates transfer for a readonly asset to a recipient.
 
 `pin` : Required if **locked**. The `PIN`for this profile.
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
 `name` : Required to **identify** the name of the asset. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
@@ -430,7 +435,7 @@ Readonly assets that have been transferred need to be claimed by the recipient. 
 
 `pin` : Required if **locked**. The `PIN` for this profile.
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
 `txid` : Required the **transaction ID** (hash) of the asset transfer transaction for which is being claimed.
 
@@ -470,7 +475,7 @@ This command only supports the `asset` noun.
 
 `pin` : Required if **locked**. The `PIN `for this profile.
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
 `name` : Required to **identify** the name of the asset to be tokenised. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
@@ -513,7 +518,7 @@ This command supports the `asset`,  `raw`, `readonly` and `any` nouns.
 
 ### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
 `name` : Required to **identify** the name of the asset. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
@@ -523,7 +528,7 @@ This command supports the `asset`,  `raw`, `readonly` and `any` nouns.
 
 [`Filtering`](/docs/API/FILTERING.MD).
 
-[`Operators`](//docs/API/OPERATORS.MD). 
+[`Operators`](//docs/API/OPERATORS.MD).
 
 ### Results:
 
@@ -589,7 +594,7 @@ This command supports all nouns.
 
 ### Parameters:
 
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied. 
+`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
 `name` : Required to **identify** the asset. This is optional if the `address` is provided.
 
@@ -606,7 +611,7 @@ This command supports all nouns.
 
 [`Filtering`](/docs/API/FILTERING.MD).
 
-[`Operators`](//docs/API/OPERATORS.MD). 
+[`Operators`](//docs/API/OPERATORS.MD).
 
 
 ### Results:
@@ -718,7 +723,7 @@ This command supports all nouns.
 
 # <a name="list/partial"></a> `list/partial`
 
-Retrieves a list of all the partial ownership details of tokenized assets for the user. 
+Retrieves a list of all the partial ownership details of tokenized assets for the user.
 
 ```
 assets/list/partial

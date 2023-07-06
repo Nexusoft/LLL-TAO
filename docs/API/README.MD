@@ -1,6 +1,6 @@
-# **Overview**
+# `Commands`
 
-The Nexus Framework contains a powerful **RESTful Application Programming Interface** or **API** that allows developers to easily develop **decentralized applications** or **Dapps** for short. This `API` is broken into a set of commands that are logically grouped collection of functions that give access to a wide arrange of different use-cases. The current commands available are as follows:
+The Nexus Framework contains a powerful **RESTful Application Programming Interface** or **API** that allows developers to easily develop **decentralized applications** or **Dapps** for short. This `API` is broken into a set of commands that are a logically grouped collection of functions. The current command-sets available are as follows:
 
 | Commands   | Description |
 | :-----:| :-------- |
@@ -16,134 +16,63 @@ The Nexus Framework contains a powerful **RESTful Application Programming Interf
 | [``SUPPLY``](COMMANDS/SUPPLY.MD) | Set of commands for creating and managing supply chains |
 | [``SYSTEM``](COMMANDS/SYSTEM.MD) | Set of commands for getting system status and managing core system. |
 
-Click any of the above links to be taken to the core documentation for that command-set, which includes supported verbs, nouns, filters, and operators. Each individual verb can support any combination of the aforementioned items, so make sure you reference the above documentation if running into unsupported object or operator.
+Click any of the above links to be taken to the core documentation for that command-set, which includes supported verbs, nouns, filters, and operators.
 
-## `Endpoint`
+## `Getting Started`
 
-The API server uses the `HTTP/HTTPS` protocol and supports both **`GET`** and **`POST`**. Each API endpoint can be invoked through the following URI syntax:
-
-``<command>/<verb>/<noun>/<filter>/<operator>``
-
-This can be invoked by either providing a direct link as follows:
+The Nexus API contains a lot of features that will allow you to store, manage, update, or access registers in the register based virtual machine. Some command-sets are global and do not require a login such as `LEDGER`, `REGISTER`, `NETWORK`, and `SYSTEM`. In a general sense, you will find similar syntax for values you wish to override, one such is either `session`, `genesis` or `username`. Let's look at an example of this:
 
 ```
-http://localhost:8080/system/get/info
+ledger/list/transactions genesis=<genesis-id>
 ```
 
-Or you can use the commandline tools provided with the `LLL-TAO` to invoke from the CLI:
+**or**
 
 ```
-./nexus system/get/info
+ledger/list/transactions username=user1
 ```
 
-**NOTE**:  URI's are always in lowercase.
-
-
-## `Port`
-
-By default the API server runs on port **8080** for the main network, and **7080** for a testnet or private network. This can be changed by setting `apiport=xxxx` in your nexus.conf followed by a restart, or starting your daemon with the `-apiport=xxxx` parameter.
-
-
-## `HTTPS`
-
-The Nexus API supports `TLS` which can be accessed through the `HTTPS` protocol.  By default the API server is started with SSL disabled but to enable it, you can add `apissl=1` to your nexus.conf. The default port for the main network is **8443** when running over **HTTPS**, and for testnet's or private networks it is **7443**. To invoke a command using `TLS` use the following syntax:
+The above commands will list the transactions for a particular sigchain without requiring you to be logged in. If you have the login credentials for the sigchain you are getting transactions for, make sure to use a session based mode for efficiency; you will see the equivalent command:
 
 ```
-https://localhost:8443/system/get/info
+profiles/transactions/master session=<session-id>
 ```
 
-Unless you have setup a certificate signed by a CA, you will have issues with certification verification. If using curl, you can proceed anyhow using the following syntax:
+Executes much faster than the ledger version. This is due to **dynamic indexing services** that builds a local index of logged-in sigchains, to access the data without needing to iterate the main chain-state databases. This is important for Reverse-PTR records *(getting the name record from an address)*, register accounting, and managing P2P Marketplace orders. If you don't have a session available when executing the above command, you need to create one:
 
 ```
-curl --insecure https://localhost:8443/system/get/info
+sessions/create/local username=user password=pass1 pin=1234
 ```
 
-If accessing through php or other means, refer to their relevant documentation to allow self-signed certificates.
-
-
-## `Authentication`
-The API supports the `HTTP Basic` authentication scheme.  This requires the caller to set an `Authorization` HTTP header with the value `Basic <credentials>` with the `<credendtials>` portion set to `apiuser:apipassword` in `base64` encoding. On the API server side the authentication is configured by adding `apiuser=<username>` and `apipassword=<password>` to the nexus.conf.  If you wish to disable authentication entirely, you can do so by setting `apiauth=0` in your nexus.conf, the daemon will not start the API server if you do not configure credentials or set `-apiauth=0` in your configuration.
-
-
-## `Sessions`
-The API can be configured to run in multiuser mode, allowing multiple signature chains to be logged in and use the API simultaneously.  This feature can be enabled by setting `multiuser=1` in your nexus.conf (default off).  When multiuser is enabled, the initial login response will include a session ID value.  This session ID must be then be included in all subsequent API calls to endpoints that require a user to be logged in.
-
-
-## `Request Encoding`
-
-All API requests can be made using multiple encoding methods. To make a command in your web-browser, or through the simplest interface you can use a `GET` form:
+The response will include your session-id if you are in `-multiuser=1` mode, if you are not then you will only receive the genesis-id as a response:
 
 ```
-http://localhost:8080/sessions/create/local?username=user1&password=pass1&pin=1234
-```
-
-If making request using the `POST` endpoint, you can follow the same semantics using **url-form-encoding** inside the `POST` data:
-
-```
-http://localhost:8080/sessions/create/local
-
-POST-DATA:
-username=user&password=pass1&pin=1234
-```
-
-The simplest way to obtain this is by using an HTML form:
-
-```
-<form type='post' action='http://localhost:8080/sessions/create/local'>
-<input type='text' id='username'>
-<input type='text' id='password'>
-<input type='text' id='pin'>
-<input type='submit' value='Login!'>
-</form>
-```
-
-The above form will encode in **url-form-encoding** and send the form via `POST`. The above is a sample login page to show you the ease of working with the Nexus Framework to replace existing systems such as OAuth. You are also able to provide JSON data for all POST requests using **application/json**:
-
-```
-http://localhost:8080/sessions/create/local
-
-POST-DATA:
 {
-    "username" : "user1",
-    "password" : "pass1",
-    "pin"      : "1234"
+    "genesis": "b7918d3942a14bd98ceb0f1be4c8675cc833eda354665167140050eee935b1a2",
+    "session": "e25c6e8e37e57c573b1c3162fd1acee1d9b4f238fed1b8b921fdcd12196b712b"
 }
 ```
 
-
-
-## `Response Encoding`
-All commands use **`JSON`** (JavaScript Object Notation) to structure the response data with the following structure:
+The completion time will generally be around 900-1500ms to respond. This operation is very computationally intensive and requires at least 64MB of memory to generate the required keys to check against the profile's crypto object register as a measure of brute-force resistance. If you were unable to create a session because it does not exist, you need to generate a master profile first:
 
 ```
-"result":
-{
-    "key" : "value"
-},
-"info": {
-  "method": "<commands>/<verb>/<noun>",
-  "status": "active",
-  "address": "127.0.0.1:41260",
-  "latency": "0.017555 ms"
-}
+profiles/create/master username=user password=pass1 pin=1234
 ```
 
-The data can be accessed using the `result` key if the method returned successfully. You can also see information related to the command such as the command invoked, the command's status, calling address, and the time it took to complete the command.
+After which you will be able to execute `sessions/create/local` to create a session to invoke any of the *session-required* command-sets.
 
-## `Error Handling`
+## `Making a Call`
 
-In the event that an API call results in an error, a JSON object will be returned with the `error` key rather than `result`. This is a safe assumption to tell if your command succeeded, by checking if your JSON object contains either `error` or `result`.
+In order to invoke this URI endpoint, you need to ensure you are connecting to the correct host. You can find all the details including how to setup SSL, on the  [``PROTOCOL``](PROTOCOL.MD) page. But to make your first call, it's easiest to use the *command-line interface* (CLI):
 
 ```
-"error" :
-{
-    "code" : -123,
-    "message" : "An error has occurred"
-},
-"info": {
-  "method": "<commands>/<verb>/<noun>",
-  "status": "active",
-  "address": "127.0.0.1:41260",
-  "latency": "0.017555 ms"
-}
+./nexus profiles/create/master username=user password=pass1 pin=1234
+```
+
+The above shows how to use the CLI to make a call to your local daemon. In order for this to work, you need to make sure your daemon is configured with `apiauth=0` or `-noapiauth` if you have not defined credentials with `apiuser=<user>` and `apipassword=<password>`. Without either of these options, it will assume this is a relay node and not turn on the API server and you will see this warning message in daemon logs on startup:
+
+```
+NOTICE: API SERVER DISABLED
+NOTICE: You must set apiuser=<user> and apipassword=<password> configuration.
+NOTICE: If you intend to run the API server without authenticating, set apiauth=0
 ```
