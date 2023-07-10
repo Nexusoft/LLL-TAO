@@ -276,25 +276,11 @@ namespace TAO::API
                                                 {
                                                     /* Build some input parameters. */
                                                     encoding::json jBuild = jSession;
-                                                    jBuild["proof"]   = addrAccount.ToString();
-                                                    jBuild["address"] = mapAccounts[oSource.get<uint256_t>("token")].ToString();
+                                                    jBuild["proof"]       = addrAccount.ToString();
+                                                    jBuild["address"]     = mapAccounts[oSource.get<uint256_t>("token")].ToString();
 
                                                     /* Build our credit contract now. */
                                                     if(!BuildCredit(jBuild, nContract, rContract, vContracts))
-                                                    {
-                                                        /* Check if we have a next account. */
-                                                        if(!rAccounts.HasNext())
-                                                            break;
-
-                                                        /* Iterate to our next account now. */
-                                                        rAccounts++;
-
-                                                        continue;
-                                                    }
-
-                                                    /* Sanitize our contract now. */
-                                                    TAO::Operation::Contract tContract = vContracts.back();
-                                                    if(!SanitizeContract(hashGenesis, tContract))
                                                     {
                                                         /* Check if we have a next account. */
                                                         if(!rAccounts.HasNext())
