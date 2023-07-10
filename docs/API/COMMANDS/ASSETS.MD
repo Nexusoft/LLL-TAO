@@ -145,17 +145,6 @@ Retrieves information for an asset specified by the noun.
 assets/get/noun
 ```
 
-This command supports the `readonly`, `raw`, and `asset`  nouns.
-
-#### get/asset
-Get asset for register type object.
-
-#### get/readonly
-Get asset for register type readonly.
-
-#### get/raw
-Get asset for register type raw.
-
 ### Parameters:
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.

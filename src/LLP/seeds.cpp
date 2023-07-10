@@ -47,8 +47,5 @@ namespace LLP
     {
         "node1.nexus.io",
         "node2.nexus.io",
-        "testnet1.interactions-nexus.io",
-        "testnet2.interactions-nexus.io",
-        "testnet3.interactions-nexus.io"
     };
 }

@@ -253,6 +253,10 @@ namespace config
         {
             RECURSIVE(ARGS_MUTEX);
 
+            /* Check for testnet enabled flag, and bump value. */
+            if(fTestNet.load())
+                mapArgs["-testnet"] = "3";
+
             /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
             const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];
             for(const auto& entry : vIPPortFilters)
