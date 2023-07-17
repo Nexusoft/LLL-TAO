@@ -171,7 +171,7 @@ TEST_CASE( "Object Register Tests", "[register]")
                << std::string("supply") << uint8_t(TYPES::UINT64_T) << uint64_t(888888)
                << std::string("decimals") << uint8_t(TYPES::UINT8_T) << uint8_t(100);
 
-        //parse object.  This should fail as identifier value is suppled as uint64_t instead of uint256_t
+        //parse object.  This should fail as identifier value is supplied as uint64_t instead of uint256_t
         REQUIRE_THROWS(!object.Parse());
     }
 

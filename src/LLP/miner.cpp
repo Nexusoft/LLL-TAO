@@ -453,7 +453,7 @@ namespace LLP
                 /* Update the coinbase transaction. */
                 tCoinbaseTx = Legacy::Coinbase(vOutputs, nMaxValue, nWalletFee);
 
-                /* Check the consistency of the coibase transaction. */
+                /* Check the consistency of the coinbase transaction. */
                 if(!tCoinbaseTx.IsValid())
                 {
                     tCoinbaseTx.Print();
@@ -901,7 +901,7 @@ namespace LLP
             /* Switch based on signature type. */
             switch(pBlock->producer.nKeyType)
             {
-                /* Support for the FALCON signature scheeme. */
+                /* Support for the FALCON signature scheme. */
                 case TAO::Ledger::SIGNATURE::FALCON:
                 {
                     /* Create the FL Key object. */

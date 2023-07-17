@@ -91,7 +91,7 @@ namespace TAO::API
                 /* Grab our decimals and store as string key. */
                 mapBalances[hashToken]["decimals"] = GetDecimals(object);
 
-                /* We are initializing here to not leave any room for uninitialed values across platforms. */
+                /* We are initializing here to not leave any room for uninitialized values across platforms. */
                 mapBalances[hashToken]["balance"]  = 0;
                 mapBalances[hashToken]["stake"]    = 0;
             }
@@ -119,7 +119,7 @@ namespace TAO::API
             const uint64_t nOutgoing =
                 GetUnconfirmed(hashGenesis, hashToken, true);
 
-            /* Poplate the json response object. */
+            /* Populate the json response object. */
             encoding::json jBalances;
 
             /* Populate the rest of the balances. */

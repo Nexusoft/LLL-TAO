@@ -80,7 +80,7 @@ namespace LLP
                    minus any already read on previous reads*/
                 uint32_t nMaxRead = (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size());
 
-                /* Vector to receve the read bytes. This should be the smaller of the number of bytes currently available or the
+                /* Vector to receive the read bytes. This should be the smaller of the number of bytes currently available or the
                    maximum amount to read */
                 std::vector<uint8_t> DATA(std::min(nAvailable, nMaxRead), 0);
 

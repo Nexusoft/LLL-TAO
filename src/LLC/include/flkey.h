@@ -34,10 +34,10 @@ namespace LLC
      *
      *  It stands for Fast-Fourier Lattice-based Compact Signatures Over NTRU
      *  This class uses a LOG value of 9, for 512-bit keys. It's relative
-     *  Classical security parameters are equivilent to RSA-2048.
+     *  Classical security parameters are equivalent to RSA-2048.
      *
      *  It is considered a quantum resistant signature scheme and is a second
-     *  Round candidate out of 9 other for the NIST post-quantum competetition:
+     *  Round candidate out of 9 other for the NIST post-quantum competition:
      *
      *  https://csrc.nist.gov/Projects/Post-Quantum-Cryptography/Round-2-Submissions
      *

@@ -74,7 +74,7 @@ namespace Legacy
          *
          *  @param[in] pWalletIn The wallet where keys will be reserved, cannot be nullptr
          *
-         *  @deprecated supported for backward compatability
+         *  @deprecated supported for backward compatibility
          *
          **/
         ReserveKey(Wallet* pWalletIn);

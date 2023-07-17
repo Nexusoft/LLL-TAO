@@ -63,7 +63,7 @@ namespace TAO::API
 
     /** BuildResponse
      *
-     *  Build a response object for a transaction that was built, ommitting the address.
+     *  Build a response object for a transaction that was built, omitting the address.
      *
      *  @param[in] jParams The parameters for the relevant API call.
      *  @param[in] vContracts The list of contracts this call has generated.

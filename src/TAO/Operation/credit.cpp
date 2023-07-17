@@ -374,7 +374,7 @@ namespace TAO
             if(token.Standard() != TAO::Register::OBJECTS::TOKEN)
                 return debug::error(FUNCTION, "owner object is not a token");
 
-            /* Check that the token indetifier matches token identifier. */
+            /* Check that the token identifier matches token identifier. */
             if(proof.get<uint256_t>("token") != token.get<uint256_t>("token"))
                 return debug::error(FUNCTION, "account proof identifier not token identifier");
 

@@ -148,7 +148,7 @@ namespace LLD
         if(pthis == nullptr)
             return false;
 
-        /* Check that the key mateches. */
+        /* Check that the key matches. */
         if(pthis->vKey != vKey)
             return false;
 

@@ -96,7 +96,7 @@ namespace TAO
                         if(nCost + 128 < nCost)
                             throw debug::exception("OP::GROUP costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 128;
 
                         break;
@@ -110,7 +110,7 @@ namespace TAO
                         if(vEvaluate.empty())
                             return debug::error(FUNCTION, "malformed conditional statement");
 
-                        /* Check for evalute state. */
+                        /* Check for evaluate state. */
                         bool fEvaluate = vEvaluate.top().first;
 
                         /* Pop last group from stack. */
@@ -198,7 +198,7 @@ namespace TAO
                         if(vEvaluate.empty())
                             return debug::error(FUNCTION, "malformed conditional statement");
 
-                        /* Check for evalute state. */
+                        /* Check for evaluate state. */
                         switch(vEvaluate.top().second)
                         {
                             /* Handle if this is our first OP. */
@@ -609,7 +609,7 @@ namespace TAO
                         if(nCost + 64 < nCost)
                             throw debug::exception("OP::ADD costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 64;
 
                         break;
@@ -642,7 +642,7 @@ namespace TAO
                         if(nCost + 64 < nCost)
                             throw debug::exception("OP::SUB costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 64;
 
                         break;
@@ -664,7 +664,7 @@ namespace TAO
                         if(nCost + 64 < nCost)
                             throw debug::exception("OP::INC costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 64;
 
                         break;
@@ -686,7 +686,7 @@ namespace TAO
                         if(nCost + 64 < nCost)
                             throw debug::exception("OP::DEC costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 64;
 
                         break;
@@ -719,7 +719,7 @@ namespace TAO
                         if(nCost + 128 < nCost)
                             throw debug::exception("OP::DIV costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 128;
 
                         break;
@@ -752,7 +752,7 @@ namespace TAO
                         if(nCost + 128 < nCost)
                             throw debug::exception("OP::MUL costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 128;
 
                         break;
@@ -794,7 +794,7 @@ namespace TAO
                         if(nCost + 256 < nCost)
                             throw debug::exception("OP::EXP costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 256;
 
                         break;
@@ -827,7 +827,7 @@ namespace TAO
                         if(nCost + 128 < nCost)
                             throw debug::exception("OP::MOD costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 128;
 
                         break;
@@ -857,7 +857,7 @@ namespace TAO
                         if(nCost + vData.size() < nCost)
                             throw debug::exception("OP::SUBDATA costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += vData.size();
 
                         break;
@@ -910,7 +910,7 @@ namespace TAO
                         if(nCost + 1 < nCost)
                             throw debug::exception("OP::TYPES::UINT8_T costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 1;
 
                         break;
@@ -931,7 +931,7 @@ namespace TAO
                         if(nCost + 2 < nCost)
                             throw debug::exception("OP::TYPES::UINT16_T costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 2;
 
                         break;
@@ -952,7 +952,7 @@ namespace TAO
                         if(nCost + 4 < nCost)
                             throw debug::exception("OP::TYPES::UINT32_T costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 4;
 
                         break;
@@ -973,7 +973,7 @@ namespace TAO
                         if(nCost + 8 < nCost)
                             throw debug::exception("OP::TYPES::UINT64_T costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 8;
 
                         break;
@@ -994,7 +994,7 @@ namespace TAO
                         if(nCost + 32 < nCost)
                             throw debug::exception("OP::TYPES::UINT256_T costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 32;
 
                         break;
@@ -1016,7 +1016,7 @@ namespace TAO
                         if(nCost + 64 < nCost)
                             throw debug::exception("OP::TYPES::UINT512_T costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 64;
 
                         break;
@@ -1037,7 +1037,7 @@ namespace TAO
                         if(nCost + 128 < nCost)
                             throw debug::exception("OP::TYPES::UINT1024_T costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 128;
 
                         break;
@@ -1063,7 +1063,7 @@ namespace TAO
                         if(nCost + nSize < nCost)
                             throw debug::exception("OP::TYPES::STRING costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += nSize;
 
                         break;
@@ -1089,7 +1089,7 @@ namespace TAO
                         if(nCost + nSize < nCost)
                             throw debug::exception("OP::TYPES::BYTES costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += nSize;
 
                         break;
@@ -1120,7 +1120,7 @@ namespace TAO
                                 if(nCost + 5004 < nCost)
                                     throw debug::exception("OP::REGISTER::MODIFIED costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 5004;
 
                                 break;
@@ -1145,7 +1145,7 @@ namespace TAO
                                 if(nCost + 8 < nCost)
                                     throw debug::exception("OP::CALLER::PRESTATE::MODIFIED costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 8;
 
                                 break;
@@ -1183,7 +1183,7 @@ namespace TAO
                                 if(nCost + 5004 < nCost)
                                     throw debug::exception("OP::REGISTER::CREATED costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 5004;
 
                                 break;
@@ -1208,7 +1208,7 @@ namespace TAO
                                 if(nCost + 8 < nCost)
                                     throw debug::exception("OP::CALLER::PRESTATE::CREATED costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 8;
 
                                 break;
@@ -1246,7 +1246,7 @@ namespace TAO
                                 if(nCost + 4128 < nCost)
                                     throw debug::exception("OP::REGISTER::OWNER costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 4128;
 
                                 break;
@@ -1271,7 +1271,7 @@ namespace TAO
                                 if(nCost + 32 < nCost)
                                     throw debug::exception("OP::CALLER::PRESTATE::OWNER costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 32;
 
                                 break;
@@ -1309,7 +1309,7 @@ namespace TAO
                                 if(nCost + 4097 < nCost)
                                     throw debug::exception("OP::REGISTER::TYPE costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 4097;
 
                                 break;
@@ -1334,7 +1334,7 @@ namespace TAO
                                 if(nCost + 1 < nCost)
                                     throw debug::exception("OP::CALLER::PRESTATE::TYPE costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 1;
 
                                 break;
@@ -1373,7 +1373,7 @@ namespace TAO
                                 if(nCost + nSize < nCost)
                                     throw debug::exception("OP::REGISTER::STATE costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += nSize;
 
                                 break;
@@ -1399,7 +1399,7 @@ namespace TAO
                                 if(nCost + nSize < nCost)
                                     throw debug::exception("OP::CALLER::PRESTATE::STATE costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += nCost;
 
                                 break;
@@ -1437,7 +1437,7 @@ namespace TAO
                                 if(nCost + 4096 < nCost)
                                     throw debug::exception("OP::REGISTER::VALUE costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 4096;
 
                                 break;
@@ -1497,7 +1497,7 @@ namespace TAO
                                 if(nCost + 1 < nCost)
                                     throw debug::exception("OP::REGISTER::VALUE::UINT8_T costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 1;
 
                                 break;
@@ -1519,7 +1519,7 @@ namespace TAO
                                 if(nCost + 2 < nCost)
                                     throw debug::exception("OP::REGISTER::VALUE::UINT16_T costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 2;
 
                                 break;
@@ -1541,7 +1541,7 @@ namespace TAO
                                 if(nCost + 4 < nCost)
                                     throw debug::exception("OP::REGISTER::VALUE::UINT32_T costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 4;
 
                                 break;
@@ -1563,7 +1563,7 @@ namespace TAO
                                 if(nCost + 8 < nCost)
                                     throw debug::exception("OP::REGISTER::VALUE::UINT64_T costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 8;
 
                                 break;
@@ -1585,7 +1585,7 @@ namespace TAO
                                 if(nCost + 32 < nCost)
                                     throw debug::exception("OP::REGISTER::VALUE::UINT256_T costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 32;
 
                                 break;
@@ -1607,7 +1607,7 @@ namespace TAO
                                 if(nCost + 64 < nCost)
                                     throw debug::exception("OP::REGISTER::VALUE::UINT512_T costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 64;
 
                                 break;
@@ -1629,7 +1629,7 @@ namespace TAO
                                 if(nCost + 128 < nCost)
                                     throw debug::exception("OP::REGISTER::VALUE::UINT1024_T costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 128;
 
                                 break;
@@ -1652,7 +1652,7 @@ namespace TAO
                                 if(nCost + nSize < nCost)
                                     throw debug::exception("OP::REGISTER::VALUE::STRING costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += nSize;
 
                                 break;
@@ -1675,7 +1675,7 @@ namespace TAO
                                 if(nCost + nSize < nCost)
                                     throw debug::exception("OP::REGISTER::VALUE::BYTES costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += nSize;
 
                                 break;
@@ -1699,7 +1699,7 @@ namespace TAO
                         if(nCost + 32 < nCost)
                             throw debug::exception("OP::CALLER::GENESIS costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 32;
 
                         break;
@@ -1716,7 +1716,7 @@ namespace TAO
                         if(nCost + 8 < nCost)
                             throw debug::exception("OP::CALLER::TIMESTAMP costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 8;
 
                         break;
@@ -1733,7 +1733,7 @@ namespace TAO
                         if(nCost + 32 < nCost)
                             throw debug::exception("OP::CONTRACT::GENESIS costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 32;
 
                         break;
@@ -1750,7 +1750,7 @@ namespace TAO
                         if(nCost + 8 < nCost)
                             throw debug::exception("OP::CONTRACT::TIMESTAMP costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 8;
 
                         break;
@@ -1802,7 +1802,7 @@ namespace TAO
                         if(nCost + nSize < nCost)
                             throw debug::exception("OP::CONTRACT::OPERATIONS costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += nCost;
 
                         break;
@@ -1854,7 +1854,7 @@ namespace TAO
                         if(nCost + nSize < nCost)
                             throw debug::exception("OP::CALLER::OPERATIONS costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += nCost;
 
                         break;
@@ -1878,7 +1878,7 @@ namespace TAO
                                 if(nCost + 4 < nCost)
                                     throw debug::exception("OP::LEDGER::HEIGHT costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 4;
 
                                 break;
@@ -1892,7 +1892,7 @@ namespace TAO
                         if(nCost + 4 < nCost)
                             throw debug::exception("OP::LEDGER::HEIGHT costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 4;
 
                         break;
@@ -1916,7 +1916,7 @@ namespace TAO
                                 if(nCost + 8 < nCost)
                                     throw debug::exception("OP::LEDGER::SUPPLY costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 8;
 
                                 break;
@@ -1930,7 +1930,7 @@ namespace TAO
                         if(nCost + 8 < nCost)
                             throw debug::exception("OP::LEDGER::SUPPLY costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 8;
 
                         break;
@@ -1954,7 +1954,7 @@ namespace TAO
                                 if(nCost + 8 < nCost)
                                     throw debug::exception("OP::LEDGER::TIMESTAMP costs value overflow");
 
-                                /* Reduce the costs to prevent operation exhuastive attacks. */
+                                /* Reduce the costs to prevent operation exhaustive attacks. */
                                 nCost += 8;
 
                                 break;
@@ -1968,7 +1968,7 @@ namespace TAO
                         if(nCost + 8 < nCost)
                             throw debug::exception("OP::LEDGER::TIMESTAMP costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 8;
 
                         break;
@@ -1995,7 +1995,7 @@ namespace TAO
                         if(nCost + 2048 < nCost)
                             throw debug::exception("OP::CRYPTO::SK256 costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 2048;
 
                         break;
@@ -2022,7 +2022,7 @@ namespace TAO
                         if(nCost + 2048 < nCost)
                             throw debug::exception("OP::CRYPTO::SK512 costs value overflow");
 
-                        /* Reduce the costs to prevent operation exhuastive attacks. */
+                        /* Reduce the costs to prevent operation exhaustive attacks. */
                         nCost += 2048;
 
                         break;

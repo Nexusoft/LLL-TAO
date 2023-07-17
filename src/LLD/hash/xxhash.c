@@ -272,7 +272,7 @@ static U32 XXH32_round(U32 acc, U32 input)
     /* UGLY HACK:
      * This inline assembly hack forces acc into a normal register. This is the
      * only thing that prevents GCC and Clang from autovectorizing the XXH32 loop
-     * (pragmas and attributes don't work for some resason) without globally
+     * (pragmas and attributes don't work for some reason) without globally
      * disabling SSE4.1.
      *
      * The reason we want to avoid vectorization is because despite working on

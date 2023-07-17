@@ -148,7 +148,7 @@ namespace TAO::Ledger
             }
             #endif
 
-            /* Let's process all the transactios now. */
+            /* Let's process all the transactions now. */
             DataStream ssRelay(SER_NETWORK, LLP::PROTOCOL_VERSION);
             for(const auto& proof : block.vtx)
             {

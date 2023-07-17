@@ -55,8 +55,8 @@ namespace TAO::API
         int64_t nStakeChange[3] = {0, 0, 0};
 
         /* Track our mining change as unsigned. */
-        uint64_t nMiningEmmission [3] = {0, 0, 0};
-        uint64_t nStakingEmmission[3] = {0, 0, 0};
+        uint64_t nMiningEmission [3] = {0, 0, 0};
+        uint64_t nStakingEmission[3] = {0, 0, 0};
 
         /* Track unique account holders. */
         std::set<uint256_t> setAccounts;
@@ -150,7 +150,7 @@ namespace TAO::API
                             /* Check only for debits. */
                             else if(tx[n].Primitive() == TAO::Operation::OP::CREDIT)
                             {
-                                /* Check only for credits from legagy. */
+                                /* Check only for credits from legacy. */
                                 uint512_t hashPrevTx;
                                 if(TAO::Register::Unpack(tx[n], hashPrevTx) && hashPrevTx.GetType() == TAO::Ledger::LEGACY)
                                     nWithdraws += nTotal;
@@ -191,7 +191,7 @@ namespace TAO::API
                             ++nAccounts;
                         }
 
-                        /* Check for legacy to legacy transacitons. */
+                        /* Check for legacy to legacy transactions. */
                         Legacy::NexusAddress addrAccount;
                         if(Legacy::ExtractAddress(out.scriptPubKey, addrAccount) && !setAccounts.count(addrAccount.GetHash256()))
                         {
@@ -214,9 +214,9 @@ namespace TAO::API
                 nTotalWithdraw    [0] += nWithdraws;
                 nUniqueAccounts   [0] += nAccounts;
 
-                /* Set our emmission values. */
-                nMiningEmmission [0]  += nMining;
-                nStakingEmmission[0]  += nInflation;
+                /* Set our emission values. */
+                nMiningEmission [0]  += nMining;
+                nStakingEmission[0]  += nInflation;
 
                 /* Set our daily accumulation values. */
                 nStakeChange[0]       += nStake;
@@ -233,9 +233,9 @@ namespace TAO::API
                 nTotalWithdraw    [1] += nWithdraws;
                 nUniqueAccounts   [1] += nAccounts;
 
-                /* Set our emmission values. */
-                nMiningEmmission [1]  += nMining;
-                nStakingEmmission[1]  += nInflation;
+                /* Set our emission values. */
+                nMiningEmission [1]  += nMining;
+                nStakingEmission[1]  += nInflation;
 
                 /* Set our daily accumulation values. */
                 nStakeChange[1]       += nStake;
@@ -252,9 +252,9 @@ namespace TAO::API
                 nTotalWithdraw    [2] += nWithdraws;
                 nUniqueAccounts   [2] += nAccounts;
 
-                /* Set our emmission values. */
-                nMiningEmmission [2]  += nMining;
-                nStakingEmmission[2]  += nInflation;
+                /* Set our emission values. */
+                nMiningEmission [2]  += nMining;
+                nStakingEmission[2]  += nInflation;
 
                 /* Set our daily accumulation values. */
                 nStakeChange[2]       += nStake;
@@ -325,17 +325,17 @@ namespace TAO::API
                     {
                         "staking",
                         {
-                            { "daily",   FormatBalance(nStakingEmmission[0])   },
-                            { "weekly",  FormatBalance(nStakingEmmission[1])  },
-                            { "monthly", FormatBalance(nStakingEmmission[2]) }
+                            { "daily",   FormatBalance(nStakingEmission[0])   },
+                            { "weekly",  FormatBalance(nStakingEmission[1])  },
+                            { "monthly", FormatBalance(nStakingEmission[2]) }
                         }
                     },
                     {
                         "mining",
                         {
-                            { "daily",   FormatBalance(nMiningEmmission[0])   },
-                            { "weekly",  FormatBalance(nMiningEmmission[1])  },
-                            { "monthly", FormatBalance(nMiningEmmission[2]) }
+                            { "daily",   FormatBalance(nMiningEmission[0])   },
+                            { "weekly",  FormatBalance(nMiningEmission[1])  },
+                            { "monthly", FormatBalance(nMiningEmission[2]) }
                         }
                     }
                 }

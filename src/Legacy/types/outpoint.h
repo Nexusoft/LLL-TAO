@@ -35,7 +35,7 @@ namespace Legacy
 		uint32_t n;
 
 
-		//the serizliation methods
+		//the serialization methods
 		IMPLEMENT_SERIALIZE
 		(
 			READWRITE(hash);

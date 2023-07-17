@@ -166,7 +166,7 @@ namespace runtime
 
         /** timer
          *
-         *  Contructs timer class with stopped set to false.
+         *  Constructs timer class with stopped set to false.
          *
          **/
         timer() : fStopped(false) {}

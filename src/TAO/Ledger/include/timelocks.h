@@ -208,7 +208,7 @@ namespace TAO
          *
          *  Invalid versions (version 0 or anything after current version) return 0. This should be checked.
          *
-         *  @param[in] nVersion The version of the timelock to retreive
+         *  @param[in] nVersion The version of the timelock to retrieve
          *
          *  @return version activation timelock
          *
@@ -224,7 +224,7 @@ namespace TAO
          *  Invalid versions (version 0 or anything after current version) return 0, as does the current version.
          *  This should be checked.
          *
-         *  @param[in] nVersion The version of the timelock to retreive
+         *  @param[in] nVersion The version of the timelock to retrieve
          *
          *  @return version ending timelock
          *
@@ -238,7 +238,7 @@ namespace TAO
          *
          *  Invalid versions (version 0 or anything after current version) return 0. This should be checked.
          *
-         *  @param[in] nVersion The version of the timelock to retreive
+         *  @param[in] nVersion The version of the timelock to retrieve
          *
          *  @return version activation timelock
          *
@@ -254,7 +254,7 @@ namespace TAO
          *  Invalid versions (version 0 or anything after current version) return 0, as does the current version.
          *  This should be checked.
          *
-         *  @param[in] nVersion The version of the timelock to retreive
+         *  @param[in] nVersion The version of the timelock to retrieve
          *
          *  @return version ending timelock
          *

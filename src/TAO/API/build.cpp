@@ -191,7 +191,7 @@ namespace TAO::API
             /* Make sure our sigchain is in sync with our history. */
             if(config::fClient.load())
             {
-                Indexing::BroadcastUnconfirmed(hashGenesis); //if we still have queud transactions, re-broadcast before creating
+                Indexing::BroadcastUnconfirmed(hashGenesis); //if we still have queued transactions, re-broadcast before creating
                 Indexing::DownloadSigchain(hashGenesis); //sanity check to make sure we don't orphan another sigchain branch
             }
         }
@@ -324,7 +324,7 @@ namespace TAO::API
         /* If a fee needs to be applied then add it */
         if(nCost > 0)
         {
-            /* The register adddress of the account to deduct fees from */
+            /* The register address of the account to deduct fees from */
             TAO::Register::Address hashRegister;
 
             /* If the caller has specified a fee account to use then use this */

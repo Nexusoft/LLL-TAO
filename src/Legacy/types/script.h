@@ -45,7 +45,7 @@ namespace Legacy
 
     /** Stack String
      *
-     *  Builds a string of values in a stack seperated by spaces
+     *  Builds a string of values in a stack separated by spaces
      *
      *  @param[in] vStack The stack of data to output.
      *

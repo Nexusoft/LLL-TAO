@@ -189,7 +189,7 @@ namespace TAO::API
      *
      *  @param[in] jParams The input parameters to extract from.
      *  @param[in] strDefault The default format if no format specified.
-     *  @param[in] strAllowed The allowed formates to extract for.
+     *  @param[in] strAllowed The allowed formats to extract for.
      *
      *  @return string with format specifier.
      *
@@ -202,7 +202,7 @@ namespace TAO::API
      *  Extract key scheme specifier from input parameters.
      *
      *  @param[in] jParams The input parameters to extract from.
-     *  @param[in] strAllowed The allowed formates to extract for.
+     *  @param[in] strAllowed The allowed formats to extract for.
      *
      *  @return the scheme translated as binary represented enum.
      *
@@ -263,7 +263,7 @@ namespace TAO::API
 
     /** ExtractList
      *
-     *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result
+     *  Extracts the parameters applicable to a List API call in order to apply a filter/offset/limit to the result
      *
      *  @param[in] jParams The parameters passed into the request
      *  @param[out] strOrder The sort order to apply
@@ -276,7 +276,7 @@ namespace TAO::API
 
     /** ExtractList
      *
-     *  Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result
+     *  Extracts the parameters applicable to a List API call in order to apply a filter/offset/limit to the result
      *  This overload includes a sort field.
      *
      *  @param[in] jParams The parameters passed into the request

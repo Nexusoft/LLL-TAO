@@ -192,11 +192,11 @@ namespace TAO
             BlockState(const Legacy::LegacyBlock& block);
 
 
-            /** Equivilence checking **/
+            /** Equivalence checking **/
             bool operator==(const BlockState& state) const;
 
 
-            /** Equivilence checking **/
+            /** Equivalence checking **/
             bool operator!=(const BlockState& state) const;
 
 

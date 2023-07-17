@@ -104,7 +104,7 @@ namespace TAO::Operation
     }
 
 
-    /* Construct based on legacy transation. */
+    /* Construct based on legacy transaction. */
     Contract::Contract(const Legacy::Transaction& tx, const uint32_t& nContract)
     {
         /* Check boundaries. */
@@ -131,7 +131,7 @@ namespace TAO::Operation
         ssOperation << hashAccount << uint64_t(txout.nValue) << uint64_t(0);
 
         /* Populate our contract level data. */
-        hashCaller = 0; //superfluous, but being explicet
+        hashCaller = 0; //superfluous, but being explicit
         nTimestamp = tx.nTime;
         hashTx     = tx.GetHash();
         nVersion   = tx.nVersion;
@@ -584,7 +584,7 @@ namespace TAO::Operation
     /* Get's a size from internal stream. */
     uint64_t Contract::ReadCompactSize(const uint8_t nFlags) const
     {
-        /* We don't use masks here, becuase it needs to be exclusive to the stream. */
+        /* We don't use masks here, because it needs to be exclusive to the stream. */
         switch(nFlags)
         {
             case OPERATIONS:

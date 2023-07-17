@@ -219,7 +219,7 @@ namespace TAO::API
                     continue;
             }
 
-            /* Get a referecne of our contract. */
+            /* Get a reference of our contract. */
             const TAO::Operation::Contract& rContract =
                 LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
 
@@ -543,7 +543,7 @@ namespace TAO::API
                     continue;
             }
 
-            /* Get a referecne of our contract. */
+            /* Get a reference of our contract. */
             const TAO::Operation::Contract& rContract =
                 LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
 
@@ -626,7 +626,7 @@ namespace TAO::API
             if(tx.Spent(hashEvent, rEvent.second))
                 continue;
 
-            /* Get a referecne of our contract. */
+            /* Get a reference of our contract. */
             const TAO::Operation::Contract& rContract = tx[rEvent.second];
 
             /* Seek our contract to primitive OP. */

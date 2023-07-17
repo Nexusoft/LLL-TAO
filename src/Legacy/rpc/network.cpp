@@ -48,7 +48,7 @@ namespace Legacy
 
         /* This constant was determined by finding the time it takes to find hash of given difficulty at a given hash rate.
          * It is the total hashes per second required to find a hash of difficulty 1.0 every second.
-         * This can then be used in calculing the network hash rate by block times over average of 1440 blocks.
+         * This can then be used in calculating the network hash rate by block times over average of 1440 blocks.
          * */
         uint64_t nHashRate = 0;
         int nHTotal = 0;

@@ -34,7 +34,7 @@ namespace LLP
     };
 
 
-    /* Disonnect reason flags */
+    /* Disconnect reason flags */
     struct DISCONNECT
     {
         enum

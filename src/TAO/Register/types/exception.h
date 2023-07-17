@@ -24,7 +24,7 @@ namespace TAO
     {
         /** BaseVmException
         *
-        *  Specialzed Exception so that we can capture exceptions originating from the BaseVM class
+        *  Specialized Exception so that we can capture exceptions originating from the BaseVM class
         *
         **/
         class BaseVMException : public debug::exception

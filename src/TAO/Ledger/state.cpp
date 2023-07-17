@@ -401,7 +401,7 @@ namespace TAO
         }
 
 
-        /** Equivilence checking **/
+        /** Equivalence checking **/
         bool BlockState::operator==(const BlockState& state) const
         {
             return
@@ -418,7 +418,7 @@ namespace TAO
         }
 
 
-        /** Equivilence checking **/
+        /** Equivalence checking **/
         bool BlockState::operator!=(const BlockState& state) const
         {
             return
@@ -947,10 +947,10 @@ namespace TAO
                     vDelete.insert(vDelete.end(), state->vtx.begin(), state->vtx.end());
                 }
 
-                /* Reverse the transction to connect to connect in ascending height. */
+                /* Reverse the transaction to connect to connect in ascending height. */
                 for(auto proof = vResurrect.rbegin(); proof != vResurrect.rend(); ++proof)
                 {
-                    /* Check for tritium transctions. */
+                    /* Check for tritium transactions. */
                     if(proof->first == TRANSACTION::TRITIUM)
                     {
                         /* Special case for deleting blocks, delete tx as well. */
@@ -1185,7 +1185,7 @@ namespace TAO
                     Legacy::Wallet::Instance().AddToWalletIfInvolvingMe(tx, *this, true);
                     #endif
 
-                    /* Keep track of total inputs proceessed. */
+                    /* Keep track of total inputs processed. */
                     nTotalInputs += tx.vin.size();
                     swScript.stop();
                 }
@@ -1245,7 +1245,7 @@ namespace TAO
         /** Disconnect a block state from the chain. **/
         bool BlockState::Disconnect()
         {
-            /* Disconnect the transctions in reverse order to preserve sigchain ordering. */
+            /* Disconnect the transactions in reverse order to preserve sigchain ordering. */
             for(auto proof = vtx.rbegin(); proof != vtx.rend(); ++proof)
             {
                 /* Only work on tritium transactions for now. */
@@ -1294,7 +1294,7 @@ namespace TAO
                     if(!tx.Disconnect(*this))
                         return debug::error(FUNCTION, "failed to connect inputs");
 
-                    /* Wallets need to refund inputs when disonnecting coinstake */
+                    /* Wallets need to refund inputs when disconnecting coinstake */
                     #ifndef NO_WALLET
                     if(tx.IsCoinStake() && Legacy::Wallet::Instance().IsFromMe(tx))
                        Legacy::Wallet::Instance().DisableTransaction(tx);
@@ -1357,7 +1357,7 @@ namespace TAO
                     /* Get the proof hash. */
                     uint1024_t hashProof = StakeHash();
 
-                    /* Trust inforamtion variables. */
+                    /* Trust information variables. */
                     uint64_t nTrust = 0;
                     uint64_t nStake = 0;
 
@@ -1447,7 +1447,7 @@ namespace TAO
                 /* Prime (for now) is the weight of the prime difficulty. */
                 case CHANNEL::PRIME:
                 {
-                    /* Check for offet patterns. */
+                    /* Check for offset patterns. */
                     if(vOffsets.empty())
                         return nBits * 25;
 
@@ -1524,7 +1524,7 @@ namespace TAO
         }
 
 
-        /* Get the Signarture Hash of the block. Used to verify work claims. */
+        /* Get the Signature Hash of the block. Used to verify work claims. */
         uint1024_t BlockState::SignatureHash() const
         {
             /* Signature hash for version 7 blocks. */

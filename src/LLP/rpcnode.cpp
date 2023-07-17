@@ -224,7 +224,7 @@ namespace LLP
         }
         else
         {
-            //special case to handle help response so that we put the multiline help response striaght into
+            //special case to handle help response so that we put the multiline help response straight into
             if(jResponse.is_string())
                 jReply["result"] = jResponse.get<std::string>();
             else

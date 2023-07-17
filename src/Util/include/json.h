@@ -5670,7 +5670,7 @@ auto input_adapter(T (&array)[N]) -> decltype(input_adapter(array, array + N)) /
 }
 
 // This class only handles inputs of input_buffer_adapter type.
-// It's required so that expressions like {ptr, len} can be implicitely casted
+// It's required so that expressions like {ptr, len} can be implicitly casted
 // to the correct adapter.
 class span_input_adapter
 {
@@ -19962,7 +19962,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
     Implicit pointer access to the internally stored JSON value. No copies are
     made.
 
-    @warning Writing data to the pointee of the result yields an undefined
+    @warning Writing data to the pointer of the result yields an undefined
     state.
 
     @tparam PointerType pointer type; must be a pointer to @ref array_t, @ref
@@ -22016,7 +22016,7 @@ class basic_json // NOLINT(cppcoreguidelines-special-member-functions,hicpp-spec
           `key()` returns an empty string.
 
     @warning Using `items()` on temporary objects is dangerous. Make sure the
-             object's lifetime exeeds the iteration. See
+             object's lifetime exceeds the iteration. See
              <https://github.com/nlohmann/json/issues/2040> for more
              information.
 

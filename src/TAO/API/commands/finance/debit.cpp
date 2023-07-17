@@ -172,7 +172,7 @@ namespace TAO::API
                     continue;
                 }
 
-                /* The register address of the recipient acccount. */
+                /* The register address of the recipient account. */
                 const TAO::Register::Address hashTo =
                     ExtractAddress(jRecipient, "to"); //we use suffix 'to' here
 
@@ -217,7 +217,7 @@ namespace TAO::API
             }
         }
 
-        /* Regular send from name or address, use same map for managing accounts, but only have a singl entry. */
+        /* Regular send from name or address, use same map for managing accounts, but only have a single entry. */
         else
         {
             /* Get the token / account object. */
@@ -306,7 +306,7 @@ namespace TAO::API
             const TAO::Register::Address hashTo =
                 ExtractAddress(jRecipient, "to"); //we use suffix 'to' here
 
-            /* Get the recipent token / account object. */
+            /* Get the recipient token / account object. */
             TAO::Register::Object objTo;
             if(!LLD::Register->ReadObject(hashTo, objTo, TAO::Ledger::FLAGS::LOOKUP))
                 throw Exception(-209, "Recipient account doesn't exist");

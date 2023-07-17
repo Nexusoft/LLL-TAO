@@ -89,7 +89,7 @@ bool GenerateBlock()
     /* Switch based on signature type. */
     switch(block.producer.nKeyType)
     {
-        /* Support for the FALCON signature scheeme. */
+        /* Support for the FALCON signature scheme. */
         case TAO::Ledger::SIGNATURE::FALCON:
         {
             /* Create the FL Key object. */

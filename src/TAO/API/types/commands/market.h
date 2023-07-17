@@ -120,7 +120,7 @@ namespace TAO::API
 
         /** Cancel
          *
-         *  Cancelles an order on the market
+         *  Cancels an order on the market
          *
          *  @param[in] jParams The parameters from the API call.
          *  @param[in] fHelp Trigger for help data.

@@ -77,7 +77,7 @@ namespace LLD
     class LedgerDB : public SectorDatabase<BinaryHashMap, BinaryLRU>
     {
 
-        /** Mutex to lock internall when accessing memory mode. **/
+        /** Mutex to lock internally when accessing memory mode. **/
         std::mutex MEMORY_MUTEX;
 
 

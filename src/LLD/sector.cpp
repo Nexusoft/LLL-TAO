@@ -261,7 +261,7 @@ namespace LLD
             if(!pstream->read((char*) &vData[0], vData.size()))
                 return debug::error(FUNCTION, "only ", pstream->gcount(), "/", vData.size(), " bytes read");
 
-            /* Verboe output. */
+            /* Verbose output. */
             if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", cKey.nSectorFile,
                     " | Current File Size: ", cKey.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
@@ -420,7 +420,7 @@ namespace LLD
             /* Write the data into the memory cache. */
             cachePool->Put(key, vKey, vData, false);
 
-            /* Verboe output. */
+            /* Verbose output. */
             if(config::nVerbose >= 5)
                 debug::log(5, FUNCTION, "Current File: ", key.nSectorFile,
                     " | Current File Size: ", key.nSectorStart, "\n", HexStr(vData.begin(), vData.end(), true));
@@ -469,7 +469,7 @@ namespace LLD
         if(!pSectorKeys->Get(vKey, key))
             return false;
 
-        /* Return the Key existance in the Keychain Database. */
+        /* Return the Key existence in the Keychain Database. */
         if(!pSectorKeys->Erase(vKey))
             return false;
 
@@ -515,7 +515,7 @@ namespace LLD
             /* Flush the rest of the write buffer in stream. */
             pstream->flush();
 
-            /* Verboe output. */
+            /* Verbose output. */
             if(config::nVerbose >= 4)
                 debug::log(4, FUNCTION, "DELETE: Current File: ", key.nSectorFile,
                     " | Current File Size: ", key.nSectorStart, "\n");
@@ -873,7 +873,7 @@ namespace LLD
     }
 
 
-    /* Explicity instantiate all template instances needed for compiler. */
+    /* Explicitly instantiate all template instances needed for compiler. */
     template class SectorDatabase<BinaryHashMap,  BinaryLRU>;
 
 }

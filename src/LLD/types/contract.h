@@ -122,7 +122,7 @@ namespace LLD
                           const uint8_t nFlags = TAO::Ledger::FLAGS::BLOCK);
 
 
-        /** HasCaontract
+        /** HasContract
          *
          *  Checks if a contract is already fulfilled.
          *

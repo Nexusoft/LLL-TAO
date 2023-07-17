@@ -127,11 +127,11 @@ namespace TAO
             State(const std::vector<uint8_t>& vchData, const uint8_t nTypeIn, const uint256_t& hashOwnerIn);
 
 
-            /** Operator overload to check for equivilence. **/
+            /** Operator overload to check for equivalence. **/
             bool operator==(const State& state) const;
 
 
-            /** Operator overload to check for non-equivilence. **/
+            /** Operator overload to check for non-equivalence. **/
             bool operator!=(const State& state) const;
 
             /** SetNull
@@ -254,7 +254,7 @@ namespace TAO
             template<typename Type> State& operator<<(const Type& obj)
             {
                 /* Serialize to the stream. */
-                ::Serialize(*this, obj, (uint32_t)SER_REGISTER, nVersion); //temp versinos for now
+                ::Serialize(*this, obj, (uint32_t)SER_REGISTER, nVersion); //temp versions for now
 
                 return (*this);
             }

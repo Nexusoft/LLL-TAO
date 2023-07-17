@@ -336,7 +336,7 @@ namespace TAO
         }
 
 
-        /* Determines if the transaction is a valid transaciton and passes ledger level checks. */
+        /* Determines if the transaction is a valid transaction and passes ledger level checks. */
         bool Transaction::Check(const uint8_t nFlags) const
         {
             /* Check transaction version */
@@ -514,7 +514,7 @@ namespace TAO
                 /* Switch based on signature type. */
                 switch(nKeyType)
                 {
-                    /* Support for the FALCON signature scheeme. */
+                    /* Support for the FALCON signature scheme. */
                     case SIGNATURE::FALCON:
                     {
                         /* Create the FL Key object. */
@@ -1064,7 +1064,7 @@ namespace TAO
                 else if(!LLD::Ledger->WriteLast(hashGenesis, hashPrevTx))
                     return debug::error(FUNCTION, "failed to write last hash");
 
-                /* Revert last stake whan disconnect a coinstake tx */
+                /* Revert last stake when disconnect a coinstake tx */
                 if(IsCoinStake())
                 {
                     /* Handle for trust keys. */
@@ -1144,7 +1144,7 @@ namespace TAO
             /* Check all contracts. */
             for(const auto& contract : vContracts)
             {
-                /* Check for occurance of coinbase operation. */
+                /* Check for occurrence of coinbase operation. */
                 if(contract.Primitive() == TAO::Operation::OP::COINBASE)
                     return true;
             }
@@ -1166,7 +1166,7 @@ namespace TAO
             /* Check all contracts. */
             for(const auto& contract : vContracts)
             {
-                /* Check for occurance of authorize operation. */
+                /* Check for occurrence of authorize operation. */
                 if(contract.Primitive() == TAO::Operation::OP::AUTHORIZE)
                     return true;
             }
@@ -1181,7 +1181,7 @@ namespace TAO
             /* Check all contracts. */
             for(const auto& contract : vContracts)
             {
-                /* Check for occurance of trust operation. */
+                /* Check for occurrence of trust operation. */
                 if(contract.Primitive() == TAO::Operation::OP::TRUST)
                     return true;
             }
@@ -1196,7 +1196,7 @@ namespace TAO
             /* Check all contracts. */
             for(const auto& contract : vContracts)
             {
-                /* Check for occurance of genesis operation. */
+                /* Check for occurrence of genesis operation. */
                 if(contract.Primitive() == TAO::Operation::OP::GENESIS)
                     return true;
             }
@@ -1353,7 +1353,7 @@ namespace TAO
             /* Switch based on signature type. */
             switch(nType)
             {
-                /* Support for the FALCON signature scheeme. */
+                /* Support for the FALCON signature scheme. */
                 case SIGNATURE::FALCON:
                 {
                     /* Create the FL Key object. */
@@ -1403,7 +1403,7 @@ namespace TAO
             /* Switch based on signature type. */
             switch(nKeyType)
             {
-                /* Support for the FALCON signature scheeme. */
+                /* Support for the FALCON signature scheme. */
                 case SIGNATURE::FALCON:
                 {
                     /* Create the FL Key object. */
@@ -1501,7 +1501,7 @@ namespace TAO
             /* The calculated fee */
             uint64_t nFee = 0;
 
-            /* Thevalue of the contract */
+            /* The value of the contract */
             uint64_t nContractValue = 0;
 
             /* Iterate through all contracts. */

@@ -64,7 +64,7 @@ namespace Legacy
      *  The wallet database, through its supported operations, stores values
      *  for multiple types of entries (keys) in the database, including:
      *
-     *    - "mkey"<ID> = Master key for unlocking/descrypting encrypted database entries
+     *    - "mkey"<ID> = Master key for unlocking/decrypting encrypted database entries
      *    - "name"<account> = Logical name (label) for an account/Nexus address
      *    - "defaultkey" = Default public key value
      *    - "key"<public key> = unencrypted private key
@@ -209,7 +209,7 @@ namespace Legacy
          *  @see Crypter::Encrypt
          *  @see MasterKey
          *
-         *  @param[in] nMasterKeyId The key Id to identify a particuler master key entry.
+         *  @param[in] nMasterKeyId The key Id to identify a particular master key entry.
          *
          *  @param[in] kMasterKey Encrypted key value along with the encryption settings used to encrypt it
          *
@@ -223,7 +223,7 @@ namespace Legacy
          *
          *  Reads the minimum database version supported by this wallet database.
          *
-         *  @param[out] nVersion Vesion number to store
+         *  @param[out] nVersion Version number to store
          *
          *  @return true if min version is present in the database entry and read successfully
          *
@@ -236,7 +236,7 @@ namespace Legacy
          *  Stores the minimum database version supported by this wallet database.
          *  Overwrites any previous value.
          *
-         *  @param[in] nVersion Vesion number to store
+         *  @param[in] nVersion Version number to store
          *
          *  @return true if database entry successfully written
          *
@@ -587,7 +587,7 @@ namespace Legacy
          *
          *  This method provides a proxy to the underlying database process, keeping all database specifics encapsulated
          *  within WalletDB. Wallet class, or other use points, should always call this method instead of the
-         *  underlying method, allowing flexibilty to the underlying implementation.
+         *  underlying method, allowing flexibility to the underlying implementation.
          *
          *  @return true on success, false otherwise
          *
@@ -661,7 +661,7 @@ namespace Legacy
         static std::atomic<bool> fShutdownFlushThread;
 
 
-        /**  Flag to tell flushThread there is a multi-step database operation (cursor, transction, etc.)
+        /**  Flag to tell flushThread there is a multi-step database operation (cursor, transaction, etc.)
          *   currently in progress and it should wait to flush.
          **/
         static std::atomic<bool> fDbInProgress;

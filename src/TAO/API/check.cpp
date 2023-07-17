@@ -78,7 +78,7 @@ namespace TAO::API
     }
 
 
-    /*  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
+    /*  Utility method that checks that the signature chain is mature and can therefore create new transactions.
      *  Throws an appropriate Exception if it is not mature. */
     bool CheckMature(const uint256_t& hashGenesis)
     {
@@ -116,7 +116,7 @@ namespace TAO::API
     }
 
 
-    /* Utilty method that checks that the last transaction was within a given amount of seconds. */
+    /* Utility method that checks that the last transaction was within a given amount of seconds. */
     bool CheckTimespan(const uint256_t& hashGenesis, const uint32_t nSeconds)
     {
         /* The hash of the last transaction for this sig chain from disk */
@@ -152,7 +152,7 @@ namespace TAO::API
             /* Make a copy of our contract, to ensure we don't create bugs if this state isn't properly managed */
             TAO::Operation::Contract tContract = rContract; //XXX: assess how much this copy costs us in cycles, compare with ref
 
-            /* Track if contract succeeded execution and bulding. */
+            /* Track if contract succeeded execution and building. */
             fSanitized = TAO::Register::Build(tContract, mapStates, TAO::Ledger::FLAGS::MINER)
                          && TAO::Operation::Execute(tContract, TAO::Ledger::FLAGS::MINER);
 
@@ -173,7 +173,7 @@ namespace TAO::API
     }
 
 
-    /* Checks if the designated object matches the explicet type specified in parameters. */
+    /* Checks if the designated object matches the explicit type specified in parameters. */
     bool CheckStandard(const encoding::json& jParams, const uint256_t& hashCheck)
     {
         /* Let's grab our object to check against and throw if it's missing. */
@@ -186,7 +186,7 @@ namespace TAO::API
     }
 
 
-    /*  Checks if the designated object matches the explicet type specified in parameters. */
+    /*  Checks if the designated object matches the explicit type specified in parameters. */
     bool CheckStandard(const encoding::json& jParams, const TAO::Register::Object& rObject)
     {
         /* Check for our request parameters first, since this method can be called without */

@@ -21,7 +21,7 @@ namespace TAO::API
     /** System
      *
      *  System API Class.
-     *  API provies access to system level data
+     *  API provides access to system level data
      *
      **/
     class System : public Derived<System>

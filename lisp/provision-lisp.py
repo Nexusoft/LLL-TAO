@@ -42,7 +42,7 @@ def allocate_eids():
 #
 # get_rloc
 #
-# Get IP address on interface. Various versions of ubumtu put gratitious
+# Get IP address on interface. Various versions of ubuntu put gratuitous
 # whitespaces between keywords and hence the two types of greps below.
 #
 def get_rloc(device):
@@ -81,11 +81,11 @@ def get_eids(lisp_config):
 #enddef
 
 #
-# get_parms
+# get_params
 #
 # Get command-line parameters.
 #
-def get_parms():
+def get_params():
     parm_len = len(sys.argv)
     if (parm_len == 1): return(None, None, None)
 
@@ -104,7 +104,7 @@ def get_parms():
 #
 # Get command-line parameters.
 #
-device, eid4, eid6 = get_parms()
+device, eid4, eid6 = get_params()
 if (device == None): exit(1)
 
 #

@@ -452,7 +452,7 @@ namespace TAO
          *
          *  When a block solution is found, this method calls ProcessBlock() to process and relay the new block.
          *
-         *  @param[in] nRequired required theshold for stake block hashing
+         *  @param[in] nRequired required threshold for stake block hashing
          *
          *  @return true if hashing current block complete and minter should start a new block
          *

@@ -47,7 +47,7 @@ namespace TAO::API
                     /* Check for user-types if specified. */
                     if(rObject.get<uint16_t>("_usertype") != USER_TYPES::ASSET) //this is the new check
                         return false;
-                } //we put this check inside fieldname check for backwards compatability
+                } //we put this check inside fieldname check for backwards compatibility
 
                 return rObject.Standard() == TAO::Register::OBJECTS::NONSTANDARD;
             }

@@ -47,7 +47,7 @@ namespace Legacy
     /** @class WalletTx
      *
      * A transaction with additional information relevant to the owner and the owner's wallet which owns it.
-     * It includes any unrecorded previoius transactions needed to link it back to the block chain.
+     * It includes any unrecorded previous transactions needed to link it back to the block chain.
      *
      *  Database key is tx<hash> where hash is the transaction hash
      **/
@@ -91,15 +91,15 @@ namespace Legacy
         std::map<std::string, std::string> mapValue;
 
 
-        /** @deprecated This is not used. Kept for backward compatabililty of serialzation/deserialization **/
+        /** @deprecated This is not used. Kept for backward compatibility of serialization/deserialization **/
         std::vector<std::pair<std::string, std::string> > vOrderForm;
 
 
-        /** The sending account label for this tranasction (optional, if send from specific account) **/
+        /** The sending account label for this transaction (optional, if send from specific account) **/
         std::string strFromAccount;
 
 
-        /** The sending Nexus Address for this tranasction (optional, if send from specific address) **/
+        /** The sending Nexus Address for this transaction (optional, if send from specific address) **/
         NexusAddress fromAddress;
 
 

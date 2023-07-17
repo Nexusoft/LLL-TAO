@@ -149,7 +149,7 @@ namespace LLP
     }
 
 
-    /* Release an event listener from tirggers. */
+    /* Release an event listener from triggers. */
     template <class PacketType>
     void BaseConnection<PacketType>::Release(const message_t nMsg)
     {
@@ -159,7 +159,7 @@ namespace LLP
     }
 
 
-    /* Release an event listener from tirggers. */
+    /* Release an event listener from triggers. */
     template <class PacketType>
     void BaseConnection<PacketType>::NotifyTriggers()
     {
@@ -311,7 +311,7 @@ namespace LLP
     }
 
 
-    /* Notify connection an event occured to wake up a sleeping connection. */
+    /* Notify connection an event occurred to wake up a sleeping connection. */
     template <class PacketType>
     void BaseConnection<PacketType>::NotifyEvent()
     {
@@ -334,7 +334,7 @@ namespace LLP
     }
 
 
-    /* Explicity instantiate all template instances needed for compiler. */
+    /* Explicitly instantiate all template instances needed for compiler. */
     template class BaseConnection<Packet>;
     template class BaseConnection<MessagePacket>;
     template class BaseConnection<HTTPPacket>;

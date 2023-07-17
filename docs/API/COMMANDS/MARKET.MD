@@ -107,13 +107,13 @@ This creates a ask market order for market=token1/token2, bid for market=token2/
 
 `address` : The register address for this account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.
 
-`txid` : The hash of the transaction that was generated for the market order. If using -autotx this field will be ommitted.
+`txid` : The hash of the transaction that was generated for the market order. If using -autotx this field will be omitted.
 
 -----------------------------------
 
 # <a name="list"></a> `list`
 
-This retrives a list of all the active orders for a particular market, specified by given noun.
+This retrieves a list of all the active orders for a particular market, specified by given noun.
 
 ```
 market/list/noun
@@ -198,7 +198,7 @@ This command supports all the nouns.
 
 `order` : The array for bid or ask orders.
 
-`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be ommitted.
+`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be omitted.
 
 `timestamp` : The Unix timestamp of when the transaction was created.
 
@@ -268,7 +268,7 @@ This command supports the `bid`, `ask` and `order` nouns.
 
 `success` :  Boolean flag indicating that the order was executed successfully.
 
-`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be ommitted.
+`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be omitted.
 
 `address` : The register address for this account. The address (or name that hashes to this address) is needed when
 creating crediting or debiting the account.
@@ -309,7 +309,7 @@ This command supports the `bid`, `ask` and `order` nouns.
 
 `success` : Boolean flag indicating that cancelling the order was successful. 
 
-`txid` : The hash of the transaction that was generated for cancelling the order. If using -autotx this field will be ommitted.
+`txid` : The hash of the transaction that was generated for cancelling the order. If using -autotx this field will be omitted.
 
 -----------------------------------
 
@@ -378,7 +378,7 @@ This command supports all the nouns.
 
 `order` : The array for bid or ask orders.
 
-`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be ommitted.
+`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be omitted.
 
 `timestamp` : The Unix timestamp of when the transaction was created.
 

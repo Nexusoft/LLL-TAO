@@ -12,7 +12,7 @@ if [ ! -d $DEST ] ; then
 fi   
 
 #
-# debug.log could be enourmous, don't copy it. If you want it comment out line
+# debug.log could be enormous, don't copy it. If you want it comment out line
 # below.
 #
 rm -f /root/.Nexus/debug.log

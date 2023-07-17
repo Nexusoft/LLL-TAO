@@ -47,7 +47,7 @@ namespace Legacy
 		uint32_t nSequence;
 
 
-		//for serizliation macros
+		//for serialization macros
 		IMPLEMENT_SERIALIZE
 		(
 			READWRITE(prevout);
@@ -146,7 +146,7 @@ namespace Legacy
 		 *
 		 *	Flag to tell if this input is the flag for proof of stake Transactions
 		 *
-		 *	@return true if the scriptSig is fibanacci sequence
+		 *	@return true if the scriptSig is fibonacci sequence
 		 *
 		 **/
 		bool IsStakeSig() const;

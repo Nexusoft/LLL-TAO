@@ -19,7 +19,7 @@ The following verbs are currently supported by this API command-set:
 [`create`](#create) - Generate a new object of supported type.  
 [`update`](#update) - Updates the specified object registers.  
 [`recover`](#recover) - Recovers a profile account.  
-[`status`](#status) - Retreives status information for a profile.  
+[`status`](#status) - Retrieves status information for a profile.  
 [`notifications`](#notifications) - List all notifications that modified specified object.  
 [`transactions`](#transactions) - List all transactions that modified specified object.  
 

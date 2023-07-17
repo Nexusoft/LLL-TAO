@@ -139,7 +139,7 @@ namespace encoding
     }
 
 
-    /* Decode into base58 inlucding a checksum */
+    /* Decode into base58 including a checksum */
     bool DecodeBase58Check(const char* psz, std::vector<uint8_t>& vchRet)
     {
         if(!DecodeBase58(psz, vchRet))
@@ -161,7 +161,7 @@ namespace encoding
     }
 
 
-    /* Decode into base58 inlucding a checksum */
+    /* Decode into base58 including a checksum */
     bool DecodeBase58Check(const std::string& str, std::vector<uint8_t>& vchRet)
     {
         return DecodeBase58Check(str.c_str(), vchRet);

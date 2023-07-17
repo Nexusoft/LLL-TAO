@@ -229,7 +229,7 @@ namespace LLP
 
         /** Release
          *
-         *  Release an event listener from tirggers.
+         *  Release an event listener from triggers.
          *
          *  @param[in] nMsg The message type.
          *
@@ -346,7 +346,7 @@ namespace LLP
 
         /** NotifyEvent
          *
-         *  Notify connection an event occured to wake up a sleeping connection.
+         *  Notify connection an event occurred to wake up a sleeping connection.
          *
          **/
         void NotifyEvent();

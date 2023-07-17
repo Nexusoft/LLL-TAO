@@ -142,7 +142,7 @@ namespace TAO::API
             nCredit = dTotal.nValue;
         }
 
-        /* Transation payload. */
+        /* Transaction payload. */
         std::vector<TAO::Operation::Contract> vContracts(1);
         vContracts[0] << uint8_t(TAO::Operation::OP::CONDITION) << uint8_t(TAO::Operation::OP::DEBIT);
         vContracts[0] << hashRegister << TAO::Register::WILDCARD_ADDRESS << nDebit << uint64_t(0);

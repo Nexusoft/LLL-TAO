@@ -92,7 +92,7 @@ namespace LLP
     runtime::timer TritiumNode::SYNCTIMER;
 
 
-    /* If node is completely sychronized. */
+    /* If node is completely synchronized. */
     std::atomic<bool> TritiumNode::fSynchronized(false);
 
 
@@ -218,7 +218,7 @@ namespace LLP
 
                 debug::log(1, NODE, fOUTGOING ? "Outgoing" : "Incoming", " Connection Established");
 
-                /* Set the laset ping time. */
+                /* Set the last ping time. */
                 nLastPing    = runtime::unifiedtimestamp();
 
                 /* Respond with version message if incoming connection. */
@@ -293,7 +293,7 @@ namespace LLP
 
             case EVENTS::GENERIC:
             {
-                /* Make sure node responded on unsubscriion within 30 seconds. */
+                /* Make sure node responded on unsubscription within 30 seconds. */
                 if(nUnsubscribed != 0 && nUnsubscribed + 30 < runtime::timestamp())
                 {
                     /* Debug output. */
@@ -378,7 +378,7 @@ namespace LLP
                 }
 
 
-                /* Unreliabilitiy re-requesting (max time since getblocks) */
+                /* Unreliability re-requesting (max time since getblocks) */
                 if(TAO::Ledger::ChainState::Synchronizing()
                 && nCurrentSession == TAO::Ledger::nSyncSession.load()
                 && nCurrentSession != 0
@@ -508,10 +508,10 @@ namespace LLP
     }
 
 
-    /** Main message handler once a packet is recieved. **/
+    /** Main message handler once a packet is received. **/
     bool TritiumNode::ProcessPacket()
     {
-        /* Deserialize the packeet from incoming packet payload. */
+        /* Deserialize the packet from incoming packet payload. */
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
         switch(INCOMING.MESSAGE)
         {
@@ -801,9 +801,9 @@ namespace LLP
                 /* Let node know it unsubscribed successfully. */
                 if(INCOMING.MESSAGE == RESPONSE::UNSUBSCRIBED)
                 {
-                    /* Check for unsoliced messages. */
+                    /* Check for unsolicited messages. */
                     if(nUnsubscribed == 0)
-                        return debug::drop(NODE, "unsolicted RESPONSE::UNSUBSCRIBE");
+                        return debug::drop(NODE, "unsolicited RESPONSE::UNSUBSCRIBE");
 
                     /* Reset the timer. */
                     nUnsubscribed = 0;
@@ -1117,7 +1117,7 @@ namespace LLP
                             break;
                         }
 
-                        /* Subscribe to getting event transcations. */
+                        /* Subscribe to getting event transactions. */
                         case TYPES::REGISTER:
                         {
                             /* Check for available protocol version. */
@@ -1565,7 +1565,7 @@ namespace LLP
                             if(!LLD::Ledger->ReadTx((*hash), tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 break;
 
-                            /* Build a markle transaction. */
+                            /* Build a merkle transaction. */
                             TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
 
                             /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
@@ -1608,7 +1608,7 @@ namespace LLP
                             Legacy::Transaction tx;
                             while(--nLimits > 0 && LLD::Legacy->ReadEvent(hashSigchain, nSequence++, tx))
                             {
-                                /* Build a markle transaction. */
+                                /* Build a merkle transaction. */
                                 Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
                                 merkle.BuildMerkleBranch();
 
@@ -1633,7 +1633,7 @@ namespace LLP
                             TAO::Ledger::Transaction tx;
                             while(--nLimits > 0 && LLD::Ledger->ReadEvent(hashSigchain, nSequence++, tx))
                             {
-                                /* Build a markle transaction. */
+                                /* Build a merkle transaction. */
                                 TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
                                 merkle.BuildMerkleBranch();
 
@@ -1869,7 +1869,7 @@ namespace LLP
                                 Legacy::Transaction tx;
                                 if(LLD::Legacy->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 {
-                                    /* Build a markle transaction. */
+                                    /* Build a merkle transaction. */
                                     Legacy::MerkleTx merkle = Legacy::MerkleTx(tx);
 
                                     /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
@@ -1889,7 +1889,7 @@ namespace LLP
                                 TAO::Ledger::Transaction tx;
                                 if(LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                                 {
-                                    /* Build a markle transaction. */
+                                    /* Build a merkle transaction. */
                                     TAO::Ledger::MerkleTx merkle = TAO::Ledger::MerkleTx(tx);
 
                                     /* Build the merkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
@@ -2059,7 +2059,7 @@ namespace LLP
                             if(nType == TYPES::SIGCHAIN && config::fClient.load())
                             {
                                 /* Check ledger database. */
-                                if(tInventory.Expired(hashTx, 60)) //60 second exipring cache
+                                if(tInventory.Expired(hashTx, 60)) //60 second expiring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: MERKLE TRANSACTION ", hashTx.SubString());
@@ -2084,7 +2084,7 @@ namespace LLP
                             if(fLegacy)
                             {
                                 /* Check legacy database. */
-                                if(tInventory.Expired(hashTx, 60) && !LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL)) //60 second exipring cache
+                                if(tInventory.Expired(hashTx, 60) && !LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL)) //60 second expiring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString());
@@ -2099,7 +2099,7 @@ namespace LLP
                             else
                             {
                                 /* Check ledger database. */
-                                if(tInventory.Expired(hashTx, 60) && !LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL)) //60 second exipring cache
+                                if(tInventory.Expired(hashTx, 60) && !LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL)) //60 second expiring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: TRITIUM TRANSACTION ", hashTx.SubString());
@@ -2196,7 +2196,7 @@ namespace LLP
                                             fSynchronized.store(true);
                                             TAO::Ledger::nSyncSession.store(0);
 
-                                            /* Unsubcribe from last. */
+                                            /* Unsubscribe from last. */
                                             Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                             /* Total blocks synchronized */
@@ -2256,7 +2256,7 @@ namespace LLP
                                 fSynchronized.store(true);
                                 TAO::Ledger::nSyncSession.store(0);
 
-                                /* Unsubcribe from last. */
+                                /* Unsubscribe from last. */
                                 Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                 /* Log that sync is complete. */
@@ -2595,7 +2595,7 @@ namespace LLP
 
                         /* Check if this is an unsolicited sync block. */
                         //if(nCurrentSession != TAO::Ledger::nSyncSession)
-                        //    return debug::drop(FUNCTION, "unsolicted sync block");
+                        //    return debug::drop(FUNCTION, "unsolicited sync block");
 
                         /* Get the block from the stream. */
                         TAO::Ledger::SyncBlock block;
@@ -2749,7 +2749,7 @@ namespace LLP
                     /* Handle for a legacy transaction. */
                     case SPECIFIER::LEGACY:
                     {
-                        /* Get the transction from the stream. */
+                        /* Get the transaction from the stream. */
                         Legacy::Transaction tx;
                         ssPacket >> tx;
 
@@ -2789,7 +2789,7 @@ namespace LLP
                     /* Handle for a tritium transaction. */
                     case SPECIFIER::TRITIUM:
                     {
-                        /* Get the transction from the stream. */
+                        /* Get the transaction from the stream. */
                         TAO::Ledger::Transaction tx;
                         ssPacket >> tx;
 
@@ -2839,7 +2839,7 @@ namespace LLP
                 /* Check for failure limit on node. */
                 if(nConsecutiveFails >= 10000)
                 {
-                    /* Only drop the node when syncronizing the chain. */
+                    /* Only drop the node when synchronizing the chain. */
                     if(TAO::Ledger::ChainState::Synchronizing())
                         return debug::drop(NODE, "has sent ", nConsecutiveFails, " invalid consecutive transactions");
 
@@ -2876,7 +2876,7 @@ namespace LLP
                     /* Handle for a legacy transaction. */
                     case SPECIFIER::LEGACY:
                     {
-                        /* Get the transction from the stream. */
+                        /* Get the transaction from the stream. */
                         Legacy::MerkleTx tx;
                         ssPacket >> tx;
 
@@ -2925,7 +2925,7 @@ namespace LLP
                     case SPECIFIER::TRITIUM:
                     case SPECIFIER::DEPENDANT:
                     {
-                        /* Get the transction from the stream. */
+                        /* Get the transaction from the stream. */
                         TAO::Ledger::MerkleTx tx;
                         ssPacket >> tx;
 
@@ -3063,7 +3063,7 @@ namespace LLP
                    minus any already read on previous reads*/
                 uint32_t nMaxRead = (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size());
 
-                /* Vector to receve the read bytes. This should be the smaller of the number of bytes currently available or the
+                /* Vector to receive the read bytes. This should be the smaller of the number of bytes currently available or the
                    maximum amount to read */
                 std::vector<uint8_t> DATA(std::min(nAvailable, nMaxRead), 0);
 
@@ -3083,7 +3083,7 @@ namespace LLP
     }
 
 
-    /* Determine if a node is authorized and therfore trusted. */
+    /* Determine if a node is authorized and therefore trusted. */
     bool TritiumNode::Authorized() const
     {
         return hashGenesis != 0 && fAuthorized;

@@ -96,7 +96,7 @@ namespace Legacy
      *
      *  @param[in] keystore The keystore object to pull key from
      *  @param[in] txFrom The transaction from which is being spent.
-     *  @param[in] txTo The destination transaciton being signed.
+     *  @param[in] txTo The destination transaction being signed.
      *  @param[in] nIn The output that is being signed
      *  @param[in] nHashType The hash type for signature.
      *
@@ -111,7 +111,7 @@ namespace Legacy
      *  Verify a signature was valid
      *
      *  @param[in] txFrom The transaction from which is being spent.
-     *  @param[in] txTo The destination transaciton being signed.
+     *  @param[in] txTo The destination transaction being signed.
      *  @param[in] nIn The output to verify signature for.
      *  @param[in] nHashType The hash type for signature.
      *

@@ -176,7 +176,7 @@ namespace Legacy
     }
 
 
-	/* Sets the transaciton object to a null state. */
+	/* Sets the transaction object to a null state. */
 	void Transaction::SetNull()
 	{
 		nVersion = 1;
@@ -304,7 +304,7 @@ namespace Legacy
 		if(nSize <= 1)
 			return false;
 
-		/* First Input Script Signature must Contain Fibanacci Byte Series. */
+		/* First Input Script Signature must Contain Fibonacci Byte Series. */
 		if(!vin[0].IsStakeSig())
 			return false;
 
@@ -955,7 +955,7 @@ namespace Legacy
                     /* Read the previous transaction. */
                     TAO::Ledger::Transaction txPrev;
                     if(LLD::Ledger->ReadTx(prevout.hash, txPrev))
-                    {   //we can't rely soley on the type byte, so we must revert to legacy if not found in ledger.}
+                    {   //we can't rely solely on the type byte, so we must revert to legacy if not found in ledger.}
 
                         /* Check that it is valid. */
                         if(prevout.n >= txPrev.Size())
@@ -1156,7 +1156,7 @@ namespace Legacy
                     if(LLD::Legacy->IsSpent(prevout.hash, prevout.n))
                         return debug::error(FUNCTION, "prev tx ", prevout.hash.SubString(), " is already spent");
 
-                    /* Check the ECDSA signatures. (...When not syncronizing) */
+                    /* Check the ECDSA signatures. (...When not synchronizing) */
                     if(!TAO::Ledger::ChainState::Synchronizing() && !VerifySignature(txPrev, *this, i, 0))
                         return debug::error(FUNCTION, "signature is invalid");
 
@@ -1217,7 +1217,7 @@ namespace Legacy
                     if(LLD::Legacy->IsSpent(prevout.hash, prevout.n))
                         return debug::error(FUNCTION, "prev tx ", prevout.hash.SubString(), " is already spent");
 
-                    /* Check the ECDSA signatures. (...When not syncronizing) */
+                    /* Check the ECDSA signatures. (...When not synchronizing) */
                     if(!TAO::Ledger::ChainState::Synchronizing())
                     {
                         /* Check that hashes match. */
@@ -1284,7 +1284,7 @@ namespace Legacy
                     if(!LLD::Register->ReadState(hashTo, state, nFlags))
                         return debug::error(FUNCTION, "failed to read register to");
 
-                    /* Commit an event for receiving sigchain in the legay DB. */
+                    /* Commit an event for receiving sigchain in the legacy DB. */
                     if(!LLD::Legacy->WriteEvent(state.hashOwner, GetHash()))
                         return debug::error(FUNCTION, "failed to write event for account ", state.hashOwner.SubString());
                 }
@@ -1514,7 +1514,7 @@ namespace Legacy
         if(nScore > nMaxTrustScore)
             nScore = nMaxTrustScore;
 
-        /* Check that published score in this block is equivilent to calculated score. */
+        /* Check that published score in this block is equivalent to calculated score. */
         if(nTrustScore != nScore)
             return debug::error(FUNCTION, "published trust score ", nTrustScore, " not meeting calculated score ", nScore);
 

@@ -154,7 +154,7 @@ namespace TAO::API
                         uint256_t hashToken = tObjFrom.get<uint256_t>("token");
                         if(mapFees.count(hashToken))
                         {
-                            /* Calcuate our debit amount now. */
+                            /* Calculate our debit amount now. */
                             const uint64_t nFees =
                                 (nAmount * mapFees[hashToken].second) / 100000;
 
@@ -184,7 +184,7 @@ namespace TAO::API
                         hashToken = tObjTo.get<uint256_t>("token");
                         if(mapFees.count(hashToken))
                         {
-                            /* Calcuate our debit amount now. */
+                            /* Calculate our debit amount now. */
                             const uint64_t nFees =
                                 (nOrderAmount * mapFees[hashToken].second) / 100000;
 

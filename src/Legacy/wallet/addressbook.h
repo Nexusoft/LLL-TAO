@@ -186,7 +186,7 @@ namespace Legacy
          *
          *  @param[in] fOnlyConfirmed true only includes confirmed balance. Any unconfirmed transaction is filtered from balance calculation
          *
-         *  @param[in] nMinDepth Mimimum depth required for transaction balances to be included
+         *  @param[in] nMinDepth Minimum depth required for transaction balances to be included
          *
          *  @return true if addresses retrieved successfully
          *
@@ -203,7 +203,7 @@ namespace Legacy
          *
          *  @param[out] nBalance The retrieved balance for the requested account
          *
-         *  @param[in] nMinDepth Mimimum depth required for transaction balances to be included
+         *  @param[in] nMinDepth Minimum depth required for transaction balances to be included
          *
          *  @return true if balance retrieved successfully
          *

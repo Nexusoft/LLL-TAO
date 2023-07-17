@@ -53,7 +53,7 @@ namespace TAO::API
     /* Converts the block to formatted JSON */
     encoding::json BlockToJSON(const TAO::Ledger::BlockState& block, const uint32_t nVerbose)
     {
-        /* Decalre the response object*/
+        /* Declare the response object*/
         encoding::json result;
 
         /* Main block hash. */
@@ -88,7 +88,7 @@ namespace TAO::API
         /* Add the transaction data if the caller has requested it*/
         if(nVerbose > 0)
         {
-            /* Build our transactions array seperate from results. */
+            /* Build our transactions array separate from results. */
             encoding::json jTransactions = encoding::json::array();
 
             /* Iterate through each transaction hash in the block vtx*/
@@ -321,7 +321,7 @@ namespace TAO::API
     }
 
 
-    /* Converts a serialized operation stream to formattted JSON */
+    /* Converts a serialized operation stream to formatted JSON */
     encoding::json ContractToJSON(const TAO::Operation::Contract& contract,
                                   const uint32_t nContract, const uint32_t nVerbose)
     {
@@ -601,7 +601,7 @@ namespace TAO::API
                     /* Populate register info. */
                     RegisterTypesToJSON(contract, jRet);
 
-                    /* Reprseent data transfer as raw hex. */
+                    /* Represent data transfer as raw hex. */
                     jRet["data"]    = HexStr(vchData.begin(), vchData.end());
 
                     break;
@@ -1207,7 +1207,7 @@ namespace TAO::API
     }
 
 
-    /* Converts a serialized contract condition stream to formattted JSON */
+    /* Converts a serialized contract condition stream to formatted JSON */
     std::string ConditionToJSON(const TAO::Operation::Contract& rContract, const uint32_t nVerbose)
     {
         /* Encode a string to output our bytecode. */
@@ -1647,7 +1647,7 @@ namespace TAO::API
     }
 
 
-    /* Converts an Register to formattted JSON */
+    /* Converts an Register to formatted JSON */
     encoding::json RegisterToJSON(const TAO::Register::Object& rObject, const TAO::Register::Address& hashRegister)
     {
         /* Add the register owner */
@@ -1782,7 +1782,7 @@ namespace TAO::API
     }
 
 
-    /* Converts an Object Register's data members to formattted JSON with no external lookups */
+    /* Converts an Object Register's data members to formatted JSON with no external lookups */
     void MembersToJSON(const TAO::Register::Object& rObject, encoding::json &jRet)
     {
         /* Check for valid object types. */
@@ -1960,7 +1960,7 @@ namespace TAO::API
     }
 
 
-    /* Converts an Register's state into formattted JSON with no external lookups */
+    /* Converts an Register's state into formatted JSON with no external lookups */
     void StateToJSON(const std::vector<uint8_t>& vState, encoding::json &jRet)
     {
         /* Reset our read position. */
@@ -2185,7 +2185,7 @@ namespace TAO::API
         const auto nLeft = strClause.find("(");
         if(nLeft == 0)
         {
-            /* Parse out substring removing paranthesis. */
+            /* Parse out substring removing parenthesis. */
             strClause = strClause.substr(nLeft + 1);
 
             /* Create a new group to recurse up a level. */
@@ -2206,7 +2206,7 @@ namespace TAO::API
         const auto nRight = strClause.rfind(")");
         if(nRight == strClause.length() - 1)
         {
-            /* Parse out substring removing paranthesis. */
+            /* Parse out substring removing parenthesis. */
             strClause = strClause.substr(0, nRight);
 
             /* Check if we need to recurse another level still. */
@@ -2257,7 +2257,7 @@ namespace TAO::API
      *
      *  Converts a query variable into a json string.
      *
-     *  Varibles needs to be modular functional statements with return type specifications.
+     *  Variables need to be modular functional statements with return type specifications.
      *  This function is hard coded variables for now, need to make it modular.
      */
     std::string VariableToJSON(const std::string& strValue)
@@ -2355,7 +2355,7 @@ namespace TAO::API
             /* Search for our different time characters. */
             uint64_t nFind = 0, nTimespan = 0;
 
-            /* Track our statment and loop out the substrings. */
+            /* Track our statement and loop out the substrings. */
             std::string strList = strParam;
 
             /* Loop until we have processed our times. */

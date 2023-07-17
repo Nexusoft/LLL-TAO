@@ -140,7 +140,7 @@ namespace TAO
                     return debug::error(FUNCTION, "cannot transfer a trust account");
             }
 
-            /* Check that the proper owner is commiting the write. */
+            /* Check that the proper owner is committing the write. */
             if(contract.Caller() != state.hashOwner)
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 

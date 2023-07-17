@@ -236,7 +236,7 @@ namespace LLP
          *
          *  Updates the automatic configuration values for the server object.
          *
-         *  We can guarentee that when this config is either moved or copied, that it is in the
+         *  We can guarantee that when this config is either moved or copied, that it is in the
          *  constructor of the LLP, and thus in its final form before being consumed. This allows us
          *  to auto-configure some dynamic states that require previous static configurations.
          *

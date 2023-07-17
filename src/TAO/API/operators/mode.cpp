@@ -31,8 +31,8 @@ namespace TAO::API
         if(jArray.empty())
             throw Exception(-123, "Operator [mode] cannot be used on empty result");
 
-        /* Keep track of our highest occurance. */
-        std::multiset<encoding::json> setOccurances;
+        /* Keep track of our highest occurrence. */
+        std::multiset<encoding::json> setOccurrences;
 
         /* Loop through our entries to find our highest mode. */
         uint32_t nMode = 1;
@@ -42,12 +42,12 @@ namespace TAO::API
             if(!jItem.is_primitive())
                 throw Exception(-123, "[", jItem.type_name(), "] unsupported for operator [mode]");
 
-            /* Add to our occurances set. */
-            setOccurances.insert(jItem);
+            /* Add to our occurrences set. */
+            setOccurrences.insert(jItem);
 
             /* Check against highest count. */
-            if(setOccurances.count(jItem) > nMode)
-                nMode = setOccurances.count(jItem);
+            if(setOccurrences.count(jItem) > nMode)
+                nMode = setOccurrences.count(jItem);
         }
 
         /* Check if no mode found. */
@@ -58,14 +58,14 @@ namespace TAO::API
         std::pair<uint32_t, encoding::json> pairMode =
             std::make_pair(nMode, encoding::json::array());
 
-        /* Check through our occurances to generate mode. */
+        /* Check through our occurrences to generate mode. */
         std::set<encoding::json> setResults;
-        for(const auto& jItem : setOccurances)
+        for(const auto& jItem : setOccurrences)
         {
             /* Filter by count greater than 1. */
-            if(setOccurances.count(jItem) == pairMode.first)
+            if(setOccurrences.count(jItem) == pairMode.first)
             {
-                /* Check for duplicate occurances during iterating. */
+                /* Check for duplicate occurrences during iterating. */
                 if(setResults.count(jItem))
                     continue;
 

@@ -19,7 +19,7 @@ ________________________________________________________________________________
 
 #include <set>
 
-//forward declerations for BigNum
+//forward declarations for BigNum
 namespace LLC
 {
     class ECKey;

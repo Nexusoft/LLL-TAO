@@ -483,7 +483,7 @@ namespace LLP
     }
 
 
-    /*  Tell the server an event has occured to wake up thread if it is sleeping. This can be used to orchestrate communication
+    /*  Tell the server an event has occurred to wake up thread if it is sleeping. This can be used to orchestrate communication
      *  among threads if a strong ordering needs to be guaranteed. */
     template <class ProtocolType>
     void Server<ProtocolType>::NotifyEvent()
@@ -995,7 +995,7 @@ namespace LLP
 
 
 
-    /* Explicity instantiate all template instances needed for compiler. */
+    /* Explicitly instantiate all template instances needed for compiler. */
     template class Server<TritiumNode>;
     template class Server<LookupNode>;
     template class Server<TimeNode>;

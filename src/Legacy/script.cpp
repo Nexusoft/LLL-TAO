@@ -79,7 +79,7 @@ namespace Legacy
     }
 
 
-    /* Builds a string of values in a stack seperated by spaces */
+    /* Builds a string of values in a stack separated by spaces */
     std::string StackString(const std::vector<std::vector<uint8_t> >& vStack)
     {
         std::string str;

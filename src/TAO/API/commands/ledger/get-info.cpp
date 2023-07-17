@@ -65,7 +65,7 @@ namespace TAO::API
             double nYears   = (nMinutes / 525960.0); //525960 is 1440 * 365.25 for minutes in a year
             double nYearly = (nSupply - nTarget) / nYears;
 
-            /* Calculate inflation rate by comparing yearly emmission rates to total supply. */
+            /* Calculate inflation rate by comparing yearly emission rates to total supply. */
             const uint64_t nInflation =
                 (nYearly * TAO::Ledger::NXS_COIN) / nSupply; //we use NXS_COIN to get 4 significant figures
 
@@ -74,7 +74,7 @@ namespace TAO::API
             jSupply["target"]    = double(nTarget) / TAO::Ledger::NXS_COIN;
             jSupply["inflation"] = double(nInflation * 100) / TAO::Ledger::NXS_COIN; //100 counts as 2 of 6 figures in NXS_COIN
 
-            /* Apply the mining emmission rates from subsidy calculations. */
+            /* Apply the mining emission rates from subsidy calculations. */
             jSupply["minute"] = double(TAO::Ledger::SubsidyInterval(nMinutes, 1)) / TAO::Ledger::NXS_COIN; //1
             jSupply["hour"]   = double(TAO::Ledger::SubsidyInterval(nMinutes, 60)) / TAO::Ledger::NXS_COIN; //60
             jSupply["day"]    = double(TAO::Ledger::SubsidyInterval(nMinutes, 1440)) / TAO::Ledger::NXS_COIN; //1440

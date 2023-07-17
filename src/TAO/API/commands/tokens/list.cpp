@@ -244,7 +244,7 @@ namespace TAO::API
             std::sort(vTokenAccounts.begin(), vTokenAccounts.end(), [strSort, fDesc]
                     (const std::pair<TAO::Register::Address, TAO::Register::Object> &a, const std::pair<TAO::Register::Address, TAO::Register::Object> &b)
             {
-                /* Sort in decending/ascending order based on order param */
+                /* Sort in descending/ascending order based on order param */
                 if(strSort == "balance")
                     return (a.second.get<uint64_t>(strSort) > b.second.get<uint64_t>(strSort)) ? fDesc : !fDesc;
                 else if(strSort == "created")

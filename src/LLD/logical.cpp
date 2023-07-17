@@ -822,7 +822,7 @@ namespace LLD
     bool LogicalDB::PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket,
                               const TAO::Operation::Contract& rContract, const uint32_t nContract)
     {
-        /* Grab a refernece of our txid. */
+        /* Grab a reference of our txid. */
         const uint512_t& hashTx =
             rContract.Hash();
 
@@ -868,7 +868,7 @@ namespace LLD
     /* Pushes an order to the orderbook stack for a given asset. */
     bool LogicalDB::PushOrder(const uint256_t& hashRegister, const TAO::Operation::Contract& rContract, const uint32_t nContract)
     {
-        /* Grab a refernece of our txid. */
+        /* Grab a reference of our txid. */
         const uint512_t& hashTx =
             rContract.Hash();
 
@@ -1244,7 +1244,7 @@ namespace LLD
                 /* Write our last index now. */
                 Write(std::string("register.indexed"));
 
-                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " in ", timer.Elapsed(), " seconds");
+                debug::notice(FUNCTION, "Completed scanning ", nScannedCount, " in ", timer.Elapsed(), " seconds");
 
                 break;
             }

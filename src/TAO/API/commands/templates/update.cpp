@@ -74,7 +74,7 @@ namespace TAO::API
             if(jParams["data"].is_structured())
                 strPayload = jParams["data"].dump(-1);
 
-            /* Build a stream to deserlialize some data. */
+            /* Build a stream to deserialize some data. */
             DataStream ssObject(tObject.GetState(), SER_REGISTER, 1);
 
             /* Deserialize state to get sizes. */
@@ -92,7 +92,7 @@ namespace TAO::API
             /* Resize our buffer with null data. */
             strPayload.resize(nMaxLength);
 
-            /* Serialise the incoming data into a state register */
+            /* Serialize the incoming data into a state register */
             DataStream ssData(SER_REGISTER, 1);
             ssData << uint16_t(nUserType) << strPayload;
 
@@ -106,7 +106,7 @@ namespace TAO::API
             /* Create an operations stream for the update payload. */
             TAO::Operation::Stream ssPayload;
 
-            /* Iterate through the paramers and infer the type for each value */
+            /* Iterate through the parameters and infer the type for each value */
             for(auto it = jParams.begin(); it != jParams.end(); ++it)
             {
                 /* Get our keyname. */
@@ -193,7 +193,7 @@ namespace TAO::API
             /* Create an operations stream for the update payload. */
             TAO::Operation::Stream ssPayload;
 
-            /* Iterate through the paramers and infer the type for each value */
+            /* Iterate through the parameters and infer the type for each value */
             for(auto it = jParams.begin(); it != jParams.end(); ++it)
             {
                 /* Get our keyname. */

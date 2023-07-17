@@ -142,11 +142,11 @@ namespace TAO
             virtual ~ClientBlock();
 
 
-            /** Equivilence checking **/
+            /** Equivalence checking **/
             bool operator==(const ClientBlock& block) const;
 
 
-            /** Equivilence checking **/
+            /** Equivalence checking **/
             bool operator!=(const ClientBlock& block) const;
 
 

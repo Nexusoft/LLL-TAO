@@ -115,7 +115,7 @@ namespace TAO
             /* Insert the key */
             vData.insert(vData.end(), strKey.begin(), strKey.end());
 
-            /* Insert the genessis hash */
+            /* Insert the genesis hash */
             vData.insert(vData.end(), (uint8_t*)&hashNamespace, (uint8_t*)&hashNamespace + 32);
 
             /* Set the internal uint256 data based on the SK hash of the vData */
@@ -129,11 +129,11 @@ namespace TAO
         }
 
 
-        /* Check if address has a valid type assoicated. */
+        /* Check if address has a valid type associated. */
         bool Address::IsValid() const
         {
             /* Check for invalid address ranges. */
-            if(*this <= uint256_t(SYSTEM::LIMIT)) //we don't use Rserved as this would result in recursive call loop
+            if(*this <= uint256_t(SYSTEM::LIMIT)) //we don't use Reserved as this would result in recursive call loop
                 return false;
 
             /* Return on valid types. */

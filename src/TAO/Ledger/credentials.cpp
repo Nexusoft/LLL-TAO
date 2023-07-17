@@ -78,14 +78,14 @@ namespace TAO
         }
 
 
-        /* Equivilence operator. */
+        /* Equivalence operator. */
         bool Credentials::operator==(const Credentials& pCheck) const
         {
             return (strUsername == pCheck.strUsername && strPassword == pCheck.strPassword && hashGenesis == pCheck.hashGenesis);
         }
 
 
-        /* Equivilence operator. */
+        /* Equivalence operator. */
         bool Credentials::operator!=(const Credentials& pCheck) const
         {
             return !(*this == pCheck);
@@ -144,7 +144,7 @@ namespace TAO
         }
 
 
-        /* This function is responsible for genearting the private key in the keychain of a specific account. */
+        /* This function is responsible for generating the private key in the keychain of a specific account. */
         uint512_t Credentials::Generate(const uint32_t nKeyID, const SecureString& strSecret, const bool fCache) const
         {
             {
@@ -235,7 +235,7 @@ namespace TAO
         }
 
 
-        /* This function is responsible for genearting the private key in the keychain of a specific account. */
+        /* This function is responsible for generating the private key in the keychain of a specific account. */
         uint512_t Credentials::Generate(const std::string& strType, const uint32_t nKeyID, const SecureString& strSecret) const
         {
             /* Generate the Secret Phrase */
@@ -300,7 +300,7 @@ namespace TAO
             /* Switch based on signature type. */
             switch(nType)
             {
-                /* Support for the FALCON signature scheeme. */
+                /* Support for the FALCON signature scheme. */
                 case SIGNATURE::FALCON:
                 {
                     /* Create the FL Key object. */
@@ -378,7 +378,7 @@ namespace TAO
             /* Switch based on signature type. */
             switch(nType)
             {
-                /* Support for the FALCON signature scheeme. */
+                /* Support for the FALCON signature scheme. */
                 case SIGNATURE::FALCON:
                 {
                     /* Create the FL Key object. */
@@ -586,7 +586,7 @@ namespace TAO
             /* Switch based on signature type. */
             switch(nType)
             {
-                /* Support for the FALCON signature scheeme. */
+                /* Support for the FALCON signature scheme. */
                 case TAO::Ledger::SIGNATURE::FALCON:
                 {
                     /* Create the FL Key object. */

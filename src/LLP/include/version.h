@@ -52,14 +52,14 @@ namespace LLP
     const std::string strProtocolName = "Tritium";
 
 
-    /* Track the current minor version in whole inrements for checking on the network. */
+    /* Track the current minor version in whole increments for checking on the network. */
     inline uint16_t MajorVersion(const uint32_t nProtocolVersion = PROTOCOL_VERSION)
     {
         return (nProtocolVersion / 1000000);
     }
 
 
-    /* Track the current minor version in whole inrements for checking on the network. */
+    /* Track the current minor version in whole increments for checking on the network. */
     inline int16_t MinorVersion(const uint32_t nProtocolVersion, const uint32_t nMajor)
     {
         /* Find our base major version number. */

@@ -94,7 +94,7 @@ These nested JSON objects and arrays can be filtered recursively using the `.` o
 commands/verb/noun/type,confirmations,genesis,contracts.OP,contracts.to,contracts.amount,contracts.ticker
 ```
 
-When using recursive filtering, the nested hiearchy is retained.
+When using recursive filtering, the nested hierarchy is retained.
 
 ```
 {

@@ -690,7 +690,7 @@ namespace TAO
                     }
 
                     default:
-                        return debug::error(FUNCTION, "invalid code for register buildling");
+                        return debug::error(FUNCTION, "invalid code for register building");
                 }
 
                 /* Check for end of stream. */

@@ -86,7 +86,7 @@ namespace encoding
 
     /** DecodeBase58Check
      *
-     *	Decode into base58 inlucding a checksum
+     *	Decode into base58 including a checksum
      *
      *  @param[in] psz The c-style input string
      *  @param[out] vchRet The byte vector of return data
@@ -99,7 +99,7 @@ namespace encoding
 
     /** DecodeBase58Check
      *
-     *	Decode into base58 inlucding a checksum
+     *	Decode into base58 including a checksum
      *
      *  @param[in] str The input string (STL)
      *  @param[out] vchRet The byte vector of return data

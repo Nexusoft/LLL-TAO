@@ -55,7 +55,7 @@ namespace TAO::API::Contracts
                 /* Get placeholder index. */
                 const uint32_t nIndex = (nCode - 1);
 
-                /* Check our placehoder. */
+                /* Check our placeholder. */
                 if(!ssParams.check(nIndex, vByteCode[++nPos]))
                     return debug::error(FUNCTION, "parameter type mismatch");
 

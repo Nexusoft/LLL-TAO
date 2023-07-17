@@ -70,7 +70,7 @@ namespace LLP
              *  @param[in] hashTx The txid that we want to filter out.
              *  @param[in] nTimeout The time to wait for cache timeout.
              *
-             *  @return true if the txid is availble for request.
+             *  @return true if the txid is available for request.
              *
              **/
             bool Expired(const uint512_t& hashTx, const uint32_t nTimeout = 15)
@@ -199,7 +199,7 @@ namespace LLP
                 TRANSACTIONS = 0x43, //specify to send memory transactions first
                 CLIENT       = 0x44, //specify for blocks to be sent and received for clients
                 REGISTER     = 0x45, //specify that a register is being received and should only keep memory of it.
-                DEPENDANT    = 0x46, //specify that a transaction is a dependant and therfore only process the ledger layer.
+                DEPENDANT    = 0x46, //specify that a transaction is a dependant and therefore only process the ledger layer.
             };
         };
 
@@ -420,7 +420,7 @@ namespace LLP
 
         /** ProcessPacket
          *
-         *  Main message handler once a packet is recieved.
+         *  Main message handler once a packet is received.
          *
          *  @return True is no errors, false otherwise.
          *
@@ -439,7 +439,7 @@ namespace LLP
 
         /** Authorized
          *
-         *  Determine if a node is authorized and therfore trusted.
+         *  Determine if a node is authorized and therefore trusted.
          *
          **/
         bool Authorized() const;
@@ -460,7 +460,7 @@ namespace LLP
          *  Subscribe to another node for notifications.
          *
          *  @param[in] nFlags The subscription flags.
-         *  @param[in] fSubscribe Flag to determine whether subscibing or unsubscribing
+         *  @param[in] fSubscribe Flag to determine whether subscribing or unsubscribing
          *
          **/
         void Subscribe(const uint16_t nFlags, bool fSubscribe = true);
@@ -481,7 +481,7 @@ namespace LLP
          *  Subscribe to another node for notifications.
          *
          *  @param[in] hashAddress The address to unsubscribe notifications for..
-         *  @param[in] fSubscribe Flag to determine whether subscibing or unsubscribing
+         *  @param[in] fSubscribe Flag to determine whether subscribing or unsubscribing
          *
          **/
         void SubscribeAddress(const uint256_t& hashAddress, bool fSubscribe = true);

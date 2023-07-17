@@ -18,7 +18,7 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::Operation
 {
-    //NETF - ADS - Application Development Standard - Document to define new applicaqtion programming interface calls required by developers
+    //NETF - ADS - Application Development Standard - Document to define new application programming interface calls required by developers
     //NETF - NOS - Nexus Operation Standard - Document to define operation needs, formal design, and byte slot, and NETF engineers to develop the CASE statement
     //NETF - ORS - Object Register Standard - Document to define a specific object register for purpose of ADS standards, with NOS standards being capable of supporting methods
 
@@ -48,7 +48,7 @@ namespace TAO::Operation
 
             //consensus operations
             ACK         = 0x30, //a vote to credit trust towards a proposal
-            NACK        = 0x31, //a vote to withdrawl trust from a proposal
+            NACK        = 0x31, //a vote to withdraw trust from a proposal
 
             //conditional operations
             VALIDATE    = 0x40,
@@ -233,7 +233,7 @@ namespace TAO::Operation
 
         /** Valid
          *
-         *  Detect if the operation codee is a valid parameter placeholder.
+         *  Detect if the operation code is a valid parameter placeholder.
          *
          *  @param[in] nCode The operation code to check against.
          *

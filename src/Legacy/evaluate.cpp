@@ -949,7 +949,7 @@ namespace Legacy
                     if(!script2.GetOp(pc2, opcode2, vch2))
                         break;
                     // Normal situation is to fall through
-                    // to other if/else statments
+                    // to other if/else statements
                 }
 
                 if(opcode2 == OP_PUBKEY)
@@ -1101,7 +1101,7 @@ namespace Legacy
     }
 
 
-    /* Checks an output to your keystore to detect if you have a key that is involed in the output or transaction. */
+    /* Checks an output to your keystore to detect if you have a key that is involved in the output or transaction. */
     bool IsMine(const KeyStore& keystore, const Script& scriptPubKey)
     {
         std::vector< std::vector<uint8_t> > vSolutions;

@@ -143,7 +143,7 @@ namespace Legacy
 
 		/** Set Null
 		 *
-		 *  Sets the transaciton object to a null state.
+		 *  Sets the transaction object to a null state.
 		 *
 		 **/
 		void SetNull();

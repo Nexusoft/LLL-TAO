@@ -47,10 +47,10 @@ namespace TAO::Register
                 /* Create a new register. */
                 case TAO::Operation::OP::CREATE:
                 {
-                    /* Extract the address from the rContractn. */
+                    /* Extract the address from the rContract. */
                     rContract >> hashAddress;
 
-                    /* Extract the register type from rContractn. */
+                    /* Extract the register type from rContract. */
                     uint8_t nType = 0;
                     rContract >> nType;
 

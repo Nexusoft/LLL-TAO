@@ -23,7 +23,7 @@ ________________________________________________________________________________
 
 /** DataStream
  *
- *  Class to handle the serializaing and deserializing of data to disk or over the network
+ *  Class to handle the serializing and deserializing of data to disk or over the network
  *
  **/
 class DataStream
@@ -40,7 +40,7 @@ class DataStream
     uint32_t nSerType;
 
 
-    /** The serializtion version **/
+    /** The serialization version **/
     uint32_t nSerVersion;
 
 
@@ -312,7 +312,7 @@ public:
     DataStream& operator<<(const Type& obj)
     {
         /* Serialize to the stream. */
-        ::Serialize(*this, obj, nSerType, nSerVersion); //temp versinos for now
+        ::Serialize(*this, obj, nSerType, nSerVersion); //temp versions for now
 
         return (*this);
     }

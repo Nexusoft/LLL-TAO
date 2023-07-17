@@ -33,7 +33,7 @@ namespace TAO
 
         /** Stream
          *
-         *  Class to handle the serializaing and deserializing of operations and their types
+         *  Class to handle the serializing and deserializing of operations and their types
          *
          **/
         class Stream : public BaseStream
@@ -109,7 +109,7 @@ namespace TAO
             template<typename Type> Stream& operator<<(const Type& obj)
             {
                 /* Serialize to the stream. */
-                ::Serialize(*this, obj, (uint32_t)SER_REGISTER, LLD::DATABASE_VERSION); //temp versinos for now
+                ::Serialize(*this, obj, (uint32_t)SER_REGISTER, LLD::DATABASE_VERSION); //temp versions for now
 
                 return (*this);
             }

@@ -179,7 +179,7 @@ namespace TAO::Ledger
             {
                 setDependents.insert(hash);
 
-                debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - timesamp too far in future");
+                debug::log(2, FUNCTION, "Skipping transaction ", hash.SubString(), " - timestamp too far in future");
                 continue;
             }
 
@@ -273,7 +273,7 @@ namespace TAO::Ledger
                 continue;
             }
 
-            /* Check tx fee meetes minimum fee requirement */
+            /* Check tx fee meets minimum fee requirement */
             int64_t nTxFees = tx.GetValueIn(mapInputs) - tx.GetValueOut();
             if(nTxFees <  tx.GetMinFee(1000, false))
             {
@@ -281,7 +281,7 @@ namespace TAO::Ledger
                 continue;
             }
 
-            /* Check that transction can be connected. */
+            /* Check that transaction can be connected. */
             if(!tx.Connect(mapInputs, tStateBest, FLAGS::MINER))
             {
                 debug::log(2, FUNCTION, "Failed to connect inputs ", hash.SubString(10));
@@ -493,7 +493,7 @@ namespace TAO::Ledger
 
                     /* Ensure the address is valid. */
                     if(!LLD::Ledger->HasFirst(hashGenesis))
-                        return debug::error(FUNCTION, "Invaild recipient address: ", entry.first, " (", nTx, ")");
+                        return debug::error(FUNCTION, "Invalid recipient address: ", entry.first, " (", nTx, ")");
 
                     /* Set coinbase operation. */
                     rProducer[nTx] << uint8_t(TAO::Operation::OP::COINBASE);
@@ -501,7 +501,7 @@ namespace TAO::Ledger
                     /* Set sigchain recipient. */
                     rProducer[nTx] << hashGenesis;
 
-                    /* Set coinbase amount for associated recipent. */
+                    /* Set coinbase amount for associated recipient. */
                     rProducer[nTx] << entry.second;
 
                     /* The extra nonce to coinbase. */
@@ -797,7 +797,7 @@ namespace TAO::Ledger
             /* Switch based on signature type. */
             switch(block.producer.nKeyType)
             {
-                /* Support for the FALCON signature scheeme. */
+                /* Support for the FALCON signature scheme. */
                 case SIGNATURE::FALCON:
                 {
                     /* Create the FL Key object. */
@@ -850,7 +850,7 @@ namespace TAO::Ledger
     void UpdateProducerTimestamp(TAO::Ledger::Transaction &rProducer)
     {
         /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
-        set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
+        set the timestamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
         rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
         if(ChainState::tStateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
             rProducer.nTimestamp = std::max(rProducer.nTimestamp, ChainState::tStateBest.load().GetBlockTime() + 1);

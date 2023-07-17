@@ -354,7 +354,7 @@ This updates the data values for the raw item register.
 
 `success` : Boolean flag indicating that the asset was saved successfully.
 
-`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be ommitted.
+`txid` : The hash of the transaction that was generated for this tx. If using -autotx this field will be omitted.
 
 -----------------------------------
 
@@ -486,9 +486,9 @@ This command only supports the `asset` noun.
 
 `session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
 
-`name` : Required to **identify** the name of the asset to be tokenised. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
+`name` : Required to **identify** the name of the asset to be tokenized. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
 
-`address` : Required to **identify** the register address of the asset to be tokenised. This is optional if the `name` is provided.
+`address` : Required to **identify** the register address of the asset to be tokenized. This is optional if the `name` is provided.
 
 `token` : Required to **identify** the token to tokenize the asset. It can be the name (for global names) username:tokenname ( for local names) or the register address of the token.
 

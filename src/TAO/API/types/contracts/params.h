@@ -27,7 +27,7 @@ namespace TAO::API::Contracts
 {
     /** Stream
      *
-     *  Class to handle the serializaing and deserializing of operations and their types
+     *  Class to handle the serializing and deserializing of operations and their types
      *
      **/
     class Params : public BaseStream
@@ -278,7 +278,7 @@ namespace TAO::API::Contracts
             vParams.push_back(std::make_pair(OP::TYPES::UINT8_T, vchData.size()));
 
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versions for now
 
             return (*this);
         }
@@ -295,7 +295,7 @@ namespace TAO::API::Contracts
             vParams.push_back(std::make_pair(OP::TYPES::UINT16_T, vchData.size()));
 
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versions for now
 
             return (*this);
         }
@@ -312,7 +312,7 @@ namespace TAO::API::Contracts
             vParams.push_back(std::make_pair(OP::TYPES::UINT32_T, vchData.size()));
 
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versions for now
 
             return (*this);
         }
@@ -329,7 +329,7 @@ namespace TAO::API::Contracts
             vParams.push_back(std::make_pair(OP::TYPES::UINT64_T, vchData.size()));
 
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versions for now
 
             return (*this);
         }
@@ -346,7 +346,7 @@ namespace TAO::API::Contracts
             vParams.push_back(std::make_pair(OP::TYPES::UINT256_T, vchData.size()));
 
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versions for now
 
             return (*this);
         }
@@ -363,7 +363,7 @@ namespace TAO::API::Contracts
             vParams.push_back(std::make_pair(OP::TYPES::UINT512_T, vchData.size()));
 
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versions for now
 
             return (*this);
         }
@@ -380,7 +380,7 @@ namespace TAO::API::Contracts
             vParams.push_back(std::make_pair(OP::TYPES::UINT1024_T, vchData.size()));
 
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versions for now
 
             return (*this);
         }
@@ -397,7 +397,7 @@ namespace TAO::API::Contracts
             vParams.push_back(std::make_pair(OP::TYPES::BYTES, vchData.size()));
 
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versions for now
 
             return (*this);
         }
@@ -414,7 +414,7 @@ namespace TAO::API::Contracts
             vParams.push_back(std::make_pair(OP::TYPES::STRING, vchData.size()));
 
             /* Serialize to the stream. */
-            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versinos for now
+            ::Serialize(*this, obj, (uint32_t)SER_OPERATIONS, LLD::DATABASE_VERSION); //temp versions for now
 
             return (*this);
         }

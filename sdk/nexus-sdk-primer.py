@@ -35,7 +35,7 @@ width = 48
 # sleep
 #
 # If you want to play around with delay times between API operations. Defaults
-# to 1 second. You can litter sleep() calls whereever you like below.
+# to 1 second. You can litter sleep() calls wherever you like below.
 #
 def sleep():
     delay = 3
@@ -50,7 +50,7 @@ def sleep():
 # api_print
 #
 # Print if API succeeded or failed on a continuation output line. When program
-# returns, caller should continue. Otherwise this funciton exits program.
+# returns, caller should continue. Otherwise this function exits program.
 #
 def api_print(json, succeed_msg=None):
     if(json.has_key("error") == False):
@@ -541,7 +541,7 @@ def tokens(primer1, primer2):
     # Show balances of token accounts.
     #
     print ""
-    print "Token Acccount Balances:"
+    print "Token Account Balances:"
     json = primer1.nexus_tokens_get_account_by_name("primer1")
     if(json.has_key("error") == False):
         balance = json["result"]["balance"]

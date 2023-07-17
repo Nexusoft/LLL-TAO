@@ -51,7 +51,7 @@ namespace TAO::API
      *  Converts the transaction to formatted JSON
      *
      *  @param[in] tx The transaction to convert to JSON
-     *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
+     *  @param[in] block The block that the transaction exists in.  If null this will be loaded within the method
      *  @param[in] nVerbose determines the amount of transaction data to include in the response
      *
      *  @return the formatted JSON object
@@ -66,7 +66,7 @@ namespace TAO::API
      *  Converts the transaction to formatted JSON
      *
      *  @param[in] tx The transaction to convert to JSON
-     *  @param[in] block The block that the transaction exists in.  If null this will be loaded witin the method
+     *  @param[in] block The block that the transaction exists in.  If null this will be loaded within the method
      *  @param[in] nVerbose determines the amount of transaction data to include in the response
      *
      *  @return the formatted JSON object
@@ -78,7 +78,7 @@ namespace TAO::API
 
     /** ContractToJSON
      *
-     *  Converts a serialized contract stream to formattted JSON
+     *  Converts a serialized contract stream to formatted JSON
      *
      *  @param[in] rContract The contract to de-serialize
      *  @param[in] nContract the id of the contract within the transaction
@@ -93,7 +93,7 @@ namespace TAO::API
 
     /** ConditionToJSON
      *
-     *  Converts a serialized contract condition stream to formattted JSON
+     *  Converts a serialized contract condition stream to formatted JSON
      *
      *  @param[in] rContract The contract to de-serialize
      *  @param[in] nContract the id of the contract within the transaction
@@ -107,7 +107,7 @@ namespace TAO::API
 
     /** RegisterToJSON
      *
-     *  Converts an Object Register to formattted JSON with no external lookups
+     *  Converts an Object Register to formatted JSON with no external lookups
      *
      *  @param[in] object The Object Register to convert
      *  @param[in] hashRegister The address of the object.
@@ -121,7 +121,7 @@ namespace TAO::API
 
     /** MembersToJSON
      *
-     *  Converts an Object Register's data members to formattted JSON with no external lookups
+     *  Converts an Object Register's data members to formatted JSON with no external lookups
      *
      *  @param[in] object The Object Register to convert
      *  @param[out] jRet The returned encoding object.
@@ -133,7 +133,7 @@ namespace TAO::API
 
     /** StateToJSON
      *
-     *  Converts an Register's state into formattted JSON with no external lookups
+     *  Converts an Register's state into formatted JSON with no external lookups
      *
      *  @param[in] vState The register's state to output.
      *  @param[out] jRet The returned encoding object.

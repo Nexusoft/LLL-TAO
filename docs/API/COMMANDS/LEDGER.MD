@@ -356,7 +356,7 @@ ledger/list/blocks
 
 `contracts` : The array of contracts bound to this transaction and their details with opcodes.  
 {  
-`idcontractid` : The sequential ID of this contract within the transaction.
+`contractid` : The sequential ID of this contract within the transaction.
 
 `OP` : The contract operation. Can be APPEND, CLAIM, COINBASE, CREATE, CREDIT, DEBIT, FEE, GENESIS, LEGACY, TRANSFER, TRUST, STAKE, UNSTAKE, WRITE.
 
@@ -644,7 +644,7 @@ ledger/submit/transaction
 
 #### Return values:
 
-`hash` : The tranaction hash, if successfully committed to the mempool / broadcast.
+`hash` : The transaction hash, if successfully committed to the mempool / broadcast.
 
 -----------------------------------
 
@@ -712,7 +712,7 @@ ledger/get/info
 
 #### Return values:
 
-`Stake` :  Retreives information for the stake channel.  
+`Stake` :  Retrieves information for the stake channel.  
 {  
 `height` : The current number of blocks for the stake channel.
 
@@ -725,7 +725,7 @@ ledger/get/info
 `difficulty` : The current difficulty of the stake channel.   
 }  
 
-`prime` :  Retreives information for the prime channel.  
+`prime` :  Retrieves information for the prime channel.  
 {  
 `height` : The current number of blocks for the prime channel.
 
@@ -744,7 +744,7 @@ ledger/get/info
 `hashes` : It is total network hash rate for prime channel.  
 }  
 
-`hash` :  Retreives information for the hash channel.    
+`hash` :  Retrieves information for the hash channel.    
 {    
 `height` : The current number of blocks for the hash channel.
 
@@ -915,7 +915,7 @@ ledger/get/metrics
 
 `Network` : Statistics of NXS minted by the staking, mining channels and NXS moved to /f rom stake.      
 {      
-`mint` : This retreives the statistics for the NXS minted on staking and mining channels.  
+`mint` : This retrieves the statistics for the NXS minted on staking and mining channels.  
 {  
 
 `staking` : Statistics for NXS minted from staking for a specified period.  

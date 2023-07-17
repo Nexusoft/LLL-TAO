@@ -42,7 +42,7 @@ public:
 
     /** AutoFile
      *
-     *  Default construtor
+     *  Default constructor
      *
      *  @param[in] filenew The new file pointer to associate with
      *  @param[in] nTypeIn The serialize type
@@ -114,7 +114,7 @@ public:
     {
         state |= bits;
         if (state & exceptmask)
-            throw std::runtime_error("setstate() : exception occured");
+            throw std::runtime_error("setstate() : exception occurred");
     }
 
 

@@ -20,7 +20,7 @@ namespace TAO::API
 {
     /** @class Commands
      *
-     *  Encapulsate all of our logic inside this commands class.
+     *  Encapsulate all of our logic inside this commands class.
      *  All methods are static, so that we can manage our API instances.
      *
      **/

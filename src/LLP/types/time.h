@@ -50,7 +50,7 @@ namespace LLP
         majority<int32_t> nSamples;
 
 
-        /** Keep track of our sent requests for time data. This gives us protection against unsolicted TIME_DATA messages. **/
+        /** Keep track of our sent requests for time data. This gives us protection against unsolicited TIME_DATA messages. **/
         std::atomic<int32_t> nRequests;
 
     public:
@@ -93,7 +93,7 @@ namespace LLP
 
         /** ProcessPacket
          *
-         *  Main message handler once a packet is recieved.
+         *  Main message handler once a packet is received.
          *
          *  @return True is no errors, false otherwise.
          *

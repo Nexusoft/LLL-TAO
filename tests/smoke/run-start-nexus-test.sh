@@ -28,7 +28,7 @@
 #  Then I run nexus from the debugger itself.
 #
 # To set up multiple nodes for testing, run this script once for each node.
-#   The first node, node 1, will use the 'istimeseed' opiton.
+#   The first node, node 1, will use the 'istimeseed' option.
 #   This is the default. To set up the second node, use:
 #  NEXUS_TEST_NODE_NUM=2 ./run-start-nexus-test.sh
 #
@@ -40,7 +40,7 @@
 
 set -o pipefail  # trace ERR through pipes
 set -o errtrace  # trace ERR through 'time command' and other functions
-set -o nounset   # set -u : exit the script if you try to use an uninitialised variable
+set -o nounset   # set -u : exit the script if you try to use an uninitialized variable
 set -o errexit   # set -e : exit the script if any statement returns a non-true return value
 error() {
   echo "Error on or near line ${1}: ${2:-}; exiting with status ${3:-1}"

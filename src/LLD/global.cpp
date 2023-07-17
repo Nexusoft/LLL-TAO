@@ -272,7 +272,7 @@ namespace LLD
         if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->MemoryBegin(nFlags);
 
-        /* Start the register DB transacdtion. */
+        /* Start the register DB transaction. */
         if(Register && (nInstances & INSTANCES::REGISTER))
             Register->MemoryBegin(nFlags);
 
@@ -292,7 +292,7 @@ namespace LLD
         if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->TxnBegin();
 
-        /* Start the register DB transacdtion. */
+        /* Start the register DB transaction. */
         if(Register && (nInstances & INSTANCES::REGISTER))
             Register->TxnBegin();
 
@@ -321,7 +321,7 @@ namespace LLD
         if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->MemoryRelease(nFlags);
 
-        /* Abort the register DB transacdtion. */
+        /* Abort the register DB transaction. */
         if(Register && (nInstances & INSTANCES::REGISTER))
             Register->MemoryRelease(nFlags);
 
@@ -370,7 +370,7 @@ namespace LLD
         if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->MemoryCommit();
 
-        /* Commit the register DB transacdtion. */
+        /* Commit the register DB transaction. */
         if(Register && (nInstances & INSTANCES::REGISTER))
             Register->MemoryCommit();
 

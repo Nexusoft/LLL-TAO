@@ -416,7 +416,7 @@ public:
     /** GetCompact
      *
      *  Returns the 32-bit compact representation of the base_uint.
-     *  TODO: Not currently operatational for base_uint due to OpenSSL port
+     *  TODO: Not currently operational for base_uint due to OpenSSL port
      *        issues. needs a proper port
      *
      **/

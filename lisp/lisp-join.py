@@ -1,7 +1,7 @@
 #
 # lisp-join.py
 #
-# This proggram is part of the lispers.net apps release. It is not built
+# This program is part of the lispers.net apps release. It is not built
 # with the lispers.net LISP subsystem and the source is provided publicly.
 #
 # Open a socket to join a multicast group. There is no I/O that happens on
@@ -15,7 +15,7 @@
 # When an overlay multicast group is joined an <interface> is not required.
 # So for example, say an overlay multicast group 224.1.1.1 is being joined
 # and an RLOC for 239.1.1.1 is used where the underlay is multicast capable.
-# Then the following program innovationsn are required:
+# Then the following program innovations are required:
 #
 #   python lisp-join.py 224.1.1.1
 #   python lisp-join.py 239.1.1.1 eth0

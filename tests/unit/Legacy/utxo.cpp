@@ -66,7 +66,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         //write to disk
         REQUIRE(LLD::Legacy->WriteTx(tx.GetHash(), tx));
 
-        //conect tx
+        //connect tx
         REQUIRE(tx.Connect(inputs, TAO::Ledger::ChainState::tStateGenesis, TAO::Ledger::FLAGS::BLOCK));
 
         REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), TAO::Ledger::ChainState::tStateGenesis.GetHash()));
@@ -202,7 +202,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
         }
 
 
-        //test success for legacy opeation
+        //test success for legacy operation
         uint512_t hashTx = 0;
         {
             //create the transaction object
@@ -226,7 +226,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //add to tx
             tx[0] << script;
 
-            //add ezxtra junk contracts
+            //add extra junk contracts
             Object account = CreateAccount(0);
             tx[1] << uint8_t(OP::CREATE) << hashAccount + 1 << uint8_t(REGISTER::OBJECT) << account.GetState();
             tx[2] << uint8_t(OP::CREATE) << hashAccount + 2 << uint8_t(REGISTER::OBJECT) << account.GetState();
@@ -318,7 +318,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             Legacy::Script scriptPubKey;
             scriptPubKey.SetNexusAddress(address);
 
-            //create sending vectorsss
+            //create sending vectors
             std::vector< std::pair<Legacy::Script, int64_t> > vecSend;
             vecSend.push_back(make_pair(scriptPubKey, 1500000));
 
@@ -345,7 +345,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //write to disk
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
 
-            //conect tx
+            //connect tx
             REQUIRE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             REQUIRE(LLD::Ledger->IndexBlock(wtx.GetHash(), state.GetHash()));
@@ -377,7 +377,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             Legacy::Script scriptPubKey;
             scriptPubKey.SetNexusAddress(address);
 
-            //create sending vectorsss
+            //create sending vectors
             std::vector< std::pair<Legacy::Script, int64_t> > vecSend;
             vecSend.push_back(make_pair(scriptPubKey, 1500000));
 
@@ -398,7 +398,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //write to disk
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
 
-            //conect tx
+            //connect tx
             REQUIRE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //index to block
@@ -427,7 +427,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             Legacy::Script scriptPubKey;
             scriptPubKey.SetRegisterAddress(hashAccount);
 
-            //create sending vectorsss
+            //create sending vectors
             std::vector< std::pair<Legacy::Script, int64_t> > vecSend;
             vecSend.push_back(make_pair(scriptPubKey, 20000));
 
@@ -448,7 +448,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             //write to disk
             REQUIRE(LLD::Legacy->WriteTx(wtx.GetHash(), wtx));
 
-            //conect tx
+            //connect tx
             REQUIRE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //index to block
@@ -510,7 +510,7 @@ TEST_CASE("UTXO Unit Tests", "[UTXO]")
             std::map<uint512_t, std::pair<uint8_t, DataStream> > inputs;
             REQUIRE(wtx.FetchInputs(inputs));
 
-            //conect tx
+            //connect tx
             REQUIRE_FALSE(wtx.Connect(inputs, state, TAO::Ledger::FLAGS::BLOCK));
 
             //check wallet balance

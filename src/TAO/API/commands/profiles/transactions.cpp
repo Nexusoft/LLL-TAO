@@ -36,7 +36,7 @@ namespace TAO::API
 
         /* Check if we are available to take command. */
         if(!Authentication::Available(hashGenesis))
-            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes synchronizing.");
 
         /* Make sure our sigchain is up to date. */
         Indexing::DownloadSigchain(hashGenesis);

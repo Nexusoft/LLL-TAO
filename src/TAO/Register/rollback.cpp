@@ -137,7 +137,7 @@ namespace TAO
 
                         /* Check the state is prestate. */
                         if(nState != STATES::PRESTATE)
-                            return debug::error(FUNCTION, "OP::APPEND: egister state not in pre-state");
+                            return debug::error(FUNCTION, "OP::APPEND: register state not in pre-state");
 
                         /* Verify the register's prestate. */
                         State state;

@@ -45,7 +45,7 @@ namespace TAO::API
      *
      *  @param[in] jParam The parameter to check
      *  @param[in] strKey The key of parameter we are checking.
-     *  @param[in] strType The allowed types, seperated by any delimiter like a comma
+     *  @param[in] strType The allowed types, separated by any delimiter like a comma
      *
      *  @return true if the parameter is valid and ready for extracting.
      *
@@ -59,7 +59,7 @@ namespace TAO::API
      *
      *  @param[in] jParam The parameter to check
      *  @param[in] strKey The key of parameter we are checking.
-     *  @param[in] strType The allowed types, seperated by any delimiter like a comma
+     *  @param[in] strType The allowed types, separated by any delimiter like a comma
      *
      *  @return true if the parameter is valid and ready for extracting.
      *
@@ -69,7 +69,7 @@ namespace TAO::API
 
     /** CheckMature
      *
-     *  Utilty method that checks that the signature chain is mature and can therefore create new transactions.
+     *  Utility method that checks that the signature chain is mature and can therefore create new transactions.
      *  Throws an appropriate Exception if it is not mature
      *
      *  @param[in] hashGenesis The genesis hash of the signature chain to check
@@ -82,7 +82,7 @@ namespace TAO::API
 
     /** CheckTimespan
      *
-     *  Utilty method that checks that the last transaction was within a given amount of seconds.
+     *  Utility method that checks that the last transaction was within a given amount of seconds.
      *
      *  @param[in] hashGenesis The genesis hash of the signature chain to check
      *  @param[in] nSeconds The total number of seconds required for frequency.
@@ -107,7 +107,7 @@ namespace TAO::API
 
     /** CheckStandard
      *
-     *  Checks if the designated object matches the explicet type specified in parameters.
+     *  Checks if the designated object matches the explicit type specified in parameters.
      *  We have no return value since this command is meant to throw on errors for API calls.
      *
      *  @param[in] jParams The json parameters to check against.
@@ -121,7 +121,7 @@ namespace TAO::API
 
     /** CheckStandard
      *
-     *  Checks if the designated object matches the explicet type specified in parameters.
+     *  Checks if the designated object matches the explicit type specified in parameters.
      *  Doesn't do a register database lookup like prior overload does.
      *
      *  @param[in] jParams The json parameters to check against.

@@ -144,7 +144,7 @@ namespace Legacy
             nMaturity = TAO::Ledger::MaturityCoinStake(state);
 
         /* Legacy mainnet maturity blocks need +20 added so that wallet considers immature for 120 blocks.
-         * The NEXUS_MATURITY_LEGACY setting value of 100 was kept for backwards compatability within other parts of code.
+         * The NEXUS_MATURITY_LEGACY setting value of 100 was kept for backwards compatibility within other parts of code.
          */
         if(nMaturity == TAO::Ledger::NEXUS_MATURITY_LEGACY && !config::fTestNet.load())
             nMaturity += 20;

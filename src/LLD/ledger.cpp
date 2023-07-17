@@ -335,7 +335,7 @@ namespace LLD
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Check for pending tranasaction. */
+            /* Check for pending transaction. */
             if(pMemory)
             {
                 pMemory->setEraseClaims.erase(pair);
@@ -353,7 +353,7 @@ namespace LLD
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Check for pending tranasaction. */
+            /* Check for pending transaction. */
             if(pMiner)
                 pMiner->mapClaims[pair] = nClaimed;
 
@@ -363,7 +363,7 @@ namespace LLD
         {
             LOCK(MEMORY_MUTEX);
 
-            /* Check for pending tranasaction. */
+            /* Check for pending transaction. */
             if(pCommit->mapClaims.count(pair))
             {
                 /* Check for last claimed amount. */
@@ -750,7 +750,7 @@ namespace LLD
     bool LedgerDB::WriteProof(const uint256_t& hashProof, const uint512_t& hashTx,
                               const uint32_t nContract, const uint8_t nFlags)
     {
-        /* Get the key typle. */
+        /* Get the key tuple. */
         const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
             std::make_tuple(hashProof, hashTx, nContract);
 
@@ -818,7 +818,7 @@ namespace LLD
         if(nFlags != TAO::Ledger::FLAGS::BLOCK)
             return WriteProof(hashProof, hashTx, nContract, nFlags);
 
-        /* Get the key typle. */
+        /* Get the key tuple. */
         const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
             std::make_tuple(hashProof, hashTx, nContract);
 
@@ -1117,7 +1117,7 @@ namespace LLD
                 /* Write our last index now. */
                 Write(std::string("index.proofs.complete"));
 
-                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
+                debug::notice(FUNCTION, "Completed scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
 
                 break;
             }

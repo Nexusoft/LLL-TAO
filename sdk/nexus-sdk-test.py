@@ -105,9 +105,9 @@ for a in address:
 print "done"
 
 #
-# Print 10 data items showing what ownership has changed verus not.
+# Print 10 data items showing what ownership has changed versus not.
 #
-print "Print 10 addresses with mixed ownershup:"
+print "Print 10 addresses with mixed ownership:"
 for a in address:
     j = user1.nexus_supply_getitem(a)
     print "  owner {}:".format(j["result"]["owner"])

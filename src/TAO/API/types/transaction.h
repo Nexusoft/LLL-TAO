@@ -38,7 +38,7 @@ namespace TAO::API
         /* Enum to track status. */
         enum : uint8_t
         {
-            PENDING   = 0x01, //peending means it was broadcast or created
+            PENDING   = 0x01, //pending means it was broadcast or created
             ACCEPTED  = 0x02,
         };
 

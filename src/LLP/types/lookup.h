@@ -123,7 +123,7 @@ namespace LLP
 
         /** ProcessPacket
          *
-         *  Main message handler once a packet is recieved.
+         *  Main message handler once a packet is received.
          *
          *  @return True is no errors, false otherwise.
          *
@@ -139,7 +139,7 @@ namespace LLP
         template<typename... Args>
         void PushMessage(const uint8_t nMsg, Args&&... args)
         {
-            /* Buyild a datastream with the message parameters. */
+            /* Build a datastream with the message parameters. */
             DataStream ssData(SER_NETWORK, MIN_PROTO_VERSION);
             ((ssData << args), ...);
 

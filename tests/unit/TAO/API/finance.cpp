@@ -22,7 +22,7 @@ ________________________________________________________________________________
 #include <Util/include/args.h>
 
 
-TEST_CASE("Test Finance API - create acccount", "[finance")
+TEST_CASE("Test Finance API - create account", "[finance")
 {
     /* Declare variables shared across test cases */
     encoding::json params;
@@ -86,7 +86,7 @@ TEST_CASE("Test Finance API - create acccount", "[finance")
 }
 
 
-TEST_CASE("Test Finance API - get acccount", "[finance]")
+TEST_CASE("Test Finance API - get account", "[finance]")
 {
     /* Declare variables shared across test cases */
     encoding::json params;
@@ -207,7 +207,7 @@ TEST_CASE("Test Finance API - get acccount", "[finance]")
 }
 
 
-TEST_CASE("Test Finance API - list acccounts", "[finance]")
+TEST_CASE("Test Finance API - list accounts", "[finance]")
 {
     /* Declare variables shared across test cases */
     encoding::json params;

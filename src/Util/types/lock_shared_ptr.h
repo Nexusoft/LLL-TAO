@@ -124,7 +124,7 @@ namespace util::atomic
 	    mutable lock_control* pRefs;
 
 
-	    /** The internal raw poitner. **/
+	    /** The internal raw pointer. **/
 	    TypeName* pData;
 
 
@@ -208,7 +208,7 @@ namespace util::atomic
 	    lock_shared_ptr& operator=(TypeName* pDataIn) = delete;
 
 
-	    /** Equivilent operator.
+	    /** Equivalent operator.
 	     *
 	     *  @param[in] a The data type to compare to.
 	     *
@@ -225,7 +225,7 @@ namespace util::atomic
 	    }
 
 
-	    /** Equivilent operator.
+	    /** Equivalent operator.
 	     *
 	     *  @param[in] a The data type to compare to.
 	     *
@@ -238,7 +238,7 @@ namespace util::atomic
 	    }
 
 
-	    /** Not equivilent operator.
+	    /** Not equivalent operator.
 	     *
 	     *  @param[in] a The data type to compare to.
 	     *

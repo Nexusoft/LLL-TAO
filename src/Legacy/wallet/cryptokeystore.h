@@ -100,7 +100,7 @@ namespace Legacy
          *  If the keystore is already encrypted, this method does nothing and returns false.
          *
          *  @param[in] vMasterKeyIn Encryption key used to perform encryption. Value is not stored in vMasterKey
-         *                          so key store remains locked after conversion until explictly unlocked
+         *                          so key store remains locked after conversion until explicitly unlocked
          *
          *  @param[out] mapNewEncryptedKeys Method populates this map with the newly encrypted keys
          *

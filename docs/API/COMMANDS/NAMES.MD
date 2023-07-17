@@ -48,8 +48,8 @@ The following nouns are supported for this API command-set:
 
 [`name`] -  An object register containing a name object.  
 [`namespace`] - An object register containing a namespace object.  
-[`global`] - An object register which is recognised globally on the network.  
-[`local`] - An object register which is recognised only within the context of a user profile.  
+[`global`] - An object register which is recognized globally on the network.
+[`local`] - An object register which is recognized only within the context of a user profile.
 [`any`] - An object selection noun allowing mixed names nouns.  
 
 -----------------------------------
@@ -127,19 +127,19 @@ This command supports the `name` `namespace` `global` and `local` nouns.
 
 #### get/name
 
-This will retreive a specified name object.
+This will retrieve a specified name object.
 
 #### get/namespace
 
-This will retreive a specified namespace object.
+This will retrieve a specified namespace object.
 
 #### get/global
 
-This will retreive a specified global name object.
+This will retrieve a specified global name object.
 
 #### get/local
 
-This will retreive a specified local name object.
+This will retrieve a specified local name object.
 
 ### Parameters:
 
@@ -231,23 +231,23 @@ This command supports all the nouns.
 
 #### list/name
 
-This will retreive all the name objects.
+This will retrieve all the name objects.
 
 #### list/namespace
 
-This will retreive all the namespace objects.
+This will retrieve all the namespace objects.
 
 #### list/global
 
-This will retreive all the global name objects.
+This will retrieve all the global name objects.
 
 #### list/local
 
-This will retreive all the local name objects.
+This will retrieve all the local name objects.
 
 #### list/any
 
-This will retreive all the supported objects.
+This will retrieve all the supported objects.
 
 
 ### Parameters:
@@ -493,7 +493,7 @@ This command supports all the nouns.
 
 `address` : Required to **identify** the name using the register address. This is optional if the `name` is provided.
 
-#### history/namesapce
+#### history/namespace
 
 `namespace` : Required to **identify** the Name of the namespace object. This is optional if the namespace `address` is provided.
 
@@ -578,7 +578,7 @@ This command supports all the nouns.
 
 `address` : Required to **identify** the name using the register address. This is optional if the `name` is provided.
 
-#### transactions/namesapce
+#### transactions/namespace
 
 `namespace` : Required to **identify** the Name of the namespace object. This is optional if the namespace `address` is provided.
 

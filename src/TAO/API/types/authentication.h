@@ -118,7 +118,7 @@ namespace TAO::API
             , nLastAccess   (rSession.nLastAccess.load())
             , fInitializing (rSession.fInitializing.load())
             {
-                /* We wnat to reset our pointers here so they don't get sniped. */
+                /* We want to reset our pointers here so they don't get sniped. */
                 rSession.pCredentials.SetNull();
                 rSession.pUnlock.SetNull();
             }
@@ -139,7 +139,7 @@ namespace TAO::API
                 nLastAccess   = rSession.nLastAccess.load();
                 fInitializing = rSession.fInitializing.load();
 
-                /* We wnat to reset our pointers here so they don't get sniped. */
+                /* We want to reset our pointers here so they don't get sniped. */
                 rSession.pCredentials.SetNull();
                 rSession.pUnlock.SetNull();
 
@@ -147,7 +147,7 @@ namespace TAO::API
             }
 
 
-            /** Constructor based on geneis. **/
+            /** Constructor based on genesis. **/
             Session(const SecureString& strUsername, const SecureString& strPassword, const uint8_t nTypeIn = LOCAL)
             : pCredentials  (new TAO::Ledger::Credentials(strUsername, strPassword))
             , pUnlock       (new TAO::Ledger::PinUnlock())
@@ -192,7 +192,7 @@ namespace TAO::API
              *
              *  @param[out] nRequestedActions The actions to check.
              *
-             *  @return true if the actions were authroized.
+             *  @return true if the actions were authorized.
              *
              **/
             bool Authorized(uint8_t &nRequestedActions) const
@@ -259,7 +259,7 @@ namespace TAO::API
              *
              *  Update our password internal to our credentials.
              *
-             *  @param[in] strPassword The passowrd we are updating to
+             *  @param[in] strPassword The password we are updating to
              *
              **/
             void Update(const SecureString& strPassword)
@@ -458,11 +458,11 @@ namespace TAO::API
         static bool Caller(const encoding::json& jParams, uint256_t &hashCaller);
 
 
-        /** Unloacked
+        /** UnlockStatus
          *
          *  Determine if a sigchain is unlocked for given actions.
          *
-         *  @param[in] jParams The incoming paramters to parse
+         *  @param[in] jParams The incoming parameters to parse
          *  @param[in] nRequestedActions The actions requested for PIN unlock.
          *
          *  @return true if the PIN is unlocked for given actions.
@@ -471,11 +471,11 @@ namespace TAO::API
         static bool UnlockStatus(const encoding::json& jParams, uint8_t &nRequestedActions);
 
 
-        /** Unloacked
+        /** Unlocked
          *
          *  Determine if a sigchain is unlocked for given actions.
          *
-         *  @param[in] jParams The incoming paramters to parse
+         *  @param[in] jParams The incoming parameters to parse
          *  @param[in] nRequestedActions The actions requested for PIN unlock.
          *
          *  @return true if the PIN is unlocked for given actions.
@@ -484,7 +484,7 @@ namespace TAO::API
         static bool Unlocked(const uint8_t nRequestedActions, const encoding::json& jParams);
 
 
-        /** Unloacked
+        /** Unlocked
          *
          *  Determine if a sigchain is unlocked for given actions.
          *
@@ -564,7 +564,7 @@ namespace TAO::API
          *
          *  Unlock and get the active pin from current session.
          *
-         *  @param[in] jParams The incoming paramters to parse
+         *  @param[in] jParams The incoming parameters to parse
          *  @param[out] strPIN The pin number to return by reference
          *  @param[in] nRequestedActions The actions requested for PIN unlock.
          *
@@ -652,7 +652,7 @@ namespace TAO::API
          *  @param[in] strPIN The pin number to return by reference.
          *  @param[in rSession The session object ot authenticate]
          *
-         *  @return True if given crecentials were correct.
+         *  @return True if given credentials were correct.
          *
          **/
         static bool authenticate(const SecureString& strPIN, const Session& rSession);

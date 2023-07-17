@@ -34,7 +34,7 @@ namespace LLC
         if(vPlaintext.empty())
             return debug::error(FUNCTION, "Plain text is empty");
 
-        /* First copy our initialzation vector to ciphertext. */
+        /* First copy our initialization vector to ciphertext. */
         vCipherText =
             LLC::GetRand128().GetBytes(); //initialization vector is 16 bytes which is a multiple of block length
 

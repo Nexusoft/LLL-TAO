@@ -121,7 +121,7 @@ namespace Legacy
 		 *	@param[in] a The first object to compare
 		 *	@param[in] b The second object to compare
 		 *
-		 *	@return true if the objects are equivilent.
+		 *	@return true if the objects are equivalent.
 		 *
 		 **/
 		friend bool operator==(const TxOut& a, const TxOut& b)
@@ -136,7 +136,7 @@ namespace Legacy
 		 *	@param[in] a The first object to compare
 		 *	@param[in] b The second object to compare
 		 *
-		 *	@return true if the objects are not equivilent.
+		 *	@return true if the objects are not equivalent.
 		 *
 		 **/
 		friend bool operator!=(const TxOut& a, const TxOut& b)

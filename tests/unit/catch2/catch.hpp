@@ -2306,7 +2306,7 @@ namespace Catch {
         {}
     };
 
-    // Specialised comparison functions to handle equality comparisons between ints and pointers (NULL deduces as an int)
+    // Specialized comparison functions to handle equality comparisons between ints and pointers (NULL deduces as an int)
     template<typename LhsT, typename RhsT>
     auto compareEqual( LhsT const& lhs, RhsT const& rhs ) -> bool { return static_cast<bool>(lhs == rhs); }
     template<typename T>
@@ -3208,10 +3208,10 @@ namespace Catch {
     std::vector<StringRef> splitStringRef( StringRef str, char delimiter );
     bool replaceInPlace( std::string& str, std::string const& replaceThis, std::string const& withThis );
 
-    struct pluralise {
-        pluralise( std::size_t count, std::string const& label );
+    struct pluralize {
+        pluralize( std::size_t count, std::string const& label );
 
-        friend std::ostream& operator << ( std::ostream& os, pluralise const& pluraliser );
+        friend std::ostream& operator << ( std::ostream& os, pluralize const& pluralizer );
 
         std::size_t m_count;
         std::string m_label;
@@ -3657,7 +3657,7 @@ namespace Matchers {
             bool match(std::vector<T, AllocMatch> const &v) const override {
                 // !TBD: This currently works if all elements can be compared using !=
                 // - a more general approach would be via a compare template that defaults
-                // to using !=. but could be specialised for, e.g. std::vector<T, Alloc> etc
+                // to using !=. but could be specialized for, e.g. std::vector<T, Alloc> etc
                 // - then just call that directly
                 if (m_comparator.size() != v.size())
                     return false;
@@ -5082,7 +5082,7 @@ namespace Catch
         virtual bool matches( std::string const& str ) const;
 
     private:
-        std::string normaliseString( std::string const& str ) const;
+        std::string normalizeString( std::string const& str ) const;
         CaseSensitive::Choice m_caseSensitivity;
         WildcardPosition m_wildcard = NoWildcard;
         std::string m_pattern;
@@ -7431,7 +7431,7 @@ namespace Catch {
         using storage_for = Detail::ObjectStorage<T, true>;
 
         template <typename T>
-        using destructable_object = Detail::ObjectStorage<T, false>;
+        using destructible_object = Detail::ObjectStorage<T, false>;
     }
 }
 
@@ -7763,7 +7763,7 @@ namespace Catch {
                 result = -erfc_inv(2.0 * p);
                 // result *= normal distribution standard deviation (1.0) * sqrt(2)
                 result *= /*sd * */ ROOT_TWO;
-                // result += normal disttribution mean (0)
+                // result += normal distribution mean (0)
                 return result;
             }
 
@@ -9101,7 +9101,7 @@ namespace detail {
         else if (srcLC == "n" || srcLC == "0" || srcLC == "false" || srcLC == "no" || srcLC == "off")
             target = false;
         else
-            return ParserResult::runtimeError( "Expected a boolean value but did not recognise: '" + source + "'" );
+            return ParserResult::runtimeError( "Expected a boolean value but did not recognize: '" + source + "'" );
         return ParserResult::ok( ParseResultType::Matched );
     }
 #ifdef CLARA_CONFIG_OPTIONAL_TYPE
@@ -9375,7 +9375,7 @@ namespace detail {
         }
     };
 
-    inline auto normaliseOpt( std::string const &optName ) -> std::string {
+    inline auto normalizeOpt( std::string const &optName ) -> std::string {
 #ifdef CATCH_PLATFORM_WINDOWS
         if( optName[0] == '/' )
             return "-" + optName.substr( 1 );
@@ -9421,9 +9421,9 @@ namespace detail {
         }
 
         auto isMatch( std::string const &optToken ) const -> bool {
-            auto normalisedToken = normaliseOpt( optToken );
+            auto normalizedToken = normalizeOpt( optToken );
             for( auto const &name : m_optNames ) {
-                if( normaliseOpt( name ) == normalisedToken )
+                if( normalizeOpt( name ) == normalizedToken )
                     return true;
             }
             return false;
@@ -9648,7 +9648,7 @@ namespace detail {
                 if( result.value().type() == ParseResultType::ShortCircuitAll )
                     return result;
                 if( !tokenParsed )
-                    return InternalParseResult::runtimeError( "Unrecognised token: " + result.value().remainingTokens()->token );
+                    return InternalParseResult::runtimeError( "Unrecognized token: " + result.value().remainingTokens()->token );
             }
             // !TBD Check missing required options
             return result;
@@ -9728,7 +9728,7 @@ namespace Catch {
                 }();
 
                 if (warningSet == WarnAbout::Nothing)
-                    return ParserResult::runtimeError( "Unrecognised warning: '" + warning + "'" );
+                    return ParserResult::runtimeError( "Unrecognized warning: '" + warning + "'" );
                 config.warnings = static_cast<WarnAbout::What>( config.warnings | warningSet );
                 return ParserResult::ok( ParseResultType::Matched );
             };
@@ -9761,7 +9761,7 @@ namespace Catch {
                 else if( startsWith( "random", order ) )
                     config.runOrder = RunTests::InRandomOrder;
                 else
-                    return clara::ParserResult::runtimeError( "Unrecognised ordering: '" + order + "'" );
+                    return clara::ParserResult::runtimeError( "Unrecognized ordering: '" + order + "'" );
                 return ParserResult::ok( ParseResultType::Matched );
             };
         auto const setRngSeed = [&]( std::string const& seed ) {
@@ -9780,7 +9780,7 @@ namespace Catch {
                     else if( mode == "auto" )
                         config.useColour = UseColour::Auto;
                     else
-                        return ParserResult::runtimeError( "colour mode must be one of: auto, yes or no. '" + useColour + "' not recognised" );
+                        return ParserResult::runtimeError( "colour mode must be one of: auto, yes or no. '" + useColour + "' not recognized" );
                 return ParserResult::ok( ParseResultType::Matched );
             };
         auto const setWaitForKeypress = [&]( std::string const& keypress ) {
@@ -9794,7 +9794,7 @@ namespace Catch {
                 else if( keypressLc == "both" )
                     config.waitForKeypress = WaitForKeypress::BeforeStartAndExit;
                 else
-                    return ParserResult::runtimeError( "keypress argument must be one of: never, start, exit or both. '" + keypress + "' not recognised" );
+                    return ParserResult::runtimeError( "keypress argument must be one of: never, start, exit or both. '" + keypress + "' not recognized" );
             return ParserResult::ok( ParseResultType::Matched );
             };
         auto const setVerbosity = [&]( std::string const& verbosity ) {
@@ -9806,7 +9806,7 @@ namespace Catch {
             else if( lcVerbosity == "high" )
                 config.verbosity = Verbosity::High;
             else
-                return ParserResult::runtimeError( "Unrecognised verbosity, '" + verbosity + "'" );
+                return ParserResult::runtimeError( "Unrecognized verbosity, '" + verbosity + "'" );
             return ParserResult::ok( ParseResultType::Matched );
         };
         auto const setReporter = [&]( std::string const& reporter ) {
@@ -10573,7 +10573,7 @@ namespace Catch {
             // Extracts the actual name part of an enum instance
             // In other words, it returns the Blue part of Bikeshed::Colour::Blue
             StringRef extractInstanceName(StringRef enumInstance) {
-                // Find last occurence of ":"
+                // Find last occurrence of ":"
                 size_t name_start = enumInstance.size();
                 while (name_start > 0 && enumInstance[name_start - 1] != ':') {
                     --name_start;
@@ -11214,9 +11214,9 @@ namespace Catch {
         }
 
         if( !config.hasTestFilters() )
-            Catch::cout() << pluralise( matchedTestCases.size(), "test case" ) << '\n' << std::endl;
+            Catch::cout() << pluralize( matchedTestCases.size(), "test case" ) << '\n' << std::endl;
         else
-            Catch::cout() << pluralise( matchedTestCases.size(), "matching test case" ) << '\n' << std::endl;
+            Catch::cout() << pluralize( matchedTestCases.size(), "matching test case" ) << '\n' << std::endl;
         return matchedTestCases.size();
     }
 
@@ -11289,7 +11289,7 @@ namespace Catch {
                                                     .width( CATCH_CONFIG_CONSOLE_WIDTH-10 );
             Catch::cout() << str << wrapper << '\n';
         }
-        Catch::cout() << pluralise( tagCounts.size(), "tag" ) << '\n' << std::endl;
+        Catch::cout() << pluralize( tagCounts.size(), "tag" ) << '\n' << std::endl;
         return tagCounts.size();
     }
 
@@ -13677,7 +13677,7 @@ namespace Catch {
             if( filename == "%debug" )
                 return new Detail::DebugOutStream();
             else
-                CATCH_ERROR( "Unrecognised stream: '" << filename << "'" );
+                CATCH_ERROR( "Unrecognized stream: '" << filename << "'" );
         }
         else
             return new Detail::FileStream( filename );
@@ -13819,14 +13819,14 @@ namespace Catch {
         return subStrings;
     }
 
-    pluralise::pluralise( std::size_t count, std::string const& label )
+    pluralize::pluralize( std::size_t count, std::string const& label )
     :   m_count( count ),
         m_label( label )
     {}
 
-    std::ostream& operator << ( std::ostream& os, pluralise const& pluraliser ) {
-        os << pluraliser.m_count << ' ' << pluraliser.m_label;
-        if( pluraliser.m_count != 1 )
+    std::ostream& operator << ( std::ostream& os, pluralize const& pluralizer ) {
+        os << pluralizer.m_count << ' ' << pluralizer.m_label;
+        if( pluralizer.m_count != 1 )
             os << 's';
         return os;
     }
@@ -15329,7 +15329,7 @@ namespace Catch {
     WildcardPattern::WildcardPattern( std::string const& pattern,
                                       CaseSensitive::Choice caseSensitivity )
     :   m_caseSensitivity( caseSensitivity ),
-        m_pattern( normaliseString( pattern ) )
+        m_pattern( normalizeString( pattern ) )
     {
         if( startsWith( m_pattern, '*' ) ) {
             m_pattern = m_pattern.substr( 1 );
@@ -15344,19 +15344,19 @@ namespace Catch {
     bool WildcardPattern::matches( std::string const& str ) const {
         switch( m_wildcard ) {
             case NoWildcard:
-                return m_pattern == normaliseString( str );
+                return m_pattern == normalizeString( str );
             case WildcardAtStart:
-                return endsWith( normaliseString( str ), m_pattern );
+                return endsWith( normalizeString( str ), m_pattern );
             case WildcardAtEnd:
-                return startsWith( normaliseString( str ), m_pattern );
+                return startsWith( normalizeString( str ), m_pattern );
             case WildcardAtBothEnds:
-                return contains( normaliseString( str ), m_pattern );
+                return contains( normalizeString( str ), m_pattern );
             default:
                 CATCH_INTERNAL_ERROR( "Unknown enum" );
         }
     }
 
-    std::string WildcardPattern::normaliseString( std::string const& str ) const {
+    std::string WildcardPattern::normalizeString( std::string const& str ) const {
         return trim( m_caseSensitivity == CaseSensitive::No ? toLower( str ) : str );
     }
 }
@@ -15799,25 +15799,25 @@ void printTotals(std::ostream& out, const Totals& totals) {
             bothOrAll(totals.assertions.failed) : std::string();
         out <<
             "Failed " << bothOrAll(totals.testCases.failed)
-            << pluralise(totals.testCases.failed, "test case") << ", "
+            << pluralize(totals.testCases.failed, "test case") << ", "
             "failed " << qualify_assertions_failed <<
-            pluralise(totals.assertions.failed, "assertion") << '.';
+            pluralize(totals.assertions.failed, "assertion") << '.';
     } else if (totals.assertions.total() == 0) {
         out <<
             "Passed " << bothOrAll(totals.testCases.total())
-            << pluralise(totals.testCases.total(), "test case")
+            << pluralize(totals.testCases.total(), "test case")
             << " (no assertions).";
     } else if (totals.assertions.failed) {
         Colour colour(Colour::ResultError);
         out <<
-            "Failed " << pluralise(totals.testCases.failed, "test case") << ", "
-            "failed " << pluralise(totals.assertions.failed, "assertion") << '.';
+            "Failed " << pluralize(totals.testCases.failed, "test case") << ", "
+            "failed " << pluralize(totals.assertions.failed, "assertion") << '.';
     } else {
         Colour colour(Colour::ResultSuccess);
         out <<
             "Passed " << bothOrAll(totals.testCases.passed)
-            << pluralise(totals.testCases.passed, "test case") <<
-            " with " << pluralise(totals.assertions.passed, "assertion") << '.';
+            << pluralize(totals.testCases.passed, "test case") <<
+            " with " << pluralize(totals.assertions.passed, "assertion") << '.';
     }
 }
 
@@ -15964,7 +15964,7 @@ private:
 
         {
             Colour colourGuard(colour);
-            stream << " with " << pluralise(N, "message") << ':';
+            stream << " with " << pluralize(N, "message") << ':';
         }
 
         while (itMessage != itEnd) {
@@ -16638,8 +16638,8 @@ void ConsoleReporter::printTotals( Totals const& totals ) {
     } else if (totals.assertions.total() > 0 && totals.testCases.allPassed()) {
         stream << Colour(Colour::ResultSuccess) << "All tests passed";
         stream << " ("
-            << pluralise(totals.assertions.passed, "assertion") << " in "
-            << pluralise(totals.testCases.passed, "test case") << ')'
+            << pluralize(totals.assertions.passed, "assertion") << " in "
+            << pluralize(totals.testCases.passed, "test case") << ')'
             << '\n';
     } else {
 

@@ -416,7 +416,7 @@ namespace TAO
 
             /** type
              *
-             *  Helper function to determine unsupported types that failed tempalte deduction.
+             *  Helper function to determine unsupported types that failed template deduction.
              *
              **/
             template<typename Type>

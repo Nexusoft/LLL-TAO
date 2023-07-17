@@ -36,7 +36,7 @@ namespace Legacy
     public:
 
         /** The Block's timestamp. This number is locked into the signature hash. **/
-        uint32_t nTime; //NOTE: this is 32-bit for backwards compatability
+        uint32_t nTime; //NOTE: this is 32-bit for backwards compatibility
 
 
         /** The transactions of the block. **/

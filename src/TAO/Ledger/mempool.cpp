@@ -190,7 +190,7 @@ namespace TAO
                     return false;
                 }
 
-                /* Begin an ACID transction for internal memory commits. */
+                /* Begin an ACID transaction for internal memory commits. */
                 if(!tx.Verify(FLAGS::MEMPOOL))
                 {
                     mapRejected.insert(hashTx);
@@ -484,7 +484,7 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            //TODO: evict conflicted transctions from mempool
+            //TODO: evict conflicted transactions from mempool
 
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
@@ -503,7 +503,7 @@ namespace TAO
                 mapTransactions[hashGenesis].push_back(tx.second);
             }
 
-            /* Loop transctions map by genesis. */
+            /* Loop transactions map by genesis. */
             for(auto& list : mapTransactions)
             {
                 /* Get reference of the vector. */
@@ -654,7 +654,7 @@ namespace TAO
                     mapTransactions[hashGenesis].push_back(tx.second);
                 }
 
-                /* Loop transctions map by genesis. */
+                /* Loop transactions map by genesis. */
                 for(auto& list : mapTransactions)
                 {
                     /* Get reference of the vector. */
@@ -706,7 +706,7 @@ namespace TAO
             }
             else
             {
-                /* Loop transctions map by genesis. */
+                /* Loop transactions map by genesis. */
                 for(const auto& list : mapLegacy)
                 {
                     /* Push legacy transactions last. */

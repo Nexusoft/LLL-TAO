@@ -130,7 +130,7 @@ namespace filesystem
      *
      *  Recursively create directories along the path if they don't exist.
      *
-     *  @param[in] strPath The path to generate recrusively.
+     *  @param[in] strPath The path to generate recursively.
      *
      *  @return Returns true if the directory was created, false otherwise.
      *

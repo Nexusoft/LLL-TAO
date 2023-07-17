@@ -287,7 +287,7 @@ namespace LLD
             int32_t nCompare = compare(vBucket.begin() + 13, vBucket.end(), vKeyCompressed.begin(), vKeyCompressed.end());
             if(nCompare == 0)
             {
-                /* Deserialie key and return if found. */
+                /* Deserialize key and return if found. */
                 DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                 ssKey >> cKey;
 

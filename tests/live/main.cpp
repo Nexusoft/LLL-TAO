@@ -360,11 +360,11 @@ int oldmain(int argc, char** argv)
     config::ParseParameters(argc, argv);
 
 
-    /* Once we have read in the CLI paramters and config file, cache the args into global variables*/
+    /* Once we have read in the CLI parameters and config file, cache the args into global variables*/
     config::CacheArgs();
 
 
-    /* Initalize the debug logger. */
+    /* Initialize the debug logger. */
     debug::Initialize();
 
     //config::mapArgs["-datadir"] = "/database/SYNC1";

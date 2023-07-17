@@ -149,7 +149,7 @@ namespace Legacy
          *
          *  @param[in] state The block state to search from
          *
-         *  @return Elapsed time between last block genereated and the requested nTime
+         *  @return Elapsed time between last block generated and the requested nTime
          *
          **/
         uint64_t BlockAge(const TAO::Ledger::BlockState& state) const;
@@ -246,7 +246,7 @@ namespace Legacy
 
         /** StakeRate
          *
-         *  Retrieves the legacy staking rate for the trust score defined within a given coinstake transction.
+         *  Retrieves the legacy staking rate for the trust score defined within a given coinstake transaction.
          *
          *  This version of the method takes a legacy Transaction, which must be a coinstake transaction. The
          *  other two versions of this method retrieve the coinstake and call this one to perform calculations.

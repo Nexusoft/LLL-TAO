@@ -21,7 +21,7 @@ if [ -z "$HOSTOS_HOME" ]; then
 fi
 
 #
-# If this is first innvocation of the nexus daemon after container creation,
+# If this is first invocation of the nexus daemon after container creation,
 # then setup /root/.Nexus directory. Point to host OS file system. If that
 # directory does not exist, create it and copy a default nexus.conf to it.
 #

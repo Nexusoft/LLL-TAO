@@ -155,7 +155,7 @@ namespace LLP
 
         /** AddConnection
          *
-         *  Public Wraper to Add a Connection Manually.
+         *  Public Wrapper to Add a Connection Manually.
          *
          *  @param[in] strAddress	IPv4 Address of outgoing connection
          *  @param[in] strPort		Port of outgoing connection
@@ -338,7 +338,7 @@ namespace LLP
 
         /** NotifyEvent
          *
-         *  Tell the server an event has occured to wake up thread if it is sleeping. This can be used to orchestrate communication
+         *  Tell the server an event has occurred to wake up thread if it is sleeping. This can be used to orchestrate communication
          *  among threads if a strong ordering needs to be guaranteed.
          *
          **/

@@ -279,7 +279,7 @@ namespace LLD
             /* Check if this bucket has the key */
             if(std::equal(vBucket.begin() + 13, vBucket.begin() + 13 + vKeyCompressed.size(), vKeyCompressed.begin()))
             {
-                /* Deserialie key and return if found. */
+                /* Deserialize key and return if found. */
                 DataStream ssKey(vBucket, SER_LLD, DATABASE_VERSION);
                 ssKey >> cKey;
 

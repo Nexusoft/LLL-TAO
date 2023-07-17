@@ -142,7 +142,7 @@ namespace TAO::API
          *
          *  Index tritium transaction level events for logged in sessions.
          *
-         *  @param[in] hash The txid of the transactioun
+         *  @param[in] hash The txid of the transaction
          *
          **/
         static void IndexSigchain(const uint512_t& hash);
@@ -192,7 +192,7 @@ namespace TAO::API
          *
          *  Index legacy transaction level events for logged in sessions.
          *
-         *  @param[in] hash The txid of the transactioun
+         *  @param[in] hash The txid of the transaction
          *  @param[in] tx The transaction to index events for.
          *
          **/
@@ -203,7 +203,7 @@ namespace TAO::API
          *
          *  Index tritium transaction level events for logged in sessions.
          *
-         *  @param[in] hash The txid of the transactioun
+         *  @param[in] hash The txid of the transaction
          *  @param[in] tx The transaction to index events for.
          *
          **/
@@ -225,7 +225,7 @@ namespace TAO::API
          *
          *  Index transaction level events for logged in sessions.
          *
-         *  @param[in] hash The txid of the transactioun
+         *  @param[in] hash The txid of the transaction
          *  @param[in] tx The transaction to index events for.
          *
          **/

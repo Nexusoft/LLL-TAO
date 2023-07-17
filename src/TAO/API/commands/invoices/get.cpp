@@ -68,7 +68,7 @@ namespace TAO::API
             return true;
         }
 
-        /* If we haven't found the transation then return false */
+        /* If we haven't found the transaction then return false */
         return false;
     }
 }

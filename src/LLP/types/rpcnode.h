@@ -71,7 +71,7 @@ namespace LLP
 
         /** ProcessPacket
          *
-         *  Main message handler once a packet is recieved.
+         *  Main message handler once a packet is received.
          *
          *  @return True is no errors, false otherwise.
          *

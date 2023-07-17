@@ -139,7 +139,7 @@ namespace TAO
                 /* Check for version 8. */
                 if(nVersion > 7)
                 {
-                    /* Build new score with 128-bit arithmatic to prevent overflows. */
+                    /* Build new score with 128-bit arithmetic to prevent overflows. */
                     uint128_t nScoreNew = (nStakeNew * uint128_t(nScore)) / nStake;
                     nScore = nScoreNew.Get64();
                 }
@@ -437,7 +437,7 @@ namespace TAO
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
                 return false;
 
-            /* Loop until find stake transaction or reach first transaction on user acount (hashLast == 0). */
+            /* Loop until find stake transaction or reach first transaction on user account (hashLast == 0). */
             while(hashLast != 0)
             {
                 /* Get the transaction for the current hashLast. */

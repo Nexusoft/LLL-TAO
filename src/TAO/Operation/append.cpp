@@ -102,7 +102,7 @@ namespace TAO
             if(state.nType != TAO::Register::REGISTER::RAW && state.nType != TAO::Register::REGISTER::APPEND)
                 return debug::error(FUNCTION, "cannot call on non raw or append register");
 
-            /* Check that the proper owner is commiting the write. */
+            /* Check that the proper owner is committing the write. */
             if(contract.Caller() != state.hashOwner)
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 

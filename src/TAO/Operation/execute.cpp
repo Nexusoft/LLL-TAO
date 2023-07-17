@@ -428,7 +428,7 @@ namespace TAO::Operation
                                     return debug::error(FUNCTION, "OP::CLAIM: caller is not authorized to claim validation");
                             }
 
-                            /* If no validate fulfilled, try to exeucte conditions. */
+                            /* If no validate fulfilled, try to execute conditions. */
                             else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CLAIM: conditions not satisfied");
                         }
@@ -750,7 +750,7 @@ namespace TAO::Operation
                                     return debug::error(FUNCTION, "OP::CREDIT: caller is not authorized to claim validation");
                             }
 
-                            /* If no validate fulfilled, try to exeucte conditions. */
+                            /* If no validate fulfilled, try to execute conditions. */
                             else if(!conditions.Execute())
                                 return debug::error(FUNCTION, "OP::CREDIT: conditions not satisfied");
                         }

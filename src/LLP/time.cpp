@@ -156,13 +156,13 @@ namespace LLP
     }
 
 
-    /* Main message handler once a packet is recieved. */
+    /* Main message handler once a packet is received. */
     bool TimeNode::ProcessPacket()
     {
         /* Get the incoming packet. */
         Packet PACKET   = INCOMING;
 
-        /* Rspond with an offset. */
+        /* Respond with an offset. */
         if(PACKET.HEADER == GET_OFFSET)
         {
             uint32_t nTimestamp  = convert::bytes2uint(PACKET.DATA);
@@ -189,7 +189,7 @@ namespace LLP
             /* Make sure request counter hasn't exceeded requested offsets. */
             if(--nRequests < 0)
             {
-                DDOS->Ban("UNSOLICTED TIME OFFSET");
+                DDOS->Ban("UNSOLICITED TIME OFFSET");
                 return false;
             }
 

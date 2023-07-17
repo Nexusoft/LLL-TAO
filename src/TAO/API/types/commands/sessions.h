@@ -169,7 +169,7 @@ namespace TAO::API
          *  Validates a session to crypto object register to make sure credentials are correct.
          *
          *  @param[in] tSession The session object to validate before proceeding.
-         *  @param[in] strPIN The PIN number to be used to valide the session
+         *  @param[in] strPIN The PIN number to be used to validate the session
          *
          *  @return true if the session authenticated correctly.
          *

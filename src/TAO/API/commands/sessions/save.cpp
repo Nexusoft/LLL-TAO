@@ -60,7 +60,7 @@ namespace TAO::API
         /* Write the session to local DB */
         LLD::Local->WriteSession(hashGenesis, vchCipherText);
 
-        /* populate reponse */;
+        /* populate response */;
         const encoding::json jRet =
         {
             { "genesis",  hashGenesis.ToString() },

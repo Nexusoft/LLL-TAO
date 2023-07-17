@@ -33,7 +33,7 @@ namespace LLD
      *  This class is responsible for managing the keys to the sector database.
      *
      *  It contains a Binary Hash Map with a minimum complexity of O(1).
-     *  It uses a linked file list based on index to iterate trhough files and binary Positions
+     *  It uses a linked file list based on index to iterate through files and binary Positions
      *  when there is a collision that is found.
      *
      **/

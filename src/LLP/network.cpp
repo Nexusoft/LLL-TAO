@@ -94,7 +94,7 @@ namespace LLP
         LLC::X509Cert cert;
 
 
-        /* Check to see if an external certficate is configured */
+        /* Check to see if an external certificate is configured */
         std::string strCert = config::GetArg("-sslcertificate", "");
         if(!strCert.empty())
         {

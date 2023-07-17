@@ -116,7 +116,7 @@ namespace TAO
 
             /* Check the addresses match. */
             if(state.hashOwner != contract.Caller() //claim to self
-            && hashTransfer    != contract.Caller() //calim to transfer
+            && hashTransfer    != contract.Caller() //claim to transfer
             && hashTransfer    != TAO::Register::WILDCARD_ADDRESS)   //claim to wildcard (anyone)
                 return debug::error(FUNCTION, "claim public-id mismatch with transfer address");
 

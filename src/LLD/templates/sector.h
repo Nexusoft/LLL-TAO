@@ -225,7 +225,7 @@ namespace LLD
             if(cachePool->Has(vKey))
                 return true;
 
-            /* Return the Key existance in the Keychain Database. */
+            /* Return the Key existence in the Keychain Database. */
             SectorKey cKey;
             return pSectorKeys->Get(vKey, cKey);
         }
@@ -487,7 +487,7 @@ namespace LLD
                     /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
                     if(pTransaction->mapTransactions.count(vKey))
                     {
-                        /* Get the data from the transction object. */
+                        /* Get the data from the transaction object. */
                         vData = pTransaction->mapTransactions[vKey];
 
                         /* Deserialize Value. */
@@ -497,7 +497,7 @@ namespace LLD
                         std::string strType;
                         ssValue >> strType;
 
-                        /* Deseriazlie the Value. */
+                        /* Deserialize the Value. */
                         ssValue >> value;
 
                         return true;
@@ -516,7 +516,7 @@ namespace LLD
             std::string strType;
             ssValue >> strType;
 
-            /* Deseriazlie the Value. */
+            /* Deserialize the Value. */
             ssValue >> value;
 
             return true;
@@ -622,7 +622,7 @@ namespace LLD
                 }
             }
 
-            /* Return the Key existance in the Keychain Database. */
+            /* Return the Key existence in the Keychain Database. */
             SectorKey cKey(STATE::READY, vKey, 0, 0, 0);
             return pSectorKeys->Put(cKey);
         }

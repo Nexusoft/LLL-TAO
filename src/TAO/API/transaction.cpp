@@ -309,7 +309,7 @@ namespace TAO::API
     /* Index a transaction into the ledger database. */
     bool Transaction::Index(const uint512_t& hash)
     {
-        /* Set our status to acceoted if transaction has been connected to a block. */
+        /* Set our status to accepted if transaction has been connected to a block. */
         if(LLD::Ledger->HasIndex(hash))
         {
             /* Refresh this transaction from disk if it exists. */
@@ -576,7 +576,7 @@ namespace TAO::API
                 /* Transfer we need to mark this address as spent. */
                 case TAO::Operation::OP::TRANSFER:
                 {
-                    /* Erase a transfer index if roling back a transfer. */
+                    /* Erase a transfer index if rolling back a transfer. */
                     if(!LLD::Logical->EraseTransfer(hashGenesis, hashRegister))
                         debug::warning(FUNCTION, "failed to write transfer for ", VARIABLE(hashRegister.SubString()));
 

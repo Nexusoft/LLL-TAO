@@ -164,14 +164,14 @@ namespace TAO
         }
 
 
-        /* Operator overload to check for equivilence. */
+        /* Operator overload to check for equivalence. */
         bool State::operator==(const State& state) const
         {
             return GetHash() == state.GetHash();
         }
 
 
-        /* Operator overload to check for non-equivilence. */
+        /* Operator overload to check for non-equivalence. */
         bool State::operator!=(const State& state) const
         {
             return GetHash() != state.GetHash();

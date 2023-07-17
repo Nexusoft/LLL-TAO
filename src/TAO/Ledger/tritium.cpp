@@ -182,7 +182,7 @@ namespace TAO
             if(block.nVersion < 7)
                 throw debug::exception(FUNCTION, "invalid sync block version for tritium block");
 
-            /* Loop through transctions. */
+            /* Loop through transactions. */
             for(uint32_t n = 0; n < block.vtx.size(); ++n)
             {
                 /* Switch for type. */
@@ -541,7 +541,7 @@ namespace TAO
                 /* Switch based on signature type. */
                 switch(producer.nKeyType)
                 {
-                    /* Support for the FALCON signature scheeme. */
+                    /* Support for the FALCON signature scheme. */
                     case SIGNATURE::FALCON:
                     {
                         /* Create the FL Key object. */
@@ -632,7 +632,7 @@ namespace TAO
             /* Write the transactions. */
             for(const auto& proof : vtx)
             {
-                /* Get the tritium transction. */
+                /* Get the tritium transaction. */
                 if(proof.first == TRANSACTION::TRITIUM)
                 {
                     /* Track our conflicted flags here. */
@@ -854,7 +854,7 @@ namespace TAO
         }
 
 
-        /* Get the Signarture Hash of the block. Used to verify work claims. */
+        /* Get the Signature Hash of the block. Used to verify work claims. */
         uint1024_t TritiumBlock::SignatureHash() const
         {
             /* Create a data stream to get the hash. */

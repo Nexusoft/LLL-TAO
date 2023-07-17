@@ -116,12 +116,12 @@ namespace Legacy
     /** Is Mine
      *
      *  Checks an output to your keystore to detect if you have a key
-     *  that is involed in the output or transaction.
+     *  that is involved in the output or transaction.
      *
      *  @param[in] keystore The keystore to check against
      *  @param[in] scriptPubKey The script object to check
      *
-     *  @return true if script object involes a key in keystore.
+     *  @return true if script object involves a key in keystore.
      *
      **/
     bool IsMine(const KeyStore& keystore, const Script& scriptPubKey);
@@ -162,7 +162,7 @@ namespace Legacy
      *
      *  @param[in] scriptSig The script to verify
      *  @param[in] scriptPubKey The script to verify against.
-     *  @param[in] txTo The destination transaciton being signed.
+     *  @param[in] txTo The destination transaction being signed.
      *  @param[in] nIn The output to verify signature for.
      *  @param[in] nHashType The hash type for signature.
      *

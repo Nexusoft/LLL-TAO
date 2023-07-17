@@ -44,7 +44,7 @@ namespace TAO::API
         /* The hash representing the namespace that the Name will be created in. */
         uint256_t hashNamespace = hashGenesis; //default to local name
 
-        /* Check to see whether the name is being created in a namesace */
+        /* Check to see whether the name is being created in a namespace */
         if(!strNamespace.empty())
         {
             /* If the name is not being created in the global namespace then check that the caller owns the namespace */

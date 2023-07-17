@@ -99,7 +99,7 @@ namespace LLP
          *
          *  @param[in] nFlags the types of connect nState
          *
-         *  @return Count of addresss info with connect state flags
+         *  @return Count of addresses info with connect state flags
          *
          **/
         uint32_t Count(const uint8_t nFlags = CONNECT_FLAGS_ALL);
@@ -112,7 +112,7 @@ namespace LLP
          *
          *  @param[in] addr The address to add
          *  @param[in] nState The nState of the connection for the address
-         *  @param[in] nSession The session lenght for address to give it higher score.
+         *  @param[in] nSession The session length for address to give it higher score.
          *
          **/
         void AddAddress(const BaseAddress &addr, const uint8_t nState = ConnectState::NEW, const uint32_t nSession = 0);

@@ -95,7 +95,7 @@ namespace Legacy
             if(!GetLastState(state, 0))
                 return debug::error(FUNCTION, "couldn't find previous block");
 
-            /* If serach block isn't proof of stake, return an error. */
+            /* If block isn't proof of stake, return an error. */
             if(!state.IsProofOfStake())
                 return debug::error(FUNCTION, "block is not proof of stake");
 

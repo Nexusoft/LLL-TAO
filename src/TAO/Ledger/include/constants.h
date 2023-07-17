@@ -96,7 +96,7 @@ namespace TAO::Ledger
     const uint32_t MAX_BLOCK_SIGOPS = 40000;
 
 
-    /** Maximum contracts per transction. **/
+    /** Maximum contracts per transaction. **/
     const uint32_t MAX_TRANSACTION_CONTRACTS = 100;
 
 

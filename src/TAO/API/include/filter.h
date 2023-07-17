@@ -72,7 +72,7 @@ namespace TAO::API
      *  Main filter interface, handles json levels recursively handling multiple fields to filter.
      *
      *  @param[in] jParams The parameters passed into the request
-     *  @param[out] jResponse The reponse JSON to be filtered.
+     *  @param[out] jResponse The response JSON to be filtered.
      *
      *  @return true if a field was found and filtered or if no filters present.
      *

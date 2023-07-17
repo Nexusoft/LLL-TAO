@@ -83,7 +83,7 @@ namespace LLP
 
         /** ProcessPacket
          *
-         *  Main message handler once a packet is recieved.
+         *  Main message handler once a packet is received.
          *
          *  @return True is no errors, false otherwise.
          *
@@ -93,7 +93,7 @@ namespace LLP
 
         /** DoS
          *
-         *  Send the DoS Score to DDOS Filte
+         *  Send the DoS Score to DDOS Filter
          *
          *  @param[in] nDoS The score to add for DoS banning
          *  @param[in] fReturn The value to return (False disconnects this node)

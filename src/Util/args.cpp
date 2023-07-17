@@ -152,7 +152,7 @@ namespace config
 
         if(mapArgs.count(strArg))
         {
-            /* Get a reference copy of arguement. */
+            /* Get a reference copy of argument. */
             const std::string& strValue = mapArgs[strArg];
 
             /* Check for empty values. */
@@ -302,7 +302,7 @@ namespace config
                     std::vector<std::string> vActivate;
                     ParseString(strActivate, ':', vActivate);
 
-                    /* Check for valid tranaction versions. */
+                    /* Check for valid transaction versions. */
                     if(vActivate.size() != 2)
                         throw debug::exception("-activatetx, too many parameters: ", strActivate);
 

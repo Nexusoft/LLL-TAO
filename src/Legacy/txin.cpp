@@ -98,7 +98,7 @@ namespace Legacy
 		if(scriptSig.size() < 8)
 			return false;
 
-		/* Check for fibanacci */
+		/* Check for fibonacci */
 		if(scriptSig[0] != 1
 		|| scriptSig[1] != 2
 		|| scriptSig[2] != 3

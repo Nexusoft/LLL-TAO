@@ -547,7 +547,7 @@ TEST_CASE( "Test Names API - list namespace history", "[names/list/namespace/his
         /* Build the parameters to pass to the API */
         params.clear();
         params["session"] = SESSION2;
-        params["name"] = "not a namspace";
+        params["name"] = "not a namespace";
 
         /* Invoke the API */
         ret = APICall("names/list/namespace/history", params);
@@ -1317,7 +1317,7 @@ TEST_CASE( "Test Names API - claim name", "[names/claim/name]")
         }
 
         {
-            /* Create a name in the above namesapce and persis the tx to the DB */
+            /* Create a name in the above namespace and persist the tx to the DB */
             TAO::Ledger::Transaction tx;
             tx.hashGenesis = GENESIS1;
             tx.nSequence   = 1;

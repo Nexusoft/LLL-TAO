@@ -518,7 +518,7 @@ namespace LLC
     }
 
 
-    /* Nexus sepcific strict DER rules. */
+    /* Nexus specific strict DER rules. */
     bool ECKey::Encoding(const std::vector<uint8_t>& vchSig) const
     {
         /* Check the signature length. Strict encoding requires no more than 135 bytes. */

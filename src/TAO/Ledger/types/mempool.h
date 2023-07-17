@@ -70,7 +70,7 @@ namespace TAO
             std::map<uint512_t, TAO::Ledger::Transaction> mapConflicts;
 
 
-            /** Oprhan transactions in queue. **/
+            /** Orphan transactions in queue. **/
             std::map<uint512_t, TAO::Ledger::Transaction> mapOrphans;
 
 

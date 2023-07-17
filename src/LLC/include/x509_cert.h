@@ -148,7 +148,7 @@ namespace LLC
 
         /** GenerateRSA
          *
-         *  Generate an RSA keypair and correspoding certificate signed with the key.  This method is useful for creating
+         *  Generate an RSA keypair and corresponding certificate signed with the key.  This method is useful for creating
          *  ad-hoc one-off self-signed certificates where the private key is ephemeral.  The certificate validity is set to 1 year 
          * 
          *  @param[in] strCN The common name to set.
@@ -162,8 +162,8 @@ namespace LLC
 
         /** GenerateEC
          *
-         *  Generate a certificate using EC signature scheme, signed with the specified prigate key.  This method is useful when
-         *  creating and regenerating self-signed certificates where the private key is persistant. 
+         *  Generate a certificate using EC signature scheme, signed with the specified private key.  This method is useful when
+         *  creating and regenerating self-signed certificates where the private key is persistent. 
          *  The certificate validity is set to 1 year 
          * 
          *  @param[in] hashSecret The private key to use .

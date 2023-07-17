@@ -143,7 +143,7 @@ namespace TAO
         /* Real value of the total synchronization percent completion. */
         double ChainState::PercentSynchronized()
         {
-            /* The timstamp of the genesis block.   */
+            /* The timestamp of the genesis block.   */
             static const uint32_t nGenesis =
                 (config::fClient.load() ? TritiumGenesis().nHeight : config::fHybrid.load() ? HybridGenesis().nHeight : LegacyGenesis().nHeight);
 
@@ -222,7 +222,7 @@ namespace TAO
                     BlockState stateCheck;
                     if(!LLD::Ledger->ReadBlock(it->second, stateCheck))
                     {
-                        /* Find nearest ancestory block. */
+                        /* Find nearest ancestry block. */
                         auto iAncestor = it;
                         iAncestor++;
 

@@ -636,7 +636,7 @@ namespace Legacy
                 else
                 {
                     /* wkey entry stores WalletKey
-                     * These are no longer written to database, but support to read them is included for backward compatability
+                     * These are no longer written to database, but support to read them is included for backward compatibility
                      * Loaded into wallet key, same as key entry
                      */
                     WalletKey wkey;

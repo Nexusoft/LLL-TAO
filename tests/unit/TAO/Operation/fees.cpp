@@ -305,7 +305,7 @@ TEST_CASE( "Transaction fee Tests", "[operation]")
 
         /* run tests */
 
-        /* Check the fee.  This shuld be 3 lots of account fee (free) and 3 x TX_FEE (0.03) */
+        /* Check the fee.  This should be 3 lots of account fee (free) and 3 x TX_FEE (0.03) */
         REQUIRE(tx.Cost() == (3 *TAO::Register::ACCOUNT_FEE) + 3 * (TAO::Ledger::TX_FEE));
 
     }

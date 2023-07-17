@@ -47,7 +47,7 @@ If accessing through php or other means, refer to their relevant documentation t
 
 ## `Authentication`
 
-The API supports the `HTTP Basic` authentication scheme.  This requires the caller to set an `Authorization` HTTP header with the value `Basic <credentials>` with the `<credendtials>` portion set to `apiuser:apipassword` in `base64` encoding. On the API server side the authentication is configured by adding `apiuser=<username>` and `apipassword=<password>` to the nexus.conf.  If you wish to disable authentication entirely, you can do so by setting `apiauth=0` in your nexus.conf, the daemon will not start the API server if you do not configure credentials or set `-apiauth=0` in your configuration.
+The API supports the `HTTP Basic` authentication scheme.  This requires the caller to set an `Authorization` HTTP header with the value `Basic <credentials>` with the `<credentials>` portion set to `apiuser:apipassword` in `base64` encoding. On the API server side the authentication is configured by adding `apiuser=<username>` and `apipassword=<password>` to the nexus.conf.  If you wish to disable authentication entirely, you can do so by setting `apiauth=0` in your nexus.conf, the daemon will not start the API server if you do not configure credentials or set `-apiauth=0` in your configuration.
 
 
 ## `Sessions`

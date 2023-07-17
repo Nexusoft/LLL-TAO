@@ -155,7 +155,7 @@ static unsigned int rej_uniform(int16_t *r,
 *              uniformly random. Performs rejection sampling on output of
 *              a XOF
 *
-* Arguments:   - polyvec *a: pointer to ouptput matrix A
+* Arguments:   - polyvec *a: pointer to output matrix A
 *              - const uint8_t *seed: pointer to input seed
 *              - int transposed: boolean deciding whether A or A^T is generated
 **************************************************/

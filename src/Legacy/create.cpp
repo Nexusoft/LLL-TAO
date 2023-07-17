@@ -362,7 +362,7 @@ namespace Legacy
                 continue;
             }
 
-            /* Check tx fee meetes minimum fee requirement */
+            /* Check tx fee meets minimum fee requirement */
             nTxFees = tx.GetValueIn(mapInputs) - tx.GetValueOut();
             if(nTxFees < nMinFee)
             {

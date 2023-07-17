@@ -44,11 +44,11 @@
 #Transfer an asset to another signature chain (by username)
 ./api_call.sh assets/transfer/asset/myasset username=jack pin=1234
 
-#Transer an asset to another signature chain (by genesis has)
+#Transfer an asset to another signature chain (by genesis has)
 ./api_call.sh assets/transfer/asset/myasset2 destination=1ff463e036cbde3595fbe2de9dff15721a89e99ef3e2e9bfa7ce48ed825e9ec2 pin=1234
 
 #Claim ownership of an asset that has been transferred to you
-#(or claim back ownwership if you transferred it and it hasn't yet been claimed)
+#(or claim back ownership if you transferred it and it hasn't yet been claimed)
 ./api_call.sh assets/claim/asset txid=5fa2381c0b7ba0fbb3cc43f7ac46751b4399dcb6a0ebe2dac4a0c14d57c32695fd185564a2041b1ea04482bfb27fdb7c3ff4792767fa265fdf9849baa8c92e77 pin=1234
 
 #Tokenize an asset

@@ -269,7 +269,7 @@ namespace LLD
             /* Erase from memory if on block. */
             if(pCommit->mapStates.count(hashRegister))
             {
-                /* Check for transction. */
+                /* Check for transaction. */
                 if(pMemory)
                 {
                     pMemory->setErase.insert(hashRegister);
@@ -572,7 +572,7 @@ namespace LLD
                 /* Write our last index now. */
                 Write(std::string("reindexed"));
 
-                debug::notice(FUNCTION, "Complated scanning ", nScannedCount, " tx with ", setScanned.size(), " registers in ", timer.Elapsed(), " seconds");
+                debug::notice(FUNCTION, "Completed scanning ", nScannedCount, " tx with ", setScanned.size(), " registers in ", timer.Elapsed(), " seconds");
 
                 break;
             }

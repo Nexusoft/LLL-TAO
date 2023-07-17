@@ -96,7 +96,7 @@ namespace LLD
     /* Erases a transaction from the ledger DB. */
     bool LegacyDB::EraseTx(const uint512_t& hashTx)
     {
-        //TODO: this is never used. Might consdier removing since transactions are never erased
+        //TODO: this is never used. Might consider removing since transactions are never erased
         return Erase(std::make_pair(std::string("tx"), hashTx));
     }
 
@@ -185,7 +185,7 @@ namespace LLD
         if(!WriteSequence(hashAddress, nSequence + 1))
             return false;
 
-        /* Check for client mode. NOTE: we use a tuple key including a legacy identifer for legacy events so that they can be
+        /* Check for client mode. NOTE: we use a tuple key including a legacy identifier for legacy events so that they can be
            differentiated from tritium events whilst being stored in the same database. */
         if(config::fClient.load())
             return Client->Index(std::make_tuple(hashAddress, nSequence, uint8_t(TAO::Ledger::LEGACY)), hashTx);

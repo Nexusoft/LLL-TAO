@@ -64,7 +64,7 @@ namespace Legacy
         int32_t nIndex;
 
 
-		/* Implement serialization/deserializaiton for MerkleTx, first by serializing/deserializing
+		/* Implement serialization/deserialization for MerkleTx, first by serializing/deserializing
 		 * base class data then processing local data
 		 */
 		IMPLEMENT_SERIALIZE

@@ -955,7 +955,7 @@ namespace Legacy
     /* Adds a wallet transaction to the wallet. */
     bool Wallet::AddToWallet(const WalletTx& wtxIn, uint512_t hash)
     {
-        /* Check for explicet declaration of hashes. */
+        /* Check for explicit declaration of hashes. */
         if(hash == 0)
             hash = wtxIn.GetHash();
 
@@ -974,7 +974,7 @@ namespace Legacy
         bool fInsertedNew = ret.second;
         if (fInsertedNew && wtx.nTimeReceived == 0) // Time will be non-zero if preset by processing (such as rescan)
         {
-            /* wtx.nTimeReceive must remain uint32_t for backward compatability */
+            /* wtx.nTimeReceive must remain uint32_t for backward compatibility */
             wtx.nTimeReceived = (uint32_t)runtime::unifiedtimestamp();
         }
 

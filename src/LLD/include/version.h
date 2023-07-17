@@ -33,7 +33,7 @@ namespace LLD
                       +       1 * DATABASE_BUILD;
 
 
-    /* The database type used (Berklee DB or Lower Level Database) */
+    /* The database type used (Berkeley DB or Lower Level Database) */
     #ifdef USE_LLD
     const std::string DATABASE_NAME("LLD");
     #else

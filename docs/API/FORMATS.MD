@@ -1,6 +1,6 @@
 # `Formats`
 
-When creating or modifying a register for any command-set, a format is required to encode the operations to the given register. The following sections outline the formats and their corresponding syntax. This syntax is accessed when one supplies `format=basic` as a paramter to a command that creates a new register, or updates its current state.
+When creating or modifying a register for any command-set, a format is required to encode the operations to the given register. The following sections outline the formats and their corresponding syntax. This syntax is accessed when one supplies `format=basic` as a parameter to a command that creates a new register, or updates its current state.
 
 ## `readonly` or `raw`
 

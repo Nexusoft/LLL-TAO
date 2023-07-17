@@ -147,7 +147,7 @@ namespace TAO
             /* The current block height of this node */
             jRet["blocks"]          = TAO::Ledger::ChainState::nBestHeight.load();
 
-            /* Flag indicating whether this node is currently syncrhonizing */
+            /* Flag indicating whether this node is currently synchronizing */
             jRet["synchronized"]    = !TAO::Ledger::ChainState::Synchronizing();
             jRet["syncing"]         = false; // default sync value
 

@@ -90,7 +90,7 @@ namespace LLC
     {
         /* Check for null data. */
         if(!pkey)
-            return debug::error(FUNCTION, "Unitialized EVP_PKEY");
+            return debug::error(FUNCTION, "Uninitialized EVP_PKEY");
         if(!px509)
             return debug::error(FUNCTION, "Uninitialized certificate.");
 
@@ -128,7 +128,7 @@ namespace LLC
     }
 
 
-    /* Generate an RSA keypair and correspoding certificate signed with the key.  This method is useful for creating
+    /* Generate an RSA keypair and corresponding certificate signed with the key.  This method is useful for creating
        ad-hoc one-off self-signed certificates where the private key is ephemeral.  The certificate validity is set to 1 year . */
     bool X509Cert::GenerateRSA(const std::string& strCN, const uint64_t nValidFrom)
     {
@@ -182,7 +182,7 @@ namespace LLC
         /* Set the issuer name. */
         X509_set_issuer_name(px509, name);
 
-        /* Peform the sign. */
+        /* Perform the sign. */
         X509_sign(px509, pkey, EVP_sha1());
 
 
@@ -190,8 +190,8 @@ namespace LLC
     }
 
 
-    /* Generate a certificate using EC signature scheme, signed with the specified prigate key.  This method is useful when
-       creating and regenerating self-signed certificates where the private key is persistant.
+    /* Generate a certificate using EC signature scheme, signed with the specified private key.  This method is useful when
+       creating and regenerating self-signed certificates where the private key is persistent.
        The certificate validity is set to 1 year. */
     bool X509Cert::GenerateEC(const uint512_t& hashSecret, const std::string& strCN, const uint64_t nValidFrom)
     {
@@ -234,7 +234,7 @@ namespace LLC
         /* Set the issuer name. */
         X509_set_issuer_name(px509, name);
 
-        /* Peform the sign. */
+        /* Perform the sign. */
         X509_sign(px509, pkey, EVP_sha1());
 
         return true;

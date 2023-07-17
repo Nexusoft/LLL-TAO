@@ -30,7 +30,7 @@ namespace TAO::Register
     const uint64_t OBJECT_FEE = 1 * TAO::Ledger::NXS_COIN;
 
 
-    /** Cost to create a local or namesaced Name **/
+    /** Cost to create a local or namespace Name **/
     const uint64_t NAME_FEE = 1 * TAO::Ledger::NXS_COIN;
 
 
@@ -42,7 +42,7 @@ namespace TAO::Register
     const uint64_t NAMESPACE_FEE = 1000 * TAO::Ledger::NXS_COIN;
 
 
-    /** Cost for token creation, calclated logarithmically starting at 100 **/
+    /** Cost for token creation, calculated logarithmically starting at 100 **/
     const uint64_t TOKEN_FEE = 100 * TAO::Ledger::NXS_COIN;
 
 

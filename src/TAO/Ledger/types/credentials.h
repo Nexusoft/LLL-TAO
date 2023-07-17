@@ -50,7 +50,7 @@ namespace TAO
             const SecureString strUsername;
 
 
-            /** Secure allocater to represent the password of this signature chain. **/
+            /** Secure allocator to represent the password of this signature chain. **/
             SecureString strPassword;
 
 
@@ -93,11 +93,11 @@ namespace TAO
             ~Credentials();
 
 
-            /** Equivilence operator. **/
+            /** Equivalence operator. **/
             bool operator==(const Credentials& pCheck) const;
 
 
-            /** Equivilence operator. **/
+            /** Equivalence operator. **/
             bool operator!=(const Credentials& pCheck) const;
 
 
@@ -142,10 +142,10 @@ namespace TAO
 
             /** Generate
              *
-             *  This function is responsible for genearting the private key in the sigchain of a specific account.
+             *  This function is responsible for generating the private key in the sigchain of a specific account.
              *  The sigchain is a series of keys seeded from a secret phrase and a PIN number.
              *
-             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] nKeyID The key number in the keychain
              *  @param[in] strSecret The secret phrase to use
              *  @param[in] fCache Use the cache on hand for keys.
              *
@@ -159,7 +159,7 @@ namespace TAO
              *  This function is responsible for generating the private key in the sigchain with a specific password and pin.
              *  This version should be used when changing the password and/or pin
              *
-             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] nKeyID The key number in the keychain
              *  @param[in] strPassword The password to use
              *  @param[in] strSecret The secret phrase to use
              *
@@ -174,7 +174,7 @@ namespace TAO
              *  The sigchain is a series of keys seeded from a secret phrase and a PIN number.
              *
              *  @param[in] strType The type of signing key used.
-             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] nKeyID The key number in the keychain
              *  @param[in] strSecret The secret phrase to use
              *
              *  @return The 512 bit hash of this key in the series.
@@ -200,7 +200,7 @@ namespace TAO
              *  This function generates a public key generated from random seed phrase.
              *
              *  @param[in] strType The type of signing key used.
-             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] nKeyID The key number in the keychain
              *  @param[in] strSecret The secret phrase to use
              *  @param[in] nType The key type to use.
              *
@@ -214,7 +214,7 @@ namespace TAO
              *  This function generates a hash of a public key generated from random seed phrase.
              *
              *  @param[in] strType The type of signing key used.
-             *  @param[in] nKeyID The key number in the keychian
+             *  @param[in] nKeyID The key number in the keychain
              *  @param[in] strSecret The secret phrase to use
              *  @param[in] nType The key type to use.
              *

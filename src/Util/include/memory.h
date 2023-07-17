@@ -45,7 +45,7 @@ namespace memory
 
     /** copy
      *
-     *  Copies from two sets of iteratos and checks the sizes for potential buffer
+     *  Copies from two sets of iterators and checks the sizes for potential buffer
      *  overflows.
      *
      *  @param[in] src_begin The source beginning iterator
@@ -137,7 +137,7 @@ namespace memory
         }
 
 
-        /** Equivilent operator.
+        /** Equivalent operator.
          *
          *  @param[in] a The atomic to compare to.
          *
@@ -150,7 +150,7 @@ namespace memory
         }
 
 
-        /** Equivilent operator.
+        /** Equivalent operator.
          *
          *  @param[in] a The data type to compare to.
          *
@@ -163,7 +163,7 @@ namespace memory
         }
 
 
-        /** Not equivilent operator.
+        /** Not equivalent operator.
          *
          *  @param[in] a The atomic to compare to.
          *
@@ -176,7 +176,7 @@ namespace memory
         }
 
 
-        /** Not equivilent operator.
+        /** Not equivalent operator.
          *
          *  @param[in] a The data type to compare to.
          *
@@ -381,7 +381,7 @@ namespace memory
         mutable std::recursive_mutex MUTEX;
 
 
-        /** The internal raw poitner. **/
+        /** The internal raw pointer. **/
         TypeName* data;
 
 
@@ -464,7 +464,7 @@ namespace memory
             **/
             TypeName* operator->() const
             {
-                /* Stop member access if poitner is null. */
+                /* Stop member access if pointer is null. */
                 if(data == nullptr)
                     throw std::runtime_error(debug::safe_printstr(FUNCTION, "member access to nullptr"));
 
@@ -544,7 +544,7 @@ namespace memory
         }
 
 
-        /** Equivilent operator.
+        /** Equivalent operator.
          *
          *  @param[in] a The data type to compare to.
          *
@@ -560,17 +560,17 @@ namespace memory
             /* Decrypt the pointer. */
             data->Encrypt();
 
-            /* Check equivilence. */
+            /* Check equivalence. */
             bool fEquals = (*data == dataIn);
 
-            /* Encrypt the poitner. */
+            /* Encrypt the pointer. */
             data->Encrypt();
 
             return fEquals;
         }
 
 
-        /** Not equivilent operator.
+        /** Not equivalent operator.
          *
          *  @param[in] a The data type to compare to.
          *
@@ -586,17 +586,17 @@ namespace memory
             /* Decrypt the pointer. */
             data->Encrypt();
 
-            /* Check equivilence. */
+            /* Check equivalence. */
             bool fNotEquals = (*data != dataIn);
 
-            /* Encrypt the poitner. */
+            /* Encrypt the pointer. */
             data->Encrypt();
 
             return fNotEquals;
         }
 
 
-        /** Not equivilent operator.
+        /** Not equivalent operator.
          *
          *  @param[in] a The data type to compare to.
          *
@@ -612,10 +612,10 @@ namespace memory
             /* Decrypt the pointer. */
             data->Encrypt();
 
-            /* Check equivilence. */
+            /* Check equivalence. */
             const TypeName tRet = *data;
 
-            /* Encrypt the poitner. */
+            /* Encrypt the pointer. */
             data->Encrypt();
 
             return tRet;

@@ -229,7 +229,7 @@ namespace TAO::Ledger
 
         /** Check
          *
-         *  Determines if the transaction is a valid transaciton and passes ledger level checks.
+         *  Determines if the transaction is a valid transaction and passes ledger level checks.
          *
          *  @return true if transaction is valid.
          *

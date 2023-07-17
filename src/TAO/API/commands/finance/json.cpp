@@ -55,7 +55,7 @@ namespace TAO::API
             jRet["balance"] = precision_t(jRet["balance"].dump(), nDecimals).double_t();
         }
 
-        /* Check for the uncomfirmed field. */
+        /* Check for the unconfirmed field. */
         if(jRet.find("unconfirmed") != jRet.end())
         {
             /* Set our total value. */

@@ -27,7 +27,7 @@ namespace Legacy
      *  Class to hold unencrypted private key binary data.
      *
      *  @deprecated This class is no longer used or written to the wallet database. It
-     *              is supported for backward compatability, so values can be read
+     *              is supported for backward compatibility, so values can be read
      *              that were previously written into the database.
      *
      *  Database key is wkey<publickey>

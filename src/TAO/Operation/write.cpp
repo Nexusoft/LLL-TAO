@@ -300,7 +300,7 @@ namespace TAO
             || state.nType == TAO::Register::REGISTER::APPEND)
                 return debug::error(FUNCTION, "not allowed on readonly or append types");
 
-            /* Check that the proper owner is commiting the write. */
+            /* Check that the proper owner is committing the write. */
             if(contract.Caller() != state.hashOwner)
                 return debug::error(FUNCTION, "caller not authorized ", contract.Caller().SubString());
 

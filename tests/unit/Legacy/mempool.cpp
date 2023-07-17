@@ -235,7 +235,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
         LLD::TxnBegin(TAO::Ledger::FLAGS::MEMPOOL);
 
 
-        //test success for legacy opeation
+        //test success for legacy operation
         uint512_t hashDependant1 = 0;
         TAO::Ledger::Transaction txDependant1;
         {
@@ -379,7 +379,7 @@ TEST_CASE( "Legacy mempool and memory sequencing tests", "[legacy]")
             Legacy::Script scriptPubKey;
             scriptPubKey.SetNexusAddress(address);
 
-            //create sending vectorsss
+            //create sending vectors
             std::vector< std::pair<Legacy::Script, int64_t> > vecSend;
             vecSend.push_back(make_pair(scriptPubKey, 9 * TAO::Ledger::NXS_COIN));
 

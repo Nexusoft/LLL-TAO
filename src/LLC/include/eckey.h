@@ -185,7 +185,7 @@ namespace LLC
 
         /** Encoding
          *
-         *  Nexus sepcific strict DER rules.
+         *  Nexus specific strict DER rules.
          *
          *  Fixed length 135 bytes.
          *  Byte 0         - 0x30 - Header Byte

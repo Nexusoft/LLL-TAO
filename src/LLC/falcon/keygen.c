@@ -1055,7 +1055,7 @@ modp_iNTT2_ext(uint32_t *a, size_t stride, const uint32_t *igm, unsigned logn,
 
 	/*
 	 * We need 1/n in Montgomery representation, i.e. R/n. Since
-	 * 1 <= logn <= 10, R/n is an integer; morever, R/n <= 2^30 < p,
+	 * 1 <= logn <= 10, R/n is an integer; moreover, R/n <= 2^30 < p,
 	 * thus a simple shift will do.
 	 */
 	ni = (uint32_t)1 << (31 - logn);
@@ -1164,7 +1164,7 @@ zint_sub(uint32_t *restrict a, const uint32_t *restrict b, size_t len,
 }
 
 /*
- * Mutiply the provided big integer m with a small value x.
+ * Multiply the provided big integer m with a small value x.
  * This function assumes that x < 2^31. The carry word is returned.
  */
 static uint32_t

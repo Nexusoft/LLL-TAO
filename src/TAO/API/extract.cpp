@@ -532,7 +532,7 @@ namespace TAO::API
         if(jParams.find("verbose") == jParams.end())
             return nMinimum;
 
-        /* Extract paramter if in integer form. */
+        /* Extract parameter if in integer form. */
         if(jParams["verbose"].is_number_unsigned())
             return std::max(nMinimum, jParams["verbose"].get<uint32_t>());
 
@@ -564,7 +564,7 @@ namespace TAO::API
     }
 
 
-    /* Extracts the paramers applicable to a List API call in order to apply a filter/offset/limit to the result */
+    /* Extracts the parameters applicable to a List API call in order to apply a filter/offset/limit to the result */
     void ExtractList(const encoding::json& jParams, std::string &strOrder, uint32_t &nLimit, uint32_t &nOffset)
     {
         /* Check for page parameter. */
@@ -669,7 +669,7 @@ namespace TAO::API
     }
 
 
-    /* Extracts the paramers applicable to a List API call in order to apply a filter. This overload includes a sort field. */
+    /* Extracts the parameters applicable to a List API call in order to apply a filter. This overload includes a sort field. */
     void ExtractList(const encoding::json& jParams, std::string &strOrder, std::string &strSort, uint32_t &nLimit, uint32_t &nOffset)
     {
         /* Extract the previous parameters. */

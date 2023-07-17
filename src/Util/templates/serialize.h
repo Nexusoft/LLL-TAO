@@ -99,7 +99,7 @@ enum SER_OPERATIONS
 #define _unused(x) ((void)(x))
 
 /* This should be used in header only files with complete types
- * best to avoid the use of it if not needed, kept for back-compatability */
+ * best to avoid the use of it if not needed, kept for back-compatibility */
 #define IMPLEMENT_SERIALIZE(statements)                                        \
     uint64_t GetSerializeSize(uint32_t nSerType, uint32_t nSerVersion) const   \
     {                                                                          \

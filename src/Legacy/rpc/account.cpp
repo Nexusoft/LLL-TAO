@@ -1283,12 +1283,12 @@ namespace Legacy
             }
         }
 
-        /* If this transaction has no inputs but is not a coinbase/coinstake then it must be a pseudo-legacy transation
+        /* If this transaction has no inputs but is not a coinbase/coinstake then it must be a pseudo-legacy transaction
            from a tritium OP::LEGACY.  In this case the pseudo legacy transaction hash is not the correct one to output
            so we must search for it instead in mapwallet, where the map key is the correct hash*/
         if(wtx.vin.size() == 0 && !wtx.IsCoinBase() && !wtx.IsCoinStake())
         {
-            /* use lamda shortcut with find_if to find the entry for this wtx */
+            /* use lambda shortcut with find_if to find the entry for this wtx */
             auto it = std::find_if(std::begin(Legacy::Wallet::Instance().mapWallet),
                                    std::end(Legacy::Wallet::Instance().mapWallet),
                                    [&](const std::pair<uint512_t, Legacy::WalletTx> &p) { return p.second == wtx; });
@@ -1347,7 +1347,7 @@ namespace Legacy
             /* The amount to output */
             int64_t nAmount = nGeneratedImmature > 0 ? nGeneratedImmature : nGeneratedMature;
 
-            /* Substract the input amount for stake transactions as the generated amount includes the stake amount */
+            /* Subtract the input amount for stake transactions as the generated amount includes the stake amount */
             if (wtx.IsGenesis() || wtx.IsCoinStake())
             {
                 std::map<uint512_t, std::pair<uint8_t, DataStream>> mapInputs;
@@ -1851,7 +1851,7 @@ namespace Legacy
                     Legacy::NexusAddress address;
                     Legacy::ExtractAddress(script, address);
 
-                    /* Add this address/amout to the outputs */
+                    /* Add this address/amount to the outputs */
                     vOutputs.push_back(debug::safe_printstr(address.ToString(), ":", std::fixed, Legacy::SatoshisToAmount(nAmount)));
                 }
 
@@ -2149,10 +2149,10 @@ namespace Legacy
     Returns the total amount of unspent Nexus for given address. This is a more accurate command than Get Balance */
     /* TODO: Account balance based on unspent outputs in the core.
         This will be good to determine the actual balance based on the registry of the current addresses
-        Associated with the specific users. This needs to be fixed properly so thaat the wallet accounting
+        Associated with the specific users. This needs to be fixed properly so that the wallet accounting
         is done properly.
 
-        Second TODO: While at this the wallet core code needs to be reworked in orcder to mitigate the issue of
+        Second TODO: While at this the wallet core code needs to be reworked in order to mitigate the issue of
         having a large number of transactions in the actual memory map which can slow the entire process down. */
     encoding::json RPC::UnspentBalance(const encoding::json& params, const bool fHelp)
     {

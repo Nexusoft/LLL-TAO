@@ -377,7 +377,7 @@ namespace Legacy
             if(nTime < (uint64_t)vtx[i].nTime)
                 return debug::error(FUNCTION, "block timestamp earlier than transaction timestamp");
 
-            /* Check the transaction for validitity. */
+            /* Check the transaction for validity. */
             if(!vtx[i].Check())
                 return debug::error(FUNCTION, "check transaction failed.");
 
@@ -503,7 +503,7 @@ namespace Legacy
         }
         else if(IsProofOfStake())
         {
-            /* Check that the Coinbase / CoinstakeTimstamp is after Previous Block. */
+            /* Check that the Coinbase / CoinstakeTimestamp is after Previous Block. */
             if(vtx[0].nTime < statePrev.GetBlockTime())
                 return debug::error(FUNCTION, "coinstake transaction too early");
 
@@ -722,7 +722,7 @@ namespace Legacy
     }
 
 
-    /* Get the Signarture Hash of the block. Used to verify work claims. */
+    /* Get the Signature Hash of the block. Used to verify work claims. */
     uint1024_t LegacyBlock::SignatureHash() const
     {
         /* Signature hash for version 7 blocks. */

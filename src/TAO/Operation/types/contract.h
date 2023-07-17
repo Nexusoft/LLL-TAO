@@ -103,7 +103,7 @@ namespace TAO::Operation
         ~Contract();
 
 
-        /** Construct based on legacy transation.
+        /** Construct based on legacy transaction.
          *
          *  @param[in] tx The legacy transaction to build from
          *  @param[in] nOutput The output to build contract from.
@@ -374,7 +374,7 @@ namespace TAO::Operation
          *
          *  @param[in] nFlags The flags to determine which streams to check.
          *
-         *  @return tthe current position of the required stream
+         *  @return the current position of the required stream
          *
          **/
         uint64_t Position(const uint8_t nFlags = CONDITIONS) const;

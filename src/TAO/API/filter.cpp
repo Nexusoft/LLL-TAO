@@ -46,7 +46,7 @@ namespace TAO::API
                 /* Grab a reference of our clause. */
                 const encoding::json& jClause = jStatement["statement"][n];
 
-                /* If first iteration, set the result by evalute. */
+                /* If first iteration, set the result by evaluate. */
                 if(n == 0)
                 {
                     fResult = FilterStatement(jClause, rCheck, rFunc);
@@ -110,7 +110,7 @@ namespace TAO::API
                 /* Grab a reference of our clause. */
                 const encoding::json& jClause = jStatement["statement"][n];
 
-                /* If first iteration, set the result by evalute. */
+                /* If first iteration, set the result by evaluate. */
                 if(n == 0)
                 {
                     fResult = FilterStatement(jClause, jCheck, rCheck, xEvaluate);

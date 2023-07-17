@@ -121,7 +121,7 @@ namespace LLD
         template<typename KeyType>
         void Add(const KeyType& key)
         {
-            /* Serialialize the key object. */
+            /* Serialize the key object. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
@@ -140,7 +140,7 @@ namespace LLD
         template<typename KeyType>
         void Ban(const KeyType& key)
         {
-            /* Serialialize the key object. */
+            /* Serialize the key object. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 
@@ -159,7 +159,7 @@ namespace LLD
         template<typename KeyType>
         bool Has(const KeyType& key)
         {
-            /* Serialialize the key object. */
+            /* Serialize the key object. */
             DataStream ssKey(SER_LLD, DATABASE_VERSION);
             ssKey << key;
 

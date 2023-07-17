@@ -11,7 +11,7 @@
 #include <unit/catch2/catch.hpp>
 
 
-TEST_CASE( "LLD Benchamrks", "[LLD]")
+TEST_CASE( "LLD Benchmarks", "[LLD]")
 {
     debug::log(0, "===== Begin Register Random Read / Write Benchmarks =====");
 

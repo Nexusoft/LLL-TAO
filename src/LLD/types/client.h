@@ -287,7 +287,7 @@ namespace LLD
 
         /** HasBlock
          *
-         *  Checks if a client block exisets on disk.
+         *  Checks if a client block exists on disk.
          *
          *  @param[in] hashBlock The block hash to read.
          *

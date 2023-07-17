@@ -158,7 +158,7 @@ namespace Legacy
          *
          *  @param[in] strWalletFileIn The wallet database file name that backs the wallet.
          *
-         *  @return true if wallet intance initialized, false otherwise
+         *  @return true if wallet instance initialized, false otherwise
          *
          *  @see Wallet::GetInstance
          *  @see LoadWallet

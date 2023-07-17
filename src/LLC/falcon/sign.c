@@ -1309,7 +1309,7 @@ BerExp(prng *p, fpr x, fpr ccs)
 	 * (the minimum value for sigma), r = 0 and b = 1, then we get
 	 * s >= 64 if the half-Gaussian produced a z >= 13, which happens
 	 * with probability about 0.000000000230383991, which is
-	 * approximatively equal to 2^(-32). In any case, if s >= 64,
+	 * approximately equal to 2^(-32). In any case, if s >= 64,
 	 * then BerExp will be non-zero with probability less than
 	 * 2^(-64), so we can simply saturate s at 63.
 	 */
@@ -1420,7 +1420,7 @@ Zf(sampler)(void *ctx, fpr mu, fpr isigma)
 		 * where:
 		 *    x = ((z-r)^2)/(2*sigma^2) - ((z-b)^2)/(2*sigma0^2)
 		 *
-		 * Here, we scale up the Bernouilli distribution, which
+		 * Here, we scale up the Bernoulli distribution, which
 		 * makes rejection more probable, but makes rejection
 		 * rate sufficiently decorrelated from the Gaussian
 		 * center and standard deviation that the whole sampler

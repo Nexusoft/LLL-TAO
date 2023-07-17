@@ -184,7 +184,7 @@ namespace TAO::API
         /* Write our last index now. */
         LLD::Logical->WriteLastIndex(hashLast);
 
-        debug::log(0, FUNCTION, "Complated scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
+        debug::log(0, FUNCTION, "Completed scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
     }
 
 
@@ -281,7 +281,7 @@ namespace TAO::API
             if(!LLD::Legacy->ReadTx(hashTx, tx))
                 return;
 
-            /* Loop thgrough the available outputs. */
+            /* Loop through the available outputs. */
             for(uint32_t nContract = 0; nContract < tx.vout.size(); nContract++)
             {
                 /* Grab a reference of our output. */
@@ -742,7 +742,7 @@ namespace TAO::API
     /* Index transaction level events for logged in sessions. */
     void Indexing::IndexDependant(const uint512_t& hashTx, const Legacy::Transaction& tx)
     {
-        /* Loop thgrough the available outputs. */
+        /* Loop through the available outputs. */
         for(uint32_t nContract = 0; nContract < tx.vout.size(); nContract++)
         {
             /* Grab a reference of our output. */
@@ -807,7 +807,7 @@ namespace TAO::API
                     /* Special check when handling a DEBIT. */
                     if(nOP == TAO::Operation::OP::DEBIT)
                     {
-                        /* Skip over partials as this is handled seperate. */
+                        /* Skip over partials as this is handled separate. */
                         if(hashRecipient.IsObject())
                             continue;
 
@@ -943,7 +943,7 @@ namespace TAO::API
                     /* Special check when handling a DEBIT. */
                     if(nOP == TAO::Operation::OP::DEBIT)
                     {
-                        /* Skip over partials as this is handled seperate. */
+                        /* Skip over partials as this is handled separate. */
                         if(hashRecipient.IsObject())
                             continue;
 

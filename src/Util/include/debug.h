@@ -185,7 +185,7 @@ namespace debug
         if(config::nVerbose < nLevel)
             return;
 
-        /* We catch execption here to prevent crashes on shutdown for iOS. */
+        /* We catch exception here to prevent crashes on shutdown for iOS. */
         try
         {
             /* Lock the mutex. */

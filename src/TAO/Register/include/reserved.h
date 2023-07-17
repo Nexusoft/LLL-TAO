@@ -27,7 +27,7 @@ namespace TAO::Register
     /** Hold list of reserved object register values. **/
     const std::set<std::string> RESERVED =
     {
-        /* Used to hold token blance. */
+        /* Used to hold token balance. */
         "balance",
 
         /* Used to identify a specific token. */
@@ -148,7 +148,7 @@ namespace TAO::Register
         /** Hold list of reserved global names. **/
         const std::set<std::string> RESERVED =
         {
-            /* Global namspace name has to be reserved */
+            /* Global namespace name has to be reserved */
             TAO::Register::NAMESPACE::GLOBAL,
 
             /* reserved to avoid confusion or scam attempts. */

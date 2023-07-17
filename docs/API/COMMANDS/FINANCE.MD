@@ -99,7 +99,7 @@ This command does not support the `any` or `all` nouns.
 ```
 #### Return values:
 
-`txid` : The hash of the transaction that was generated for this tx. If using `-autotx` this field will be ommitted.
+`txid` : The hash of the transaction that was generated for this tx. If using `-autotx` this field will be omitted.
 
 `address` : The register address for this  account. The address (or name that hashes to this address) is needed when creating crediting or debiting the account.
 

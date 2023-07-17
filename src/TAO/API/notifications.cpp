@@ -294,7 +294,7 @@ namespace TAO::API
                                                 }
                                                 catch(const Exception& e)
                                                 {
-                                                    debug::warning(FUNCTION, "failed to build partial crecit for ", hashTx.SubString(), ": ", e.what());
+                                                    debug::warning(FUNCTION, "failed to build partial credit for ", hashTx.SubString(), ": ", e.what());
                                                 }
                                             }
 
@@ -453,7 +453,7 @@ namespace TAO::API
                 return true;
         }
 
-        /* Get a referecne of our contract. */
+        /* Get a reference of our contract. */
         const TAO::Operation::Contract& rContract =
             LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
 

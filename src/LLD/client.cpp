@@ -116,14 +116,14 @@ namespace LLD
             if(hashGenesis == 0)
                 throw debug::exception(FUNCTION, "no session available...");
 
-            /* Get the key typle. */
+            /* Get the key tuple. */
             const std::tuple<uint256_t, uint256_t, uint512_t, uint32_t> tIndex =
                 std::make_tuple(hashGenesis, hashProof, hashTx, nContract);
 
             return Write(tIndex);
         }
 
-        /* Get the key typle. */
+        /* Get the key tuple. */
         const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
             std::make_tuple(hashProof, hashTx, nContract);
 
@@ -145,7 +145,7 @@ namespace LLD
             if(hashGenesis == 0)
                 throw debug::exception(FUNCTION, "no session available...");
 
-            /* Get the key typle. */
+            /* Get the key tuple. */
             const std::tuple<uint256_t, uint256_t, uint512_t, uint32_t> tIndex =
                 std::make_tuple(hashGenesis, hashProof, hashTx, nContract);
 
@@ -197,7 +197,7 @@ namespace LLD
             return Exists(tIndex);
         }
 
-        /* Get the key typle. */
+        /* Get the key tuple. */
         const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
             std::make_tuple(hashProof, hashTx, nContract);
 
@@ -220,14 +220,14 @@ namespace LLD
             if(hashGenesis == 0)
                 throw debug::exception(FUNCTION, "no session available...");
 
-            /* Get the key typle. */
+            /* Get the key tuple. */
             const std::tuple<uint256_t, uint256_t, uint512_t, uint32_t> tIndex =
                 std::make_tuple(hashGenesis, hashProof, hashTx, nContract);
 
             return Erase(tIndex);
         }
 
-        /* Get the key typle. */
+        /* Get the key tuple. */
         const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
             std::make_tuple(hashProof, hashTx, nContract);
 
@@ -249,7 +249,7 @@ namespace LLD
             if(hashGenesis == 0)
                 throw debug::exception(FUNCTION, "no session available...");
 
-            /* Get the key typle. */
+            /* Get the key tuple. */
             const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
                 std::make_tuple(hashGenesis, hashTx, nOutput);
 
@@ -274,7 +274,7 @@ namespace LLD
             if(hashGenesis == 0)
                 throw debug::exception(FUNCTION, "no session available...");
 
-            /* Get the key typle. */
+            /* Get the key tuple. */
             const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
                 std::make_tuple(hashGenesis, hashTx, nOutput);
 
@@ -303,7 +303,7 @@ namespace LLD
             if(hashGenesis == 0)
                 throw debug::exception(FUNCTION, "no session available...");
 
-            /* Get the key typle. */
+            /* Get the key tuple. */
             const std::tuple<uint256_t, uint512_t, uint32_t> tIndex =
                 std::make_tuple(hashGenesis, hashTx, nOutput);
 
@@ -379,7 +379,7 @@ namespace LLD
     }
 
 
-    /* Checks if a client block exisets on disk. */
+    /* Checks if a client block exists on disk. */
     bool ClientDB::HasBlock(const uint1024_t& hashBlock)
     {
         return Exists(hashBlock);

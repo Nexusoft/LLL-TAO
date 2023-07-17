@@ -18,7 +18,7 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-		/* table of differnt inventory type names */
+		/* table of different inventory type names */
 		static const char* ppszTypeName[] =
 		{
 			  "ERROR",

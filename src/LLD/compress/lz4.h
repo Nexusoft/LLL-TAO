@@ -395,7 +395,7 @@ LZ4LIB_API int LZ4_decompress_safe_continue (LZ4_streamDecode_t* LZ4_streamDecod
  *  Performance tip : Decompression speed can be substantially increased
  *                    when dst == dictStart + dictSize.
  */
-LZ4LIB_API int LZ4_decompress_safe_usingDict (const char* src, char* dst, int srcSize, int dstCapcity, const char* dictStart, int dictSize);
+LZ4LIB_API int LZ4_decompress_safe_usingDict (const char* src, char* dst, int srcSize, int dstCapacity, const char* dictStart, int dictSize);
 
 #endif /* LZ4_H_2983827168210 */
 
@@ -480,7 +480,7 @@ LZ4LIB_STATIC_API void LZ4_attach_dictionary(LZ4_stream_t* workingStream, const 
 /*! In-place compression and decompression
  *
  * It's possible to have input and output sharing the same buffer,
- * for highly contrained memory environments.
+ * for highly constrained memory environments.
  * In both cases, it requires input to lay at the end of the buffer,
  * and decompression to start at beginning of the buffer.
  * Buffer size must feature some margin, hence be larger than final size.

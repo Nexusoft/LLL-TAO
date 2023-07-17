@@ -384,7 +384,7 @@ namespace LLP
                         if(fDDOS.load() && CONNECTION->DDOS)
                             CONNECTION->DDOS->rSCORE += 1;
 
-                        /* Run procssed event for connection triggers. */
+                        /* Run processed event for connection triggers. */
                         CONNECTION->Event(EVENTS::PROCESSED);
                         CONNECTION->ResetPacket();
                     }
@@ -515,7 +515,7 @@ namespace LLP
     }
 
 
-    /* Tell the data thread an event has occured and notify each connection. */
+    /* Tell the data thread an event has occurred and notify each connection. */
     template<class ProtocolType>
     void DataThread<ProtocolType>::NotifyEvent()
     {
@@ -625,7 +625,7 @@ namespace LLP
     }
 
 
-    /* Explicity instantiate all template instances needed for compiler. */
+    /* Explicitly instantiate all template instances needed for compiler. */
     template class DataThread<TritiumNode>;
     template class DataThread<LookupNode>;
     template class DataThread<TimeNode>;

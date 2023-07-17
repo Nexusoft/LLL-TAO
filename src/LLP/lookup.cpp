@@ -93,7 +93,7 @@ namespace LLP
         /* On Connect Event, Assign the Proper Daemon Handle. */
         if(EVENT == EVENTS::CONNECT)
         {
-            /* Initialize our conneciton now. */
+            /* Initialize our connection now. */
             if(!Incoming())
                 PushMessage(REQUEST::CONNECT, LLP::SESSION_ID);
 
@@ -106,10 +106,10 @@ namespace LLP
     }
 
 
-    /* Main message handler once a packet is recieved. */
+    /* Main message handler once a packet is received. */
     bool LookupNode::ProcessPacket()
     {
-        /* Deserialize the packeet from incoming packet payload. */
+        /* Deserialize the packet from incoming packet payload. */
         DataStream ssPacket(INCOMING.DATA, SER_NETWORK, PROTOCOL_VERSION);
 
         /* Get our request-id. */
@@ -127,7 +127,7 @@ namespace LLP
             {
                 /* Check that we made this request. */
                 if(!setRequests->count(nRequestID))
-                    return debug::drop(NODE, "unsolicted response-id ", nRequestID);
+                    return debug::drop(NODE, "unsolicited response-id ", nRequestID);
 
                 /* Get the specifier for dependant. */
                 uint8_t nSpecifier;
@@ -143,7 +143,7 @@ namespace LLP
                         case SPECIFIER::REGISTER:
                         case SPECIFIER::TRITIUM:
                         {
-                            /* Get the transction from the stream. */
+                            /* Get the transaction from the stream. */
                             TAO::Ledger::MerkleTx tx;
                             ssPacket >> tx;
 
@@ -205,7 +205,7 @@ namespace LLP
                         /* Standard type for register in form of merkle transaction. */
                         case SPECIFIER::LEGACY:
                         {
-                            /* Get the transction from the stream. */
+                            /* Get the transaction from the stream. */
                             Legacy::MerkleTx tx;
                             ssPacket >> tx;
 
@@ -262,7 +262,7 @@ namespace LLP
                                 case SPECIFIER::CONTRACT:
                                 case SPECIFIER::TRITIUM:
                                 {
-                                    /* Get the transction from the stream. */
+                                    /* Get the transaction from the stream. */
                                     TAO::Ledger::MerkleTx tx;
                                     ssPacket >> tx;
 
@@ -332,7 +332,7 @@ namespace LLP
                                 /* Standard type for register in form of merkle transaction. */
                                 case SPECIFIER::LEGACY:
                                 {
-                                    /* Get the transction from the stream. */
+                                    /* Get the transaction from the stream. */
                                     Legacy::MerkleTx tx;
                                     ssPacket >> tx;
 
@@ -440,7 +440,7 @@ namespace LLP
                         TAO::Ledger::Transaction tx;
                         if(LLD::Ledger->ReadTx(hashProof, hashTx, nContract, tx))
                         {
-                            /* Build a markle transaction. */
+                            /* Build a merkle transaction. */
                             TAO::Ledger::MerkleTx tMerkle = TAO::Ledger::MerkleTx(tx);
 
                             /* Build the tMerkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
@@ -478,7 +478,7 @@ namespace LLP
                         TAO::Ledger::Transaction tx;
                         if(LLD::Ledger->ReadTx(hashTx, nContract, tx))
                         {
-                            /* Build a markle transaction. */
+                            /* Build a merkle transaction. */
                             TAO::Ledger::MerkleTx tMerkle = TAO::Ledger::MerkleTx(tx);
 
                             /* Build the tMerkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
@@ -512,7 +512,7 @@ namespace LLP
                         Legacy::Transaction tx;
                         if(LLD::Legacy->ReadTx(hashTx, nOutput, tx))
                         {
-                            /* Build a markle transaction. */
+                            /* Build a merkle transaction. */
                             Legacy::MerkleTx tMerkle = Legacy::MerkleTx(tx);
 
                             /* Build the tMerkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
@@ -563,7 +563,7 @@ namespace LLP
                             if(!LLD::Ledger->ReadTx(hashTx, tx))
                                 break;
 
-                            /* Build a markle transaction. */
+                            /* Build a merkle transaction. */
                             TAO::Ledger::MerkleTx tMerkle =
                                 TAO::Ledger::MerkleTx(tx);
 
@@ -591,7 +591,7 @@ namespace LLP
                                     if(!LLD::Ledger->ReadTx(pairIndex.first, tx))
                                         break;
 
-                                    /* Build a markle transaction. */
+                                    /* Build a merkle transaction. */
                                     TAO::Ledger::MerkleTx tMerkle =
                                         TAO::Ledger::MerkleTx(tx);
 
@@ -702,7 +702,7 @@ namespace LLP
                                             if(hashAddress != hashRegister)
                                                 break;
 
-                                            /* Build a markle transaction. */
+                                            /* Build a merkle transaction. */
                                             TAO::Ledger::MerkleTx tMerkle =
                                                 TAO::Ledger::MerkleTx(tx);
 
@@ -745,7 +745,7 @@ namespace LLP
                         TAO::Ledger::Transaction tx;
                         if(LLD::Ledger->ReadTx(hashTx, tx))
                         {
-                            /* Build a markle transaction. */
+                            /* Build a merkle transaction. */
                             TAO::Ledger::MerkleTx tMerkle = TAO::Ledger::MerkleTx(tx);
 
                             /* Build the tMerkle branch if the tx has been confirmed (i.e. it is not in the mempool) */
@@ -775,7 +775,7 @@ namespace LLP
                         Legacy::Transaction tx;
                         if(LLD::Legacy->ReadTx(hashTx, tx))
                         {
-                            /* Build a markle transaction. */
+                            /* Build a merkle transaction. */
                             Legacy::MerkleTx tMerkle = Legacy::MerkleTx(tx);
 
                             /* Build the tMerkle branch if the tx has been confirmed (i.e. it is not in the mempool) */

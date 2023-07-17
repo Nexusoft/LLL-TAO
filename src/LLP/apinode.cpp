@@ -95,7 +95,7 @@ namespace LLP
     }
 
 
-    /** Main message handler once a packet is recieved. **/
+    /** Main message handler once a packet is received. **/
     bool APINode::ProcessPacket()
     {
         /* Check our http-basic authentication for the API. */
@@ -143,7 +143,7 @@ namespace LLP
                 {
                     /* Handle different content types. */
                     if(!INCOMING.mapHeaders.count("content-type"))
-                        throw TAO::API::Exception(-5, "content-type [null or misisng] not supported");
+                        throw TAO::API::Exception(-5, "content-type [null or missing] not supported");
 
                     /* Form encoding. */
                     if(INCOMING.mapHeaders["content-type"] == "application/x-www-form-urlencoded")
@@ -201,7 +201,7 @@ namespace LLP
                 if(INCOMING.mapHeaders.count("access-control-request-headers"))
                     RESPONSE.mapHeaders["Access-Control-Allow-Headers"] = INCOMING.mapHeaders["access-control-request-headers"];
 
-                /* Set conneciton headers. */
+                /* Set connection headers. */
                 RESPONSE.mapHeaders["Connection"]             = "keep-alive";
                 RESPONSE.mapHeaders["Access-Control-Max-Age"] = "86400";
                 //RESPONSE.mapHeaders["Content-Length"]         = "0";
@@ -290,7 +290,7 @@ namespace LLP
         const double nLatency =
             (tLatency.ElapsedNanoseconds() / 1000000.0);
 
-        /* Add some micro-benchamrks to response data. */
+        /* Add some micro-benchmarks to response data. */
         jRet["info"] =
         {
             {"method",    strCommands + "/" + strMethod                      },

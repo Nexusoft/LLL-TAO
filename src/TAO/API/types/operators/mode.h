@@ -28,7 +28,7 @@ namespace TAO::API
 
         /** Mode
          *
-         *  Get's the most occuring value in the sequence. Supports bi-modal, tri-modal, and multi-modal.
+         *  Get's the most occurring value in the sequence. Supports bi-modal, tri-modal, and multi-modal.
          *
          *  @param[in] jParams The input parameters to the command.
          *  @param[in] jResult The list of objects to operate on.

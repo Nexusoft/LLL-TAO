@@ -304,7 +304,7 @@ namespace TAO
         }
 
 
-        /** Equivilence checking **/
+        /** Equivalence checking **/
         bool ClientBlock::operator==(const ClientBlock& state) const
         {
             return
@@ -321,7 +321,7 @@ namespace TAO
         }
 
 
-        /** Equivilence checking **/
+        /** Equivalence checking **/
         bool ClientBlock::operator!=(const ClientBlock& state) const
         {
             return
@@ -632,7 +632,7 @@ namespace TAO
             /* Debug output about the best chain. */
             uint64_t nTimer   = timer.ElapsedMilliseconds();
 
-            /* Watch our verbose levels based on syncronizing. */
+            /* Watch our verbose levels based on synchronizing. */
             const uint32_t nVerboseCheck =
                 (TAO::Ledger::ChainState::Synchronizing() ? 4 : 0); //we can safely assume this is -client only for verbose=2
 
@@ -748,7 +748,7 @@ namespace TAO
         }
 
 
-        /* Get the Signarture Hash of the block. Used to verify work claims. */
+        /* Get the Signature Hash of the block. Used to verify work claims. */
         uint1024_t ClientBlock::SignatureHash() const
         {
             /* Signature hash for version 7 blocks. */

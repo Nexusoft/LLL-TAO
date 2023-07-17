@@ -61,7 +61,7 @@ namespace TAO::API
         std::map<std::string, Standard>  mapStandards;
 
 
-        /** Map of standard nouns to check for standard object types. **/
+        /** Map of operator nouns to check for operator object types. **/
         std::map<std::string, Operator>  mapOperators;
 
 

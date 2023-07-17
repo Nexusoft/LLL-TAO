@@ -249,7 +249,7 @@ namespace TAO
         }
 
 
-        /* Get the Signarture Hash of the block. Used to verify work claims. */
+        /* Get the Signature Hash of the block. Used to verify work claims. */
         uint1024_t Block::SignatureHash() const
         {
             return 0; //base block signature hash is unused since it relies on nTime

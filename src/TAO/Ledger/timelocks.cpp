@@ -283,7 +283,7 @@ namespace TAO
         /* Retrieve the timelock activation for a given transaction version on mainnet or testnet. */
         uint64_t StartTransactionTimelock(const uint32_t nVersion)
         {
-            /* Get our current transaction verison. */
+            /* Get our current transaction version. */
             const uint32_t nCurrent =
                 CurrentTransactionVersion();
 

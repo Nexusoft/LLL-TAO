@@ -85,7 +85,7 @@ namespace TAO
             Transaction genesis;
             genesis.nVersion = 1;
             genesis.nTimestamp = 1601484576;
-            genesis[0] <= config::hashNetworkOwner; //we seriailize the hybrid network sigchain into a conditional contract
+            genesis[0] <= config::hashNetworkOwner; //we serialize the hybrid network sigchain into a conditional contract
 
             /* Build the hashes to calculate the merkle root. */
             std::vector<uint512_t> vHashes;
@@ -120,7 +120,7 @@ namespace TAO
             hashGenesisHybrid    = block.GetHash();
 
             /* Debug output. */
-            debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN, "Genesis ", hashGenesisHybrid.SubString(), " sucessfully created for nNonce ", block.nNonce, ANSI_COLOR_RESET);
+            debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_GREEN, "Genesis ", hashGenesisHybrid.SubString(), " successfully created for nNonce ", block.nNonce, ANSI_COLOR_RESET);
 
             /* Write the hybrid genesis hash to the LLD. */
             LLD::Ledger->WriteHybridGenesis(hashGenesisHybrid);

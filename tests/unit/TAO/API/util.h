@@ -41,7 +41,7 @@ bool GenerateBlock();
 *  Makes an HTTP request to the API
 *
 *  @param[in] strMethod The API method (endpoint) to call
-*  @param[in] strParams JSON paramters to pass to API call
+*  @param[in] strParams JSON parameters to pass to API call
 *
 *  @return JSON returned by the API
 *

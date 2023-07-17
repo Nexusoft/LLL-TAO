@@ -156,7 +156,7 @@ namespace Legacy
                 uint32_t dbMode = 0;
     #endif
 
-                /* Open the Berkely DB environment */
+                /* Open the Berkeley DB environment */
                 try
                 {
                     ret = dbenv->open(pathDataDir.c_str(), dbFlags, dbMode);

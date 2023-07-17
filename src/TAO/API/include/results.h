@@ -39,7 +39,7 @@ namespace TAO::API
      *  @param[in] jResponse The object we are building array from.
      *  @param[out] jArray The array we are building.
      *
-     *  @return true if converted fields sucessfully.
+     *  @return true if converted fields successfully.
      *
      **/
     bool ResultsToArray(const std::string& strField, const encoding::json& jResponse, encoding::json &jArray);

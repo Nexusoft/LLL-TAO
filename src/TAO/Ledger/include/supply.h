@@ -55,7 +55,7 @@ namespace TAO
          *  @param[in] nMinutes The minutes to calculate for.
          *  @param[in] nInterval The interval to calculate in.
          *
-         *  @return The subisdy for given interval.
+         *  @return The subsidy for given interval.
          *
          **/
         uint64_t SubsidyInterval(const uint32_t nMinutes, const uint32_t nInterval);

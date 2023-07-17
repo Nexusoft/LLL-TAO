@@ -84,7 +84,7 @@ LIBS+= \
 DEBUGFLAGS=-g
 CXXFLAGS=-O0
 
-#add build support for the LLD vs Berklee DB
+#add build support for the LLD vs Berkeley DB
 ifdef USE_LLD
 	DEFS+=-DUSE_LLD
 endif

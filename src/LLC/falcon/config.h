@@ -89,7 +89,7 @@
 
 /*
  * Enable use of assembly for ARM Cortex-M4 CPU. By default, such
- * support will be used based on some autodection on the compiler
+ * support will be used based on some autodetection on the compiler
  * version and target architecture. Define this variable to 1 to force
  * use of the assembly code, or 0 to disable it regardless of the
  * autodetection.

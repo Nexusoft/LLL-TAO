@@ -45,7 +45,7 @@ namespace Legacy
      *  without impacting system performance.
      *
      *  To assure there can never be two copies of the database instance that may access
-     *  the same file concurrenlty, the BerkeleyDB is not copyable. GetInstance() returns
+     *  the same file concurrently, the BerkeleyDB is not copyable. GetInstance() returns
      *  a reference, and only the reference can be passed around.
      *
      **/

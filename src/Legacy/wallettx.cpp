@@ -385,7 +385,7 @@ namespace Legacy
             if(!ptx->IsFinal())
                 return false;
 
-            /* This code is only for edge case change transactions, so skip confiremd ones. */
+            /* This code is only for edge case change transactions, so skip confirmed ones. */
             if(ptx->GetDepthInMainChain() >= 1)
                 continue;
 
@@ -707,7 +707,7 @@ namespace Legacy
                         /* vtxPrev gets loaded with inputs to this transaction, but when one of these inputs
                          * is recent (depth < copy depth) we go one deeper and also load its inputs (inputs of inputs).
                          * This helps assure, when transactions are relayed, that we transmit anything not yet added
-                         * to a block and included in Legacy. Obviously, it is unikely that inputs of inputs are
+                         * to a block and included in Legacy. Obviously, it is unlikely that inputs of inputs are
                          * within the copy depth because we'd be spending balance that probably is not confirmed,
                          * so this really should never be processed. Code is from legacy and left here intact just in case.
                          */

@@ -308,7 +308,7 @@ namespace TAO
                     /* Switch based on signature type. */
                     switch(hashPublic.GetType())
                     {
-                        /* Support for the FALCON signature scheeme. */
+                        /* Support for the FALCON signature scheme. */
                         case TAO::Ledger::SIGNATURE::FALCON:
                         {
                             /* Create the FL Key object. */
@@ -614,13 +614,13 @@ namespace TAO
                 }
 
                 /* Calculate the new Efficiency Threshold for the current nonce.
-                 * To stake, this value must be larger than required threshhold.
+                 * To stake, this value must be larger than required threshold.
                  * Block time increases the value while nonce decreases it.
                  * nNonce = 1 at start of new block.
                  */
                 cv::softdouble nThreshold = GetCurrentThreshold(nBlockTime, block.nNonce);
 
-                /* If threshhold not larger than required, wait and keep trying the same nonce value until threshold increases */
+                /* If threshold not larger than required, wait and keep trying the same nonce value until threshold increases */
                 if(nThreshold < nRequired)
                 {
                     runtime::sleep(10);
@@ -670,7 +670,7 @@ namespace TAO
             for(const auto& item : block.vtx)
                 vHashes.push_back(item.second);
 
-            /* Unlock our sigchain and lock when signging. */
+            /* Unlock our sigchain and lock when signing. */
             {
                 SecureString strPIN;
                 RECURSIVE(TAO::API::Authentication::Unlock(strPIN, PinUnlock::STAKING));
@@ -720,7 +720,7 @@ namespace TAO
                 }
             }
 
-            /* After successfully generated genesis for trust account, reset to genereate trust for continued staking */
+            /* After successfully generated genesis for trust account, reset to generate trust for continued staking */
             if(fGenesis)
                 fGenesis = false;
 
@@ -740,7 +740,7 @@ namespace TAO
             /* Switch based on signature type. */
             switch(nKeyType)
             {
-                /* Support for the FALCON signature scheeme. */
+                /* Support for the FALCON signature scheme. */
                 case TAO::Ledger::SIGNATURE::FALCON:
                 {
                     /* Create the FL Key object. */

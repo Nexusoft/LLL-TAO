@@ -65,7 +65,7 @@
 	} while (0)
 
 /*
- * Multplication of two complex numbers (d = a * b).
+ * Multiplication of two complex numbers (d = a * b).
  */
 #define FPC_MUL(d_re, d_im, a_re, a_im, b_re, b_im)   do { \
 		fpr fpct_a_re, fpct_a_im; \

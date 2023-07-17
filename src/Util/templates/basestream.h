@@ -38,7 +38,7 @@ enum STREAM
 
 /** BaseStream
  *
- *  Class to handle the serializaing and deserializing of data into their types
+ *  Class to handle the serializing and deserializing of data into their types
  *
  **/
 class BaseStream
@@ -130,7 +130,7 @@ public:
 
     /** get
      *
-     *  Gets a byte without chainging read pointer.
+     *  Gets a byte without changing read pointer.
      *
      **/
     uint8_t get(uint64_t nPos) const
@@ -208,7 +208,7 @@ public:
 
     /** begin
      *
-     *  Returns if the opeartions stream is on first operation.
+     *  Returns if the operations stream is on first operation.
      *
      **/
     bool begin() const

@@ -36,7 +36,7 @@ namespace TAO::API
 
         /* Check if we are available to take command. */
         if(!Authentication::Available(hashGenesis))
-            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes syncronizing.");
+            throw Exception(-23, FUNCTION, "Command disabled until sigchain finishes synchronizing.");
 
         /* Extract our verbose parameter. */
         const uint32_t  nVerbose =
@@ -101,7 +101,7 @@ namespace TAO::API
                         continue;
                 }
 
-                /* Get a referecne of our contract. */
+                /* Get a reference of our contract. */
                 TAO::Operation::Contract rContract =
                     LLD::Ledger->ReadContract(hashEvent, rEvent.second, TAO::Ledger::FLAGS::BLOCK);
 
@@ -113,7 +113,7 @@ namespace TAO::API
                 encoding::json jContract =
                     TAO::API::ContractToJSON(rContract, rEvent.second, nVerbose);
 
-                /* Add some items from our transction. */
+                /* Add some items from our transaction. */
                 jContract["timestamp"] = rContract.Timestamp();
                 jContract["txid"]      = hashEvent.ToString();
 

@@ -130,7 +130,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -192,7 +192,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -268,7 +268,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -340,7 +340,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -404,7 +404,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -465,7 +465,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -532,7 +532,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -590,7 +590,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -649,7 +649,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -715,7 +715,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -779,7 +779,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -842,7 +842,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -912,7 +912,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -974,7 +974,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -1131,7 +1131,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //write to disk
             REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -1298,7 +1298,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             //check memory value
             REQUIRE(nClaimed == uint64_t(1 * NXS_COIN));
 
-            //verify prestates and postates (disk)
+            //verify prestates and poststates (disk)
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
@@ -1470,7 +1470,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         //write to disk
         REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-        //verify prestates and postates (disk)
+        //verify prestates and poststates (disk)
         REQUIRE(tx.Verify(FLAGS::BLOCK));
 
         //connect on disk
@@ -1626,7 +1626,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         //write to disk
         REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-        //verify prestates and postates (disk)
+        //verify prestates and poststates (disk)
         REQUIRE(tx.Verify(FLAGS::BLOCK));
 
         //connect on disk
@@ -1810,7 +1810,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         //write to disk
         REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-        //verify prestates and postates (disk)
+        //verify prestates and poststates (disk)
         REQUIRE(tx.Verify(FLAGS::BLOCK));
 
         //connect on disk
@@ -1963,7 +1963,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
         //write to disk
         REQUIRE(LLD::Ledger->WriteTx(hash, tx));
 
-        //verify prestates and postates (disk)
+        //verify prestates and poststates (disk)
         REQUIRE(tx.Verify(FLAGS::BLOCK));
 
         //connect on disk

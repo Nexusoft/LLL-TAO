@@ -98,7 +98,7 @@ namespace TAO
 
         /** RetargetTrust
          *
-         *  Retarget a trust block based on seperate specifications
+         *  Retarget a trust block based on separate specifications
          *
          *  @param[in] state The block state to retarget from.
          *
@@ -122,7 +122,7 @@ namespace TAO
 
         /** RetargetHash
          *
-         *  Retarget the hashing channel by seperate specifications.
+         *  Retarget the hashing channel by separate specifications.
          *
          *  @param[in] state The block state to retarget from.
          *

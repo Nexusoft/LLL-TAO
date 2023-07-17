@@ -43,7 +43,7 @@ namespace TAO
          *
          *  @param[in] user The signature chain to generate this tx
          *  @param[in] pin The pin number to generate with.
-         *  @param[out] tx The traansaction object being created
+         *  @param[out] tx The transaction object being created
          *  @param[in] nScheme The key scheme to be used.
          *
          **/
@@ -57,7 +57,7 @@ namespace TAO
          *
          *  @param[in] user The signature chain to generate this tx
          *  @param[in] pin The pin number to generate with.
-         *  @param[out] tx The traansaction object being created
+         *  @param[out] tx The transaction object being created
          *  @param[in] tStateBest The current best block state
          *  @param[in] nBlockVersion The block version the producer is being created for
          *  @param[in] nChannel The channel to create block for.

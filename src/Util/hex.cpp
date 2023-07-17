@@ -16,7 +16,7 @@ ________________________________________________________________________________
 #include <LLP/include/network.h>
 
 
-/* buffer for determing hex value of ASCII table */
+/* buffer for determining hex value of ASCII table */
 const signed char phexdigit[256] =
 {
     -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,

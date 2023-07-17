@@ -24,7 +24,7 @@ DESCRIPTION
     ----------                -----------               -----------       
     users/create/user         supply/create/item        assets/create/asset
     users/login/user          supply/get/item           assets/get/asset       
-    users/logout/user         supply/udpate/item        assets/update/asset  
+    users/logout/user         supply/update/item        assets/update/asset  
     users/unlock/user         supply/transfer/item      assets/transfer/asset
     users/lock/user           supply/claim/item         assets/claim/asset
     users/list/transactions   supply/list/item/history  assets/list/asset/history
@@ -51,11 +51,11 @@ CLASSES
      |  
      |  __init__(self, user, pw, pin)
      |      Initialize the API with user account credentials. This function
-     |      must be calledd to create a login instance before using any other
+     |      must be called to create a login instance before using any other
      |      calls.
      |  
      |  nexus_assets_claim_asset(self, txid)
-     |      Claim an asset that has been transfered to username. The transaction 
+     |      Claim an asset that has been transferred to username. The transaction 
      |      id, specified in 'txid' is returned from when the user did a 
      |      assets//transfer/asset API call.
      |  
@@ -150,7 +150,7 @@ CLASSES
      |      Retrieve mining information for the Nexus blockchain.
      |  
      |  nexus_ledger_get_transaction(self, tx_hash, verbosity)
-     |      Retrieve transaction with transactioin hash 'tx_hash' with specific
+     |      Retrieve transaction with transaction hash 'tx_hash' with specific
      |      verbose. See API documentation for 'verbosity' values.
      |  
      |  nexus_ledger_list_blocks_by_hash(self, block_hash, limit, verbosity)
@@ -172,7 +172,7 @@ CLASSES
      |      of 'data' parameter.
      |  
      |  nexus_supply_claim_item(self, txid)
-     |      Claim supply chain item that has been transfered to username. The
+     |      Claim supply chain item that has been transferred to username. The
      |      transaction id, specified in 'txid' is returned from when the
      |      user did a supply/transfer/item API call.
      |  
@@ -203,7 +203,7 @@ CLASSES
      |  
      |  nexus_supply_update_item_by_address(self, address, data)
      |      Update data stored from a previously created supply chain item using
-     |      register address specifiied in 'address' with data stored in 'data'.
+     |      register address specified in 'address' with data stored in 'data'.
      |  
      |  nexus_supply_update_item_by_name(self, name, data)
      |      Update data stored from a previously created supply chain item using
