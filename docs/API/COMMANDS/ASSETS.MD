@@ -102,22 +102,40 @@ Create a new object register specified by given noun.
 assets/create/noun
 ```
 
-### Parameters:
+The supported nouns for this command are `asset`, `raw`, `readonly`, or `schema`
 
-`pin` : Required if **locked**. The `PIN` for this profile.
 
-`session` : Required if **argument** `-multiuser=1` is set, used to identify the session to invoke the command under. For single-user API mode the session should not be supplied.
+## **Required:**
 
-`name` : Optional for **noun** `name` as a *UTF-8* encoded string that will generate a name object register that points to new object. This will cost an additional 1 NXS if on the mainnet.
+The following list are required parameters to execute the given command. If you do not supply any of the following parameters, the command will fail with an error response designating the missing parameters.
 
-`format` : Required to **identify** the format used to define the asset. Values can be `readonly`, `raw`, `basic` and `JSON`.
+#### Session:
+
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session.
+
+- `pin` : Required if not **unlocked** for *transactions*. This is the **PIN** that was used when creating master profile.
+
+- `session` : Required if **argument** `-multiuser=1` is set, used to identify the session to invoke the command under. For single-user API mode the session should not be supplied.
+
+#### Formats:
+
+The following parameter is required to identify the format input for modeling the corresponding asset:
+
+- `format` : Required to **identify** the format used to define the asset. Values can be `readonly`, `raw`, `basic` and `JSON`.
+
+
+## **Optional:**
+
+These parameters are not required to execute this command, but give you the ability to change specific details of the command:
+
+- `name` : A *UTF-8* encoded string that will generate a name object register that points to new object. This will cost an additional 1 NXS if on the mainnet.
 
 
 **NOTE:**
 - There is a limit of 1KB for asset data to be saved in the register, excluding the asset name.
 - There is a fee of 1 NXS for creating and an asset and an additional 1 NXS for the optional name object.
 
-#### Return value JSON object:
+## **Response:**
 
 ```
 {
@@ -129,21 +147,44 @@ assets/create/noun
 
 #### Return Values:
 
-`success` : Boolean flag indicating that the asset was created successfully.
+- `success` : Boolean flag indicating that the asset was created successfully.
 
-`address` : The register address for the register that was just created.
+- `address` : The register address for the register that was just created.
 
-`txid` : The hash of the transaction that was generated for this tx.
+- `txid` : The hash of the transaction that was generated for this tx.
 
 -----------------------------------
 
 # <a name="get"></a> `get`
 
-Retrieves information for an asset specified by the noun.
-
+Retrieves information for an asset and returns a JSON structured object with the fields. You must choose the correct *noun* in order to have command execute.
 ```
 assets/get/noun
 ```
+
+
+The supported nouns for this command are `any`, `asset`, `raw`, `readonly`, or `schema`. If you are unsure of the correct *noun* then you can use the `any` keyword, or aggregate nouns using the comma as separator.
+
+**NOTE:** The error message you will receive for an incorrect *noun* is `Unsupported type for name/address`
+
+## **Required:**
+
+The following list are required parameters to execute the given command. If you do not supply any of the following parameters, the command will fail with an error response designating the missing parameters.
+
+#### Session:
+
+This command requires a valid session to be active with these parameters required to identify and authenticate the given session.
+
+`pin` : Required if not **unlocked** for *transactions*. This is the **PIN** that was used when creating master profile.
+
+`session` : Required if **argument** `-multiuser=1` is set, used to identify the session to invoke the command under. For single-user API mode the session should not be supplied.
+
+**Example:**
+```
+assets/get/asset
+```
+
+
 
 ### Parameters:
 
