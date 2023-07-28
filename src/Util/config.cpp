@@ -209,9 +209,13 @@ namespace config
             path = GetDefaultDataDir();
 
         /* Check for testnet mode. */
-        uint32_t nTestnet = GetArg("-testnet", 0);
-        if(fNetSpecific && nTestnet > 0)
-            path.append(debug::safe_printstr("testnet", nTestnet, "/"));
+        const uint32_t nTestnet = GetArg("-testnet", 0);
+
+        /* Handle for -private (backwards compatability). */
+        if(config::GetBoolArg("-private"))
+            path.append("testnet1/");
+        else if(fNetSpecific && nTestnet > 0)
+            path.append("testnet/");
 
         /* Check for hybrid mode. */
         std::string strHybrid = GetArg("-hybrid", "");
