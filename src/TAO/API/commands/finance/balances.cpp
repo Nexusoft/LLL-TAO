@@ -58,15 +58,15 @@ namespace TAO::API
         ExtractList(jParams, strOrder, nLimit, nOffset);
 
         /* First get the list of registers owned by this sig chain so we can work out which ones are NXS accounts */
-        std::vector<TAO::Register::Address> vRegisters;
-        if(!LLD::Logical->ListRegisters(hashGenesis, vRegisters))
+        std::set<TAO::Register::Address> setAddresses;
+        if(!LLD::Logical->ListRegisters(hashGenesis, setAddresses))
             throw Exception(-74, "No registers found");
 
         /* Keep a map to track our aggregated balance, we use a second map for better readability. */
         std::map<uint256_t, std::map<std::string, uint64_t>> mapBalances;
 
         /* Iterate through each register we own */
-        for(const auto& hashRegister : vRegisters)
+        for(const auto& hashRegister : setAddresses)
         {
             /* Initial check that it is an account/trust/token, before we hit the DB to get the nBalances */
             if(!hashRegister.IsAccount() && !hashRegister.IsTrust() && !hashRegister.IsToken())
@@ -74,7 +74,7 @@ namespace TAO::API
 
             /* Get the register from the register DB */
             TAO::Register::Object object;
-            if(!LLD::Register->ReadObject(hashRegister, object, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadObject(hashRegister, object))
                 continue;
 
             /* Check that this is an account */
@@ -115,7 +115,7 @@ namespace TAO::API
             const uint8_t nDecimals =
                 rBalances.second.at("decimals");
 
-            /* Grab unconfirmed balances as a pair. */
+            /* Grab unconfirmed outgoing balances. */
             const uint64_t nOutgoing =
                 GetUnconfirmed(hashGenesis, hashToken, true);
 
@@ -123,8 +123,9 @@ namespace TAO::API
             encoding::json jBalances;
 
             /* Populate the rest of the balances. */
-            jBalances["available"]    = FormatBalance(rBalances.second.at("balance") - nOutgoing,    nDecimals);
-            jBalances["unclaimed"]    = FormatBalance(GetPending(hashGenesis, hashToken),            nDecimals);
+            jBalances["available"]    = FormatBalance(rBalances.second.at("balance") - nOutgoing, nDecimals);
+            jBalances["confirmed"]    = FormatBalance(rBalances.second.at("balance"), nDecimals);
+            jBalances["unclaimed"]    = FormatBalance(GetUnclaimed(hashGenesis, hashToken), nDecimals);
             jBalances["unconfirmed"]  = FormatBalance(GetUnconfirmed(hashGenesis, hashToken, false), nDecimals);
             jBalances["decimals"]     = nDecimals;
             jBalances["token"]        = hashToken.ToString();

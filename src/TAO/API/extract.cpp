@@ -810,7 +810,7 @@ namespace TAO::API
     }
 
 
-    /*Extracts an floating point value from given input parameters.*/
+    /* Extracts an floating point value from given input parameters.*/
     double ExtractDouble(const encoding::json& jParams, const std::string& strKey,
                          const double dDefault, const double dLimit)
     {

@@ -144,7 +144,7 @@ namespace LLP
         /* Calculate penalty. */
         uint32_t nPenalty = std::max(nTotalBans.load() * (rSCORE.Score() + 1) * (cSCORE.Score() + 1), nTotalBans.load() * 1200u);
 
-        debug::log(0, "XXXXX DDOS Filter cScore = ", cSCORE.Score(),
+        debug::notice("XXXXX DDOS Filter cScore = ", cSCORE.Score(),
             " rScore = ", rSCORE.Score(),
             " Banned for ", nPenalty,
             " Seconds. [VIOLATION: ", strViolation, "]");

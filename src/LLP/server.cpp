@@ -59,6 +59,22 @@ namespace LLP
     , THREAD_METER      ( )
     , THREAD_MANAGER    ( )
     {
+        /* -banned means do not let node connect */
+        if(config::HasArg("-banned"))
+        {
+            RECURSIVE(config::ARGS_MUTEX);
+
+            /* Add connections and resolve potential DNS lookups. */
+            for(const auto& rAddress : config::mapMultiArgs["-banned"])
+            {
+                /* Add banned address to DDOS map. */
+                DDOS_MAP->insert(std::make_pair(BaseAddress(rAddress), new DDOS_Filter(CONFIG.DDOS_TIMESPAN)));
+                DDOS_MAP->at(rAddress)->nBanTimestamp.store(std::numeric_limits<uint64_t>::max());
+
+                debug::notice(FUNCTION, "-banned commandline set for ", rAddress);
+            }
+        }
+
         /* Add the individual data threads to the vector that will be holding their state. */
         for(uint16_t nIndex = 0; nIndex < CONFIG.MAX_THREADS; ++nIndex)
         {
@@ -354,9 +370,8 @@ namespace LLP
     template <class ProtocolType>
     std::shared_ptr<ProtocolType> Server<ProtocolType>::GetConnection(const std::pair<uint32_t, uint32_t>& pairExclude)
     {
-        /* Set our initial return values. */
-        int16_t nRetThread = -1;
-        int16_t nRetIndex  = -1;
+        /* Set our internal return pointer. */
+        std::shared_ptr<ProtocolType> pRet;
 
         /* List of connections to return. */
         uint64_t nLatency   = std::numeric_limits<uint64_t>::max();
@@ -380,10 +395,9 @@ namespace LLP
                     /* Push the active connection. */
                     if(CONNECTION->nLatency < nLatency && CONNECTION->fOUTGOING)
                     {
+                        /* Set our return pointer here now. */
                         nLatency = CONNECTION->nLatency;
-
-                        nRetThread = nThread;
-                        nRetIndex  = nIndex;
+                        pRet     = CONNECTION;
                     }
                 }
                 catch(const std::exception& e)
@@ -393,12 +407,7 @@ namespace LLP
             }
         }
 
-        /* Handle if no connections were found. */
-        static std::shared_ptr<ProtocolType> pNULL;
-        if(nRetThread == -1 || nRetIndex == -1)
-            return pNULL;
-
-        return THREADS_DATA[nRetThread]->CONNECTIONS->at(nRetIndex);
+        return pRet;
     }
 
 
@@ -579,13 +588,6 @@ namespace LLP
                         debug::log(3, FUNCTION, "Connected to DNS Address: ", strDNS);
                 }
             }
-
-            /* Print the debug info every 10s */
-            if(TIMER.Elapsed() >= 10)
-            {
-                debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
-                TIMER.Reset();
-            }
         }
     }
 
@@ -623,7 +625,6 @@ namespace LLP
         socklen_t len_v4 = sizeof(struct sockaddr_in);
         socklen_t len_v6 = sizeof(struct sockaddr_in6);
 
-
         /* Setup poll objects. */
         pollfd fds[1];
         fds[0].events = POLLIN;
@@ -631,8 +632,8 @@ namespace LLP
         /* Main listener loop. */
         while(!config::fShutdown.load())
         {
-            /* Check if we need to loop in suspended state. */
-            if(config::fSuspended.load())
+            /* Check if we are suspended. */
+            if(config::fSuspendProtocol.load())
             {
                 runtime::sleep(100);
                 continue;
@@ -675,8 +676,12 @@ namespace LLP
 
                 if(hSocket == INVALID_SOCKET)
                 {
+                    /* Catch our socket errors and sleep while waiting for listener to be activated. */
                     if(WSAGetLastError() != WSAEWOULDBLOCK)
-                        debug::error(FUNCTION, "Socket error accept failed: ", WSAGetLastError());
+                    {
+                        debug::error(FUNCTION, "failed to accept ", WSAGetLastError());
+                        continue;
+                    }
                 }
                 else
                 {
@@ -684,13 +689,12 @@ namespace LLP
                     if(GetConnectionCount(FLAGS::INCOMING) >= CONFIG.MAX_INCOMING
                     || GetConnectionCount(FLAGS::ALL) >= CONFIG.MAX_CONNECTIONS)
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
+                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
                         closesocket(hSocket);
                         runtime::sleep(500);
 
                         continue;
                     }
-
 
                     /* Create new DDOS Filter if Needed. */
                     if(CONFIG.ENABLE_DDOS && !DDOS_MAP->count(addr))
@@ -699,26 +703,28 @@ namespace LLP
                     /* Establish a new socket with SSL on or off according to server. */
                     Socket sockNew(hSocket, addr, fSSL);
 
+                    /* Check that an address is banned. */
+                    if(DDOS_MAP->count(addr) && DDOS_MAP->at(addr)->Banned())
+                    {
+                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                        sockNew.Close();
+
+                        continue;
+                    }
+
                     /* Check for errors accepting the connection */
                     if(sockNew.Errors())
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
+                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
                         sockNew.Close();
 
                         continue;
                     }
 
                     /* DDOS Operations: Only executed when DDOS is enabled. */
-                    if((CONFIG.ENABLE_DDOS && DDOS_MAP->at(addr)->Banned()))
+                    if(!CheckPermissions(addr.ToStringIP(), fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE))
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
-                        sockNew.Close();
-
-                        continue;
-                    }
-                    else if(!CheckPermissions(addr.ToStringIP(), fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE))
-                    {
-                        debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
+                        debug::error(FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
                         sockNew.Close();
 
@@ -741,7 +747,7 @@ namespace LLP
                     dt->AddConnection(sockNew, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addr) : nullptr);
 
                     /* Verbose output. */
-                    debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
+                    debug::log(4, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
                 }
             }
             else
@@ -886,6 +892,8 @@ namespace LLP
 
             /* Total incoming and outgoing packets. */
             uint32_t RPS = ProtocolType::REQUESTS / TIMER.Elapsed();
+            uint32_t CPS = ProtocolType::CONNECTIONS / TIMER.Elapsed();
+            uint32_t DPS = ProtocolType::DISCONNECTS / TIMER.Elapsed();
             uint32_t PPS = ProtocolType::PACKETS / TIMER.Elapsed();
 
             /* Omit meter when zero values detected. */
@@ -895,16 +903,19 @@ namespace LLP
             /* Meter output. */
             debug::log(0,
                 ANSI_COLOR_FUNCTION, Name(), " LLP : ", ANSI_COLOR_RESET,
+                CPS, " Accepts/s | ",
+                DPS, " Closing/s | ",
                 RPS, " Incoming/s | ",
                 PPS, " Outgoing/s | ",
-                RPS + PPS, " Packets/s | ",
-                nGlobalConnections, " Connections."
+                nGlobalConnections, " Connections"
             );
 
             /* Reset meter info. */
             TIMER.Reset();
             ProtocolType::REQUESTS.store(0);
             ProtocolType::PACKETS.store(0);
+            ProtocolType::CONNECTIONS.store(0);
+            ProtocolType::DISCONNECTS.store(0);
         }
     }
 

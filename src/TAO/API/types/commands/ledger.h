@@ -146,6 +146,19 @@ namespace TAO::API
         encoding::json GetInfo(const encoding::json& jParams, const bool fHelp);
 
 
+        /** SyncStatus
+         *
+         *  Returns an object containing sync related information
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        static encoding::json SyncStatus(const encoding::json& jParams, const bool fHelp);
+
+
         /** GetMetrics
          *
          *  Returns an object containing ledger-related metrics.

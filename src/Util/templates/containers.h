@@ -20,64 +20,66 @@ ________________________________________________________________________________
 #include <cmath>
 
 
-/**	CMajority
+/**	majority
  *
  *  Filter designed to give the majority of set of values.
  *  Keeps count of every addition of template parameter type,
  *  in order to give a reasonable majority of votes.
  *
  **/
-template <typename CType>
-class CMajority
+template <typename TypeName>
+class majority
 {
-public:
-    std::map<CType, int> mapList;
+    std::map<TypeName, int32_t> mapList;
+
     uint32_t nSamples;
 
+public:
 
-    /**	CMajority
+    /**	majority
      *
      *  Default constructor
      *
      **/
-    CMajority()
-    : nSamples (0)
+    majority()
+    : mapList  ( )
+    , nSamples (0)
     {
     }
 
 
-    /**	Add
+    /**	push
      *
      *  Add another Element to the Majority Count.
      *
      *  @param[in] value Element to add
      *
      **/
-    void Add(CType value)
+    void push(TypeName value)
     {
         if(!mapList.count(value))
             mapList[value] = 1;
         else
             mapList[value]++;
 
-        nSamples++;
+        ++nSamples;
     }
 
 
-    /**	Samples
+    /**	samples
      *
      *  Return the total number of samples this container holds.
      *
      *  @return Total number of samples
      *
      **/
-    uint32_t Samples()
+    uint32_t samples()
     {
         return nSamples;
     }
 
 
-    /** Clear
+    /** clear
      *
      *  Remove all contents from majority.
      *
@@ -89,23 +91,23 @@ public:
      }
 
 
-    /**	Majority
+    /**	top
      *
      *  Return the Element of CType with the highest Majority.
      *
      *  @return Element of CType with highest Majority.
      *
      **/
-    CType Majority()
+    TypeName top()
     {
         if(nSamples == 0)
             return 0;
 
         /* Temporary Reference Variable to store the largest majority to then compare every element of the map to it. */
-        std::pair<CType, int> nMajority;
+        std::pair<TypeName, int32_t> nMajority;
 
 
-        for(typename std::map<CType, int>::iterator nIterator = mapList.begin(); nIterator != mapList.end(); ++nIterator)
+        for(auto nIterator = mapList.begin(); nIterator != mapList.end(); ++nIterator)
         {
             /* Set the return to be the first element, to then compare the rest of the map to it. */
             if(nIterator == mapList.begin())

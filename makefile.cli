@@ -460,7 +460,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_list-transactions.o \
 		build/API_commands_ledger_metrics.o \
 		build/API_commands_ledger_submit-transaction.o \
-		build/API_commands_ledger_sync-headers.o \
+		build/API_commands_ledger_sync-status.o \
 		build/API_commands_market_cancel.o \
 		build/API_commands_market_create.o \
 		build/API_commands_market_execute.o \
@@ -470,7 +470,6 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_market_list.o \
 		build/API_commands_market_user.o \
 		build/API_commands_network_initialize.o \
-		build/API_commands_network_count.o \
 		build/API_commands_network_list.o \
 		build/API_commands_names_initialize.o \
 		build/API_commands_names_index.o \
@@ -957,7 +956,7 @@ endif
 
 
 #OS Specific Compiler Flags
-CXXFLAGS+= -mmacosx-version-min=10.13 \
+CXXFLAGS+= -mmacosx-version-min=10.09 \
 	-O3 \
 	$(DEFS) \
 	$(DEBUG) \

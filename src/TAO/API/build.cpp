@@ -177,13 +177,13 @@ namespace TAO::API
             return std::vector<uint512_t>();
         }
 
+        /* Get the calling genesis-id. */
+        const uint256_t hashGenesis =
+            Authentication::Caller(jParams);
+
         /* Check for sigchain maturity on mainnet. */
         if(!config::fHybrid.load())
         {
-            /* Get the calling genesis-id. */
-            const uint256_t hashGenesis =
-                Authentication::Caller(jParams);
-
             /* Check if sigchain is mature. */
             if(!CheckMature(hashGenesis))
                 throw Exception(-202, "Signature chain not mature. Please wait for coinbase/coinstake maturity");
@@ -224,6 +224,13 @@ namespace TAO::API
             /* Check for shutdown. */
             if(config::fShutdown.load())
                 break;
+
+            /* Check that our last transaction was more than 10 seconds ago. */
+            if((nUnlockedActions & TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS) && !CheckTimespan(hashGenesis, 10))
+            {
+                runtime::sleep(500);
+                continue;
+            }
 
             /* Build our transactions in batches of 99 contracts at a time. */
             std::vector<TAO::Operation::Contract> vBuild;
@@ -410,6 +417,10 @@ namespace TAO::API
             /* Iterate through all TxOut's in the legacy transaction to see which are sends to a sig chain  */
             for(uint32_t nContract = 0; nContract < tx.vout.size(); ++nContract)
             {
+                /* Check that this output is a valid register script. */
+                if(!Legacy::VerifyRegister(tx.vout[nContract].scriptPubKey))
+                    continue;
+
                 /* Build our contract we will operate on from the legacy output. */
                 const TAO::Operation::Contract tContract = TAO::Operation::Contract(tx, nContract);
 
@@ -431,7 +442,7 @@ namespace TAO::API
     {
         /* Extract some parameters from input data. */
         const TAO::Register::Address addrCredit =
-            ExtractAddress(jParams, "", "default");
+            ExtractAddress(jParams, "", config::GetArg("-creditacct", "default"));
 
         /* Get our genesis-id for this call. */
         const uint256_t hashGenesis =

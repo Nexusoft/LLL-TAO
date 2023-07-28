@@ -101,7 +101,7 @@ namespace TAO::API
     uint16_t GetStandardType(const TAO::Register::Object& rObject);
 
 
-    /** GetPending
+    /** GetUnclaimed
      *
      *  Get the sum of all debit notifications for the the specified token
      *
@@ -112,7 +112,7 @@ namespace TAO::API
      *  @return The sum of all pending debits
      *
      **/
-    uint64_t GetPending(const uint256_t& hashGenesis, const uint256_t& hashToken, const uint256_t& hashAccount = 0);
+    uint64_t GetUnclaimed(const uint256_t& hashGenesis, const uint256_t& hashToken, const uint256_t& hashAccount = 0);
 
 
     /** GetUnconfirmed

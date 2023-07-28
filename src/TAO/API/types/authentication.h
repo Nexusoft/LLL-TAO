@@ -39,6 +39,7 @@ namespace TAO::API
         {
             DEFAULT  = 1,
             MINER    = 2,
+            PRIVATE  = 3,
             INVALID  = 255,
         };
 

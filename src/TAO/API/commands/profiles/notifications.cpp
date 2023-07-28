@@ -119,14 +119,6 @@ namespace TAO::API
                 if(rContract.Spent(rEvent.second))
                     continue;
 
-                /* Bind our contract now to a timestamp and caller. */
-                rContract.Bind(runtime::unifiedtimestamp(), hashGenesis);
-
-                /* Sanitize the contract. */
-                std::map<uint256_t, TAO::Register::State> mapStates;
-                if(!Notifications::SanitizeContract(rContract, mapStates))
-                    continue;
-
                 /* Get the transaction JSON. */
                 encoding::json jContract =
                     TAO::API::ContractToJSON(rContract, rEvent.second, nVerbose);

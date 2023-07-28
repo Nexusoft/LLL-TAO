@@ -47,7 +47,7 @@ namespace LLP
 
 
         /** Store the samples in a majority object. */
-        CMajority<int32_t> nSamples;
+        majority<int32_t> nSamples;
 
 
         /** Keep track of our sent requests for time data. This gives us protection against unsolicted TIME_DATA messages. **/

@@ -11,6 +11,7 @@
 
 ____________________________________________________________________________________________*/
 
+#include <Legacy/rpc/types/rpc.h>
 
 #include <TAO/API/include/cmd.h>
 #include <TAO/API/include/json.h>
@@ -194,6 +195,10 @@ namespace TAO
         /* Executes an API call from the commandline */
         int CommandLineRPC(int argc, char** argv, int nArgBegin)
         {
+            int nRet = 0;
+
+            #ifndef NO_WALLET
+
             /* Make a local cache of our authorization header. */
             const static std::string strUserPass =
                 (config::GetArg("-rpcuser", "") + ":" + config::GetArg("-rpcpassword", ""));
@@ -230,7 +235,7 @@ namespace TAO
             encoding::json jBody =
             {
                 {"method", argv[nArgBegin]},
-                {"params", jParameters},
+                {"params", Legacy::RPC::SanitizeParams(argv[nArgBegin], jParameters) },
                 {"id", 1}
             };
 
@@ -302,7 +307,7 @@ namespace TAO
 
 
             /* Dump the response to the console. */
-            int nRet = 0;
+
             std::string strPrint = "";
             if(strResponse.length() > 0)
             {
@@ -329,6 +334,7 @@ namespace TAO
 
             // output to console
             printf("%s\n", strPrint.c_str());
+        #endif
 
             return nRet;
         }

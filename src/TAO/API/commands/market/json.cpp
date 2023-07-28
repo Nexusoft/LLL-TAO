@@ -44,7 +44,7 @@ namespace TAO::API
             {
                 /* Check our binary templates first. */
                 if(!Contracts::Verify(Contracts::Exchange::Token[0], rContract)) //checking for version 1
-                    throw Exception(-25, "Market order invalid contract: not valid binary order");
+                    return encoding::json::value_t::null;
 
                 try
                 {
@@ -172,6 +172,10 @@ namespace TAO::API
                     std::string strType = "";
                     if(hashBuying != pairMarket.second)
                     {
+                        /* Check for floating point exceptions. */
+                        if(dBuying.nValue == 0)
+                            return encoding::json::value_t::null;
+
                         /* Calculate our price using precision figures. */
                         dPrice = dSelling;
                         dPrice /= dBuying;
@@ -184,6 +188,10 @@ namespace TAO::API
                     }
                     else
                     {
+                        /* Check for floating point exceptions. */
+                        if(dSelling.nValue == 0)
+                            return encoding::json::value_t::null;
+
                         /* Calculate our price using precision figures. */
                         dPrice = dBuying;
                         dPrice /= dSelling;
@@ -204,7 +212,7 @@ namespace TAO::API
                 }
                 catch(const std::exception& e)
                 {
-                    throw Exception(-25, "Market order invalid contract: ", e.what());
+                    return encoding::json::value_t::null;
                 }
             }
 

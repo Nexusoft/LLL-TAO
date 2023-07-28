@@ -213,6 +213,10 @@ namespace LLP
                 return true;
             }
 
+            /* Handle the HTTP body argument. */
+            if(config::GetBoolArg("-httpbody", false))
+                debug::log(0, jParams.dump(4));
+
             /* Check if we need to parse a where query. */
             if(jParams.find("where") != jParams.end())
                 jParams["where"] = TAO::API::QueryToJSON(jParams["where"].get<std::string>());

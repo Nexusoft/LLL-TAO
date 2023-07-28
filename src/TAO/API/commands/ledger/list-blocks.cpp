@@ -103,39 +103,21 @@ namespace TAO::API
                 /* Read the block state from the the ledger DB using the height index */
                 if(!LLD::Ledger->ReadBlock(nHeight, tLastBlock))
                     throw Exception(-83, "Block not found");
-
-                /* Get our starting hash now. */
-                hashStart = tLastBlock.GetHash();
             }
 
             /* Otherwise do a quick manual iteration of requested range. */
             else
             {
                 /* Grab latest checkpoint from best block. */
-                tLastBlock = TAO::Ledger::ChainState::stateBest.load();
+                tLastBlock = TAO::Ledger::ChainState::tStateBest.load();
 
                 /* Set starting based on second to last checkpoint block. */
                 while(tLastBlock.nHeight + nLimit > TAO::Ledger::ChainState::nBestHeight.load())
-                {
-                    /* Build JSON object. */
-                    encoding::json jBlock =
-                        BlockToJSON(tLastBlock, nVerbose);
-
-                    /* Filter our results now if desired. */
-                    if(!FilterResults(jParams, jBlock))
-                        continue;
-
-                    /* Filter out our expected fieldnames if specified. */
-                    FilterFieldname(jParams, jBlock);
-
-                    /* Add to our sorted list. */
-                    setBlocks.insert(jBlock);
-
-                    /* Iterate backwards recording our hashes. */
                     tLastBlock = tLastBlock.Prev();
-                    hashStart  = tLastBlock.GetHash();
-                }
             }
+
+            /* Get our starting hash now. */
+            hashStart = tLastBlock.GetHash();
         }
 
         /* List our blocks via a batch read for efficiency. */
@@ -175,7 +157,8 @@ namespace TAO::API
                     continue;
 
                 /* Filter out our expected fieldnames if specified. */
-                FilterFieldname(jParams, jBlock);
+                if(!FilterFieldname(jParams, jBlock))
+                    continue;
 
                 /* Add to our sorted list. */
                 setBlocks.insert(jBlock);

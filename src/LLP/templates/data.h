@@ -145,13 +145,20 @@ namespace LLP
                 else
                     CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
-                /* Iterate the DDOS cScore (Connection score). */
-                if(fDDOS.load())
-                    DDOS -> cSCORE += 1;
-
                 /* Check for inbound socket. */
                 if(pnode->Incoming())
+                {
+                    /* Increment internal incoming counter. */
                     ++nIncoming;
+
+                    /* Iterate the DDOS cScore (Connection score). */
+                    if(fDDOS.load())
+                        DDOS -> cSCORE += 1;
+
+                    /* Increment meters value. */
+                    if(fMETER)
+                        ++pnode->CONNECTIONS;
+                }
                 else
                     ++nOutbound;
 

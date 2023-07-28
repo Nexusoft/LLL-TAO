@@ -159,86 +159,125 @@ namespace LLD
         /* Flag to determine if there are any failures. */
         bool fRecovery = true;
 
-        /* Check the Logical DB journal. */
-        if(Logical && !Logical->TxnRecovery())
-            fRecovery = false;
-
-        /* Check the contract DB journal. */
-        if(Contract && !Contract->TxnRecovery())
-            fRecovery = false;
-
-        /* Check the register DB journal. */
-        if(Register && !Register->TxnRecovery())
-            fRecovery = false;
-
-        /* Check the ledger DB journal. */
-        if(Ledger && !Ledger->TxnRecovery())
-            fRecovery = false;
-
-        /* Check the client DB journal. */
-        if(Client && !Client->TxnRecovery())
-            fRecovery = false;
-
-        /* Check the ledger DB journal. */
-        if(Trust && !Trust->TxnRecovery())
-            fRecovery = false;
-
-        /* Check the ledger DB journal. */
-        if(Legacy && !Legacy->TxnRecovery())
-            fRecovery = false;
-
-        /* Commit the transactions if journals are recovered. */
-        if(fRecovery)
+        /* Special handle for -client mode. */
+        if(config::fClient.load())
         {
-            debug::log(0, FUNCTION, "all transactions are complete, recovering...");
+            /* Check the contract DB journal. */
+            if(Contract && !Contract->TxnRecovery())
+                fRecovery = false;
 
-            /* Commit Logical DB transaction. */
-            if(Logical)
-                Logical->TxnCommit();
+            /* Check the register DB journal. */
+            if(Register && !Register->TxnRecovery())
+                fRecovery = false;
 
-            /* Commit contract DB transaction. */
-            if(Contract)
-                Contract->TxnCommit();
+            /* Check the ledger DB journal. */
+            if(Client && !Client->TxnRecovery())
+                fRecovery = false;
 
-            /* Commit register DB transaction. */
-            if(Register)
-                Register->TxnCommit();
+            /* Check the ledger DB journal. */
+            if(Logical && !Logical->TxnRecovery())
+                fRecovery = false;
 
-            /* Commit ledger DB transaction. */
-            if(Ledger)
-                Ledger->TxnCommit();
+            /* Commit the transactions if journals are recovered. */
+            if(fRecovery)
+            {
+                debug::log(0, FUNCTION, "all transactions are complete, recovering...");
 
-            /* Commit the client DB transaction. */
-            if(Client)
-                Client->TxnCommit();
+                /* Commit Contract DB transaction. */
+                if(Contract)
+                    Contract->TxnCommit();
 
-            /* Commit the trust DB transaction. */
-            if(Trust)
-                Trust->TxnCommit();
+                /* Commit Register DB transaction. */
+                if(Register)
+                    Register->TxnCommit();
 
-            /* Commit the legacy DB transaction. */
-            if(Legacy)
-                Legacy->TxnCommit();
+                /* Commit the Client DB transaction. */
+                if(Client)
+                    Client->TxnCommit();
+
+                /* Commit the Logical DB transaction. */
+                if(Logical)
+                    Logical->TxnCommit();
+
+                /* Commit the legacy DB transaction. */
+                if(Legacy)
+                    Legacy->TxnCommit();
+            }
+
+            /* Abort all the transactions. */
+            TxnAbort(TAO::Ledger::FLAGS::BLOCK, INSTANCES::MERKLE);
         }
 
-        /* Abort all the transactions. */
-        TxnAbort();
+        /* Regular mainnet mode recovery. */
+        else
+        {
+            /* Check the contract DB journal. */
+            if(Contract && !Contract->TxnRecovery())
+                fRecovery = false;
+
+            /* Check the register DB journal. */
+            if(Register && !Register->TxnRecovery())
+                fRecovery = false;
+
+            /* Check the ledger DB journal. */
+            if(Ledger && !Ledger->TxnRecovery())
+                fRecovery = false;
+
+            /* Check the ledger DB journal. */
+            if(Trust && !Trust->TxnRecovery())
+                fRecovery = false;
+
+            /* Check the ledger DB journal. */
+            if(Legacy && !Legacy->TxnRecovery())
+                fRecovery = false;
+
+            /* Commit the transactions if journals are recovered. */
+            if(fRecovery)
+            {
+                debug::log(0, FUNCTION, "all transactions are complete, recovering...");
+
+                /* Commit contract DB transaction. */
+                if(Contract)
+                    Contract->TxnCommit();
+
+                /* Commit register DB transaction. */
+                if(Register)
+                    Register->TxnCommit();
+
+                /* Commit ledger DB transaction. */
+                if(Ledger)
+                    Ledger->TxnCommit();
+
+                /* Commit the trust DB transaction. */
+                if(Trust)
+                    Trust->TxnCommit();
+
+                /* Commit the legacy DB transaction. */
+                if(Legacy)
+                    Legacy->TxnCommit();
+            }
+
+            /* Abort all the transactions. */
+            TxnAbort(TAO::Ledger::FLAGS::BLOCK, INSTANCES::CONSENSUS);
+        }
+
+
     }
 
 
     /* Global handler for all LLD instances. */
-    void TxnBegin(const uint8_t nFlags)
+    void TxnBegin(const uint8_t nFlags, const uint16_t nInstances)
     {
         /* Start the contract DB transaction. */
-        if(Contract)
+        if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->MemoryBegin(nFlags);
 
         /* Start the register DB transacdtion. */
-        if(Register)
+        if(Register && (nInstances & INSTANCES::REGISTER))
             Register->MemoryBegin(nFlags);
 
         /* Start the ledger DB transaction. */
-        if(Ledger)
+        if(Ledger && (nInstances & INSTANCES::LEDGER))
             Ledger->MemoryBegin(nFlags);
 
         /* Handle memory commits if in memory m ode. */
@@ -246,48 +285,48 @@ namespace LLD
             return;
 
         /* Start the Logical DB transaction. */
-        if(Logical)
+        if(Logical && (nInstances & INSTANCES::LOGICAL))
             Logical->TxnBegin();
 
         /* Start the contract DB transaction. */
-        if(Contract)
+        if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->TxnBegin();
 
         /* Start the register DB transacdtion. */
-        if(Register)
+        if(Register && (nInstances & INSTANCES::REGISTER))
             Register->TxnBegin();
 
         /* Start the ledger DB transaction. */
-        if(Ledger)
+        if(Ledger && (nInstances & INSTANCES::LEDGER))
             Ledger->TxnBegin();
 
         /* Start the client DB transaction. */
-        if(Client)
+        if(Client && (nInstances & INSTANCES::CLIENT))
             Client->TxnBegin();
 
         /* Start the trust DB transaction. */
-        if(Trust)
+        if(Trust && (nInstances & INSTANCES::TRUST))
             Trust->TxnBegin();
 
         /* Start the legacy DB transaction. */
-        if(Legacy)
+        if(Legacy && (nInstances & INSTANCES::LEGACY))
             Legacy->TxnBegin();
     }
 
 
     /* Global handler for all LLD instances. */
-    void TxnAbort(const uint8_t nFlags)
+    void TxnAbort(const uint8_t nFlags, const uint16_t nInstances)
     {
         /* Abort the contract DB transaction. */
-        if(Contract)
+        if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->MemoryRelease(nFlags);
 
         /* Abort the register DB transacdtion. */
-        if(Register)
+        if(Register && (nInstances & INSTANCES::REGISTER))
             Register->MemoryRelease(nFlags);
 
         /* Abort the ledger DB transaction. */
-        if(Ledger)
+        if(Ledger && (nInstances & INSTANCES::LEDGER))
             Ledger->MemoryRelease(nFlags);
 
         /* Handle memory commits if in memory m ode. */
@@ -295,48 +334,48 @@ namespace LLD
             return;
 
         /* Abort the Logical DB transaction. */
-        if(Logical)
+        if(Logical && (nInstances & INSTANCES::LOGICAL))
             Logical->TxnRelease();
 
         /* Abort the contract DB transaction. */
-        if(Contract)
+        if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->TxnRelease();
 
         /* Abort the register DB transaction. */
-        if(Register)
+        if(Register && (nInstances & INSTANCES::REGISTER))
             Register->TxnRelease();
 
         /* Abort the ledger DB transaction. */
-        if(Ledger)
+        if(Ledger && (nInstances & INSTANCES::LEDGER))
             Ledger->TxnRelease();
 
         /* Abort the client DB transaction. */
-        if(Client)
+        if(Client && (nInstances & INSTANCES::CLIENT))
             Client->TxnRelease();
 
         /* Abort the trust DB transaction. */
-        if(Trust)
+        if(Trust && (nInstances & INSTANCES::TRUST))
             Trust->TxnRelease();
 
         /* Abort the legacy DB transaction. */
-        if(Legacy)
+        if(Legacy && (nInstances & INSTANCES::LEGACY))
             Legacy->TxnRelease();
     }
 
 
     /* Global handler for all LLD instances. */
-    void TxnCommit(const uint8_t nFlags)
+    void TxnCommit(const uint8_t nFlags, const uint16_t nInstances)
     {
         /* Commit the contract DB transaction. */
-        if(Contract)
+        if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->MemoryCommit();
 
         /* Commit the register DB transacdtion. */
-        if(Register)
+        if(Register && (nInstances & INSTANCES::REGISTER))
             Register->MemoryCommit();
 
         /* Commit the ledger DB transaction. */
-        if(Ledger)
+        if(Ledger && (nInstances & INSTANCES::LEDGER))
             Ledger->MemoryCommit();
 
         /* Handle memory commits if in memory mode. */
@@ -344,89 +383,89 @@ namespace LLD
             return;
 
         /* Set a checkpoint for Logical DB. */
-        if(Logical)
+        if(Logical && (nInstances & INSTANCES::LOGICAL))
             Logical->TxnCheckpoint();
 
         /* Set a checkpoint for contract DB. */
-        if(Contract)
+        if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->TxnCheckpoint();
 
         /* Set a checkpoint for register DB. */
-        if(Register)
+        if(Register && (nInstances & INSTANCES::REGISTER))
             Register->TxnCheckpoint();
 
         /* Set a checkpoint for ledger DB. */
-        if(Ledger)
+        if(Ledger && (nInstances & INSTANCES::LEDGER))
             Ledger->TxnCheckpoint();
 
         /* Set a checkpoint for client DB. */
-        if(Client)
+        if(Client && (nInstances & INSTANCES::CLIENT))
             Client->TxnCheckpoint();
 
         /* Set a checkpoint for trust DB. */
-        if(Trust)
+        if(Trust && (nInstances & INSTANCES::TRUST))
             Trust->TxnCheckpoint();
 
         /* Set a checkpoint for legacy DB. */
-        if(Legacy)
+        if(Legacy && (nInstances & INSTANCES::LEGACY))
             Legacy->TxnCheckpoint();
 
 
         /* Commit Logical DB transaction. */
-        if(Logical)
+        if(Logical && (nInstances & INSTANCES::LOGICAL))
             Logical->TxnCommit();
 
         /* Commit contract DB transaction. */
-        if(Contract)
+        if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->TxnCommit();
 
         /* Commit register DB transaction. */
-        if(Register)
+        if(Register && (nInstances & INSTANCES::REGISTER))
             Register->TxnCommit();
 
         /* Commit legacy DB transaction. */
-        if(Ledger)
+        if(Ledger && (nInstances & INSTANCES::LEDGER))
             Ledger->TxnCommit();
 
         /* Commit the client DB transaction. */
-        if(Client)
+        if(Client && (nInstances & INSTANCES::CLIENT))
             Client->TxnCommit();
 
         /* Commit the trust DB transaction. */
-        if(Trust)
+        if(Trust && (nInstances & INSTANCES::TRUST))
             Trust->TxnCommit();
 
         /* Commit the legacy DB transaction. */
-        if(Legacy)
+        if(Legacy && (nInstances & INSTANCES::LEGACY))
             Legacy->TxnCommit();
 
 
         /* Abort the Logical DB transaction. */
-        if(Logical)
+        if(Logical && (nInstances & INSTANCES::LOGICAL))
             Logical->TxnRelease();
 
         /* Abort the contract DB transaction. */
-        if(Contract)
+        if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->TxnRelease();
 
         /* Abort the register DB transaction. */
-        if(Register)
+        if(Register && (nInstances & INSTANCES::REGISTER))
             Register->TxnRelease();
 
         /* Abort the ledger DB transaction. */
-        if(Ledger)
+        if(Ledger && (nInstances & INSTANCES::LEDGER))
             Ledger->TxnRelease();
 
         /* Abort the client DB transaction. */
-        if(Client)
+        if(Client && (nInstances & INSTANCES::CLIENT))
             Client->TxnRelease();
 
         /* Abort the trust DB transaction. */
-        if(Trust)
+        if(Trust && (nInstances & INSTANCES::TRUST))
             Trust->TxnRelease();
 
         /* Abort the legacy DB transaction. */
-        if(Legacy)
+        if(Legacy && (nInstances & INSTANCES::LEGACY))
             Legacy->TxnRelease();
     }
 }

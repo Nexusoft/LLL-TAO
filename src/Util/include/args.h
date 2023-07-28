@@ -35,6 +35,7 @@ namespace config
 
     extern std::atomic<bool> fShutdown;
     extern std::atomic<bool> fSuspended;
+    extern std::atomic<bool> fSuspendProtocol;
     extern std::atomic<bool> fDaemon;
     extern std::atomic<bool> fClient;
     extern std::atomic<bool> fTestNet;

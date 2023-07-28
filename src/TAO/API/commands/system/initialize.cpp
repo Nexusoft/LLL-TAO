@@ -23,7 +23,9 @@ ________________________________________________________________________________
 #include <LLP/include/trust_address.h>
 
 #include <TAO/API/types/commands/system.h>
+#include <TAO/API/types/commands/ledger.h>
 #include <TAO/Ledger/include/chainstate.h>
+#include <TAO/Ledger/include/process.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/debug.h>
@@ -92,7 +94,8 @@ namespace TAO
 
             /* Legacy wallet version*/
             #ifndef NO_WALLET
-            jRet["walletversion"] = Legacy::Wallet::Instance().GetVersion();
+            if(!config::fClient.load())
+                jRet["walletversion"] = Legacy::Wallet::Instance().GetVersion();
             #endif
 
             /* Current unified time as reported by this node*/
@@ -142,16 +145,15 @@ namespace TAO
             #endif
 
             /* The current block height of this node */
-            jRet["blocks"] = (int)TAO::Ledger::ChainState::nBestHeight.load();
+            jRet["blocks"]          = TAO::Ledger::ChainState::nBestHeight.load();
 
             /* Flag indicating whether this node is currently syncrhonizing */
-            jRet["synchronizing"] = (bool)TAO::Ledger::ChainState::Synchronizing();
+            jRet["synchronized"]    = !TAO::Ledger::ChainState::Synchronizing();
+            jRet["syncing"]         = false; // default sync value
 
-            /* The percentage of the blocks downloaded */
-            jRet["synccomplete"] = (int)TAO::Ledger::ChainState::PercentSynchronized();
-
-            /* The percentage of the current sync completed */
-            jRet["syncprogress"] = (int)TAO::Ledger::ChainState::SyncProgress();
+            /* Populate our sync related data. */
+            if(TAO::Ledger::nSyncSession.load() != 0)
+                jRet["syncing"] = TAO::API::Ledger::SyncStatus(params, false);
 
             /* Number of transactions in the node's mempool*/
             jRet["txtotal"] = TAO::Ledger::mempool.Size();

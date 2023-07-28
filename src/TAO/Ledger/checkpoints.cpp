@@ -62,6 +62,10 @@ namespace TAO
         /* Check that the checkpoint is a Descendant of previous Checkpoint.*/
         bool IsDescendant(const BlockState& state)
         {
+            /* Check if we should force our descendant checks. */
+            if(config::GetBoolArg("-forcesync", false))
+                return true;
+
             /* If no checkpoint defined, return true. */
             if(ChainState::hashCheckpoint == 0)
                 return true;
@@ -69,10 +73,6 @@ namespace TAO
             /* Check hard coded checkpoints when syncing. */
             if(ChainState::Synchronizing())
             {
-                /* Don't check checkpoints for non legacy mode. */
-                if(!config::GetBoolArg("-beta"))
-                    return true;
-
                 /* Check that height isn't exceeded. */
                 if(config::fTestNet || state.nHeight > CHECKPOINT_HEIGHT)
                     return true;

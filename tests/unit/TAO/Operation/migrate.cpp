@@ -73,11 +73,11 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
     int64_t nTrustKeyBalance = 0;
 
     //set best
-    TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+    TAO::Ledger::BlockState state = TAO::Ledger::ChainState::tStateBest.load();
     ++state.nHeight;
     state.hashNextBlock = LLC::GetRand1024();
 
-    TAO::Ledger::ChainState::stateBest.store(state);
+    TAO::Ledger::ChainState::tStateBest.store(state);
     TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
     REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -175,18 +175,18 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), state.GetHash()));
 
         //set best +10 so coinbase is mature
-        state = TAO::Ledger::ChainState::stateBest.load();
+        state = TAO::Ledger::ChainState::tStateBest.load();
         state.nHeight += 10;
         state.hashNextBlock = LLC::GetRand1024();
         state.vtx.clear();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
         //add to wallet
-        REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+        REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
         //check balance
         REQUIRE(wallet.GetBalance() == nBalance);
@@ -207,7 +207,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         //create coinstake
         Legacy::Transaction tx;
         REQUIRE(Legacy::CreateCoinstake(tx));
-        tx.nTime = runtime::timestamp(); //CreateCoinstake uses stateBest.nTime + 1 which will be incorrect
+        tx.nTime = runtime::timestamp(); //CreateCoinstake uses tStateBest.nTime + 1 which will be incorrect
 
         //set up coinstake as Genesis tx for trust key
         tx.vin[0].prevout.SetNull();
@@ -298,7 +298,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         state.hashNextBlock = LLC::GetRand1024();
         state.vtx.clear();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -519,11 +519,11 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
         hashRegister = TAO::Register::Address(std::string("trust"), hashGenesis, TAO::Register::Address::TRUST);
 
         //set best
-        state = TAO::Ledger::ChainState::stateBest.load();
+        state = TAO::Ledger::ChainState::tStateBest.load();
         ++state.nHeight;
         state.hashNextBlock = LLC::GetRand1024();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -621,18 +621,18 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), state.GetHash()));
 
             //set best +10 so coinbase is mature
-            state = TAO::Ledger::ChainState::stateBest.load();
+            state = TAO::Ledger::ChainState::tStateBest.load();
             state.nHeight += 10;
             state.hashNextBlock = LLC::GetRand1024();
             state.vtx.clear();
 
-            TAO::Ledger::ChainState::stateBest.store(state);
+            TAO::Ledger::ChainState::tStateBest.store(state);
             TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
             //add to wallet
-            REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
             //check balance
             REQUIRE(wallet.GetBalance() == nBalance);
@@ -650,7 +650,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             //create coinstake
             Legacy::Transaction tx;
             REQUIRE(Legacy::CreateCoinstake(tx));
-            tx.nTime = runtime::timestamp(); //CreateCoinstake uses stateBest.nTime + 1 which will be incorrect
+            tx.nTime = runtime::timestamp(); //CreateCoinstake uses tStateBest.nTime + 1 which will be incorrect
 
             //set up coinstake as Genesis tx for trust key
             tx.vin[0].prevout.SetNull();
@@ -740,7 +740,7 @@ TEST_CASE( "Migrate Operation Test - Genesis coinstake", "[operation]")
             state.hashNextBlock = LLC::GetRand1024();
             state.vtx.clear();
 
-            TAO::Ledger::ChainState::stateBest.store(state);
+            TAO::Ledger::ChainState::tStateBest.store(state);
             TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -919,11 +919,11 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
     uint32_t nScoreMigrated;
 
     //set best
-    TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+    TAO::Ledger::BlockState state = TAO::Ledger::ChainState::tStateBest.load();
     ++state.nHeight;
     state.hashNextBlock = LLC::GetRand1024();
 
-    TAO::Ledger::ChainState::stateBest.store(state);
+    TAO::Ledger::ChainState::tStateBest.store(state);
     TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
     REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1022,18 +1022,18 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), state.GetHash()));
 
         //set best +10 so coinbase is mature
-        state = TAO::Ledger::ChainState::stateBest.load();
+        state = TAO::Ledger::ChainState::tStateBest.load();
         state.nHeight += 10;
         state.hashNextBlock = LLC::GetRand1024();
         state.vtx.clear();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
         //add to wallet
-        REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+        REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
         //check balance
         REQUIRE(wallet.GetBalance() == nBalance);
@@ -1147,7 +1147,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         state.hashNextBlock = LLC::GetRand1024();
         state.vtx.clear();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1170,7 +1170,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
     state.nTime = runtime::timestamp() - 30;
     state.vtx.clear();
 
-    TAO::Ledger::ChainState::stateBest.store(state);
+    TAO::Ledger::ChainState::tStateBest.store(state);
     TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
     REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1286,7 +1286,7 @@ TEST_CASE( "Migrate Operation Test - Trust coinstake", "[operation]")
         state.hashNextBlock = LLC::GetRand1024();
         state.vtx.clear();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1510,11 +1510,11 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
         uint32_t nScoreMigrated;
 
         //set best
-        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState state = TAO::Ledger::ChainState::tStateBest.load();
         ++state.nHeight;
         state.hashNextBlock = LLC::GetRand1024();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1613,18 +1613,18 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             REQUIRE(LLD::Ledger->IndexBlock(tx.GetHash(), state.GetHash()));
 
             //set best +10 so coinbase is mature
-            state = TAO::Ledger::ChainState::stateBest.load();
+            state = TAO::Ledger::ChainState::tStateBest.load();
             state.nHeight += 10;
             state.hashNextBlock = LLC::GetRand1024();
             state.vtx.clear();
 
-            TAO::Ledger::ChainState::stateBest.store(state);
+            TAO::Ledger::ChainState::tStateBest.store(state);
             TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
 
             //add to wallet
-            REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::stateGenesis, true));
+            REQUIRE(wallet.AddToWalletIfInvolvingMe(tx, TAO::Ledger::ChainState::tStateGenesis, true));
 
             //check balance
             REQUIRE(wallet.GetBalance() == nBalance);
@@ -1739,7 +1739,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             state.hashNextBlock = LLC::GetRand1024();
             state.vtx.clear();
 
-            TAO::Ledger::ChainState::stateBest.store(state);
+            TAO::Ledger::ChainState::tStateBest.store(state);
             TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1762,7 +1762,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
         state.nTime = runtime::timestamp() - 30;
         state.vtx.clear();
 
-        TAO::Ledger::ChainState::stateBest.store(state);
+        TAO::Ledger::ChainState::tStateBest.store(state);
         TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
         REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));
@@ -1878,7 +1878,7 @@ TEST_CASE( "Migrate Operation Test - Invalid OP::MIGRATE tests", "[operation]")
             state.hashNextBlock = LLC::GetRand1024();
             state.vtx.clear();
 
-            TAO::Ledger::ChainState::stateBest.store(state);
+            TAO::Ledger::ChainState::tStateBest.store(state);
             TAO::Ledger::ChainState::nBestHeight.store(state.nHeight);
 
             REQUIRE(LLD::Ledger->WriteBlock(state.GetHash(), state));

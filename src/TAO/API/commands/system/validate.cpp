@@ -49,14 +49,16 @@ namespace TAO::API
             jRet["type"]  = "LEGACY";
 
             #ifndef NO_WALLET
+            if(!config::fClient.load())
+            {
+                /* Only populate mine field when wallet enabled. */
+                jRet["mine"]  = false;
 
-            /* Only populate mine field when wallet enabled. */
-            jRet["mine"]  = false;
-
-            /* Check that we have the key in this wallet. */
-            if(Legacy::Wallet::Instance().HaveKey(addr)
-            || Legacy::Wallet::Instance().HaveScript(addr.GetHash256()))
-                jRet["mine"] = true;
+                /* Check that we have the key in this wallet. */
+                if(Legacy::Wallet::Instance().HaveKey(addr)
+                || Legacy::Wallet::Instance().HaveScript(addr.GetHash256()))
+                    jRet["mine"] = true;
+            }
 
             #endif
 

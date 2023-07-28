@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <TAO/API/include/compare.h>
 #include <TAO/API/include/extract.h>
 #include <TAO/API/include/filter.h>
+#include <TAO/API/include/get.h>
 #include <TAO/API/include/list.h>
 #include <TAO/API/include/json.h>
 
@@ -27,7 +28,7 @@ ________________________________________________________________________________
 namespace TAO::API
 {
     /* Generic method to list object registers by sig chain*/
-    encoding::json Templates::List(const encoding::json& jParams, const bool fHelp)
+    encoding::json Templates::List(const encoding::json& jParams, const bool fTransferred)
     {
         /* Get the Genesis ID. */
         const uint256_t hashGenesis =
@@ -41,20 +42,19 @@ namespace TAO::API
         ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
         /* Get the list of registers owned by this sig chain */
-        std::vector<TAO::Register::Address> vAddresses;
-        LLD::Logical->ListRegisters(hashGenesis, vAddresses);
-        LLD::Logical->ListTransfers(hashGenesis, vAddresses);
-        LLD::Logical->ListUnclaimed(hashGenesis, vAddresses);
+        std::set<TAO::Register::Address> setAddresses;
+        LLD::Logical->ListRegisters(hashGenesis, setAddresses, fTransferred);
+        LLD::Logical->ListUnclaimed(hashGenesis, setAddresses);
 
         /* Check for empty return. */
-        if(vAddresses.size() == 0)
+        if(setAddresses.empty())
             throw Exception(-74, "No registers found");
 
         /* Build our object list and sort on insert. */
         std::set<encoding::json, CompareResults> setRegisters({}, CompareResults(strOrder, strColumn));
 
         /* Add the register data to the response */
-        for(const auto& hashRegister : vAddresses)
+        for(const auto& hashRegister : setAddresses)
         {
             /* Grab our object from disk. */
             TAO::Register::Object tObject;
@@ -62,7 +62,8 @@ namespace TAO::API
                 continue;
 
             /* Check for active transfers. */
-            if(tObject.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
+            if(!fTransferred && tObject.hashOwner.GetType() != TAO::Ledger::GENESIS::SYSTEM
+            && LLD::Logical->HasTransfer(hashGenesis, hashRegister))
                 continue;
 
             /* Check our object standards. */

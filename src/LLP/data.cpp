@@ -202,7 +202,7 @@ namespace LLP
             [this]
             {
                 /* Check for suspended state. */
-                if(config::fSuspended.load())
+                if(config::fSuspendProtocol.load())
                     return false;
 
                 return fDestruct.load()
@@ -214,6 +214,13 @@ namespace LLP
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
                 return;
+
+            /* Check if we are suspended. */
+            if(config::fSuspendProtocol.load())
+            {
+                runtime::sleep(100);
+                continue;
+            }
 
             /* Wrapped mutex lock. */
             const uint32_t nSize = static_cast<uint32_t>(CONNECTIONS->size());
@@ -417,7 +424,7 @@ namespace LLP
                     return true;
 
                 /* Check for suspended state. */
-                if(config::fSuspended.load())
+                if(config::fSuspendProtocol.load())
                     return false;
 
                 /* Check for data in the queue. */
@@ -450,6 +457,13 @@ namespace LLP
             /* Check for close. */
             if(fDestruct.load() || config::fShutdown.load())
                 return;
+
+            /* Check if we are suspended. */
+            if(config::fSuspendProtocol.load())
+            {
+                runtime::sleep(100);
+                continue;
+            }
 
             /* Pair to store the relay from the queue. */
             std::pair<typename ProtocolType::message_t, DataStream> qRelay =
@@ -579,7 +593,13 @@ namespace LLP
 
         /* Adjust our internal counters for incoming/outbound. */
         if(CONNECTIONS->at(nIndex)->Incoming())
+        {
             --nIncoming;
+
+            /* Handle Meters and DDOS. */
+            if(fMETER)
+                ++ProtocolType::DISCONNECTS;
+        }
         else
             --nOutbound;
 

@@ -160,18 +160,18 @@ namespace LLP
                                 LOCK(TritiumNode::CLIENT_MUTEX);
 
                                 /* Begin our ACID transaction across LLD instances. */
-                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
 
                                 /* Terminate early if we have already indexed this transaction. */
                                 if(!LLD::Client->HasIndex(hashTx))
                                 {
                                     /* Commit transaction to disk. */
                                     if(!LLD::Client->WriteTx(hashTx, tx))
-                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
 
                                     /* Index the transaction to it's block. */
                                     if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: failed to write block indexing entry");
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, "FLAGS::LOOKUP: failed to write block indexing entry");
                                 }
 
                                 /* Add our events level indexes now. */
@@ -215,18 +215,18 @@ namespace LLP
                             /* Begin our ACID transaction across LLD instances. */
                             { LOCK(TritiumNode::CLIENT_MUTEX);
 
-                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
 
                                 /* Check if we have this transaction already. */
                                 if(!LLD::Client->HasIndex(hashTx))
                                 {
                                     /* Commit transaction to disk. */
                                     if(!LLD::Client->WriteTx(hashTx, tx))
-                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, "FLAGS::LOOKUP: ", hashTx.SubString(), " REJECTED: failed to write transaction");
 
                                     /* Index the transaction to it's block. */
                                     if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, "FLAGS::LOOKUP: failed to write block indexing entry");
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, "FLAGS::LOOKUP: failed to write block indexing entry");
                                 }
 
                                 /* Add our events level indexes now. */
@@ -267,7 +267,7 @@ namespace LLP
                                     { LOCK(TritiumNode::CLIENT_MUTEX);
 
                                         /* Begin our ACID transaction across LLD instances. */
-                                        LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                        LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
 
                                         /* Track our contract-id to unpack proof data. */
                                         uint32_t nContract = 0;
@@ -337,7 +337,7 @@ namespace LLP
                                     /* Begin our ACID transaction across LLD instances. */
                                     { LOCK(TritiumNode::CLIENT_MUTEX);
 
-                                        LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                        LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
 
                                         /* Iterate the transaction contracts. */
                                         for(const auto& in : tx.vin)

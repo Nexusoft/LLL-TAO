@@ -82,7 +82,7 @@ namespace TAO
             }
 
             /* If the max depth expired, return the genesis. */
-            state = ChainState::stateGenesis;
+            state = ChainState::tStateGenesis;
 
             return false;
         }
@@ -764,11 +764,11 @@ namespace TAO
                 for(uint32_t n = 0; n < 3; ++n)
                 {
                     /* Check each weight. */
-                    if(nChannelWeight[n] == ChainState::stateBest.load().nChannelWeight[n])
+                    if(nChannelWeight[n] == ChainState::tStateBest.load().nChannelWeight[n])
                         ++nEquals;
 
                     /* Check each weight. */
-                    if(nChannelWeight[n] > ChainState::stateBest.load().nChannelWeight[n])
+                    if(nChannelWeight[n] > ChainState::tStateBest.load().nChannelWeight[n])
                         ++nGreater;
                 }
 
@@ -836,7 +836,7 @@ namespace TAO
             uint1024_t hash = GetHash();
 
             /* Watch for genesis. */
-            if(!ChainState::stateGenesis)
+            if(!ChainState::tStateGenesis)
             {
                 /* Write the best chain pointer. */
                 if(!LLD::Ledger->WriteBestChain(hash))
@@ -847,12 +847,12 @@ namespace TAO
                     return debug::error(FUNCTION, "block state already exists");
 
                 /* Set the genesis block. */
-                ChainState::stateGenesis = *this;
+                ChainState::tStateGenesis = *this;
             }
             else
             {
                 /* Get initial block states. */
-                BlockState fork   = ChainState::stateBest.load();
+                BlockState fork   = ChainState::tStateBest.load();
                 BlockState longer = *this;
 
                 /* Get the blocks to connect and disconnect. */
@@ -890,7 +890,7 @@ namespace TAO
                 {
                     debug::log(0, FUNCTION, ANSI_COLOR_BRIGHT_YELLOW, "REORGANIZE:", ANSI_COLOR_RESET,
                         " Disconnect ", vDisconnect.size(), " blocks; ", fork.GetHash().SubString(),
-                        "..",  ChainState::stateBest.load().GetHash().SubString());
+                        "..",  ChainState::tStateBest.load().GetHash().SubString());
 
                     /* Keep this in vDisconnect check, or it will print every block, but only print on reorg if have at least 1 */
                     if(vConnect.size() > 0)
@@ -1012,7 +1012,7 @@ namespace TAO
                     mempool.Remove(proof.second);
 
                 /* Debug output about the best chain. */
-                uint64_t nElapsed = (GetBlockTime() - ChainState::stateBest.load().GetBlockTime());
+                uint64_t nElapsed = (GetBlockTime() - ChainState::tStateBest.load().GetBlockTime());
                 uint64_t nContractTime = swContract.ElapsedMicroseconds();
                 uint64_t nInputsTime   = swScript.ElapsedMicroseconds();
 
@@ -1029,7 +1029,7 @@ namespace TAO
                         " [", std::setw(3), (::GetSerializeSize(*this, SER_LLD, nVersion) / 1024.0), " kb]");
 
                 /* Set the best chain variables. */
-                ChainState::stateBest          = *this; //XXX: we are not getting all the data from connect, consider using pointer
+                ChainState::tStateBest          = *this; //XXX: we are not getting all the data from connect, consider using pointer
                 ChainState::hashBestChain      = hash;
                 ChainState::nBestChainTrust    = nChainTrust;
                 ChainState::nBestHeight        = nHeight;
@@ -1235,7 +1235,7 @@ namespace TAO
 
                 /* If we just updated hashNextBlock for genesis block, update the in-memory genesis */
                 if(hashPrevBlock == ChainState::Genesis())
-                    ChainState::stateGenesis = prev;
+                    ChainState::tStateGenesis = prev;
             }
 
             return true;
@@ -1429,7 +1429,7 @@ namespace TAO
                                 throw std::runtime_error(debug::safe_printstr(FUNCTION, "failed to read trust key"));
 
                             /* Get trust score. */
-                            nTrust = trustKey.Age(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+                            nTrust = trustKey.Age(TAO::Ledger::ChainState::tStateBest.load().GetBlockTime());
 
                         }
 

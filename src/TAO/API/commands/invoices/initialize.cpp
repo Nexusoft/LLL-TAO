@@ -204,7 +204,7 @@ namespace TAO::API
             (
                 &Templates::List,
                 std::placeholders::_1,
-                std::placeholders::_2
+                true
             )
             , TAO::Ledger::StartTransactionTimelock(2)
         );

@@ -879,8 +879,24 @@ namespace TAO::API
                     /* Output the json information. */
                     jRet["OP"]       = "DEBIT";
 
-                    /* Add the from key address and name. */
-                    jRet["from"]     = AddressToJSON(hashFrom, contract);
+                    /* Find our token type. */
+                    TAO::Register::Address hashToken = TOKEN::NXS;
+
+                    /* Get the token/account we are debiting from so that we can output the token address / name. */
+                    if(hashFrom != TAO::Register::WILDCARD_ADDRESS)
+                    {
+                        /* Add the from key address and name. */
+                        jRet["from"]     = AddressToJSON(hashFrom, contract);
+
+                        /* Get our pre-state if not a legacy conversion. */
+                        TAO::Register::Object rObject = contract.PreState();
+                        if(!rObject.Parse())
+                            throw Exception(-15, "Object is not an account or token");
+
+                        /* Get the current token's address.  */
+                        hashToken =
+                            rObject.get<uint256_t>("token");
+                    }
 
                     /* Check for wildcard address before adding key. */
                     if(hashTo != TAO::Register::WILDCARD_ADDRESS)
@@ -888,17 +904,10 @@ namespace TAO::API
                     else
                         jRet["exchange"] = true;
 
-                    /* Get the token/account we are debiting from so that we can output the token address / name. */
-                    TAO::Register::Object object = contract.PreState();
-                    if(!object.Parse())
-                        throw Exception(-15, "Object is not an account or token");
-
-                    /* Get the current token's address.  */
-                    const TAO::Register::Address hashToken =
-                        object.get<uint256_t>("token");
-
                     /* Add the amount to the response */
                     jRet["amount"]  = FormatBalance(nAmount, hashToken);
+
+                    /* Get our token type here. */
                     jRet["token"]   = hashToken.ToString();
 
                     /* Add a ticker if found. */
@@ -2043,7 +2052,7 @@ namespace TAO::API
         };
 
         /* Get our last block state. */
-        TAO::Ledger::BlockState tBlock = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState tBlock = TAO::Ledger::ChainState::tStateBest.load();
         if(TAO::Ledger::GetLastState(tBlock, nChannel))
         {
             /* Populate our heights and weights. */
@@ -2338,6 +2347,156 @@ namespace TAO::API
                 TAO::Ledger::Credentials::Genesis(SecureString(strParam.c_str()));
 
             return hashGenesis.ToString();
+        }
+
+        /* Handle for a hours since variable. */
+        if(strVariable == "since")
+        {
+            /* Search for our different time characters. */
+            uint64_t nFind = 0, nTimespan = 0;
+
+            /* Track our statment and loop out the substrings. */
+            std::string strList = strParam;
+
+            /* Loop until we have processed our times. */
+            while(!config::fShutdown.load())
+            {
+                /* Find our next comma. */
+                const uint64_t nNext = strList.find(',');
+
+                /* Get this specific item. */
+                const std::string strItem =
+                    strList.substr(0, nNext);
+
+                /* Break our params up. */
+                nFind = strItem.find("second");
+                if(nFind != strItem.npos)
+                {
+                    /* Check for our given value. */
+                    const std::string strValue =
+                        trim(strItem.substr(0, nFind));
+
+                    /* Make sure we are all digits. */
+                    if(!IsAllDigit(strValue))
+                        throw Exception(-121, "Query Syntax Error: since requires number preceding second (", strValue, "^)");
+
+                    /* Calculate our timespan. */
+                    nTimespan += std::stoull(strValue);
+                }
+
+                /* Break our params up. */
+                nFind = strItem.find("minute");
+                if(nFind != strItem.npos)
+                {
+                    /* Check for our given value. */
+                    const std::string strValue =
+                        trim(strItem.substr(0, nFind));
+
+                    /* Make sure we are all digits. */
+                    if(!IsAllDigit(strValue))
+                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
+
+                    /* Calculate our timespan. */
+                    nTimespan += (std::stoull(strValue) * 60);
+                }
+
+                /* Break our params up. */
+                nFind = strItem.find("hour");
+                if(nFind != strItem.npos)
+                {
+                    /* Check for our given value. */
+                    const std::string strValue =
+                        trim(strItem.substr(0, nFind));
+
+                    /* Make sure we are all digits. */
+                    if(!IsAllDigit(strValue))
+                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
+
+                    /* Calculate our timespan. */
+                    nTimespan += (std::stoull(strValue) * 3600);
+                }
+
+                /* Break our params up. */
+                nFind = strItem.find("day");
+                if(nFind != strItem.npos)
+                {
+                    /* Check for our given value. */
+                    const std::string strValue =
+                        trim(strItem.substr(0, nFind));
+
+                    /* Make sure we are all digits. */
+                    if(!IsAllDigit(strValue))
+                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
+
+                    /* Calculate our timespan. */
+                    nTimespan += (std::stoull(strValue) * 86400);
+                }
+
+                /* Break our params up. */
+                nFind = strItem.find("week");
+                if(nFind != strItem.npos)
+                {
+                    /* Check for our given value. */
+                    const std::string strValue =
+                        trim(strItem.substr(0, nFind));
+
+                    /* Make sure we are all digits. */
+                    if(!IsAllDigit(strValue))
+                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
+
+                    /* Calculate our timespan. */
+                    nTimespan += (std::stoull(strValue) * 86400 * 7);
+                }
+
+                /* Break our params up. */
+                nFind = strItem.find("month");
+                if(nFind != strItem.npos)
+                {
+                    /* Check for our given value. */
+                    const std::string strValue =
+                        trim(strItem.substr(0, nFind));
+
+                    /* Make sure we are all digits. */
+                    if(!IsAllDigit(strValue))
+                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
+
+                    /* Calculate our timespan. */
+                    nTimespan += (std::stoull(strValue) * 86400 * 28);
+                }
+
+                /* Break our params up. */
+                nFind = strItem.find("year");
+                if(nFind != strItem.npos)
+                {
+                    /* Check for our given value. */
+                    const std::string strValue =
+                        trim(strItem.substr(0, nFind));
+
+                    /* Make sure we are all digits. */
+                    if(!IsAllDigit(strValue))
+                        throw Exception(-121, "Query Syntax Error: since requires number preceding minute (", strValue, "^)");
+
+                    /* Calculate our timespan. */
+                    nTimespan += (std::stoull(strValue) * 86400 * 365);
+                }
+
+                /* Exit if we found the end of the list. */
+                if(nNext == strList.npos)
+                    break;
+
+                /* Trim our list for the next round. */
+                strList = strList.substr(nNext + 1, strList.size() - nNext);
+            }
+
+            /* Check that we found a valid timespan. */
+            if(nTimespan == 0)
+                throw Exception(-121, "Query Syntax Error: since requires valid time division (i.e. minutes, hours, days, weeks)");
+
+            /* Calculate our timestamp. */
+            const uint64_t nTimestamp =
+                (runtime::unifiedtimestamp() - nTimespan);
+
+            return debug::safe_printstr(nTimestamp);
         }
 
         return strValue;

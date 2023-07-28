@@ -20,6 +20,8 @@ ________________________________________________________________________________
 #include <TAO/API/include/conditions.h>
 #include <TAO/API/include/extract.h>
 
+#include <TAO/Operation/include/enum.h>
+
 /* Global TAO namespace. */
 namespace TAO::API
 {
@@ -44,7 +46,7 @@ namespace TAO::API
 
         /* The recipient genesis hash */
         const uint256_t hashRecipient =
-            uint256_t(jInvoice["recipient"].get<std::string>());
+            TAO::Register::Address(jInvoice["json"]["recipient"].get<std::string>());
 
         /* Get the invoice status so that we can validate that we are allowed to cancel it */
         const std::string strStatus = get_status(steCheck, hashRecipient);
@@ -57,26 +59,33 @@ namespace TAO::API
         if(strStatus == "CANCELLED")
             throw Exception(-246, "Cannot [cancel] an invoice that has already been cancelled");
 
-        /* The transaction ID to cancel */
-        uint512_t hashTx;
-
-        /* The contract ID to cancel */
-        uint32_t nContract = 0;  //XXX: THIS SECTION COULD STILL DO WITH SOME WORK
-
         /* Look up the transaction ID & contract ID of the transfer so that we can void it */
-        if(!find_invoice(hashRecipient, hashRegister, hashTx, nContract))
+        std::vector<uint512_t> vTransactions;
+        if(!LLD::Logical->ListTransactions(hashRegister, vTransactions))
             throw Exception(-247, "Could not find invoice transfer transaction");
+
+        /* The transaction ID to cancel */
+        const uint512_t hashTx =
+            vTransactions.back();
 
         /* Read the debit transaction. */
         TAO::Ledger::Transaction tx;
         if(!LLD::Ledger->ReadTx(hashTx, tx))
-            throw Exception(-40, "Previous transaction not found.");
+            throw Exception(-40, "Register transaction not found.");
+
+        /* Make sure our contract is correct. */
+        if(tx.Size() < 2)
+            throw Exception(-247, "Invalid invoice transfer transaction: ", tx.Size());
+
+        /* Make sure our contract is the right one to void. */
+        if(tx[1].Primitive() != TAO::Operation::OP::TRANSFER)
+            throw Exception(-247, "Invalid invoice transfer transaction");
 
         /* Build our vector of contracts to submit. */
         std::vector<TAO::Operation::Contract> vContracts;
 
         /* Process the contract and attempt to void it */
-        if(!BuildVoid(jParams, nContract, tx[nContract], vContracts))
+        if(!BuildVoid(jParams, 1, tx[1], vContracts))
             throw Exception(-43, "No valid contracts in tx.");
 
         /* Build response JSON boilerplate. */

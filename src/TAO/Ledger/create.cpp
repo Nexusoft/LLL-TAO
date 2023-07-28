@@ -42,6 +42,8 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 
 #include <TAO/API/include/global.h>
+#include <TAO/API/types/authentication.h>
+#include <TAO/API/types/indexing.h>
 #include <TAO/API/types/transaction.h>
 
 #include <Util/include/convert.h>
@@ -70,33 +72,29 @@ namespace TAO::Ledger
         /* Last sigchain transaction. */
         uint512_t hashLast = 0;
 
-        /* Check mempool for other transactions. */
-        TAO::API::Transaction txPrev;
-        if(mempool.Get(hashGenesis, txPrev))
-        {
-            /* Build new transaction object. */
-            tx.nSequence   = txPrev.nSequence + 1;
-            tx.hashGenesis = txPrev.hashGenesis;
-            tx.hashPrevTx  = txPrev.GetHash();
-            tx.nKeyType    = txPrev.nNextType;
-            tx.hashRecovery = txPrev.hashRecovery;
-            tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
-        }
-
         /* Get the last transaction. */
-        else if(LLD::Logical->ReadLast(hashGenesis, hashLast))
+        TAO::API::Transaction txPrev;
+        if(LLD::Logical->ReadLast(hashGenesis, hashLast))
         {
             /* Get previous transaction */
             if(!LLD::Logical->ReadTx(hashLast, txPrev))
                 return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in logical db");
 
             /* Build new transaction object. */
-            tx.nSequence   = txPrev.nSequence + 1;
-            tx.hashGenesis = txPrev.hashGenesis;
-            tx.hashPrevTx  = hashLast;
-            tx.nKeyType    = txPrev.nNextType;
+            tx.nSequence    = txPrev.nSequence + 1;
+            tx.hashGenesis  = txPrev.hashGenesis;
+            tx.hashPrevTx   = hashLast;
+            tx.nKeyType     = txPrev.nNextType;
             tx.hashRecovery = txPrev.hashRecovery;
-            tx.nTimestamp  = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
+            tx.nTimestamp   = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
+
+            /* Check if we need to adjust our key type. */
+            if(nScheme != txPrev.nNextType)
+                tx.nNextType = nScheme;
+
+            /* Set our next type from previous transaction type. */
+            else
+                tx.nNextType = txPrev.nNextType;
         }
 
         /* Set the initial and next key type for genesis transactions */
@@ -106,6 +104,7 @@ namespace TAO::Ledger
             tx.nKeyType    = nScheme; //this should use a default value
             tx.nNextType   = tx.nKeyType;
             tx.hashGenesis = hashGenesis;
+            tx.nTimestamp  = runtime::unifiedtimestamp();
 
             /* Add our network-id if applicable.*/
             if(config::fHybrid.load())
@@ -115,14 +114,6 @@ namespace TAO::Ledger
                 tx.hashPrevTx = LLC::SK512(strHybrid.begin(), strHybrid.end());
             }
         }
-
-        /* Check if we need to adjust our key type. */
-        else if(nScheme != txPrev.nNextType)
-            tx.nNextType = nScheme;
-
-        /* Set our next type from previous transaction type. */
-        else
-            tx.nNextType = txPrev.nNextType;
 
         /* Set the transaction version based on the timestamp. */
         const uint32_t nCurrent =
@@ -153,8 +144,6 @@ namespace TAO::Ledger
 
         /* Start a ACID transaction (to be disposed). */
         LLD::TxnBegin(FLAGS::MINER);
-
-        debug::log(3, "BEGIN-------------------------------------");
 
         /* Loop through the list of transactions. */
         std::set<uint512_t> setDependents;
@@ -228,15 +217,9 @@ namespace TAO::Ledger
                 continue;
             }
 
-            /* Dump sequence on verbose 3 levels. */
-            if(config::nVerbose >= 3)
-                tx.print();
-
             /* Add the transaction to the block. */
             block.vtx.push_back(std::make_pair(TRANSACTION::TRITIUM, hash));
         }
-
-        debug::log(3, "END-------------------------------------");
 
         /* Abort the temporary ACID transaction. */
         LLD::TxnAbort(FLAGS::MINER);
@@ -249,7 +232,7 @@ namespace TAO::Ledger
         TAO::Ledger::mempool.List(vMempool, 100, true);
 
         /* Loop through the list of transactions. */
-        TAO::Ledger::BlockState stateBest = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState tStateBest = TAO::Ledger::ChainState::tStateBest.load();
         for(const auto& hash : vMempool)
         {
             /* Check the Size limits of the Current Block. */
@@ -299,7 +282,7 @@ namespace TAO::Ledger
             }
 
             /* Check that transction can be connected. */
-            if(!tx.Connect(mapInputs, stateBest, FLAGS::MINER))
+            if(!tx.Connect(mapInputs, tStateBest, FLAGS::MINER))
             {
                 debug::log(2, FUNCTION, "Failed to connect inputs ", hash.SubString(10));
                 continue;
@@ -316,7 +299,7 @@ namespace TAO::Ledger
 
 
     /* Populate block header data for a new block. */
-    void AddBlockData(const TAO::Ledger::BlockState& stateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block)
+    void AddBlockData(const TAO::Ledger::BlockState& tStateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block)
     {
         /* Calculate the merkle root (stake minter must handle channel 0 after completing coinstake producer setup) */
         if(nChannel != 0)
@@ -334,12 +317,12 @@ namespace TAO::Ledger
         }
 
         /* Add remaining block data */
-        block.hashPrevBlock = stateBest.GetHash();
+        block.hashPrevBlock = tStateBest.GetHash();
         block.nChannel      = nChannel;
-        block.nHeight       = stateBest.nHeight + 1;
-        block.nBits         = GetNextTargetRequired(stateBest, nChannel, false);
+        block.nHeight       = tStateBest.nHeight + 1;
+        block.nBits         = GetNextTargetRequired(tStateBest, nChannel, false);
         block.nNonce        = 1;
-        block.nTime         = static_cast<uint32_t>(std::max(stateBest.GetBlockTime() + 1, runtime::unifiedtimestamp()));
+        block.nTime         = static_cast<uint32_t>(std::max(tStateBest.GetBlockTime() + 1, runtime::unifiedtimestamp()));
     }
 
 
@@ -370,13 +353,13 @@ namespace TAO::Ledger
             tBlockCache[nChannel].load();
 
         /* Cache the best chain before processing. */
-        const TAO::Ledger::BlockState stateBest =
-            ChainState::stateBest.load();
+        const TAO::Ledger::BlockState tStateBest =
+            ChainState::tStateBest.load();
 
         /* Grab a copy of our expiration timestamp. */
         const uint64_t nExpiration = config::GetArg("-blockrefresh", 60);
 
-        /* Handle if the block is cached (if stateBest or user change, cache is invalid). */
+        /* Handle if the block is cached (if tStateBest or user change, cache is invalid). */
         if((ChainState::hashBestChain.load() == tBlockCached.hashPrevBlock)
         && (hashGenesis == tBlockCached.producer.hashGenesis)
         && (runtime::unifiedtimestamp() < tBlockCached.producer.nTimestamp + nExpiration))
@@ -395,7 +378,7 @@ namespace TAO::Ledger
                 debug::log(0, FUNCTION, "Producer is stale, rebuilding...");
 
                 /* Create a new producer transaction for given block. */
-                if(!CreateProducer(user, pin, rBlockRet.producer, stateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients))
+                if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients))
                     return debug::error(FUNCTION, "Failed to create producer transactions.");
 
                 /* Store new block cache. */
@@ -429,7 +412,7 @@ namespace TAO::Ledger
             AddTransactions(rBlockRet);
 
             /* Create the new producer transaction for given block. */
-            if(!CreateProducer(user, pin, rBlockRet.producer, stateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients))
+            if(!CreateProducer(user, pin, rBlockRet.producer, tStateBest, rBlockRet.nVersion, nChannel, nExtraNonce, pCoinbaseRecipients))
                 return debug::error(FUNCTION, "Failed to create producer transactions.");
 
             /* Update the producer timestamp */
@@ -439,7 +422,7 @@ namespace TAO::Ledger
             rBlockRet.producer.Sign(user->Generate(rBlockRet.producer.nSequence, pin));
 
             /* Populate the block metadata */
-            AddBlockData(stateBest, nChannel, rBlockRet);
+            AddBlockData(tStateBest, nChannel, rBlockRet);
 
             /* Store the cached block. */
             tBlockCache[nChannel].store(rBlockRet);
@@ -454,7 +437,7 @@ namespace TAO::Ledger
     /* Create a producer transaction object from signature chain. */
     bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                            TAO::Ledger::Transaction &rProducer,
-                           const TAO::Ledger::BlockState& stateBest,
+                           const TAO::Ledger::BlockState& tStateBest,
                            const uint32_t nBlockVersion,
                            const uint32_t nChannel,
                            const uint64_t nExtraNonce,
@@ -468,7 +451,7 @@ namespace TAO::Ledger
         if(nChannel == 1 || nChannel == 2)
         {
             /* Output type 0 is mining/minting reward */
-            uint64_t nBlockReward = GetCoinbaseReward(stateBest, nChannel, 0);
+            uint64_t nBlockReward = GetCoinbaseReward(tStateBest, nChannel, 0);
 
             /* Create coinbase transaction. */
             rProducer[0] << uint8_t(TAO::Operation::OP::COINBASE);
@@ -529,7 +512,7 @@ namespace TAO::Ledger
             }
 
             /* Get the last state block for channel. */
-            TAO::Ledger::BlockState statePrev = stateBest;
+            TAO::Ledger::BlockState statePrev = tStateBest;
             if(GetLastState(statePrev, nChannel))
             {
                 /* Check for interval. */
@@ -619,7 +602,7 @@ namespace TAO::Ledger
             block.nVersion = nCurrent - 1;
 
         /* Cache the best chain before processing. */
-        const TAO::Ledger::BlockState stateBest = ChainState::stateBest.load();
+        const TAO::Ledger::BlockState tStateBest = ChainState::tStateBest.load();
 
         /* Add the transactions to the block. */
         /* Solo Genesis has no transactions, but pool Genesis does to calculate proofs (pool Genesis won't hash this block) */
@@ -641,7 +624,7 @@ namespace TAO::Ledger
         /* NOTE: The remainder of Coinstake producer not configured here. Stake minter must handle it. */
 
         /* Populate the block metadata */
-        AddBlockData(stateBest, nChannel, block);
+        AddBlockData(tStateBest, nChannel, block);
 
         return true;
     }
@@ -660,7 +643,7 @@ namespace TAO::Ledger
             hashGenesis = TAO::Ledger::ChainState::Genesis();
 
         /* Check for genesis from disk. */
-        if(!LLD::Ledger->ReadBlock(hashGenesis, ChainState::stateGenesis))
+        if(!LLD::Ledger->ReadBlock(hashGenesis, ChainState::tStateGenesis))
         {
             /* Check for client mode. */
             BlockState state;
@@ -709,11 +692,11 @@ namespace TAO::Ledger
                 return debug::error(FUNCTION, "genesis hash does not match");
 
             /* Set the proper chain state variables. */
-            ChainState::stateGenesis = state;
+            ChainState::tStateGenesis = state;
 
             /* Set the best block. */
             ChainState::hashBestChain = hashGenesis;
-            ChainState::stateBest     = ChainState::stateGenesis;
+            ChainState::tStateBest     = ChainState::tStateGenesis;
         }
         else if(config::fHybrid.load())
             hashGenesisHybrid = hashGenesis; //we need to set our new genesis hash here
@@ -725,15 +708,16 @@ namespace TAO::Ledger
     /* Handles the creation of a private block chain. */
     void ThreadGenerator()
     {
+        /* Check for our generation credentials. */
         if(!config::fHybrid.load() || !config::HasArg("-generate"))
             return;
 
-        /* Get the account. */
-        memory::encrypted_ptr<TAO::Ledger::Credentials> user =
-            new TAO::Ledger::Credentials("generate", config::GetArg("-generate", "").c_str());
+        /* Build new session object. */
+        TAO::API::Authentication::Session tSession =
+            TAO::API::Authentication::Session("generate", config::GetArg("-generate", "").c_str(), TAO::API::Authentication::Session::LOCAL);
 
-        /* Get the genesis ID. */
-        const uint256_t hashGenesis = user->Genesis();
+        /* Get the current genesis-id of session. */
+        const uint256_t hashGenesis = tSession.Genesis();
 
         /* Check for duplicates in ledger db. */
         TAO::Ledger::Transaction txPrev;
@@ -743,32 +727,32 @@ namespace TAO::Ledger
             uint512_t hashLast;
             if(!LLD::Ledger->ReadLast(hashGenesis, hashLast))
             {
-                debug::error(FUNCTION, "No previous transaction found... closing");
-
+                debug::notice(FUNCTION, "No previous transaction found... closing");
                 return;
             }
 
             /* Get previous transaction */
             if(!LLD::Ledger->ReadTx(hashLast, txPrev))
             {
-                debug::error(FUNCTION, "No previous transaction found... closing");
-
+                debug::notice(FUNCTION, "No previous transaction found... closing");
                 return;
             }
 
             /* Genesis Transaction. */
             TAO::Ledger::Transaction tx;
             tx.nNextType = txPrev.nNextType;
-            tx.NextHash(user->Generate(txPrev.nSequence + 1, "1234"));
+            tx.NextHash(tSession.Credentials()->Generate(txPrev.nSequence + 1, "1234"));
 
             /* Check for consistency. */
             if(txPrev.hashNext != tx.hashNext)
             {
-                debug::error(FUNCTION, "Invalid credentials... closing");
-
+                debug::notice(FUNCTION, "Invalid credentials... closing");
                 return;
             }
         }
+
+        /* Push the new session to auth. */
+        TAO::API::Authentication::Insert(TAO::API::Authentication::SESSION::PRIVATE, tSession);
 
         /* Extract our latency parameter. */
         const uint64_t nLatency =
@@ -776,6 +760,9 @@ namespace TAO::Ledger
 
         /* Startup Debug. */
         debug::log(0, FUNCTION, "Generator Thread Started at latency ", nLatency, "ms");
+
+        /* Initialize our indexing session. */
+        TAO::API::Indexing::Initialize(TAO::API::Authentication::SESSION::PRIVATE);
 
         std::mutex MUTEX;
         while(!config::fShutdown.load())
@@ -794,12 +781,17 @@ namespace TAO::Ledger
             runtime::timer TIMER;
             TIMER.Start();
 
+            /* Get our credentials object. */
+            const auto& pCredentials =
+                TAO::API::Authentication::Credentials(uint256_t(TAO::API::Authentication::SESSION::PRIVATE));
+
+            /* Build our block object now. */
             TAO::Ledger::TritiumBlock block;
-            if(!TAO::Ledger::CreateBlock(user, "1234", 3, block))
+            if(!TAO::Ledger::CreateBlock(pCredentials, "1234", 3, block))
                 continue;
 
             /* Get the secret from new key. */
-            std::vector<uint8_t> vBytes = user->Generate(block.producer.nSequence, "1234").GetBytes();
+            std::vector<uint8_t> vBytes = pCredentials->Generate(block.producer.nSequence, "1234").GetBytes();
             LLC::CSecret vchSecret(vBytes.begin(), vBytes.end());
 
             /* Switch based on signature type. */
@@ -851,9 +843,6 @@ namespace TAO::Ledger
             if(!(nStatus & PROCESS::ACCEPTED))
                 continue;
         }
-
-        /* Cleanup pointer. */
-        user.free();
     }
 
 
@@ -863,8 +852,8 @@ namespace TAO::Ledger
         /* Update the producer timestamp, making sure it is not earlier than the previous block.  However we can't simply
         set the timstamp to be last block time + 1, in case there is a long gap between blocks, as there is a consensus
         rule that the producer timestamp cannot be more than 3600 seconds before the current block time. */
-        if(ChainState::stateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
-            rProducer.nTimestamp = std::max(rProducer.nTimestamp, ChainState::stateBest.load().GetBlockTime() + 1);
+        if(ChainState::tStateBest.load().GetBlockTime() + 1 > runtime::unifiedtimestamp())
+            rProducer.nTimestamp = std::max(rProducer.nTimestamp, ChainState::tStateBest.load().GetBlockTime() + 1);
         else
             rProducer.nTimestamp = std::max(rProducer.nTimestamp, runtime::unifiedtimestamp());
 

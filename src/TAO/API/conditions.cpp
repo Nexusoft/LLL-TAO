@@ -30,132 +30,9 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO::API
 {
-    /* Determines if a contract contains a specific condition.  The method searches the nBytes of the conditions stream to see
-    *  if the pattern for condition exists somewhere within it */
-    bool HasCondition(const TAO::Operation::Contract& contract, const TAO::Operation::Contract& condition)
-    {
-        bool fHasCondition = false;
-
-        /* Reset the contract conditions stream */
-        contract.Reset(TAO::Operation::Contract::CONDITIONS);
-
-        /* search the contract to find the first instance of the same nByte */
-        while(!contract.End(TAO::Operation::Contract::CONDITIONS) && !fHasCondition)
-        {
-            /* Reset the conditions stream on the expiration as we are starting a new comparison */
-            condition.Reset(TAO::Operation::Contract::CONDITIONS);
-
-            /* Get nByte from the expiration condition */
-            uint8_t nByte = 0;
-            condition >= nByte;
-
-            /* Get nByte to nCompare from the comparison contract */
-            uint8_t nCompare = 0;
-            contract >= nCompare;
-
-            /* Cache the stream position so we can reset to here if a match is not found */
-            uint64_t nPos = contract.Position(TAO::Operation::Contract::CONDITIONS);
-
-            /* If the nByte matches then start the rest of the comparison */
-            if(nCompare == nByte)
-            {
-                while(!condition.End(TAO::Operation::Contract::CONDITIONS) && !contract.End(TAO::Operation::Contract::CONDITIONS))
-                {
-                    condition >= nByte;
-                    contract >= nCompare;
-
-                    /* Check the nBytes match.  If not then we can break out of this comparison */
-                    if(nByte != nCompare)
-                        break;
-
-                    /* If this is an OP::TYPES then we need to skip both stream ahead by the number of nBytes, as this is caller
-                       specific data and won't match - we are only comparing the operations and logic, not the data */
-                    switch(nByte)
-                    {
-                        case TAO::Operation::OP::TYPES::UINT8_T :
-                        {
-                            condition.Seek(1, TAO::Operation::Contract::CONDITIONS);
-                            contract.Seek(1, TAO::Operation::Contract::CONDITIONS);
-                            break;
-                        }
-                        case TAO::Operation::OP::TYPES::UINT16_T :
-                        {
-                            condition.Seek(2, TAO::Operation::Contract::CONDITIONS);
-                            contract.Seek(2, TAO::Operation::Contract::CONDITIONS);
-                            break;
-                        }
-                        case TAO::Operation::OP::TYPES::UINT32_T :
-                        {
-                            condition.Seek(4, TAO::Operation::Contract::CONDITIONS);
-                            contract.Seek(4, TAO::Operation::Contract::CONDITIONS);
-                            break;
-                        }
-                        case TAO::Operation::OP::TYPES::UINT64_T :
-                        {
-                            condition.Seek(8, TAO::Operation::Contract::CONDITIONS);
-                            contract.Seek(8, TAO::Operation::Contract::CONDITIONS);
-                            break;
-                        }
-                        case TAO::Operation::OP::TYPES::UINT256_T :
-                        {
-                            condition.Seek(32, TAO::Operation::Contract::CONDITIONS);
-                            contract.Seek(32, TAO::Operation::Contract::CONDITIONS);
-                            break;
-                        }
-                        case TAO::Operation::OP::TYPES::UINT512_T :
-                        {
-                            condition.Seek(64, TAO::Operation::Contract::CONDITIONS);
-                            contract.Seek(64, TAO::Operation::Contract::CONDITIONS);
-                            break;
-                        }
-                        case TAO::Operation::OP::TYPES::UINT1024_T :
-                        {
-                            condition.Seek(128, TAO::Operation::Contract::CONDITIONS);
-                            contract.Seek(128, TAO::Operation::Contract::CONDITIONS);
-                            break;
-                        }
-                        case TAO::Operation::OP::TYPES::BYTES :
-                        {
-                            std::vector<uint8_t> nBytes;
-                            condition >= nBytes;
-                            contract >= nBytes;
-                            break;
-                        }
-                        case TAO::Operation::OP::TYPES::STRING :
-                        {
-                            std::string string;
-                            condition >= string;
-                            contract >= string;
-                            break;
-                        }
-                        case TAO::Operation::OP::SUBDATA :
-                        {
-                            /* OP::SUBDATA has two uint16_t's for the start pos and length, so skip 4 nBytes */
-                            condition.Seek(4, TAO::Operation::Contract::CONDITIONS);
-                            contract.Seek(4, TAO::Operation::Contract::CONDITIONS);
-                            break;
-                        }
-                    }
-                }
-
-                /* If we got to the end of the expiration contract without breaking out then we must have a match */
-                if(condition.End(TAO::Operation::Contract::CONDITIONS))
-                    fHasCondition = true;
-            }
-
-            /* If we didn't find a condition at this point, then seek to the point that we last checked and continue checking */
-            if(!fHasCondition)
-                contract.Seek(nPos, TAO::Operation::Contract::CONDITIONS, STREAM::BEGIN);
-        }
-
-
-        return fHasCondition;
-    }
-
-
     /* Checks the params for the existence of the "expires" field.  If supplied, a condition will be added to this contract
     *  for the expiration */
-    bool AddExpires(const encoding::json& params, const uint256_t& hashCaller, TAO::Operation::Contract& contract, bool fTokenizedDebit)
+    void AddExpires(const encoding::json& params, const uint256_t& hashCaller, TAO::Operation::Contract& contract, bool fTokenizedDebit)
     {
         using namespace TAO::Operation;
 
@@ -170,7 +47,7 @@ namespace TAO::API
             contract <= uint8_t(OP::CALLER::GENESIS) <= uint8_t(OP::NOTEQUALS) <= uint8_t(OP::TYPES::UINT256_T) <= hashCaller;
             contract <= uint8_t(OP::AND);
             contract <= uint8_t(OP::CONTRACT::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
-            contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::LEDGER::TIMESTAMP);
+            contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
             contract <= uint8_t(OP::UNGROUP);
 
             contract <= uint8_t(OP::OR);
@@ -202,7 +79,7 @@ namespace TAO::API
                 contract <= uint8_t(OP::CALLER::OPERATIONS)   <= uint8_t(OP::SUBDATA) <= uint16_t(101) <= uint16_t(32);  //hashProof
                 contract <= uint8_t(OP::AND);
                 contract <= uint8_t(OP::CONTRACT::TIMESTAMP) <= uint8_t(OP::ADD) <= uint8_t(OP::TYPES::UINT64_T) <= uint64_t(nExpires);
-                contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::LEDGER::TIMESTAMP);
+                contract <= uint8_t(OP::GREATERTHAN) <= uint8_t(OP::CALLER::TIMESTAMP);
                 contract <= uint8_t(OP::UNGROUP);
             }
         }
@@ -228,20 +105,6 @@ namespace TAO::API
                 contract <= uint8_t(OP::UNGROUP);
             }
         }
-
-        return true;
-    }
-
-    /* Determines if a contract has an expiration condition.  The method searches the nBytes of the conditions stream to see if
-    *  if the pattern for an expiration condition exists somewhere in the conditions */
-    bool HasExpires(const TAO::Operation::Contract& contract)
-    {
-        /* Create a contract with a dummy expiration condition that we can use for comparison */
-        TAO::Operation::Contract expiration;
-        AddExpires(encoding::json(), 0, expiration, false);
-
-        /* Check to see if the contract contains the expiration condition */
-        return HasCondition(contract, expiration);
     }
 
 

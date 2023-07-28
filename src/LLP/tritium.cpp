@@ -323,7 +323,8 @@ namespace LLP
                     if(!TAO::Ledger::ChainState::Synchronizing())
                     {
                         #ifndef NO_WALLET
-                        Legacy::Wallet::Instance().ResendWalletTransactions();
+                        if(!config::fClient.load())
+                            Legacy::Wallet::Instance().ResendWalletTransactions();
                         #endif
                     }
                 }
@@ -1300,6 +1301,10 @@ namespace LLP
                                 if(config::nVerbose >= 3)
                                     debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
 
+                                /* Add DDOS filtering here. */
+                                if(DDOS)
+                                    DDOS->rSCORE += locator.vHave.size();
+
                                 break;
                             }
 
@@ -2071,7 +2076,7 @@ namespace LLP
                             if(fLegacy)
                             {
                                 /* Check legacy database. */
-                                if(tInventory.Expired(hashTx, 60)) //60 second exipring cache
+                                if(tInventory.Expired(hashTx, 60) && !LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL)) //60 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: LEGACY TRANSACTION ", hashTx.SubString());
@@ -2082,13 +2087,11 @@ namespace LLP
                                     /* Add to our cache inventory. */
                                     tInventory.Cache(hashTx);
                                 }
-                                else
-                                    debug::log(3, NODE, "ACTION::NOTIFY: [CACHED] LEGACY TRANSACTION ", hashTx.SubString());
                             }
                             else
                             {
                                 /* Check ledger database. */
-                                if(tInventory.Expired(hashTx, 60)) //60 second exipring cache
+                                if(tInventory.Expired(hashTx, 60) && !LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL)) //60 second exipring cache
                                 {
                                     /* Debug output. */
                                     debug::log(3, NODE, "ACTION::NOTIFY: TRITIUM TRANSACTION ", hashTx.SubString());
@@ -2099,8 +2102,6 @@ namespace LLP
                                     /* Add to our cache inventory. */
                                     tInventory.Cache(hashTx);
                                 }
-                                else
-                                    debug::log(3, NODE, "ACTION::NOTIFY: [CACHED] TRITIUM TRANSACTION ", hashTx.SubString());
                             }
 
                             break;
@@ -2191,7 +2192,7 @@ namespace LLP
                                             Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                             /* Total blocks synchronized */
-                                            uint32_t nBlocks = TAO::Ledger::ChainState::stateBest.load().nHeight - nSyncStart.load();
+                                            uint32_t nBlocks = TAO::Ledger::ChainState::tStateBest.load().nHeight - nSyncStart.load();
 
                                             /* Calculate the time to sync*/
                                             uint32_t nElapsed = SYNCTIMER.Elapsed();
@@ -2433,8 +2434,8 @@ namespace LLP
             case TYPES::BLOCK:
             {
                 /* Check for subscription. */
-                if(!(nSubscriptions & SUBSCRIPTION::BLOCK) && TAO::Ledger::nSyncSession.load() != nCurrentSession)
-                    return debug::drop(NODE, "TYPES::BLOCK: unsolicited data");
+                //if(!(nSubscriptions & SUBSCRIPTION::BLOCK) && TAO::Ledger::nSyncSession.load() != nCurrentSession)
+                //    return debug::drop(NODE, "TYPES::BLOCK: unsolicited data");
 
                 /* Star the sync timer if this is the first sync block */
                 if(!SYNCTIMER.Running())
@@ -2499,16 +2500,6 @@ namespace LLP
                         /* Check for missing transactions. */
                         if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         {
-                            /* Check for repeated missing loops. */
-                            if(fDDOS.load())
-                            {
-                                /* Iterate a failure for missing transactions. */
-                                nConsecutiveFails += block.vMissing.size();
-
-                                /* Bump DDOS score. */
-                                DDOS->rSCORE += (block.vMissing.size() * 10);
-                            }
-
                             /* Create response data stream. */
                             DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
@@ -2529,16 +2520,36 @@ namespace LLP
                                 /* Check if we need to create new protocol message. */
                                 if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
                                 {
-                                    debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items");
+                                    /* Let's try up to 100 times to get the transaction data each from different nodes. */
+                                    for(uint32_t n = 0; n < 100; ++n)
+                                    {
+                                        /* Normal case of asking for a getblocks inventory message. */
+                                        std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
+                                        if(pnode != nullptr)
+                                        {
+                                            /* Send out another getblocks request. */
+                                            try
+                                            {
+                                                debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
 
-                                    /* Write our packet with our total items. */
-                                    WritePacket(NewMessage(ACTION::GET, ssResponse));
+                                                /* Write our packet with our total items. */
+                                                pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
 
-                                    /* Clear our response data. */
-                                    ssResponse.clear();
+                                                /* Clear our response data. */
+                                                ssResponse.clear();
 
-                                    /* Reset our counters. */
-                                    nTotalItems = 0;
+                                                /* Reset our counters. */
+                                                nTotalItems = 0;
+
+                                                break;
+                                            }
+                                            catch(const std::exception& e)
+                                            {
+                                                /* Recurse on failure. */
+                                                debug::error(FUNCTION, e.what());
+                                            }
+                                        }
+                                    }
                                 }
                             }
 
@@ -2671,7 +2682,7 @@ namespace LLP
                     ++nConsecutiveOrphans;
 
                 /* Detect large orphan chains and ask for new blocks from origin again. */
-                if(nConsecutiveOrphans >= 1000)
+                if(nConsecutiveOrphans >= 10000)
                 {
                     {
                         LOCK(TAO::Ledger::PROCESSING_MUTEX);
@@ -2690,7 +2701,7 @@ namespace LLP
 
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 1000)
+                if(nConsecutiveFails >= 10000)
                 {
                     /* Switch to another available node. */
                     if(TAO::Ledger::ChainState::Synchronizing())
@@ -2702,7 +2713,7 @@ namespace LLP
                             return true;
                         }
 
-                        return debug::drop(NODE, "has sent ", nConsecutiveFails, " invalid consecutive transactions");
+                        return debug::drop(NODE, "has sent ", nConsecutiveFails, " invalid consecutive blocks");
                     }
 
                     /* Drop pesky nodes. */
@@ -2734,6 +2745,9 @@ namespace LLP
                         Legacy::Transaction tx;
                         ssPacket >> tx;
 
+                        /* Cache our txid. */
+                        const uint512_t hashTx = tx.GetHash();
+
                         /* Accept into memory pool. */
                         if(TAO::Ledger::mempool.Accept(tx, this))
                         {
@@ -2743,15 +2757,23 @@ namespace LLP
                                 ACTION::NOTIFY,
                                 uint8_t(SPECIFIER::LEGACY),
                                 uint8_t(TYPES::TRANSACTION),
-                                tx.GetHash()
+                                hashTx
                             );
 
                             /* Reset consecutive failures. */
                             nConsecutiveFails   = 0;
                             nConsecutiveOrphans = 0;
                         }
-                        else
+
+                        /* Only mark fails that aren't related to being on disk. */
+                        else if(!LLD::Legacy->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
+                        {
+                            /* Check for obsolete transaction version and ban accordingly. */
+                            if(!TAO::Ledger::TransactionVersionActive(tx.nTime, tx.nVersion))
+                                return debug::drop(NODE, "invalid transaction version, dropping node");
+
                             ++nConsecutiveFails;
+                        }
 
                         break;
                     }
@@ -2763,11 +2785,13 @@ namespace LLP
                         TAO::Ledger::Transaction tx;
                         ssPacket >> tx;
 
+                        /* Cache our txid. */
+                        const uint512_t hashTx = tx.GetHash();
+
                         /* Accept into memory pool. */
                         if(TAO::Ledger::mempool.Accept(tx, this))
                         {
                             /* Relay the transaction notification. */
-                            uint512_t hashTx = tx.GetHash();
                             TRITIUM_SERVER->Relay
                             (
                                 /* Standard transaction relay. */
@@ -2785,7 +2809,9 @@ namespace LLP
                             nConsecutiveFails   = 0;
                             nConsecutiveOrphans = 0;
                         }
-                        else
+
+                        /* Only mark fails that aren't related to being on disk. */
+                        else if(!LLD::Ledger->HasTx(hashTx, TAO::Ledger::FLAGS::MEMPOOL))
                         {
                             /* Check for obsolete transaction version and ban accordingly. */
                             if(!TAO::Ledger::TransactionVersionActive(tx.nTimestamp, tx.nVersion))
@@ -2803,7 +2829,7 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 100)
+                if(nConsecutiveFails >= 10000)
                 {
                     /* Only drop the node when syncronizing the chain. */
                     if(TAO::Ledger::ChainState::Synchronizing())
@@ -2815,7 +2841,7 @@ namespace LLP
 
 
                 /* Check for orphan limit on node. */
-                if(nConsecutiveOrphans >= 1000)
+                if(nConsecutiveOrphans >= 10000)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;
@@ -2856,18 +2882,18 @@ namespace LLP
                         /* Start our ACID transaction in case we have any failures here. */
                         { LOCK(CLIENT_MUTEX);
 
-                            LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                            LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
 
                             /* Build indexes if we don't have them. */
                             if(!LLD::Client->HasIndex(hashTx))
                             {
                                 /* Commit transaction to disk. */
                                 if(!LLD::Client->WriteTx(hashTx, tx))
-                                    return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write transaction");
+                                    return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, FUNCTION, "failed to write transaction");
 
                                 /* Index the transaction to it's block. */
                                 if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                    return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write block indexing entry");
+                                    return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, FUNCTION, "failed to write block indexing entry");
                             }
 
                             /* Add an indexing event. */
@@ -2912,18 +2938,18 @@ namespace LLP
                             /* Start our ACID transaction in case we have any failures here. */
                             { LOCK(CLIENT_MUTEX);
 
-                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK);
+                                LLD::TxnBegin(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
 
                                 /* Only write to disk and index if not completed already. */
                                 if(!LLD::Client->HasIndex(hashTx))
                                 {
                                     /* Commit transaction to disk. */
                                     if(!LLD::Client->WriteTx(hashTx, tx))
-                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write transaction");
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, FUNCTION, "failed to write transaction");
 
                                     /* Index the transaction to it's block. */
                                     if(!LLD::Client->IndexBlock(hashTx, tx.hashBlock))
-                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, "failed to write block indexing entry");
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, FUNCTION, "failed to write block indexing entry");
                                 }
 
                                 /* Dependant specifier only needs to index dependant. */
@@ -2933,7 +2959,7 @@ namespace LLP
                                 {
                                     /* Connect transaction in memory. */
                                     if(!tx.Connect(TAO::Ledger::FLAGS::BLOCK))
-                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, FUNCTION, hashTx.SubString(), " REJECTED: ", debug::GetLastError());
+                                        return debug::abort(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE, FUNCTION, hashTx.SubString(), " REJECTED: ", debug::GetLastError());
 
                                     /* Add an indexing event. */
                                     TAO::API::Indexing::IndexSigchain(hashTx);
@@ -3706,8 +3732,12 @@ namespace LLP
             try
             {
                 /* Get the current sync node. */
-                std::shared_ptr<TritiumNode> pcurrent = TRITIUM_SERVER->GetConnection(pairSession.first, pairSession.second);
-                pcurrent->Unsubscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
+                std::shared_ptr<TritiumNode> pcurrent =
+                    TRITIUM_SERVER->GetConnection(pairSession.first, pairSession.second);
+
+                /* Make sure this is an active connection. */
+                if(pcurrent)
+                    pcurrent->Unsubscribe(SUBSCRIPTION::LASTINDEX | SUBSCRIPTION::BESTCHAIN);
 
                 /* Initiate the sync */
                 pnode->Sync();
@@ -3743,7 +3773,8 @@ namespace LLP
         nLastTimeReceived.store(runtime::unifiedtimestamp());
 
         /* Cache the height at the start of the sync */
-        nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);
+        if(nSyncStart.load() == 0)
+            nSyncStart.store(TAO::Ledger::ChainState::tStateBest.load().nHeight);
 
         /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
         SYNCTIMER.Stop();

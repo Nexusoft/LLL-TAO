@@ -73,7 +73,7 @@ namespace Legacy
         *  @return the sanitized json parameters array.
         *
         **/
-        virtual encoding::json SanitizeParams( const std::string& strMethod, const encoding::json& jsonParams );
+        static encoding::json SanitizeParams(const std::string& strMethod, const encoding::json& jsonParams);
 
 
         /** Echo

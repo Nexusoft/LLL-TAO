@@ -120,6 +120,14 @@ namespace LLP
         static std::atomic<uint64_t> PACKETS;
 
 
+        /** Total incoming connections. **/
+        static std::atomic<uint64_t> CONNECTIONS;
+        
+
+        /** Total disconnections. **/
+        static std::atomic<uint64_t> DISCONNECTS;
+
+
     private:
 
         /** Flag to determine if event occurred. **/

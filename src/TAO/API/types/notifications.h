@@ -57,19 +57,53 @@ namespace TAO::API
          *
          **/
         static void Shutdown();
-        
+
 
         /** SanitizeContract
-        *
-        *  Checks that the contract passes both Build() and Execute()
-        *
-        *  @param[in] rContract The contract to sanitize
-        *  @param[out] mapStates map of register states used by Build()
-        *
-        *  @return True if the contract was sanitized without errors.
-        *
-        **/
+         *
+         *  Checks that the contract passes both Build() and Execute()
+         *
+         *  @param[out] rContract The contract to sanitize
+         *  @param[out] mapStates map of register states used by Build()
+         *
+         *  @return True if the contract was sanitized without errors.
+         *
+         **/
         static bool SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates);
+
+
+        /** SanitizeContract
+         *
+         *  Checks that the contract passes both Build() and Execute()
+         *
+         *  @param[in] hashGenesis The sigchain that is calling to sanitize.
+         *  @param[out] rContract The contract to sanitize
+         *
+         *  @return True if the contract was sanitized without errors.
+         *
+         **/
+        static bool SanitizeContract(const uint256_t& hashGenesis, TAO::Operation::Contract &rContract);
+
+
+    private:
+
+
+        /** build_notification
+         *
+         *  Build an contract response to given notificaion.
+         *
+         *  @param[in] hashGenesis The current user-id we are building for.
+         *  @param[in] jSession The current session data to use in building.
+         *  @param[in] rEvent The event we are building notification for.
+         *  @param[in] fMine Flag to tell if processing our own sends or events.
+         *  @param[in] fStop Flag to tell if we have stopped incrementing our sequence.
+         *  @param[out] vContracts The list of contracts we are building.
+         *
+         *  @return true if event did not increment, false if it did increment.
+         *
+         **/
+        static bool build_notification(const uint256_t& hashGenesis, const encoding::json& jSession, const std::pair<uint512_t, uint32_t>& rEvent,
+            const bool fMine, const bool fStop, std::vector<TAO::Operation::Contract> &vContracts);
 
     };
 }

@@ -34,6 +34,7 @@ namespace config
 
     std::atomic<bool> fShutdown(false);
     std::atomic<bool> fSuspended(false);
+    std::atomic<bool> fSuspendProtocol(false);
     std::atomic<bool> fDaemon(false);
     std::atomic<bool> fClient(false);
     std::atomic<bool> fTestNet(false);
@@ -252,6 +253,10 @@ namespace config
 
         {
             RECURSIVE(ARGS_MUTEX);
+
+            /* Check for testnet enabled flag, and bump value. */
+            if(fTestNet.load())
+                mapArgs["-testnet"] = "3";
 
             /* Parse the allowip entries and add them to a map for easier processing when new connections are made*/
             const std::vector<std::string>& vIPPortFilters = config::mapMultiArgs["-llpallowip"];

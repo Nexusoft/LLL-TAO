@@ -66,18 +66,5 @@ namespace TAO::API
          **/
         encoding::json List(const encoding::json& jParams, const bool fHelp);
 
-
-        /** Count
-         *
-         *  Counts network specific data related to nodes and node count
-         *
-         *  @param[in] jParams The parameters from the API call.
-         *  @param[in] fHelp Trigger for help data.
-         *
-         *  @return The return object in JSON.
-         *
-         **/
-        encoding::json Count(const encoding::json& jParams, const bool fHelp);
-
     };
 }

@@ -78,6 +78,10 @@ namespace TAO
             std::map<uint512_t, uint512_t> mapClaimed;
 
 
+            /** Record of conflicted transactions in mempool. **/
+            std::set<uint512_t> mapRejected;
+
+
             /** Record of legacy inputs in the mempool. **/
             std::map<Legacy::OutPoint, uint512_t> mapInputs;
 

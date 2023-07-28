@@ -1707,7 +1707,7 @@ namespace Legacy
         TAO::Ledger::BlockState state;
         if(LLD::Ledger->ReadBlock(hash, state))
             /* Calculate confirmations. */
-            nConfirmations = (TAO::Ledger::ChainState::stateBest.load().nHeight - state.nHeight) + 1;
+            nConfirmations = (TAO::Ledger::ChainState::tStateBest.load().nHeight - state.nHeight) + 1;
 
         /* Set block hash. */
         if(!state.IsNull())

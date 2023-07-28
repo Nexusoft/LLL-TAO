@@ -123,13 +123,13 @@ namespace TAO::API
             )
         );
 
-        /* Handle for sync/headers. */
-        mapFunctions["sync/headers"] = Function
+
+        /* Handle for submit/transaction. */
+        mapFunctions["sync/status"] = Function
         (
             std::bind
             (
-                &Ledger::SyncHeaders,
-                this,
+                &Ledger::SyncStatus,
                 std::placeholders::_1,
                 std::placeholders::_2
             )

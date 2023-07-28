@@ -324,10 +324,6 @@ namespace LLD
         bool LastRegisterTx(const uint256_t& hashRegister, uint512_t &hashTx);
 
 
-        /** Build indexes for transactions over a rolling modulus. For -indexregister flag. **/
-        void IndexRegisters();
-
-
         /** PushRegister
          *
          *  Push an register to process for given genesis-id.
@@ -359,25 +355,12 @@ namespace LLD
          *  List the current active registers for given genesis-id.
          *
          *  @param[in] hashGenesis The genesis-id to list registers for.
-         *  @param[in] vRegisters The list of events extracted.
+         *  @param[in] setAddresses The list of events extracted.
          *
          *  @return true if written successfully
          *
          **/
-        bool ListRegisters(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
-
-
-        /** ListTransfers
-         *
-         *  List the current active transfers for given genesis-id.
-         *
-         *  @param[in] hashGenesis The genesis-id to list registers for.
-         *  @param[in] vRegisters The list of events extracted.
-         *
-         *  @return true if written successfully
-         *
-         **/
-        bool ListTransfers(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
+        bool ListRegisters(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses, bool fTransferred = false);
 
 
         /** PushTokenized
@@ -437,12 +420,12 @@ namespace LLD
          *  List the current unclaimed registers for given genesis-id.
          *
          *  @param[in] hashGenesis The genesis-id to list registers for.
-         *  @param[in] vRegisters The list of events extracted.
+         *  @param[in] setAddresses The list of events extracted.
          *
          *  @return true if written successfully
          *
          **/
-        bool ListUnclaimed(const uint256_t& hashGenesis, std::vector<TAO::Register::Address> &vRegisters);
+        bool ListUnclaimed(const uint256_t& hashGenesis, std::set<TAO::Register::Address> &setAddresses);
 
 
         /** HasRegister
@@ -556,11 +539,12 @@ namespace LLD
          *
          *  @param[in] hashGenesis The genesis-id to list events for.
          *  @param[in] vEvents The list of events extracted.
+         *  @param[in] nLimit The maximum number of events to get.
          *
          *  @return true if written successfully
          *
          **/
-        bool ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents);
+        bool ListEvents(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vEvents, const int32_t nLimit = -1);
 
 
         /** ReadTritiumSequence
@@ -640,17 +624,43 @@ namespace LLD
         bool PushContract(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract);
 
 
-        /** ListEvents
+        /** IncrementEventSequence
+         *
+         *  Increment the last event that was fully processed.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *
+         *  @return if the record was written successfully.
+         *
+         **/
+        bool IncrementEventSequence(const uint256_t& hashGenesis);
+
+
+        /** IncrementContractSequence
+         *
+         *  Increment the last contract that was fully processed.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *
+         *  @return if the record was written successfully.
+         *
+         **/
+        bool IncrementContractSequence(const uint256_t& hashGenesis);
+
+
+
+        /** ListContracts
          *
          *  List the current active contracts for given genesis-id.
          *
          *  @param[in] hashGenesis The genesis-id to list events for.
          *  @param[in] vEvents The list of events extracted.
+         *  @param[in] nLimit The maximum number of contracts to get.
          *
          *  @return true if written successfully
          *
          **/
-        bool ListContracts(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vContracts);
+        bool ListContracts(const uint256_t& hashGenesis, std::vector<std::pair<uint512_t, uint32_t>> &vContracts, const int32_t nLimit = -1);
 
 
         /** HasEvent
@@ -679,6 +689,20 @@ namespace LLD
          **/
         bool PushOrder(const std::pair<uint256_t, uint256_t>& pairMarket,
                        const TAO::Operation::Contract& rContract, const uint32_t nContract);
+
+
+       /** PushOrder
+        *
+        *  Pushes an order to the orderbook stack for a given asset.
+        *
+        *  @param[in] hashRegister The asset's register address.
+        *  @param[in] rContract The contract that contains the existing order.
+        *  @param[in] nContract The contract-id that contains the order
+        *
+        *  @return true if written successfully
+        *
+        **/
+       bool PushOrder(const uint256_t& hashRegister, const TAO::Operation::Contract& rContract, const uint32_t nContract);
 
 
         /** ListOrders
@@ -819,6 +843,10 @@ namespace LLD
          *
          **/
         bool HasPTR(const uint256_t& hashAddress);
+
+
+        /** Build indexes for transactions over a rolling modulus. For -indexregister flag. **/
+        void IndexRegisters();
 
     };
 }

@@ -571,6 +571,7 @@ namespace TAO
             return true;
         }
 
+
         /* Check the trust score that is claimed is correct. */
         static const uint256_t hashConsistencyCheck = uint256_t("0xa15efdcd1969a9a645eda0296b52678f1ef3d9e91ec9f54a4f82f9ab7ce65a6c");
         bool Transaction::CheckTrust(BlockState* pblock) const
@@ -968,7 +969,7 @@ namespace TAO
                                 return debug::error(FUNCTION, "failed to read confirmations for coinbase");
 
                             /* Check that the previous TX has reached sig chain maturity */
-                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::stateBest.load())))
+                            if(nConfirms + 1 < MaturityCoinBase((pblock ? *pblock : ChainState::tStateBest.load())))
                                 return debug::error(FUNCTION, "coinbase is immature ", nConfirms);
 
                             break;
@@ -1005,7 +1006,7 @@ namespace TAO
 
                     /* Check fo register in database. */
                     if(!LLD::Logical->PushRegisterTx(hashAddress, hash))
-                        return debug::error(FUNCTION, "failed to push register tx ", TAO::Register::Address(hashAddress).ToString());
+                        debug::warning(FUNCTION, "failed to push register tx ", TAO::Register::Address(hashAddress).ToString());
 
                     /* Push the address now. */
                     setAddresses.insert(hashAddress);
@@ -1126,7 +1127,7 @@ namespace TAO
 
                     /* Check fo register in database. */
                     if(!LLD::Logical->EraseRegisterTx(hashAddress))
-                        return debug::error(FUNCTION, "failed to erase register tx ", TAO::Register::Address(hashAddress).ToString());
+                        debug::warning(FUNCTION, "failed to erase register tx ", TAO::Register::Address(hashAddress).ToString());
 
                     /* Push the address now. */
                     setAddresses.insert(hashAddress);
@@ -1453,7 +1454,7 @@ namespace TAO
                 "nextHash  = ",  hashNext.SubString(), ", ",
                 "prevHash  = ",  PrevHash().SubString(), ", ",
                 "hashPrevTx = ", hashPrevTx.SubString(), ", ",
-                "hashGenesis = ", hashGenesis.SubString(), ", ",
+                "hashGenesis = ", hashGenesis.ToString(), ", ",
                 "pub = ", HexStr(vchPubKey).substr(0, 20), ", ",
                 "sig = ", HexStr(vchSig).substr(0, 20), ", ",
                 "hash = ", GetHash().SubString()

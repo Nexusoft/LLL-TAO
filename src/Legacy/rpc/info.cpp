@@ -79,8 +79,6 @@ namespace Legacy
         obj["connections"] = GetTotalConnectionCount();
         obj["synccomplete"] = (int32_t)TAO::Ledger::ChainState::PercentSynchronized();
 
-        obj["proxy"] = (config::fUseProxy.load() ? LLP::addrProxy.ToString() : std::string());
-
         // get the EID's if using LISP
         std::map<std::string, LLP::EID> mapEIDs = LLP::GetEIDs();
         if(mapEIDs.size() > 0)
@@ -173,13 +171,13 @@ namespace Legacy
         uint64_t nPrimePS = 0;
         uint64_t nHashRate = 0;
         if(TAO::Ledger::ChainState::nBestHeight.load()
-        && TAO::Ledger::ChainState::stateBest.load() != TAO::Ledger::ChainState::stateGenesis)
+        && TAO::Ledger::ChainState::tStateBest.load() != TAO::Ledger::ChainState::tStateGenesis)
         {
             double nPrimeAverageDifficulty = 0.0;
             uint32_t nPrimeAverageTime = 0;
             uint32_t nPrimeTimeConstant = 2480;
             int32_t nTotal = 0;
-            TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::stateBest.load();
+            TAO::Ledger::BlockState blockState = TAO::Ledger::ChainState::tStateBest.load();
 
             bool bLastStateFound = TAO::Ledger::GetLastState(blockState, 1);
             for(; (nTotal < 1440 && bLastStateFound); ++nTotal)
@@ -201,7 +199,7 @@ namespace Legacy
             else
             {
                 /* Edge case where there are no prime blocks so use the difficulty from genesis */
-                blockState = TAO::Ledger::ChainState::stateGenesis;
+                blockState = TAO::Ledger::ChainState::tStateGenesis;
                 nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 1));
             }
 
@@ -213,7 +211,7 @@ namespace Legacy
             double nHashAverageDifficulty = 0.0;
             uint64_t nTimeConstant = 276758250000;
 
-            blockState = TAO::Ledger::ChainState::stateBest.load();
+            blockState = TAO::Ledger::ChainState::tStateBest.load();
 
             bLastStateFound = TAO::Ledger::GetLastState(blockState, 2);
             for(;  (nHTotal < 1440 && bLastStateFound); ++nHTotal)
@@ -237,7 +235,7 @@ namespace Legacy
             else
             {
                 /* Edge case where there are no hash blocks so use the difficulty from genesis */
-                blockState = TAO::Ledger::ChainState::stateGenesis;
+                blockState = TAO::Ledger::ChainState::tStateGenesis;
                 nPrimeAverageDifficulty += (TAO::Ledger::GetDifficulty(blockState.nBits, 2));
             }
         }
@@ -250,13 +248,13 @@ namespace Legacy
         //obj["currentblocksize"] = (uint64_t)Core::nLastBlockSize;
         //obj["currentblocktx"] =(uint64_t)Core::nLastBlockTx;
 
-        TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState lastStakeBlockState = TAO::Ledger::ChainState::tStateBest.load();
         bool fHasStake = TAO::Ledger::GetLastState(lastStakeBlockState, 0);
 
-        TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState lastPrimeBlockState = TAO::Ledger::ChainState::tStateBest.load();
         bool fHasPrime = TAO::Ledger::GetLastState(lastPrimeBlockState, 1);
 
-        TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState lastHashBlockState = TAO::Ledger::ChainState::tStateBest.load();
         bool fHasHash = TAO::Ledger::GetLastState(lastHashBlockState, 2);
 
 
@@ -279,8 +277,8 @@ namespace Legacy
 
         obj["primeReserve"] =    Legacy::SatoshisToAmount(lastPrimeBlockState.nReleasedReserve[0]);
         obj["hashReserve"] =     Legacy::SatoshisToAmount(lastHashBlockState.nReleasedReserve[0]);
-        obj["primeValue"] =        Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), 1, 0));
-        obj["hashValue"] =         Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::stateBest.load(), 2, 0));
+        obj["primeValue"] =        Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::tStateBest.load(), 1, 0));
+        obj["hashValue"] =         Legacy::SatoshisToAmount(TAO::Ledger::GetCoinbaseReward(TAO::Ledger::ChainState::tStateBest.load(), 2, 0));
         obj["pooledtx"] =       (uint64_t)TAO::Ledger::mempool.Size();
         obj["primesPerSecond"] = nPrimePS;
         obj["hashPerSecond"] =  nHashRate;
@@ -291,8 +289,8 @@ namespace Legacy
             //obj["totalConnections"] = LLP::MINING_LLP->TotalConnections();
         }
 
-        //obj["genesisblockhash"] = TAO::Ledger::ChainState::stateGenesis.GetHash().GetHex();
-        //obj["currentblockhash"] = TAO::Ledger::ChainState::stateBest.load().GetHash().GetHex();
+        //obj["genesisblockhash"] = TAO::Ledger::ChainState::tStateGenesis.GetHash().GetHex();
+        //obj["currentblockhash"] = TAO::Ledger::ChainState::tStateBest.load().GetHash().GetHex();
 
         return obj;
     }

@@ -90,6 +90,8 @@ namespace TAO::API
                     rStakeMinter.Start();
             }
         }
+        else
+          throw Exception(-208, "Unlocked status has not changed");
 
         /* Populate unlocked status */
         const encoding::json jRet =

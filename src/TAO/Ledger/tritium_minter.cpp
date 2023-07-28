@@ -189,7 +189,7 @@ namespace TAO::Ledger
             if(!LLD::Ledger->ReadBlock(block.hashPrevBlock, statePrev))
                 return debug::error(FUNCTION, "Failed to get previous block");
 
-            /* Calculate time since last stake block (block age = age of previous stake block at time of current stateBest). */
+            /* Calculate time since last stake block (block age = age of previous stake block at time of current tStateBest). */
             nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
 
             /* Check for previous version 7 and current version 8. */

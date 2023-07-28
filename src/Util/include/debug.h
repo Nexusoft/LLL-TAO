@@ -89,9 +89,6 @@ ________________________________________________________________________________
 
 #define FUNCTION ANSI_COLOR_FUNCTION, __PRETTY_FUNCTION__, ANSI_COLOR_RESET, " : "
 
-//forward declaration from LLD/include/global.h global ACID handler
-namespace LLD { void TxnAbort(const uint8_t nFlags); }
-
 namespace debug
 {
 
@@ -228,6 +225,14 @@ namespace debug
     }
 
 
+    /** acid_handler
+     *
+     *  We need this so we can declare in source file and not need forward declaration of LLD::TxnAbort.
+     *
+     **/
+    void acid_handler(const uint8_t nFlags, const uint8_t nInstances);
+
+
     /** abort
      *
      *  Safe constant format debugging failure. This function aborts a transaction if failed.
@@ -239,7 +244,7 @@ namespace debug
      *
      **/
     template<class... Args>
-    bool abort(const uint8_t nFlags, Args&&... args)
+    bool abort(const uint8_t nFlags, const uint8_t nInstances, Args&&... args)
     {
         if(fLogError)
         {
@@ -249,7 +254,7 @@ namespace debug
         }
 
         /* Abort our transaction here. */
-        LLD::TxnAbort(nFlags);
+        acid_handler(nFlags, nInstances);
 
         return false;
     }

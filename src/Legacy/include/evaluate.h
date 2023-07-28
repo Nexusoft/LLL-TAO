@@ -184,6 +184,18 @@ namespace Legacy
      **/
     bool ExtractRegister(const Script& scriptPubKey, uint256_t& hashRegister);
 
+
+    /** ExtractRegister
+     *
+     *  Verifies if a Sig chain register address can be extracted from a public key script.
+     *
+     *  @param[in] scriptPubKey The script object to extract address from.
+     *
+     *  @return true if address was extracted successfully.
+     *
+     **/
+    bool VerifyRegister(const Script& scriptPubKey);
+
 }
 
 #endif

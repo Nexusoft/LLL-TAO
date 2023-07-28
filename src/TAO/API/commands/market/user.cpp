@@ -52,7 +52,7 @@ namespace TAO::API
         uint32_t nLimit = 100, nOffset = 0;
 
         /* Get the parameters to apply to the response. */
-        std::string strOrder = "desc", strColumn = "price";
+        std::string strOrder = "desc", strColumn = "timestamp";
         ExtractList(jParams, strOrder, strColumn, nLimit, nOffset);
 
         /* Build our return value. */
@@ -102,6 +102,10 @@ namespace TAO::API
 
                     /* Check that we match our filters. */
                     if(!FilterResults(jParams, jOrder))
+                        continue;
+
+                    /* Filter out our expected fieldnames if specified. */
+                    if(!FilterFieldname(jParams, jOrder))
                         continue;
 
                     /* Insert into set and automatically sort. */
@@ -174,6 +178,10 @@ namespace TAO::API
                     if(!FilterResults(jParams, jOrder))
                         continue;
 
+                    /* Filter out our expected fieldnames if specified. */
+                    if(!FilterFieldname(jParams, jOrder))
+                        continue;
+
                     /* Insert into set and automatically sort. */
                     setOrders.insert(jOrder);
                 }
@@ -202,9 +210,6 @@ namespace TAO::API
             else
                 jRet["executed"] = encoding::json::array();
         }
-
-        /* Filter out our expected fieldnames if specified. */
-        FilterFieldname(jParams, jRet);
 
         return jRet;
     }

@@ -39,7 +39,7 @@ namespace TAO::API
     {
         /* Grab our best block. */
         const TAO::Ledger::BlockState tBestBlock =
-            TAO::Ledger::ChainState::stateBest.load();
+            TAO::Ledger::ChainState::tStateBest.load();
 
         /* Get the current time of height of blockchain. */
         const uint64_t nBestTime =

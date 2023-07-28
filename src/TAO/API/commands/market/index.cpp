@@ -86,6 +86,29 @@ namespace TAO::API
                         /* Write the order to logical database. */
                         if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
                             debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
+
+                        /* Give a verbose=3 debug log for the indexing entry. */
+                        if(config::nVerbose >= 3)
+                        {
+                            /* This will hold our market name. */
+                            std::string strMarket =
+                                (TAO::Register::Address(pairMarket.first).ToString() + "/");
+
+                            /* Build our market-pair. */
+                            std::string strName;
+                            if(Names::ReverseLookup(pairMarket.first, strName))
+                                strMarket = strName + "/";
+
+                            /* Now add our second pair. */
+                            if(!Names::ReverseLookup(pairMarket.second, strName))
+                                strMarket += TAO::Register::Address(pairMarket.second).ToString();
+                            else
+                                strMarket += strName;
+
+                            /* Output our new debug info. */
+                            debug::log(3, "Market ", strMarket, " record created for ", rContract.Hash().SubString(), " txid");
+                        }
+
                     }
                     catch(const std::exception& e)
                     {

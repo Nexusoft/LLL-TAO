@@ -116,6 +116,23 @@ namespace TAO::API
     }
 
 
+    /* Utilty method that checks that the last transaction was within a given amount of seconds. */
+    bool CheckTimespan(const uint256_t& hashGenesis, const uint32_t nSeconds)
+    {
+        /* The hash of the last transaction for this sig chain from disk */
+        uint512_t hashLast = 0;
+        if(!LLD::Logical->ReadLast(hashGenesis, hashLast))
+            return true;
+
+        /* Get the last transaction from disk for this sig chain */
+        TAO::API::Transaction tx;
+        if(!LLD::Logical->ReadTx(hashLast, tx))
+            return true;
+
+        return (tx.nTimestamp + nSeconds < runtime::unifiedtimestamp());
+    }
+
+
     /* Checks if a contract will execute correctly once built including conditions. */
     bool CheckContract(const TAO::Operation::Contract& rContract)
     {
