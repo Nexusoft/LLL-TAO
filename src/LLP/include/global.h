@@ -112,8 +112,6 @@ namespace LLP
         /* -connect means try to establish a connection first. */
         if(config::HasArg("-connect"))
         {
-            RECURSIVE(config::ARGS_MUTEX);
-
             /* Add connections and resolve potential DNS lookups. */
             for(const auto& rAddress : config::mapMultiArgs["-connect"])
             {
@@ -133,8 +131,6 @@ namespace LLP
         /* -addnode means add to address manager and let it make connections. */
         if(config::HasArg("-addnode"))
         {
-            RECURSIVE(config::ARGS_MUTEX);
-
             /* Add nodes and resolve potential DNS lookups. */
             for(const auto& rNode : config::mapMultiArgs["-addnode"])
                 pServer->AddNode(rNode, true);

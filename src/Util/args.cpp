@@ -116,7 +116,7 @@ namespace config
     /* Return string argument or default value */
     std::string GetArg(const std::string& strArg, const std::string& strDefault)
     {
-        RECURSIVE(ARGS_MUTEX);
+        //RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return mapArgs[strArg];
@@ -127,7 +127,7 @@ namespace config
     /* Return boolean if given argument is in map. */
     bool HasArg(const std::string& strArg)
     {
-        RECURSIVE(ARGS_MUTEX);
+        //RECURSIVE(ARGS_MUTEX);
 
         return mapMultiArgs.count(strArg) || mapArgs.count(strArg);
     }
@@ -136,7 +136,7 @@ namespace config
     /* Return integer argument or default value. */
     int64_t GetArg(const std::string& strArg, int64_t nDefault)
     {
-        RECURSIVE(ARGS_MUTEX);
+        //RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return convert::atoi64(mapArgs[strArg]);
@@ -148,7 +148,7 @@ namespace config
     /* Return boolean argument or default value */
     bool GetBoolArg(const std::string& strArg, bool fDefault)
     {
-        RECURSIVE(ARGS_MUTEX);
+        //RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
         {
@@ -177,7 +177,7 @@ namespace config
     /* Set an argument if it doesn't already have a value */
     bool SoftSetArg(const std::string& strArg, const std::string& strValue)
     {
-        RECURSIVE(ARGS_MUTEX);
+        //RECURSIVE(ARGS_MUTEX);
 
         if(mapArgs.count(strArg))
             return false;
@@ -290,7 +290,7 @@ namespace config
         /* Handle reading our activation data for transactions. */
         if(fHybrid.load() || fTestNet.load()) //this rule is only to activate private, hybrid, or testnets
         {
-            RECURSIVE(ARGS_MUTEX);
+            //RECURSIVE(ARGS_MUTEX);
 
             /* Handle for our market fees. */
             if(config::mapMultiArgs["-activatetx"].size() > 0)
