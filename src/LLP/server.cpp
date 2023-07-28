@@ -23,6 +23,7 @@ ________________________________________________________________________________
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
+#include <LLP/types/relay.h>
 
 #include <LLP/include/trust_address.h>
 
@@ -998,6 +999,7 @@ namespace LLP
     /* Explicity instantiate all template instances needed for compiler. */
     template class Server<TritiumNode>;
     template class Server<LookupNode>;
+    template class Server<RelayNode>;
     template class Server<TimeNode>;
     template class Server<APINode>;
     template class Server<RPCNode>;

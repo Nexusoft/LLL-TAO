@@ -420,6 +420,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_lisp.o \
 		build/LLP_lookup.o \
 		build/LLP_manager.o \
+		build/LLP_message-connection.o \
 		build/LLP_network.o \
 		build/LLP_permissions.o \
 		build/LLP_relay.o \

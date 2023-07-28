@@ -15,8 +15,9 @@ ________________________________________________________________________________
 #include <LLC/include/random.h>
 #include <LLC/types/pqssl.h>
 
-#include <LLP/packets/message.h>
-#include <LLP/templates/base_connection.h>
+#include <LLD/include/global.h>
+
+#include <LLP/templates/message-connection.h>
 
 #include <TAO/API/types/authentication.h>
 
@@ -28,7 +29,7 @@ ________________________________________________________________________________
 namespace LLP
 {
 
-    class RelayNode : public BaseConnection<MessagePacket>
+    class RelayNode : public MessageConnection
     {
 
         /** Create a context to track SSL related data. **/

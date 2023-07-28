@@ -35,40 +35,8 @@ bool CheckPermissions(const std::string &strAddress, const uint16_t nPort)
     if(vAddress.size() != 4)
         return debug::error("Address size not at least 4 bytes.");
 
-    /* Determine whether or not the current port is open by default, or closed requiring an llpallowip whitelist.
-     * Ports open by default can also use a whitelist, and will no longer be treated as open for other addresses */
-    bool fOpen = false;
-    if(config::fTestNet.load()) //XXX: icky, this should be cleaned up here
-    {
-        /* Testnet ports open only for testnet */
-        if(nPort == static_cast<uint16_t>(config::GetArg(std::string("-serverport"), (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1))))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-serversslport"), (TRITIUM_TESTNET_SSL_PORT + (config::GetArg("-testnet", 0) - 1))))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1))))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-sslport"), (TRITIUM_TESTNET_SSL_PORT + (config::GetArg("-testnet", 0) - 1))))
-            || nPort == static_cast<uint16_t>(TESTNET_TIME_LLP_PORT)
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), TESTNET_P2P_PORT ))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-p2psslport"), TESTNET_P2P_SSL_PORT )))
-            fOpen = true;
-    }
-    else
-    {
-        /* Mainnet ports open only for mainnet */
-        if(nPort == static_cast<uint16_t>(config::GetArg(std::string("-serverport"), TRITIUM_MAINNET_PORT))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-serversslport"), TRITIUM_MAINNET_SSL_PORT))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), TRITIUM_MAINNET_PORT))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-sslport"), TRITIUM_MAINNET_SSL_PORT))
-            || nPort == static_cast<uint16_t>(MAINNET_TIME_LLP_PORT)
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), MAINNET_P2P_PORT ))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-p2psslport"), MAINNET_P2P_SSL_PORT )))
-            fOpen = true;
-    }
-
-    /* Check for lookup ports. */
-    if(nPort == LLP::GetLookupPort())
-        return true;
-
     /* If no llpallowip whitelist defined for a default open port then we assume permission */
-    if(config::mapIPFilters[nPort].size() == 0 && fOpen)
+    if(config::mapIPFilters[nPort].size() == 0 && LLP::DefaultOpen(nPort))
         return true;
 
     /* Check against the llpallowip list from config / commandline parameters. */

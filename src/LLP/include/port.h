@@ -29,12 +29,16 @@ ________________________________________________________________________________
 #define TRITIUM_MAINNET_PORT 9888
 #endif
 
-#ifndef TRITIUM_MAINNET_SSL_PORT
-#define TRITIUM_MAINNET_SSL_PORT 7888
-#endif
-
 #ifndef MAINNET_TIME_LLP_PORT
 #define MAINNET_TIME_LLP_PORT 9324
+#endif
+
+#ifndef MAINNET_MINING_LLP_PORT
+#define MAINNET_MINING_LLP_PORT 9325
+#endif
+
+#ifndef MAINNET_RELAY_LLP_PORT
+#define MAINNET_RELAY_LLP_PORT 9326
 #endif
 
 #ifndef MAINNET_LOOKUP_LLP_PORT
@@ -58,31 +62,21 @@ ________________________________________________________________________________
 #endif
 
 
-#ifndef MAINNET_MINING_LLP_PORT
-#define MAINNET_MINING_LLP_PORT 9325
-#endif
-
-#ifndef MAINNET_P2P_PORT
-#define MAINNET_P2P_PORT 9326
-#endif
-
-#ifndef MAINNET_P2P_SSL_PORT
-#define MAINNET_P2P_SSL_PORT 7326
-#endif
-
-
 /* Testnet */
-
 #ifndef TRITIUM_TESTNET_PORT
 #define TRITIUM_TESTNET_PORT 8888
 #endif
 
-#ifndef TRITIUM_TESTNET_SSL_PORT
-#define TRITIUM_TESTNET_SSL_PORT 7888
+#ifndef TESTNET_TIME_LLP_PORT
+#define TESTNET_TIME_LLP_PORT 8324
 #endif
 
-#ifndef TESTNET_TIME_LLP_PORT
-#define TESTNET_TIME_LLP_PORT 8329
+#ifndef TESTNET_MINING_LLP_PORT
+#define TESTNET_MINING_LLP_PORT 8325
+#endif
+
+#ifndef TESTNET_RELAY_LLP_PORT
+#define TESTNET_RELAY_LLP_PORT 8326
 #endif
 
 #ifndef TESTNET_LOOKUP_LLP_PORT
@@ -103,18 +97,6 @@ ________________________________________________________________________________
 
 #ifndef TESTNET_RPC_SSL_PORT
 #define TESTNET_RPC_SSL_PORT 6336
-#endif
-
-#ifndef TESTNET_MINING_LLP_PORT
-#define TESTNET_MINING_LLP_PORT 8325
-#endif
-
-#ifndef TESTNET_P2P_PORT
-#define TESTNET_P2P_PORT 8326
-#endif
-
-#ifndef TESTNET_P2P_SSL_PORT
-#define TESTNET_P2P_SSL_PORT 6326
 #endif
 
 
@@ -207,6 +189,24 @@ namespace LLP
     }
 
 
+    /** GetRelayPort
+     *
+     *  Get the relay LLP port for Nexus.
+     *
+     *  @return Returns a 16-bit port number for core mainnet or testnet.
+     *
+     **/
+    inline uint16_t GetRelayPort()
+    {
+        return static_cast<uint16_t>
+        (
+            config::fTestNet.load() ?
+                TESTNET_RELAY_LLP_PORT :
+                MAINNET_RELAY_LLP_PORT
+        );
+    }
+
+
     /** GetMiningPort
      *
      *  Get the Main Mining LLP Port for Nexus.
@@ -240,6 +240,19 @@ namespace LLP
             config::GetArg(std::string("-port"),
             config::fTestNet.load() ?
                 (TRITIUM_TESTNET_PORT + (config::GetArg("-testnet", 0) - 1)) : TRITIUM_MAINNET_PORT));
+    }
+
+
+    /** DefaultOpen
+     *
+     *  Helper method to determine if port is default to open.
+     *
+     *  @return Returns true if the given port is a default open port
+     *
+     **/
+    inline bool DefaultOpen(const uint16_t nPort)
+    {
+        return (nPort == GetTimePort() || nPort == GetLookupPort() || nPort == GetDefaultPort());
     }
 }
 

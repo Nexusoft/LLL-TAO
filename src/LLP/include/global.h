@@ -24,6 +24,7 @@ ________________________________________________________________________________
 
 #include <LLP/types/apinode.h>
 #include <LLP/types/lookup.h>
+#include <LLP/types/relay.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 
@@ -36,10 +37,12 @@ namespace LLP
     /** List of LLP Server Instances. **/
     extern Server<TritiumNode>*  TRITIUM_SERVER;
     extern Server<LookupNode>*   LOOKUP_SERVER;
+    extern Server<RelayNode>*    RELAY_SERVER;
     extern Server<TimeNode>*     TIME_SERVER;
     extern Server<APINode>*      API_SERVER;
     extern Server<RPCNode>*      RPC_SERVER;
     extern Server<Miner>*        MINING_SERVER;
+
 
 
     /** Current session identifier. **/

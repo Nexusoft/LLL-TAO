@@ -24,7 +24,7 @@ namespace LLP
 
     /** Constructor **/
     RelayNode::RelayNode()
-    : BaseConnection<MessagePacket> ( )
+    : MessageConnection ( )
     , pqSSL   (new LLC::PQSSL_CTX())
     , oCrypto ( )
     {
@@ -33,7 +33,7 @@ namespace LLP
 
     /** Constructor **/
     RelayNode::RelayNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
-    : BaseConnection<MessagePacket> (SOCKET_IN, DDOS_IN, fDDOSIn)
+    : MessageConnection (SOCKET_IN, DDOS_IN, fDDOSIn)
     , pqSSL (new LLC::PQSSL_CTX())
     , oCrypto ( )
     {
@@ -42,7 +42,7 @@ namespace LLP
 
     /** Constructor **/
     RelayNode::RelayNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
-    : BaseConnection<MessagePacket> (DDOS_IN, fDDOSIn)
+    : MessageConnection (DDOS_IN, fDDOSIn)
     , pqSSL (new LLC::PQSSL_CTX())
     , oCrypto ( )
     {

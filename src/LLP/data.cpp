@@ -22,6 +22,7 @@ ________________________________________________________________________________
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
+#include <LLP/types/relay.h>
 
 #include <Util/include/hex.h>
 
@@ -628,6 +629,7 @@ namespace LLP
     /* Explicity instantiate all template instances needed for compiler. */
     template class DataThread<TritiumNode>;
     template class DataThread<LookupNode>;
+    template class DataThread<RelayNode>;
     template class DataThread<TimeNode>;
     template class DataThread<APINode>;
     template class DataThread<RPCNode>;
