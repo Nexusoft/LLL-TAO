@@ -19,8 +19,7 @@ ________________________________________________________________________________
 
 #include <LLP/include/network.h>
 #include <LLP/include/version.h>
-#include <LLP/packets/message.h>
-#include <LLP/templates/base_connection.h>
+#include <LLP/templates/message-connection.h>
 #include <LLP/templates/events.h>
 #include <LLP/templates/ddos.h>
 #include <LLP/templates/trigger.h>
@@ -37,7 +36,7 @@ namespace LLP
      *  A Node that processes packets and messages for the Tritium Server
      *
      **/
-    class TritiumNode : public BaseConnection<MessagePacket>
+    class TritiumNode : public MessageConnection
     {
         /** @class Inventory class
          *
@@ -426,15 +425,6 @@ namespace LLP
          *
          **/
         bool ProcessPacket() final;
-
-
-        /** ReadPacket
-         *
-         *  Non-Blocking Packet reader to build a packet from TCP Connection.
-         *  This keeps thread from spending too much time for each Connection.
-         *
-         **/
-        void ReadPacket() final;
 
 
         /** Authorized

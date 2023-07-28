@@ -110,7 +110,7 @@ namespace LLP
 
     /** Default Constructor **/
     TritiumNode::TritiumNode()
-    : BaseConnection<MessagePacket>()
+    : MessageConnection()
     , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
@@ -139,7 +139,7 @@ namespace LLP
 
     /** Constructor **/
     TritiumNode::TritiumNode(Socket SOCKET_IN, DDOS_Filter* DDOS_IN, bool fDDOSIn)
-    : BaseConnection<MessagePacket>(SOCKET_IN, DDOS_IN, fDDOSIn)
+    : MessageConnection(SOCKET_IN, DDOS_IN, fDDOSIn)
     , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
@@ -168,7 +168,7 @@ namespace LLP
 
     /** Constructor **/
     TritiumNode::TritiumNode(DDOS_Filter* DDOS_IN, bool fDDOSIn)
-    : BaseConnection<MessagePacket>(DDOS_IN, fDDOSIn)
+    : MessageConnection(DDOS_IN, fDDOSIn)
     , fLoggedIn(false)
     , fAuthorized(false)
     , fInitialized(false)
@@ -3025,53 +3025,6 @@ namespace LLP
             return debug::drop(NODE, "first message wasn't a version message");
 
         return true;
-    }
-
-
-    /*  Non-Blocking Packet reader to build a packet from TCP Connection.
-     *  This keeps thread from spending too much time for each Connection. */
-    void TritiumNode::ReadPacket()
-    {
-        if(!INCOMING.Complete())
-        {
-            /** Handle Reading Packet Length Header. **/
-            if(!INCOMING.Header() && Available() >= 8)
-            {
-                std::vector<uint8_t> BYTES(8, 0);
-                if(Read(BYTES, 8) == 8)
-                {
-                    DataStream ssHeader(BYTES, SER_NETWORK, MIN_PROTO_VERSION);
-                    ssHeader >> INCOMING;
-
-                    Event(EVENTS::HEADER);
-                }
-            }
-
-            /** Handle Reading Packet Data. **/
-            uint32_t nAvailable = Available();
-            if(INCOMING.Header() && nAvailable > 0 && !INCOMING.IsNull() && INCOMING.DATA.size() < INCOMING.LENGTH)
-            {
-                /* The maximum number of bytes to read is th number of bytes specified in the message length,
-                   minus any already read on previous reads*/
-                uint32_t nMaxRead = (uint32_t)(INCOMING.LENGTH - INCOMING.DATA.size());
-
-                /* Vector to receve the read bytes. This should be the smaller of the number of bytes currently available or the
-                   maximum amount to read */
-                std::vector<uint8_t> DATA(std::min(nAvailable, nMaxRead), 0);
-
-                /* Read up to the buffer size. */
-                int32_t nRead = Read(DATA, DATA.size());
-
-                /* If something was read, insert it into the packet data.  NOTE: that due to SSL packet framing we could end up
-                   reading less bytes than appear available.  Therefore we only copy the number of bytes actually read */
-                if(nRead > 0)
-                    INCOMING.DATA.insert(INCOMING.DATA.end(), DATA.begin(), DATA.begin() + nRead);
-
-                /* If the packet is now considered complete, fire the packet complete event */
-                if(INCOMING.Complete())
-                    Event(EVENTS::PACKET, static_cast<uint32_t>(DATA.size()));
-            }
-        }
     }
 
 
