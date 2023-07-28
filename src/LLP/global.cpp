@@ -240,11 +240,6 @@ namespace LLP
             MINING_SERVER = new Server<Miner>(CONFIG);
         }
 
-
-        /* Add our connections from commandline. */
-        MakeConnections<LLP::TimeNode>   (TIME_SERVER);
-        MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
-
         return true;
     }
 
