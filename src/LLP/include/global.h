@@ -16,6 +16,8 @@ ________________________________________________________________________________
 #define NEXUS_LLP_INCLUDE_GLOBAL_H
 
 #include <LLP/include/port.h>
+#include <LLP/include/seeds.h>
+
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/templates/server.h>
@@ -97,6 +99,12 @@ namespace LLP
         /* Check that the given server is active. */
         if(!pServer)
             return;
+
+        /* Add core nexus.io nodes so that we get a quick connection to the network. */
+        pServer->AddConnection("node1.nexus.io", pServer->GetPort(false), false, true);
+        pServer->AddConnection("node2.nexus.io", pServer->GetPort(false), false, true);
+        pServer->AddConnection("node3.nexus.io", pServer->GetPort(false), false, true);
+        pServer->AddConnection("node4.nexus.io", pServer->GetPort(false), false, true);
 
         /* -connect means try to establish a connection first. */
         if(config::HasArg("-connect"))

@@ -135,7 +135,9 @@ These parameters are not required to execute this command, but give you the abil
 - There is a limit of 1KB for asset data to be saved in the register, excluding the asset name.
 - There is a fee of 1 NXS for creating and an asset and an additional 1 NXS for the optional name object.
 
-## **Response:**
+## **Results:**
+
+The following object will be returned under the JSON object `results` if the command succeeded.
 
 ```
 {
@@ -148,9 +150,7 @@ These parameters are not required to execute this command, but give you the abil
 #### Return Values:
 
 - `success` : Boolean flag indicating that the asset was created successfully.
-
 - `address` : The register address for the register that was just created.
-
 - `txid` : The hash of the transaction that was generated for this tx.
 
 -----------------------------------
@@ -158,14 +158,12 @@ These parameters are not required to execute this command, but give you the abil
 # <a name="get"></a> `get`
 
 Retrieves information for an asset and returns a JSON structured object with the fields. You must choose the correct *noun* in order to have command execute.
+
 ```
 assets/get/noun
 ```
 
-
 The supported nouns for this command are `any`, `asset`, `raw`, `readonly`, or `schema`. If you are unsure of the correct *noun* then you can use the `any` keyword, or aggregate nouns using the comma as separator.
-
-**NOTE:** The error message you will receive for an incorrect *noun* is `Unsupported type for name/address`
 
 ## **Required:**
 
@@ -175,32 +173,22 @@ The following list are required parameters to execute the given command. If you 
 
 This command requires a valid session to be active with these parameters required to identify and authenticate the given session.
 
-`pin` : Required if not **unlocked** for *transactions*. This is the **PIN** that was used when creating master profile.
+- `pin` : Required if not **unlocked** for *transactions*. This is the **PIN** that was used when creating master profile.
 
-`session` : Required if **argument** `-multiuser=1` is set, used to identify the session to invoke the command under. For single-user API mode the session should not be supplied.
+- `session` : Required if **argument** `-multiuser=1` is set, used to identify the session to invoke the command under. For single-user API mode the session should not be supplied.
 
-**Example:**
-```
-assets/get/asset
-```
+#### Lookup:
+
+One of the below identifier parameters can be used, if `name` is provided you do not need to include `address` and vice-versa. The following parameters are mutually exclusive.
+
+- `address` : Required to lookup the register by address if the `name` field is not provided.
+
+- `name` : Required to lookup the register address if the `address` field is not provided. The name should be in the format *username:name* (for local names) or *namespace::name* (for names in a namespace). If you are logged in, the *username:* field is not required.
 
 
+## **Results:**
 
-### Parameters:
-
-`session` : Required by **argument** `-multiuser=1` to be supplied to identify the user session. For single-user API mode the session should not be supplied.
-
-`name` : Required to **identify** the name of the asset. The name should be in the format username:name (for local names) or namespace::name (for names in a namespace). This is optional if the `address` is provided
-
-`address` : Required to **identify** the register address of the asset. This is optional if the `name` is provided.
-
-[`Sorting`](//docs/API/SORTING.MD).
-
-[`Filtering`](/docs/API/FILTERING.MD).
-
-### Results:
-
-#### Return value JSON object:
+The following object will be returned under the JSON object `results` if the command succeeded.
 
 ```
 [
@@ -214,31 +202,22 @@ assets/get/asset
         "Owner Name": "John Doe",
         "Registration Details": "MRG/05/478564",
         "address": "87Wai2JoS4hNAEVXZVmejLS6pK21XQWKoLAkaep5aXFdrYnJJyk",
-        "name": "local:Meta_World"
+        "name": ":Meta_World"
     }
 ]
-[Completed in 2.838543 ms]
 ```
 
 #### Return Values:
 
-`owner` : The username hash of the owners profile.
-
-`version` : The serialization version of the transaction.
-
-`created` : The UNIX timestamp when the asset was created.
-
-`modified` : The UNIX timestamp when the asset was last modified.
-
-`type` : Asset register type. Can be OBJECT, RAW or READONLY.
-
-`data` : The data stored in a raw or readonly asset object.
-
-`<fieldname>=<value>` : The key-value pair for each piece of data stored in the asset.
-
-`address` : The register address of the asset.
-
-`name` : The name identifying the asset.
+- `owner` : The username hash of the owners profile.
+- `version` : The serialization version of the transaction.
+- `created` : The UNIX timestamp when the asset was created.
+- `modified` : The UNIX timestamp when the asset was last modified.
+- `type` : Asset register type. Can be OBJECT, RAW or READONLY.
+- `data` : If the register is `raw` or `readonly` the raw data will be returned under this key.
+- `<fieldname>=<value>` : If the register is `asset` or `schema` it will return the fields as key/value pairs.
+- `address` : The register address that is currently assigned to given asset.
+- `name` : The name that is currently pointed to the given register, if any are assigned.
 
 -----------------------------------
 
