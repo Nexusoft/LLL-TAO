@@ -101,10 +101,13 @@ namespace LLP
             return;
 
         /* Add core nexus.io nodes so that we get a quick connection to the network. */
-        pServer->AddConnection("node1.nexus.io", pServer->GetPort(false), false, true);
-        pServer->AddConnection("node2.nexus.io", pServer->GetPort(false), false, true);
-        pServer->AddConnection("node3.nexus.io", pServer->GetPort(false), false, true);
-        pServer->AddConnection("node4.nexus.io", pServer->GetPort(false), false, true);
+        if(!config::fTestNet.load())
+        {
+            pServer->AddConnection("node1.nexus.io", pServer->GetPort(false), false, true);
+            pServer->AddConnection("node2.nexus.io", pServer->GetPort(false), false, true);
+            pServer->AddConnection("node3.nexus.io", pServer->GetPort(false), false, true);
+            pServer->AddConnection("node4.nexus.io", pServer->GetPort(false), false, true);
+        }
 
         /* -connect means try to establish a connection first. */
         if(config::HasArg("-connect"))
