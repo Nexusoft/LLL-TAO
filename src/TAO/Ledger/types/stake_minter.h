@@ -232,14 +232,6 @@ namespace TAO
         TAO::Ledger::BlockState stateLast;
 
 
-        /** Flag to indicate whether the user has a current stake change request **/
-        bool fStakeChange;
-
-
-        /** Stake change request for current user, when one is present **/
-        TAO::Ledger::StakeChange stakeChange;
-
-
         /** The candidate block that the stake minter is currently attempting to mine **/
         TritiumBlock block;
 
@@ -363,7 +355,7 @@ namespace TAO
         bool FindLastStake(const uint256_t& hashGenesis, uint512_t& hashLast);
 
 
-        /** FindStakeChange
+        /** CheckStakeChange
          *
          *  Identifies any pending stake change request, populates the stakeChange instance variable with it, and sets
          *  fStakeChange to the appropriate value.
@@ -386,7 +378,7 @@ namespace TAO
          *  @return true if processed successfully
          *
          **/
-        bool FindStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast);
+        bool CheckStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast, TAO::Ledger::StakeChange &tStakeChange);
 
 
         /** CreateCandidateBlock

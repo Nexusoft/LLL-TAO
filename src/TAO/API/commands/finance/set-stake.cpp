@@ -145,7 +145,7 @@ namespace TAO::API
         /* Get the crypto register so we can determine the key type used to generate the public key */
         TAO::Register::Object oCrypto;
         if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::MEMPOOL))
-            throw debug::exception(FUNCTION, "Could not sign - missing crypto register");
+            throw Exception(-130, "missing crypto register");
 
         /* Read the key type from crypto object register. */
         const uint256_t hashAuth =
