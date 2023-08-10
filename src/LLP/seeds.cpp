@@ -24,6 +24,7 @@ namespace LLP
         "node2.nexus.io",
         "node3.nexus.io",
         "node4.nexus.io",
+        "node5.nexus.io",
 
         //cryptowise university
         "seed1.nexusnode.cryptowiseuniversity.net",
