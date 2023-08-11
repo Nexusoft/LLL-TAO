@@ -746,6 +746,10 @@ namespace LLP
                     /* Accept an incoming connection. */
                     dt->AddConnection(sockNew, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addr) : nullptr);
 
+                    /* Add the address to the address manager if it exists. */
+                    if(pAddressManager)
+                        pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
+
                     /* Verbose output. */
                     debug::log(4, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
                 }

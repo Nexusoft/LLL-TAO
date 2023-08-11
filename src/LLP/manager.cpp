@@ -285,7 +285,7 @@ namespace LLP
         /* Critical section: Get address info for the selected nFlags. */
         {
             LOCK(MUTEX);
-            get_addresses(vAddresses, nFlags);
+            get_addresses(vAddresses, nFlags, ConnectState::CONNECTED);
         }
 
         uint64_t nSize = vAddresses.size();
@@ -450,7 +450,7 @@ namespace LLP
 
 
     /*  Gets an array of trust addresses specified by the nState nFlags. */
-    void AddressManager::get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t nFlags)
+    void AddressManager::get_addresses(std::vector<TrustAddress> &vInfo, const uint8_t nFlags, const uint8_t nNotFlags)
     {
         vInfo.clear();
         for(const auto &addr : mapTrustAddress)
@@ -460,7 +460,7 @@ namespace LLP
                 continue;
 
             /* If the address matches the flag, add it to the vector. */
-            if(addr.second.nState & nFlags)
+            if((addr.second.nState & nFlags) && !(addr.second.nState & nNotFlags))
                 vInfo.push_back(addr.second);
         }
     }
