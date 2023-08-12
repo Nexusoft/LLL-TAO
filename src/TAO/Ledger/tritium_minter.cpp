@@ -280,7 +280,7 @@ namespace TAO::Ledger
              * potentially have difficulty finding a block to add stake, even if they were adding a large amount.
              */
             TAO::Ledger::StakeChange tStakeChange;
-            if(CheckStakeChange(hashGenesis, stateLast.GetHash(), tStakeChange))
+            if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange))
                 nStake += tStakeChange.nAmount;
         }
 

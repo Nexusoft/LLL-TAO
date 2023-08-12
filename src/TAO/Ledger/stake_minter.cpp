@@ -219,13 +219,13 @@ namespace TAO
             {
                 /* Attempt to read the stake change from the disk. */
                 if(!LLD::Local->ReadStakeChange(hashGenesis, tStakeChange))
-                    return debug::error(FUNCTION, "could not find stake change for ", hashGenesis.SubString());
+                    return false;
             }
             catch(const std::exception& e) { return debug::error(FUNCTION, "obsolete serialization format for stake change request"); }
 
             /* Check if this stake change has processed already. */
             if(tStakeChange.fProcessed)
-                return debug::error(FUNCTION, "stake change has already processed");
+                return false;
 
             /* Verify stake change request is current version supported by minter */
             if(tStakeChange.nVersion != 1)
