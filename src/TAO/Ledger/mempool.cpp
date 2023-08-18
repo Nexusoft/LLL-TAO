@@ -526,9 +526,10 @@ namespace TAO
                     if(vtx[0].hashPrevTx != hashLast)
                     {
                         /* Debug information. */
-                        debug::error(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
-
-                        debug::log(3, "REMOVE ------------------------------");
+                        if(mapRejected.count(vtx[0].hashPrevTx))
+                            debug::warning(FUNCTION, "ROOT REJECTED: orphaned rejected chain ", vtx[0].hashPrevTx.SubString());
+                        else
+                            debug::warning(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
 
                         /* Disconnect all transactions in reverse order. */
                         for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
@@ -545,18 +546,26 @@ namespace TAO
                             }
 
                             /* Find the transaction in pool. */
-                            if(mapLedger.count(tx->GetHash()))
+                            const uint512_t hashTx = tx->GetHash();
+                            if(mapLedger.count(hashTx))
                             {
-                                debug::log(0, "DELETED ", tx->GetHash().SubString());
-
                                 /* Erase from the memory map. */
                                 mapClaimed.erase(tx->hashPrevTx);
-                                mapLedger.erase(tx->GetHash());
+                                mapLedger.erase(hashTx);
+
+                                /* Handle for a rejected chain. */
+                                if(mapRejected.count(hashTx))
+                                {
+                                    /* Erase from our rejected map. */
+                                    mapRejected.erase(hashTx);
+
+                                    debug::notice(FUNCTION, "REJECTED ", hashTx.SubString());
+                                }
+                                else
+                                    debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
+
                             }
                         }
-
-                        debug::log(3, "END REMOVE ------------------------------");
-
 
                         break;
                     }
