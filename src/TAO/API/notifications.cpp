@@ -508,6 +508,36 @@ namespace TAO::API
         /* If we reached here, we need to rebuild our sigchain indexes and transactions. */
         debug::warning(FUNCTION, "sigchain contains ", nFailedContracts, " invalid contracts, rebuilding ", vSanitized.size(), " contracts");
 
+        /* Now we want to disconnect our transactions up to their root. */
+        for(const auto& rHash : vHashes)
+        {
+            /* Read the transaction from the ledger database. */
+            TAO::API::Transaction tx;
+            if(!LLD::Logical->ReadTx(rHash, tx))
+            {
+                debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", rHash.SubString());
+                break;
+            }
+
+            /* Reset memory states to disk indexes. */
+            if(!tx.Disconnect(TAO::Ledger::FLAGS::ERASE))
+                debug::warning(FUNCTION, "failed to disconnect tx ", rHash.SubString());
+
+            /* Delete our transaction from logical database. */
+            if(!tx.Delete(rHash))
+                debug::warning(FUNCTION, "failed to delete tx ", rHash.SubString());
+
+            /* Check if we are at our root now. */
+            if(rHash == hashRoot)
+                break;
+        }
+
+        /* Now build our official transaction. */
+        const std::vector<uint512_t> vRebuilt =
+            BuildAndAccept(jSession, vSanitized, TAO::Ledger::PinUnlock::UnlockActions::NOTIFICATIONS);
+
+        debug::log(0, FUNCTION, "Rebuilt ", vRebuilt.size(), " transactions for ", vSanitized.size(), " contracts");
+
         return false;
     }
 
