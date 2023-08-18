@@ -504,10 +504,10 @@ namespace TAO
             }
 
             /* Loop transctions map by genesis. */
-            for(auto& list : mapTransactions)
+            for(auto& rTransaction : mapTransactions)
             {
                 /* Get reference of the vector. */
-                std::vector<TAO::Ledger::Transaction>& vtx = list.second;
+                std::vector<TAO::Ledger::Transaction>& vtx = rTransaction.second;
 
                 /* Sort the list by sequence numbers. */
                 std::sort(vtx.begin(), vtx.end());
@@ -519,7 +519,7 @@ namespace TAO
                 if(!vtx[0].IsFirst())
                 {
                     /* Read last hash. */
-                    if(!LLD::Ledger->ReadLast(list.first, hashLast))
+                    if(!LLD::Ledger->ReadLast(rTransaction.first, hashLast))
                         break;
 
                     /* Check the last hash. */
