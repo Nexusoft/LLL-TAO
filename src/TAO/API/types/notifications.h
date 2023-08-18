@@ -85,6 +85,17 @@ namespace TAO::API
         static bool SanitizeContract(const uint256_t& hashGenesis, TAO::Operation::Contract &rContract);
 
 
+        /** SanitizeUnconfirmed
+         *
+         *  Checks that the current unconfirmed transactions are in a valid state.
+         *
+         *  @param[in] hashGenesis The sigchain that is calling to sanitize.
+         *  @param[in] jSession The current session data to use in building.
+         *
+         **/
+        static bool SanitizeUnconfirmed(const uint256_t& hashGenesis, const encoding::json& jSession);
+
+
     private:
 
 

@@ -209,7 +209,7 @@ namespace TAO::Ledger
                transaction genuinely should be in the same block, then ths will just result in the subsequent transaction being
                left out of this block and included in the next.*/
             uint512_t hashLast = 0;
-            if(!tx.IsFirst() && !LLD::Ledger->ReadLast(tx.hashGenesis, hashLast) )
+            if(!tx.IsFirst() && !LLD::Ledger->ReadLast(tx.hashGenesis, hashLast))
             {
                 setDependents.insert(hash);
 

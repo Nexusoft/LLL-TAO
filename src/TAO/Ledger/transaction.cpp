@@ -325,6 +325,10 @@ namespace TAO
         /* Gets the list of contracts internal to transaction. */
         const std::vector<TAO::Operation::Contract>& Transaction::Contracts() const
         {
+            /* Bind all of our contracts if we are accessing the entire vector. */
+            for(const auto& rContract : vContracts)
+                rContract.Bind(this, true);
+
             return vContracts;
         }
 
