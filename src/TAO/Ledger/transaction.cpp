@@ -908,7 +908,7 @@ namespace TAO
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;
                     if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
-                        return debug::error(FUNCTION, "prev transaction not on disk");
+                        return debug::error(FUNCTION, "prev transaction not on disk ", hashPrevTx.SubString());
 
                     /* Double check sequence numbers here. */
                     if(txPrev.nSequence + 1 != nSequence)

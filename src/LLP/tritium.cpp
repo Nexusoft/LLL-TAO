@@ -2908,7 +2908,7 @@ namespace LLP
                             TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                             /* Commit our ACID transaction across LLD instances. */
-                            LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                            LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                         }
 
                         /* Verbose=3 dumps transaction data. */
@@ -2974,7 +2974,7 @@ namespace LLP
                                 }
 
                                 /* Commit our ACID transaction across LLD instances. */
-                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                             }
 
                             /* Write Success to log. */

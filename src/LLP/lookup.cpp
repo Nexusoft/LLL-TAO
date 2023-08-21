@@ -179,7 +179,7 @@ namespace LLP
                                     TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                                     /* Commit our ACID transaction across LLD instances. */
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
 
                                     debug::log(3, "FLAGS::LOOKUP::TRITIUM: ", hashTx.SubString(), " ACCEPTED");
                                 }
@@ -238,7 +238,7 @@ namespace LLP
                                     TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                                     /* Commit our ACID transaction across LLD instances. */
-                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                    LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                                 }
 
                                 /* Write Success to log. */
@@ -321,7 +321,7 @@ namespace LLP
                                         }
 
                                         /* Commit our ACID transaction across LLD instances. */
-                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                                     }
 
                                     debug::log(3, "FLAGS::LOOKUP::TRITIUM::", (nType == SPECIFIER::CONTRACT) ? "CONTRACT: " : "PROOF: ", hash.SubString(), " ACCEPTED");
@@ -357,7 +357,7 @@ namespace LLP
                                         }
 
                                         /* Commit our ACID transaction across LLD instances. */
-                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                                     }
 
                                     /* Write Success to log. */

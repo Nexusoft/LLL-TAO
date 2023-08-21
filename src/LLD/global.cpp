@@ -198,10 +198,6 @@ namespace LLD
                 /* Commit the Logical DB transaction. */
                 if(Logical)
                     Logical->TxnCommit();
-
-                /* Commit the legacy DB transaction. */
-                if(Legacy)
-                    Legacy->TxnCommit();
             }
 
             /* Abort all the transactions. */
