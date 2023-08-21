@@ -519,8 +519,8 @@ namespace TAO::API
                 break;
             }
 
-            /* Reset memory states to disk indexes. */
-            if(!tx.Disconnect(TAO::Ledger::FLAGS::ERASE))
+            /* Disconnect transaction's current memory state. */
+            if(!tx.Disconnect(TAO::Ledger::FLAGS::MEMPOOL))
                 debug::warning(FUNCTION, "failed to disconnect tx ", rHash.SubString());
 
             /* Delete our transaction from logical database. */
