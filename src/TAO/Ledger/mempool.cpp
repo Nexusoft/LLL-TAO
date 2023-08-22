@@ -604,17 +604,32 @@ namespace TAO
                 /* Loop through transaction by genesis. */
                 for(uint32_t n = 1; n < vtx.size(); ++n)
                 {
-                    /* Check for end of index. */
-                    if(n == vtx.size())
-                        break;
+                    /* Start a ACID transaction (to be disposed). */
+                    LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+
+                    /* Check the contracts for our root transaction to make sure it's valid. */
+                    bool fContractInvalid = false;
+                    for(const auto& rContract : vtx[0].Contracts())
+                    {
+                        /* Sanitize the contract. */
+                        if(!rContract.Sanitize())
+                        {
+                            fContractInvalid = true;
+                            break;
+                        }
+                    }
+
+                    /* Abort the mempool ACID transaction once the contract is sanitized */
+                    LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
 
                     /* Check that transaction is in sequence. */
-                    if(vtx[n].hashPrevTx != hashLast)
+                    if(vtx[n].hashPrevTx != hashLast || fContractInvalid)
                     {
                         /* Debug information. */
-                        debug::error(FUNCTION, "ORPHAN DETECTED INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
-
-                        debug::log(3, "REMOVE ------------------------------");
+                        if(fContractInvalid)
+                            debug::warning(FUNCTION, "ORPHAN REJECTED INDEX ", n, ": invalid orphan chain ", vtx[n].hashPrevTx.SubString());
+                        else
+                            debug::warning(FUNCTION, "ORPHAN DETECTED INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
 
                         /* Begin the memory transaction. */
                         LLD::TxnBegin(FLAGS::MEMPOOL);
@@ -622,13 +637,18 @@ namespace TAO
                         /* Disconnect all transactions in reverse order. */
                         for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
                         {
-                            tx->print();
+                            /* Find the transaction in pool. */
+                            const uint512_t hashTx = tx->GetHash();
 
-                            if(tx->GetHash() == hashLast)
+                            /* Check for our stop hash. */
+                            if(hashTx == hashLast)
                             {
                                 debug::notice(FUNCTION, "REACHED HASH LAST ", hashLast.SubString());
                                 break;
                             }
+
+                            /* Debug output tx. */
+                            tx->print();
 
                             /* Reset memory states to disk indexes. */
                             if(!tx->Disconnect(FLAGS::MEMPOOL))
@@ -637,9 +657,6 @@ namespace TAO
 
                                 break;
                             }
-
-                            /* Find the transaction in pool. */
-                            const uint512_t hashTx = tx->GetHash();
 
                             /* Erase from the memory map. */
                             Remove(hashTx);
@@ -651,17 +668,12 @@ namespace TAO
                         /* Commit the memory transaction. */
                         LLD::TxnCommit(FLAGS::MEMPOOL);
 
-                        debug::log(3, "END REMOVE ------------------------------");
-
-
                         break;
                     }
 
                     /* Set last hash. */
                     hashLast = vtx[n].GetHash();
                 }
-
-
             }
         }
 
