@@ -440,6 +440,10 @@ namespace TAO
             if(mapConflicts.count(hashTx))
                 mapConflicts.erase(hashTx);
 
+            /* Erase from rejected memory. */
+            if(mapRejected.count(hashTx))
+                mapRejected.erase(hashTx);
+
             /* Erase from legacy conflicted memory. */
             if(mapLegacyConflicts.count(hashTx))
                 mapLegacyConflicts.erase(hashTx);
@@ -458,7 +462,6 @@ namespace TAO
                 mapClaimed.erase(tx.hashPrevTx);
                 mapOrphans.erase(tx.hashPrevTx);
                 mapLedger.erase(hashTx);
-                mapRejected.erase(hashTx);
 
                 return true;
             }
@@ -485,7 +488,7 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            //TODO: evict conflicted transctions from mempool
+            //TODO: evict conflicted transctions from mempool by checking sequence number to current disk height
 
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
@@ -502,6 +505,23 @@ namespace TAO
 
                 /* Push to back of map. */
                 mapTransactions[hashGenesis].push_back(tx.second);
+            }
+
+            /* Create map of transactions by genesis. */
+            std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapConflicted;
+
+            /* Loop through all our conflicted transactions. */
+            for(const auto& tx : mapConflicts)
+            {
+                /* Cache the genesis. */
+                const uint256_t& hashGenesis = tx.second.hashGenesis;
+
+                /* Check in map for push back. */
+                if(!mapConflicted.count(hashGenesis))
+                    mapConflicted[hashGenesis] = std::vector<TAO::Ledger::Transaction>();
+
+                /* Push to back of map. */
+                mapConflicted[hashGenesis].push_back(tx.second);
             }
 
             /* Loop transctions map by genesis. */
@@ -572,6 +592,31 @@ namespace TAO
 
                             /* Write the txid of deleted transactions. */
                             debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
+                        }
+
+                        /* Check if we need to swap conflicts for ledger. */
+                        if(fContractInvalid && mapConflicts.count(rTransaction.first))
+                        {
+                            /* Sort the list by sequence numbers. */
+                            std::sort(rTransaction.second.begin(), rTransaction.second.end());
+
+                            /* Connect all conflicted transactions in forward order. */
+                            for(auto tx = rTransaction.second.begin(); tx != rTransaction.second.end(); ++tx)
+                            {
+                                /* Accept conflicts back into mempool now. */
+                                const uint512_t hashTx = tx->GetHash();
+                                if(!Accept(*tx))
+                                {
+                                    debug::error(FUNCTION, "failed to accept tx ", hashTx.SubString());
+                                    break;
+                                }
+
+                                /* Remove conflicted transaction now. */
+                                mapConflicts.erase(hashTx);
+
+                                /* Write the txid of deleted transactions. */
+                                debug::notice(FUNCTION, "SWAPPED ", hashTx.SubString());
+                            }
                         }
 
                         break;
