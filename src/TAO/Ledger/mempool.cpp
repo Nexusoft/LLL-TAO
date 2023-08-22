@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -504,10 +504,10 @@ namespace TAO
             }
 
             /* Loop transctions map by genesis. */
-            for(auto& list : mapTransactions)
+            for(auto& rTransaction : mapTransactions)
             {
                 /* Get reference of the vector. */
-                std::vector<TAO::Ledger::Transaction>& vtx = list.second;
+                std::vector<TAO::Ledger::Transaction>& vtx = rTransaction.second;
 
                 /* Sort the list by sequence numbers. */
                 std::sort(vtx.begin(), vtx.end());
@@ -519,16 +519,17 @@ namespace TAO
                 if(!vtx[0].IsFirst())
                 {
                     /* Read last hash. */
-                    if(!LLD::Ledger->ReadLast(list.first, hashLast))
+                    if(!LLD::Ledger->ReadLast(rTransaction.first, hashLast))
                         break;
 
                     /* Check the last hash. */
                     if(vtx[0].hashPrevTx != hashLast)
                     {
                         /* Debug information. */
-                        debug::error(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
-
-                        debug::log(3, "REMOVE ------------------------------");
+                        if(mapRejected.count(vtx[0].hashPrevTx))
+                            debug::warning(FUNCTION, "ROOT REJECTED: orphaned rejected chain ", vtx[0].hashPrevTx.SubString());
+                        else
+                            debug::warning(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
 
                         /* Disconnect all transactions in reverse order. */
                         for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
@@ -545,18 +546,26 @@ namespace TAO
                             }
 
                             /* Find the transaction in pool. */
-                            if(mapLedger.count(tx->GetHash()))
+                            const uint512_t hashTx = tx->GetHash();
+                            if(mapLedger.count(hashTx))
                             {
-                                debug::log(0, "DELETED ", tx->GetHash().SubString());
-
                                 /* Erase from the memory map. */
                                 mapClaimed.erase(tx->hashPrevTx);
-                                mapLedger.erase(tx->GetHash());
+                                mapLedger.erase(hashTx);
+
+                                /* Handle for a rejected chain. */
+                                if(mapRejected.count(hashTx))
+                                {
+                                    /* Erase from our rejected map. */
+                                    mapRejected.erase(hashTx);
+
+                                    debug::notice(FUNCTION, "REJECTED ", hashTx.SubString());
+                                }
+                                else
+                                    debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
+
                             }
                         }
-
-                        debug::log(3, "END REMOVE ------------------------------");
-
 
                         break;
                     }

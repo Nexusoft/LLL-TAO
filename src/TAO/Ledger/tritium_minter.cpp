@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2018
+        (c) Copyright The Nexus Developers 2014 - 2023
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -139,11 +139,10 @@ namespace TAO::Ledger
         nTrust = 0;
         nBlockAge = 0;
 
+        /* Staking Trust for existing trust account */
         if(!fGenesis)
         {
-            /* Staking Trust for existing trust account */
-            uint64_t nTrustPrev  = account.get<uint64_t>("trust");
-            uint64_t nStake      = account.get<uint64_t>("stake");
+            /* Get our total stake available. */
             int64_t nStakeChange = 0;
 
             /* Get the previous stake tx for the trust account. */
@@ -155,18 +154,16 @@ namespace TAO::Ledger
             }
 
             /* Find a stake change request. */
-            if(!FindStakeChange(hashGenesis, hashLast))
-            {
-                /* Failed to retrieve stake change request. Process with no request. */
-                fStakeChange = false;
-                stakeChange.SetNull();
-            }
+            TAO::Ledger::StakeChange tStakeChange;
+            if(CheckStakeChange(hashGenesis, hashLast, tStakeChange))
+                nStakeChange = tStakeChange.nAmount; //we set our stake change if we have successfully sanitized request
 
-            /* Set change amount using the stake change from database. */
-            if(fStakeChange)
-                nStakeChange = stakeChange.nAmount;
+            /* If we return false here, it indicates we have a bad stake change and need to erase it. */
+            else
+                LLD::Local->EraseStakeChange(hashGenesis);
 
             /* Check for available stake. */
+            const uint64_t nStake = account.get<uint64_t>("stake");
             if(nStake == 0 && nStakeChange == 0)
             {
                 /* Trust account has no stake balance. Increase sleep time to wait for balance. */
@@ -185,29 +182,26 @@ namespace TAO::Ledger
                 return debug::error(FUNCTION, "Failed to get last block for trust account");
 
             /* Get block previous to our candidate. */
-            BlockState statePrev = BlockState();
-            if(!LLD::Ledger->ReadBlock(block.hashPrevBlock, statePrev))
+            BlockState tStatePrev;
+            if(!LLD::Ledger->ReadBlock(block.hashPrevBlock, tStatePrev))
                 return debug::error(FUNCTION, "Failed to get previous block");
 
             /* Calculate time since last stake block (block age = age of previous stake block at time of current tStateBest). */
-            nBlockAge = statePrev.GetBlockTime() - stateLast.GetBlockTime();
+            nBlockAge = tStatePrev.GetBlockTime() - stateLast.GetBlockTime();
 
             /* Check for previous version 7 and current version 8. */
-            uint64_t nTrustRet = 0;
-            if(block.nVersion == 8 && stateLast.nVersion == 7 && !CheckConsistency(hashLast, nTrustRet))
-                nTrust = GetTrustScore(nTrustRet, nBlockAge, nStake, nStakeChange, block.nVersion);
-            else //when not consistency check, calculate like normal
-                nTrust = GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, block.nVersion);
+            const uint64_t nTrustPrev  =
+                account.get<uint64_t>("trust");
 
-            /* Initialize Trust operation for block producer.
-             * The coinstake reward will be added based on time when block is found.
-             */
+            /* Calculate our new trust score now. */
+            nTrust =
+                GetTrustScore(nTrustPrev, nBlockAge, nStake, nStakeChange, block.nVersion);
+
+            /* Build our staking contract for TRUST operator. */
             block.producer[0] << uint8_t(TAO::Operation::OP::TRUST) << hashLast << nTrust << nStakeChange;
         }
         else
         {
-            /* Looking to stake Genesis for new trust account */
-
             /* Validate that have assigned balance for Genesis */
             if(account.get<uint64_t>("balance") == 0)
             {
@@ -224,23 +218,16 @@ namespace TAO::Ledger
             }
 
             /* Pending stake change request not allowed while staking Genesis */
-            fStakeChange = false;
-            if(LLD::Local->ReadStakeChange(hashGenesis, stakeChange))
+            TAO::Ledger::StakeChange tStakeChange;
+            if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange))
             {
                 debug::log(0, FUNCTION, "Stake change request not allowed for trust account Genesis...removing");
-
-                if(!LLD::Local->EraseStakeChange(hashGenesis))
-                    debug::error(FUNCTION, "Failed to remove stake change request");
+                LLD::Local->EraseStakeChange(hashGenesis);
             }
 
-            /* Initialize Genesis operation for block producer.
-             * The coinstake reward will be added based on time when block is found.
-             */
+            /* Build our staking contract for GENESIS operator*/
             block.producer[0] << uint8_t(TAO::Operation::OP::GENESIS);
-
         }
-
-        /* Do not sign producer transaction, yet. Coinstake reward must be added to operation first. */
 
         /* Reset sleep time on successful completion */
         if(nSleepTime == 5000)
@@ -292,8 +279,9 @@ namespace TAO::Ledger
              * to improve the chances to stake the block that implements the change. If not, low balance accounts could
              * potentially have difficulty finding a block to add stake, even if they were adding a large amount.
              */
-            if(fStakeChange && stakeChange.nAmount > 0)
-                nStake += stakeChange.nAmount;
+            TAO::Ledger::StakeChange tStakeChange;
+            if(LLD::Local->ReadStakeChange(hashGenesis, tStakeChange))
+                nStake += tStakeChange.nAmount;
         }
 
         /* Calculate the minimum Required Energy Efficiency Threshold.
@@ -306,6 +294,7 @@ namespace TAO::Ledger
                                 " at weight ", (nTrustWeight.load() + nBlockWeight.load()),
                                 " and stake rate ", nStakeRate.load());
 
+        /* Engage in the staking process pure nakamoto style. */
         HashBlock(nRequired);
 
         return;

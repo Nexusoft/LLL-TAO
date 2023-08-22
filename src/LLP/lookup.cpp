@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -178,7 +178,7 @@ namespace LLP
                                 TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                                 /* Commit our ACID transaction across LLD instances. */
-                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                             }
 
                             /* Connect transaction in memory if register specifier. */
@@ -233,7 +233,7 @@ namespace LLP
                                 TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                                 /* Commit our ACID transaction across LLD instances. */
-                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                             }
 
                             break;
@@ -312,7 +312,7 @@ namespace LLP
                                         }
 
                                         /* Commit our ACID transaction across LLD instances. */
-                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                                     }
 
                                     debug::log(3, "FLAGS::LOOKUP::TRITIUM::", (nType == SPECIFIER::CONTRACT) ? "CONTRACT: " : "PROOF: ", hash.SubString(), " ACCEPTED");
@@ -348,7 +348,7 @@ namespace LLP
                                         }
 
                                         /* Commit our ACID transaction across LLD instances. */
-                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                        LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                                     }
 
                                     /* Write Success to log. */

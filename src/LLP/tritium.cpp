@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -414,19 +414,19 @@ namespace LLP
                     /* Generic errors catch all. */
                     case DISCONNECT::ERRORS:
                         strReason = "Errors";
-                        nState    = ConnectState::FAILED;
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     /* Socket related for POLLERR. */
                     case DISCONNECT::POLL_ERROR:
                         strReason = "Poll Error";
-                        nState    = ConnectState::FAILED;
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     /* Special condition for linux where there's presumed data that can't be read, causing large CPU usage. */
                     case DISCONNECT::POLL_EMPTY:
                         strReason = "Unavailable";
-                        nState    = ConnectState::FAILED;
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     /* Distributed Denial Of Service score threshold. */
@@ -2900,7 +2900,7 @@ namespace LLP
                             TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                             /* Commit our ACID transaction across LLD instances. */
-                            LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                            LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                         }
 
                         /* Verbose=3 dumps transaction data. */
@@ -2966,7 +2966,7 @@ namespace LLP
                                 }
 
                                 /* Commit our ACID transaction across LLD instances. */
-                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                             }
 
                             /* Write Success to log. */

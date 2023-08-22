@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2019
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -331,7 +331,7 @@ namespace TAO::API
             TAO::API::Transaction tx;
             if(!LLD::Logical->ReadTx(hash, tx))
             {
-                debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash.SubString()));
+                debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", hash.SubString());
                 break;
             }
 
@@ -357,16 +357,13 @@ namespace TAO::API
             TAO::API::Transaction tx;
             if(!LLD::Logical->ReadTx(*hash, tx))
             {
-                debug::warning(FUNCTION, "check for ", hashGenesis.SubString(), " failed at ", VARIABLE(hash->SubString()));
-                continue;
+                debug::warning(FUNCTION, "read for ", hashGenesis.SubString(), " failed at tx ", hash->SubString());
+                break;
             }
 
-            /* Execute the operations layer. */
+            /* Broadcast our transaction if it is in the mempool already. */
             if(TAO::Ledger::mempool.Has(*hash))
-            {
-                /* Broadcast our transaction now. */
                 tx.Broadcast();
-            }
 
             /* Otherwise accept and execute this transaction. */
             else if(!TAO::Ledger::mempool.Accept(tx))

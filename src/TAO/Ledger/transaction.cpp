@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -325,6 +325,10 @@ namespace TAO
         /* Gets the list of contracts internal to transaction. */
         const std::vector<TAO::Operation::Contract>& Transaction::Contracts() const
         {
+            /* Bind all of our contracts if we are accessing the entire vector. */
+            for(const auto& rContract : vContracts)
+                rContract.Bind(this, true);
+
             return vContracts;
         }
 
@@ -904,7 +908,7 @@ namespace TAO
                     /* Make sure the previous transaction is on disk or mempool. */
                     TAO::Ledger::Transaction txPrev;
                     if(!LLD::Ledger->ReadTx(hashPrevTx, txPrev, nFlags))
-                        return debug::error(FUNCTION, "prev transaction not on disk");
+                        return debug::error(FUNCTION, "prev transaction not on disk ", hashPrevTx.SubString());
 
                     /* Double check sequence numbers here. */
                     if(txPrev.nSequence + 1 != nSequence)

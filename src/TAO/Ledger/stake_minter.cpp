@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2018
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -73,8 +73,6 @@ namespace TAO
         , nStakeRate(0.0)
         , account()
         , stateLast()
-        , fStakeChange(false)
-        , stakeChange()
         , block()
         , fGenesis(false)
         , nTrust(0)
@@ -214,125 +212,73 @@ namespace TAO
 
 
         /* Identifies any pending stake change request and populates the appropriate instance data. */
-        bool StakeMinter::FindStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast)
+        bool StakeMinter::CheckStakeChange(const uint256_t& hashGenesis, const uint512_t hashLast,
+                                            TAO::Ledger::StakeChange &tStakeChange)
         {
             /* Check for pending stake change request */
-            bool fRemove = false;
-            TAO::Ledger::StakeChange request;
-            uint64_t nStake = account.get<uint64_t>("stake");
-            uint64_t nBalance = account.get<uint64_t>("balance");
-
             try
             {
-                if(!LLD::Local->ReadStakeChange(hashGenesis, request) || request.fProcessed)
-                {
-                    /* No stake change request to process */
-                    fStakeChange = false;
-                    stakeChange.SetNull();
-                    return true;
-                }
+                /* Attempt to read the stake change from the disk. */
+                if(!LLD::Local->ReadStakeChange(hashGenesis, tStakeChange))
+                    return false;
             }
-            catch(const std::exception& e)
-            {
-                std::string msg(e.what());
-                std::size_t nPos = msg.find("end of stream");
-                if(nPos != std::string::npos)
-                {
-                    /* Attempts to read/deserialize old format for StakeChange will throw an end of stream exception. */
-                    fRemove = true;
-                    debug::log(0, FUNCTION, "Obsolete format for stake change request...removing");
-                }
-                else
-                    throw; //rethrow exception if not end of stream
+            catch(const std::exception& e) { return debug::error(FUNCTION, "obsolete serialization format for stake change request"); }
 
-            }
+            /* Check if this stake change has processed already. */
+            if(tStakeChange.fProcessed)
+                return false;
 
             /* Verify stake change request is current version supported by minter */
-            if(!fRemove && request.nVersion != 1)
-            {
-                fRemove = true;
-                debug::log(0, FUNCTION, "Stake change request is unsupported version...removing");
-            }
+            if(tStakeChange.nVersion != 1)
+                return debug::error(FUNCTION, "Stake change request is unsupported version");
 
             /* Verify current hashGenesis matches requesting value */
-            if(!fRemove && hashGenesis != request.hashGenesis)
-            {
-                fRemove = true;
-                debug::log(0, FUNCTION, "Stake change request hashGenesis mismatch...removing");
-            }
+            if(hashGenesis != tStakeChange.hashGenesis)
+                return debug::error(FUNCTION, "Stake change request hashGenesis mismatch");
 
             /* Verify that no blocks have been staked since the change was requested */
-            if(!fRemove && request.hashLast != hashLast)
-            {
-                fRemove = true;
-                debug::log(0, FUNCTION, "Stake change request is stale...removing");
-            }
+            if(tStakeChange.hashLast != hashLast)
+                return debug::error(FUNCTION, "Stake change request is stale");
 
             /* Check for expired stake change request */
-            if(!fRemove && request.nExpires != 0 && request.nExpires < runtime::unifiedtimestamp())
+            if(tStakeChange.nExpires != 0 && tStakeChange.nExpires < runtime::unifiedtimestamp())
+                return debug::error(FUNCTION, "Stake change request has expired");
+
+            /* Get the crypto register address. */
+            const uint256_t hashCrypto =
+                TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
+
+            /* Get the crypto object register. */
+            TAO::Register::Crypto oCrypto;
+            if(!LLD::Register->ReadObject(hashCrypto, oCrypto))
+                return debug::error(FUNCTION, "Missing crypto register");
+
+            /* Verify the signature on the stake change request */
+            if(!oCrypto.VerifySignature("auth", tStakeChange.GetHash().GetBytes(), tStakeChange.vchPubKey, tStakeChange.vchSig))
             {
-                fRemove = true;
-                debug::log(0, FUNCTION, "Stake change request has expired...removing");
+                LLD::Local->EraseStakeChange(hashGenesis);
+                return debug::error(FUNCTION, "Invalid public key on stake change request");
             }
 
-            /* Validate the change request crypto signature */
-            if(!fRemove)
+            /* Check that we aren't out of range of our total stake. */
+            const uint64_t nStake = account.get<uint64_t>("stake");
+            if(tStakeChange.nAmount < 0 && int64_t(0 - tStakeChange.nAmount) > nStake)
             {
-                /* Get the crypto register address. */
-                const uint256_t hashCrypto =
-                    TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
-
-                /* Get the crypto object register. */
-                TAO::Register::Crypto oCrypto;
-                if(!LLD::Register->ReadObject(hashCrypto, oCrypto))
-                    return debug::error(FUNCTION, "Missing crypto register");
-
-                /* Verify the signature on the stake change request */
-                if(!oCrypto.VerifySignature("auth", request.GetHash().GetBytes(), request.vchPubKey, request.vchSig))
-                {
-                    fRemove = true;
-                    debug::log(0, FUNCTION, "Stake change request has expired...removing");
-                }
-
-                /* Check that amount doesn't exceed stake. */
-                if(request.nAmount < 0 && (0 - request.nAmount) > nStake)
-                {
-                    debug::log(0, FUNCTION, "Cannot unstake more than current stake, using current stake amount.");
-                    request.nAmount = 0 - nStake;
-                }
-
-                /* Check that amount doesn't exceed balance. */
-                if(request.nAmount > 0 && request.nAmount > nBalance)
-                {
-                    debug::log(0, FUNCTION, "Cannot add more than current balance to stake, using current balance.");
-                    request.nAmount = nBalance;
-                }
-
-                /* Check for empty amount. */
-                if(request.nAmount == 0)
-                {
-                    /* Remove request if no change to stake amount */
-                    fRemove = true;
-                }
+                debug::warning(FUNCTION, "Cannot unstake more than current stake, using current stake amount.");
+                tStakeChange.nAmount = 0 - nStake;
             }
 
-            /* Proceed with removing stake change. */
-            if(fRemove)
+            /* Check that we aren't adding more than our current available balance. */
+            const uint64_t nBalance = account.get<uint64_t>("balance");
+            if(tStakeChange.nAmount > 0 && tStakeChange.nAmount > nBalance)
             {
-                /* Reset internal values. */
-                fStakeChange = false;
-                stakeChange.SetNull();
-
-                /* Erase from local database. */
-                if (!LLD::Local->EraseStakeChange(hashGenesis))
-                    debug::error(FUNCTION, "Failed to remove stake change request");
-
-                return true;
+                debug::warning(FUNCTION, "Cannot add more than current balance to stake, using current balance.");
+                tStakeChange.nAmount = nBalance;
             }
 
-            /* Set the results into stake minter instance */
-            fStakeChange = true;
-            stakeChange = request;
+            /* Check for empty value. */
+            if(tStakeChange.nAmount == 0)
+                return debug::error(FUNCTION, "cannot adjust stake amount for zero value");
 
             return true;
         }
