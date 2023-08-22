@@ -609,7 +609,7 @@ namespace TAO
 
                     /* Check the contracts for our root transaction to make sure it's valid. */
                     bool fContractInvalid = false;
-                    for(const auto& rContract : vtx[0].Contracts())
+                    for(const auto& rContract : vtx[n].Contracts())
                     {
                         /* Sanitize the contract. */
                         if(!rContract.Sanitize())
