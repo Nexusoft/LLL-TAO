@@ -594,31 +594,6 @@ namespace TAO
                             debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
                         }
 
-                        /* Check if we need to swap conflicts for ledger. */
-                        if(fContractInvalid && mapConflicts.count(rTransaction.first))
-                        {
-                            /* Sort the list by sequence numbers. */
-                            std::sort(rTransaction.second.begin(), rTransaction.second.end());
-
-                            /* Connect all conflicted transactions in forward order. */
-                            for(auto tx = rTransaction.second.begin(); tx != rTransaction.second.end(); ++tx)
-                            {
-                                /* Accept conflicts back into mempool now. */
-                                const uint512_t hashTx = tx->GetHash();
-                                if(!Accept(*tx))
-                                {
-                                    debug::error(FUNCTION, "failed to accept tx ", hashTx.SubString());
-                                    break;
-                                }
-
-                                /* Remove conflicted transaction now. */
-                                mapConflicts.erase(hashTx);
-
-                                /* Write the txid of deleted transactions. */
-                                debug::notice(FUNCTION, "SWAPPED ", hashTx.SubString());
-                            }
-                        }
-
                         break;
                     }
                 }
