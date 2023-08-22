@@ -199,7 +199,7 @@ namespace TAO::Operation
         debug::fLogError = false;
 
         /* Start a ACID transaction (to be disposed). */
-        LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE);
+        LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
 
         /* We need to track the flag so we can surpress error reporting while testing this contract. */
         bool fSanitized = false;
@@ -222,7 +222,7 @@ namespace TAO::Operation
         }
 
         /* Abort the mempool ACID transaction once the contract is sanitized */
-        LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE);
+        LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
 
         return fSanitized;
     }
