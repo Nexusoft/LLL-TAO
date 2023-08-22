@@ -243,6 +243,10 @@ namespace TAO
             if(tStakeChange.nExpires != 0 && tStakeChange.nExpires < runtime::unifiedtimestamp())
                 return debug::error(FUNCTION, "Stake change request has expired");
 
+            /* Check for empty value. */
+            if(tStakeChange.nAmount == 0)
+                return debug::error(FUNCTION, "cannot adjust stake amount for zero value");
+
             /* Get the crypto register for the current user hashGenesis. */
             const TAO::Register::Address hashCrypto =
                 TAO::Register::Address(std::string("crypto"), hashGenesis, TAO::Register::Address::CRYPTO);
@@ -307,12 +311,18 @@ namespace TAO
                 }
             }
 
+            /* Flag to determine if we need to update our stake change. */
+            bool fUpdate = false;
+
             /* Check that we aren't out of range of our total stake. */
             const uint64_t nStake = account.get<uint64_t>("stake");
             if(tStakeChange.nAmount < 0 && int64_t(0 - tStakeChange.nAmount) > nStake)
             {
                 debug::warning(FUNCTION, "Cannot unstake more than current stake, using current stake amount.");
-                tStakeChange.nAmount = 0 - nStake;
+                tStakeChange.nAmount = int64_t(0 - nStake);
+
+                /* Flag for update now. */
+                fUpdate = true;
             }
 
             /* Check that we aren't adding more than our current available balance. */
@@ -321,11 +331,17 @@ namespace TAO
             {
                 debug::warning(FUNCTION, "Cannot add more than current balance to stake, using current balance.");
                 tStakeChange.nAmount = nBalance;
+
+                /* Flag for update now. */
+                fUpdate = true;
             }
 
-            /* Check for empty value. */
-            if(tStakeChange.nAmount == 0)
-                return debug::error(FUNCTION, "cannot adjust stake amount for zero value");
+            /* Handle a database update if needed, but erase if we failed to write to database. */
+            if(fUpdate && !LLD::Local->WriteStakeChange(hashGenesis, tStakeChange))
+            {
+                debug::warning(FUNCTION, "stake change failed to update value, erasing...");
+                LLD::Local->EraseStakeChange(hashGenesis);
+            }
 
             return true;
         }
