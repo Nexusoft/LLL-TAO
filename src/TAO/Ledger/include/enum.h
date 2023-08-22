@@ -290,6 +290,9 @@ namespace TAO
 
                 /* Force a remote lookup for -client mode. */
                 FORCED      = 0x07,
+
+                /* Write data into memory on sanitize. */
+                SANITIZE    = 0x08,
             };
         };
 
