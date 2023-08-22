@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/constants.h>
@@ -184,6 +185,36 @@ namespace TAO::Operation
             nVersion = nCurrent;
         else
             nVersion = nCurrent - 1;
+    }
+
+
+    /* Test if the given contract will pass validation on-chain. */
+    bool Contract::Sanitize() const
+    {
+        /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
+        debug::fLogError = false;
+
+        /* We need to track the flag so we can surpress error reporting while testing this contract. */
+        bool fSanitized = false;
+        try
+        {
+            /* Sanitize contract by building and executing it. */
+            fSanitized =
+                TAO::Operation::Execute(*this, TAO::Ledger::FLAGS::MINER);
+
+            /* Reenable error logging. */
+            debug::fLogError = true;
+        }
+        catch(const std::exception& e)
+        {
+            /* Just in case we encountered an exception whilst error logging was off, reenable error logging. */
+            debug::fLogError = true;
+
+            /* Log the error and attempt to continue processing */
+            debug::error(FUNCTION, e.what());
+        }
+
+        return fSanitized;
     }
 
 

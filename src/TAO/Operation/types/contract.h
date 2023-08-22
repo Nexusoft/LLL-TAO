@@ -153,6 +153,14 @@ namespace TAO::Operation
         void Bind(const uint64_t nTimestampIn, const uint256_t& hashCallerIn) const;
 
 
+        /** Sanitize
+         *
+         *  Test if the given contract will pass validation on-chain.
+         *
+         **/
+        bool Sanitize() const;
+
+
         /** Primitive
          *
          *  Get the primitive operation.
