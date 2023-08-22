@@ -198,9 +198,6 @@ namespace TAO::Operation
         /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
         debug::fLogError = false;
 
-        /* Start a ACID transaction (to be disposed). */
-        LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
-
         /* We need to track the flag so we can surpress error reporting while testing this contract. */
         bool fSanitized = false;
         try
@@ -208,21 +205,11 @@ namespace TAO::Operation
             /* Sanitize contract by building and executing it. */
             fSanitized =
                 TAO::Operation::Execute(*this, TAO::Ledger::FLAGS::SANITIZE);
-
-            /* Reenable error logging. */
-            debug::fLogError = true;
         }
-        catch(const std::exception& e)
-        {
-            /* Just in case we encountered an exception whilst error logging was off, reenable error logging. */
-            debug::fLogError = true;
+        catch(const std::exception& e) { debug::error(FUNCTION, e.what()); }
 
-            /* Log the error and attempt to continue processing */
-            debug::error(FUNCTION, e.what());
-        }
-
-        /* Abort the mempool ACID transaction once the contract is sanitized */
-        LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+        /* Turn back on error reporting now. */
+        debug::fLogError = true;
 
         return fSanitized;
     }

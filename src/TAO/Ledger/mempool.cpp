@@ -458,6 +458,7 @@ namespace TAO
                 mapClaimed.erase(tx.hashPrevTx);
                 mapOrphans.erase(tx.hashPrevTx);
                 mapLedger.erase(hashTx);
+                mapRejected.erase(hashTx);
 
                 return true;
             }
@@ -522,12 +523,30 @@ namespace TAO
                     if(!LLD::Ledger->ReadLast(rTransaction.first, hashLast))
                         break;
 
+                    /* Start a ACID transaction (to be disposed). */
+                    LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+
+                    /* Check the contracts for our root transaction to make sure it's valid. */
+                    bool fContractInvalid = false;
+                    for(const auto& rContract : vtx[0].Contracts())
+                    {
+                        /* Sanitize the contract. */
+                        if(!rContract.Sanitize())
+                        {
+                            fContractInvalid = true;
+                            break;
+                        }
+                    }
+
+                    /* Abort the mempool ACID transaction once the contract is sanitized */
+                    LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+
                     /* Check the last hash. */
-                    if(vtx[0].hashPrevTx != hashLast)
+                    if(vtx[0].hashPrevTx != hashLast || fContractInvalid)
                     {
                         /* Debug information. */
-                        if(mapRejected.count(vtx[0].hashPrevTx))
-                            debug::warning(FUNCTION, "ROOT REJECTED: orphaned rejected chain ", vtx[0].hashPrevTx.SubString());
+                        if(fContractInvalid)
+                            debug::warning(FUNCTION, "ROOT REJECTED: invalid orphan chain ", vtx[0].hashPrevTx.SubString());
                         else
                             debug::warning(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
 
@@ -547,24 +566,12 @@ namespace TAO
 
                             /* Find the transaction in pool. */
                             const uint512_t hashTx = tx->GetHash();
-                            if(mapLedger.count(hashTx))
-                            {
-                                /* Erase from the memory map. */
-                                mapClaimed.erase(tx->hashPrevTx);
-                                mapLedger.erase(hashTx);
 
-                                /* Handle for a rejected chain. */
-                                if(mapRejected.count(hashTx))
-                                {
-                                    /* Erase from our rejected map. */
-                                    mapRejected.erase(hashTx);
+                            /* Erase from the memory map. */
+                            Remove(hashTx);
 
-                                    debug::notice(FUNCTION, "REJECTED ", hashTx.SubString());
-                                }
-                                else
-                                    debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
-
-                            }
+                            /* Write the txid of deleted transactions. */
+                            debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
                         }
 
                         break;
@@ -599,7 +606,7 @@ namespace TAO
 
                             if(tx->GetHash() == hashLast)
                             {
-                                debug::log(0, "REACHED HASH LAST");
+                                debug::notice(FUNCTION, "REACHED HASH LAST ", hashLast.SubString());
                                 break;
                             }
 
@@ -611,7 +618,14 @@ namespace TAO
                                 break;
                             }
 
-                            Remove(tx->GetHash());
+                            /* Find the transaction in pool. */
+                            const uint512_t hashTx = tx->GetHash();
+
+                            /* Erase from the memory map. */
+                            Remove(hashTx);
+
+                            /* Write the txid of deleted transactions. */
+                            debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
                         }
 
                         /* Commit the memory transaction. */
@@ -626,6 +640,8 @@ namespace TAO
                     /* Set last hash. */
                     hashLast = vtx[n].GetHash();
                 }
+
+
             }
         }
 
