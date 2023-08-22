@@ -193,7 +193,10 @@ namespace TAO::Operation
     {
         /* Check that our contract is already bound. */
         if(hashCaller == 0 || nTimestamp == 0 || hashTx == 0)
-            return debug::error(FUNCTION, "contract has not been linked to a tx. Did you forget to call Bind()?");
+        {
+            debug::error(FUNCTION, "contract has not been linked to a tx. Did you forget to call Bind()?");
+            return true; //since we rely on this method to prune invalid contracts, don't send a failure notice here
+        }
 
         /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
         debug::fLogError = false;
