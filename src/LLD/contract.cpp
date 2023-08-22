@@ -31,6 +31,7 @@ namespace LLD
     , MEMORY_MUTEX()
     , pMemory(nullptr)
     , pMiner(nullptr)
+    , pSanitize(nullptr)
     , pCommit(new ContractTransaction())
     {
     }
@@ -46,6 +47,10 @@ namespace LLD
         /* Free miner memory. */
         if(pMiner)
             delete pMiner;
+
+        /* Free sanitize memory. */
+        if(pSanitize)
+            delete pSanitize;
 
         /* Free commited memory. */
         if(pCommit)
@@ -84,6 +89,16 @@ namespace LLD
             /* Check for pending transactions. */
             if(pMiner)
                 pMiner->mapContracts[pair] = hashCaller;
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for pending transactions. */
+            if(pSanitize)
+                pSanitize->mapContracts[pair] = hashCaller;
 
             return true;
         }
@@ -197,6 +212,19 @@ namespace LLD
                 return true;
             }
         }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for a memory transaction first */
+            if(pSanitize && pSanitize->mapContracts.count(pairContract))
+            {
+                /* Get the state from temporary transaction. */
+                hashCaller = pSanitize->mapContracts[pairContract];
+
+                return true;
+            }
+        }
 
         /* Check our disk state first. */
         return Read(pairContract, hashCaller);
@@ -225,6 +253,14 @@ namespace LLD
 
             /* Check pending transaction memory. */
             if(pMiner && pMiner->mapContracts.count(pairContract))
+                return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check pending transaction memory. */
+            if(pSanitize && pSanitize->mapContracts.count(pairContract))
                 return true;
         }
 
@@ -296,6 +332,18 @@ namespace LLD
             return;
         }
 
+        /* Check for sanitize. */
+        if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pSanitize)
+                delete pSanitize;
+
+            pSanitize = new ContractTransaction();
+
+            return;
+        }
+
         /* Set the pre-commit memory mode. */
         if(pMemory)
             delete pMemory;
@@ -317,6 +365,18 @@ namespace LLD
                 delete pMiner;
 
             pMiner = nullptr;
+
+            return;
+        }
+
+        /* Check for miner. */
+        if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pSanitize)
+                delete pSanitize;
+
+            pSanitize = nullptr;
 
             return;
         }

@@ -32,11 +32,12 @@ namespace LLD
     , nBucketsIn
     , nCacheIn)
 
-    , MEMORY  ( )
-    , pMemory (nullptr)
-    , pMiner  (nullptr)
-    , pCommit (new RegisterTransaction())
-    , pLookup (nullptr)
+    , MEMORY    ( )
+    , pMemory   (nullptr)
+    , pMiner    (nullptr)
+    , pSanitize (nullptr)
+    , pCommit   (new RegisterTransaction())
+    , pLookup   (nullptr)
     {
         /* Add a register cache if in client mode. */
         if(config::fClient.load())
@@ -54,6 +55,10 @@ namespace LLD
         /* Cleanup memory transactions. */
         if(pMiner)
             delete pMiner;
+
+        /* Free sanitize memory. */
+        if(pSanitize)
+            delete pSanitize;
 
         /* Cleanup commited states. */
         if(pCommit)
@@ -119,6 +124,16 @@ namespace LLD
             /* Check for memory mode. */
             if(pMiner)
                 pMiner->mapStates[hashRegister] = state;
+
+            return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY);
+
+            /* Check for memory mode. */
+            if(pSanitize)
+                pSanitize->mapStates[hashRegister] = state;
 
             return true;
         }
@@ -207,6 +222,19 @@ namespace LLD
             {
                 /* Get the state from temporary transaction. */
                 state = pMiner->mapStates[hashRegister];
+
+                return true;
+            }
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY);
+
+            /* Check for a memory transaction first */
+            if(pSanitize && pSanitize->mapStates.count(hashRegister))
+            {
+                /* Get the state from temporary transaction. */
+                state = pSanitize->mapStates[hashRegister];
 
                 return true;
             }
@@ -388,6 +416,20 @@ namespace LLD
                 return true;
             }
         }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY);
+
+            /* Check for a memory transaction first */
+            if(pSanitize && pSanitize->mapStates.count(hashRegister))
+            {
+                /* Get the state from temporary transaction. */
+                state = pSanitize->mapStates[hashRegister];
+
+                return true;
+            }
+        }
+
 
         return ReadState(hashRegister, state);
     }
@@ -426,6 +468,14 @@ namespace LLD
 
             /* Check internal memory state. */
             if(pMiner && pMiner->mapStates.count(hashRegister))
+                return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY);
+
+            /* Check internal memory state. */
+            if(pSanitize && pSanitize->mapStates.count(hashRegister))
                 return true;
         }
 
@@ -597,6 +647,18 @@ namespace LLD
             return;
         }
 
+        /* Check for sanitize. */
+        if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pSanitize)
+                delete pSanitize;
+
+            pSanitize = new RegisterTransaction();
+
+            return;
+        }
+
         /* Set the pre-commit memory mode. */
         if(pMemory)
             delete pMemory;
@@ -618,6 +680,18 @@ namespace LLD
                 delete pMiner;
 
             pMiner = nullptr;
+
+            return;
+        }
+
+        /* Check for sanitize. */
+        if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pSanitize)
+                delete pSanitize;
+
+            pSanitize = nullptr;
 
             return;
         }

@@ -89,6 +89,10 @@ namespace LLD
         LedgerTransaction* pMiner;
 
 
+        /** Sanitize transaction to track current states for contract verification. **/
+        LedgerTransaction* pSanitize;
+
+
         /** Ledger transaction to keep open all commited data. **/
         LedgerTransaction* pCommit;
 

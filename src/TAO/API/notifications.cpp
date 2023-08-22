@@ -378,7 +378,7 @@ namespace TAO::API
         bool fSanitized = false;
 
         /* Start a ACID transaction (to be disposed). */
-        LLD::TxnBegin(TAO::Ledger::FLAGS::MINER);
+        LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE);
 
         /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
         debug::fLogError = false;
@@ -387,7 +387,8 @@ namespace TAO::API
         {
             /* Sanitize contract by building and executing it. */
             fSanitized =
-                TAO::Register::Build(rContract, mapStates, TAO::Ledger::FLAGS::MINER) && TAO::Operation::Execute(rContract, TAO::Ledger::FLAGS::MINER);
+                (TAO::Register::Build(rContract, mapStates, TAO::Ledger::FLAGS::SANITIZE) &&
+                 TAO::Operation::Execute(rContract, TAO::Ledger::FLAGS::SANITIZE));
 
             /* Reenable error logging. */
             debug::fLogError = true;
@@ -402,7 +403,7 @@ namespace TAO::API
         }
 
         /* Abort the mempool ACID transaction once the contract is sanitized */
-        LLD::TxnAbort(TAO::Ledger::FLAGS::MINER);
+        LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE);
 
         return fSanitized;
     }

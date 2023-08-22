@@ -364,21 +364,7 @@ namespace LLD
     {
         /* Special check if using MINER or SANITIZE flags. */
         if(nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
-        {
-            /* Abort the contract DB transaction. */
-            if(Contract && (nInstances & INSTANCES::CONTRACT))
-                Contract->MemoryRelease(nFlags);
-
-            /* Abort the register DB transacdtion. */
-            if(Register && (nInstances & INSTANCES::REGISTER))
-                Register->MemoryRelease(nFlags);
-
-            /* Abort the ledger DB transaction. */
-            if(Ledger && (nInstances & INSTANCES::LEDGER))
-                Ledger->MemoryRelease(nFlags);
-
             return; //we want to abort in case this is called accidentally. We don't want to commit these states to internal memory
-        }
 
         /* Commit the contract DB transaction. */
         if(Contract && (nInstances & INSTANCES::CONTRACT))

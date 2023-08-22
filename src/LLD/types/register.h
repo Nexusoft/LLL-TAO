@@ -70,6 +70,10 @@ namespace LLD
         RegisterTransaction* pMiner;
 
 
+        /** Sanitize transaction to track current states for contract verification. **/
+        RegisterTransaction* pSanitize;
+
+
         /** Register transaction to keep open all commited data. **/
         RegisterTransaction* pCommit;
 

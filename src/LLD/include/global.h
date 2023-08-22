@@ -54,6 +54,7 @@ namespace LLD
             //combined values
             CONSENSUS = (CONTRACT | REGISTER | LEDGER | TRUST | LEGACY),
             MERKLE    = (CONTRACT | REGISTER | CLIENT | LOGICAL),
+            MEMORY    = (CONTRACT | REGISTER | LEDGER),
         };
     };
 

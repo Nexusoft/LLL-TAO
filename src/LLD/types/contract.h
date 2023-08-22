@@ -64,6 +64,10 @@ namespace LLD
         ContractTransaction* pMiner;
 
 
+        /** Sanitize transaction to track current states for contract verification. **/
+        ContractTransaction* pSanitize;
+
+
         /** Register transaction to keep open all commited data. **/
         ContractTransaction* pCommit;
 
