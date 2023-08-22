@@ -191,6 +191,10 @@ namespace TAO::Operation
     /* Test if the given contract will pass validation on-chain. */
     bool Contract::Sanitize() const
     {
+        /* Check that our contract is already bound. */
+        if(hashCaller == 0 || nTimestamp == 0 || hashTx == 0)
+            return debug::error(FUNCTION, "contract has not been linked to a tx. Did you forget to call Bind()?");
+
         /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
         debug::fLogError = false;
 
