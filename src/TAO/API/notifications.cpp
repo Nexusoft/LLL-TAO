@@ -433,7 +433,7 @@ namespace TAO::API
             return true; //we return true here so we don't stop notifications from processing
 
         /* Track our total failed contracts for debugging purposes. */
-        uint32_t nFailedContracts = 0;
+        uint32_t nFailedContracts = 0, nFeeContracts = 0;
 
         /* Loop until we reach confirmed transaction. */
         while(!config::fShutdown.load())
@@ -487,7 +487,17 @@ namespace TAO::API
 
                 /* Sanitize the contract. */
                 if(SanitizeContract(tContract, mapStates))
+                {
+                    /* We don't need to repeat our OP::FEE contracts. */
+                    if(tContract.Primitive() == TAO::Operation::OP::FEE)
+                    {
+                        ++nFeeContracts;
+                        continue;
+                    }
+
+                    /* Add to sanitized queue. */
                     vSanitized.emplace_back(std::move(tContract));
+                }
                 else
                 {
                     /* Set our root as the first occurance since the rest of the chain will then be invalid. */
@@ -507,7 +517,7 @@ namespace TAO::API
             return true;
 
         /* If we reached here, we need to rebuild our sigchain indexes and transactions. */
-        debug::warning(FUNCTION, "sigchain contains ", nFailedContracts, " invalid contracts, rebuilding ", vSanitized.size(), " contracts");
+        debug::warning(FUNCTION, "sigchain contains ", nFailedContracts, " invalid contracts (", nFeeContracts, " OP::FEE's removed), rebuilding ", vSanitized.size(), " contracts");
 
         /* Now we want to disconnect our transactions up to their root. */
         for(const auto& rHash : vHashes)
