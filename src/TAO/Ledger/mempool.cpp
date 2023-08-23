@@ -488,8 +488,6 @@ namespace TAO
         {
             RECURSIVE(MUTEX);
 
-            //TODO: evict conflicted transctions from mempool by checking sequence number to current disk height
-
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapTransactions;
 
@@ -507,6 +505,108 @@ namespace TAO
                 mapTransactions[hashGenesis].push_back(tx.second);
             }
 
+            /* Loop transctions map by genesis. */
+            for(auto& rTransaction : mapTransactions)
+            {
+                /* Get reference of the vector. */
+                std::vector<TAO::Ledger::Transaction>& vtx = rTransaction.second;
+
+                /* Sort the list by sequence numbers. */
+                std::sort(vtx.begin(), vtx.end());
+
+                /* Add the hashes into list. */
+                uint512_t hashLastDisk = 0;
+                if(!LLD::Ledger->ReadLast(rTransaction.first, hashLastDisk))
+                    break;
+
+                /* Loop through transaction by genesis. */
+                uint512_t hashLast = hashLastDisk; //we make a copy here so we can know when we reached end of chain.
+                for(uint32_t n = 0; n < vtx.size(); ++n)
+                {
+                    /* We don't run this check on our first transaction. */
+                    if(!vtx[n].IsFirst())
+                    {
+                        /* Start a ACID transaction (to be disposed). */
+                        LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+
+                        /* Check the contracts for our root transaction to make sure it's valid. */
+                        bool fContractInvalid = false;
+                        for(const auto& rContract : vtx[n].Contracts())
+                        {
+                            /* Sanitize the contract. */
+                            if(!rContract.Sanitize())
+                            {
+                                fContractInvalid = true;
+                                break;
+                            }
+                        }
+
+                        /* Abort the mempool ACID transaction once the contract is sanitized */
+                        LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+
+                        /* Check that transaction is in sequence. */
+                        if(vtx[n].hashPrevTx != hashLast || fContractInvalid)
+                        {
+                            /* Debug information. */
+                            if(fContractInvalid)
+                                debug::notice(FUNCTION, "ORPHAN REJECTED INDEX ", n, ": invalid orphan chain ", vtx[n].hashPrevTx.SubString());
+                            else
+                                debug::notice(FUNCTION, "ORPHAN DETECTED INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
+
+                            /* Begin the memory transaction. */
+                            LLD::TxnBegin(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
+
+                            /* Disconnect all transactions in reverse order. */
+                            for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
+                            {
+                                /* Find the transaction in pool. */
+                                const uint512_t hashTx = tx->GetHash();
+
+                                /* Check for our stop hash. */
+                                if(hashTx == hashLast)
+                                {
+                                    debug::notice(FUNCTION, "REACHED HASH LAST ", hashLast.SubString());
+                                    break;
+                                }
+
+                                /* Debug output tx. */
+                                tx->print();
+
+                                /* Check for ending of sequence. */
+                                const bool fRoot =
+                                    (tx->hashPrevTx == hashLastDisk);
+
+                                /* Reset memory states to disk indexes. */
+                                if(!tx->Disconnect(fRoot ? FLAGS::ERASE : FLAGS::MEMPOOL))
+                                {
+                                    LLD::TxnAbort(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
+                                    break;
+                                }
+
+                                /* Erase from the memory map. */
+                                Remove(hashTx);
+
+                                /* Write the txid of deleted transactions. */
+                                debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
+
+                                /* Special output for our root orphan. */
+                                if(fRoot)
+                                    debug::notice(FUNCTION, "ROOT ORPHAN: disconnected root with FLAGS::ERASE: ", hashTx.SubString());
+                            }
+
+                            /* Commit the memory transaction. */
+                            LLD::TxnCommit(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
+
+                            break;
+                        }
+                    }
+
+                    /* Set last hash. */
+                    hashLast = vtx[n].GetHash();
+                }
+            }
+
+            //TODO: evict conflicted transctions from mempool by checking sequence number to current disk height
             /* Create map of transactions by genesis. */
             std::map<uint256_t, std::vector<TAO::Ledger::Transaction> > mapConflicted;
 
@@ -522,158 +622,6 @@ namespace TAO
 
                 /* Push to back of map. */
                 mapConflicted[hashGenesis].push_back(tx.second);
-            }
-
-            /* Loop transctions map by genesis. */
-            for(auto& rTransaction : mapTransactions)
-            {
-                /* Get reference of the vector. */
-                std::vector<TAO::Ledger::Transaction>& vtx = rTransaction.second;
-
-                /* Sort the list by sequence numbers. */
-                std::sort(vtx.begin(), vtx.end());
-
-                /* Add the hashes into list. */
-                uint512_t hashLast = 0;
-
-                /* Check last hash for valid transactions. */
-                if(!vtx[0].IsFirst())
-                {
-                    /* Read last hash. */
-                    if(!LLD::Ledger->ReadLast(rTransaction.first, hashLast))
-                        break;
-
-                    /* Start a ACID transaction (to be disposed). */
-                    LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
-
-                    /* Check the contracts for our root transaction to make sure it's valid. */
-                    bool fContractInvalid = false;
-                    for(const auto& rContract : vtx[0].Contracts())
-                    {
-                        /* Sanitize the contract. */
-                        if(!rContract.Sanitize())
-                        {
-                            fContractInvalid = true;
-                            break;
-                        }
-                    }
-
-                    /* Abort the mempool ACID transaction once the contract is sanitized */
-                    LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
-
-                    /* Check the last hash. */
-                    if(vtx[0].hashPrevTx != hashLast || fContractInvalid)
-                    {
-                        /* Debug information. */
-                        if(fContractInvalid)
-                            debug::warning(FUNCTION, "ROOT REJECTED: invalid orphan chain ", vtx[0].hashPrevTx.SubString());
-                        else
-                            debug::warning(FUNCTION, "ROOT ORPHAN: last hash mismatch ", vtx[0].hashPrevTx.SubString());
-
-                        /* Disconnect all transactions in reverse order. */
-                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
-                        {
-                            /* Show the removal. */
-                            tx->print();
-
-                            /* Reset memory states to disk indexes. */
-                            if(!tx->Disconnect(FLAGS::ERASE))
-                            {
-                                debug::error(FUNCTION, "failed to disconnect tx ", tx->GetHash().SubString());
-
-                                break;
-                            }
-
-                            /* Find the transaction in pool. */
-                            const uint512_t hashTx = tx->GetHash();
-
-                            /* Erase from the memory map. */
-                            Remove(hashTx);
-
-                            /* Write the txid of deleted transactions. */
-                            debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
-                        }
-
-                        break;
-                    }
-                }
-
-                /* Set last from next transaction. */
-                hashLast = vtx[0].GetHash();
-
-                /* Loop through transaction by genesis. */
-                for(uint32_t n = 1; n < vtx.size(); ++n)
-                {
-                    /* Start a ACID transaction (to be disposed). */
-                    LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
-
-                    /* Check the contracts for our root transaction to make sure it's valid. */
-                    bool fContractInvalid = false;
-                    for(const auto& rContract : vtx[n].Contracts())
-                    {
-                        /* Sanitize the contract. */
-                        if(!rContract.Sanitize())
-                        {
-                            fContractInvalid = true;
-                            break;
-                        }
-                    }
-
-                    /* Abort the mempool ACID transaction once the contract is sanitized */
-                    LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
-
-                    /* Check that transaction is in sequence. */
-                    if(vtx[n].hashPrevTx != hashLast || fContractInvalid)
-                    {
-                        /* Debug information. */
-                        if(fContractInvalid)
-                            debug::warning(FUNCTION, "ORPHAN REJECTED INDEX ", n, ": invalid orphan chain ", vtx[n].hashPrevTx.SubString());
-                        else
-                            debug::warning(FUNCTION, "ORPHAN DETECTED INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
-
-                        /* Begin the memory transaction. */
-                        LLD::TxnBegin(FLAGS::MEMPOOL);
-
-                        /* Disconnect all transactions in reverse order. */
-                        for(auto tx = vtx.rbegin(); tx != vtx.rend(); ++tx)
-                        {
-                            /* Find the transaction in pool. */
-                            const uint512_t hashTx = tx->GetHash();
-
-                            /* Check for our stop hash. */
-                            if(hashTx == hashLast)
-                            {
-                                debug::notice(FUNCTION, "REACHED HASH LAST ", hashLast.SubString());
-                                break;
-                            }
-
-                            /* Debug output tx. */
-                            tx->print();
-
-                            /* Reset memory states to disk indexes. */
-                            if(!tx->Disconnect(FLAGS::MEMPOOL))
-                            {
-                                LLD::TxnAbort(FLAGS::MEMPOOL);
-
-                                break;
-                            }
-
-                            /* Erase from the memory map. */
-                            Remove(hashTx);
-
-                            /* Write the txid of deleted transactions. */
-                            debug::notice(FUNCTION, "DELETED ", hashTx.SubString());
-                        }
-
-                        /* Commit the memory transaction. */
-                        LLD::TxnCommit(FLAGS::MEMPOOL);
-
-                        break;
-                    }
-
-                    /* Set last hash. */
-                    hashLast = vtx[n].GetHash();
-                }
             }
         }
 
