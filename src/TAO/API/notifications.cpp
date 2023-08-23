@@ -464,9 +464,6 @@ namespace TAO::API
         /* Track the root transaction that has an invalid contract in mempool. */
         uint512_t hashRoot;
 
-        /* We want to track our list of states to sanitize. */
-        std::map<uint256_t, TAO::Register::State> mapStates;
-
         /* Reverse iterate our list of entries. */
         std::vector<TAO::Operation::Contract> vSanitized;
         for(auto hash = vHashes.rbegin(); hash != vHashes.rend(); ++hash)
@@ -479,6 +476,9 @@ namespace TAO::API
                 break;
             }
 
+            /* Start a ACID transaction (to be disposed). */
+            LLD::TxnBegin(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
+
             /* Iterate through our contracts. */
             for(const auto& rContract : tx.Contracts())
             {
@@ -486,7 +486,7 @@ namespace TAO::API
                 TAO::Operation::Contract tContract = rContract;
 
                 /* Sanitize the contract. */
-                if(SanitizeContract(tContract, mapStates))
+                if(tContract.Sanitize())
                 {
                     /* We don't need to repeat our OP::FEE contracts. */
                     if(tContract.Primitive() == TAO::Operation::OP::FEE)
@@ -507,9 +507,12 @@ namespace TAO::API
                     /* Increment our failed counter. */
                     ++nFailedContracts;
 
-                    debug::warning(FUNCTION, "failed to sanitize contract at tx ", hashRoot.SubString());
+                    debug::notice(FUNCTION, "failed to sanitize contract at tx ", hashRoot.SubString());
                 }
             }
+
+            /* Abort the mempool ACID transaction once the contract is sanitized */
+            LLD::TxnAbort(TAO::Ledger::FLAGS::SANITIZE, LLD::INSTANCES::MEMORY);
         }
 
         /* Check if we need to rebuild our sigchain. */
@@ -517,7 +520,7 @@ namespace TAO::API
             return true;
 
         /* If we reached here, we need to rebuild our sigchain indexes and transactions. */
-        debug::warning(FUNCTION, "sigchain contains ", nFailedContracts, " invalid contracts (", nFeeContracts, " OP::FEE's removed), rebuilding ", vSanitized.size(), " contracts");
+        debug::notice(FUNCTION, "sigchain contains ", nFailedContracts, " invalid contracts (", nFeeContracts, " OP::FEE's removed), rebuilding ", vSanitized.size(), " contracts");
 
         /* Now we want to disconnect our transactions up to their root. */
         for(const auto& rHash : vHashes)
