@@ -549,9 +549,9 @@ namespace TAO
                         {
                             /* Debug information. */
                             if(fContractInvalid)
-                                debug::notice(FUNCTION, "ORPHAN REJECTED INDEX ", n, ": invalid orphan chain ", vtx[n].hashPrevTx.SubString());
+                                debug::notice(FUNCTION, "ORPHAN REJECTED AT INDEX ", n, ": invalid orphan chain ", vtx[n].hashPrevTx.SubString());
                             else
-                                debug::notice(FUNCTION, "ORPHAN DETECTED INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
+                                debug::notice(FUNCTION, "ORPHAN DETECTED AT INDEX ", n, ": last hash mismatch ", vtx[n].hashPrevTx.SubString());
 
                             /* Begin the memory transaction. */
                             LLD::TxnBegin(FLAGS::MEMPOOL, LLD::INSTANCES::MEMORY);
