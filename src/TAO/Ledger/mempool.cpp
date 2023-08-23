@@ -573,8 +573,7 @@ namespace TAO
                                 tx->print();
 
                                 /* Check for ending of sequence. */
-                                const bool fRoot =
-                                    (tx->hashPrevTx == hashLastDisk);
+                                const bool fRoot = (n == 0);
 
                                 /* Reset memory states to disk indexes. */
                                 if(!tx->Disconnect(fRoot ? FLAGS::ERASE : FLAGS::MEMPOOL))
