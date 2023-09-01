@@ -822,8 +822,7 @@ namespace TAO::API
                     jRet["ticker"]  = "NXS";
 
                     /* Handle for add stake. */
-                    if(nStakeChange != 0)
-                        jRet["change"] = FormatStake(nStakeChange);
+                    jRet["change"] = FormatStake(nStakeChange);
 
                     break;
                 }

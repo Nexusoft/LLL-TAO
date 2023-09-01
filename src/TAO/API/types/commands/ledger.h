@@ -120,6 +120,19 @@ namespace TAO::API
         encoding::json GetTransaction(const encoding::json& jParams, const bool fHelp);
 
 
+        /** RecentBlocks
+         *
+         *  Retrieves the block data of last blocks up to given limits.
+         *
+         *  @param[in] jParams The parameters from the API call.
+         *  @param[in] fHelp Trigger for help data.
+         *
+         *  @return The return object in JSON.
+         *
+         **/
+        encoding::json RecentBlocks(const encoding::json& jParams, const bool fHelp);
+
+
         /** SubmitTransaction
          *
          *  Submits a raw transaction to the network
