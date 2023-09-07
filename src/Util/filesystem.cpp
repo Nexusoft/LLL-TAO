@@ -23,7 +23,6 @@ ________________________________________________________________________________
 #include <cstring>
 #include <iostream>
 #include <fstream>
-#include <filesystem>
 
 #include <Util/include/debug.h>
 #include <Util/include/filesystem.h>
@@ -56,15 +55,10 @@ namespace filesystem
     /* Get the size of a current file. */
     int64_t size(const std::string& strPath)
     {
-        try
-        {
-            return std::filesystem::file_size(strPath);
-        }
-        catch(std::exception& e)
-        {
-        }
+        struct stat stat_buf;
+        int rc = stat(strPath.c_str(), &stat_buf);
 
-        return -1;
+        return rc == 0 ? stat_buf.st_size : -1;
     }
 
 
