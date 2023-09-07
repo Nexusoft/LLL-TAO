@@ -142,7 +142,7 @@ namespace LLP
         uint16_t nStatus = 500;
 
         /* Get our file's absolute path. */
-        const std::string strFile =
+        std::string strFile =
             debug::safe_printstr(config::strFileServerRoot, strRequest);
 
         /* Check that the file exists. */
@@ -150,8 +150,12 @@ namespace LLP
         if(filesystem::exists(strFile))
         {
             /* Check if this is a directory. */
-            if(!filesystem::is_directory(strFile))
+            if(!filesystem::is_directory(strFile) || filesystem::exists(strFile + "/index.html"))
             {
+                /* Check if we are reading our index file. */
+                if(filesystem::exists(strFile + "/index.html"))
+                    strFile += "/index.html";
+
                 /* Read our file from disk now. */
                 std::fstream ssFile =
                     std::fstream(strFile, std::ios::in | std::ios::out | std::ios::binary);
@@ -227,7 +231,6 @@ namespace LLP
                 break;
             }
         }
-
 
         /* Write the response */
         this->WritePacket(RESPONSE);
