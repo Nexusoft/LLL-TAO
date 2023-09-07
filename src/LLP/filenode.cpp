@@ -166,7 +166,7 @@ namespace LLP
         if(filesystem::exists(strFile))
         {
             /* Check if this is a directory. */
-            if(!std::filesystem::is_directory(strFile))
+            if(!filesystem::is_directory(strFile))
             {
                 /* Read our file from disk now. */
                 std::fstream ssFile =
