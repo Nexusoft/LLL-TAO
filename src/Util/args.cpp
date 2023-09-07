@@ -39,6 +39,7 @@ namespace config
     std::atomic<bool> fClient(false);
     std::atomic<bool> fTestNet(false);
     std::atomic<bool> fListen(false);
+    std::atomic<bool> fFileServer(false);
     std::atomic<bool> fMultiuser(false);
     std::atomic<bool> fProcessNotifications(false);
     std::atomic<bool> fInitialized(false);
@@ -53,6 +54,9 @@ namespace config
 
     /* Keeps track of the network owner hash. */
     uint256_t hashNetworkOwner;
+
+    /* Use this root value to detect if we want to enable our fileserver. */
+    std::string strFileServerRoot;
 
     /* Declare our arguments mutex. */
     std::recursive_mutex ARGS_MUTEX;
@@ -203,6 +207,7 @@ namespace config
         fDaemon                 = GetBoolArg("-daemon", false);
         fTestNet                = (GetArg("-testnet", 0) > 0);
         fListen                 = GetBoolArg("-listen", true);
+        fFileServer             = (GetArg("-fileroot", "") != "");
         fClient                 = GetBoolArg("-client", false);
         //fUseProxy               = GetBoolArg("-proxy")
         fMultiuser              = GetBoolArg("-multiuser", false) || GetBoolArg("-multiusername", false);
@@ -216,6 +221,10 @@ namespace config
         fIndexAddress           = GetBoolArg("-indexaddress");
         fIndexRegister          = GetBoolArg("-indexregister");
         nVerbose                = GetArg("-verbose", 0);
+
+        /* Cache our fileserver root if enabled. */
+        if(fFileServer.load())
+            strFileServerRoot = GetArg("-fileroot", "");
 
         /* Private Mode: Sub-Network Testnet. DO NOT USE FOR PRODUCTION. */
         if(GetBoolArg("-private", false))

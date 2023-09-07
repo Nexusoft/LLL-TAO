@@ -30,12 +30,12 @@ namespace LLP
     /* Track our hostname so we don't have to call system every request. */
     std::string strHostname;
 
-
     /* Declare the Global LLP Instances. */
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LookupNode>*  LOOKUP_SERVER;
     Server<TimeNode>*    TIME_SERVER;
     Server<APINode>*     API_SERVER;
+    Server<FileNode>*    FILE_SERVER;
     Server<RPCNode>*     RPC_SERVER;
     Server<Miner>*       MINING_SERVER;
 
@@ -142,6 +142,36 @@ namespace LLP
 
             /* Create the server instance. */
             TRITIUM_SERVER = new Server<TritiumNode>(CONFIG);
+        }
+
+
+        /* FILE_SERVER instance */
+        if(config::fFileServer.load())
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(80); //default http uses port 80
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-httpmeters"), false);
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-httpssl"));
+            CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-httpremote"), true);
+            CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-httpsslrequired"), false);
+            CONFIG.PORT_SSL        = 443; //default https uses port 443
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-httpthreads"), 8);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-httpcscore"), 5);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-httprscore"), 5);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-httptimespan"), 60);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-httptimeout"), 30);
+
+            /* Create the server instance. */
+            LLP::FILE_SERVER = new Server<FileNode>(CONFIG);
+
+            /* We want to post a notice if this parameter is enabled. */
+            debug::notice("HTTP SERVER ENABLED: you have set -fileroot=<directory> parameter, listening on port 80.");
         }
 
 

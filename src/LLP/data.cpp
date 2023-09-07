@@ -19,6 +19,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
+#include <LLP/types/filenode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
@@ -630,6 +631,7 @@ namespace LLP
     template class DataThread<LookupNode>;
     template class DataThread<TimeNode>;
     template class DataThread<APINode>;
+    template class DataThread<FileNode>;
     template class DataThread<RPCNode>;
     template class DataThread<Miner>;
 }

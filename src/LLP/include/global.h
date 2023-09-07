@@ -12,8 +12,6 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLP_INCLUDE_GLOBAL_H
-#define NEXUS_LLP_INCLUDE_GLOBAL_H
 
 #include <LLP/include/port.h>
 #include <LLP/include/seeds.h>
@@ -23,6 +21,7 @@ ________________________________________________________________________________
 #include <LLP/templates/server.h>
 
 #include <LLP/types/apinode.h>
+#include <LLP/types/filenode.h>
 #include <LLP/types/lookup.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
@@ -38,6 +37,7 @@ namespace LLP
     extern Server<LookupNode>*   LOOKUP_SERVER;
     extern Server<TimeNode>*     TIME_SERVER;
     extern Server<APINode>*      API_SERVER;
+    extern Server<FileNode>*     FILE_SERVER;
     extern Server<RPCNode>*      RPC_SERVER;
     extern Server<Miner>*        MINING_SERVER;
 
@@ -210,5 +210,3 @@ namespace LLP
     }
 
 }
-
-#endif

@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
+#include <LLP/types/filenode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
@@ -1004,6 +1005,7 @@ namespace LLP
     template class Server<LookupNode>;
     template class Server<TimeNode>;
     template class Server<APINode>;
+    template class Server<FileNode>;
     template class Server<RPCNode>;
     template class Server<Miner>;
 }

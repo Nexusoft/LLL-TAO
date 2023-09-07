@@ -58,8 +58,8 @@ bool CheckPermissions(const std::string &strAddress, const uint16_t nPort)
             || nPort == static_cast<uint16_t>(config::GetArg(std::string("-port"), TRITIUM_MAINNET_PORT))
             || nPort == static_cast<uint16_t>(config::GetArg(std::string("-sslport"), TRITIUM_MAINNET_SSL_PORT))
             || nPort == static_cast<uint16_t>(MAINNET_TIME_LLP_PORT)
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-p2pport"), MAINNET_P2P_PORT ))
-            || nPort == static_cast<uint16_t>(config::GetArg(std::string("-p2psslport"), MAINNET_P2P_SSL_PORT )))
+            || nPort == 80
+            || nPort == 443) //these two ports are for http server traffic that should always be up if enabled.
             fOpen = true;
     }
 

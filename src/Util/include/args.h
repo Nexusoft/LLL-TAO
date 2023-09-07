@@ -40,6 +40,7 @@ namespace config
     extern std::atomic<bool> fClient;
     extern std::atomic<bool> fTestNet;
     extern std::atomic<bool> fListen;
+    extern std::atomic<bool> fFileServer;
     extern std::atomic<bool> fMultiuser;
     extern std::atomic<bool> fProcessNotifications;
     extern std::atomic<bool> fInitialized;
@@ -54,6 +55,9 @@ namespace config
 
     /* Hybrid/Sister specific configuration variables. */
     extern uint256_t hashNetworkOwner;
+
+    /* Use this root value to detect if we want to enable our fileserver. */
+    extern std::string strFileServerRoot;
 
     /* Declare our arguments mutex. */
     extern std::recursive_mutex ARGS_MUTEX;
