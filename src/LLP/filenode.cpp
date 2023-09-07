@@ -98,22 +98,6 @@ namespace LLP
     /** Main message handler once a packet is recieved. **/
     bool FileNode::ProcessPacket()
     {
-        /* Check our http-basic authentication for the API. */
-        if(!Authorized(INCOMING.mapHeaders))
-        {
-            /* Log a warning to the console. */
-            debug::warning(FUNCTION, "File incorrect password attempt from ", this->addr.ToString());
-
-            /* Check for DDOS handle. */
-            if(this->DDOS)
-                this->DDOS->rSCORE += 10;
-
-            /* Use code 401 for unauthorized as response. */
-            PushResponse(401, "");
-
-            return false;
-        }
-
         /* Handle a GET form for HTTP. */
         std::string strRequest = INCOMING.strRequest;
         if(INCOMING.strType == "GET")
@@ -210,8 +194,40 @@ namespace LLP
         RESPONSE.mapHeaders["Connection"] = "close";
 
         /* Set our packet's content now. */
-        RESPONSE.strContent = strContent;
-        RESPONSE.mapHeaders["Content-Type"] = "text/html";
+        switch(nStatus)
+        {
+            /* Handle a good HTTP request. */
+            case 200:
+            {
+                RESPONSE.strContent = strContent;
+                RESPONSE.mapHeaders["Content-Type"] = "text/html";
+                break;
+            }
+
+            /* Handle for forbidden. */
+            case 403:
+            {
+                RESPONSE.strContent = "<b>403 FORBIDDEN</b>";
+                RESPONSE.mapHeaders["Content-Type"] = "text/html";
+                break;
+            }
+
+            /* Handle for not found. */
+            case 404:
+            {
+                RESPONSE.strContent = "<b>404 NOT FOUND</b>";
+                RESPONSE.mapHeaders["Content-Type"] = "text/html";
+                break;
+            }
+
+            default:
+            {
+                RESPONSE.strContent = "<b>500 INTERNAL SERVER ERROR</b>";
+                RESPONSE.mapHeaders["Content-Type"] = "text/html";
+                break;
+            }
+        }
+
 
         /* Write the response */
         this->WritePacket(RESPONSE);
