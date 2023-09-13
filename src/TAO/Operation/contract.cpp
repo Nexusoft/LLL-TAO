@@ -193,7 +193,10 @@ namespace TAO::Operation
     {
         /* Check that our contract is already bound. */
         if(hashCaller == 0 || nTimestamp == 0 || hashTx == 0)
-            return debug::error(FUNCTION, "contract has not been linked to a tx. Did you forget to call Bind()?");
+        {
+            debug::error(FUNCTION, "contract has not been linked to a tx. Did you forget to call Bind()?");
+            return true; //since we rely on this method to prune invalid contracts, don't send a failure notice here
+        }
 
         /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
         debug::fLogError = false;
@@ -204,19 +207,12 @@ namespace TAO::Operation
         {
             /* Sanitize contract by building and executing it. */
             fSanitized =
-                TAO::Operation::Execute(*this, TAO::Ledger::FLAGS::MINER);
-
-            /* Reenable error logging. */
-            debug::fLogError = true;
+                TAO::Operation::Execute(*this, TAO::Ledger::FLAGS::SANITIZE);
         }
-        catch(const std::exception& e)
-        {
-            /* Just in case we encountered an exception whilst error logging was off, reenable error logging. */
-            debug::fLogError = true;
+        catch(const std::exception& e) { debug::error(FUNCTION, e.what()); }
 
-            /* Log the error and attempt to continue processing */
-            debug::error(FUNCTION, e.what());
-        }
+        /* Turn back on error reporting now. */
+        debug::fLogError = true;
 
         return fSanitized;
     }

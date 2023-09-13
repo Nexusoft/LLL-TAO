@@ -277,7 +277,7 @@ namespace LLD
             Ledger->MemoryBegin(nFlags);
 
         /* Handle memory commits if in memory m ode. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
             return;
 
         /* Start the Logical DB transaction. */
@@ -326,7 +326,7 @@ namespace LLD
             Ledger->MemoryRelease(nFlags);
 
         /* Handle memory commits if in memory m ode. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
             return;
 
         /* Abort the Logical DB transaction. */
@@ -362,6 +362,10 @@ namespace LLD
     /* Global handler for all LLD instances. */
     void TxnCommit(const uint8_t nFlags, const uint16_t nInstances)
     {
+        /* Special check if using MINER or SANITIZE flags. */
+        if(nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
+            return; //we want to abort in case this is called accidentally. We don't want to commit these states to internal memory
+
         /* Commit the contract DB transaction. */
         if(Contract && (nInstances & INSTANCES::CONTRACT))
             Contract->MemoryCommit();

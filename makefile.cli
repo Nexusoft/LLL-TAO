@@ -411,6 +411,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_connection.o \
         build/LLP_httpnode.o \
 		build/LLP_apinode.o \
+		build/LLP_filenode.o \
 		build/LLP_data.o \
 		build/LLP_ddos.o \
 		build/LLP_global.o \
@@ -457,6 +458,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_get-info.o \
 		build/API_commands_ledger_get-transaction.o \
 		build/API_commands_ledger_initialize.o \
+		build/API_commands_ledger_recent-blocks.o \
 		build/API_commands_ledger_list-blocks.o \
 		build/API_commands_ledger_list-transactions.o \
 		build/API_commands_ledger_metrics.o \

@@ -58,7 +58,7 @@ namespace TAO::API
         {
             /* Grab our object from disk. */
             TAO::Register::Object tObject;
-            if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::MEMPOOL))
+            if(!LLD::Register->ReadObject(hashRegister, tObject, TAO::Ledger::FLAGS::LOOKUP))
                 continue;
 
             /* Check for active transfers. */

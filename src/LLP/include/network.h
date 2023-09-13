@@ -86,7 +86,7 @@ namespace LLP
     /* The global SSL Context for the LLP */
     extern SSL_CTX *pSSL_CTX;
 
-    
+
     /** NetworkInitialize
      *
      *  Perform any necessary processing to initialize the underlying network

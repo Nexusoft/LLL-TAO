@@ -118,93 +118,128 @@ namespace LLP
         /* TCP connection is ready. Do server side SSL. */
         if(fSSL)
         {
+            /* Set our initial SSL context's. */
             SSL_set_fd(pSSL, fd);
             SSL_set_accept_state(pSSL);
 
-            int32_t nStatus = -1;
+            /* Make sure socket errors are in clean state. */
+            nError.store(0);
 
-            fd_set fdWriteSet;
-            fd_set fdReadSet;
-            struct timeval tv;
+            /* Setup poll objects. */
+            pollfd fds[1];
+            fds[0].events = POLLOUT;
+            fds[0].fd     = fd;
 
-            do
+            /* Track our accept status. */
+            int32_t nStatus = 0; //set to poll timeout
+
+            /* Loop until success or timeout (30 max cycles for 3 seconds). */
+            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus <= 0; ++nSeconds)
             {
-                FD_ZERO(&fdWriteSet);
-                FD_ZERO(&fdReadSet);
-                tv.tv_sec = 2; // timeout after 2 seconds
-                tv.tv_usec = 0;
-
-                nStatus = SSL_accept(pSSL);
+                /* Attempt to accept incoming SSL. */
+                const int32_t nAccept = SSL_accept(pSSL);
 
                 /* Check for successful accept */
-                if(nStatus == 1)
-                    break;
-
-                nError.store(SSL_get_error(pSSL, nStatus));
-
-                switch(nError.load())
+                if(nAccept == 1)
                 {
-                case SSL_ERROR_WANT_READ:
-                    FD_SET(fd, &fdReadSet);
-                    nStatus = 1; // Wait for more activity
-                    break;
-                case SSL_ERROR_WANT_WRITE:
-                    FD_SET(fd, &fdWriteSet);
-                    nStatus = 1; // Wait for more activity
-                    break;
-                case SSL_ERROR_NONE:
-                    nStatus = 0; // success!
-                    break;
-                case SSL_ERROR_ZERO_RETURN:
-                case SSL_ERROR_SYSCALL:
-                    /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we
-                       need to shutdown, too. */
-                    debug::error(FUNCTION, "SSL handshake - Peer closed connection ");
-                    nError.store(ERR_get_error());
-                    nStatus = -1;
-                    break;
-                default:
-                    /* Some other error so break out */
-                    nError.store(ERR_get_error());
-                    nStatus = -1;
+                    nStatus = 1;
                     break;
                 }
 
-                if (nStatus == 1)
-                {
-                    // Must have at least one handle to wait for at this point.
-                    nStatus = select(fd + 1, &fdReadSet, &fdWriteSet, NULL, &tv);
+                /* Check our errors internally. */
+                const int32_t nErrors =
+                    SSL_get_error(pSSL, nAccept);
 
-                    // 0 is timeout, so we're done.
-                    // -1 is error, so we're done.
-                    // Could be both handles set (same handle in both masks) so
-                    // set to 1.
-                    if (nStatus >= 1)
+                /* Check our error messages now. */
+                switch(nErrors)
+                {
+                    /* We will get this signal if the SSL_accept is waiting for data to read. */
+                    case SSL_ERROR_WANT_READ:
                     {
-                        nStatus = 1;
+                        nStatus = 0; // Wait for more activity
+                        break;
                     }
-                    else // Timeout or failure
+
+                    /* We will get this signal if the SSL_accept is waiting for data to write. */
+                    case SSL_ERROR_WANT_WRITE:
                     {
-                        debug::error(FUNCTION, "SSL handshake - peer timeout or failure");
+                        nStatus = 0; // Wait for more activity
+                        break;
+                    }
+
+                    /* We will get this signal if we succeeded. */
+                    case SSL_ERROR_NONE:
+                    {
+                        nStatus = 1; // success!
+                        break;
+                    }
+
+                    /* We will get this signal if peer has notified us that it is shutting down via the SSL "close_notify" */
+                    case SSL_ERROR_ZERO_RETURN:
+                    case SSL_ERROR_SYSCALL:
+                    {
+                        /* Set our internal error handle. */
+                        nError.store(nErrors); //(ERR_get_error());
                         nStatus = -1;
+
+                        debug::log(3, FUNCTION, "SSL Handshake: Peer Closed Connection");
+                        break;
+                    }
+
+                    /* We want to treat the rest of error messages as hard-stops. */
+                    default:
+                    {
+                        /* Some other error so break out */
+                        nError.store(nErrors); //(ERR_get_error());
+                        nStatus = -1;
+
+                        debug::log(3, FUNCTION, "SSL Handshake: Unknown Error Occurred");
+                        break;
+                    }
+                }
+
+                /* We want to poll the socket while we are waiting for non-blocking state or a timeout */
+                if(nStatus == 0)
+                {
+#ifdef WIN32
+                    nStatus = WSAPoll(&fds[0], 1, 100);
+#else
+                    nStatus = poll(&fds[0], 1, 100);
+#endif
+
+                    /* Check poll for errors. */
+                    if(nStatus < 0)
+                    {
+                        debug::log(3, FUNCTION, "SSL Handshake: poll failed for ", addrIn.ToString());
+                        nError.store(SOCKET_ERROR);
+                        break;
                     }
                 }
             }
-            while (nStatus == 1 && !SSL_is_init_finished(pSSL));
 
-            if(nStatus >= 0)
-                debug::log(4, FUNCTION, "SSL Connection using ", SSL_get_cipher(pSSL));
-            else
+            /* Check for timeout. */
+            if(nStatus == 0)
             {
-                if(nError)
-                    debug::error(FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
-                else
-                    debug::error(FUNCTION, "SSL Accept failed ",  addr.ToString());
+                debug::log(3, FUNCTION, "SSL Handshake: poll timeout for ", addrIn.ToString());
+                nError.store(SOCKET_ERROR);
+            }
+
+            /* Check for any poll errors now. */
+            if((fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
+            {
+                debug::log(3, FUNCTION, "SSL Handshake: poll errors for ", addrIn.ToString());
+                nError.store(SOCKET_ERROR);
+            }
+
+            /* Make sure our socket is in a clean state. */
+            if(nStatus != 1) //this is our connected flag
+            {
                 /* Free the SSL resources */
                 SSL_free(pSSL);
                 pSSL = nullptr;
             }
-
+            else
+                debug::log(3, FUNCTION, "SSL Connection Accepted ", SSL_get_cipher(pSSL));
         }
 
         /* Reset the internal timers. */
@@ -406,12 +441,9 @@ namespace LLP
             }
         }
 
+        /* Handle if our connection failed at this point. */
         if(!fConnected)
         {
-            /* We want to maintain a maximum of 1 connection per second. */
-            while(nElapsed.ElapsedMilliseconds() < 1000)
-                runtime::sleep(100);
-
             /* No point sending the close notify to the peer as the connection was never established, so just clean up the SSL */
             if(pSSL)
             {
@@ -429,92 +461,128 @@ namespace LLP
         /* If the socket connection is established and SSL is enabled then initiate the SSL handshake */
         else if(fConnected && pSSL)
         {
-            /* Set up the SSL object for connecting */
+            /* Set our initial SSL context's. */
             SSL_set_fd(pSSL, fd);
             SSL_set_connect_state(pSSL);
 
-            int32_t nStatus = -1;
+            /* Make sure socket errors are in clean state. */
+            nError.store(0);
 
-            fd_set fdWriteSet;
-            fd_set fdReadSet;
-            struct timeval tv;
+            /* Setup poll objects. */
+            pollfd fds[1];
+            fds[0].events = POLLOUT;
+            fds[0].fd     = fd;
 
-            do
+            /* Track our accept status. */
+            int32_t nStatus = 0; //set to poll timeout
+
+            /* Loop until success or timeout (30 max cycles for 3 seconds). */
+            for(uint32_t nSeconds = 0; nSeconds < 30 && !config::fShutdown.load() && nStatus <= 0; ++nSeconds)
             {
-                FD_ZERO(&fdWriteSet);
-                FD_ZERO(&fdReadSet);
-                tv.tv_sec = nTimeout / 1000; // convert timeout to seconds
-                tv.tv_usec = 0;
+                /* Attempt to accept incoming SSL. */
+                const int32_t nConnect = SSL_connect(pSSL);
 
-                nStatus = SSL_connect(pSSL);
-
-                switch (SSL_get_error(pSSL, nStatus))
+                /* Check for successful accept */
+                if(nConnect == 1)
                 {
-                case SSL_ERROR_WANT_READ:
-                    FD_SET(fd, &fdReadSet);
-                    nStatus = 1; // Wait for more activity
-                    break;
-                case SSL_ERROR_WANT_WRITE:
-                    FD_SET(fd, &fdWriteSet);
-                    nStatus = 1; // Wait for more activity
-                    break;
-                case SSL_ERROR_NONE:
-                    nStatus = 0; // success!
-                    break;
-                case SSL_ERROR_ZERO_RETURN:
-                case SSL_ERROR_SYSCALL:
-                    /* The peer has notified us that it is shutting down via the SSL "close_notify" message so we
-                       need to shutdown, too. */
-                    debug::log(3, FUNCTION, "SSL handshake - Peer closed connection ");
-                    nError.store(ERR_get_error());
-                    nStatus = -1;
-                    break;
-                default:
-                    /* Some other error so break out */
-                    nError.store(ERR_get_error());
-                    nStatus = -1;
+                    nStatus = 1;
                     break;
                 }
 
-                if (nStatus == 1)
-                {
-                    // Must have at least one handle to wait for at this point.
-                    nStatus = select(fd + 1, &fdReadSet, &fdWriteSet, NULL, &tv);
+                /* Check our errors internally. */
+                const int32_t nErrors =
+                    SSL_get_error(pSSL, nConnect);
 
-                    // 0 is timeout, so we're done.
-                    // -1 is error, so we're done.
-                    // Could be both handles set (same handle in both masks) so
-                    // set to 1.
-                    if (nStatus >= 1)
+                /* Check our error messages now. */
+                switch(nErrors)
+                {
+                    /* We will get this signal if the SSL_accept is waiting for data to read. */
+                    case SSL_ERROR_WANT_READ:
                     {
-                        nStatus = 1;
+                        nStatus = 0; // Wait for more activity
+                        break;
                     }
-                    else // Timeout or failure
+
+                    /* We will get this signal if the SSL_accept is waiting for data to write. */
+                    case SSL_ERROR_WANT_WRITE:
                     {
-                        debug::log(3, FUNCTION, "SSL handshake - peer timeout or failure");
-                        nError.store(nStatus);
+                        nStatus = 0; // Wait for more activity
+                        break;
+                    }
+
+                    /* We will get this signal if we succeeded. */
+                    case SSL_ERROR_NONE:
+                    {
+                        nStatus = 1; // success!
+                        break;
+                    }
+
+                    /* We will get this signal if peer has notified us that it is shutting down via the SSL "close_notify" */
+                    case SSL_ERROR_ZERO_RETURN:
+                    case SSL_ERROR_SYSCALL:
+                    {
+                        /* Set our internal error handle. */
+                        nError.store(nErrors); //(ERR_get_error());
                         nStatus = -1;
+
+                        debug::log(3, FUNCTION, "SSL Handshake: Peer Closed Connection");
+                        break;
+                    }
+
+                    /* We want to treat the rest of error messages as hard-stops. */
+                    default:
+                    {
+                        /* Some other error so break out */
+                        nError.store(nErrors); //(ERR_get_error());
+                        nStatus = -1;
+
+                        debug::log(3, FUNCTION, "SSL Handshake: Unknown Error Occurred");
+                        break;
+                    }
+                }
+
+                /* We want to poll the socket while we are waiting for non-blocking state or a timeout */
+                if(nStatus == 0)
+                {
+#ifdef WIN32
+                    nStatus = WSAPoll(&fds[0], 1, 100);
+#else
+                    nStatus = poll(&fds[0], 1, 100);
+#endif
+
+                    /* Check poll for errors. */
+                    if(nStatus < 0)
+                    {
+                        debug::log(3, FUNCTION, "SSL Handshake: poll failed for ", addrDest.ToString());
+                        nError.store(SOCKET_ERROR);
+                        break;
                     }
                 }
             }
-            while (nStatus == 1);
 
-            fConnected = nStatus >= 0;
-
-            if(fConnected)
-                debug::log(3, FUNCTION, "SSL connected using ", SSL_get_cipher(pSSL));
-            else
+            /* Check for timeout. */
+            if(nStatus == 0)
             {
-                if(nError)
-                    debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString(), " (", nError, " ", ERR_reason_error_string(nError), ")");
-                else
-                    debug::log(3, FUNCTION, "SSL Accept failed ",  addr.ToString());
-
-                /* Attempt to close the socket our side to clean up resources */
-                closesocket(fd);
-
-                return false;
+                debug::log(3, FUNCTION, "SSL Handshake: poll timeout for ", addrDest.ToString());
+                nError.store(SOCKET_ERROR);
             }
+
+            /* Check for any poll errors now. */
+            if((fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
+            {
+                debug::log(3, FUNCTION, "SSL Handshake: poll errors for ", addrDest.ToString());
+                nError.store(SOCKET_ERROR);
+            }
+
+            /* Make sure our socket is in a clean state. */
+            if(nStatus != 1) //this is our connected flag
+            {
+                /* Free the SSL resources */
+                SSL_free(pSSL);
+                pSSL = nullptr;
+            }
+            else
+                debug::log(3, FUNCTION, "SSL Connection Established ", SSL_get_cipher(pSSL));
         }
 
         /* Reset the internal timers. */
@@ -557,7 +625,6 @@ namespace LLP
                 /* Before we can send the SSL_shutdown message we need to determine if the socket is still connected.  If we don't
                    check this, then SSL_shutdown throws an exception when writing to the FD.  The easiest way to check that the
                    non-blocking socket is still connected is to poll it and check for POLLERR / POLLHUP errors */
-
                 pollfd fds[1];
                 fds[0].events = POLLIN;
                 fds[0].fd = fd;
@@ -582,8 +649,6 @@ namespace LLP
         }
 
         fd = INVALID_SOCKET;
-
-
     }
 
 

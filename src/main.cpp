@@ -101,8 +101,11 @@ void Startup()
                         TAO::API::Commands::Invoke("sessions", strStatus, jParams);
 
                     /* Break once we have indexed sigchain. */
-                    if(!jStatus["indexing"].get<bool>())
+                    if(!jStatus["indexing"].get<bool>()) //basic spin-lock
                         break;
+
+                    /* Make sure we don't spin at 100% of a CPU core. */
+                    runtime::sleep(1);
                 }
 
                 /* Create a JSON encoding and call the main API endpoint. */

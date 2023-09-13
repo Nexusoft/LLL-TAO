@@ -615,8 +615,8 @@ namespace LLD
             if(nTotal >= nLimit && nLimit != -1 && !fForced)
             {
                 /* Check for our verbose setting. */
-                if(config::nVerbose >= 2)
-                    debug::log(2, FUNCTION, "Listing ", VARIABLE(nTotal), " event contracts from ", VARIABLE(nSequence - nTotal));
+                if(config::nVerbose >= 3)
+                    debug::log(3, FUNCTION, "Listing ", VARIABLE(nTotal), " event contracts from ", VARIABLE(nSequence - nTotal));
 
                 return fSuccess;
             }
@@ -637,8 +637,8 @@ namespace LLD
         }
 
         /* Check for our verbose setting. */
-        if(config::nVerbose >= 2)
-            debug::log(2, FUNCTION, "Listing ", VARIABLE(nTotal), " event contracts from ", VARIABLE(nSequence - nTotal));
+        if(config::nVerbose >= 3)
+            debug::log(3, FUNCTION, "Listing ", VARIABLE(nTotal), " event contracts from ", VARIABLE(nSequence - nTotal));
 
         return fSuccess;
     }
@@ -782,8 +782,8 @@ namespace LLD
             if(nTotal >= nLimit && nLimit != -1 && !fForced)
             {
                 /* Check for our verbose setting. */
-                if(config::nVerbose >= 2)
-                    debug::log(2, FUNCTION, "Listing ", VARIABLE(nTotal), " expiring contracts from ", VARIABLE(nSequence - nTotal));
+                if(config::nVerbose >= 3)
+                    debug::log(3, FUNCTION, "Listing ", VARIABLE(nTotal), " expiring contracts from ", VARIABLE(nSequence - nTotal));
 
                 return fSuccess;
             }
@@ -804,8 +804,8 @@ namespace LLD
         }
 
         /* Check for our verbose setting. */
-        if(config::nVerbose >= 2)
-            debug::log(2, FUNCTION, "Listing ", VARIABLE(nTotal), " expiring contracts from ", VARIABLE(nSequence - nTotal));
+        if(config::nVerbose >= 3)
+            debug::log(3, FUNCTION, "Listing ", VARIABLE(nTotal), " expiring contracts from ", VARIABLE(nSequence - nTotal));
 
         return fSuccess;
     }

@@ -111,6 +111,18 @@ namespace TAO::API
             )
         );
 
+        /* Handle for list/blocks. */
+        mapFunctions["recent/blocks"] = Function
+        (
+            std::bind
+            (
+                &Ledger::RecentBlocks,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+        );
+
         /* Handle for submit/transaction. */
         mapFunctions["submit/transaction"] = Function
         (
