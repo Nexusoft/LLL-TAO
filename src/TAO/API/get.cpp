@@ -310,6 +310,10 @@ namespace TAO::API
                 if(!TAO::Ledger::mempool.Get(hash, tx))
                     continue;
 
+                /* Check we made the transaction */
+                if(tx.hashGenesis == hashGenesis)
+                    continue;
+
                 /* Loop through transaction contracts. */
                 uint32_t nContracts = tx.Size();
                 for(uint32_t nContract = 0; nContract < nContracts; ++nContract)
@@ -331,16 +335,22 @@ namespace TAO::API
                         TAO::Register::Address hashFrom;
                         rContract >> hashFrom;
 
-                        /* Check we made the transaction */
-                        if(tx.hashGenesis == hashGenesis)
-                            continue;
-
                         /* Check the account filter based on the originating account*/
                         if(hashAccount != 0 && hashAccount != hashFrom)
                             continue;
 
-                        /* Skip over our hashTo for OP::DEBIT. */
-                        rContract.Seek(32);
+                        /* Get the address to which is the proof for the debit */
+                        TAO::Register::Address hashTo;
+                        rContract >> hashTo;
+
+                        /* Retrieve the account. */
+                        TAO::Register::Object oTo;
+                        if(!LLD::Register->ReadObject(hashTo, oTo, TAO::Ledger::FLAGS::LOOKUP))
+                            continue;
+
+                        /* Check that this was a debit to us. */
+                        if(oTo.hashOwner != hashGenesis)
+                            continue;
 
                         /* Retrieve the account. */
                         TAO::Register::Object oFrom;

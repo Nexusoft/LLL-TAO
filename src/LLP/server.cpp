@@ -643,7 +643,7 @@ namespace LLP
             /* Set the listing socket descriptor on the pollfd.  We do this inside the loop in case the listening socket is
                explicitly closed and reopened whilst the app is running (used for mobile) */
             fds[0].fd = get_listening_socket(fIPv4, fSSL);
-            if (fds[0].fd != INVALID_SOCKET)
+            if(fds[0].fd != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
                 fds[0].revents = 0;
