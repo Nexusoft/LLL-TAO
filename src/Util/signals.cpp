@@ -59,7 +59,7 @@ void HandleSIGTERM(int signum)
             break;
     }
 
-    debug::notice("Signal received ", strSignal);
+    printf("Signal received %s\n", strSignal.c_str());
 
 #ifndef WIN32
 

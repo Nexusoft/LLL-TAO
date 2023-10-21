@@ -127,8 +127,9 @@ namespace LLP
 
             /* Setup poll objects. */
             pollfd fds[1];
-            fds[0].events = POLLOUT;
-            fds[0].fd     = fd;
+            fds[0].events  = POLLIN;
+            fds[0].revents = 0;
+            fds[0].fd      = fd;
 
             /* Track our accept status. */
             int32_t nStatus = 0; //set to poll timeout
@@ -225,11 +226,11 @@ namespace LLP
             }
 
             /* Check for any poll errors now. */
-            if((fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
-            {
-                debug::log(3, FUNCTION, "SSL Handshake: poll errors for ", addrIn.ToString());
-                nError.store(SOCKET_ERROR);
-            }
+            //if((fds[0].revents & POLLERR) || (fds[0].revents & POLLHUP))
+            //{
+            //    debug::log(3, FUNCTION, "SSL Handshake: poll errors for ", addrIn.ToString());
+            //    nError.store(SOCKET_ERROR);
+            //}
 
             /* Make sure our socket is in a clean state. */
             if(nStatus != 1) //this is our connected flag
