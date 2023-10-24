@@ -166,9 +166,17 @@ namespace TAO::API
                 /* Meter for output. */
                 if(nScannedCount % 100000 == 0)
                 {
+                    /* Let's do some monitoring of our chain data. */
+                    TAO::Ledger::BlockState tCurrent;
+                    if(!LLD::Ledger->ReadBlock(hashLast, tCurrent))
+                    {
+                        debug::warning(FUNCTION, "failed to read block for current index ", hashLast.SubString());
+                        return;
+                    }
+
                     /* Get the time it took to rescan. */
-                    uint32_t nElapsedSeconds = timer.Elapsed();
-                    debug::log(0, FUNCTION, "Processed ", nScannedCount, " in ", nElapsedSeconds, " seconds from ", hashLast.SubString(), " (",
+                    const uint32_t nElapsedSeconds = timer.Elapsed();
+                    debug::log(0, FUNCTION, "Processed ", nScannedCount, " in ", nElapsedSeconds, " seconds from height ", tCurrent.nHeight, " (",
                         std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
                 }
             }
