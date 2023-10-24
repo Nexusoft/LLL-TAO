@@ -160,7 +160,7 @@ namespace TAO::API
                 }
 
                 /* Check if our new height is less than old height. */
-                if(tCurrent.nHeight != nLastHeight && tCurrent.nHeight != nLastHeight + 1)
+                if(tCurrent.nHeight < nLastHeight)
                 {
                     debug::warning(FUNCTION, "current block is behind previous block for height ", tCurrent.nHeight, " vs ", nLastHeight);
                     continue;
