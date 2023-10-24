@@ -661,7 +661,7 @@ namespace LLP
             }
         }
 
-        return false;
+        return debug::error(FUNCTION, "Command not found ", std::hex, uint32_t(PACKET.HEADER));
     }
 
 
@@ -993,7 +993,7 @@ namespace LLP
 
             /* Check if the block is stale. */
             if(pBlock->hashPrevBlock != TAO::Ledger::ChainState::hashBestChain.load())
-                return false;
+                return debug::error(FUNCTION, "submitted block is stale");
 
             /* Unlock sigchain to create new block. */
             SecureString strPIN;
