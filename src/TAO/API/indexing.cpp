@@ -127,7 +127,7 @@ namespace TAO::API
         }
 
         /* Keep track of our total count. */
-        uint32_t nScannedCount = 0;
+        uint32_t nScannedCount = 0, nLastHeight = 0;;
 
         /* Start our scan. */
         debug::log(0, FUNCTION, "Scanning from tx ", hashLast.SubString());
@@ -141,9 +141,33 @@ namespace TAO::API
             /* Loop through found transactions. */
             for(const auto& tx : vtx)
             {
+                /* Get the hash of this tx. */
+                const uint512_t hashTx = tx.GetHash();
+
                 /* Check that our transactions are in the main chain. */
-                if(!tx.IsConfirmed())
+                TAO::Ledger::BlockState tCurrent;
+                if(!LLD::Ledger->ReadBlock(hashTx, tCurrent))
+                {
+                    debug::warning(FUNCTION, "failed to read block for current index ", hashTx.SubString());
                     continue;
+                }
+
+                /* Check this block is in main chain. */
+                if(!tCurrent.IsInMainChain())
+                {
+                    debug::warning(FUNCTION, "current block is not in main chain for index ", hashTx.SubString());
+                    continue;
+                }
+
+                /* Check if our new height is less than old height. */
+                if(tCurrent.nHeight != nLastHeight && tCurrent.nHeight != nLastHeight + 1)
+                {
+                    debug::warning(FUNCTION, "current block is behind previous block for height ", tCurrent.nHeight, " vs ", nLastHeight);
+                    continue;
+                }
+
+                /* Set our current height now. */
+                nLastHeight = tCurrent.nHeight;
 
                 /* Iterate the transaction contracts. */
                 for(uint32_t nContract = 0; nContract < tx.Size(); ++nContract)
@@ -160,29 +184,21 @@ namespace TAO::API
                     }
                 }
 
+                /* Iterate our index forward now. */
+                hashLast = hashTx;
+
                 /* Update the scanned count for meters. */
                 ++nScannedCount;
 
                 /* Meter for output. */
                 if(nScannedCount % 100000 == 0)
                 {
-                    /* Let's do some monitoring of our chain data. */
-                    TAO::Ledger::BlockState tCurrent;
-                    if(!LLD::Ledger->ReadBlock(hashLast, tCurrent))
-                    {
-                        debug::warning(FUNCTION, "failed to read block for current index ", hashLast.SubString());
-                        return;
-                    }
-
                     /* Get the time it took to rescan. */
                     const uint32_t nElapsedSeconds = timer.Elapsed();
                     debug::log(0, FUNCTION, "Processed ", nScannedCount, " in ", nElapsedSeconds, " seconds from height ", tCurrent.nHeight, " (",
                         std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
                 }
             }
-
-            /* Set hash Last. */
-            hashLast = vtx.back().GetHash();
 
             /* Check for end. */
             if(vtx.size() != 1000)
