@@ -576,8 +576,8 @@ namespace LLP
                             return debug::success(3, NODE, "REQUEST::DEPENDANT::REGISTER: Using INDEX REGISTER for ", hashRegister.ToString());
                         }
 
-                        /* Handle the slow iterative way. */
-                        else
+                        /* Handle the slow iterative way if no index register. */
+                        else if(!config::fIndexRegister.load())
                         {
                             /* Check for existing localdb indexes. */
                             std::pair<uint512_t, uint64_t> pairIndex;
@@ -728,7 +728,7 @@ namespace LLP
                         }
 
                         /* Debug output. */
-                        debug::log(3, NODE, "REQUEST::DEPENDANT::REGISTER ", hashRegister.SubString());
+                        debug::warning(NODE, "REQUEST::DEPENDANT::REGISTER: ", hashRegister.ToString(), " not found");
 
                         break;
                     }
