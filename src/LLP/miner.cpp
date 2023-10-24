@@ -348,7 +348,6 @@ namespace LLP
         /* Evaluate the packet header to determine what to do. */
         switch(PACKET.HEADER)
         {
-
             /* Set the Mining Channel this Connection will Serve Blocks for. */
             case SET_CHANNEL:
             {

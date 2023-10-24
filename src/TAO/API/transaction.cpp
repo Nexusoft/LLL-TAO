@@ -264,8 +264,15 @@ namespace TAO::API
         if(nContract >= vContracts.size())
             return true; //we use this method to skip contracts so if out of range we need to know.
 
+        /* Grab reference of our contract. */
+        const TAO::Operation::Contract& rContract =
+            vContracts[nContract];
+
+        /* Make sure we bind the contract here. */
+        rContract.Bind(this, hash);
+
         /* Get a reference of our internal contract. */
-        return vContracts[nContract].Spent(nContract);
+        return rContract.Spent(nContract);
     }
 
 
@@ -420,6 +427,9 @@ namespace TAO::API
             /* Grab reference of our contract. */
             const TAO::Operation::Contract& rContract = vContracts[nContract];
 
+            /* Make sure we bind the contract here. */
+            rContract.Bind(this, hash);
+
             /* Track our register address. */
             TAO::Register::Address hashRegister;
             if(!TAO::Register::Unpack(rContract, hashRegister))
@@ -538,6 +548,8 @@ namespace TAO::API
             /* Push transaction to the queue so we can track what modified given register. */
             if(!setRegisters.count(hashRegister) && LLD::Logical->PushTransaction(hashRegister, hash))
             {
+                debug::log(3, "Pushing Transaction ", hash.SubString(), " to register ", hashRegister.ToString(), " transaction log");
+
                 /* Track unique addresses to erase only once. */
                 setRegisters.insert(hashRegister);
                 continue;
@@ -557,6 +569,9 @@ namespace TAO::API
         {
             /* Grab reference of our contract. */
             const TAO::Operation::Contract& rContract = vContracts[nContract];
+
+            /* Make sure we bind the contract here. */
+            rContract.Bind(this, hash);
 
             /* Track our register address. */
             uint256_t hashRegister;
