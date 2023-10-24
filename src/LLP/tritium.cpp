@@ -2543,12 +2543,17 @@ namespace LLP
                                                 /* Write our packet with our total items. */
                                                 pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
 
+                                                /* Expired our missing block last. */
+                                                pnode->PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
+
                                                 /* Clear our response data. */
                                                 ssResponse.clear();
 
                                                 /* Reset our counters. */
                                                 nTotalItems = 0;
 
+                                                /* Just to be sure we break. */
+                                                n = 100;
                                                 break;
                                             }
                                             catch(const std::exception& e)
@@ -2560,9 +2565,6 @@ namespace LLP
                                     }
                                 }
                             }
-
-                            /* Expired our missing block last. */
-                            PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
                         }
 
                         /* Check for duplicate and ask for previous block. */

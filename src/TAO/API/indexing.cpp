@@ -192,7 +192,9 @@ namespace TAO::API
     void Indexing::PushTransaction(const uint512_t& hashTx)
     {
         DISPATCH->push(hashTx);
-        CONDITION.notify_one();
+        CONDITION.notify_all();
+
+        debug::log(3, FUNCTION, "Pushing ", hashTx.SubString(), " To Indexing Queue.");
     }
 
 
@@ -252,7 +254,10 @@ namespace TAO::API
             /* Make sure the transaction is on disk. */
             TAO::Ledger::Transaction tx;
             if(!LLD::Ledger->ReadTx(hashTx, tx))
+            {
+                debug::warning(FUNCTION, "Indexing Failed: could not find ", hashTx.SubString(), " on disk");
                 return;
+            }
 
             /* Build our local sigchain events indexes. */
             index_transaction(hashTx, tx);
