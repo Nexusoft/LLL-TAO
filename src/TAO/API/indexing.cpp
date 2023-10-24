@@ -168,7 +168,7 @@ namespace TAO::API
                 {
                     /* Get the time it took to rescan. */
                     uint32_t nElapsedSeconds = timer.Elapsed();
-                    debug::log(0, FUNCTION, "Processed ", nScannedCount, " in ", nElapsedSeconds, " seconds (",
+                    debug::log(0, FUNCTION, "Processed ", nScannedCount, " in ", nElapsedSeconds, " seconds from ", hashLast.SubString(), " (",
                         std::fixed, (double)(nScannedCount / (nElapsedSeconds > 0 ? nElapsedSeconds : 1 )), " tx/s)");
                 }
             }
