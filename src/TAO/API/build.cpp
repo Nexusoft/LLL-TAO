@@ -880,8 +880,8 @@ namespace TAO::API
                 throw Exception(-28, "Missing parameter [name] for command");
 
             /* Check for required parameters. */
-            if(!CheckParameter(jParams, "address", "string"))
-                throw Exception(-28, "Missing parameter [address] for command");
+            if(!CheckParameter(jParams, "register", "string"))
+                throw Exception(-28, "Missing parameter [register] for command");
 
             /* Grab our name parameter now. */
             const std::string strName =
@@ -889,11 +889,11 @@ namespace TAO::API
 
             /* Grab our new register address to point towards. */
             const TAO::Register::Address hashExternal =
-                TAO::Register::Address(jParams["address"].get<std::string>());
+                TAO::Register::Address(jParams["register"].get<std::string>());
 
             /* Check for valid address now. */
             if(!hashExternal.IsValid())
-                throw Exception(-57, "Invalid Parameter [address]");
+                throw Exception(-57, "Invalid Parameter [register]");
 
             /* Check for global parameters. */
             const bool fGlobal =
