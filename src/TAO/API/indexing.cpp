@@ -161,9 +161,7 @@ namespace TAO::API
 
         /* Start our scan. */
         debug::log(0, FUNCTION, "Scanning from block ", hashBlock.SubString());
-
-        bool fCorrection = false;
-
+        
         /* Build our loop based on the blocks we have read sequentially. */
         std::vector<TAO::Ledger::BlockState> vStates;
         while(!config::fShutdown.load() && LLD::Ledger->BatchRead(hashBlock, "block", vStates, 1000, true))
@@ -171,13 +169,6 @@ namespace TAO::API
             /* Loop through all available states. */
             for(auto& state : vStates)
             {
-                /* Break here to minimize our sequential read requirements. */
-                if(fCorrection)
-                {
-                    fCorrection = false;
-                    break;
-                }
-
                 /* Update start every iteration. */
                 hashBlock = state.GetHash();
 
@@ -199,7 +190,6 @@ namespace TAO::API
 
                     /* Update hashBlock. */
                     hashBlock = state.GetHash();
-                    fCorrection = true;
                 }
 
                 /* Cache the block hash. */
