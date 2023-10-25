@@ -114,12 +114,19 @@ namespace TAO::API
         /* Check our starting block to read from. */
         uint1024_t hashBlock;
 
+        /* Track the last block processed. */
+        TAO::Ledger::BlockState tStateLast;
+
         /* Handle first key if needed. */
         uint512_t hashIndex;
         if(!LLD::Logical->ReadLastIndex(hashIndex))
         {
             /* Set our internal values. */
             hashBlock = TAO::Ledger::hashTritium;
+
+            /* Check for hybrid mode. */
+            if(config::fHybrid.load())
+                LLD::Ledger->ReadHybridGenesis(hashBlock);
 
             /* Read the first tritium block. */
             TAO::Ledger::BlockState tCurrent;
@@ -129,6 +136,10 @@ namespace TAO::API
                 return;
             }
 
+            /* Set our last block as prev tritium block. */
+            hashBlock  = tCurrent.hashPrevBlock;
+            tStateLast = tCurrent.Prev();
+
             debug::log(0, FUNCTION, "Initializing indexing at tx ", hashBlock.SubString(), " and height ", tCurrent.nHeight);
         }
         else
@@ -136,30 +147,37 @@ namespace TAO::API
             /* Set our initial block hash. */
             TAO::Ledger::BlockState tCurrent;
             if(LLD::Ledger->ReadBlock(hashIndex, tCurrent))
-                hashBlock = tCurrent.GetHash();
+            {
+                /* Set our last block hash. */
+                hashBlock = tCurrent.hashPrevBlock;
+
+                /* Set our last block as prev tritium block. */
+                tStateLast = tCurrent.Prev();
+            }
         }
 
         /* Keep track of our total count. */
         uint32_t nScannedCount = 0;
 
-        /* Keep track of the last state. */
-        TAO::Ledger::BlockState tStateLast;
-        if(!LLD::Ledger->ReadBlock(hashBlock, tStateLast))
-        {
-            debug::warning(FUNCTION, "No tritium blocks available ", hashBlock.SubString());
-            return;
-        }
-
         /* Start our scan. */
-        debug::log(0, FUNCTION, "Scanning from block ", hashBlock.SubString(), " and height ", tStateLast.nHeight);
+        debug::log(0, FUNCTION, "Scanning from block ", hashBlock.SubString());
+
+        bool fCorrection = false;
 
         /* Build our loop based on the blocks we have read sequentially. */
         std::vector<TAO::Ledger::BlockState> vStates;
-        while(!config::fShutdown.load() && LLD::Ledger->BatchRead(hashBlock, "block", vStates, 3000, true))
+        while(!config::fShutdown.load() && LLD::Ledger->BatchRead(hashBlock, "block", vStates, 1000, true))
         {
             /* Loop through all available states. */
             for(auto& state : vStates)
             {
+                /* Break here to minimize our sequential read requirements. */
+                if(fCorrection)
+                {
+                    fCorrection = false;
+                    break;
+                }
+
                 /* Update start every iteration. */
                 hashBlock = state.GetHash();
 
@@ -170,17 +188,18 @@ namespace TAO::API
                 /* Check for matching hashes. */
                 if(state.hashPrevBlock != tStateLast.GetHash())
                 {
-                    debug::log(3, FUNCTION, "Correcting chain ", tStateLast.hashNextBlock.SubString());
+                    debug::log(0, FUNCTION, "Correcting chain ", tStateLast.hashNextBlock.SubString());
 
                     /* Read the correct block from next index. */
                     if(!LLD::Ledger->ReadBlock(tStateLast.hashNextBlock, state))
                     {
-                        debug::warning(FUNCTION, "Block ", tStateLast.hashNextBlock.SubString(), " Not Found... terminating");
+                        debug::log(0, FUNCTION, "Terminated scanning ", nScannedCount, " tx in ", timer.Elapsed(), " seconds");
                         return;
                     }
 
                     /* Update hashBlock. */
                     hashBlock = state.GetHash();
+                    fCorrection = true;
                 }
 
                 /* Cache the block hash. */
