@@ -59,15 +59,14 @@ void HandleSIGTERM(int signum)
             break;
     }
 
-    printf("Signal received %s\n", strSignal.c_str());
+    debug::notice("Signal received ", strSignal);
 
 #ifndef WIN32
-
-    if(signum != SIGPIPE)
+    if(signum != SIGPIPE && signum != SIGINT)
         Shutdown();
-
 #else
-    Shutdown();
+    if(signum != SIGINT)
+        Shutdown();
 #endif
 }
 
