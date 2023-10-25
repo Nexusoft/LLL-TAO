@@ -181,7 +181,7 @@ namespace TAO
                         return false;
                     }
                 }
-                else if(LLD::Ledger->HasFirst(tx.hashGenesis))
+                else if(tx.IsFirst() && LLD::Ledger->HasFirst(tx.hashGenesis))
                 {
                     /* Add to conflicts map. */
                     debug::error(FUNCTION, "CONFLICT: duplicate genesis-id ", tx.hashGenesis.SubString());

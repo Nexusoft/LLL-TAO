@@ -106,6 +106,14 @@ namespace TAO::API
                 throw Exception(-138, "No previous transaction found");
         }
 
+        /* Check our recovery hash is correct. */
+        const uint256_t hashRecoveryCheck = pCredentials->RecoveryHash(strRecovery, nKeyType);
+        if(hashRecoveryCheck != hashRecovery)
+        {
+            pCredentials.free();
+            throw Exception(-33, "Recovery hash mismatch ", hashRecoveryCheck.ToString(), " is not ", hashRecovery.ToString());
+        }
+
         /* Create the transaction. */
         TAO::Ledger::Transaction tx;
         if(!BuildCredentials(pCredentials, strPIN, nKeyType, tx))
@@ -115,6 +123,7 @@ namespace TAO::API
         }
 
         /* Sign the transaction. */
+        tx.nKeyType = nKeyType;
         if(!tx.Sign(pCredentials->Generate(strRecovery)))
         {
             pCredentials.free();

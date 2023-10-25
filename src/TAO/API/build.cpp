@@ -53,7 +53,7 @@ namespace TAO::API
 {
     /* Build a credential set that engages sigchain or modifies its authentication data. This is done not logged in. */
     bool BuildCredentials(const memory::encrypted_ptr<TAO::Ledger::Credentials>& pCredentials,
-                          const SecureString& strPIN,   const uint8_t nKeyType, TAO::Ledger::Transaction &tx)
+                          const SecureString& strPIN, const uint8_t nKeyType, TAO::Ledger::Transaction &tx)
     {
         /* Create the transaction. */
         if(!TAO::Ledger::CreateTransaction(pCredentials, strPIN, tx, nKeyType))

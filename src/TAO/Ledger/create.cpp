@@ -73,10 +73,10 @@ namespace TAO::Ledger
         uint512_t hashLast = 0;
 
         /* Get the last transaction. */
-        TAO::API::Transaction txPrev;
         if(LLD::Logical->ReadLast(hashGenesis, hashLast))
         {
             /* Get previous transaction */
+            TAO::API::Transaction txPrev;
             if(!LLD::Logical->ReadTx(hashLast, txPrev))
                 return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in logical db");
 
@@ -97,12 +97,61 @@ namespace TAO::Ledger
                 tx.nNextType = txPrev.nNextType;
         }
 
+        /* If we don't have the indexes available we need to build from ledger state. */
+        else
+        {
+            /* Check mempool for other transactions. */
+            TAO::Ledger::Transaction txPrev;
+            if(mempool.Get(hashGenesis, txPrev))
+            {
+                /* Build new transaction object. */
+                tx.nSequence    = txPrev.nSequence + 1;
+                tx.hashGenesis  = txPrev.hashGenesis;
+                tx.hashPrevTx   = txPrev.GetHash();
+                tx.nKeyType     = txPrev.nNextType;
+                tx.hashRecovery = txPrev.hashRecovery;
+                tx.nTimestamp   = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
+
+                /* Check if we need to adjust our key type. */
+                if(nScheme != txPrev.nNextType)
+                    tx.nNextType = nScheme;
+
+                /* Set our next type from previous transaction type. */
+                else
+                    tx.nNextType = txPrev.nNextType;
+            }
+
+            /* Get the last transaction. */
+            else if(LLD::Ledger->ReadLast(hashGenesis, hashLast))
+            {
+                /* Get previous transaction */
+                if(!LLD::Ledger->ReadTx(hashLast, txPrev))
+                    return debug::error(FUNCTION, "no prev tx ", hashLast.ToString(), " in ledger db");
+
+                /* Build new transaction object. */
+                tx.nSequence    = txPrev.nSequence + 1;
+                tx.hashGenesis  = txPrev.hashGenesis;
+                tx.hashPrevTx   = hashLast;
+                tx.nKeyType     = txPrev.nNextType;
+                tx.hashRecovery = txPrev.hashRecovery;
+                tx.nTimestamp   = std::max(runtime::unifiedtimestamp(), txPrev.nTimestamp);
+
+                /* Check if we need to adjust our key type. */
+                if(nScheme != txPrev.nNextType)
+                    tx.nNextType = nScheme;
+
+                /* Set our next type from previous transaction type. */
+                else
+                    tx.nNextType = txPrev.nNextType;
+            }
+        }
+
         /* Set the initial and next key type for genesis transactions */
         if(tx.IsFirst())
         {
             /* Set the next key type for the genesis transaction */
             tx.nKeyType    = nScheme; //this should use a default value
-            tx.nNextType   = tx.nKeyType;
+            tx.nNextType   = nScheme;
             tx.hashGenesis = hashGenesis;
             tx.nTimestamp  = runtime::unifiedtimestamp();
 
