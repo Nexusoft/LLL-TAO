@@ -134,7 +134,7 @@ namespace TAO::API
         bool CheckObject(const std::string& strType, const TAO::Register::Object& tObject) const;
 
 
-        /** CheckStandard
+        /** HasStandard
          *
          *  Check if a given standard exists in this command-set.
          *
@@ -143,7 +143,7 @@ namespace TAO::API
          *  @return true if the standard exists.
          *
          **/
-        bool CheckStandard(const std::string& strStandard) const;
+        bool HasStandard(const std::string& strStandard) const;
 
 
         /** EncodeObject

@@ -76,7 +76,7 @@ namespace TAO::API
 
 
     /* Check if a given standard exists in this command-set. */
-    bool Base::CheckStandard(const std::string& strStandard) const
+    bool Base::HasStandard(const std::string& strStandard) const
     {
         /* Check for wildcard's first. */
          if(strStandard == "any" || strStandard == "all")

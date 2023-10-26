@@ -74,7 +74,7 @@ namespace TAO::API
                     return Names::ResolveNamespace(jParams);
 
                 /* Check for name or namespace resolution. */
-                if(Commands::Instance<Names>()->CheckStandard(strType))
+                if(Commands::Instance<Names>()->HasStandard(strType))
                 {
                     /* Grab our name from incoming parameters. */
                     const std::string& strLookup =
