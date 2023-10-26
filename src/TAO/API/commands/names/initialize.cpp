@@ -47,6 +47,24 @@ namespace TAO::API
             , "name"
         );
 
+        /* Populate our asset standard. */
+        mapStandards["inactive"] = Standard
+        (
+            /* Lambda expression to determine object standard. */
+            [](const TAO::Register::Object& rObject)
+            {
+                /* Make sure standard is a name. */
+                if(rObject.Standard() != TAO::Register::OBJECTS::NAME)
+                    return false;
+
+                /* Make sure this name is disabled. */
+                if(rObject.get<uint256_t>("address") != 0)
+                    return false;
+
+                return true; //all checks passed
+            }
+        );
+
         /* Populate our global names standard. */
         mapStandards["global"] = Standard
         (
