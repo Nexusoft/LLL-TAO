@@ -34,7 +34,15 @@ namespace TAO::API
             /* Lambda expression to determine object standard. */
             [](const TAO::Register::Object& rObject)
             {
-                return rObject.Standard() == TAO::Register::OBJECTS::NAME;
+                /* Make sure standard is a name. */
+                if(rObject.Standard() != TAO::Register::OBJECTS::NAME)
+                    return false;
+
+                /* Make sure this name is not disabled. */
+                if(rObject.get<uint256_t>("address") == 0)
+                    return false;
+
+                return true; //all checks passed
             }
             , "name"
         );
@@ -66,6 +74,10 @@ namespace TAO::API
             {
                 /* Make sure standard is a name. */
                 if(rObject.Standard() != TAO::Register::OBJECTS::NAME)
+                    return false;
+
+                /* Make sure this name is not disabled. */
+                if(rObject.get<uint256_t>("address") == 0)
                     return false;
 
                 /* Check the namespace. */
@@ -165,6 +177,19 @@ namespace TAO::API
                 std::placeholders::_1,
                 std::placeholders::_2
             )
+        );
+
+        /* Handle for all RENAME operations. */
+        mapFunctions["rename"] = Function
+        (
+            std::bind
+            (
+                &Names::Rename,
+                this,
+                std::placeholders::_1,
+                std::placeholders::_2
+            )
+            , "name, local"
         );
 
         /* Handle for all LOOKUP operations. */
