@@ -75,6 +75,17 @@ namespace TAO::API
     }
 
 
+    /* Check if a given standard exists in this command-set. */
+    bool Base::CheckStandard(const std::string& strStandard) const
+    {
+        /* Check for wildcard's first. */
+         if(strStandard == "any" || strStandard == "all")
+            return false;
+
+        return mapStandards.count(strStandard);
+    }
+
+
     /* Encode a standard object into json using custom encoding function. */
     encoding::json Base::EncodeObject(const std::string& strType, const TAO::Register::Object& tObject, const uint256_t& hashRegister) const
     {
