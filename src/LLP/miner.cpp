@@ -324,6 +324,10 @@ namespace LLP
         if(!fLocalTestnet && nConnections == 0)
             return debug::error(FUNCTION, "No network connections.");
 
+        /* Special rule for testnet so we don't bloat the chain. */
+        if(config::fTestNet.load() && TAO::Ledger::mempool.Size() == 0)
+            return debug::error(FUNCTION, "Cannot mine with no pending transactions for -testnet");
+
         /* No mining when synchronizing. */
         if(TAO::Ledger::ChainState::Synchronizing())
             return debug::error(FUNCTION, "Cannot mine while ledger is synchronizing.");

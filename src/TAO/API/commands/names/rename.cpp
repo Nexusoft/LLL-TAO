@@ -98,6 +98,10 @@ namespace TAO::API
             if(oCheck.get<std::string>("namespace") != strNamespace)
                 throw Exception(-42, "New name provided exists and is not in the same namespace");
 
+            /* Check that the new name is disabled. */
+            if(oCheck.get<uint256_t>("address") != 0)
+                throw Exception(-42, "New name provided exists but is not disabled.");
+
             fNewRegister = false;
         }
 
