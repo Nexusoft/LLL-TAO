@@ -124,6 +124,10 @@ namespace TAO::API
             /* Set our internal values. */
             hashBlock = TAO::Ledger::hashTritium;
 
+            /* Check for testnet mode. */
+            if(config::fTestNet.load())
+                hashBlock = TAO::Ledger::hashGenesisTestnet;
+
             /* Check for hybrid mode. */
             if(config::fHybrid.load())
                 LLD::Ledger->ReadHybridGenesis(hashBlock);
@@ -137,8 +141,13 @@ namespace TAO::API
             }
 
             /* Set our last block as prev tritium block. */
-            hashBlock  = tCurrent.hashPrevBlock;
-            tStateLast = tCurrent.Prev();
+            if(!tCurrent.Prev())
+                tStateLast = tCurrent;
+            else
+            {
+                hashBlock  = tCurrent.hashPrevBlock;
+                tStateLast = tCurrent.Prev();
+            }
 
             debug::log(0, FUNCTION, "Initializing indexing at tx ", hashBlock.SubString(), " and height ", tCurrent.nHeight);
         }
@@ -778,7 +787,10 @@ namespace TAO::API
                             /* Read the transaction from the ledger database. */
                             TAO::Ledger::Transaction tx;
                             if(!LLD::Ledger->ReadTx(hashTx, tx))
+                            {
+                                debug::warning(FUNCTION, "pre-build read failed at ", hashTx.SubString());
                                 break;
+                            }
 
                             /* Check for valid logical indexes. */
                             if(!LLD::Logical->HasTx(hashTx))
@@ -805,7 +817,7 @@ namespace TAO::API
                             TAO::Ledger::Transaction tx;
                             if(!LLD::Ledger->ReadTx(*hashTx, tx))
                             {
-                                debug::warning(FUNCTION, "Building read failed at ", hashTx->SubString());
+                                debug::warning(FUNCTION, "build read failed at ", hashTx->SubString());
                                 break;
                             }
 
@@ -815,7 +827,7 @@ namespace TAO::API
 
                             /* Index the transaction to the database. */
                             if(!tIndex.Index(*hashTx))
-                                debug::warning(FUNCTION, "failed to index ", hashTx->SubString());
+                                debug::warning(FUNCTION, "failed to build index ", hashTx->SubString());
 
                             /* Log that tx was rebroadcast. */
                             debug::log(1, FUNCTION, "Built Indexes for ", hashTx->SubString(), " to logical db");
@@ -838,7 +850,7 @@ namespace TAO::API
                             TAO::API::Transaction tx;
                             if(!LLD::Logical->ReadTx(hashTx, tx))
                             {
-                                debug::warning(FUNCTION, "Updating read failed at ", hashTx.SubString());
+                                debug::warning(FUNCTION, "pre-update read failed at ", hashTx.SubString());
                                 break;
                             }
 
@@ -869,13 +881,13 @@ namespace TAO::API
                             TAO::API::Transaction tx;
                             if(!LLD::Logical->ReadTx(*hashTx, tx))
                             {
-                                debug::warning(FUNCTION, "read failed at ", hashTx->SubString());
+                                debug::warning(FUNCTION, "update read failed at ", hashTx->SubString());
                                 break;
                             }
 
                             /* Index the transaction to the database. */
                             if(!tx.Index(*hashTx))
-                                debug::warning(FUNCTION, "failed to index ", hashTx->SubString());
+                                debug::warning(FUNCTION, "failed to update index ", hashTx->SubString());
 
                             /* Log that tx was rebroadcast. */
                             debug::log(1, FUNCTION, "Updated Indexes for ", hashTx->SubString(), " to logical db");
