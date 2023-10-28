@@ -232,6 +232,18 @@ namespace LLD
         bool EraseTx(const uint512_t& hashTx);
 
 
+        /** HasTx
+         *
+         *  Checks if a transaction exists.
+         *
+         *  @param[in] hashTx The txid of transaction to check.
+         *
+         *  @return True if the transaction exists, false otherwise.
+         *
+         **/
+        bool HasTx(const uint512_t& hashTx);
+
+
         /** ReadTx
          *
          *  Reads a transaction from the Logical DB.

@@ -178,6 +178,12 @@ namespace LLD
         return Erase(std::make_pair(std::string("tx"), hashTx));
     }
 
+    /* Checks if a transaction exists. */
+    bool LogicalDB::HasTx(const uint512_t& hashTx)
+    {
+        return Exists(std::make_pair(std::string("tx"), hashTx));
+    }
+
 
     /* Reads a transaction from the Logical DB. */
     bool LogicalDB::ReadTx(const uint512_t& hashTx, TAO::API::Transaction &tx)
