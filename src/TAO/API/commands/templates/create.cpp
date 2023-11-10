@@ -303,10 +303,6 @@ namespace TAO::API
                 const std::string strName =
                     (*it)["name"].get<std::string>();
 
-                /* Make sure the name is not reserved. */
-                if(TAO::Register::Reserved(strName))
-                    throw Exception(-22, "Field [", strName, "] is a reserved field name");
-
                 /* Check for user-type reserved field. */
                 if(strName == "_usertype")
                     throw Exception(-22, "Field [_usertype] is a reserved field name");
@@ -322,6 +318,10 @@ namespace TAO::API
                 /* Grab our type string from parameter */
                 const std::string strType =
                     (*it)["type"].get<std::string>();
+
+                /* Make sure the name is not reserved. */
+                if(TAO::Register::Reserved(strName, strType, fMutable))
+                    throw Exception(-22, "Field [", strName, "] is a reserved or using incorrect data-type");
 
                 /* Handle for 8-bit unsigned int. */
                 if(strType == "uint8")
