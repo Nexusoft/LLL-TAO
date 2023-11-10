@@ -273,6 +273,14 @@ namespace LLP
             jRet = { { "error", jError } };
         }
 
+        catch(const std::exception& e)
+        {
+            nStatus = 500;
+
+            /* Populate the return JSON to the error */
+            jRet = { { "error", { { "code", -1 }, { "message", e.what() }} } };
+        }
+
         /* Build packet. */
         HTTPPacket RESPONSE(nStatus);
 
