@@ -508,6 +508,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_operators_array.o \
 		build/API_operators_count.o \
 		build/API_operators_floor.o \
+		build/API_operators_lookup.o \
 		build/API_operators_max.o \
 		build/API_operators_mean.o \
 		build/API_operators_min.o \

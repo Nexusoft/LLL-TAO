@@ -31,7 +31,7 @@ namespace TAO::API
         {
             /* Handle for floats. */
             if(!jItem.is_number_float())
-                throw Exception(-123, "[", jItem.type_name(), "] unsupported for operator [round]");
+                throw Exception(-123, "[", jItem.type_name(), "] unsupported for operator [floor]");
 
             /* Adjust our values by triming at the integer's whole value. */
             jItem = int64_t(jItem.get<double>());
