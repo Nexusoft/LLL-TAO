@@ -427,6 +427,19 @@ namespace LLD
         bool PushUnclaimed(const uint256_t& hashGenesis, const uint256_t& hashRegister);
 
 
+        /** EraseUnclaimed
+         *
+         *  Erase an unclaimed address event to process for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push event for.
+         *  @param[in] hashRegister The register address that is unclaimed
+         *
+         *  @return true if event was pushed successfully.
+         *
+         **/
+        bool EraseUnclaimed(const uint256_t& hashGenesis, const uint256_t& hashRegister);
+
+
         /** ListUnclaimed
          *
          *  List the current unclaimed registers for given genesis-id.
@@ -545,6 +558,20 @@ namespace LLD
         bool PushEvent(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract);
 
 
+        /** EraseEvent
+         *
+         *  Erase an event for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push event for.
+         *  @param[in] hashTx The txid we are adding event for.
+         *  @param[in] nContract The contract-id that contains the event
+         *
+         *  @return true if event was erased successfully.
+         *
+         **/
+        bool EraseEvent(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract);
+
+
         /** ListEvents
          *
          *  List the current active events for given genesis-id.
@@ -584,6 +611,18 @@ namespace LLD
         bool IncrementTritiumSequence(const uint256_t& hashGenesis);
 
 
+        /** DecrementTritiumSequence
+         *
+         *  Remove the last event that was processed for given sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *
+         *  @return if the record was written successfully.
+         *
+         **/
+        bool DecrementTritiumSequence(const uint256_t& hashGenesis);
+
+
         /** ReadLegacySequence
          *
          *  Read the last event that was processed for given sigchain.
@@ -609,6 +648,18 @@ namespace LLD
         bool IncrementLegacySequence(const uint256_t& hashGenesis);
 
 
+        /** DecrementLegacySequence
+         *
+         *  Erase the last event that was processed for given sigchain.
+         *
+         *  @param[in] hashGenesis The genesis-id to check event for.
+         *
+         *  @return if the record was written successfully.
+         *
+         **/
+        bool DecrementLegacySequence(const uint256_t& hashGenesis);
+
+
         /** HasEvent
          *
          *  Checks if an event has been indexed in the database already.
@@ -622,7 +673,7 @@ namespace LLD
         bool HasEvent(const uint512_t& hashTx, const uint32_t nContract);
 
 
-        /** PushEvent
+        /** PushContract
          *
          *  Push an contract to process for given genesis-id.
          *
@@ -634,6 +685,20 @@ namespace LLD
          *
          **/
         bool PushContract(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract);
+
+
+        /** EraseContract
+         *
+         *  Erase a contract for given genesis-id.
+         *
+         *  @param[in] hashGenesis The genesis-id to push event for.
+         *  @param[in] hashTx The txid we are adding event for.
+         *  @param[in] nContract The contract-id that contains the event
+         *
+         *  @return true if event was erased successfully.
+         *
+         **/
+        bool EraseContract(const uint256_t& hashGenesis, const uint512_t& hashTx, const uint32_t nContract);
 
 
         /** IncrementEventSequence

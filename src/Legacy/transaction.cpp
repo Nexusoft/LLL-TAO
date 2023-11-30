@@ -1324,7 +1324,7 @@ namespace Legacy
 
                     /* Commit an event for receiving sigchain in the legacy DB. */
                     if(!LLD::Legacy->EraseEvent(stateReg.hashOwner))
-                        return debug::error(FUNCTION, "failed to write event for account ", stateReg.hashOwner.SubString());
+                        return debug::error(FUNCTION, "failed to erase event for account ", stateReg.hashOwner.SubString());
                 }
             }
         }
