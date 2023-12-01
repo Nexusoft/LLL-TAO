@@ -786,7 +786,7 @@ namespace TAO::API
                         {
                             /* Read the transaction from the ledger database. */
                             TAO::Ledger::Transaction tx;
-                            if(!LLD::Ledger->ReadTx(hashTx, tx))
+                            if(!LLD::Ledger->ReadTx(hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                             {
                                 debug::warning(FUNCTION, "pre-build read failed at ", hashTx.SubString());
                                 break;
@@ -815,7 +815,7 @@ namespace TAO::API
                         {
                             /* Read the transaction from the ledger database. */
                             TAO::Ledger::Transaction tx;
-                            if(!LLD::Ledger->ReadTx(*hashTx, tx))
+                            if(!LLD::Ledger->ReadTx(*hashTx, tx, TAO::Ledger::FLAGS::MEMPOOL))
                             {
                                 debug::warning(FUNCTION, "build read failed at ", hashTx->SubString());
                                 break;
