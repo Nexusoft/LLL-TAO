@@ -11,11 +11,8 @@
 
 ____________________________________________________________________________________________*/
 
-#include <TAO/Ledger/types/client.h>
-
-#include <string>
-
 #include <LLD/include/global.h>
+#include <LLP/include/version.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/wallet/wallet.h>
@@ -39,12 +36,13 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/timelocks.h>
 #include <TAO/Ledger/include/retarget.h>
 
+#include <TAO/Ledger/types/client.h>
 #include <TAO/Ledger/types/genesis.h>
 #include <TAO/Ledger/types/mempool.h>
 
 #include <Util/include/string.h>
 
-
+#include <string>
 
 /* Global TAO namespace. */
 namespace TAO

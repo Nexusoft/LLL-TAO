@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <cmath>
 
 #include <LLC/include/eckey.h>
+#include <LLP/include/version.h>
 
 #include <Legacy/types/legacy.h>
 #include <Legacy/types/script.h>

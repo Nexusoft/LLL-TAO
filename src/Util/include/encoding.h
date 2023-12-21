@@ -25,25 +25,24 @@ namespace encoding
      *
      *	Encode into base58 returning a std::string
      *
-     *  @param[in] pbegin The begin iterator
-     *  @param[in] pend The end iterator
-     *
-     *	@return Base58 encoded string.
-     *
-     **/
-    std::string EncodeBase58(const uint8_t* pbegin, const uint8_t* pend);
-
-
-    /** EncodeBase58
-     *
-     *	Encode into base58 returning a std::string
-     *
      *  @param[in] vch Vector byte char of data
      *
      *	@return Base58 encoded string.
      *
      **/
     std::string EncodeBase58(const std::vector<uint8_t>& vch);
+
+
+    /** EncodeBase58Check
+     *
+     *	Encode into base58 including a checksum
+     *
+     *  @param[in] vchIn The vector char to encode
+     *
+     *	@return Base58 encoded string with checksum.
+     *
+     **/
+    std::string EncodeBase58Check(const std::vector<uint8_t>& vchIn);
 
 
     /** DecodeBase58
@@ -70,18 +69,6 @@ namespace encoding
      *
      **/
     bool DecodeBase58(const std::string& str, std::vector<uint8_t>& vchRet);
-
-
-    /** EncodeBase58Check
-     *
-     *	Encode into base58 including a checksum
-     *
-     *  @param[in] vchIn The vector char to encode
-     *
-     *	@return Base58 encoded string with checksum.
-     *
-     **/
-    std::string EncodeBase58Check(const std::vector<uint8_t>& vchIn);
 
 
     /** DecodeBase58Check
