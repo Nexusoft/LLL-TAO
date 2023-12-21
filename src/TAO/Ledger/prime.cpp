@@ -11,9 +11,9 @@
 
 ____________________________________________________________________________________________*/
 
+#include <LLC/prime/fermat.h>
+
 #include <TAO/Ledger/include/prime.h>
-#include <LLC/types/bignum.h>
-#include <openssl/bn.h>
 
 #include <Util/include/debug.h>
 #include <Util/include/softfloat.h>
@@ -22,11 +22,8 @@ ________________________________________________________________________________
 /* Global TAO namespace. */
 namespace TAO
 {
-
-    /* Ledger Layer namespace. */
     namespace Ledger
     {
-
         static const uint16_t nSmallPrimes[11] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31 };
 
         /* Convert Double to unsigned int Representative. */
@@ -159,9 +156,6 @@ namespace TAO
         /* Breaks the remainder of last composite in Prime Cluster into an integer. */
         uint32_t GetFractionalDifficulty(const uint1024_t& hashComposite)
     	{
-            //LLC::CBigNum a(nComposite);
-            //LLC::CBigNum b(FermatTest(nComposite));
-
             uint1056_t a(hashComposite);
             uint1056_t b(FermatTest(hashComposite));
 
@@ -187,25 +181,7 @@ namespace TAO
         /* Used after Miller-Rabin and Divisor tests to verify primality. */
         uint1024_t FermatTest(const uint1024_t& hashTest)
         {
-            LLC::CAutoBN_CTX pctx;
-
-            LLC::CBigNum bnPrime(hashTest);
-            LLC::CBigNum bnBase(2);
-            LLC::CBigNum bnExp = bnPrime - 1;
-
-            LLC::CBigNum bnResult;
-            BN_mod_exp(bnResult.getBN(), bnBase.getBN(), bnExp.getBN(), bnPrime.getBN(), pctx);
-
-            return bnResult.getuint1024();
-        }
-
-
-        /* Wrapper for is_prime from OpenSSL */
-        bool Miller_Rabin(const uint1024_t& hashTest)
-        {
-            LLC::CBigNum bnPrime(hashTest);
-
-            return (BN_is_prime_ex(bnPrime.getBN(), 1, nullptr, nullptr) == 1);
+            return LLC::fermat_prime(hashTest);
         }
 
 

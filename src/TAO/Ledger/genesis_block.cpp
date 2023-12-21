@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/bignum.h>
-
 #include <LLD/include/global.h>
 
 #include <TAO/Ledger/include/genesis_block.h>
@@ -59,7 +57,7 @@ namespace TAO
             block.nHeight  = 0;
             block.nChannel = 2;
             block.nTime    = 1409456199;
-            block.nBits    = LLC::CBigNum(bnProofOfWorkLimit[2]).GetCompact();
+            block.nBits    = bnProofOfWorkLimit[2].GetCompact();
             block.nNonce   = config::fTestNet.load() ? 122999499 : 2196828850;
             block.nChannelHeight = 1;
             block.hashCheckpoint = block.GetHash();
@@ -99,12 +97,12 @@ namespace TAO
             block.nHeight  = 0;
             block.nChannel = 2;
             block.nTime    = 1601484576;
-            block.nBits    = LLC::CBigNum(bnProofOfWorkLimit[2]).GetCompact();
+            block.nBits    = bnProofOfWorkLimit[2].GetCompact();
             block.nNonce   = 0;
             block.nChannelHeight = 1;
 
             /* Find our nNonce solution. */
-            uint1024_t hashTarget = LLC::CBigNum(bnProofOfWorkLimit[2]).getuint1024();
+            uint1024_t hashTarget = bnProofOfWorkLimit[2];
             while(true)
             {
                 /* Check if we found a solution. */

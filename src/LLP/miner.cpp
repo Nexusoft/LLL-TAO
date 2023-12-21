@@ -1043,7 +1043,7 @@ namespace LLP
             return true;
 
         /* Exit loop when the block is above minimum prime origins and less than 1024-bit hashes */
-        if(hashProof > TAO::Ledger::bnPrimeMinOrigins.getuint1024() && !hashProof.high_bits(nBitMask))
+        if(hashProof > TAO::Ledger::bnPrimeMinOrigins && !hashProof.high_bits(nBitMask))
             return true;
 
         /* Otherwise keep looping. */

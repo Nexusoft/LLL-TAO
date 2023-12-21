@@ -16,7 +16,6 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <LLC/include/eckey.h>
-#include <LLC/types/bignum.h>
 
 #include <LLD/include/global.h>
 
@@ -524,9 +523,8 @@ namespace TAO
             uint64_t nTimeStart = 0;
 
             /* Calculate the target value based on difficulty. */
-            LLC::CBigNum bnTarget;
-            bnTarget.SetCompact(block.nBits);
-            const uint1024_t nHashTarget = bnTarget.getuint1024();
+            const uint1024_t nHashTarget =
+                uint1024_t().SetCompact(block.nBits);
 
             /* Search for the proof of stake hash solution until it mines a block, minter is stopped,
              * or network generates a new block (minter must start over with new candidate)

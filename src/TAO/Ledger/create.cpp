@@ -16,7 +16,6 @@ ________________________________________________________________________________
 #include <Legacy/types/transaction.h>
 #include <Legacy/types/legacy.h>
 
-#include <LLC/types/bignum.h>
 #include <TAO/Register/types/address.h>
 #include <LLC/types/uint1024.h>
 

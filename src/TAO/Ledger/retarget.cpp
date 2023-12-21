@@ -11,8 +11,6 @@ file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/bignum.h>
-
 #include <TAO/Ledger/include/supply.h>
 #include <TAO/Ledger/include/prime.h>
 #include <TAO/Ledger/include/difficulty.h>
@@ -173,7 +171,7 @@ namespace TAO
             nUpperBound *= (state.nVersion >= 7 ? 1000000 : 1);
 
             /* Get the Difficulty Stored in Bignum Compact. */
-            LLC::CBigNum bnNew;
+            uint1024_t bnNew;
             bnNew.SetCompact(first.nBits);
 
             /* Change Number from Upper and Lower Bounds. */
@@ -452,7 +450,7 @@ namespace TAO
             }
 
             /* Get the Difficulty Stored in Bignum Compact. */
-            LLC::CBigNum bnNew;
+            uint1024_t bnNew;
             bnNew.SetCompact(first.nBits);
 
             /* Change Number from Upper and Lower Bounds. */

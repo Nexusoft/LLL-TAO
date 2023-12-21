@@ -412,6 +412,7 @@ base_uint<BITS>& base_uint<BITS>::operator/=(const base_uint<BITS>& b)
 }
 
 
+
 /* Divide assignment operator. (64-bit) */
 template<uint32_t BITS>
 base_uint<BITS>& base_uint<BITS>::operator/=(uint64_t b)

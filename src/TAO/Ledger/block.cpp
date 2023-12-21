@@ -15,7 +15,8 @@ ________________________________________________________________________________
 #include <LLC/hash/macro.h>
 #include <LLC/include/eckey.h>
 #include <LLC/include/flkey.h>
-#include <LLC/types/bignum.h>
+
+#include <LLP/include/version.h>
 
 #include <Util/templates/datastream.h>
 #include <Util/include/hex.h>
@@ -449,7 +450,7 @@ namespace TAO
             if(nChannel == 1)
             {
                 /* Check prime minimum origins. */
-                if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins.getuint1024())
+                if(nVersion >= 5 && ProofHash() < bnPrimeMinOrigins)
                     return debug::error(FUNCTION, "prime origins below 1016-bits");
 
                 /* Check proof of work limits. */
@@ -479,7 +480,7 @@ namespace TAO
             if(nChannel == 2)
             {
                 /* Get the hash target. */
-                LLC::CBigNum bnTarget;
+                uint1024_t bnTarget;
                 bnTarget.SetCompact(nBits);
 
                 /* Check that the hash is within range. */
@@ -487,7 +488,7 @@ namespace TAO
                     return debug::error(FUNCTION, "proof-of-work hash not in range");
 
                 /* Check that the that enough work was done on this block. */
-                if(ProofHash() > bnTarget.getuint1024())
+                if(ProofHash() > bnTarget)
                     return debug::error(FUNCTION, "proof-of-work hash below target");
 
                 return true;

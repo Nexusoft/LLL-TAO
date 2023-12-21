@@ -32,7 +32,6 @@ ________________________________________________________________________________
 
 namespace Legacy
 {
-
     //stack preprocessors
     #define stacktop(i)  (stack.at(stack.size()+(i)))
     #define altstacktop(i)  (altstack.at(altstack.size()+(i)))

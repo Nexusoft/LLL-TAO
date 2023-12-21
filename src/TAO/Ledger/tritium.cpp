@@ -11,8 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/bignum.h>
-
 #include <LLD/include/global.h>
 
 #include <LLP/packets/message.h>
@@ -598,7 +596,7 @@ namespace TAO
             if(GetChannel() != CHANNEL::PRIME && config::nVerbose >= 2)
             {
                 debug::log(2, "  proof:  ", (GetChannel() == 0 ? StakeHash() : ProofHash()).SubString());
-                debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().SubString());
+                debug::log(2, "  target: ", uint1024_t().SetCompact(nBits).SubString());
             }
 
             /* Check that the nBits match the current Difficulty. **/
@@ -819,12 +817,8 @@ namespace TAO
             if(nThreshold < nRequired)
                 return debug::error(FUNCTION, "energy threshold too low ", nThreshold, " required ", nRequired);
 
-            /* Set target for logging */
-            LLC::CBigNum bnTarget;
-            bnTarget.SetCompact(nBits);
-
             /* Check the target is reached. */
-            if(StakeHash() > bnTarget.getuint1024())
+            if(StakeHash() > uint1024_t().SetCompact(nBits))
                 return debug::error(FUNCTION, "proof of stake hash not meeting target");
 
             return true;
@@ -837,14 +831,16 @@ namespace TAO
             /* This override adds support for verifying the stake hash on the staking channel */
             if(nChannel == 0)
             {
-                LLC::CBigNum bnTarget;
-                bnTarget.SetCompact(nBits);
+                /* Get our current target from compact. */
+                const uint1024_t bnTarget =
+                    uint1024_t().SetCompact(nBits);
 
                 /* Check that the hash is within range. */
                 if(bnTarget <= 0 || bnTarget > bnProofOfWorkLimit[nChannel])
                     return debug::error(FUNCTION, "Proof of stake hash not in range");
 
-                if(StakeHash() > bnTarget.getuint1024())
+                /* Check that our stake hash meets our target. */
+                if(StakeHash() > bnTarget)
                     return debug::error(FUNCTION, "Proof of stake not meeting target");
 
                 return true;

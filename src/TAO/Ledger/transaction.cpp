@@ -717,14 +717,14 @@ namespace TAO
                 return debug::error(FUNCTION, "invalid stake operation");
 
             /* Set target for logging */
-            LLC::CBigNum bnTarget;
+            uint1024_t bnTarget;
             bnTarget.SetCompact(pblock->nBits);
 
             /* Verbose logging. */
             if(config::nVerbose >= 2)
                 debug::log(2, FUNCTION,
                     "stake hash=", pblock->StakeHash().SubString(), ", ",
-                    "target=", bnTarget.getuint1024().SubString(), ", ",
+                    "target=", bnTarget.SubString(), ", ",
                     "type=", (IsTrust() ? "Trust" : "Genesis"), ", ",
                     "trust score=", nTrust, ", ",
                     "prev trust score=", nTrustPrev, ", ",
