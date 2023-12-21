@@ -14,6 +14,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <LLP/include/inv.h>
+#include <LLP/include/version.h>
 
 #include <TAO/API/types/commands/ledger.h>
 

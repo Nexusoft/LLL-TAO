@@ -11,7 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/bignum.h>
 #include <LLC/hash/SK.h>
 
 #include <Util/include/base58.h>
@@ -38,6 +37,21 @@ namespace Legacy
     #define stacktop(i)  (stack.at(stack.size()+(i)))
     #define altstacktop(i)  (altstack.at(altstack.size()+(i)))
 
+    /** Big Number representation of zero. **/
+    const ScriptNum bnZero(0);
+
+
+    /** Big Number representation of one. **/
+    const ScriptNum bnOne(1);
+
+
+    /** Big Number representation of false. **/
+    const ScriptNum bnFalse(0);
+
+
+    /** Big Number representation of true. **/
+    const ScriptNum bnTrue(1);
+
 
     /**
      *
@@ -51,17 +65,6 @@ namespace Legacy
             throw std::runtime_error("popstack() : stack empty");
 
         stack.pop_back();
-    }
-
-
-    /** Conversion function to bignum value. **/
-    LLC::CBigNum CastToBigNum(const std::vector<uint8_t>& vch)
-    {
-        if(vch.size() > nMaxNumSize)
-            throw std::runtime_error("CastToBigNum() : overflow");
-
-        // Get rid of extra leading zeros
-        return LLC::CBigNum(LLC::CBigNum(vch).getvch());
     }
 
     /** Set two vectors to be of the same size. **/
@@ -97,7 +100,6 @@ namespace Legacy
     /* Evaluate a script to true or false based on operation codes. */
     bool EvalScript(std::vector<std::vector<uint8_t> >& stack, const Script& script, const Transaction& txTo, uint32_t nIn, int32_t nHashType)
     {
-        LLC::CAutoBN_CTX pctx;
         Script::const_iterator pc = script.begin();
         Script::const_iterator pend = script.end();
         Script::const_iterator pbegincodehash = script.begin();
@@ -171,7 +173,7 @@ namespace Legacy
                     case OP_16:
                     {
                         // (-- value)
-                        LLC::CBigNum bn((int)opcode - (int)(OP_1 - 1));
+                        ScriptNum bn((int)opcode - (int)(OP_1 - 1));
                         stack.push_back(bn.getvch());
                     }
                     break;
@@ -347,7 +349,7 @@ namespace Legacy
                     case OP_DEPTH:
                     {
                         // -- stacksize
-                        LLC::CBigNum bn((uint32_t)stack.size());
+                        ScriptNum bn((uint32_t)stack.size());
                         stack.push_back(bn.getvch());
                     }
                     break;
@@ -397,7 +399,7 @@ namespace Legacy
                         // (xn ... x2 x1 x0 n - ... x2 x1 x0 xn)
                         if(stack.size() < 2)
                             return false;
-                        int n = CastToBigNum(stacktop(-1)).getint32();
+                        int32_t n = ScriptNum(stacktop(-1)).getint32();
                         popstack(stack);
                         if(n < 0 || n >= (int)stack.size())
                             return false;
@@ -463,13 +465,13 @@ namespace Legacy
                         if(stack.size() < 3)
                             return false;
                         std::vector<uint8_t>& vch = stacktop(-3);
-                        int nBegin = CastToBigNum(stacktop(-2)).getint32();
-                        int nEnd = nBegin + CastToBigNum(stacktop(-1)).getint32();
+                        int32_t nBegin = ScriptNum(stacktop(-2)).getint32();
+                        int32_t nEnd = nBegin + ScriptNum(stacktop(-1)).getint32();
                         if(nBegin < 0 || nEnd < nBegin)
                             return false;
-                        if(nBegin > (int)vch.size())
+                        if(nBegin > (int32_t)vch.size())
                             nBegin = vch.size();
-                        if(nEnd > (int)vch.size())
+                        if(nEnd > (int32_t)vch.size())
                             nEnd = vch.size();
                         vch.erase(vch.begin() + nEnd, vch.end());
                         vch.erase(vch.begin(), vch.begin() + nBegin);
@@ -485,10 +487,10 @@ namespace Legacy
                         if(stack.size() < 2)
                             return false;
                         std::vector<uint8_t>& vch = stacktop(-2);
-                        int nSize = CastToBigNum(stacktop(-1)).getint32();
+                        int32_t nSize = ScriptNum(stacktop(-1)).getint32();
                         if(nSize < 0)
                             return false;
-                        if(nSize > (int)vch.size())
+                        if(nSize > (int32_t)vch.size())
                             nSize = vch.size();
                         if(opcode == OP_LEFT)
                             vch.erase(vch.begin() + nSize, vch.end());
@@ -503,7 +505,7 @@ namespace Legacy
                         // (in -- in size)
                         if(stack.size() < 1)
                             return false;
-                        LLC::CBigNum bn((uint32_t)stacktop(-1).size());
+                        ScriptNum bn((uint32_t)stacktop(-1).size());
                         stack.push_back(bn.getvch());
                     }
                     break;
@@ -596,13 +598,13 @@ namespace Legacy
                         // (in -- out)
                         if(stack.size() < 1)
                             return false;
-                        LLC::CBigNum bn = CastToBigNum(stacktop(-1));
+                        ScriptNum bn = ScriptNum(stacktop(-1));
                         switch (opcode)
                         {
                         case OP_1ADD:       bn += bnOne; break;
                         case OP_1SUB:       bn -= bnOne; break;
-                        case OP_2MUL:       bn <<= 1; break;
-                        case OP_2DIV:       bn >>= 1; break;
+                        case OP_2MUL:       bn <<= uint32_t(1); break;
+                        case OP_2DIV:       bn >>= uint32_t(1); break;
                         case OP_NEGATE:     bn = -bn; break;
                         case OP_ABS:        if(bn < bnZero) bn = -bn; break;
                         case OP_NOT:        bn = (bn == bnZero); break;
@@ -636,9 +638,10 @@ namespace Legacy
                         // (x1 x2 -- out)
                         if(stack.size() < 2)
                             return false;
-                        LLC::CBigNum bn1 = CastToBigNum(stacktop(-2));
-                        LLC::CBigNum bn2 = CastToBigNum(stacktop(-1));
-                        LLC::CBigNum bn;
+
+                        ScriptNum bn1 = ScriptNum(stacktop(-2));
+                        ScriptNum bn2 = ScriptNum(stacktop(-1));
+                        ScriptNum bn(0);
                         switch (opcode)
                         {
                         case OP_ADD:
@@ -650,28 +653,25 @@ namespace Legacy
                             break;
 
                         case OP_MUL:
-                            if(!BN_mul(bn.getBN(), bn1.getBN(), bn2.getBN(), pctx))
-                                return false;
+                            bn = bn1 * bn2;
                             break;
 
                         case OP_DIV:
-                            if(!BN_div(bn.getBN(), nullptr, bn1.getBN(), bn2.getBN(), pctx))
-                                return false;
+                            bn = bn1 / bn2;
                             break;
 
                         case OP_MOD:
-                            if(!BN_mod(bn.getBN(), bn1.getBN(), bn2.getBN(), pctx))
-                                return false;
+                            bn = bn1 % bn2;
                             break;
 
                         case OP_LSHIFT:
-                            if(bn2 < bnZero || bn2 > LLC::CBigNum(2048))
+                            if(bn2 < bnZero || bn2 > ScriptNum(2048))
                                 return false;
                             bn = bn1 << bn2.getuint32();
                             break;
 
                         case OP_RSHIFT:
-                            if(bn2 < bnZero || bn2 > LLC::CBigNum(2048))
+                            if(bn2 < bnZero || bn2 > ScriptNum(2048))
                                 return false;
                             bn = bn1 >> bn2.getuint32();
                             break;
@@ -708,9 +708,9 @@ namespace Legacy
                         // (x min max -- out)
                         if(stack.size() < 3)
                             return false;
-                        LLC::CBigNum bn1 = CastToBigNum(stacktop(-3));
-                        LLC::CBigNum bn2 = CastToBigNum(stacktop(-2));
-                        LLC::CBigNum bn3 = CastToBigNum(stacktop(-1));
+                        ScriptNum bn1 = ScriptNum(stacktop(-3));
+                        ScriptNum bn2 = ScriptNum(stacktop(-2));
+                        ScriptNum bn3 = ScriptNum(stacktop(-1));
                         bool fValue = (bn2 <= bn1 && bn1 < bn3);
                         popstack(stack);
                         popstack(stack);
@@ -785,25 +785,25 @@ namespace Legacy
                     {
                         // ([sig ...] num_of_signatures [pubkey ...] num_of_pubkeys -- bool)
 
-                        int i = 1;
+                        int32_t i = 1;
                         if(stack.size() < i)
                             return false;
 
-                        int nKeysCount = CastToBigNum(stacktop(-i)).getint32();
+                        int32_t nKeysCount = ScriptNum(stacktop(-i)).getint32();
                         if(nKeysCount < 0 || nKeysCount > 20)
                             return false;
                         nOpCount += nKeysCount;
                         if(nOpCount > 201)
                             return false;
-                        int ikey = ++i;
+                        int32_t ikey = ++i;
                         i += nKeysCount;
                         if(stack.size() < i)
                             return false;
 
-                        int nSigsCount = CastToBigNum(stacktop(-i)).getint32();
+                        int32_t nSigsCount = ScriptNum(stacktop(-i)).getint32();
                         if(nSigsCount < 0 || nSigsCount > nKeysCount)
                             return false;
-                        int isig = ++i;
+                        int32_t isig = ++i;
                         i += nSigsCount;
                         if(stack.size() < i)
                             return false;

@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_INCLUDE_CONSTANTS_H
 #define NEXUS_LEGACY_INCLUDE_CONSTANTS_H
 
-#include <LLC/types/bignum.h>
 #include <Util/include/base58.h>
 
 #include <string>
@@ -35,22 +34,6 @@ namespace Legacy
 
     /** Byte vector representation of true. **/
     const std::vector<uint8_t> vchTrue(1, 1);
-
-
-    /** Big Number representation of zero. **/
-    const LLC::CBigNum bnZero(0);
-
-
-    /** Big Number representation of one. **/
-    const LLC::CBigNum bnOne(1);
-
-
-    /** Big Number representation of false. **/
-    const LLC::CBigNum bnFalse(0);
-
-
-    /** Big Number representation of true. **/
-    const LLC::CBigNum bnTrue(1);
 
 
     /** Maximum size of numeric values. **/

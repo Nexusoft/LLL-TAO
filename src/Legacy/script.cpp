@@ -73,7 +73,7 @@ namespace Legacy
     std::string ValueString(const std::vector<uint8_t>& vch)
     {
         if(vch.size() <= 4)
-            return debug::safe_printstr(LLC::CBigNum(vch).getint32());
+            return debug::safe_printstr(ScriptNum(vch).getint32());
         else
             return HexStr(vch);
     }
@@ -102,7 +102,7 @@ namespace Legacy
         }
         else
         {
-            LLC::CBigNum bn(n);
+            ScriptNum bn(n);
             *this << bn.getvch();
         }
         return *this;
@@ -117,7 +117,7 @@ namespace Legacy
         }
         else
         {
-            LLC::CBigNum bn(n);
+            ScriptNum bn(n);
             *this << bn.getvch();
         }
         return *this;

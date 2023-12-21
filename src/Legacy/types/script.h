@@ -15,13 +15,14 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_TYPES_SCRIPT_H
 #define NEXUS_LEGACY_TYPES_SCRIPT_H
 
-#include <LLC/types/bignum.h>
 #include <LLC/include/eckey.h>
 
 #include <Legacy/types/address.h>
 #include <Legacy/include/enum.h>
+#include <Legacy/include/constants.h>
 
 #include <Util/include/base58.h>
+#include <Util/include/debug.h>
 
 #include <string>
 #include <vector>
@@ -53,6 +54,191 @@ namespace Legacy
      *
      **/
     std::string StackString(const std::vector<std::vector<uint8_t> >& vStack);
+
+
+    /** @class ScriptNum
+     *
+     *  Class to handle all script based operations using a signed 64 bit integer and enforcing our maximum range of 32 bits.
+     *
+     **/
+    class ScriptNum
+    {
+
+    /**
+     * Numeric opcodes (OP_1ADD, etc) are restricted to operating on 4-byte integers.
+     * The semantics are subtle, though: operands must be in the range [-2^31 +1...2^31 -1],
+     * but results may overflow (and are valid as long as they are not used in a subsequent
+     * numeric operation). ScriptNum enforces those semantics by storing results as
+     * an int64 and allowing out-of-range values to be returned as a vector of bytes but
+     * throwing an exception if arithmetic is done or the result is interpreted as an integer.
+     */
+    public:
+
+        explicit ScriptNum(const int64_t& n)
+        {
+            nValue = n;
+        }
+
+        explicit ScriptNum(const std::vector<uint8_t>& vch)
+        {
+            if(vch.size() > nMaxNumSize)
+                throw debug::exception(FUNCTION, "script number overflow");
+
+            nValue = set_vch(vch);
+        }
+
+        inline bool operator==(const int64_t& rhs) const    { return nValue == rhs; }
+        inline bool operator!=(const int64_t& rhs) const    { return nValue != rhs; }
+        inline bool operator<=(const int64_t& rhs) const    { return nValue <= rhs; }
+        inline bool operator< (const int64_t& rhs) const    { return nValue <  rhs; }
+        inline bool operator>=(const int64_t& rhs) const    { return nValue >= rhs; }
+        inline bool operator> (const int64_t& rhs) const    { return nValue >  rhs; }
+
+        inline bool operator==(const ScriptNum& rhs) const { return operator==(rhs.nValue); }
+        inline bool operator!=(const ScriptNum& rhs) const { return operator!=(rhs.nValue); }
+        inline bool operator<=(const ScriptNum& rhs) const { return operator<=(rhs.nValue); }
+        inline bool operator< (const ScriptNum& rhs) const { return operator< (rhs.nValue); }
+        inline bool operator>=(const ScriptNum& rhs) const { return operator>=(rhs.nValue); }
+        inline bool operator> (const ScriptNum& rhs) const { return operator> (rhs.nValue); }
+
+        inline ScriptNum operator+(   const int64_t& rhs)    const { return ScriptNum(nValue + rhs);}
+        inline ScriptNum operator-(   const int64_t& rhs)    const { return ScriptNum(nValue - rhs);}
+        inline ScriptNum operator+(   const ScriptNum& rhs) const { return operator+(rhs.nValue);   }
+        inline ScriptNum operator-(   const ScriptNum& rhs) const { return operator-(rhs.nValue);   }
+
+        inline ScriptNum operator*(   const int64_t& rhs)    const { return ScriptNum(nValue * rhs);}
+        inline ScriptNum operator/(   const int64_t& rhs)    const { return ScriptNum(nValue / rhs);}
+        inline ScriptNum operator%(   const int64_t& rhs)    const { return ScriptNum(nValue % rhs);}
+        inline ScriptNum operator*(   const ScriptNum& rhs) const { return operator*(rhs.nValue);   }
+        inline ScriptNum operator/(   const ScriptNum& rhs) const { return operator/(rhs.nValue);   }
+        inline ScriptNum operator%(   const ScriptNum& rhs) const { return operator%(rhs.nValue);   }
+
+        inline ScriptNum operator>>(  const uint32_t& rhs)  const { return ScriptNum(nValue >> rhs);}
+        inline ScriptNum operator<<(  const uint32_t& rhs)  const { return ScriptNum(nValue << rhs);}
+
+        inline ScriptNum& operator>>=(const uint32_t& rhs)        { nValue >>= rhs; return *this; }
+        inline ScriptNum& operator<<=(const uint32_t& rhs)        { nValue <<= rhs; return *this;}
+
+        inline ScriptNum& operator+=( const ScriptNum& rhs)       { return operator+=(rhs.nValue);  }
+        inline ScriptNum& operator-=( const ScriptNum& rhs)       { return operator-=(rhs.nValue);  }
+
+        inline ScriptNum operator&(   const int64_t& rhs)    const { return ScriptNum(nValue & rhs);}
+        inline ScriptNum operator&(   const ScriptNum& rhs) const { return operator&(rhs.nValue);   }
+
+        inline ScriptNum& operator&=( const ScriptNum& rhs)       { return operator&=(rhs.nValue);  }
+
+        inline ScriptNum operator-()                         const
+        {
+            assert(nValue != std::numeric_limits<int64_t>::min());
+            return ScriptNum(-nValue);
+        }
+
+        inline ScriptNum& operator=( const int64_t& rhs)
+        {
+            nValue = rhs;
+            return *this;
+        }
+
+        inline ScriptNum& operator+=( const int64_t& rhs)
+        {
+            assert(rhs == 0 || (rhs > 0 && nValue <= std::numeric_limits<int64_t>::max() - rhs) ||
+                               (rhs < 0 && nValue >= std::numeric_limits<int64_t>::min() - rhs));
+            nValue += rhs;
+            return *this;
+        }
+
+        inline ScriptNum& operator-=( const int64_t& rhs)
+        {
+            assert(rhs == 0 || (rhs > 0 && nValue >= std::numeric_limits<int64_t>::min() + rhs) ||
+                               (rhs < 0 && nValue <= std::numeric_limits<int64_t>::max() + rhs));
+            nValue -= rhs;
+            return *this;
+        }
+
+        inline ScriptNum& operator&=( const int64_t& rhs)
+        {
+            nValue &= rhs;
+            return *this;
+        }
+
+        int32_t getint32() const
+        {
+            if (nValue > std::numeric_limits<int32_t>::max())
+                return std::numeric_limits<int32_t>::max();
+            else if (nValue < std::numeric_limits<int32_t>::min())
+                return std::numeric_limits<int32_t>::min();
+            return nValue;
+        }
+
+        uint32_t getuint32() const
+        {
+            if(nValue < std::numeric_limits<uint32_t>::max())
+                return nValue * -1;
+
+            return static_cast<uint32_t>(nValue);
+        }
+
+        int64_t GetInt64() const { return nValue; }
+
+        std::vector<uint8_t> getvch() const
+        {
+            return serialize(nValue);
+        }
+
+        static std::vector<uint8_t> serialize(const int64_t& value)
+        {
+            if(value == 0)
+                return std::vector<uint8_t>();
+
+            std::vector<uint8_t> result;
+            const bool neg = value < 0;
+            uint64_t absvalue = neg ? ~static_cast<uint64_t>(value) + 1 : static_cast<uint64_t>(value);
+
+            while(absvalue)
+            {
+                result.push_back(absvalue & 0xff);
+                absvalue >>= 8;
+            }
+
+    //    - If the most significant byte is >= 0x80 and the value is positive, push a
+    //    new zero-byte to make the significant byte < 0x80 again.
+
+    //    - If the most significant byte is >= 0x80 and the value is negative, push a
+    //    new 0x80 byte that will be popped off when converting to an integral.
+
+    //    - If the most significant byte is < 0x80 and the value is negative, add
+    //    0x80 to it, since it will be subtracted and interpreted as a negative when
+    //    converting to an integral.
+
+            if (result.back() & 0x80)
+                result.push_back(neg ? 0x80 : 0);
+            else if (neg)
+                result.back() |= 0x80;
+
+            return result;
+        }
+
+    private:
+        static int64_t set_vch(const std::vector<uint8_t>& vch)
+        {
+          if (vch.empty())
+              return 0;
+
+          int64_t result = 0;
+          for (size_t i = 0; i != vch.size(); ++i)
+              result |= static_cast<int64_t>(vch[i]) << 8*i;
+
+          // If the input vector's most significant byte is 0x80, remove it from
+          // the result's msb and return a negative.
+          if (vch.back() & 0x80)
+              return -((int64_t)(result & ~(0x80ULL << (8 * (vch.size() - 1)))));
+
+          return result;
+        }
+
+        /** Our internal daatatype for managing the script value. **/
+        int64_t nValue;
+    };
 
 
 
@@ -388,7 +574,7 @@ namespace Legacy
         explicit Script(uint64_t b)                    { operator<<(b); }
         explicit Script(opcodetype b)                  { operator<<(b); }
         explicit Script(const uint256_t& b)            { operator<<(b); }
-        explicit Script(const LLC::CBigNum& b)         { operator<<(b); }
+        explicit Script(const ScriptNum& b)            { operator<<(b); }
         explicit Script(const std::vector<uint8_t>& b) { operator<<(b); }
 
         Script& operator<<(int8_t b)                   { return push_int64(b); }
@@ -415,7 +601,7 @@ namespace Legacy
             return *this;
         }
 
-        Script& operator<<(const LLC::CBigNum& b)
+        Script& operator<<(const ScriptNum& b)
         {
             *this << b.getvch();
             return *this;

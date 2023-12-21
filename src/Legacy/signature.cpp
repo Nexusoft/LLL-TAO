@@ -11,7 +11,6 @@
 
 ____________________________________________________________________________________________*/
 
-#include <LLC/types/bignum.h>
 #include <LLC/hash/SK.h>
 
 #include <Legacy/include/enum.h>

@@ -452,7 +452,7 @@ namespace Legacy
         if(nChannel == 1)
             debug::log(2, "  prime cluster verified of size ", TAO::Ledger::GetDifficulty(nBits, 1));
         else
-            debug::log(2, "  target: ", LLC::CBigNum().SetCompact(nBits).getuint1024().SubString(30));
+            debug::log(2, "  target: ", uint1024_t().SetCompact(nBits).SubString(30));
 
         /* Check that the nBits match the current Difficulty. **/
         if(nBits != TAO::Ledger::GetNextTargetRequired(statePrev, nChannel))
@@ -556,9 +556,9 @@ namespace Legacy
     bool LegacyBlock::VerifyStake() const
     {
         /* Check the Block Hash with Weighted Hash to Target. */
-        LLC::CBigNum bnTarget;
+        uint1024_t bnTarget;
         bnTarget.SetCompact(nBits);
-        if(GetHash() > bnTarget.getuint1024())
+        if(GetHash() > bnTarget)
             return debug::error(FUNCTION, "proof of stake not meeting target");
 
         return true;
@@ -577,9 +577,9 @@ namespace Legacy
         static const uint32_t nMinimumCoinAge = config::fTestNet ? TAO::Ledger::MINIMUM_GENESIS_COIN_AGE_TESTNET : TAO::Ledger::MINIMUM_GENESIS_COIN_AGE;
 
         /* Check the proof hash of the stake block on version 5 and above. */
-        LLC::CBigNum bnTarget;
+        uint1024_t bnTarget;
         bnTarget.SetCompact(nBits);
-        if(StakeHash() > bnTarget.getuint1024())
+        if(StakeHash() > bnTarget)
             return debug::error(FUNCTION, "proof of stake hash not meeting target");
 
         /* Weight for Trust transactions combine block weight and stake weight. */
@@ -642,7 +642,7 @@ namespace Legacy
         /* Verbose logging. */
         debug::log(2, FUNCTION,
             "hash=", StakeHash().SubString(), ", ",
-            "target=", bnTarget.getuint1024().SubString(), ", ",
+            "target=", bnTarget.SubString(), ", ",
             "trustscore=", nTrustScore, ", ",
             "blockage=", nBlockAge, ", ",
             "trustweight=", nTrustWeight, ", ",

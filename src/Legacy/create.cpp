@@ -20,7 +20,6 @@ ________________________________________________________________________________
 
 #include <LLC/hash/SK.h>
 #include <LLC/include/eckey.h>
-#include <LLC/types/bignum.h>
 
 #include <LLD/include/global.h>
 
@@ -477,7 +476,8 @@ namespace Legacy
 
         /* Precompute the block's hash based on proof hash, get hash, or stake hash. */
         uint1024_t hashBlock = (block.nVersion < 5 ? block.GetHash() : nChannel == 0 ? block.StakeHash() : block.ProofHash());
-        uint1024_t hashTarget = LLC::CBigNum().SetCompact(block.nBits).getuint1024();
+        uint1024_t hashTarget;
+        hashTarget.SetCompact(block.nBits);
 
         /* Verify the work completed. */
         if(nChannel > 0 && !block.VerifyWork())
@@ -486,10 +486,10 @@ namespace Legacy
         /* Check stake targets based on version. */
         if(nChannel == 0)
         {
-            LLC::CBigNum bnTarget;
-            bnTarget.SetCompact(block.nBits);
+            uint1024_t hashTarget;
+            hashTarget.SetCompact(block.nBits);
 
-            if((block.nVersion < 5 ? block.GetHash() : block.StakeHash()) > bnTarget.getuint1024())
+            if((block.nVersion < 5 ? block.GetHash() : block.StakeHash()) > hashTarget)
                 return debug::error(FUNCTION, "Nexus Stake Minter: Proof of stake not meeting target");
         }
 

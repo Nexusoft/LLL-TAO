@@ -15,7 +15,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_INCLUDE_SIGNATURE_H
 #define NEXUS_LEGACY_INCLUDE_SIGNATURE_H
 
-#include <LLC/types/bignum.h>
 #include <Legacy/wallet/basickeystore.h>
 #include <Util/include/base58.h>
 

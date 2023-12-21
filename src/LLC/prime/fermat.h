@@ -10,9 +10,8 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
+
 #include <cstdint>
-
-
 
 #define WINDOW_BITS 7
 #define WINDOW_SIZE (1 << WINDOW_BITS)

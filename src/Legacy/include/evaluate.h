@@ -15,8 +15,6 @@ ________________________________________________________________________________
 #ifndef NEXUS_LEGACY_INCLUDE_EVALUATE_H
 #define NEXUS_LEGACY_INCLUDE_EVALUATE_H
 
-#include <LLC/types/bignum.h>
-
 #include <Legacy/wallet/basickeystore.h>
 #include <Legacy/types/script.h>
 
