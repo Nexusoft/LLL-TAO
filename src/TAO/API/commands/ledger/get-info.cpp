@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -40,7 +40,7 @@ namespace TAO::API
 
         /* Grab our best block. */
         const TAO::Ledger::BlockState tBestBlock =
-            TAO::Ledger::ChainState::stateBest.load();
+            TAO::Ledger::ChainState::tStateBest.load();
 
         /* We only need supply data when on a public network or testnet, private and hybrid do not have supply. */
         if(!config::fHybrid.load())
@@ -48,17 +48,17 @@ namespace TAO::API
             /* Add supply metrics */
             encoding::json jSupply;
 
-            /* Read the stateBest using hashBestChain */
-            TAO::Ledger::BlockState stateBest;
-            if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), stateBest))
+            /* Read the tStateBest using hashBestChain */
+            TAO::Ledger::BlockState tStateBest;
+            if(!LLD::Ledger->ReadBlock(TAO::Ledger::ChainState::hashBestChain.load(), tStateBest))
                 return std::string("Block not found");
 
             /* Get our chain age. */
             const uint32_t nMinutes =
-                TAO::Ledger::GetChainAge(stateBest.GetBlockTime());
+                TAO::Ledger::GetChainAge(tStateBest.GetBlockTime());
 
             /* Get our total supply and target supply. */
-            const int64_t nSupply   = stateBest.nMoneySupply;
+            const int64_t nSupply   = tStateBest.nMoneySupply;
             const int64_t nTarget   = TAO::Ledger::CompoundSubsidy(nMinutes);
 
             /* Calculate the number of years it has been since start of chain. */

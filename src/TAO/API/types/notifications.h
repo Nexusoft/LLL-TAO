@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2019
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -60,29 +60,40 @@ namespace TAO::API
 
 
         /** SanitizeContract
-        *
-        *  Checks that the contract passes both Build() and Execute()
-        *
-        *  @param[out] rContract The contract to sanitize
-        *  @param[out] mapStates map of register states used by Build()
-        *
-        *  @return True if the contract was sanitized without errors.
-        *
-        **/
+         *
+         *  Checks that the contract passes both Build() and Execute()
+         *
+         *  @param[out] rContract The contract to sanitize
+         *  @param[out] mapStates map of register states used by Build()
+         *
+         *  @return True if the contract was sanitized without errors.
+         *
+         **/
         static bool SanitizeContract(TAO::Operation::Contract &rContract, std::map<uint256_t, TAO::Register::State> &mapStates);
 
 
         /** SanitizeContract
-        *
-        *  Checks that the contract passes both Build() and Execute()
-        *
-        *  @param[in] hashGenesis The sigchain that is calling to sanitize.
-        *  @param[out] rContract The contract to sanitize
-        *
-        *  @return True if the contract was sanitized without errors.
-        *
-        **/
+         *
+         *  Checks that the contract passes both Build() and Execute()
+         *
+         *  @param[in] hashGenesis The sigchain that is calling to sanitize.
+         *  @param[out] rContract The contract to sanitize
+         *
+         *  @return True if the contract was sanitized without errors.
+         *
+         **/
         static bool SanitizeContract(const uint256_t& hashGenesis, TAO::Operation::Contract &rContract);
+
+
+        /** SanitizeUnconfirmed
+         *
+         *  Checks that the current unconfirmed transactions are in a valid state.
+         *
+         *  @param[in] hashGenesis The sigchain that is calling to sanitize.
+         *  @param[in] jSession The current session data to use in building.
+         *
+         **/
+        static bool SanitizeUnconfirmed(const uint256_t& hashGenesis, const encoding::json& jSession);
 
 
     private:

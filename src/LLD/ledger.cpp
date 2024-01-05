@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -45,6 +45,7 @@ namespace LLD
     , MEMORY_MUTEX()
     , pMemory(nullptr)
     , pMiner(nullptr)
+    , pSanitize(nullptr)
     , pCommit(new LedgerTransaction())
     {
     }
@@ -60,6 +61,10 @@ namespace LLD
         /* Free miner memory. */
         if(pMiner)
             delete pMiner;
+
+        /* Free sanitize memory. */
+        if(pSanitize)
+            delete pSanitize;
 
         /* Free commited memory. */
         if(pCommit)
@@ -163,8 +168,9 @@ namespace LLD
     {
         /* Special check for memory pool. */
         TAO::Ledger::Transaction tx;
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
-        {
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {   //TODO: we should remote MINER/SANITIZE and make surew e don't breka anything
+
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTx, tx))
                 return tx;
@@ -205,7 +211,7 @@ namespace LLD
     bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTx, tx))
@@ -260,7 +266,7 @@ namespace LLD
     bool LedgerDB::ReadTx(const uint512_t& hashTx, TAO::Ledger::Transaction &tx, bool &fConflicted, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Get(hashTx, tx, fConflicted))
@@ -359,6 +365,16 @@ namespace LLD
 
             return true;
         }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for pending tranasaction. */
+            if(pSanitize)
+                pSanitize->mapClaims[pair] = nClaimed;
+
+            return true;
+        }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK)
         {
             LOCK(MEMORY_MUTEX);
@@ -428,6 +444,19 @@ namespace LLD
                 return true;
             }
         }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for pending transaction. */
+            if(pSanitize && pSanitize->mapClaims.count(pair))
+            {
+                /* Set claimed from memory. */
+                nClaimed = pSanitize->mapClaims[pair];
+
+                return true;
+            }
+        }
 
         return Read(pair, nClaimed);
     }
@@ -455,11 +484,11 @@ namespace LLD
 
         /* Switch for coinbase. */
         if(tx.IsCoinBase())
-            return nConfirms >= TAO::Ledger::MaturityCoinBase((pblock ? *pblock : TAO::Ledger::ChainState::stateBest.load()));
+            return nConfirms >= TAO::Ledger::MaturityCoinBase((pblock ? *pblock : TAO::Ledger::ChainState::tStateBest.load()));
 
         /* Switch for coinstake. */
         else if(tx.IsCoinStake())
-            return nConfirms >= TAO::Ledger::MaturityCoinStake((pblock ? *pblock : TAO::Ledger::ChainState::stateBest.load()));
+            return nConfirms >= TAO::Ledger::MaturityCoinStake((pblock ? *pblock : TAO::Ledger::ChainState::tStateBest.load()));
 
         else
             return true; //non-producer transactions have no maturity requirement
@@ -563,7 +592,7 @@ namespace LLD
     bool LedgerDB::HasTx(const uint512_t& hashTx, const uint8_t nFlags)
     {
         /* Special check for memory pool. */
-        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER)
+        if(nFlags == TAO::Ledger::FLAGS::MEMPOOL || nFlags == TAO::Ledger::FLAGS::MINER || nFlags == TAO::Ledger::FLAGS::SANITIZE)
         {
             /* Get the transaction. */
             if(TAO::Ledger::mempool.Has(hashTx))
@@ -784,6 +813,16 @@ namespace LLD
 
             return true;
         }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check for pending transactions. */
+            if(pSanitize)
+                pSanitize->setProofs.insert(tIndex);
+
+            return true;
+        }
         else if(nFlags == TAO::Ledger::FLAGS::BLOCK || nFlags == TAO::Ledger::FLAGS::ERASE)
         {
             LOCK(MEMORY_MUTEX);
@@ -872,6 +911,14 @@ namespace LLD
 
             /* Check pending transaction memory. */
             if(pMiner && pMiner->setProofs.count(tIndex))
+                return true;
+        }
+        else if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            LOCK(MEMORY_MUTEX);
+
+            /* Check pending transaction memory. */
+            if(pSanitize && pSanitize->setProofs.count(tIndex))
                 return true;
         }
 
@@ -1252,6 +1299,18 @@ namespace LLD
             return;
         }
 
+        /* Check for sanitize. */
+        if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pSanitize)
+                delete pSanitize;
+
+            pSanitize = new LedgerTransaction();
+
+            return;
+        }
+
         /* Set the pre-commit memory mode. */
         if(pMemory)
             delete pMemory;
@@ -1273,6 +1332,18 @@ namespace LLD
                 delete pMiner;
 
             pMiner = nullptr;
+
+            return;
+        }
+
+        /* Check for sanitize. */
+        if(nFlags == TAO::Ledger::FLAGS::SANITIZE)
+        {
+            /* Set the pre-commit memory mode. */
+            if(pSanitize)
+                delete pSanitize;
+
+            pSanitize = nullptr;
 
             return;
         }

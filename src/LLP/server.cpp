@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -20,6 +20,7 @@ ________________________________________________________________________________
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/types/apinode.h>
+#include <LLP/types/filenode.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
 #include <LLP/types/lookup.h>
@@ -56,6 +57,7 @@ namespace LLP
     , pAddressManager   (nullptr)
     , THREADS_DATA      ( )
     , THREAD_LISTEN     ( )
+    , THREAD_UPNP       ( )
     , THREAD_METER      ( )
     , THREAD_MANAGER    ( )
     {
@@ -122,6 +124,25 @@ namespace LLP
                         )
                     )
                 );
+
+                /* Initialize the UPnP thread if remote connections are allowed. */
+                #ifdef USE_UPNP
+                if(CONFIG.ENABLE_REMOTE && CONFIG.ENABLE_UPNP)
+                {
+                    THREAD_UPNP.push_back
+                    (
+                        std::thread
+                        (
+                            std::bind
+                            (
+                                &Server::UPnP,
+                                this,
+                                CONFIG.PORT_BASE
+                            )
+                        )
+                    );
+                }
+                #endif
             }
 
             /* Add our SSL listener if enabled. */
@@ -141,6 +162,25 @@ namespace LLP
                         )
                     )
                 );
+
+                /* Initialize the UPnP thread if remote connections are allowed. */
+                #ifdef USE_UPNP
+                if(CONFIG.ENABLE_REMOTE && CONFIG.ENABLE_UPNP)
+                {
+                    THREAD_UPNP.push_back
+                    (
+                        std::thread
+                        (
+                            std::bind
+                            (
+                                &Server::UPnP,
+                                this,
+                                CONFIG.PORT_SSL
+                            )
+                        )
+                    );
+                }
+                #endif
             }
         }
 
@@ -164,6 +204,15 @@ namespace LLP
 
         /* Check all registered listening threads. */
         for(auto& THREAD : THREAD_LISTEN)
+        {
+            /* Wait on listening threads. */
+            if(THREAD.joinable())
+                THREAD.join();
+        }
+
+
+        /* Check all registered upnp threads. */
+        for(auto& THREAD : THREAD_UPNP)
         {
             /* Wait on listening threads. */
             if(THREAD.joinable())
@@ -588,13 +637,6 @@ namespace LLP
                         debug::log(3, FUNCTION, "Connected to DNS Address: ", strDNS);
                 }
             }
-
-            /* Print the debug info every 10s */
-            if(TIMER.Elapsed() >= 10)
-            {
-                debug::log(3, FUNCTION, ProtocolType::Name(), " ", pAddressManager->ToString());
-                TIMER.Reset();
-            }
         }
     }
 
@@ -649,7 +691,7 @@ namespace LLP
             /* Set the listing socket descriptor on the pollfd.  We do this inside the loop in case the listening socket is
                explicitly closed and reopened whilst the app is running (used for mobile) */
             fds[0].fd = get_listening_socket(fIPv4, fSSL);
-            if (fds[0].fd != INVALID_SOCKET)
+            if(fds[0].fd != INVALID_SOCKET)
             {
                 /* Poll the sockets. */
                 fds[0].revents = 0;
@@ -696,7 +738,7 @@ namespace LLP
                     if(GetConnectionCount(FLAGS::INCOMING) >= CONFIG.MAX_INCOMING
                     || GetConnectionCount(FLAGS::ALL) >= CONFIG.MAX_CONNECTIONS)
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
+                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Max connection count exceeded.");
                         closesocket(hSocket);
                         runtime::sleep(500);
 
@@ -713,7 +755,7 @@ namespace LLP
                     /* Check that an address is banned. */
                     if(DDOS_MAP->count(addr) && DDOS_MAP->at(addr)->Banned())
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
+                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " refused... Banned.");
                         sockNew.Close();
 
                         continue;
@@ -722,7 +764,7 @@ namespace LLP
                     /* Check for errors accepting the connection */
                     if(sockNew.Errors())
                     {
-                        debug::log(3, FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
+                        debug::error(FUNCTION, "Incoming Connection Request ",  addr.ToString(), " failed.");
                         sockNew.Close();
 
                         continue;
@@ -731,7 +773,7 @@ namespace LLP
                     /* DDOS Operations: Only executed when DDOS is enabled. */
                     if(!CheckPermissions(addr.ToStringIP(), fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE))
                     {
-                        debug::log(3, FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
+                        debug::error(FUNCTION, "Connection Request ",  addr.ToString(), " refused... Denied by allowip whitelist.");
 
                         sockNew.Close();
 
@@ -753,8 +795,12 @@ namespace LLP
                     /* Accept an incoming connection. */
                     dt->AddConnection(sockNew, CONFIG.ENABLE_DDOS ? DDOS_MAP->at(addr) : nullptr);
 
+                    /* Add the address to the address manager if it exists. */
+                    if(pAddressManager)
+                        pAddressManager->AddAddress(addr, ConnectState::CONNECTED);
+
                     /* Verbose output. */
-                    debug::log(3, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
+                    debug::log(4, FUNCTION, "Accepted Connection ", addr.ToString(), " on port ", fSSL ? CONFIG.PORT_SSL : CONFIG.PORT_BASE);
                 }
             }
             else
@@ -899,6 +945,8 @@ namespace LLP
 
             /* Total incoming and outgoing packets. */
             uint32_t RPS = ProtocolType::REQUESTS / TIMER.Elapsed();
+            uint32_t CPS = ProtocolType::CONNECTIONS / TIMER.Elapsed();
+            uint32_t DPS = ProtocolType::DISCONNECTS / TIMER.Elapsed();
             uint32_t PPS = ProtocolType::PACKETS / TIMER.Elapsed();
 
             /* Omit meter when zero values detected. */
@@ -908,16 +956,19 @@ namespace LLP
             /* Meter output. */
             debug::log(0,
                 ANSI_COLOR_FUNCTION, Name(), " LLP : ", ANSI_COLOR_RESET,
+                CPS, " Accepts/s | ",
+                DPS, " Closing/s | ",
                 RPS, " Incoming/s | ",
                 PPS, " Outgoing/s | ",
-                RPS + PPS, " Packets/s | ",
-                nGlobalConnections, " Connections."
+                nGlobalConnections, " Connections"
             );
 
             /* Reset meter info. */
             TIMER.Reset();
             ProtocolType::REQUESTS.store(0);
             ProtocolType::PACKETS.store(0);
+            ProtocolType::CONNECTIONS.store(0);
+            ProtocolType::DISCONNECTS.store(0);
         }
     }
 
@@ -995,6 +1046,113 @@ namespace LLP
     }
 
 
+    /* UPnP Thread. If UPnP is enabled then this thread will set up the required port forwarding. */
+    template <class ProtocolType>
+    void Server<ProtocolType>::UPnP(const uint16_t nPort)
+    {
+    #ifndef USE_UPNP
+        return;
+    #else
+
+        char port[6];
+        sprintf(port, "%d", nPort);
+
+        const char * multicastif = 0;
+        const char * minissdpdpath = 0;
+        struct UPNPDev * devlist = 0;
+        char lanaddr[64];
+
+        #ifndef UPNPDISCOVER_SUCCESS
+            /* miniupnpc 1.5 */
+            devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0);
+        #elif MINIUPNPC_API_VERSION < 14
+            /* miniupnpc 1.6 */
+            int error = 0;
+            devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0, 0, &error);
+        #else
+            /* miniupnpc 1.9.20150730 */
+            int error = 0;
+            devlist = upnpDiscover(2000, multicastif, minissdpdpath, 0, 0, 2, &error);
+        #endif
+
+        struct UPNPUrls urls;
+        struct IGDdatas data;
+        int nResult;
+
+        if(devlist == 0)
+        {
+            debug::error(FUNCTION, "No UPnP devices found");
+            return;
+        }
+
+        nResult = UPNP_GetValidIGD(devlist, &urls, &data, lanaddr, sizeof(lanaddr));
+        if (nResult == 1)
+        {
+
+            std::string strDesc = version::CLIENT_VERSION_BUILD_STRING;
+        #ifndef UPNPDISCOVER_SUCCESS
+                /* miniupnpc 1.5 */
+                nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
+                                    port, port, lanaddr, strDesc.c_str(), "TCP", 0);
+        #else
+                /* miniupnpc 1.6 */
+                nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
+                                    port, port, lanaddr, strDesc.c_str(), "TCP", 0, "0");
+        #endif
+
+            if(nResult != UPNPCOMMAND_SUCCESS)
+                debug::error(FUNCTION, "AddPortMapping(", port, ", ", port, ", ", lanaddr, ") failed with code ", nResult, " (", strupnperror(nResult), ")");
+            else
+                debug::log(1, "UPnP Port Mapping successful for port: ", nPort);
+
+            runtime::timer TIMER;
+            TIMER.Start();
+
+            while(!config::fShutdown.load())
+            {
+                if (TIMER.Elapsed() >= 600) // Refresh every 10 minutes
+                {
+                    TIMER.Reset();
+
+        #ifndef UPNPDISCOVER_SUCCESS
+                    /* miniupnpc 1.5 */
+                    nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
+                                        port, port, lanaddr, strDesc.c_str(), "TCP", 0);
+        #else
+                    /* miniupnpc 1.6 */
+                    nResult = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
+                                        port, port, lanaddr, strDesc.c_str(), "TCP", 0, "0");
+        #endif
+
+                    if(nResult != UPNPCOMMAND_SUCCESS)
+                        debug::error(FUNCTION, "AddPortMapping(", port, ", ", port, ", ", lanaddr, ") failed with code ", nResult, " (", strupnperror(nResult), ")");
+                    else
+                        debug::log(1, "UPnP Port Mapping successful for port: ", nPort);
+                }
+                runtime::sleep(1000);
+            }
+
+            /* Shutdown sequence */
+            nResult = UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, port, "TCP", 0);
+            debug::log(1, "UPNP_DeletePortMapping() returned : ", nResult);
+            freeUPNPDevlist(devlist); devlist = 0;
+            FreeUPNPUrls(&urls);
+        }
+        else
+        {
+            debug::error(FUNCTION, "No valid UPnP IGDs found.");
+            freeUPNPDevlist(devlist); devlist = 0;
+            if (nResult != 0)
+                FreeUPNPUrls(&urls);
+
+            return;
+        }
+
+       debug::log(0, "UPnP closed.");
+    #endif
+    }
+
+
 
 
     /* Explicity instantiate all template instances needed for compiler. */
@@ -1002,6 +1160,7 @@ namespace LLP
     template class Server<LookupNode>;
     template class Server<TimeNode>;
     template class Server<APINode>;
+    template class Server<FileNode>;
     template class Server<RPCNode>;
     template class Server<Miner>;
 }

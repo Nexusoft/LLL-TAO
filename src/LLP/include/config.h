@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -24,6 +24,10 @@ namespace LLP
 
         /** Whether this server should listen for new connections **/
         bool ENABLE_LISTEN;
+
+
+        /** Whether this server should forward ports for new connections **/
+        bool ENABLE_UPNP;
 
 
         /** Indicates if meter statistics should be logged **/
@@ -97,6 +101,7 @@ namespace LLP
         /** Default constructor **/
         Config(const uint16_t nPort)
         : ENABLE_LISTEN   (true)
+        , ENABLE_UPNP     (false)
         , ENABLE_METERS   (false)
         , ENABLE_DDOS     (false)
         , ENABLE_MANAGER  (true)
@@ -120,6 +125,7 @@ namespace LLP
         /** Copy Constructor. **/
         Config(const Config& config)
         : ENABLE_LISTEN   (config.ENABLE_LISTEN)
+        , ENABLE_UPNP     (config.ENABLE_UPNP)
         , ENABLE_METERS   (config.ENABLE_METERS)
         , ENABLE_DDOS     (config.ENABLE_DDOS)
         , ENABLE_MANAGER  (config.ENABLE_MANAGER)
@@ -145,6 +151,7 @@ namespace LLP
         /** Move Constructor. **/
         Config(Config&& config)
         : ENABLE_LISTEN   (std::move(config.ENABLE_LISTEN))
+        , ENABLE_UPNP     (std::move(config.ENABLE_UPNP))
         , ENABLE_METERS   (std::move(config.ENABLE_METERS))
         , ENABLE_DDOS     (std::move(config.ENABLE_DDOS))
         , ENABLE_MANAGER  (std::move(config.ENABLE_MANAGER))
@@ -171,6 +178,7 @@ namespace LLP
         Config& operator=(const Config& config)
         {
             ENABLE_LISTEN   = config.ENABLE_LISTEN;
+            ENABLE_UPNP     = config.ENABLE_UPNP;
             ENABLE_METERS   = config.ENABLE_METERS;
             ENABLE_DDOS     = config.ENABLE_DDOS;
             ENABLE_MANAGER  = config.ENABLE_MANAGER;
@@ -199,6 +207,7 @@ namespace LLP
         Config& operator=(Config&& config)
         {
             ENABLE_LISTEN   = std::move(config.ENABLE_LISTEN);
+            ENABLE_UPNP     = std::move(config.ENABLE_UPNP);
             ENABLE_METERS   = std::move(config.ENABLE_METERS);
             ENABLE_DDOS     = std::move(config.ENABLE_DDOS);
             ENABLE_MANAGER  = std::move(config.ENABLE_MANAGER);

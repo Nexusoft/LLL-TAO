@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -191,8 +191,8 @@ namespace TAO
             bool Read(const std::string& strName, Type& value) const
             {
                 /* Check the map for empty. */
-                if(mapData.empty())
-                    return debug::error(FUNCTION, "object is not parsed");
+                if(mapData.empty() && !Parse())
+                    return debug::error(FUNCTION, "object failed to parse");
 
                 /* Check that the name exists in the object. */
                 if(!mapData.count(strName))

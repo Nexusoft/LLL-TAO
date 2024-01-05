@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -118,6 +118,14 @@ namespace LLP
 
         /** Total outgoing packets. **/
         static std::atomic<uint64_t> PACKETS;
+
+
+        /** Total incoming connections. **/
+        static std::atomic<uint64_t> CONNECTIONS;
+        
+
+        /** Total disconnections. **/
+        static std::atomic<uint64_t> DISCONNECTS;
 
 
     private:

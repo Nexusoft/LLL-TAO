@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -12,15 +12,16 @@
 ____________________________________________________________________________________________*/
 
 #pragma once
-#ifndef NEXUS_LLP_INCLUDE_GLOBAL_H
-#define NEXUS_LLP_INCLUDE_GLOBAL_H
 
 #include <LLP/include/port.h>
+#include <LLP/include/seeds.h>
+
 #include <LLP/types/tritium.h>
 #include <LLP/types/time.h>
 #include <LLP/templates/server.h>
 
 #include <LLP/types/apinode.h>
+#include <LLP/types/filenode.h>
 #include <LLP/types/lookup.h>
 #include <LLP/types/rpcnode.h>
 #include <LLP/types/miner.h>
@@ -36,6 +37,7 @@ namespace LLP
     extern Server<LookupNode>*   LOOKUP_SERVER;
     extern Server<TimeNode>*     TIME_SERVER;
     extern Server<APINode>*      API_SERVER;
+    extern Server<FileNode>*     FILE_SERVER;
     extern Server<RPCNode>*      RPC_SERVER;
     extern Server<Miner>*        MINING_SERVER;
 
@@ -98,11 +100,18 @@ namespace LLP
         if(!pServer)
             return;
 
+        /* Add core nexus.io nodes so that we get a quick connection to the network. */
+        if(!config::fTestNet.load())
+        {
+            pServer->AddConnection("node1.nexus.io", pServer->GetPort(false), false, true);
+            pServer->AddConnection("node2.nexus.io", pServer->GetPort(false), false, true);
+            pServer->AddConnection("node3.nexus.io", pServer->GetPort(false), false, true);
+            pServer->AddConnection("node4.nexus.io", pServer->GetPort(false), false, true);
+        }
+
         /* -connect means try to establish a connection first. */
         if(config::HasArg("-connect"))
         {
-            RECURSIVE(config::ARGS_MUTEX);
-
             /* Add connections and resolve potential DNS lookups. */
             for(const auto& rAddress : config::mapMultiArgs["-connect"])
             {
@@ -122,8 +131,6 @@ namespace LLP
         /* -addnode means add to address manager and let it make connections. */
         if(config::HasArg("-addnode"))
         {
-            RECURSIVE(config::ARGS_MUTEX);
-
             /* Add nodes and resolve potential DNS lookups. */
             for(const auto& rNode : config::mapMultiArgs["-addnode"])
                 pServer->AddNode(rNode, true);
@@ -203,5 +210,3 @@ namespace LLP
     }
 
 }
-
-#endif

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -303,7 +303,7 @@ namespace Legacy
         if(fHelp || params.size() != 0)
             return std::string("rescan - Rescans the database for relevant wallet transactions.");
 
-        Legacy::Wallet::Instance().ScanForWalletTransactions(TAO::Ledger::ChainState::stateGenesis, true);
+        Legacy::Wallet::Instance().ScanForWalletTransactions(TAO::Ledger::ChainState::tStateGenesis, true);
 
         return "success";
 

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-			(c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+			Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-			(c) Copyright The Nexus Developers 2014 - 2021
+			(c) Copyright The Nexus Developers 2014 - 2023
 
 			Distributed under the MIT software license, see the accompanying
 			file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -219,7 +219,7 @@ namespace TAO
             }
 
             /* See if inputs can be connected. */
-            TAO::Ledger::BlockState state = ChainState::stateBest.load();
+            TAO::Ledger::BlockState state = ChainState::tStateBest.load();
             if(!tx.Connect(inputs, state, TAO::Ledger::FLAGS::MEMPOOL))
                 return debug::error(FUNCTION, "tx ", hashTx.SubString(), " failed to connect inputs");
 

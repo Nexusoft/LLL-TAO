@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -551,7 +551,7 @@ namespace Legacy
                     /* Current state is not connected (eg, this is a candidate block)
                      * so begin repair from best state
                      */
-                    statePrev = TAO::Ledger::ChainState::stateBest.load();
+                    statePrev = TAO::Ledger::ChainState::tStateBest.load();
                 }
                 else
                     statePrev = block;
@@ -1059,12 +1059,12 @@ namespace Legacy
                     return debug::error(FUNCTION, "trust key and block trust key mismatch");
 
                 /* Trust Keys can only exist after the Genesis Transaction. */
-                TAO::Ledger::BlockState stateGenesis;
-                if(!LLD::Ledger->ReadBlock(trustKey.hashGenesisBlock, stateGenesis))
+                TAO::Ledger::BlockState tStateGenesis;
+                if(!LLD::Ledger->ReadBlock(trustKey.hashGenesisBlock, tStateGenesis))
                     return debug::error(FUNCTION, "genesis block not found");
 
                 /* Double Check the Genesis Transaction. */
-                if(!trustKey.CheckGenesis(stateGenesis))
+                if(!trustKey.CheckGenesis(tStateGenesis))
                     return debug::error(FUNCTION, "invalid genesis transaction");
 
                 /* Check that the trust score is accurate. */
@@ -1324,7 +1324,7 @@ namespace Legacy
 
                     /* Commit an event for receiving sigchain in the legacy DB. */
                     if(!LLD::Legacy->EraseEvent(stateReg.hashOwner))
-                        return debug::error(FUNCTION, "failed to write event for account ", stateReg.hashOwner.SubString());
+                        return debug::error(FUNCTION, "failed to erase event for account ", stateReg.hashOwner.SubString());
                 }
             }
         }
@@ -1466,11 +1466,11 @@ namespace Legacy
                 return debug::error(FUNCTION, "version 4 block sequence number is ", nSequence);
 
             /* Ensure that a version 4 trust key is not expired based on new timespan rules. */
-            if(trustKey.Expired(TAO::Ledger::ChainState::stateBest.load()))
+            if(trustKey.Expired(TAO::Ledger::ChainState::tStateBest.load()))
                 return debug::error("version 4 key expired");
 
             /* Score is the total age of the trust key for version 4. */
-            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::stateBest.load().GetBlockTime());
+            nScorePrev = trustKey.Age(TAO::Ledger::ChainState::tStateBest.load().GetBlockTime());
         }
 
         /* Version 5 blocks that are trust must pass sequence checks. */

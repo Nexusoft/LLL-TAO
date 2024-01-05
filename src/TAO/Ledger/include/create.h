@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -58,7 +58,7 @@ namespace TAO
          *  @param[in] user The signature chain to generate this tx
          *  @param[in] pin The pin number to generate with.
          *  @param[out] tx The traansaction object being created
-         *  @param[in] stateBest The current best block state
+         *  @param[in] tStateBest The current best block state
          *  @param[in] nBlockVersion The block version the producer is being created for
          *  @param[in] nChannel The channel to create block for.
          *  @param[in] nExtraNonce An extra nonce to use for double iterating.
@@ -67,7 +67,7 @@ namespace TAO
          **/
         bool CreateProducer(const memory::encrypted_ptr<TAO::Ledger::Credentials>& user, const SecureString& pin,
                                TAO::Ledger::Transaction& tx,
-                               const TAO::Ledger::BlockState& stateBest,
+                               const TAO::Ledger::BlockState& tStateBest,
                                const uint32_t nBlockVersion,
                                const uint32_t nChannel,
                                const uint64_t nExtraNonce,
@@ -88,12 +88,12 @@ namespace TAO
          *
          *  Populate block header data for a new block.
          *
-         *  @param[in] stateBest the current best state of the chain at the time of block creation
+         *  @param[in] tStateBest the current best state of the chain at the time of block creation
          *  @param[in] nChannel The channel creating the block.
          *  @param[out] block The block object being created.
          *
          **/
-        void AddBlockData(const TAO::Ledger::BlockState& stateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block);
+        void AddBlockData(const TAO::Ledger::BlockState& tStateBest, const uint32_t nChannel, TAO::Ledger::TritiumBlock& block);
 
 
         /** CreateBlock

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -145,13 +145,20 @@ namespace LLP
                 else
                     CONNECTIONS->at(nSlot) = std::shared_ptr<ProtocolType>(pnode);
 
-                /* Iterate the DDOS cScore (Connection score). */
-                if(fDDOS.load())
-                    DDOS -> cSCORE += 1;
-
                 /* Check for inbound socket. */
                 if(pnode->Incoming())
+                {
+                    /* Increment internal incoming counter. */
                     ++nIncoming;
+
+                    /* Iterate the DDOS cScore (Connection score). */
+                    if(fDDOS.load())
+                        DDOS -> cSCORE += 1;
+
+                    /* Increment meters value. */
+                    if(fMETER)
+                        ++pnode->CONNECTIONS;
+                }
                 else
                     ++nOutbound;
 

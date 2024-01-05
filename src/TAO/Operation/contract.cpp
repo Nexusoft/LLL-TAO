@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2023
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -17,6 +17,7 @@ ________________________________________________________________________________
 #include <LLD/include/global.h>
 
 #include <TAO/Operation/include/enum.h>
+#include <TAO/Operation/include/execute.h>
 #include <TAO/Operation/types/contract.h>
 
 #include <TAO/Register/include/constants.h>
@@ -184,6 +185,36 @@ namespace TAO::Operation
             nVersion = nCurrent;
         else
             nVersion = nCurrent - 1;
+    }
+
+
+    /* Test if the given contract will pass validation on-chain. */
+    bool Contract::Sanitize() const
+    {
+        /* Check that our contract is already bound. */
+        if(hashCaller == 0 || nTimestamp == 0 || hashTx == 0)
+        {
+            debug::error(FUNCTION, "contract has not been linked to a tx. Did you forget to call Bind()?");
+            return true; //since we rely on this method to prune invalid contracts, don't send a failure notice here
+        }
+
+        /* Temporarily disable error logging so that we don't log errors for contracts that fail to execute. */
+        debug::fLogError = false;
+
+        /* We need to track the flag so we can surpress error reporting while testing this contract. */
+        bool fSanitized = false;
+        try
+        {
+            /* Sanitize contract by building and executing it. */
+            fSanitized =
+                TAO::Operation::Execute(*this, TAO::Ledger::FLAGS::SANITIZE);
+        }
+        catch(const std::exception& e) { debug::error(FUNCTION, e.what()); }
+
+        /* Turn back on error reporting now. */
+        debug::fLogError = true;
+
+        return fSanitized;
     }
 
 

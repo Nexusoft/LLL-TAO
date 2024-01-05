@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -415,19 +415,19 @@ namespace LLP
                     /* Generic errors catch all. */
                     case DISCONNECT::ERRORS:
                         strReason = "Errors";
-                        nState    = ConnectState::FAILED;
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     /* Socket related for POLLERR. */
                     case DISCONNECT::POLL_ERROR:
                         strReason = "Poll Error";
-                        nState    = ConnectState::FAILED;
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     /* Special condition for linux where there's presumed data that can't be read, causing large CPU usage. */
                     case DISCONNECT::POLL_EMPTY:
                         strReason = "Unavailable";
-                        nState    = ConnectState::FAILED;
+                        nState    = ConnectState::DROPPED;
                         break;
 
                     /* Distributed Denial Of Service score threshold. */
@@ -1308,6 +1308,10 @@ namespace LLP
                                 /* Debug output. */
                                 if(config::nVerbose >= 3)
                                     debug::log(3, NODE, "ACTION::LIST: Locator ", hashStart.SubString(), " found");
+
+                                /* Add DDOS filtering here. */
+                                if(DDOS)
+                                    DDOS->rSCORE += locator.vHave.size();
 
                                 break;
                             }
@@ -2196,7 +2200,7 @@ namespace LLP
                                             Unsubscribe(SUBSCRIPTION::LASTINDEX);
 
                                             /* Total blocks synchronized */
-                                            uint32_t nBlocks = TAO::Ledger::ChainState::stateBest.load().nHeight - nSyncStart.load();
+                                            uint32_t nBlocks = TAO::Ledger::ChainState::tStateBest.load().nHeight - nSyncStart.load();
 
                                             /* Calculate the time to sync*/
                                             uint32_t nElapsed = SYNCTIMER.Elapsed();
@@ -2504,16 +2508,6 @@ namespace LLP
                         /* Check for missing transactions. */
                         if(nStatus & TAO::Ledger::PROCESS::INCOMPLETE)
                         {
-                            /* Check for repeated missing loops. */
-                            if(fDDOS.load())
-                            {
-                                /* Iterate a failure for missing transactions. */
-                                nConsecutiveFails += block.vMissing.size();
-
-                                /* Bump DDOS score. */
-                                DDOS->rSCORE += (block.vMissing.size() * 10);
-                            }
-
                             /* Create response data stream. */
                             DataStream ssResponse(SER_NETWORK, PROTOCOL_VERSION);
 
@@ -2534,21 +2528,43 @@ namespace LLP
                                 /* Check if we need to create new protocol message. */
                                 if(++nTotalItems >= ACTION::GET_MAX_ITEMS || tx == block.vMissing.back())
                                 {
-                                    debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items");
+                                    /* Let's try up to 100 times to get the transaction data each from different nodes. */
+                                    for(uint32_t n = 0; n < 100; ++n)
+                                    {
+                                        /* Normal case of asking for a getblocks inventory message. */
+                                        std::shared_ptr<TritiumNode> pnode = TRITIUM_SERVER->GetConnection();
+                                        if(pnode != nullptr)
+                                        {
+                                            /* Send out another getblocks request. */
+                                            try
+                                            {
+                                                debug::log(0, FUNCTION, "broadcasting packet with ", nTotalItems, " items to ", pnode->GetAddress().ToStringIP());
 
-                                    /* Write our packet with our total items. */
-                                    WritePacket(NewMessage(ACTION::GET, ssResponse));
+                                                /* Write our packet with our total items. */
+                                                pnode->WritePacket(NewMessage(ACTION::GET, ssResponse));
 
-                                    /* Clear our response data. */
-                                    ssResponse.clear();
+                                                /* Expired our missing block last. */
+                                                pnode->PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
 
-                                    /* Reset our counters. */
-                                    nTotalItems = 0;
+                                                /* Clear our response data. */
+                                                ssResponse.clear();
+
+                                                /* Reset our counters. */
+                                                nTotalItems = 0;
+
+                                                /* Just to be sure we break. */
+                                                n = 100;
+                                                break;
+                                            }
+                                            catch(const std::exception& e)
+                                            {
+                                                /* Recurse on failure. */
+                                                debug::error(FUNCTION, e.what());
+                                            }
+                                        }
+                                    }
                                 }
                             }
-
-                            /* Expired our missing block last. */
-                            PushMessage(ACTION::GET, uint8_t(TYPES::BLOCK), block.hashMissing);
                         }
 
                         /* Check for duplicate and ask for previous block. */
@@ -2676,7 +2692,7 @@ namespace LLP
                     ++nConsecutiveOrphans;
 
                 /* Detect large orphan chains and ask for new blocks from origin again. */
-                if(nConsecutiveOrphans >= 1000)
+                if(nConsecutiveOrphans >= 10000)
                 {
                     {
                         LOCK(TAO::Ledger::PROCESSING_MUTEX);
@@ -2823,7 +2839,7 @@ namespace LLP
                 }
 
                 /* Check for failure limit on node. */
-                if(nConsecutiveFails >= 100)
+                if(nConsecutiveFails >= 10000)
                 {
                     /* Only drop the node when syncronizing the chain. */
                     if(TAO::Ledger::ChainState::Synchronizing())
@@ -2835,7 +2851,7 @@ namespace LLP
 
 
                 /* Check for orphan limit on node. */
-                if(nConsecutiveOrphans >= 1000)
+                if(nConsecutiveOrphans >= 10000)
                     return debug::drop(NODE, "TX::node reached ORPHAN limit");
 
                 break;
@@ -2894,7 +2910,7 @@ namespace LLP
                             TAO::API::Indexing::IndexDependant(hashTx, tx);
 
                             /* Commit our ACID transaction across LLD instances. */
-                            LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                            LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                         }
 
                         /* Verbose=3 dumps transaction data. */
@@ -2960,7 +2976,7 @@ namespace LLP
                                 }
 
                                 /* Commit our ACID transaction across LLD instances. */
-                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK);
+                                LLD::TxnCommit(TAO::Ledger::FLAGS::BLOCK, LLD::INSTANCES::MERKLE);
                             }
 
                             /* Write Success to log. */
@@ -3763,7 +3779,7 @@ namespace LLP
 
         /* Cache the height at the start of the sync */
         if(nSyncStart.load() == 0)
-            nSyncStart.store(TAO::Ledger::ChainState::stateBest.load().nHeight);
+            nSyncStart.store(TAO::Ledger::ChainState::tStateBest.load().nHeight);
 
         /* Make sure the sync timer is stopped.  We don't start this until we receive our first sync block*/
         SYNCTIMER.Stop();

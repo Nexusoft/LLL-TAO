@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2023
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -1868,11 +1868,11 @@ namespace TAO
                         if(config::fClient.load())
                         {
                             /* Check if we can read a current block for current caller. */
-                            TAO::Ledger::ClientBlock stateBest;
-                            if(LLD::Client->ReadBlock(caller.Hash(), stateBest))
+                            TAO::Ledger::ClientBlock tStateBest;
+                            if(LLD::Client->ReadBlock(caller.Hash(), tStateBest))
                             {
                                 /* Allocate our memory now. */
-                                allocate(stateBest.nHeight, vRet);
+                                allocate(tStateBest.nHeight, vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 4 < nCost)
@@ -1886,7 +1886,7 @@ namespace TAO
                         }
 
                         /* Allocate to the registers. */
-                        allocate(TAO::Ledger::ChainState::stateBest.load().nHeight, vRet);
+                        allocate(TAO::Ledger::ChainState::tStateBest.load().nHeight, vRet);
 
                         /* Check for overflows. */
                         if(nCost + 4 < nCost)
@@ -1906,11 +1906,11 @@ namespace TAO
                         if(config::fClient.load())
                         {
                             /* Check if we can read a current block for current caller. */
-                            TAO::Ledger::ClientBlock stateBest;
-                            if(LLD::Client->ReadBlock(caller.Hash(), stateBest))
+                            TAO::Ledger::ClientBlock tStateBest;
+                            if(LLD::Client->ReadBlock(caller.Hash(), tStateBest))
                             {
                                 /* Allocate our memory now. */
-                                allocate(uint64_t(stateBest.nMoneySupply), vRet);
+                                allocate(uint64_t(tStateBest.nMoneySupply), vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 8 < nCost)
@@ -1924,7 +1924,7 @@ namespace TAO
                         }
 
                         /* Allocate to the registers. */
-                        allocate(uint64_t(TAO::Ledger::ChainState::stateBest.load().nMoneySupply), vRet);
+                        allocate(uint64_t(TAO::Ledger::ChainState::tStateBest.load().nMoneySupply), vRet);
 
                         /* Check for overflows. */
                         if(nCost + 8 < nCost)
@@ -1944,11 +1944,11 @@ namespace TAO
                         if(config::fClient.load())
                         {
                             /* Check if we can read a current block for current caller. */
-                            TAO::Ledger::ClientBlock stateBest;
-                            if(LLD::Client->ReadBlock(caller.Hash(), stateBest))
+                            TAO::Ledger::ClientBlock tStateBest;
+                            if(LLD::Client->ReadBlock(caller.Hash(), tStateBest))
                             {
                                 /* Allocate our memory now. */
-                                allocate(uint64_t(stateBest.nTime), vRet);
+                                allocate(uint64_t(tStateBest.nTime), vRet);
 
                                 /* Check for overflows. */
                                 if(nCost + 8 < nCost)
@@ -1962,7 +1962,7 @@ namespace TAO
                         }
 
                         /* Allocate to the registers. */
-                        allocate(uint64_t(TAO::Ledger::ChainState::stateBest.load().nTime), vRet);
+                        allocate(uint64_t(TAO::Ledger::ChainState::tStateBest.load().nTime), vRet);
 
                         /* Check for overflows. */
                         if(nCost + 8 < nCost)

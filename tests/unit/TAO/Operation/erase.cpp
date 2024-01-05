@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -605,12 +605,12 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
 
 
         //index to new best block
-        BlockState stateBest;
-        stateBest.nHeight = 500;
+        BlockState tStateBest;
+        tStateBest.nHeight = 500;
 
         //write to disk
-        uint1024_t hashBest = stateBest.GetHash();
-        REQUIRE(LLD::Ledger->WriteBlock(hashBest, stateBest));
+        uint1024_t hashBest = tStateBest.GetHash();
+        REQUIRE(LLD::Ledger->WriteBlock(hashBest, tStateBest));
 
         //credit the coinbase
         {
@@ -653,7 +653,7 @@ TEST_CASE( "FLAGS::ERASE Tests", "[erase]")
             REQUIRE(tx.Verify(FLAGS::BLOCK));
 
             //connect on disk
-            REQUIRE(tx.Connect(FLAGS::BLOCK, &stateBest));
+            REQUIRE(tx.Connect(FLAGS::BLOCK, &tStateBest));
 
             //index to genesis
             REQUIRE(LLD::Ledger->IndexBlock(hash, hashBest));

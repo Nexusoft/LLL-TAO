@@ -397,6 +397,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/LLP_connection.o \
         build/LLP_httpnode.o \
 		build/LLP_apinode.o \
+		build/LLP_filenode.o \
 		build/LLP_data.o \
 		build/LLP_ddos.o \
 		build/LLP_global.o \
@@ -441,6 +442,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_ledger_get-info.o \
 		build/API_commands_ledger_get-transaction.o \
 		build/API_commands_ledger_initialize.o \
+		build/API_commands_ledger_recent-blocks.o \
 		build/API_commands_ledger_list-blocks.o \
 		build/API_commands_ledger_list-transactions.o \
 		build/API_commands_ledger_metrics.o \
@@ -460,6 +462,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_commands_names_index.o \
 		build/API_commands_names_lookup.o \
 		build/API_commands_names_names.o \
+		build/API_commands_names_rename.o \
 		build/API_commands_names_resolve.o \
 		build/API_commands_profiles_create.o \
 		build/API_commands_profiles_initialize.o \
@@ -505,6 +508,7 @@ OBJS+=  build/LLC_base_uint.o \
 		build/API_operators_array.o \
 		build/API_operators_count.o \
 		build/API_operators_floor.o \
+		build/API_operators_lookup.o \
 		build/API_operators_max.o \
 		build/API_operators_mean.o \
 		build/API_operators_min.o \
@@ -937,7 +941,7 @@ endif
 
 
 #OS Specific Compiler Flags
-CXXFLAGS+= -mmacosx-version-min=10.13 \
+CXXFLAGS+= -mmacosx-version-min=10.09 \
 	-O3 \
 	$(DEFS) \
 	$(DEBUG) \

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -40,6 +40,7 @@ namespace config
     extern std::atomic<bool> fClient;
     extern std::atomic<bool> fTestNet;
     extern std::atomic<bool> fListen;
+    extern std::atomic<bool> fFileServer;
     extern std::atomic<bool> fMultiuser;
     extern std::atomic<bool> fProcessNotifications;
     extern std::atomic<bool> fInitialized;
@@ -54,6 +55,9 @@ namespace config
 
     /* Hybrid/Sister specific configuration variables. */
     extern uint256_t hashNetworkOwner;
+
+    /* Use this root value to detect if we want to enable our fileserver. */
+    extern std::string strFileServerRoot;
 
     /* Declare our arguments mutex. */
     extern std::recursive_mutex ARGS_MUTEX;

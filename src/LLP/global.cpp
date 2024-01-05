@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -30,12 +30,12 @@ namespace LLP
     /* Track our hostname so we don't have to call system every request. */
     std::string strHostname;
 
-
     /* Declare the Global LLP Instances. */
     Server<TritiumNode>* TRITIUM_SERVER;
     Server<LookupNode>*  LOOKUP_SERVER;
     Server<TimeNode>*    TIME_SERVER;
     Server<APINode>*     API_SERVER;
+    Server<FileNode>*    FILE_SERVER;
     Server<RPCNode>*     RPC_SERVER;
     Server<Miner>*       MINING_SERVER;
 
@@ -69,6 +69,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetTimePort());
             CONFIG.ENABLE_LISTEN   = fServer;
+            CONFIG.ENABLE_UPNP     = fServer;
             CONFIG.ENABLE_METERS   = false;
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = true;
@@ -99,10 +100,11 @@ namespace LLP
                 (!config::fClient.load() && config::fIndexProofs.load() && config::fIndexRegister.load());
 
             CONFIG.ENABLE_METERS   = false;
+            CONFIG.ENABLE_UPNP     = CONFIG.ENABLE_LISTEN;
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = false;
             CONFIG.ENABLE_SSL      = false;
-            CONFIG.ENABLE_REMOTE   = true;
+            CONFIG.ENABLE_REMOTE   = CONFIG.ENABLE_LISTEN;
             CONFIG.REQUIRE_SSL     = false;
             CONFIG.PORT_SSL        = 0; //TODO: this is disabled until SSL code can be refactored
             CONFIG.MAX_INCOMING    = 128;
@@ -124,6 +126,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetDefaultPort());
             CONFIG.ENABLE_LISTEN   = config::GetBoolArg(std::string("-listen"), (config::fClient.load() ? false : true));
+            CONFIG.ENABLE_UPNP     = true; //we want UPNP for main tritium protocol
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-meters"), false);
             CONFIG.ENABLE_DDOS     = config::GetBoolArg(std::string("-ddos"), false);
             CONFIG.ENABLE_MANAGER  = config::GetBoolArg(std::string("-manager"), true);
@@ -145,12 +148,44 @@ namespace LLP
         }
 
 
+        /* FILE_SERVER instance */
+        if(config::fFileServer.load())
+        {
+            /* Generate our config object and use correct settings. */
+            LLP::Config CONFIG     = LLP::Config(80); //default http uses port 80
+            CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = true; //we want UPNP for main fileserver protocol
+            CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-httpmeters"), false);
+            CONFIG.ENABLE_DDOS     = true;
+            CONFIG.ENABLE_MANAGER  = false;
+            CONFIG.ENABLE_SSL      = config::GetBoolArg(std::string("-httpssl"));
+            CONFIG.ENABLE_REMOTE   = config::GetBoolArg(std::string("-httpremote"), true);
+            CONFIG.REQUIRE_SSL     = config::GetBoolArg(std::string("-httpsslrequired"), false);
+            CONFIG.PORT_SSL        = 443; //default https uses port 443
+            CONFIG.MAX_INCOMING    = 128;
+            CONFIG.MAX_CONNECTIONS = 128;
+            CONFIG.MAX_THREADS     = config::GetArg(std::string("-httpthreads"), 8);
+            CONFIG.DDOS_CSCORE     = config::GetArg(std::string("-httpcscore"), 5);
+            CONFIG.DDOS_RSCORE     = config::GetArg(std::string("-httprscore"), 5);
+            CONFIG.DDOS_TIMESPAN   = config::GetArg(std::string("-httptimespan"), 60);
+            CONFIG.MANAGER_SLEEP   = 0; //this is disabled
+            CONFIG.SOCKET_TIMEOUT  = config::GetArg(std::string("-httptimeout"), 30);
+
+            /* Create the server instance. */
+            LLP::FILE_SERVER = new Server<FileNode>(CONFIG);
+
+            /* We want to post a notice if this parameter is enabled. */
+            debug::notice("HTTP SERVER ENABLED: you have set -fileroot=<directory> parameter, listening on port 80.");
+        }
+
+
         /* API_SERVER instance */
         if((config::HasArg("-apiuser") && config::HasArg("-apipassword")) || !config::GetBoolArg("-apiauth", true))
         {
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetAPIPort());
             CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = false;
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-apimeters"), false);
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = false;
@@ -186,6 +221,7 @@ namespace LLP
             /* Generate our config object and use correct settings. */
             LLP::Config CONFIG     = LLP::Config(GetRPCPort());
             CONFIG.ENABLE_LISTEN   = true;
+            CONFIG.ENABLE_UPNP     = false;
             CONFIG.ENABLE_METERS   = config::GetBoolArg(std::string("-rpcmeters"), false);
             CONFIG.ENABLE_DDOS     = true;
             CONFIG.ENABLE_MANAGER  = false;
@@ -239,11 +275,6 @@ namespace LLP
             /* Create the server instance. */
             MINING_SERVER = new Server<Miner>(CONFIG);
         }
-
-
-        /* Add our connections from commandline. */
-        MakeConnections<LLP::TimeNode>   (TIME_SERVER);
-        MakeConnections<LLP::TritiumNode>(TRITIUM_SERVER);
 
         return true;
     }

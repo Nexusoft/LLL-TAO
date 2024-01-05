@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -145,7 +145,7 @@ namespace TAO::API
         /* Get the crypto register so we can determine the key type used to generate the public key */
         TAO::Register::Object oCrypto;
         if(!LLD::Register->ReadObject(hashCrypto, oCrypto, TAO::Ledger::FLAGS::MEMPOOL))
-            throw debug::exception(FUNCTION, "Could not sign - missing crypto register");
+            throw Exception(-130, "missing crypto register");
 
         /* Read the key type from crypto object register. */
         const uint256_t hashAuth =

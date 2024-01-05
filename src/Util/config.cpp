@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -209,9 +209,13 @@ namespace config
             path = GetDefaultDataDir();
 
         /* Check for testnet mode. */
-        uint32_t nTestnet = GetArg("-testnet", 0);
-        if(fNetSpecific && nTestnet > 0)
-            path.append(debug::safe_printstr("testnet", nTestnet, "/"));
+        const uint32_t nTestnet = GetArg("-testnet", 0);
+
+        /* Handle for -private (backwards compatability). */
+        if(config::GetBoolArg("-private"))
+            path.append("testnet1/");
+        else if(fNetSpecific && nTestnet > 0)
+            path.append("testnet/");
 
         /* Check for hybrid mode. */
         std::string strHybrid = GetArg("-hybrid", "");

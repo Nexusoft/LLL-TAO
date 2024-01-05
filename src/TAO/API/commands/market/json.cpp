@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -10,8 +10,6 @@
             "ad vocem populi" - To the Voice of the People
 
 ____________________________________________________________________________________________*/
-
-#include <LLD/include/global.h>
 
 #include <TAO/API/types/commands/market.h>
 
@@ -31,20 +29,24 @@ namespace TAO::API
     /* Converts an order for marketplace into formatted JSON. */
     encoding::json Market::OrderToJSON(const TAO::Operation::Contract& rContract, const std::pair<uint256_t, uint256_t>& pairMarket)
     {
-        try
+        /* Start our stream at 0. */
+        rContract.Reset();
+
+        /* Get the operation byte. */
+        uint8_t nType = 0;
+        rContract >> nType;
+
+        /* Switch based on type. */
+        switch(nType)
         {
-            /* Start our stream at 0. */
-            rContract.Reset();
-
-            /* Get the operation byte. */
-            uint8_t nType = 0;
-            rContract >> nType;
-
-            /* Switch based on type. */
-            switch(nType)
+            /* Check that transaction has a condition. */
+            case TAO::Operation::OP::CONDITION:
             {
-                /* Check that transaction has a condition. */
-                case TAO::Operation::OP::CONDITION:
+                /* Check our binary templates first. */
+                if(!Contracts::Verify(Contracts::Exchange::Token[0], rContract)) //checking for version 1
+                    return encoding::json::value_t::null;
+
+                try
                 {
                     /* This will hold our market name. */
                     std::string strMarket =
@@ -70,283 +72,154 @@ namespace TAO::API
                         { "market",    strMarket                     }
                     };
 
-                    /* Check our binary templates first. */
-                    if(Contracts::Verify(Contracts::Exchange::Token[0], rContract)) //checking for version 1
+                    /* Seek over our OP::DEBIT enum. */
+                    rContract.Seek(1, TAO::Operation::Contract::OPERATIONS);
+
+                    /* Get the spending address. */
+                    TAO::Register::Address hashFrom;
+                    rContract >> hashFrom;
+
+                    /* Seek to end of debit contract. */
+                    rContract.Seek(32, TAO::Operation::Contract::OPERATIONS);
+
+                    /* Deserialize our amount. */
+                    uint64_t nSelling = 0;
+                    rContract >> nSelling;
+
+                    /* Grab our other token from pre-state. */
+                    TAO::Register::Object tPreState = rContract.PreState();
+
+                    /* Parse pre-state if needed. */
+                    if(tPreState.nType == TAO::Register::REGISTER::OBJECT)
+                        tPreState.Parse();
+
+                    /* Grab the rhs token. */
+                    TAO::Register::Address hashSelling =
+                        tPreState.get<uint256_t>("token");
+
+                    /* Extract our precision_t from parameters. */
+                    const precision_t dSelling =
+                        GetPrecision(nSelling, hashSelling);
+
+                    /* Build our from object. */
+                    encoding::json jFrom =
                     {
-                        /* Seek over our OP::DEBIT enum. */
-                        rContract.Seek(1, TAO::Operation::Contract::OPERATIONS);
+                        { "OP",   "DEBIT"                              },
+                        { "from" , hashFrom.ToString()                 },
+                        { "amount", dSelling.double_t()                },
+                        { "token", hashSelling.ToString()              }
+                    };
 
-                        /* Get the spending address. */
-                        TAO::Register::Address hashFrom;
-                        rContract >> hashFrom;
+                    /* Add a ticker if found. */
+                    if(Names::ReverseLookup(hashSelling, strName))
+                        jFrom["ticker"] = strName;
 
-                        /* Seek to end of debit contract. */
-                        rContract.Seek(32, TAO::Operation::Contract::OPERATIONS);
+                    /* Get the next OP. */
+                    rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
 
-                        /* Deserialize our amount. */
-                        uint64_t nSelling = 0;
-                        rContract >> nSelling;
+                    /* Get the comparison bytes. */
+                    std::vector<uint8_t> vBytes;
+                    rContract >= vBytes;
 
-                        /* Grab our other token from pre-state. */
-                        TAO::Register::Object oPreState = rContract.PreState();
+                    /* Get the next OP. */
+                    rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
 
-                        /* Parse pre-state if needed. */
-                        if(oPreState.nType == TAO::Register::REGISTER::OBJECT)
-                            oPreState.Parse();
+                    /* Grab our pre-state token-id. */
+                    std::string strToken;
+                    rContract >= strToken;
 
-                        /* Grab the rhs token. */
-                        TAO::Register::Address hashSelling =
-                            oPreState.get<uint256_t>("token");
+                    /* Get the next OP. */
+                    rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
 
-                        /* Extract our precision_t from parameters. */
-                        const precision_t dSelling =
-                            GetPrecision(nSelling, hashSelling);
+                    /* Grab our token-id now. */
+                    TAO::Register::Address hashBuying;
+                    rContract >= hashBuying;
 
-                        /* Build our from object. */
-                        encoding::json jFrom =
-                        {
-                            { "OP",   "DEBIT"                              },
-                            { "from" , hashFrom.ToString()                 },
-                            { "amount", dSelling.double_t()                },
-                            { "token", hashSelling.ToString()              }
-                        };
+                    /* Extract the data from the bytes. */
+                    TAO::Operation::Stream ssCompare(vBytes);
+                    ssCompare.seek(33);
 
-                        /* Add a ticker if found. */
-                        if(Names::ReverseLookup(hashSelling, strName))
-                            jFrom["ticker"] = strName;
+                    /* Get the address to. */
+                    TAO::Register::Address hashTo;
+                    ssCompare >> hashTo;
 
-                        /* Get the next OP. */
-                        rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
+                    /* Get the amount requested. */
+                    uint64_t nBuying = 0;
+                    ssCompare >> nBuying;
 
-                        /* Get the comparison bytes. */
-                        std::vector<uint8_t> vBytes;
-                        rContract >= vBytes;
+                    /* Extract our precision_t from parameters. */
+                    const precision_t dBuying =
+                        GetPrecision(nBuying, hashBuying);
 
-                        /* Get the next OP. */
-                        rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
+                    /* Build our from object. */
+                    encoding::json jRequired =
+                    {
+                        { "OP",     "DEBIT"                              },
+                        { "to",     hashTo.ToString()                    },
+                        { "amount", dBuying.double_t()                   },
+                        { "token",  hashBuying.ToString()               }
+                    };
 
-                        /* Grab our pre-state token-id. */
-                        std::string strToken;
-                        rContract >= strToken;
+                    /* Add a ticker if found. */
+                    if(Names::ReverseLookup(hashBuying, strName))
+                        jRequired["ticker"] = strName;
 
-                        /* Get the next OP. */
-                        rContract.Seek(2, TAO::Operation::Contract::CONDITIONS);
+                    /* Track our price field with correct number of decimals. */
+                    precision_t dPrice =
+                        precision_t(GetDecimals(pairMarket.second));
 
-                        /* Grab our token-id now. */
-                        TAO::Register::Address hashBuying;
-                        rContract >= hashBuying;
+                    /* Handle if required is our base token. */
+                    std::string strType = "";
+                    if(hashBuying != pairMarket.second)
+                    {
+                        /* Check for floating point exceptions. */
+                        if(dBuying.nValue == 0)
+                            return encoding::json::value_t::null;
 
-                        /* Extract the data from the bytes. */
-                        TAO::Operation::Stream ssCompare(vBytes);
-                        ssCompare.seek(33);
+                        /* Calculate our price using precision figures. */
+                        dPrice = dSelling;
+                        dPrice /= dBuying;
 
-                        /* Get the address to. */
-                        TAO::Register::Address hashTo;
-                        ssCompare >> hashTo;
+                        /* Set our price now with correct decimals. */
+                        jRet["price"] = dPrice.double_t();
 
-                        /* Get the amount requested. */
-                        uint64_t nBuying = 0;
-                        ssCompare >> nBuying;
+                        /* Check what type of order this is. */
+                        strType = "bid";
+                    }
+                    else
+                    {
+                        /* Check for floating point exceptions. */
+                        if(dSelling.nValue == 0)
+                            return encoding::json::value_t::null;
 
-                        /* Extract our precision_t from parameters. */
-                        const precision_t dBuying =
-                            GetPrecision(nBuying, hashBuying);
+                        /* Calculate our price using precision figures. */
+                        dPrice = dBuying;
+                        dPrice /= dSelling;
 
-                        /* Build our from object. */
-                        encoding::json jRequired =
-                        {
-                            { "OP",     "DEBIT"                              },
-                            { "to",     hashTo.ToString()                    },
-                            { "amount", dBuying.double_t()                   },
-                            { "token",  hashBuying.ToString()               }
-                        };
+                        /* Set our price now with correct decimals. */
+                        jRet["price"] = dPrice.double_t();
 
-                        /* Add a ticker if found. */
-                        if(Names::ReverseLookup(hashBuying, strName))
-                            jRequired["ticker"] = strName;
-
-                        /* Track our price field with correct number of decimals. */
-                        precision_t dPrice =
-                            precision_t(GetDecimals(pairMarket.second));
-
-                        /* Handle if required is our base token. */
-                        std::string strType = "";
-                        if(hashBuying != pairMarket.second)
-                        {
-                            /* Calculate our price using precision figures. */
-                            dPrice = dSelling;
-                            dPrice /= dBuying;
-
-                            /* Set our price now with correct decimals. */
-                            jRet["price"] = dPrice.double_t();
-
-                            /* Check what type of order this is. */
-                            strType = "bid";
-                        }
-                        else
-                        {
-                            /* Calculate our price using precision figures. */
-                            dPrice = dBuying;
-                            dPrice /= dSelling;
-
-                            /* Set our price now with correct decimals. */
-                            jRet["price"] = dPrice.double_t();
-
-                            /* Check what type of order this is. */
-                            strType = "ask";
-                        }
-
-                        /* Now populate the rest of our data. */
-                        jRet["type"]        = strType;
-                        jRet["contract"]    = jFrom;
-                        jRet["order"]       = jRequired;
-
-                        return jRet;
+                        /* Check what type of order this is. */
+                        strType = "ask";
                     }
 
+                    /* Now populate the rest of our data. */
+                    jRet["type"]        = strType;
+                    jRet["contract"]    = jFrom;
+                    jRet["order"]       = jRequired;
 
-                    /* Check our binary templates first. */
-                    if(Contracts::Verify(Contracts::Exchange::Token[1], rContract)) //checking for version 2
-                    {
-                        /* Seek over our OP::DEBIT enum. */
-                        rContract.Seek(1, TAO::Operation::Contract::OPERATIONS);
-
-                        /* Get the spending address. */
-                        TAO::Register::Address hashFrom;
-                        rContract >> hashFrom;
-
-                        /* Seek to end of debit contract. */
-                        rContract.Seek(32, TAO::Operation::Contract::OPERATIONS);
-
-                        /* Deserialize our amount. */
-                        uint64_t nSelling = 0;
-                        rContract >> nSelling;
-
-                        /* Grab our other token from pre-state. */
-                        const TAO::Register::Object oPreState = rContract.PreState();
-
-                        /* Parse pre-state if needed. */
-                        if(oPreState.nType == TAO::Register::REGISTER::OBJECT)
-                            oPreState.Parse();
-
-                        /* Grab the rhs token. */
-                        TAO::Register::Address hashSelling =
-                            oPreState.get<uint256_t>("token");
-
-                        /* Extract our precision_t from parameters. */
-                        const precision_t dSelling =
-                            GetPrecision(nSelling, hashSelling);
-
-                        /* Build our from object. */
-                        encoding::json jFrom =
-                        {
-                            { "OP",   "DEBIT"                              },
-                            { "from" , hashFrom.ToString()                 },
-                            { "amount", dSelling.double_t()                },
-                            { "token", hashSelling.ToString()              }
-                        };
-
-                        /* Add a ticker if found. */
-                        if(Names::ReverseLookup(hashSelling, strName))
-                            jFrom["ticker"] = strName;
-
-                        /* Get the next OP. */
-                        rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
-
-                        /* Get the comparison bytes. */
-                        std::vector<uint8_t> vBytes;
-                        rContract >= vBytes;
-
-                        /* Extract the data from the bytes. */
-                        TAO::Operation::Stream ssCompare(vBytes);
-                        ssCompare.seek(33);
-
-                        /* Get the address to. */
-                        TAO::Register::Address hashTo;
-                        ssCompare >> hashTo;
-
-                        /* Get the object that is executing the order. */
-                        TAO::Register::Object oBuying;
-                        if(!LLD::Register->ReadObject(hashTo, oBuying))
-                            throw Exception(-25, "Market Order: hashTo object not found");
-
-                        /* Grab our token-id now. */
-                        const TAO::Register::Address hashBuying =
-                            oBuying.get<uint256_t>("token");
-
-                        /* Get the amount requested. */
-                        uint64_t nBuying = 0;
-                        ssCompare >> nBuying;
-
-                        /* Extract our precision_t from parameters. */
-                        const precision_t dBuying =
-                            GetPrecision(nBuying, hashBuying);
-
-                        /* Build our from object. */
-                        encoding::json jRequired =
-                        {
-                            { "OP",     "DEBIT"                              },
-                            { "to",     hashTo.ToString()                    },
-                            { "amount", dBuying.double_t()                   },
-                            { "token",  hashBuying.ToString()               }
-                        };
-
-                        /* Add a ticker if found. */
-                        if(Names::ReverseLookup(hashBuying, strName))
-                            jRequired["ticker"] = strName;
-
-                        /* Track our price field with correct number of decimals. */
-                        precision_t dPrice =
-                            precision_t(GetDecimals(pairMarket.second));
-
-                        /* Handle if required is our base token. */
-                        std::string strType = "";
-                        if(hashBuying != pairMarket.second)
-                        {
-                            /* Calculate our price using precision figures. */
-                            dPrice = dSelling;
-                            dPrice /= dBuying;
-
-                            /* Set our price now with correct decimals. */
-                            jRet["price"] = dPrice.double_t();
-
-                            /* Check what type of order this is. */
-                            strType = "bid";
-                        }
-                        else
-                        {
-                            /* Calculate our price using precision figures. */
-                            dPrice = dBuying;
-                            dPrice /= dSelling;
-
-                            /* Set our price now with correct decimals. */
-                            jRet["price"] = dPrice.double_t();
-
-                            /* Check what type of order this is. */
-                            strType = "ask";
-                        }
-
-                        /* Now populate the rest of our data. */
-                        jRet["type"]        = strType;
-                        jRet["contract"]    = jFrom;
-                        jRet["order"]       = jRequired;
-
-                        return jRet;
-                    }
-
-                    /* If we reached here we don't have a supported binary order. */
-                    throw Exception(-25, "Market order invalid contract: not valid binary order");
-
-
+                    return jRet;
                 }
-
-                default:
-                    throw Exception(-25, "Market order invalid contract: not conditional contract");
-
+                catch(const std::exception& e)
+                {
+                    return encoding::json::value_t::null;
+                }
             }
 
+            default:
+                throw Exception(-25, "Market order invalid contract: not conditional contract");
+
         }
-        catch(const std::exception& e) { throw Exception(-25, "Market order invalid contract: ", e.what()); }
     }
 
 
@@ -390,15 +263,15 @@ namespace TAO::API
                     rContract >> nSelling;
 
                     /* Grab our other token from pre-state. */
-                    TAO::Register::Object oPreState = rContract.PreState();
+                    TAO::Register::Object tPreState = rContract.PreState();
 
                     /* Parse pre-state if needed. */
-                    if(oPreState.nType == TAO::Register::REGISTER::OBJECT)
-                        oPreState.Parse();
+                    if(tPreState.nType == TAO::Register::REGISTER::OBJECT)
+                        tPreState.Parse();
 
                     /* Grab the rhs token. */
                     TAO::Register::Address hashSelling =
-                        oPreState.get<uint256_t>("token");
+                        tPreState.get<uint256_t>("token");
 
                     /* Get the next OP. */
                     rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);

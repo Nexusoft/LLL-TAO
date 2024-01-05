@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -822,8 +822,7 @@ namespace TAO::API
                     jRet["ticker"]  = "NXS";
 
                     /* Handle for add stake. */
-                    if(nStakeChange != 0)
-                        jRet["change"] = FormatStake(nStakeChange);
+                    jRet["change"] = FormatStake(nStakeChange);
 
                     break;
                 }
@@ -2052,7 +2051,7 @@ namespace TAO::API
         };
 
         /* Get our last block state. */
-        TAO::Ledger::BlockState tBlock = TAO::Ledger::ChainState::stateBest.load();
+        TAO::Ledger::BlockState tBlock = TAO::Ledger::ChainState::tStateBest.load();
         if(TAO::Ledger::GetLastState(tBlock, nChannel))
         {
             /* Populate our heights and weights. */

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -19,40 +19,41 @@ ________________________________________________________________________________
 #include <TAO/Ledger/include/enum.h>
 
 #include <set>
+#include <map>
 #include <string>
 
 /* Global TAO namespace. */
 namespace TAO::Register
 {
     /** Hold list of reserved object register values. **/
-    const std::set<std::string> RESERVED =
+    const std::map<std::string, std::pair<std::string, bool>> RESERVED =
     {
         /* Used to hold token blance. */
-        "balance",
+        { "balance",  std::make_pair("uint64", true)    },
 
         /* Used to identify a specific token. */
-        "token",
+        { "token",    std::make_pair("uint256", false)  },
 
         /* Used to set validation script in object register. */
-        "require",
+        { "require",  std::make_pair("disabled", false) },
 
         /* Used for token domain parameters for max supply. */
-        "supply",
+        { "supply",   std::make_pair("uint64", false)   },
 
         /* Used to determine decimals of a token. */
-        "decimals",
+        { "decimals", std::make_pair("uint8", false)    },
 
         /* Used to determine collective trust in a register. */
-        "trust",
+        { "trust",    std::make_pair("uint64", true)    },
 
         /* Used to determine total stake for a register. */
-        "stake",
+        { "stake",    std::make_pair("uint64", true)    },
 
         /* Used for internal object register system memory. */
-        "system",
+        { "system",   std::make_pair("disabled", false) },
 
         /* Used for internal object register names. */
-        "name"
+        { "name",     std::make_pair("string", false)   }
     };
 
 
@@ -67,7 +68,26 @@ namespace TAO::Register
      **/
     __attribute__((const)) inline bool Reserved(const std::string& strValue)
     {
-        return std::find(RESERVED.begin(), RESERVED.end(), strValue) != RESERVED.end();
+        return RESERVED.count(strValue);
+    }
+
+
+    /** Reserved
+     *
+     *  Object register keys that are reserved
+     *
+     *  @param[in] strValue The value to check.
+     *
+     *  @return True if value is object register reserved value.
+     *
+     **/
+    __attribute__((const)) inline bool Reserved(const std::string& strValue, const std::string& strType, const bool fMutable = false)
+    {
+        /* Check that is in the reserved map. */
+        if(!RESERVED.count(strValue))
+            return false;
+
+        return (RESERVED.at(strValue) != std::make_pair(strType, fMutable));
     }
 
 

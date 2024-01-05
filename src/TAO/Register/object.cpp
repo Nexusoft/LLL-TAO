@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-        (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+        Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-        (c) Copyright The Nexus Developers 2014 - 2021
+        (c) Copyright The Nexus Developers 2014 - 2023
 
         Distributed under the MIT software license, see the accompanying
         file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -277,7 +277,7 @@ namespace TAO
             /* Ensure that object register is of proper type. */
             if(this->nType != REGISTER::OBJECT
             && this->nType != REGISTER::SYSTEM)
-                return debug::error(FUNCTION, "register has invalid type ", uint32_t(this->nType));
+                return debug::error(FUNCTION, "register has invalid type ", std::hex, uint32_t(this->nType));
 
             /* Check the map for empty. */
             if(!mapData.empty())

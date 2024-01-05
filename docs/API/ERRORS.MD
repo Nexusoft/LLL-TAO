@@ -1,61 +1,10 @@
-# Nexus API Overview
--------------------------------------
+# `ERROR Codes`
 
-Nexus provides several APIs to allow users and developers to easily interact with the functionality of the Nexus software stack. Each API is a logically grouped collection of methods that either interact with a specific part of the stack (e.g. ledger, registers), by functional area (accounts, assets, tokens), or by industry specific use case (supply, music).
+The Nexus API contains two sets of error codes, one for errors related to a query syntax, and another related to the main API error codes. If you get an error code, it will be accompanied by an error message as well that is also outlined in the tables below.
 
+## `DSL Error Codes`
 
-## `Protocol`
-The API server uses the `HTTP` protocol and supports both **`GET`** and **`POST`** request methods.  
-
-The API's use **`JSON`** (JavaScript Object Notation) as their primary data transport mechanism for both input and output.  However the API server also supports URL encoded requests (**`application/x-www-form-urlencoded`**).   
-
-## `Port`
-By default the API server runs on port 8080. This can be changed by setting `apiport=xxxx` in your nexus.conf or starting your daemon with the `-apiport=xxxx` parameter.
-
-## `Security`
-The Nexus API uses the `HTTP Basic` authentication scheme.  This requires the caller to set an `Authorization` HTTP header with the value `Basic <credentials>` with the `<credendtials>` portion set to `apiuser:apipassword` and `base64` encoded. On the API server side the authentication is configured by adding `apiuser=<username>` and `apipassword=<password>` to the nexus.conf.   
-**NOTE**:  If you wish to disable authentication entirely, you can do so by setting `apiauth=0` in your nexus.conf
-
-
-The authentication mechanism is complemented by the implementation of `SSL` encryption (`HTTPS`).  By default the API server is started with SSL disabled.  To enable it, please add `apissl=1` to your nexus.conf   
-
-
-## `Multi-user Sessions`
-The Nexus API can be configured to run in multiuser mode, allowing multiple signature chains to be logged in and use the API simultaneously.  This feature can be enabled by setting `multiuser=1` in your nexus.conf (default off).  When multiuser is enabled, the initial login response will include a session ID value.  This session ID must be then be included in all subsequent API calls to endpoints that require a user to be logged in.
-
-## `Endpoint`
-
-Each API endpoint can be invoked through the following semantics:
-
-**`<api>/<verb>/<noun>`**
-
-e.g.
-```
-http://127.0.0.1:8080/ledger/get/block
-```
-
-**NOTE**:  URI's are always in lowercase.
-
-
------------------------------------
-***
-
-
-# `Error Handling`
-
-In the event that an API call results in an error, a JSON object will be returned with the following format:
-```
-{
-    "error" :
-    {
-        "code" : -123,
-        "message" : "An error has occurred"
-    }
-}
-```
-
-
-DSL Error Codes
+The Query DSL contains the following error codes that help you find the issues in your query and its syntax.
 
 | Code   | Message   |
 | :-----:| :-------- |
@@ -66,11 +15,11 @@ DSL Error Codes
 | 5 | Query Syntax Error: must use '(' and ')' to mix AND/OR statements |
 | 6 | Query Syntax Error: missing logical operator for group |
 | 7 | Query Syntax Error: empty where clause at [clause] |
-| 8 |  |
-| 9 |  |
 
 
-API Error Codes
+## `API Error Codes`
+
+The API supports many different error responses to help you as the developer understand the error to get your command to succeed.
 
 | Code   | Message   |
 | :-----:| :-------- |

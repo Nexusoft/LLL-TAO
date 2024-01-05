@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2019
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -22,7 +22,6 @@ ________________________________________________________________________________
 #include <TAO/Operation/include/enum.h>
 #include <TAO/Operation/types/contract.h>
 
-#include <TAO/Register/include/constants.h>
 #include <TAO/Register/include/unpack.h>
 #include <TAO/Register/types/object.h>
 
@@ -46,15 +45,10 @@ namespace TAO::API
             case TAO::Operation::OP::CONDITION:
             {
                 /* Check for valid exchange contract. */
-                if(Contracts::Verify(Contracts::Exchange::Token[0], rContract)  //checking for version 1
-                || Contracts::Verify(Contracts::Exchange::Token[1], rContract)) //checking for version 2
+                if(Contracts::Verify(Contracts::Exchange::Token[0], rContract)) //checking for version 1
                 {
                     try //in case de-serialization fails from non-standard contracts
                     {
-                        /* Get our primitive order type. */
-                        uint8_t nPrimitive;
-                        rContract >> nPrimitive;
-
                         /* Get the next OP. */
                         rContract.Seek(4, TAO::Operation::Contract::CONDITIONS);
 
@@ -62,87 +56,57 @@ namespace TAO::API
                         TAO::Operation::Stream ssBytes;
                         rContract >= ssBytes;
 
-                        /* Handle for a DEBIT to. */
-                        if(nPrimitive == TAO::Operation::OP::DEBIT)
+                        /* Skip ahead to our token-id. */
+                        ssBytes.seek(33, STREAM::BEGIN);
+
+                        /* Grab our deposit token-id now. */
+                        uint256_t hashDeposit;
+                        ssBytes >> hashDeposit;
+
+                        /* Read the object to get token-id. */
+                        TAO::Register::Object oDeposit;
+                        if(!LLD::Register->ReadObject(hashDeposit, oDeposit))
+                            return;
+
+                        /* Grab our other withdraw token-id from pre-state. */
+                        TAO::Register::Object oWithdraw =
+                            rContract.PreState();
+
+                        /* Skip over non objects for now. */
+                        if(oWithdraw.nType != TAO::Register::REGISTER::OBJECT)
+                            return;
+
+                        /* Parse pre-state if needed. */
+                        oWithdraw.Parse();
+
+                        /* Create our market-pair. */
+                        const std::pair<uint256_t, uint256_t> pairMarket =
+                            std::make_pair(oDeposit.get<uint256_t>("token"), oWithdraw.get<uint256_t>("token"));
+
+                        /* Write the order to logical database. */
+                        if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
+                            debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
+
+                        /* Give a verbose=3 debug log for the indexing entry. */
+                        if(config::nVerbose >= 3)
                         {
-                            /* Get our opcode. */
-                            uint8_t nOP = 0;
-                            ssBytes >> nOP;
+                            /* This will hold our market name. */
+                            std::string strMarket =
+                                (TAO::Register::Address(pairMarket.first).ToString() + "/");
 
-                            /* Handle for a regular DEBIT. */
-                            if(nOP == TAO::Operation::OP::DEBIT)
-                            {
-                                /* Skip ahead to our token-id. */
-                                ssBytes.seek(32, STREAM::BEGIN);
+                            /* Build our market-pair. */
+                            std::string strName;
+                            if(Names::ReverseLookup(pairMarket.first, strName))
+                                strMarket = strName + "/";
 
-                                /* Grab our deposit token-id now. */
-                                uint256_t hashDeposit;
-                                ssBytes >> hashDeposit;
+                            /* Now add our second pair. */
+                            if(!Names::ReverseLookup(pairMarket.second, strName))
+                                strMarket += TAO::Register::Address(pairMarket.second).ToString();
+                            else
+                                strMarket += strName;
 
-                                /* Read the object to get token-id. */
-                                TAO::Register::Object oDeposit;
-                                if(!LLD::Register->ReadObject(hashDeposit, oDeposit))
-                                    return;
-
-                                /* Grab our other withdraw token-id from pre-state. */
-                                TAO::Register::Object oWithdraw =
-                                    rContract.PreState();
-
-                                /* Skip over non objects for now. */
-                                if(oWithdraw.nType != TAO::Register::REGISTER::OBJECT)
-                                    return;
-
-                                /* Parse pre-state if needed. */
-                                oWithdraw.Parse();
-
-                                /* Create our market-pair. */
-                                const std::pair<uint256_t, uint256_t> pairMarket =
-                                    std::make_pair(oDeposit.get<uint256_t>("token"), oWithdraw.get<uint256_t>("token"));
-
-                                /* Write the order to logical database. */
-                                if(!LLD::Logical->PushOrder(pairMarket, rContract, nContract))
-                                    debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
-                            }
-
-                            /* Handle for a regular TRANSFER. */
-                            if(nOP == TAO::Operation::OP::TRANSFER) //a transfer here means someone wants to buy the Asset
-                            {
-                                /* Get the address of the asset. */
-                                uint256_t hashAsset;
-                                ssBytes >> hashAsset;
-
-                                /* Extract our recipient now too. */
-                                uint256_t hashRecipient;
-                                ssBytes >> hashRecipient;
-
-                                /* Only index when our recipient is wildcard. */
-                                if(hashRecipient != TAO::Register::WILDCARD_ADDRESS)
-                                    return;
-
-                                /* Write the order to logical database. */
-                                if(!LLD::Logical->PushOrder(hashAsset, rContract, nContract))
-                                    debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
-                            }
-                        }
-
-                        /* Handle for a TRANSFER to. */
-                        if(nPrimitive == TAO::Operation::OP::TRANSFER)
-                        {
-                            /* Get the address of the asset. */
-                            uint256_t hashAsset;
-                            rContract >> hashAsset;
-
-                            /* Extract our recipient now too. */
-                            uint256_t hashRecipient;
-                            ssBytes >> hashRecipient;
-
-                            /* Only index when our recipient is wildcard. */
-                            if(hashRecipient != TAO::Register::WILDCARD_ADDRESS)
-                                return;
-
-                            /* Write the order to logical database. */
-                            if(!LLD::Logical->PushOrder(hashAsset, rContract, nContract))
-                                debug::warning(FUNCTION, "Indexing failed for tx ", rContract.Hash().SubString());
+                            /* Output our new debug info. */
+                            debug::log(3, "Market ", strMarket, " record created for ", rContract.Hash().SubString(), " txid");
                         }
 
                     }

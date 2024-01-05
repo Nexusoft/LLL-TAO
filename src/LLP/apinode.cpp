@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -271,6 +271,14 @@ namespace LLP
 
             /* Populate the return JSON to the error */
             jRet = { { "error", jError } };
+        }
+
+        catch(const std::exception& e)
+        {
+            nStatus = 500;
+
+            /* Populate the return JSON to the error */
+            jRet = { { "error", { { "code", -1 }, { "message", e.what() }} } };
         }
 
         /* Build packet. */

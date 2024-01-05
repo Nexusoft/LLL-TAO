@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -13,6 +13,8 @@ ________________________________________________________________________________
 #include <LLC/types/base_uint.h>
 #include <limits>
 #include <stdexcept>
+
+#include <Util/include/debug.h>
 
 namespace
 {
@@ -678,6 +680,9 @@ const std::vector<uint8_t> base_uint<BITS>::GetBytes() const
 template<uint32_t BITS>
 void base_uint<BITS>::SetBytes(const std::vector<uint8_t> DATA)
 {
+    if(DATA.size() > WIDTH * 4)
+        throw debug::exception("Memory out-of-bounds ", DATA.size(), " vs ", WIDTH * 4);
+
     for(int index = 0; index < WIDTH; ++index)
     {
         std::vector<uint8_t> BYTES(DATA.begin() + (index * 4), DATA.begin() + (index * 4) + 4);

@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -461,65 +461,72 @@ namespace LLD
         template<typename Key, typename Type>
         bool Read(const Key& key, Type& value)
         {
-            /* Serialize Key into Bytes. */
-            DataStream ssKey(SER_LLD, DATABASE_VERSION);
-            ssKey << key;
-
-            /* Get the Data from Sector Database. */
-            std::vector<uint8_t> vData;
-
-            /* Get reference of key. */
-            std::vector<uint8_t>& vKey = ssKey.Bytes();
-
-            /* Check that the key is not pending in a transaction for Erase. */
+            try
             {
-                LOCK(TRANSACTION_MUTEX);
-                if(pTransaction)
+                /* Serialize Key into Bytes. */
+                DataStream ssKey(SER_LLD, DATABASE_VERSION);
+                ssKey << key;
+
+                /* Get the Data from Sector Database. */
+                std::vector<uint8_t> vData;
+
+                /* Get reference of key. */
+                std::vector<uint8_t>& vKey = ssKey.Bytes();
+
+                /* Check that the key is not pending in a transaction for Erase. */
                 {
-                    /* Check if in erase queue. */
-                    if(pTransaction->setErasedData.count(vKey))
-                        return false;
-
-                    /* Check for indexes. */
-                    if(pTransaction->mapIndex.count(vKey))
-                        vKey = pTransaction->mapIndex[vKey];
-
-                    /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
-                    if(pTransaction->mapTransactions.count(vKey))
+                    LOCK(TRANSACTION_MUTEX);
+                    if(pTransaction)
                     {
-                        /* Get the data from the transction object. */
-                        vData = pTransaction->mapTransactions[vKey];
+                        /* Check if in erase queue. */
+                        if(pTransaction->setErasedData.count(vKey))
+                            return false;
 
-                        /* Deserialize Value. */
-                        DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+                        /* Check for indexes. */
+                        if(pTransaction->mapIndex.count(vKey))
+                            vKey = pTransaction->mapIndex[vKey];
 
-                        /* Deserialize the String. */
-                        std::string strType;
-                        ssValue >> strType;
+                        /* Check if the new data is set in a transaction to ensure that the database knows what is in volatile memory. */
+                        if(pTransaction->mapTransactions.count(vKey))
+                        {
+                            /* Get the data from the transction object. */
+                            vData = pTransaction->mapTransactions[vKey];
 
-                        /* Deseriazlie the Value. */
-                        ssValue >> value;
+                            /* Deserialize Value. */
+                            DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
 
-                        return true;
+                            /* Deserialize the String. */
+                            std::string strType;
+                            ssValue >> strType;
+
+                            /* Deseriazlie the Value. */
+                            ssValue >> value;
+
+                            return true;
+                        }
                     }
                 }
+
+                /* Get the data from the database. */
+                if(!Get(vKey, vData))
+                    return false;
+
+                /* Deserialize Value. */
+                DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
+
+                /* Deserialize the String. */
+                std::string strType;
+                ssValue >> strType;
+
+                /* Deseriazlie the Value. */
+                ssValue >> value;
+
+                return true;
             }
-
-            /* Get the data from the database. */
-            if(!Get(vKey, vData))
+            catch(const std::exception& e)
+            {
                 return false;
-
-            /* Deserialize Value. */
-            DataStream ssValue(vData, SER_LLD, DATABASE_VERSION);
-
-            /* Deserialize the String. */
-            std::string strType;
-            ssValue >> strType;
-
-            /* Deseriazlie the Value. */
-            ssValue >> value;
-
-            return true;
+            }
         }
 
 

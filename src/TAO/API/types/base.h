@@ -1,8 +1,8 @@
 /*__________________________________________________________________________________________
 
-            (c) Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014] ++
+            Hash(BEGIN(Satoshi[2010]), END(Sunny[2012])) == Videlicet[2014]++
 
-            (c) Copyright The Nexus Developers 2014 - 2021
+            (c) Copyright The Nexus Developers 2014 - 2023
 
             Distributed under the MIT software license, see the accompanying
             file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -132,6 +132,18 @@ namespace TAO::API
          *
          **/
         bool CheckObject(const std::string& strType, const TAO::Register::Object& tObject) const;
+
+
+        /** HasStandard
+         *
+         *  Check if a given standard exists in this command-set.
+         *
+         *  @param[in] strStandard The standard we are checking for.
+         *
+         *  @return true if the standard exists.
+         *
+         **/
+        bool HasStandard(const std::string& strStandard) const;
 
 
         /** EncodeObject
